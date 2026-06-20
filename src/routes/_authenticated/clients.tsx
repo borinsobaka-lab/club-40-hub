@@ -337,9 +337,27 @@ function ClientDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-name">ФИО *</Label>
-            <Input id="cl-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <div className="flex items-center gap-4">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt={fullName || "Фото клиента"}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
+                  {(fullName || "?").trim().charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="grid flex-1 gap-1.5">
+              <Label htmlFor="cl-name">ФИО *</Label>
+              <Input id="cl-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
