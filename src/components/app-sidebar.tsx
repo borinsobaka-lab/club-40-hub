@@ -41,7 +41,7 @@ export function AppSidebar() {
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0" style={{ "--sidebar": "#2A2B2F" } as React.CSSProperties}>
+    <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="px-3 py-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-icon font-bold text-sidebar-dark">
