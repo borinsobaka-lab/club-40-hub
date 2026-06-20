@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export function AdminShell({
   title,
@@ -27,7 +28,10 @@ export function AdminShell({
                   <p className="truncate text-xs text-muted-foreground">{description}</p>
                 )}
               </div>
-              {actions && <div className="flex items-center gap-2">{actions}</div>}
+              <div className="flex items-center gap-2">
+                {actions}
+                <SignOutButton />
+              </div>
             </div>
           </header>
           <main className="flex-1 p-6">{children}</main>

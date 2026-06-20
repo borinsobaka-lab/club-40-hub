@@ -19,7 +19,7 @@ export function PlaceholderPage({
             <h2 className="text-lg font-semibold">{title}</h2>
             <p className="max-w-md text-sm text-muted-foreground">
               {children ??
-                "This section is part of the navigation shell. Hook it up once your external Supabase project is connected."}
+                "Этот раздел — часть навигационной оболочки. Подключите его после интеграции внешнего Supabase."}
             </p>
           </CardContent>
         </Card>

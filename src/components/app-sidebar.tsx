@@ -22,12 +22,12 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Members", url: "/members", icon: Users },
-  { title: "Events", url: "/events", icon: CalendarDays },
-  { title: "Music", url: "/music", icon: Music2 },
-  { title: "Announcements", url: "/announcements", icon: Megaphone },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Панель", url: "/", icon: LayoutDashboard },
+  { title: "Участники", url: "/members", icon: Users },
+  { title: "Мероприятия", url: "/events", icon: CalendarDays },
+  { title: "Музыка", url: "/music", icon: Music2 },
+  { title: "Объявления", url: "/announcements", icon: Megaphone },
+  { title: "Настройки", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -50,14 +50,14 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-wide">CLUB 40</span>
-              <span className="text-xs text-muted-foreground">Admin Panel</span>
+              <span className="text-xs text-muted-foreground">Админ-панель</span>
             </div>
           )}
         </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>Рабочее пространство</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
