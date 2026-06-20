@@ -330,10 +330,8 @@ function TrainerDialog({
 
         <div className="space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              {photoUrl && <AvatarImage src={photoUrl} alt="" />}
-              <AvatarFallback>{initials(fullName || "?")}</AvatarFallback>
-            </Avatar>
+            <TrainerPhoto value={photoUrl} name={fullName || "?"} />
+
             <div className="space-y-1">
               <input
                 ref={fileRef}
