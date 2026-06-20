@@ -69,6 +69,39 @@ function initials(name: string) {
     .join("");
 }
 
+function isHttpUrl(v: string | null | undefined) {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+async function resolvePhotoSrc(value: string | null): Promise<string | null> {
+  if (!value) return null;
+  if (isHttpUrl(value)) return value;
+  const { data, error } = await supabase.storage
+    .from("trainer-photos")
+    .createSignedUrl(value, 3600);
+  if (error) return null;
+  return data?.signedUrl ?? null;
+}
+
+function TrainerPhoto({ value, name }: { value: string | null; name: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    resolvePhotoSrc(value).then((s) => {
+      if (!cancelled) setSrc(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+  return (
+    <Avatar>
+      {src && <AvatarImage src={src} alt={name} />}
+      <AvatarFallback>{initials(name)}</AvatarFallback>
+    </Avatar>
+  );
+}
+
 function TrainersPage() {
   const studioId = useActiveStudioId();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
@@ -99,6 +132,7 @@ function TrainersPage() {
     fetchTrainers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioId]);
+
 
   const handleDelete = async (t: Trainer) => {
     if (!confirm(`Удалить тренера «${t.full_name}»?`)) return;
