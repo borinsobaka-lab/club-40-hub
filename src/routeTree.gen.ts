@@ -19,6 +19,7 @@ import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedMusicRouteImport } from './routes/_authenticated/music'
 import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
+import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
 
 const AuthRoute = AuthRouteImport.update({
@@ -70,6 +71,11 @@ const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
   path: '/events',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnnouncementsRoute =
   AuthenticatedAnnouncementsRouteImport.update({
     id: '/announcements',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/clients': typeof AuthenticatedClientsRoute
   '/events': typeof AuthenticatedEventsRoute
   '/members': typeof AuthenticatedMembersRoute
   '/music': typeof AuthenticatedMusicRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/clients': typeof AuthenticatedClientsRoute
   '/events': typeof AuthenticatedEventsRoute
   '/members': typeof AuthenticatedMembersRoute
   '/music': typeof AuthenticatedMusicRoute
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/events': typeof AuthenticatedEventsRoute
   '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/music': typeof AuthenticatedMusicRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/announcements'
+    | '/clients'
     | '/events'
     | '/members'
     | '/music'
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/announcements'
+    | '/clients'
     | '/events'
     | '/members'
     | '/music'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/announcements'
+    | '/_authenticated/clients'
     | '/_authenticated/events'
     | '/_authenticated/members'
     | '/_authenticated/music'
@@ -232,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEventsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients': {
+      id: '/_authenticated/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof AuthenticatedClientsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/announcements': {
       id: '/_authenticated/announcements'
       path: '/announcements'
@@ -244,6 +263,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnnouncementsRoute: typeof AuthenticatedAnnouncementsRoute
+  AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
   AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedMusicRoute: typeof AuthenticatedMusicRoute
@@ -256,6 +276,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnnouncementsRoute: AuthenticatedAnnouncementsRoute,
+  AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,
   AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedMusicRoute: AuthenticatedMusicRoute,
