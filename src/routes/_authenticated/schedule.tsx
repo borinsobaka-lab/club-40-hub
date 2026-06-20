@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/schedule")({
 });
 
 type Workout = { id: string; name: string };
+type Trainer = { id: string; full_name: string };
 type Entry = {
   id: string;
   studio_id: string;
@@ -38,16 +40,17 @@ type Entry = {
   starts_at: string;
   ends_at: string;
   workout?: { name: string } | null;
+  schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
 
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
-const SLOT_PX = 56;
+const SLOT_PX = 64;
 
 function startOfWeek(d: Date) {
   const date = new Date(d);
   date.setHours(0, 0, 0, 0);
-  const day = date.getDay(); // 0 sun..6 sat
+  const day = date.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   date.setDate(date.getDate() + diff);
   return date;
@@ -80,6 +83,7 @@ function SchedulePage() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
@@ -95,18 +99,22 @@ function SchedulePage() {
     if (!studioId) {
       setEntries([]);
       setWorkouts([]);
+      setTrainers([]);
       return;
     }
     setLoading(true);
-    const [eRes, wRes] = await Promise.all([
+    const [eRes, wRes, tRes] = await Promise.all([
       supabase
         .from("schedule_entries")
-        .select("*, workout:workouts(name)")
+        .select(
+          "*, workout:workouts(name), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
+        )
         .eq("studio_id", studioId)
         .gte("starts_at", weekStart.toISOString())
         .lt("starts_at", weekEnd.toISOString())
         .order("starts_at"),
       supabase.from("workouts").select("id, name").eq("studio_id", studioId).order("name"),
+      supabase.from("trainers").select("id, full_name").eq("studio_id", studioId).order("full_name"),
     ]);
     setLoading(false);
     if (eRes.error) {
@@ -117,8 +125,13 @@ function SchedulePage() {
       toast.error("Ошибка загрузки тренировок: " + wRes.error.message);
       return;
     }
+    if (tRes.error) {
+      toast.error("Ошибка загрузки тренеров: " + tRes.error.message);
+      return;
+    }
     setEntries((eRes.data as Entry[]) ?? []);
     setWorkouts((wRes.data as Workout[]) ?? []);
+    setTrainers((tRes.data as Trainer[]) ?? []);
   };
 
   useEffect(() => {
@@ -254,23 +267,33 @@ function SchedulePage() {
                           className="relative border-b border-r text-left transition hover:bg-accent/40"
                           style={{ height: SLOT_PX }}
                         >
-                          {slotEntries.map((e) => (
-                            <div
-                              key={e.id}
-                              onClick={(ev) => {
-                                ev.stopPropagation();
-                                openEdit(e);
-                              }}
-                              className="absolute inset-x-1 top-1 cursor-pointer overflow-hidden rounded-md bg-primary px-2 py-1 text-[11px] leading-tight text-primary-foreground shadow-sm hover:opacity-90"
-                            >
-                              <div className="truncate font-medium">
-                                {e.workout?.name ?? "Занятие"}
+                          {slotEntries.map((e) => {
+                            const names =
+                              e.schedule_entry_trainers
+                                ?.map((x) => x.trainer?.full_name)
+                                .filter(Boolean)
+                                .join(", ") ?? "";
+                            return (
+                              <div
+                                key={e.id}
+                                onClick={(ev) => {
+                                  ev.stopPropagation();
+                                  openEdit(e);
+                                }}
+                                className="absolute inset-x-1 top-1 cursor-pointer overflow-hidden rounded-md bg-primary px-2 py-1 text-[11px] leading-tight text-primary-foreground shadow-sm hover:opacity-90"
+                              >
+                                <div className="truncate font-medium">
+                                  {e.workout?.name ?? "Занятие"}
+                                </div>
+                                <div className="opacity-80">
+                                  {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
+                                </div>
+                                {names && (
+                                  <div className="truncate opacity-80">{names}</div>
+                                )}
                               </div>
-                              <div className="opacity-80">
-                                {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </button>
                       );
                     })}
@@ -293,6 +316,7 @@ function SchedulePage() {
         onOpenChange={setDialogOpen}
         studioId={studioId}
         workouts={workouts}
+        trainers={trainers}
         entry={editing}
         presetStart={presetStart}
         onSaved={fetchData}
@@ -307,6 +331,7 @@ function EntryDialog({
   onOpenChange,
   studioId,
   workouts,
+  trainers,
   entry,
   presetStart,
   onSaved,
@@ -316,6 +341,7 @@ function EntryDialog({
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
   workouts: Workout[];
+  trainers: Trainer[];
   entry: Entry | null;
   presetStart: Date | null;
   onSaved: () => void;
@@ -324,6 +350,7 @@ function EntryDialog({
   const [workoutId, setWorkoutId] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
+  const [trainerIds, setTrainerIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -332,6 +359,9 @@ function EntryDialog({
       setWorkoutId(entry.workout_id);
       setStartsAt(toLocalISO(new Date(entry.starts_at)).slice(0, 16));
       setEndsAt(toLocalISO(new Date(entry.ends_at)).slice(0, 16));
+      setTrainerIds(
+        entry.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [],
+      );
     } else {
       setWorkoutId(workouts[0]?.id ?? "");
       const start = presetStart ?? (() => {
@@ -344,8 +374,15 @@ function EntryDialog({
       end.setHours(end.getHours() + 1);
       setStartsAt(toLocalISO(start).slice(0, 16));
       setEndsAt(toLocalISO(end).slice(0, 16));
+      setTrainerIds([]);
     }
   }, [open, entry, presetStart, workouts]);
+
+  const toggleTrainer = (id: string) => {
+    setTrainerIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const handleSave = async () => {
     if (!studioId) return;
@@ -366,14 +403,55 @@ function EntryDialog({
       starts_at: startDate.toISOString(),
       ends_at: endDate.toISOString(),
     };
-    const { error } = entry
-      ? await supabase.from("schedule_entries").update(payload).eq("id", entry.id)
-      : await supabase.from("schedule_entries").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Ошибка сохранения: " + error.message);
-      return;
+    let entryId = entry?.id;
+    if (entry) {
+      const { error } = await supabase
+        .from("schedule_entries")
+        .update(payload)
+        .eq("id", entry.id);
+      if (error) {
+        setSaving(false);
+        toast.error("Ошибка сохранения: " + error.message);
+        return;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("schedule_entries")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (error || !data) {
+        setSaving(false);
+        toast.error("Ошибка сохранения: " + (error?.message ?? ""));
+        return;
+      }
+      entryId = data.id;
     }
+
+    // Sync trainers
+    if (entryId) {
+      const { error: delErr } = await supabase
+        .from("schedule_entry_trainers")
+        .delete()
+        .eq("entry_id", entryId);
+      if (delErr) {
+        setSaving(false);
+        toast.error("Ошибка обновления тренеров: " + delErr.message);
+        return;
+      }
+      if (trainerIds.length > 0) {
+        const { error: insErr } = await supabase
+          .from("schedule_entry_trainers")
+          .insert(trainerIds.map((tid) => ({ entry_id: entryId!, trainer_id: tid })));
+        if (insErr) {
+          setSaving(false);
+          toast.error("Ошибка добавления тренеров: " + insErr.message);
+          return;
+        }
+      }
+    }
+
+    setSaving(false);
     toast.success(entry ? "Занятие обновлено" : "Занятие добавлено");
     onOpenChange(false);
     onSaved();
@@ -384,7 +462,7 @@ function EntryDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{entry ? "Редактировать занятие" : "Новое занятие"}</DialogTitle>
-          <DialogDescription>Выберите тренировку и время.</DialogDescription>
+          <DialogDescription>Выберите тренировку, время и тренеров.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -421,6 +499,33 @@ function EntryDialog({
                 onChange={(e) => setEndsAt(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Тренеры</Label>
+            {trainers.length === 0 ? (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
+              </div>
+            ) : (
+              <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
+                {trainers.map((t) => {
+                  const checked = trainerIds.includes(t.id);
+                  return (
+                    <label
+                      key={t.id}
+                      className="flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleTrainer(t.id)}
+                      />
+                      <span>{t.full_name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
