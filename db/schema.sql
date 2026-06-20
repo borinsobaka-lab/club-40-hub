@@ -6,7 +6,7 @@
 -- Enums
 -- =========================================================================
 do $$ begin
-  create type public.app_role as enum ('owner', 'admin', 'staff', 'member');
+  create type public.app_role as enum ('member', 'trainer', 'admin', 'owner');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -69,11 +69,11 @@ returns boolean language sql stable security definer set search_path = public as
     where user_id = _user_id and studio_id = _studio_id and role = _role)
 $$;
 
-create or replace function public.is_staff(_user_id uuid, _studio_id uuid)
+create or replace function public.is_trainer(_user_id uuid, _studio_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.user_roles
     where user_id = _user_id and studio_id = _studio_id
-      and role in ('owner','admin','staff'))
+      and role in ('owner','admin','trainer'))
 $$;
 
 create or replace function public.current_studio_id(_user_id uuid)
@@ -227,19 +227,19 @@ create policy "studios updatable by owners" on public.studios
   for update to authenticated using (public.has_role(auth.uid(), id, 'owner'));
 
 -- profiles
-create policy "profiles self or staff select" on public.profiles
+create policy "profiles self or trainer select" on public.profiles
   for select to authenticated
-  using (id = auth.uid() or public.is_staff(auth.uid(), studio_id));
+  using (id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
 create policy "profiles self insert" on public.profiles
   for insert to authenticated with check (id = auth.uid());
-create policy "profiles self or staff update" on public.profiles
+create policy "profiles self or trainer update" on public.profiles
   for update to authenticated
-  using (id = auth.uid() or public.is_staff(auth.uid(), studio_id));
+  using (id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
 
 -- user_roles
-create policy "user_roles self or staff select" on public.user_roles
+create policy "user_roles self or trainer select" on public.user_roles
   for select to authenticated
-  using (user_id = auth.uid() or public.is_staff(auth.uid(), studio_id));
+  using (user_id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
 create policy "user_roles owner manage" on public.user_roles
   for all to authenticated
   using (public.has_role(auth.uid(), studio_id, 'owner'))
@@ -248,45 +248,45 @@ create policy "user_roles owner manage" on public.user_roles
 -- class_types
 create policy "class_types studio select" on public.class_types
   for select to authenticated using (studio_id = public.current_studio_id(auth.uid()));
-create policy "class_types staff write" on public.class_types
+create policy "class_types trainer write" on public.class_types
   for all to authenticated
-  using (public.is_staff(auth.uid(), studio_id))
-  with check (public.is_staff(auth.uid(), studio_id));
+  using (public.is_trainer(auth.uid(), studio_id))
+  with check (public.is_trainer(auth.uid(), studio_id));
 
 -- class_sessions
 create policy "class_sessions studio select" on public.class_sessions
   for select to authenticated using (studio_id = public.current_studio_id(auth.uid()));
-create policy "class_sessions staff write" on public.class_sessions
+create policy "class_sessions trainer write" on public.class_sessions
   for all to authenticated
-  using (public.is_staff(auth.uid(), studio_id))
-  with check (public.is_staff(auth.uid(), studio_id));
+  using (public.is_trainer(auth.uid(), studio_id))
+  with check (public.is_trainer(auth.uid(), studio_id));
 
 -- bookings
-create policy "bookings self or staff select" on public.bookings
+create policy "bookings self or trainer select" on public.bookings
   for select to authenticated
-  using (user_id = auth.uid() or public.is_staff(auth.uid(), studio_id));
+  using (user_id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
 create policy "bookings self insert" on public.bookings
   for insert to authenticated
   with check (user_id = auth.uid() and studio_id = public.current_studio_id(auth.uid()));
-create policy "bookings self or staff update" on public.bookings
+create policy "bookings self or trainer update" on public.bookings
   for update to authenticated
-  using (user_id = auth.uid() or public.is_staff(auth.uid(), studio_id));
-create policy "bookings self or staff delete" on public.bookings
+  using (user_id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
+create policy "bookings self or trainer delete" on public.bookings
   for delete to authenticated
-  using (user_id = auth.uid() or public.is_staff(auth.uid(), studio_id));
+  using (user_id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
 
 -- memberships
-create policy "memberships self or staff select" on public.memberships
+create policy "memberships self or trainer select" on public.memberships
   for select to authenticated
-  using (user_id = auth.uid() or public.is_staff(auth.uid(), studio_id));
-create policy "memberships staff write" on public.memberships
+  using (user_id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
+create policy "memberships trainer write" on public.memberships
   for all to authenticated
-  using (public.is_staff(auth.uid(), studio_id))
-  with check (public.is_staff(auth.uid(), studio_id));
+  using (public.is_trainer(auth.uid(), studio_id))
+  with check (public.is_trainer(auth.uid(), studio_id));
 
 -- employees
-create policy "employees staff select" on public.employees
-  for select to authenticated using (public.is_staff(auth.uid(), studio_id));
+create policy "employees trainer select" on public.employees
+  for select to authenticated using (public.is_trainer(auth.uid(), studio_id));
 create policy "employees admin write" on public.employees
   for all to authenticated
   using (public.has_role(auth.uid(), studio_id, 'admin') or public.has_role(auth.uid(), studio_id, 'owner'))
@@ -302,13 +302,13 @@ create policy "payroll admin write" on public.payroll
   with check (public.has_role(auth.uid(), studio_id, 'admin') or public.has_role(auth.uid(), studio_id, 'owner'));
 
 -- results
-create policy "results self or staff select" on public.results
+create policy "results self or trainer select" on public.results
   for select to authenticated
-  using (user_id = auth.uid() or public.is_staff(auth.uid(), studio_id));
-create policy "results self or staff insert" on public.results
+  using (user_id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
+create policy "results self or trainer insert" on public.results
   for insert to authenticated
-  with check (user_id = auth.uid() or public.is_staff(auth.uid(), studio_id));
-create policy "results staff update" on public.results
-  for update to authenticated using (public.is_staff(auth.uid(), studio_id));
-create policy "results staff delete" on public.results
-  for delete to authenticated using (public.is_staff(auth.uid(), studio_id));
+  with check (user_id = auth.uid() or public.is_trainer(auth.uid(), studio_id));
+create policy "results trainer update" on public.results
+  for update to authenticated using (public.is_trainer(auth.uid(), studio_id));
+create policy "results trainer delete" on public.results
+  for delete to authenticated using (public.is_trainer(auth.uid(), studio_id));
