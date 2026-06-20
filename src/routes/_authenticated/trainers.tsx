@@ -107,6 +107,40 @@ function TrainerPhoto({ value, name }: { value: string | null; name: string }) {
   );
 }
 
+function SocialLinks({ trainer }: { trainer: Trainer }) {
+  const items: { key: keyof Trainer; label: string; icon: React.ReactNode; color: string; prefix?: string }[] = [
+    { key: "telegram", label: "Telegram", icon: <MessageCircle className="h-3.5 w-3.5" />, color: "#0088cc", prefix: "https://t.me/" },
+    { key: "whatsapp", label: "WhatsApp", icon: <Phone className="h-3.5 w-3.5" />, color: "#25D366", prefix: "https://wa.me/" },
+    { key: "instagram", label: "Instagram", icon: <span className="text-[10px] font-bold leading-none">IG</span>, color: "#E1306C", prefix: "https://instagram.com/" },
+    { key: "facebook", label: "Facebook", icon: <span className="text-[10px] font-bold leading-none">FB</span>, color: "#1877F2", prefix: "https://facebook.com/" },
+    { key: "tiktok", label: "TikTok", icon: <span className="text-[10px] font-bold leading-none">TT</span>, color: "#000000", prefix: "https://tiktok.com/@" },
+  ];
+  const hasAny = items.some((i) => !!trainer[i.key]);
+  if (!hasAny) return <span className="text-muted-foreground text-sm">—</span>;
+  return (
+    <div className="flex items-center gap-1.5">
+      {items.map((item) => {
+        const value = trainer[item.key];
+        if (!value) return null;
+        const href = item.prefix && !isHttpUrl(value) ? `${item.prefix}${value.replace(/^@/, "")}` : value;
+        return (
+          <a
+            key={item.key}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={item.label}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white"
+            style={{ backgroundColor: item.color }}
+          >
+            {item.icon}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 function TrainersPage() {
   const studioId = useActiveStudioId();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
