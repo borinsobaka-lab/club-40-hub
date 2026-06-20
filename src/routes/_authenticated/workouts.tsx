@@ -177,18 +177,6 @@ function WorkoutsPage() {
         </Button>
       }
     >
-      <div className="mx-auto max-w-6xl">
-        {!studioId ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Сначала выберите студию в шапке.
-          </div>
-        ) : (
-          <div className="rounded-lg border bg-background">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">Фото</TableHead>
-                  <TableHead>Название</TableHead>
       <div className="mx-auto max-w-6xl space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
