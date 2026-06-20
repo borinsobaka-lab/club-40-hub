@@ -220,19 +220,20 @@ function TrainersPage() {
                   <TableHead>Пол</TableHead>
                   <TableHead>Специализация</TableHead>
                   <TableHead>О тренере</TableHead>
+                  <TableHead>Соцсети</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                       <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : trainers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                       Пока нет тренеров. Нажмите «Добавить тренера».
                     </TableCell>
                   </TableRow>
@@ -248,6 +249,9 @@ function TrainersPage() {
                       <TableCell>{t.specialization ?? "—"}</TableCell>
                       <TableCell className="max-w-[320px] truncate text-muted-foreground">
                         {t.bio ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <SocialLinks trainer={t} />
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
