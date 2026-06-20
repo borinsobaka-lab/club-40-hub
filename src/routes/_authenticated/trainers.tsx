@@ -49,6 +49,11 @@ type Trainer = {
   gender: string | null;
   specialization: string | null;
   bio: string | null;
+  telegram: string | null;
+  whatsapp: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
 };
 
 const GENDERS = [
