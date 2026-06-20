@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Search, ExternalLink } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -48,6 +48,10 @@ type Client = {
   birthday: string | null;
   gender: string | null;
   notes: string | null;
+  registration_date: string | null;
+  last_visit_date: string | null;
+  crm_link: string | null;
+  photo_url: string | null;
   created_at: string;
 };
 
@@ -169,6 +173,9 @@ function ClientsPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Пол</TableHead>
                     <TableHead>Дата рождения</TableHead>
+                    <TableHead>Регистрация</TableHead>
+                    <TableHead>Последний визит</TableHead>
+                    <TableHead>CRM</TableHead>
                     <TableHead>Заметки</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
@@ -176,13 +183,13 @@ function ClientsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
                         {clients.length === 0
                           ? "Пока нет клиентов. Нажмите «Добавить клиента»."
                           : "Ничего не найдено."}
@@ -196,7 +203,24 @@ function ClientsPage() {
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>
                         <TableCell>{formatDate(c.birthday)}</TableCell>
-                        <TableCell className="max-w-[280px] truncate text-muted-foreground">
+                        <TableCell>{formatDate(c.registration_date)}</TableCell>
+                        <TableCell>{formatDate(c.last_visit_date)}</TableCell>
+                        <TableCell>
+                          {c.crm_link ? (
+                            <a
+                              href={c.crm_link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-primary hover:underline"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              Открыть
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
                           {c.notes ?? "—"}
                         </TableCell>
                         <TableCell>
@@ -249,6 +273,10 @@ function ClientDialog({
   const [birthday, setBirthday] = useState("");
   const [gender, setGender] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [registrationDate, setRegistrationDate] = useState("");
+  const [lastVisitDate, setLastVisitDate] = useState("");
+  const [crmLink, setCrmLink] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -259,6 +287,10 @@ function ClientDialog({
       setBirthday(client?.birthday ?? "");
       setGender(client?.gender ?? "");
       setNotes(client?.notes ?? "");
+      setRegistrationDate(client?.registration_date ?? "");
+      setLastVisitDate(client?.last_visit_date ?? "");
+      setCrmLink(client?.crm_link ?? "");
+      setPhotoUrl(client?.photo_url ?? "");
     }
   }, [open, client]);
 
@@ -277,6 +309,10 @@ function ClientDialog({
       birthday: birthday || null,
       gender: gender || null,
       notes: notes.trim() || null,
+      registration_date: registrationDate || null,
+      last_visit_date: lastVisitDate || null,
+      crm_link: crmLink.trim() || null,
+      photo_url: photoUrl.trim() || null,
     };
     const { error } = client
       ? await supabase.from("clients").update(payload).eq("id", client.id)
@@ -330,6 +366,26 @@ function ClientDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-reg">Дата регистрации</Label>
+              <Input id="cl-reg" type="date" value={registrationDate} onChange={(e) => setRegistrationDate(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-last">Последний визит</Label>
+              <Input id="cl-last" type="date" value={lastVisitDate} onChange={(e) => setLastVisitDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-crm">Ссылка на CRM</Label>
+              <Input id="cl-crm" type="url" value={crmLink} onChange={(e) => setCrmLink(e.target.value)} placeholder="https://..." />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-photo">Фото (URL)</Label>
+              <Input id="cl-photo" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." />
             </div>
           </div>
           <div className="grid gap-1.5">

@@ -1,4 +1,5 @@
 -- Clients section — run on Supabase after db/schema.sql.
+-- If table already exists, add new columns via ALTER TABLE.
 
 create table if not exists public.clients (
   id uuid primary key default gen_random_uuid(),
@@ -9,6 +10,10 @@ create table if not exists public.clients (
   birthday date,
   gender text,
   notes text,
+  registration_date date,
+  last_visit_date date,
+  crm_link text,
+  photo_url text,
   created_at timestamptz not null default now()
 );
 create index if not exists clients_studio_idx on public.clients(studio_id);
