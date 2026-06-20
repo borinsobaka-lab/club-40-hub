@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as ApiDebugEnvRouteImport } from './routes/api/_debug-env'
+import { Route as ApiDebugenvRouteImport } from './routes/api/debugenv'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -38,9 +38,9 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiDebugEnvRoute = ApiDebugEnvRouteImport.update({
-  id: '/api/_debug-env',
-  path: '/api',
+const ApiDebugenvRoute = ApiDebugenvRouteImport.update({
+  id: '/api/debugenv',
+  path: '/api/debugenv',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
@@ -108,7 +108,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
-  '/api': typeof ApiDebugEnvRoute
+  '/api/debugenv': typeof ApiDebugenvRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -122,7 +122,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
-  '/api': typeof ApiDebugEnvRoute
+  '/api/debugenv': typeof ApiDebugenvRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -139,7 +139,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
-  '/api/_debug-env': typeof ApiDebugEnvRoute
+  '/api/debugenv': typeof ApiDebugenvRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
@@ -157,7 +157,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/trainers'
     | '/workouts'
-    | '/api'
+    | '/api/debugenv'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -171,7 +171,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/trainers'
     | '/workouts'
-    | '/api'
+    | '/api/debugenv'
     | '/'
   id:
     | '__root__'
@@ -187,14 +187,14 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/trainers'
     | '/_authenticated/workouts'
-    | '/api/_debug-env'
+    | '/api/debugenv'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ApiDebugEnvRoute: typeof ApiDebugEnvRoute
+  ApiDebugenvRoute: typeof ApiDebugenvRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -220,11 +220,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/_debug-env': {
-      id: '/api/_debug-env'
-      path: '/api'
-      fullPath: '/api'
-      preLoaderRoute: typeof ApiDebugEnvRouteImport
+    '/api/debugenv': {
+      id: '/api/debugenv'
+      path: '/api/debugenv'
+      fullPath: '/api/debugenv'
+      preLoaderRoute: typeof ApiDebugenvRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/workouts': {
@@ -334,7 +334,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ApiDebugEnvRoute: ApiDebugEnvRoute,
+  ApiDebugenvRoute: ApiDebugenvRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
