@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell, Flame } from "lucide-react";
 
 import {
   Sidebar,
@@ -16,6 +16,7 @@ import {
 
 const items = [
   { title: "Тренеры", url: "/trainers", icon: Dumbbell },
+  { title: "Тренировки", url: "/workouts", icon: Flame },
 ];
 
 export function AppSidebar() {
