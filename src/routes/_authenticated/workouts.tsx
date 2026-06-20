@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, ImageIcon } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, ImageIcon, Search } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -108,6 +108,18 @@ function WorkoutsPage() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Workout | null>(null);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  const filteredWorkouts = workouts.filter((w) => {
+    if (typeFilter !== "all" && (w.type ?? "") !== typeFilter) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      w.name.toLowerCase().includes(q) ||
+      (w.description ?? "").toLowerCase().includes(q)
+    );
+  });
 
   const fetchWorkouts = async () => {
     if (!studioId) {
@@ -165,63 +177,91 @@ function WorkoutsPage() {
         </Button>
       }
     >
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-6xl space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.
           </div>
         ) : (
-          <div className="rounded-lg border bg-background">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">Фото</TableHead>
-                  <TableHead>Название</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead>Тип</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+          <>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Поиск по названию или описанию"
+                  className="pl-8"
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="sm:w-[200px]">
+                  <SelectValue placeholder="Все типы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все типы</SelectItem>
+                  {TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-lg border bg-background">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
+                    <TableHead className="w-[100px]">Фото</TableHead>
+                    <TableHead>Название</TableHead>
+                    <TableHead>Описание</TableHead>
+                    <TableHead>Тип</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
-                ) : workouts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                      Пока нет тренировок. Нажмите «Добавить тренировку».
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  workouts.map((w) => (
-                    <TableRow key={w.id}>
-                      <TableCell>
-                        <WorkoutPhoto value={w.photo_url} name={w.name} />
-                      </TableCell>
-                      <TableCell className="font-medium">{w.name}</TableCell>
-                      <TableCell className="max-w-[420px] truncate text-muted-foreground">
-                        {w.description ?? "—"}
-                      </TableCell>
-                      <TableCell>{typeLabel(w.type)}</TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(w)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : filteredWorkouts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                        {workouts.length === 0
+                          ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
+                          : "Ничего не найдено по выбранным фильтрам."}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredWorkouts.map((w) => (
+                      <TableRow key={w.id}>
+                        <TableCell>
+                          <WorkoutPhoto value={w.photo_url} name={w.name} />
+                        </TableCell>
+                        <TableCell className="font-medium">{w.name}</TableCell>
+                        <TableCell className="max-w-[420px] truncate text-muted-foreground">
+                          {w.description ?? "—"}
+                        </TableCell>
+                        <TableCell>{typeLabel(w.type)}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(w)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
 
