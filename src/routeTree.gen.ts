@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
+import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedMusicRouteImport } from './routes/_authenticated/music'
 import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
@@ -42,6 +43,11 @@ const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
 const AuthenticatedTrainersRoute = AuthenticatedTrainersRouteImport.update({
   id: '/trainers',
   path: '/trainers',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/members': typeof AuthenticatedMembersRoute
   '/music': typeof AuthenticatedMusicRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/schedule': typeof AuthenticatedScheduleRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
 }
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/members': typeof AuthenticatedMembersRoute
   '/music': typeof AuthenticatedMusicRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/schedule': typeof AuthenticatedScheduleRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/': typeof AuthenticatedIndexRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/music': typeof AuthenticatedMusicRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/members'
     | '/music'
     | '/settings'
+    | '/schedule'
     | '/trainers'
     | '/workouts'
   fileRoutesByTo: FileRoutesByTo
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/members'
     | '/music'
     | '/settings'
+    | '/schedule'
     | '/trainers'
     | '/workouts'
     | '/'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/members'
     | '/_authenticated/music'
     | '/_authenticated/settings'
+    | '/_authenticated/schedule'
     | '/_authenticated/trainers'
     | '/_authenticated/workouts'
     | '/_authenticated/'
@@ -185,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrainersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/schedule': {
+      id: '/_authenticated/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof AuthenticatedScheduleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -229,6 +248,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedMusicRoute: typeof AuthenticatedMusicRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedTrainersRoute: typeof AuthenticatedTrainersRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -240,6 +260,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedMusicRoute: AuthenticatedMusicRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedTrainersRoute: AuthenticatedTrainersRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
