@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, MessageCircle, Phone } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -49,6 +49,11 @@ type Trainer = {
   gender: string | null;
   specialization: string | null;
   bio: string | null;
+  telegram: string | null;
+  whatsapp: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  tiktok: string | null;
 };
 
 const GENDERS = [
@@ -99,6 +104,40 @@ function TrainerPhoto({ value, name }: { value: string | null; name: string }) {
       {src && <AvatarImage src={src} alt={name} />}
       <AvatarFallback>{initials(name)}</AvatarFallback>
     </Avatar>
+  );
+}
+
+function SocialLinks({ trainer }: { trainer: Trainer }) {
+  const items: { key: keyof Trainer; label: string; icon: React.ReactNode; color: string; prefix?: string }[] = [
+    { key: "telegram", label: "Telegram", icon: <MessageCircle className="h-3.5 w-3.5" />, color: "#0088cc", prefix: "https://t.me/" },
+    { key: "whatsapp", label: "WhatsApp", icon: <Phone className="h-3.5 w-3.5" />, color: "#25D366", prefix: "https://wa.me/" },
+    { key: "instagram", label: "Instagram", icon: <span className="text-[10px] font-bold leading-none">IG</span>, color: "#E1306C", prefix: "https://instagram.com/" },
+    { key: "facebook", label: "Facebook", icon: <span className="text-[10px] font-bold leading-none">FB</span>, color: "#1877F2", prefix: "https://facebook.com/" },
+    { key: "tiktok", label: "TikTok", icon: <span className="text-[10px] font-bold leading-none">TT</span>, color: "#000000", prefix: "https://tiktok.com/@" },
+  ];
+  const hasAny = items.some((i) => !!trainer[i.key]);
+  if (!hasAny) return <span className="text-muted-foreground text-sm">—</span>;
+  return (
+    <div className="flex items-center gap-1.5">
+      {items.map((item) => {
+        const value = trainer[item.key];
+        if (!value) return null;
+        const href = item.prefix && !isHttpUrl(value) ? `${item.prefix}${value.replace(/^@/, "")}` : value;
+        return (
+          <a
+            key={item.key}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={item.label}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white"
+            style={{ backgroundColor: item.color }}
+          >
+            {item.icon}
+          </a>
+        );
+      })}
+    </div>
   );
 }
 
@@ -181,19 +220,20 @@ function TrainersPage() {
                   <TableHead>Пол</TableHead>
                   <TableHead>Специализация</TableHead>
                   <TableHead>О тренере</TableHead>
+                  <TableHead>Соцсети</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                       <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : trainers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                       Пока нет тренеров. Нажмите «Добавить тренера».
                     </TableCell>
                   </TableRow>
@@ -209,6 +249,9 @@ function TrainersPage() {
                       <TableCell>{t.specialization ?? "—"}</TableCell>
                       <TableCell className="max-w-[320px] truncate text-muted-foreground">
                         {t.bio ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <SocialLinks trainer={t} />
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -258,6 +301,11 @@ function TrainerDialog({
   const [specialization, setSpecialization] = useState("");
   const [bio, setBio] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [telegram, setTelegram] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [facebook, setFacebook] = useState("");
+  const [tiktok, setTiktok] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -269,6 +317,11 @@ function TrainerDialog({
       setSpecialization(trainer?.specialization ?? "");
       setBio(trainer?.bio ?? "");
       setPhotoUrl(trainer?.photo_url ?? null);
+      setTelegram(trainer?.telegram ?? "");
+      setWhatsapp(trainer?.whatsapp ?? "");
+      setInstagram(trainer?.instagram ?? "");
+      setFacebook(trainer?.facebook ?? "");
+      setTiktok(trainer?.tiktok ?? "");
     }
   }, [open, trainer]);
 
@@ -306,6 +359,11 @@ function TrainerDialog({
       specialization: specialization.trim() || null,
       bio: bio.trim() || null,
       photo_url: photoUrl,
+      telegram: telegram.trim() || null,
+      whatsapp: whatsapp.trim() || null,
+      instagram: instagram.trim() || null,
+      facebook: facebook.trim() || null,
+      tiktok: tiktok.trim() || null,
     };
     const { error } = trainer
       ? await supabase.from("trainers").update(payload).eq("id", trainer.id)
@@ -415,9 +473,57 @@ function TrainerDialog({
               id="bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              rows={4}
+              rows={3}
               placeholder="Опыт, достижения, подход к работе"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="telegram">Telegram</Label>
+              <Input
+                id="telegram"
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                placeholder="username или ссылка"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="whatsapp">WhatsApp</Label>
+              <Input
+                id="whatsapp"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="+7... или ссылка"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="instagram">Instagram</Label>
+              <Input
+                id="instagram"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="username или ссылка"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="facebook">Facebook</Label>
+              <Input
+                id="facebook"
+                value={facebook}
+                onChange={(e) => setFacebook(e.target.value)}
+                placeholder="username или ссылка"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tiktok">TikTok</Label>
+              <Input
+                id="tiktok"
+                value={tiktok}
+                onChange={(e) => setTiktok(e.target.value)}
+                placeholder="@username или ссылка"
+              />
+            </div>
           </div>
         </div>
 

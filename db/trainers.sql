@@ -1,5 +1,25 @@
 -- Trainers section — run this on your Supabase project after db/schema.sql.
 
+-- Add social columns if they don't exist (safe for existing tables)
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_name='trainers' and column_name='telegram') then
+    alter table public.trainers add column telegram text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='trainers' and column_name='whatsapp') then
+    alter table public.trainers add column whatsapp text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='trainers' and column_name='instagram') then
+    alter table public.trainers add column instagram text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='trainers' and column_name='facebook') then
+    alter table public.trainers add column facebook text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='trainers' and column_name='tiktok') then
+    alter table public.trainers add column tiktok text;
+  end if;
+end $$;
+
 create table if not exists public.trainers (
   id uuid primary key default gen_random_uuid(),
   studio_id uuid not null references public.studios(id) on delete cascade,
@@ -8,6 +28,11 @@ create table if not exists public.trainers (
   gender text check (gender in ('male','female') or gender is null),
   specialization text,
   bio text,
+  telegram text,
+  whatsapp text,
+  instagram text,
+  facebook text,
+  tiktok text,
   created_at timestamptz not null default now()
 );
 create index if not exists trainers_studio_idx on public.trainers(studio_id);
@@ -48,3 +73,4 @@ create policy "trainer-photos auth update" on storage.objects
 drop policy if exists "trainer-photos auth delete" on storage.objects;
 create policy "trainer-photos auth delete" on storage.objects
   for delete to authenticated using (bucket_id = 'trainer-photos');
+
