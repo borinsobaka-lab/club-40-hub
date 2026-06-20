@@ -46,6 +46,7 @@ type Entry = {
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
 const SLOT_PX = 64;
+const ALL_FILTER_VALUE = "all";
 
 function startOfWeek(d: Date) {
   const date = new Date(d);
@@ -88,8 +89,8 @@ function SchedulePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [presetStart, setPresetStart] = useState<Date | null>(null);
-  const [filterType, setFilterType] = useState<string>("");
-  const [filterTrainerId, setFilterTrainerId] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
+  const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -233,7 +234,7 @@ function SchedulePage() {
                     <SelectValue placeholder="Все типы" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Все типы</SelectItem>
+                    <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
                     <SelectItem value="strength">Силовая</SelectItem>
                     <SelectItem value="cardio">Кардио</SelectItem>
                     <SelectItem value="hybrid">Гибрид</SelectItem>
@@ -248,7 +249,7 @@ function SchedulePage() {
                     <SelectValue placeholder="Все тренеры" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Все тренеры</SelectItem>
+                    <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
                     {trainers.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.full_name}
@@ -257,14 +258,14 @@ function SchedulePage() {
                   </SelectContent>
                 </Select>
               </div>
-              {(filterType || filterTrainerId) && (
+              {(filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 text-xs"
                   onClick={() => {
-                    setFilterType("");
-                    setFilterTrainerId("");
+                    setFilterType(ALL_FILTER_VALUE);
+                    setFilterTrainerId(ALL_FILTER_VALUE);
                   }}
                 >
                   Сбросить
@@ -307,8 +308,8 @@ function SchedulePage() {
                           s.toDateString() === day.toDateString() &&
                           s.getHours() === hour;
                         if (!matchesDayHour) return false;
-                        if (filterType && e.workout?.type !== filterType) return false;
-                        if (filterTrainerId) {
+                        if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) return false;
+                        if (filterTrainerId !== ALL_FILTER_VALUE) {
                           const hasTrainer = e.schedule_entry_trainers?.some(
                             (x) => x.trainer_id === filterTrainerId,
                           );
