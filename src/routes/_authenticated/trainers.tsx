@@ -285,10 +285,12 @@ function TrainerDialog({
       toast.error("Ошибка загрузки фото: " + error.message);
       return;
     }
-    const { data } = supabase.storage.from("trainer-photos").getPublicUrl(path);
-    setPhotoUrl(data.publicUrl);
+    // Store the storage path; rendering uses signed URLs so this works
+    // even if the bucket is private.
+    setPhotoUrl(path);
     setUploading(false);
   };
+
 
   const handleSave = async () => {
     if (!studioId) return;
