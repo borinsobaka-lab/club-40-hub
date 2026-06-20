@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PlaceholderPage } from "@/components/placeholder-page";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Настройки — CLUB 40 Admin" }] }),
   component: () => (
-    <PlaceholderPage title="Settings" description="Configure your admin workspace" />
+    <PlaceholderPage title="Настройки" description="Настройки рабочего пространства" />
   ),
 });
