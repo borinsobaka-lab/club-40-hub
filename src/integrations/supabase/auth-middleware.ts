@@ -1,9 +1,9 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { getHeader } from "@tanstack/react-start/server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(async ({ next }) => {
-  const auth = getHeader("authorization") ?? getHeader("Authorization");
+  const auth = getRequestHeader("authorization");
   if (!auth) throw new Response("Unauthorized: No authorization header provided", { status: 401 });
   const token = auth.replace(/^Bearer\s+/i, "");
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
