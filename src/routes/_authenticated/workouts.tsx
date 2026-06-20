@@ -108,6 +108,18 @@ function WorkoutsPage() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Workout | null>(null);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  const filteredWorkouts = workouts.filter((w) => {
+    if (typeFilter !== "all" && (w.type ?? "") !== typeFilter) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      w.name.toLowerCase().includes(q) ||
+      (w.description ?? "").toLowerCase().includes(q)
+    );
+  });
 
   const fetchWorkouts = async () => {
     if (!studioId) {
