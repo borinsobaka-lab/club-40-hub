@@ -1,0 +1,350 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Plus, Loader2, Pencil, Trash2, Search } from "lucide-react";
+
+import { AdminShell } from "@/components/admin-shell";
+import { useActiveStudioId } from "@/components/studio-switcher";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/clients")({
+  head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
+  component: ClientsPage,
+});
+
+type Client = {
+  id: string;
+  studio_id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  birthday: string | null;
+  gender: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+const GENDERS = [
+  { value: "male", label: "Мужской" },
+  { value: "female", label: "Женский" },
+];
+
+function genderLabel(v: string | null) {
+  return GENDERS.find((g) => g.value === v)?.label ?? "—";
+}
+
+function formatDate(v: string | null) {
+  if (!v) return "—";
+  try {
+    return new Date(v).toLocaleDateString("ru-RU");
+  } catch {
+    return v;
+  }
+}
+
+function ClientsPage() {
+  const studioId = useActiveStudioId();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Client | null>(null);
+
+  const fetchClients = async () => {
+    if (!studioId) {
+      setClients([]);
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("clients")
+      .select("*")
+      .eq("studio_id", studioId)
+      .order("created_at", { ascending: false });
+    setLoading(false);
+    if (error) {
+      toast.error("Не удалось загрузить клиентов: " + error.message);
+      return;
+    }
+    setClients((data as Client[]) ?? []);
+  };
+
+  useEffect(() => {
+    fetchClients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioId]);
+
+  const handleDelete = async (c: Client) => {
+    if (!confirm(`Удалить клиента «${c.full_name}»?`)) return;
+    const { error } = await supabase.from("clients").delete().eq("id", c.id);
+    if (error) {
+      toast.error("Ошибка удаления: " + error.message);
+      return;
+    }
+    toast.success("Клиент удалён");
+    fetchClients();
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    setOpen(true);
+  };
+
+  const openEdit = (c: Client) => {
+    setEditing(c);
+    setOpen(true);
+  };
+
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? clients.filter(
+        (c) =>
+          c.full_name.toLowerCase().includes(q) ||
+          (c.phone ?? "").toLowerCase().includes(q) ||
+          (c.email ?? "").toLowerCase().includes(q),
+      )
+    : clients;
+
+  return (
+    <AdminShell
+      title="Клиенты"
+      description="База клиентов студии"
+      actions={
+        <Button size="sm" onClick={openCreate} disabled={!studioId}>
+          <Plus className="mr-1 h-4 w-4" />
+          Добавить клиента
+        </Button>
+      }
+    >
+      <div className="mx-auto max-w-6xl space-y-4">
+        {!studioId ? (
+          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+            Сначала выберите студию в шапке.
+          </div>
+        ) : (
+          <>
+            <div className="relative max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Поиск по имени, телефону, email"
+                className="pl-9"
+              />
+            </div>
+
+            <div className="rounded-lg border bg-background">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ФИО</TableHead>
+                    <TableHead>Телефон</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Пол</TableHead>
+                    <TableHead>Дата рождения</TableHead>
+                    <TableHead>Заметки</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                      </TableCell>
+                    </TableRow>
+                  ) : filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                        {clients.length === 0
+                          ? "Пока нет клиентов. Нажмите «Добавить клиента»."
+                          : "Ничего не найдено."}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filtered.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.full_name}</TableCell>
+                        <TableCell>{c.phone ?? "—"}</TableCell>
+                        <TableCell>{c.email ?? "—"}</TableCell>
+                        <TableCell>{genderLabel(c.gender)}</TableCell>
+                        <TableCell>{formatDate(c.birthday)}</TableCell>
+                        <TableCell className="max-w-[280px] truncate text-muted-foreground">
+                          {c.notes ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(c)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+      </div>
+
+      <ClientDialog
+        open={open}
+        onOpenChange={setOpen}
+        studioId={studioId}
+        client={editing}
+        onSaved={fetchClients}
+      />
+    </AdminShell>
+  );
+}
+
+function ClientDialog({
+  open,
+  onOpenChange,
+  studioId,
+  client,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  studioId: string | null;
+  client: Client | null;
+  onSaved: () => void;
+}) {
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [gender, setGender] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setFullName(client?.full_name ?? "");
+      setPhone(client?.phone ?? "");
+      setEmail(client?.email ?? "");
+      setBirthday(client?.birthday ?? "");
+      setGender(client?.gender ?? "");
+      setNotes(client?.notes ?? "");
+    }
+  }, [open, client]);
+
+  const handleSave = async () => {
+    if (!studioId) return;
+    if (!fullName.trim()) {
+      toast.error("Укажите ФИО");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      studio_id: studioId,
+      full_name: fullName.trim(),
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      birthday: birthday || null,
+      gender: gender || null,
+      notes: notes.trim() || null,
+    };
+    const { error } = client
+      ? await supabase.from("clients").update(payload).eq("id", client.id)
+      : await supabase.from("clients").insert(payload);
+    setSaving(false);
+    if (error) {
+      toast.error("Ошибка сохранения: " + error.message);
+      return;
+    }
+    toast.success(client ? "Клиент обновлён" : "Клиент добавлен");
+    onOpenChange(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
+          <DialogDescription>
+            Контактные данные и заметки по клиенту.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 py-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor="cl-name">ФИО *</Label>
+            <Input id="cl-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-phone">Телефон</Label>
+              <Input id="cl-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-email">Email</Label>
+              <Input id="cl-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-bday">Дата рождения</Label>
+              <Input id="cl-bday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Пол</Label>
+              <Select value={gender} onValueChange={setGender}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  {GENDERS.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cl-notes">Заметки</Label>
+            <Textarea id="cl-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Отмена</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
