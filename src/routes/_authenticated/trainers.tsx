@@ -201,11 +201,9 @@ function TrainersPage() {
                   trainers.map((t) => (
                     <TableRow key={t.id}>
                       <TableCell>
-                        <Avatar>
-                          {t.photo_url && <AvatarImage src={t.photo_url} alt={t.full_name} />}
-                          <AvatarFallback>{initials(t.full_name)}</AvatarFallback>
-                        </Avatar>
+                        <TrainerPhoto value={t.photo_url} name={t.full_name} />
                       </TableCell>
+
                       <TableCell className="font-medium">{t.full_name}</TableCell>
                       <TableCell>{genderLabel(t.gender)}</TableCell>
                       <TableCell>{t.specialization ?? "—"}</TableCell>
