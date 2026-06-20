@@ -43,7 +43,6 @@ function Dashboard() {
     <AdminShell
       title="Панель"
       description="Обзор вашего клуба"
-      actions={<Badge variant="secondary">Локальный предпросмотр</Badge>}
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

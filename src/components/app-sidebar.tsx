@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
+  Dumbbell,
   CalendarDays,
   Music2,
   Megaphone,
@@ -24,6 +25,7 @@ import {
 const items = [
   { title: "Панель", url: "/", icon: LayoutDashboard },
   { title: "Участники", url: "/members", icon: Users },
+  { title: "Тренеры", url: "/trainers", icon: Dumbbell },
   { title: "Мероприятия", url: "/events", icon: CalendarDays },
   { title: "Музыка", url: "/music", icon: Music2 },
   { title: "Объявления", url: "/announcements", icon: Megaphone },
