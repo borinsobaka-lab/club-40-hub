@@ -69,6 +69,39 @@ function initials(name: string) {
     .join("");
 }
 
+function isHttpUrl(v: string | null | undefined) {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+async function resolvePhotoSrc(value: string | null): Promise<string | null> {
+  if (!value) return null;
+  if (isHttpUrl(value)) return value;
+  const { data, error } = await supabase.storage
+    .from("trainer-photos")
+    .createSignedUrl(value, 3600);
+  if (error) return null;
+  return data?.signedUrl ?? null;
+}
+
+function TrainerPhoto({ value, name }: { value: string | null; name: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    resolvePhotoSrc(value).then((s) => {
+      if (!cancelled) setSrc(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+  return (
+    <Avatar>
+      {src && <AvatarImage src={src} alt={name} />}
+      <AvatarFallback>{initials(name)}</AvatarFallback>
+    </Avatar>
+  );
+}
+
 function TrainersPage() {
   const studioId = useActiveStudioId();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
@@ -99,6 +132,7 @@ function TrainersPage() {
     fetchTrainers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioId]);
+
 
   const handleDelete = async (t: Trainer) => {
     if (!confirm(`Удалить тренера «${t.full_name}»?`)) return;
@@ -167,11 +201,9 @@ function TrainersPage() {
                   trainers.map((t) => (
                     <TableRow key={t.id}>
                       <TableCell>
-                        <Avatar>
-                          {t.photo_url && <AvatarImage src={t.photo_url} alt={t.full_name} />}
-                          <AvatarFallback>{initials(t.full_name)}</AvatarFallback>
-                        </Avatar>
+                        <TrainerPhoto value={t.photo_url} name={t.full_name} />
                       </TableCell>
+
                       <TableCell className="font-medium">{t.full_name}</TableCell>
                       <TableCell>{genderLabel(t.gender)}</TableCell>
                       <TableCell>{t.specialization ?? "—"}</TableCell>
@@ -253,10 +285,12 @@ function TrainerDialog({
       toast.error("Ошибка загрузки фото: " + error.message);
       return;
     }
-    const { data } = supabase.storage.from("trainer-photos").getPublicUrl(path);
-    setPhotoUrl(data.publicUrl);
+    // Store the storage path; rendering uses signed URLs so this works
+    // even if the bucket is private.
+    setPhotoUrl(path);
     setUploading(false);
   };
+
 
   const handleSave = async () => {
     if (!studioId) return;
@@ -296,10 +330,8 @@ function TrainerDialog({
 
         <div className="space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              {photoUrl && <AvatarImage src={photoUrl} alt="" />}
-              <AvatarFallback>{initials(fullName || "?")}</AvatarFallback>
-            </Avatar>
+            <TrainerPhoto value={photoUrl} name={fullName || "?"} />
+
             <div className="space-y-1">
               <input
                 ref={fileRef}
