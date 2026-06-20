@@ -1,13 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  Users,
-  Dumbbell,
-  CalendarDays,
-  Music2,
-  Megaphone,
-  Settings,
-} from "lucide-react";
+import { Dumbbell } from "lucide-react";
 
 import {
   Sidebar,
@@ -23,13 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Панель", url: "/", icon: LayoutDashboard },
-  { title: "Участники", url: "/members", icon: Users },
   { title: "Тренеры", url: "/trainers", icon: Dumbbell },
-  { title: "Мероприятия", url: "/events", icon: CalendarDays },
-  { title: "Музыка", url: "/music", icon: Music2 },
-  { title: "Объявления", url: "/announcements", icon: Megaphone },
-  { title: "Настройки", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

@@ -30,10 +30,10 @@ export function AdminShell({
                     <p className="truncate text-xs text-muted-foreground">{description}</p>
                   )}
                 </div>
-                <StudioSwitcher />
               </div>
               <div className="flex items-center gap-2">
                 {actions}
+                <StudioSwitcher />
                 <SignOutButton />
               </div>
             </div>
