@@ -24,7 +24,7 @@ export function AdminShell({
             <div className="flex flex-1 items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-4">
                 <h1
-                  className="truncate text-2xl uppercase leading-none pt-1"
+                  className="truncate text-2xl uppercase leading-none pt-2"
                   style={{
                     fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
                     fontWeight: 900,
