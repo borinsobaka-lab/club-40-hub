@@ -195,7 +195,7 @@ function SchedulePage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between rounded-lg border bg-background px-3 py-2">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -219,58 +219,58 @@ function SchedulePage() {
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
+                <span className="ml-1 text-sm font-medium">{weekLabel}</span>
+                {loading && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
               </div>
-              <div className="text-sm font-medium">{weekLabel}</div>
-              <div className="w-[180px] text-right text-xs text-muted-foreground">
-                {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}
-              </div>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Тип:</span>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="h-8 w-40 text-xs">
-                    <SelectValue placeholder="Все типы" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
-                    <SelectItem value="strength">Силовая</SelectItem>
-                    <SelectItem value="cardio">Кардио</SelectItem>
-                    <SelectItem value="hybrid">Гибрид</SelectItem>
-                    <SelectItem value="recovery">Восстановление</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="ml-auto flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Тип:</span>
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger className="h-8 w-40 text-xs">
+                      <SelectValue placeholder="Все типы" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
+                      <SelectItem value="strength">Силовая</SelectItem>
+                      <SelectItem value="cardio">Кардио</SelectItem>
+                      <SelectItem value="hybrid">Гибрид</SelectItem>
+                      <SelectItem value="recovery">Восстановление</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Тренер:</span>
+                  <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
+                    <SelectTrigger className="h-8 w-48 text-xs">
+                      <SelectValue placeholder="Все тренеры" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
+                      {trainers.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setFilterType(ALL_FILTER_VALUE);
+                      setFilterTrainerId(ALL_FILTER_VALUE);
+                    }}
+                  >
+                    Сбросить
+                  </Button>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Тренер:</span>
-                <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
-                  <SelectTrigger className="h-8 w-48 text-xs">
-                    <SelectValue placeholder="Все тренеры" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
-                    {trainers.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {(filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={() => {
-                    setFilterType(ALL_FILTER_VALUE);
-                    setFilterTrainerId(ALL_FILTER_VALUE);
-                  }}
-                >
-                  Сбросить
-                </Button>
-              )}
             </div>
 
             <div className="overflow-x-auto rounded-lg border bg-background">
