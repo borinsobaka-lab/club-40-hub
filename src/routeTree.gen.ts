@@ -9,148 +9,123 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as MusicRouteImport } from './routes/music'
-import { Route as MembersRouteImport } from './routes/members'
-import { Route as EventsRouteImport } from './routes/events'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AnnouncementsRouteImport } from './routes/announcements'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedMusicRouteImport } from './routes/_authenticated/music'
+import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
+import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
+import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MusicRoute = MusicRouteImport.update({
-  id: '/music',
-  path: '/music',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MembersRoute = MembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EventsRoute = EventsRouteImport.update({
-  id: '/events',
-  path: '/events',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnnouncementsRoute = AnnouncementsRouteImport.update({
-  id: '/announcements',
-  path: '/announcements',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMusicRoute = AuthenticatedMusicRouteImport.update({
+  id: '/music',
+  path: '/music',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAnnouncementsRoute =
+  AuthenticatedAnnouncementsRouteImport.update({
+    id: '/announcements',
+    path: '/announcements',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/announcements': typeof AnnouncementsRoute
+  '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/events': typeof EventsRoute
-  '/members': typeof MembersRoute
-  '/music': typeof MusicRoute
-  '/settings': typeof SettingsRoute
+  '/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/events': typeof AuthenticatedEventsRoute
+  '/members': typeof AuthenticatedMembersRoute
+  '/music': typeof AuthenticatedMusicRoute
+  '/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/announcements': typeof AnnouncementsRoute
   '/auth': typeof AuthRoute
-  '/events': typeof EventsRoute
-  '/members': typeof MembersRoute
-  '/music': typeof MusicRoute
-  '/settings': typeof SettingsRoute
+  '/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/events': typeof AuthenticatedEventsRoute
+  '/members': typeof AuthenticatedMembersRoute
+  '/music': typeof AuthenticatedMusicRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/announcements': typeof AnnouncementsRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/events': typeof EventsRoute
-  '/members': typeof MembersRoute
-  '/music': typeof MusicRoute
-  '/settings': typeof SettingsRoute
+  '/_authenticated/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/_authenticated/events': typeof AuthenticatedEventsRoute
+  '/_authenticated/members': typeof AuthenticatedMembersRoute
+  '/_authenticated/music': typeof AuthenticatedMusicRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/announcements'
     | '/auth'
+    | '/announcements'
     | '/events'
     | '/members'
     | '/music'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/announcements'
     | '/auth'
+    | '/announcements'
     | '/events'
     | '/members'
     | '/music'
     | '/settings'
+    | '/'
   id:
     | '__root__'
-    | '/'
-    | '/announcements'
+    | '/_authenticated'
     | '/auth'
-    | '/events'
-    | '/members'
-    | '/music'
-    | '/settings'
+    | '/_authenticated/announcements'
+    | '/_authenticated/events'
+    | '/_authenticated/members'
+    | '/_authenticated/music'
+    | '/_authenticated/settings'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AnnouncementsRoute: typeof AnnouncementsRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  EventsRoute: typeof EventsRoute
-  MembersRoute: typeof MembersRoute
-  MusicRoute: typeof MusicRoute
-  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/music': {
-      id: '/music'
-      path: '/music'
-      fullPath: '/music'
-      preLoaderRoute: typeof MusicRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/members': {
-      id: '/members'
-      path: '/members'
-      fullPath: '/members'
-      preLoaderRoute: typeof MembersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/events': {
-      id: '/events'
-      path: '/events'
-      fullPath: '/events'
-      preLoaderRoute: typeof EventsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -158,31 +133,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/announcements': {
-      id: '/announcements'
-      path: '/announcements'
-      fullPath: '/announcements'
-      preLoaderRoute: typeof AnnouncementsRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/music': {
+      id: '/_authenticated/music'
+      path: '/music'
+      fullPath: '/music'
+      preLoaderRoute: typeof AuthenticatedMusicRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/members': {
+      id: '/_authenticated/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof AuthenticatedMembersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/events': {
+      id: '/_authenticated/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof AuthenticatedEventsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/announcements': {
+      id: '/_authenticated/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof AuthenticatedAnnouncementsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAnnouncementsRoute: typeof AuthenticatedAnnouncementsRoute
+  AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
+  AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
+  AuthenticatedMusicRoute: typeof AuthenticatedMusicRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAnnouncementsRoute: AuthenticatedAnnouncementsRoute,
+  AuthenticatedEventsRoute: AuthenticatedEventsRoute,
+  AuthenticatedMembersRoute: AuthenticatedMembersRoute,
+  AuthenticatedMusicRoute: AuthenticatedMusicRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AnnouncementsRoute: AnnouncementsRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  EventsRoute: EventsRoute,
-  MembersRoute: MembersRoute,
-  MusicRoute: MusicRoute,
-  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
