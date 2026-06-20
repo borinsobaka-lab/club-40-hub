@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/schedule")({
   component: SchedulePage,
 });
 
-type Workout = { id: string; name: string };
+type Workout = { id: string; name: string; type?: string | null };
 type Trainer = { id: string; full_name: string };
 type Entry = {
   id: string;
@@ -39,7 +39,7 @@ type Entry = {
   workout_id: string;
   starts_at: string;
   ends_at: string;
-  workout?: { name: string } | null;
+  workout?: { name: string; type?: string } | null;
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
 
@@ -88,6 +88,8 @@ function SchedulePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [presetStart, setPresetStart] = useState<Date | null>(null);
+  const [filterType, setFilterType] = useState<string>("");
+  const [filterTrainerId, setFilterTrainerId] = useState<string>("");
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -107,13 +109,13 @@ function SchedulePage() {
       supabase
         .from("schedule_entries")
         .select(
-          "*, workout:workouts(name), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
+          "*, workout:workouts(name, type), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
         )
         .eq("studio_id", studioId)
         .gte("starts_at", weekStart.toISOString())
         .lt("starts_at", weekEnd.toISOString())
         .order("starts_at"),
-      supabase.from("workouts").select("id, name").eq("studio_id", studioId).order("name"),
+      supabase.from("workouts").select("id, name, type").eq("studio_id", studioId).order("name"),
       supabase.from("trainers").select("id, full_name").eq("studio_id", studioId).order("full_name"),
     ]);
     setLoading(false);
@@ -223,6 +225,53 @@ function SchedulePage() {
               </div>
             </div>
 
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Тип:</span>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="h-8 w-40 text-xs">
+                    <SelectValue placeholder="Все типы" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Все типы</SelectItem>
+                    <SelectItem value="strength">Силовая</SelectItem>
+                    <SelectItem value="cardio">Кардио</SelectItem>
+                    <SelectItem value="hybrid">Гибрид</SelectItem>
+                    <SelectItem value="recovery">Восстановление</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Тренер:</span>
+                <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
+                  <SelectTrigger className="h-8 w-48 text-xs">
+                    <SelectValue placeholder="Все тренеры" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Все тренеры</SelectItem>
+                    {trainers.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(filterType || filterTrainerId) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    setFilterType("");
+                    setFilterTrainerId("");
+                  }}
+                >
+                  Сбросить
+                </Button>
+              )}
+            </div>
+
             <div className="overflow-x-auto rounded-lg border bg-background">
               <div className="grid min-w-[900px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
                 <div className="border-b border-r bg-muted/30" />
@@ -254,10 +303,18 @@ function SchedulePage() {
                     {weekDays.map((day, di) => {
                       const slotEntries = entries.filter((e) => {
                         const s = new Date(e.starts_at);
-                        return (
+                        const matchesDayHour =
                           s.toDateString() === day.toDateString() &&
-                          s.getHours() === hour
-                        );
+                          s.getHours() === hour;
+                        if (!matchesDayHour) return false;
+                        if (filterType && e.workout?.type !== filterType) return false;
+                        if (filterTrainerId) {
+                          const hasTrainer = e.schedule_entry_trainers?.some(
+                            (x) => x.trainer_id === filterTrainerId,
+                          );
+                          if (!hasTrainer) return false;
+                        }
+                        return true;
                       });
                       return (
                         <button
@@ -282,11 +339,11 @@ function SchedulePage() {
                                 }}
                                 className="absolute inset-x-1 top-1 cursor-pointer overflow-hidden rounded-md bg-primary px-2 py-1 text-[11px] leading-tight text-primary-foreground shadow-sm hover:opacity-90"
                               >
-                                <div className="truncate font-medium">
-                                  {e.workout?.name ?? "Занятие"}
-                                </div>
                                 <div className="opacity-80">
                                   {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
+                                </div>
+                                <div className="truncate font-medium">
+                                  {e.workout?.name ?? "Занятие"}
                                 </div>
                                 {names && (
                                   <div className="truncate opacity-80">{names}</div>
