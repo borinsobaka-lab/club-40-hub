@@ -359,6 +359,11 @@ function TrainerDialog({
       specialization: specialization.trim() || null,
       bio: bio.trim() || null,
       photo_url: photoUrl,
+      telegram: telegram.trim() || null,
+      whatsapp: whatsapp.trim() || null,
+      instagram: instagram.trim() || null,
+      facebook: facebook.trim() || null,
+      tiktok: tiktok.trim() || null,
     };
     const { error } = trainer
       ? await supabase.from("trainers").update(payload).eq("id", trainer.id)
