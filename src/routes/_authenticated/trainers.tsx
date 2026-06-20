@@ -317,6 +317,11 @@ function TrainerDialog({
       setSpecialization(trainer?.specialization ?? "");
       setBio(trainer?.bio ?? "");
       setPhotoUrl(trainer?.photo_url ?? null);
+      setTelegram(trainer?.telegram ?? "");
+      setWhatsapp(trainer?.whatsapp ?? "");
+      setInstagram(trainer?.instagram ?? "");
+      setFacebook(trainer?.facebook ?? "");
+      setTiktok(trainer?.tiktok ?? "");
     }
   }, [open, trainer]);
 
