@@ -255,12 +255,9 @@ function EditProfileSheet({
       toast.error("Не удалось загрузить: " + upErr.message);
       return;
     }
-    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-    const publicUrl = pub.publicUrl;
-    const avatarUpdate = { avatar_url: publicUrl } as never;
     const { data: updated, error: dbErr } = await supabase
       .from("clients")
-      .update(avatarUpdate)
+      .update({ avatar_url: path })
       .eq("user_id", user.id)
       .select()
       .maybeSingle();
@@ -269,7 +266,8 @@ function EditProfileSheet({
       toast.error("Не удалось сохранить: " + dbErr.message);
       return;
     }
-    setAvatarUrl(publicUrl);
+    const signed = await getAvatarSignedUrl(path);
+    setAvatarUrl(signed);
     if (updated) onSaved(updated as ClientRow);
     toast.success("Аватар обновлён");
   };
