@@ -188,17 +188,17 @@ function HomePage() {
           </section>
 
           {/* Быстрые действия */}
-          <section className="px-4 pt-2">
-            <div className="rounded-2xl bg-white/10 p-2">
+          <section className="px-4 my-3">
+            <div className="rounded-2xl bg-white/10 p-1.5">
               <div className="flex items-stretch justify-between gap-2">
                 {[
                   { icon: CalendarDays, label: "Расписание" },
                   { icon: BarChart3, label: "Прогресс" },
                   { icon: Target, label: "Цели" },
                 ].map((item) => (
-                  <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
+                  <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1">
                     <item.icon className="h-5 w-5 text-white" />
-                    <span className="text-[11px] text-white/80">{item.label}</span>
+                    <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
                   </div>
                 ))}
               </div>
