@@ -70,7 +70,8 @@ type SaleRow = {
   id: string;
   sold_at: string;
   total_amount: number;
-  installments: number;
+  down_payment_amount: number;
+  remaining_installments: number;
   admin_name: string | null;
   comment: string | null;
   memberships: { name: string } | null;
