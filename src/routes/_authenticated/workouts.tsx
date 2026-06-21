@@ -305,11 +305,18 @@ function WorkoutDialog({
       return;
     }
     setSaving(true);
+    const capacityNum = capacity.trim() === "" ? null : Number(capacity);
+    if (capacityNum != null && (!Number.isFinite(capacityNum) || capacityNum < 0)) {
+      setSaving(false);
+      toast.error("Вместимость должна быть неотрицательным числом");
+      return;
+    }
     const payload = {
       studio_id: studioId,
       name: name.trim(),
       description: description.trim() || null,
       photo_url: photoUrl,
+      capacity: capacityNum,
     };
     const { error } = workout
       ? await supabase.from("workouts").update(payload).eq("id", workout.id)
