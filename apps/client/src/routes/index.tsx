@@ -208,13 +208,15 @@ function HomePage() {
             Услуги
           </h2>
           {news === null ? (
-            <div className="flex gap-3 overflow-hidden px-4 pb-2">
+            <div className="flex gap-3 overflow-hidden pb-2">
+              <div className="w-1 shrink-0" aria-hidden="true" />
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
                   className="shrink-0 w-56 h-32 rounded-2xl bg-muted animate-pulse"
                 />
               ))}
+              <div className="w-1 shrink-0" aria-hidden="true" />
             </div>
           ) : news.length === 0 ? (
             <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
@@ -222,7 +224,8 @@ function HomePage() {
               <span className="text-sm">Пока нет услуг</span>
             </div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
+              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
               {news.map((n) => (
                 <div
                   key={n.id}
@@ -254,6 +257,7 @@ function HomePage() {
                   </div>
                 </div>
               ))}
+              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
             </div>
           )}
         </section>
