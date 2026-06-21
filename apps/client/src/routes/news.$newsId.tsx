@@ -66,7 +66,7 @@ function NewsDetailPage() {
     );
   }
 
-  const hero = item.banner_url || item.image_url;
+  const hero = mediaUrl(item.banner_url) || mediaUrl(item.image_url);
   const title = item.full_title || item.title;
 
   return (
