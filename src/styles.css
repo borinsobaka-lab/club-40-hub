@@ -180,12 +180,12 @@
   &::after {
     content: "";
     position: absolute;
-    inset: -14px;
+    inset: -6px;
     border-radius: inherit;
     background: linear-gradient(135deg, #ec4899 0%, #a855f7 25%, #6366f1 50%, #06b6d4 75%, #ec4899 100%);
     background-size: 300% 300%;
     animation: gradient-flow 2s ease infinite, ai-glow-pulse 1.2s ease-in-out infinite;
-    filter: blur(40px);
+    filter: blur(28px);
     opacity: 1;
     pointer-events: none;
     z-index: -1;
