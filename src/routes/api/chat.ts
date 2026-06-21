@@ -10,9 +10,20 @@ async function getUserContext(request: Request) {
   const auth = request.headers.get("authorization");
   if (!auth) return null;
   const token = auth.replace(/^Bearer\s+/i, "");
-  const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+  const url =
+    (import.meta as any).env?.VITE_SUPABASE_URL ??
+    process.env.VITE_SUPABASE_URL ??
+    process.env.SUPABASE_URL ??
+    "";
   const anon =
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
+    (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    "";
+  if (!url || !anon) {
+    console.error("[api/chat] Supabase env is not configured");
+    return null;
+  }
   const supabase = createClient(url, anon, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
@@ -31,19 +42,20 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const ctx = await getUserContext(request);
-        if (!ctx || !ctx.studioId) {
-          return new Response("Unauthorized", { status: 401 });
-        }
-        const { messages } = (await request.json()) as Body;
-        if (!Array.isArray(messages)) {
-          return new Response("Messages are required", { status: 400 });
-        }
+        try {
+          const ctx = await getUserContext(request);
+          if (!ctx || !ctx.studioId) {
+            return new Response("Сессия истекла. Войдите заново и повторите запрос.", { status: 401 });
+          }
+          const { messages } = (await request.json()) as Body;
+          if (!Array.isArray(messages)) {
+            return new Response("Messages are required", { status: 400 });
+          }
 
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+          const key = process.env.LOVABLE_API_KEY;
+          if (!key) return new Response("AI ассистент не настроен", { status: 500 });
 
-        const { supabase, studioId } = ctx;
+          const { supabase, studioId } = ctx;
 
         const tools = {
           list_clients: tool({
@@ -142,8 +154,8 @@ export const Route = createFileRoute("/api/chat")({
           }),
         };
 
-        const gateway = createLovableAiGatewayProvider(key);
-        const result = streamText({
+          const gateway = createLovableAiGatewayProvider(key);
+          const result = streamText({
           model: gateway("google/gemini-3-flash-preview"),
           system:
             "Ты — Kate, AI-ассистент админ-панели фитнес-студии CLUB 40. " +
@@ -153,12 +165,21 @@ export const Route = createFileRoute("/api/chat")({
             "Текущая дата: " + new Date().toISOString().slice(0, 10) + ".",
           messages: await convertToModelMessages(messages as UIMessage[]),
           tools,
-          stopWhen: stepCountIs(10),
-        });
+          stopWhen: stepCountIs(50),
+          onError: ({ error }) => console.error("[api/chat] AI stream error", error),
+          });
 
-        return result.toUIMessageStreamResponse({
-          originalMessages: messages as UIMessage[],
-        });
+          return result.toUIMessageStreamResponse({
+            originalMessages: messages as UIMessage[],
+            onError: (error) => {
+              console.error("[api/chat] UI stream error", error);
+              return "Не удалось получить ответ ассистента. Попробуйте ещё раз.";
+            },
+          });
+        } catch (error) {
+          console.error("[api/chat] request failed", error);
+          return new Response("Не удалось запустить ассистента. Попробуйте ещё раз.", { status: 500 });
+        }
       },
     },
   },
