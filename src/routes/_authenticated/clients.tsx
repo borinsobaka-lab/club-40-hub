@@ -43,6 +43,8 @@ type Client = {
   id: string;
   studio_id: string;
   full_name: string;
+  first_name: string | null;
+  last_name: string | null;
   phone: string | null;
   email: string | null;
   birthday: string | null;
@@ -54,6 +56,12 @@ type Client = {
   photo_url: string | null;
   created_at: string;
 };
+
+function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
+  const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
+  return composed || c.full_name || "—";
+}
+
 
 const GENDERS = [
   { value: "male", label: "Мужской" },
@@ -111,7 +119,7 @@ function ClientsPage() {
   }, [studioId]);
 
   const handleDelete = async (c: Client) => {
-    if (!confirm(`Удалить клиента «${c.full_name}»?`)) return;
+    if (!confirm(`Удалить клиента «${displayName(c)}»?`)) return;
     const { error } = await supabase.from("clients").delete().eq("id", c.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -141,8 +149,9 @@ function ClientsPage() {
 
   const q = search.trim().toLowerCase();
   const filtered = clients.filter((c) => {
+    const name = displayName(c).toLowerCase();
     if (q && !(
-      c.full_name.toLowerCase().includes(q) ||
+      name.includes(q) ||
       (c.phone ?? "").toLowerCase().includes(q) ||
       (c.email ?? "").toLowerCase().includes(q)
     )) return false;
@@ -256,7 +265,7 @@ function ClientsPage() {
                   ) : (
                     filtered.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.full_name}</TableCell>
+                        <TableCell className="font-medium">{displayName(c)}</TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>
