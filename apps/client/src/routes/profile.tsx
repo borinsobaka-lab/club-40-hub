@@ -355,11 +355,42 @@ function EditProfileSheet({
 
         <div className="space-y-4 py-4">
           <div className="flex flex-col items-center gap-2">
-            <Avatar className="h-24 w-24">
-              <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
-                {initials(displayName)}
-              </AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
+              aria-label="Загрузить аватар"
+            >
+              <Avatar className="h-24 w-24">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+                  {initials(displayName)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+                {uploadingAvatar ? (
+                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6 text-white" />
+                )}
+              </div>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            <button
+              type="button"
+              className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+            >
+              {avatarUrl ? "Заменить фото" : "Загрузить фото"}
+            </button>
           </div>
 
           <div className="space-y-1.5">
