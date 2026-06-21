@@ -271,8 +271,15 @@ function SchedulePage() {
                             .map((t) => t.full_name)
                             .filter((n): n is string => !!n)
                             .join(", ") || null;
-                        const trainerPhoto =
+                        const trainerPhotoPath =
                           trainerList.find((t) => !!t.photo_url)?.photo_url ?? null;
+                        const trainerPhoto = trainerPhotoPath
+                          ? /^https?:\/\//.test(trainerPhotoPath)
+                            ? trainerPhotoPath
+                            : supabase.storage
+                                .from("trainer-photos")
+                                .getPublicUrl(trainerPhotoPath).data.publicUrl
+                          : null;
                         setOpenEntry({
                           id: c.id,
                           name: c.workout?.name ?? "Занятие",
