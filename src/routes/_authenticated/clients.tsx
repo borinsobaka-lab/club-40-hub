@@ -236,9 +236,9 @@ function ClientsPage() {
         ) : (
           <>
             <div className="rounded-lg border bg-background p-4">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="relative flex-1">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                  <div className="relative flex-1 min-w-[240px]">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={search}
@@ -247,8 +247,9 @@ function ClientsPage() {
                       className="h-9 pl-9"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Пол</Label>
+
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Пол</Label>
                     <Select value={genderFilter} onValueChange={setGenderFilter}>
                       <SelectTrigger className="h-9 w-[140px]">
                         <SelectValue placeholder="Все" />
@@ -260,41 +261,21 @@ function ClientsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <DateRangeFilter
+                    label="Дата регистрации"
+                    value={regRange}
+                    onChange={setRegRange}
+                  />
+                  <DateRangeFilter
+                    label="Последний визит"
+                    value={visitRange}
+                    onChange={setVisitRange}
+                  />
+
                   <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9">
                     Сбросить
                   </Button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <fieldset className="rounded-md border bg-muted/30 px-3 pb-3 pt-2">
-                    <legend className="px-1 text-xs font-medium text-muted-foreground">Дата регистрации</legend>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">с</Label>
-                        <Input type="date" value={regFrom} onChange={(e) => setRegFrom(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                      <div className="mt-5 text-muted-foreground">—</div>
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">по</Label>
-                        <Input type="date" value={regTo} onChange={(e) => setRegTo(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset className="rounded-md border bg-muted/30 px-3 pb-3 pt-2">
-                    <legend className="px-1 text-xs font-medium text-muted-foreground">Последний визит</legend>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">с</Label>
-                        <Input type="date" value={visitFrom} onChange={(e) => setVisitFrom(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                      <div className="mt-5 text-muted-foreground">—</div>
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">по</Label>
-                        <Input type="date" value={visitTo} onChange={(e) => setVisitTo(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                    </div>
-                  </fieldset>
                 </div>
               </div>
             </div>
