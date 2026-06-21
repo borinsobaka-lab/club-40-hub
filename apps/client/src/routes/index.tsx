@@ -149,16 +149,19 @@ function HomePage() {
                 params={{ newsId: n.id }}
                 className="relative shrink-0 snap-start w-44 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
               >
-                {n.image_url ? (
-                  <img
-                    src={n.image_url}
-                    alt={n.title}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
-                )}
+                {(() => {
+                  const url = mediaUrl(n.image_url);
+                  return url ? (
+                    <img
+                      src={url}
+                      alt={n.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                  );
+                })()}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="relative h-full w-full p-3 flex flex-col justify-end text-white">
                   <div className="font-semibold text-sm leading-tight line-clamp-2">
