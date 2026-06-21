@@ -154,6 +154,7 @@ function TrainersPage() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Trainer | null>(null);
+  const [creatingRole, setCreatingRole] = useState<TrainerRole>("trainer");
 
   const fetchTrainers = async () => {
     if (!studioId) {
