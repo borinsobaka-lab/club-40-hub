@@ -40,6 +40,12 @@ function EmployeesPage() {
     queryFn: () => getCtx(),
   });
 
+  const refreshSignal = useRefreshSignal();
+  useEffect(() => {
+    if (refreshSignal > 0) qc.invalidateQueries({ queryKey: ["employees"] });
+  }, [refreshSignal, qc]);
+
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "trainer" as "owner" | "admin" | "trainer" });
 
