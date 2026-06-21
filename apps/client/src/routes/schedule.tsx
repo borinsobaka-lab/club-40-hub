@@ -267,7 +267,7 @@ function SchedulePage() {
                 const isPast = new Date(c.starts_at) < new Date();
                 const workoutPhoto = resolvePublicUrl("workout-photos", c.workout?.photo_url);
                 return (
-                  <div key={c.id} className={`relative flex gap-1 pb-4 ${isPast ? "opacity-50" : ""}`}>
+                  <div key={c.id} className={`relative flex gap-1 pb-4 ${isPast ? "opacity-20" : ""}`}>
                     <button
                       type="button"
                       onClick={() => {
