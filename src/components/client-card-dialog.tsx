@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 
 type ClientLike = {
   id: string;
@@ -66,16 +67,36 @@ function genderLabel(g: string | null) {
   return "—";
 }
 
+function sourceLabel(s: string | null | undefined) {
+  return s === "mobile" ? "Приложение" : "Портал";
+}
+
 type SaleRow = {
   id: string;
   sold_at: string;
   total_amount: number;
   down_payment_amount: number;
   remaining_installments: number;
+  source: "admin" | "mobile" | null;
   admin_name: string | null;
   comment: string | null;
-  memberships: { name: string } | null;
+  memberships: { name: string } | { name: string }[] | null;
 };
+
+type ActiveCM = {
+  id: string;
+  source: "admin" | "mobile";
+  started_at: string;
+  ends_at: string | null;
+  visits_left: number | null;
+  memberships: { name: string } | { name: string }[] | null;
+};
+
+function membershipName(m: ActiveCM["memberships"] | SaleRow["memberships"]) {
+  if (!m) return "—";
+  if (Array.isArray(m)) return m[0]?.name ?? "—";
+  return m.name;
+}
 
 export function ClientCardDialog({
   open,
@@ -90,27 +111,43 @@ export function ClientCardDialog({
 }) {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [loadingSales, setLoadingSales] = useState(false);
+  const [active, setActive] = useState<ActiveCM | null>(null);
+  const [loadingActive, setLoadingActive] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const load = () => {
+    if (!client?.id) return;
+    setLoadingSales(true);
+    supabase
+      .from("sales")
+      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name)")
+      .eq("client_id", client.id)
+      .order("sold_at", { ascending: false })
+      .then(({ data, error }) => {
+        setLoadingSales(false);
+        if (!error) setSales((data as unknown as SaleRow[]) ?? []);
+      });
+    setLoadingActive(true);
+    supabase
+      .from("client_memberships")
+      .select("id, source, started_at, ends_at, visits_left, memberships(name)")
+      .eq("client_id", client.id)
+      .eq("status", "active")
+      .maybeSingle()
+      .then(({ data }) => {
+        setLoadingActive(false);
+        setActive((data as unknown as ActiveCM | null) ?? null);
+      });
+  };
 
   useEffect(() => {
     if (!open || !client?.id) {
       setSales([]);
+      setActive(null);
       return;
     }
-    let cancelled = false;
-    setLoadingSales(true);
-    supabase
-      .from("sales")
-      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, admin_name, comment, memberships(name)")
-      .eq("client_id", client.id)
-      .order("sold_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        setLoadingSales(false);
-        if (!error) setSales((data as unknown as SaleRow[]) ?? []);
-      });
-    return () => {
-      cancelled = true;
-    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, client?.id]);
 
   if (!client) return null;
@@ -156,6 +193,41 @@ export function ClientCardDialog({
             <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
           </div>
 
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-xs uppercase text-muted-foreground">Активный абонемент</div>
+              {active && (
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
+                  Редактировать
+                </Button>
+              )}
+            </div>
+            {loadingActive ? (
+              <div className="flex justify-center py-3">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : !active ? (
+              <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
+                Нет активного абонемента.
+              </div>
+            ) : (
+              <div className="rounded-lg border bg-background p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium">{membershipName(active.memberships)}</div>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    {sourceLabel(active.source)}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {formatDate(active.started_at)} → {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                  {" · "}
+                  {active.visits_left == null ? "посещения: безлимит" : `осталось посещений: ${active.visits_left}`}
+                </div>
+              </div>
+            )}
+          </div>
+
           {client.notes && (
             <div>
               <div className="mb-1 text-xs uppercase text-muted-foreground">Заметки</div>
@@ -181,10 +253,11 @@ export function ClientCardDialog({
                   <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <div className="min-w-0">
                       <div className="font-medium truncate">
-                        {s.memberships?.name ?? "Абонемент удалён"}
+                        {membershipName(s.memberships)}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {formatDate(s.sold_at)}
+                        {" · "}{sourceLabel(s.source)}
                         {s.admin_name ? ` · ${s.admin_name}` : ""}
                         {s.remaining_installments > 0
                           ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
@@ -208,6 +281,13 @@ export function ClientCardDialog({
           )}
           <Button onClick={() => onOpenChange(false)}>Закрыть</Button>
         </DialogFooter>
+
+        <EditActiveMembershipDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          membership={active ? { id: active.id, ends_at: active.ends_at, visits_left: active.visits_left } : null}
+          onSaved={load}
+        />
       </DialogContent>
     </Dialog>
   );
