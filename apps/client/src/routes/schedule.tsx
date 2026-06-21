@@ -109,17 +109,21 @@ function SchedulePage() {
       }
     >
       <div className="p-4 space-y-4">
-        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
           {days.map((d, i) => (
             <button
               key={d.toISOString()}
               onClick={() => setActiveIdx(i)}
-              className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl border text-sm transition-colors ${
-                i === activeIdx ? "bg-primary text-primary-foreground border-primary" : "border-border"
+              className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl border transition-colors ${
+                i === activeIdx
+                  ? "bg-[#1B1C1F] text-[#FFE500] border-[#1B1C1F]"
+                  : "bg-card text-card-foreground border-border"
               }`}
             >
-              <span className="text-xs opacity-70">{DAY_NAMES[d.getDay()]}</span>
-              <span className="font-semibold">{d.getDate()}</span>
+              <span className={`text-xs ${i === activeIdx ? "" : "opacity-70"}`}>
+                {DAY_NAMES[d.getDay()]}
+              </span>
+              <span className="text-lg font-bold italic">{d.getDate()}</span>
             </button>
           ))}
         </div>
