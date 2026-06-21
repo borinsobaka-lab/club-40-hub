@@ -2,12 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
-import { Loader2, Dumbbell, HeartPulse, Shuffle, Leaf, Activity, Plus, Minus, type LucideIcon } from "lucide-react";
+import { Loader2, Plus, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
+import { workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
@@ -51,22 +51,7 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string; bg: string; stripe: string }> = {
-  cardio: { label: "Кардио", icon: HeartPulse, color: "text-blue-600", bg: "bg-blue-500/10", stripe: "bg-blue-500" },
-  strength: { label: "Силовая", icon: Dumbbell, color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
-  hybrid: { label: "Гибрид", icon: Shuffle, color: "text-violet-600", bg: "bg-violet-500/10", stripe: "bg-violet-500" },
-  recovery: { label: "Восстановление", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-500/10", stripe: "bg-emerald-500" },
-};
 
-const TYPE_ORDER = ["cardio", "strength", "hybrid", "recovery"];
-
-function workoutTypeMeta(type: string | null | undefined) {
-  if (!type) return { label: "Тренировка", icon: Activity, color: "text-muted-foreground", bg: "bg-muted", stripe: "bg-muted-foreground/40" };
-  const key = type.toLowerCase().trim();
-  if (TYPE_META[key]) return TYPE_META[key];
-  const byLabel = Object.values(TYPE_META).find((m) => m.label.toLowerCase() === key);
-  return byLabel ?? { label: type, icon: Activity, color: "text-muted-foreground", bg: "bg-muted", stripe: "bg-muted-foreground/40" };
-}
 
 function SchedulePage() {
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -283,6 +268,7 @@ function SchedulePage() {
                         setOpenEntry({
                           id: c.id,
                           name: c.workout?.name ?? "Занятие",
+                          type: c.workout?.type ?? null,
                           trainerName,
                           trainerPhoto,
                         });
