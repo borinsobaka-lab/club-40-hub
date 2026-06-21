@@ -351,6 +351,7 @@ function WorkoutDialog({
       description: description.trim() || null,
       photo_url: photoUrl,
       capacity: capacityNum,
+      type: type === NONE_TYPE ? null : type,
     };
     const { error } = workout
       ? await supabase.from("workouts").update(payload).eq("id", workout.id)
