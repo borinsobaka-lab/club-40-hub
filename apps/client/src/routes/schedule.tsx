@@ -268,6 +268,7 @@ function SchedulePage() {
                         setOpenEntry({
                           id: c.id,
                           name: c.workout?.name ?? "Занятие",
+                          type: c.workout?.type ?? null,
                           trainerName,
                           trainerPhoto,
                         });

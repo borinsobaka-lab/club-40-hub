@@ -1,5 +1,6 @@
 import { Drawer as DrawerPrimitive } from "vaul";
 import logoSrc from "@/assets/frame-13.svg";
+import { workoutTypeMeta } from "@/lib/workout-types";
 
 const PLACEHOLDER_DESCRIPTION =
   "Функциональная тренировка, направленная на развитие силы, выносливости и координации. Подходит для всех уровней подготовки. Занятие проходит под руководством тренера в малой группе.";
@@ -7,6 +8,7 @@ const PLACEHOLDER_DESCRIPTION =
 export type WorkoutDrawerData = {
   id: string;
   name: string;
+  type: string | null;
   trainerName: string | null;
   trainerPhoto: string | null;
 };
@@ -26,6 +28,9 @@ export function WorkoutDrawer({
   isBooked: boolean;
   isPending: boolean;
 }) {
+  const typeMeta = data ? workoutTypeMeta(data.type) : null;
+  const TypeIcon = typeMeta?.icon ?? null;
+
   return (
     <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
       <DrawerPrimitive.Portal>
@@ -43,6 +48,16 @@ export function WorkoutDrawer({
                     <DrawerPrimitive.Title className="text-2xl font-bold leading-tight break-words">
                       {data.name}
                     </DrawerPrimitive.Title>
+
+                    {typeMeta && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border border-transparent">
+                        <span className={`inline-flex items-center justify-center rounded-full ${typeMeta.bg} px-2 py-0.5 ${typeMeta.color}`}>
+                          {TypeIcon && <TypeIcon className="h-3.5 w-3.5 mr-1" />}
+                          {typeMeta.label}
+                        </span>
+                      </div>
+                    )}
+
                     {data.trainerName && (
                       <div className="mt-3 flex items-center gap-2">
                         {data.trainerPhoto ? (
@@ -71,7 +86,7 @@ export function WorkoutDrawer({
                   <img
                     src={logoSrc}
                     alt=""
-                    className="w-14 h-14 rounded-full object-cover shrink-0"
+                    className="w-28 h-28 rounded-full object-cover shrink-0"
                   />
                 </div>
 
