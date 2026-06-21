@@ -153,7 +153,7 @@ function SchedulePage() {
               <button
                 key={t.key}
                 onClick={() => setActiveType(t.key)}
-                className={`shrink-0 px-4 h-9 rounded-full border text-sm font-semibold transition-colors ${
+                className={`shrink-0 px-3 h-7 rounded-full border text-xs font-semibold transition-colors ${
                   active
                     ? "bg-[#1B1C1F] text-white border-[#1B1C1F]"
                     : "bg-transparent text-foreground border-border"
