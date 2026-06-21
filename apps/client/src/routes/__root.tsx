@@ -182,7 +182,7 @@ function AppShell() {
 
 
         <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
-          <div className="w-full max-w-md pointer-events-auto bg-background/95 backdrop-blur">
+          <div className="w-full max-w-md pointer-events-auto bg-background">
             <ul className="grid grid-cols-4">
               {navItems.map(({ to, label, icon: Icon, exact }) => (
                 <li key={to}>
