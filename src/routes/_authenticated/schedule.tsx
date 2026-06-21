@@ -46,7 +46,8 @@ type Entry = {
 
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
-const SLOT_PX = 64;
+const SLOT_PX_FULL = 72;
+const SLOT_PX_EMPTY = 28;
 const ALL_FILTER_VALUE = "all";
 
 function startOfWeek(d: Date) {
