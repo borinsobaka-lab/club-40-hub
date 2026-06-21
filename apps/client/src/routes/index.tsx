@@ -245,19 +245,50 @@ function HomePage() {
       <div className="px-4 pt-6 pb-8 space-y-8">
 
         {/* Тренировки */}
-        <section>
-          <h2 className="text-2xl font-bold italic uppercase mb-3">
+        <section className="-mx-4">
+          <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
             Тренировки
           </h2>
-          <div className="rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
-            <Ghost className="h-14 w-14 text-muted-foreground" strokeWidth={1.5} />
-            <div className="text-sm text-muted-foreground">
-              Тренировок на сегодня нет
+          {myBookings === null ? (
+            <div className="flex gap-3 overflow-hidden pb-2 px-4">
+              {[0, 1].map((i) => (
+                <div key={i} className="shrink-0 w-56 h-24 rounded-2xl bg-card animate-pulse" />
+              ))}
             </div>
-            <Button asChild className="text-sm font-bold">
-              <Link to="/schedule">Забронировать</Link>
-            </Button>
-          </div>
+          ) : myBookings.length === 0 ? (
+            <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
+              <Ghost className="h-14 w-14 text-muted-foreground" strokeWidth={1.5} />
+              <div className="text-sm text-muted-foreground">Тренировок пока нет</div>
+              <Button asChild className="text-sm font-bold">
+                <Link to="/schedule">Забронировать</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
+              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
+              {myBookings.map((b) => {
+                const e = b.entry!;
+                const d = new Date(e.starts_at);
+                const dayLabel = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
+                const timeLabel = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <Link
+                    key={b.entry_id}
+                    to="/schedule"
+                    className="shrink-0 snap-start w-60 rounded-2xl bg-[#FFE500] text-[#1B1C1F] p-4 flex flex-col gap-2 active:scale-[0.98] transition-transform"
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
+                      {dayLabel} · {timeLabel}
+                    </div>
+                    <div className="text-base font-bold leading-snug break-words">
+                      {e.workout?.name ?? "Занятие"}
+                    </div>
+                  </Link>
+                );
+              })}
+              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
+            </div>
+          )}
         </section>
 
         {/* Услуги */}
