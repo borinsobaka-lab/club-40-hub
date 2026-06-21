@@ -1,5 +1,8 @@
 -- Sales (Продажи) — run on Supabase after db/schema.sql, db/clients.sql, db/memberships.sql.
 
+-- The legacy `installments` column (1/2/3) was replaced by `down_payment_amount`
+-- + `remaining_installments` (0/2/3). Run the whole file to migrate existing rows.
+
 create table if not exists public.sales (
   id uuid primary key default gen_random_uuid(),
   studio_id uuid not null references public.studios(id) on delete cascade,
@@ -9,10 +12,39 @@ create table if not exists public.sales (
   admin_name text,
   sold_at date not null default current_date,
   total_amount numeric(12,2) not null check (total_amount >= 0),
-  installments smallint not null default 1 check (installments in (1,2,3)),
+  down_payment_amount numeric(12,2) not null default 0 check (down_payment_amount >= 0 and down_payment_amount <= total_amount),
+  remaining_installments smallint not null default 0 check (remaining_installments in (0,2,3)),
   comment text,
   created_at timestamptz not null default now()
 );
+
+-- Repair existing tables that were created before this migration.
+alter table public.sales
+  add column if not exists down_payment_amount numeric(12,2) not null default 0,
+  add column if not exists remaining_installments smallint not null default 0,
+  drop column if exists installments;
+
+-- Make sure the check constraints exist even on older tables.
+-- (PostgreSQL has no "add constraint if not exists", so we use a helper block.)
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'sales_remaining_installments_check' and conrelid = 'public.sales'::regclass
+  ) then
+    alter table public.sales add constraint sales_remaining_installments_check
+      check (remaining_installments in (0,2,3));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'sales_down_payment_check' and conrelid = 'public.sales'::regclass
+  ) then
+    alter table public.sales add constraint sales_down_payment_check
+      check (down_payment_amount >= 0 and down_payment_amount <= total_amount);
+  end if;
+end
+$$;
 
 create table if not exists public.sale_installments (
   id uuid primary key default gen_random_uuid(),

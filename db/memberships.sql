@@ -9,6 +9,7 @@ create table if not exists public.memberships (
   visits_count int,             -- null = безлимит
   duration_days int,            -- срок действия в днях
   auto_renew boolean not null default false,
+  installment_enabled boolean not null default false,
   price numeric(12,2) not null default 0,
   created_at timestamptz not null default now()
 );
@@ -23,6 +24,7 @@ alter table public.memberships
   add column if not exists visits_count int,
   add column if not exists duration_days int,
   add column if not exists auto_renew boolean not null default false,
+  add column if not exists installment_enabled boolean not null default false,
   add column if not exists price numeric(12,2) not null default 0,
   add column if not exists created_at timestamptz not null default now();
 
