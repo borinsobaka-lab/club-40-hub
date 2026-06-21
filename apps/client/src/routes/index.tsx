@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
+import { NewsDrawer } from "@/components/news-drawer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,6 +38,8 @@ function HomePage() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState<string>("Участник");
   const [news, setNews] = useState<News[] | null>(null);
+  const [openNewsId, setOpenNewsId] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!user) return;
@@ -148,10 +151,10 @@ function HomePage() {
             ) : (
               <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
                 {news.map((n) => (
-                  <Link
+                  <button
                     key={n.id}
-                    to="/news/$newsId"
-                    params={{ newsId: n.id }}
+                    type="button"
+                    onClick={() => setOpenNewsId(n.id)}
                     className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
                   >
                     {(() => {
@@ -178,7 +181,7 @@ function HomePage() {
                         </div>
                       )}
                     </div>
-                  </Link>
+                  </button>
                 ))}
               </div>
             )}
