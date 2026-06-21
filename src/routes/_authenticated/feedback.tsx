@@ -28,6 +28,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({ meta: [{ title: "Обратная связь — CLUB 40 Admin" }] }),
@@ -108,6 +109,8 @@ function FeedbackPage() {
       return true;
     });
   }, [items, topicFilter, statusFilter, moodFilter]);
+
+  const pg = usePagination(filtered);
 
   const selected = items.find((i) => i.id === selectedId) || null;
 
@@ -326,7 +329,7 @@ function FeedbackPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((i) => (
+                pg.paged.map((i) => (
                   <TableRow
                     key={i.id}
                     onClick={() => { setSelectedId(i.id); setResolutionComment(i.resolution_comment || ""); }}
@@ -375,6 +378,7 @@ function FeedbackPage() {
               )}
             </TableBody>
           </Table>
+          <DataPagination {...pg} />
         </div>
       </div>
 
