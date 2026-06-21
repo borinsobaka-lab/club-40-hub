@@ -96,9 +96,12 @@ function FeedbackPage() {
     setLoading(false);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     void fetchItems();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
+
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
