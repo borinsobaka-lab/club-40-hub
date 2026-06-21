@@ -69,7 +69,7 @@ function genderLabel(v: string | null) {
 }
 
 function roleLabel(r: TrainerRole) {
-  return r === "admin" ? "Админ студии" : "Тренер";
+  return r === "admin" ? "Админ" : "Тренер";
 }
 
 function initials(name: string) {
@@ -276,7 +276,7 @@ function TrainersPage() {
                       <TableCell>{t.role === "admin" ? "—" : genderLabel(t.gender)}</TableCell>
                       <TableCell>{t.role === "admin" ? "—" : (t.specialization ?? "—")}</TableCell>
                       <TableCell className="max-w-[320px] truncate text-muted-foreground">
-                        {t.role === "admin" ? "—" : (t.bio ?? "—")}
+                        {t.bio ?? "—"}
                       </TableCell>
                       <TableCell>
                         {t.role === "admin" ? (
@@ -398,7 +398,7 @@ function TrainerDialog({
       full_name: fullName.trim(),
       gender: isAdmin ? null : (gender || null),
       specialization: isAdmin ? null : (specialization.trim() || null),
-      bio: isAdmin ? null : (bio.trim() || null),
+      bio: bio.trim() || null,
       photo_url: photoUrl,
       telegram: isAdmin ? null : (telegram.trim() || null),
       whatsapp: isAdmin ? null : (whatsapp.trim() || null),
@@ -507,6 +507,17 @@ function TrainerDialog({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="bio">{role === "admin" ? "Об администраторе" : "О тренере"}</Label>
+            <Textarea
+              id="bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={3}
+              placeholder={role === "admin" ? "Должность, обязанности, контакты" : "Опыт, достижения, подход к работе"}
+            />
+          </div>
+
           {role === "trainer" && (
             <>
               <div className="space-y-1.5">
@@ -535,16 +546,6 @@ function TrainerDialog({
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="bio">О тренере</Label>
-                <Textarea
-                  id="bio"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={3}
-                  placeholder="Опыт, достижения, подход к работе"
-                />
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

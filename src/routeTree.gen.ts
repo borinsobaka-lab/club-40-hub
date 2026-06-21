@@ -15,18 +15,13 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
-import { Route as AuthenticatedMusicRouteImport } from './routes/_authenticated/music'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
-import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
-import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
-import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -57,11 +52,6 @@ const AuthenticatedTrainersRoute = AuthenticatedTrainersRouteImport.update({
   path: '/trainers',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
   id: '/schedule',
   path: '/schedule',
@@ -72,30 +62,15 @@ const AuthenticatedNpsRoute = AuthenticatedNpsRouteImport.update({
   path: '/nps',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedMusicRoute = AuthenticatedMusicRouteImport.update({
-  id: '/music',
-  path: '/music',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedMembershipsRoute =
   AuthenticatedMembershipsRouteImport.update({
     id: '/memberships',
     path: '/memberships',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
-  id: '/events',
-  path: '/events',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
@@ -113,46 +88,30 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAnnouncementsRoute =
-  AuthenticatedAnnouncementsRouteImport.update({
-    id: '/announcements',
-    path: '/announcements',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
-  '/events': typeof AuthenticatedEventsRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
-  '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
-  '/music': typeof AuthenticatedMusicRoute
   '/nps': typeof AuthenticatedNpsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
-  '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/announcements': typeof AuthenticatedAnnouncementsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
-  '/events': typeof AuthenticatedEventsRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
-  '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
-  '/music': typeof AuthenticatedMusicRoute
   '/nps': typeof AuthenticatedNpsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
-  '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/chat': typeof ApiChatRoute
@@ -162,18 +121,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/announcements': typeof AuthenticatedAnnouncementsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
-  '/_authenticated/events': typeof AuthenticatedEventsRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
-  '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
-  '/_authenticated/music': typeof AuthenticatedMusicRoute
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
-  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/chat': typeof ApiChatRoute
@@ -184,36 +138,26 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/announcements'
     | '/assistant'
     | '/clients'
     | '/employees'
-    | '/events'
     | '/feedback'
-    | '/members'
     | '/memberships'
-    | '/music'
     | '/nps'
     | '/schedule'
-    | '/settings'
     | '/trainers'
     | '/workouts'
     | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
-    | '/announcements'
     | '/assistant'
     | '/clients'
     | '/employees'
-    | '/events'
     | '/feedback'
-    | '/members'
     | '/memberships'
-    | '/music'
     | '/nps'
     | '/schedule'
-    | '/settings'
     | '/trainers'
     | '/workouts'
     | '/api/chat'
@@ -222,18 +166,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/announcements'
     | '/_authenticated/assistant'
     | '/_authenticated/clients'
     | '/_authenticated/employees'
-    | '/_authenticated/events'
     | '/_authenticated/feedback'
-    | '/_authenticated/members'
     | '/_authenticated/memberships'
-    | '/_authenticated/music'
     | '/_authenticated/nps'
     | '/_authenticated/schedule'
-    | '/_authenticated/settings'
     | '/_authenticated/trainers'
     | '/_authenticated/workouts'
     | '/api/chat'
@@ -290,13 +229,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrainersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/schedule': {
       id: '/_authenticated/schedule'
       path: '/schedule'
@@ -311,13 +243,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNpsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/music': {
-      id: '/_authenticated/music'
-      path: '/music'
-      fullPath: '/music'
-      preLoaderRoute: typeof AuthenticatedMusicRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/memberships': {
       id: '/_authenticated/memberships'
       path: '/memberships'
@@ -325,25 +250,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembershipsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/members': {
-      id: '/_authenticated/members'
-      path: '/members'
-      fullPath: '/members'
-      preLoaderRoute: typeof AuthenticatedMembersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/feedback': {
       id: '/_authenticated/feedback'
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/events': {
-      id: '/_authenticated/events'
-      path: '/events'
-      fullPath: '/events'
-      preLoaderRoute: typeof AuthenticatedEventsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/employees': {
@@ -367,47 +278,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/announcements': {
-      id: '/_authenticated/announcements'
-      path: '/announcements'
-      fullPath: '/announcements'
-      preLoaderRoute: typeof AuthenticatedAnnouncementsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAnnouncementsRoute: typeof AuthenticatedAnnouncementsRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
-  AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
-  AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
-  AuthenticatedMusicRoute: typeof AuthenticatedMusicRoute
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTrainersRoute: typeof AuthenticatedTrainersRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAnnouncementsRoute: AuthenticatedAnnouncementsRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
-  AuthenticatedEventsRoute: AuthenticatedEventsRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
-  AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
-  AuthenticatedMusicRoute: AuthenticatedMusicRoute,
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
-  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTrainersRoute: AuthenticatedTrainersRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
@@ -424,13 +318,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
