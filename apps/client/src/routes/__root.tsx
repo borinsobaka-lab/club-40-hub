@@ -136,6 +136,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AppShell />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
