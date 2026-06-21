@@ -94,7 +94,7 @@ function HomePage() {
   return (
     <PageShell
       header={
-        <div className="pt-2 pb-6">
+        <div className="pt-2 pb-0">
           {/* Header */}
           <div className="px-4 flex items-center justify-between">
             <Link
@@ -149,7 +149,7 @@ function HomePage() {
                 <span className="text-sm">Пока нет новостей</span>
               </div>
             ) : (
-              <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
+              <div className="flex gap-3 overflow-x-auto px-4 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
                 {news.map((n) => (
                   <button
                     key={n.id}
@@ -188,17 +188,17 @@ function HomePage() {
           </section>
 
           {/* Быстрые действия */}
-          <section className="px-4 pt-2">
-            <div className="rounded-2xl bg-white/10 p-2">
+          <section className="px-4 my-3">
+            <div className="rounded-2xl bg-white/10 p-1.5">
               <div className="flex items-stretch justify-between gap-2">
                 {[
                   { icon: CalendarDays, label: "Расписание" },
                   { icon: BarChart3, label: "Прогресс" },
                   { icon: Target, label: "Цели" },
                 ].map((item) => (
-                  <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
+                  <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1">
                     <item.icon className="h-5 w-5 text-white" />
-                    <span className="text-[11px] text-white/80">{item.label}</span>
+                    <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
                   </div>
                 ))}
               </div>
