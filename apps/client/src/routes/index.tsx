@@ -141,16 +141,14 @@ function SchedulePage() {
             const isLast = idx === dayEntries.length - 1;
             return (
               <div key={c.id} className="relative flex gap-3 pb-4">
-                <div className="flex flex-col items-end w-12 shrink-0 pt-3">
+                <div className="flex flex-col items-center w-14 shrink-0 pt-1">
                   <div className="text-sm font-semibold tabular-nums leading-tight">
                     {fmtTime(c.starts_at)}
                   </div>
                   <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
                     {fmtTime(c.ends_at)}
                   </div>
-                </div>
-                <div className="relative flex flex-col items-center shrink-0">
-                  <div className="mt-4 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
+                  <div className="mt-2 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
                   {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
                 </div>
                 <Card className="p-4 flex items-center gap-3 flex-1 min-w-0">
