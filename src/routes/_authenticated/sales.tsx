@@ -485,6 +485,20 @@ function SaleDialog({
       }
     }
 
+    // Confirm replacement when client already has an active membership.
+    const { data: existing } = await supabase
+      .from("client_memberships")
+      .select("id, memberships(name)")
+      .eq("client_id", clientId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (existing) {
+      const name = (existing as { memberships: { name: string } | null }).memberships?.name ?? "—";
+      if (!confirm(`У клиента уже есть активный абонемент «${name}». Новая продажа заменит его. Продолжить?`)) {
+        return;
+      }
+    }
+
     setSaving(true);
     const { data: sale, error } = await supabase
       .from("sales")
@@ -498,6 +512,7 @@ function SaleDialog({
         total_amount: total,
         down_payment_amount: down,
         remaining_installments: remaining,
+        source: "admin",
         comment: comment.trim() || null,
       })
       .select("id")
