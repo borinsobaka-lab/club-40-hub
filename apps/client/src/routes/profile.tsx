@@ -276,8 +276,7 @@ function EditProfileSheet({
       .from("clients")
       .update(payload)
       .eq("user_id", user.id)
-      .select()
-      .maybeSingle();
+      .select();
     // Fallback if first_name/last_name columns don't exist yet on the DB side
     if (error && /first_name|last_name/.test(error.message)) {
       const { first_name: _f, last_name: _l, ...legacy } = payload;
@@ -286,8 +285,7 @@ function EditProfileSheet({
         .from("clients")
         .update(legacy)
         .eq("user_id", user.id)
-        .select()
-        .maybeSingle());
+        .select());
     }
     setSaving(false);
 
@@ -295,10 +293,33 @@ function EditProfileSheet({
       toast.error("Не удалось сохранить: " + error.message);
       return;
     }
+    const rows = (data as ClientRow[] | null) ?? [];
+    if (rows.length === 0) {
+      // No row matched, or RLS UPDATE policy blocked the write.
+      // Try to create the row for this user if it doesn't exist.
+      const insertPayload = { ...payload, user_id: user.id };
+      const { data: inserted, error: insertError } = await supabase
+        .from("clients")
+        .insert(insertPayload)
+        .select()
+        .maybeSingle();
+      if (insertError) {
+        toast.error(
+          "Не удалось сохранить. Проверьте права доступа (RLS) для таблицы clients: " +
+            insertError.message,
+        );
+        return;
+      }
+      toast.success("Профиль обновлён");
+      if (inserted) onSaved(inserted as ClientRow);
+      onOpenChange(false);
+      return;
+    }
     toast.success("Профиль обновлён");
-    if (data) onSaved(data as ClientRow);
+    onSaved(rows[0]);
     onOpenChange(false);
   };
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
