@@ -229,8 +229,8 @@ function SchedulePage() {
                         const meta = workoutTypeMeta(c.workout?.type);
                         const Icon = meta.icon;
                         return (
-                          <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${meta.bg}`}>
-                            <Icon className={`h-5 w-5 ${meta.color}`} />
+                          <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${meta.bg}`}>
+                            <Icon className={`h-4 w-4 ${meta.color}`} />
                           </div>
                         );
                       })()}
