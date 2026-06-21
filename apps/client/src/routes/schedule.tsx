@@ -118,7 +118,7 @@ function SchedulePage() {
       header={
         <div className="pt-4 pb-6 px-4">
           <h1 className="text-2xl font-bold">Расписание</h1>
-          <p className="text-sm text-muted-foreground">Выберите день и забронируйте тренировку</p>
+          <p className="text-sm text-white/70">Выберите день и забронируйте тренировку</p>
         </div>
       }
     >

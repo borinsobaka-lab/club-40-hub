@@ -98,7 +98,7 @@ function HomePage() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="text-xs text-muted-foreground">Профиль</div>
+                <div className="text-xs text-white/70">Профиль</div>
                 <div className="flex items-center gap-1 min-w-0">
                   <span className="font-semibold truncate">{fullName}</span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
