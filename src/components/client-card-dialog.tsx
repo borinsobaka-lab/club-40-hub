@@ -100,7 +100,7 @@ export function ClientCardDialog({
     setLoadingSales(true);
     supabase
       .from("sales")
-      .select("id, sold_at, total_amount, installments, admin_name, comment, memberships(name)")
+      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, admin_name, comment, memberships(name)")
       .eq("client_id", client.id)
       .order("sold_at", { ascending: false })
       .then(({ data, error }) => {
