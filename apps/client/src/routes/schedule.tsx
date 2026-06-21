@@ -140,7 +140,7 @@ function SchedulePage() {
               key={t.key}
               onClick={() => setActiveTab(t.key)}
               className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
-                active ? "text-foreground" : "text-card-foreground"
+                active ? "text-foreground" : "text-[#F4F4F5]"
               }`}
             >
               {t.label}
