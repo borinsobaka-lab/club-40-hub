@@ -186,7 +186,7 @@ function HomePage() {
         {/* Расписание на сегодня */}
         <section>
           <h2 className="text-2xl font-bold italic uppercase mb-3">
-            Расписание на сегодня
+            Тренировки
           </h2>
           <div className="rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
             <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
@@ -221,7 +221,7 @@ function HomePage() {
               <span className="text-sm">Пока нет услуг</span>
             </div>
           ) : (
-            <div className="-mx-4 pl-6 pr-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar">
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-6 scroll-pr-4">
               {news.map((n) => (
                 <div
                   key={n.id}
