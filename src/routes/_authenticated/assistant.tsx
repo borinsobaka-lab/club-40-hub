@@ -92,7 +92,7 @@ function AssistantPage() {
                 ].map((s) => (
                   <button
                     key={s}
-                    onClick={() => sendMessage({ text: s })}
+                    onClick={() => sendText(s)}
                     className="rounded-md border bg-muted/30 px-3 py-2 text-foreground transition hover:bg-muted"
                   >
                     {s}
@@ -151,6 +151,14 @@ function AssistantPage() {
       </div>
     </AdminShell>
   );
+}
+
+function formatAssistantError(error: Error) {
+  const message = error.message.trim();
+  if (!message || message.startsWith("<!doctype") || message.includes("This page didn't load")) {
+    return "Сервис ассистента временно недоступен. Попробуйте ещё раз.";
+  }
+  return message;
 }
 
 function MessageBubble({ message }: { message: UIMessage }) {
