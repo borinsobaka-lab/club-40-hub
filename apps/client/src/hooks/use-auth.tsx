@@ -10,7 +10,8 @@ type AuthCtx = {
   signUp: (
     email: string,
     password: string,
-    fullName: string,
+    firstName: string,
+    lastName: string,
   ) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
@@ -40,13 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error: error?.message ?? null };
     },
-    signUp: async (email, password, fullName) => {
+    signUp: async (email, password, firstName, lastName) => {
+      const fullName = [lastName, firstName].filter(Boolean).join(" ").trim();
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: { full_name: fullName },
+          data: { first_name: firstName, last_name: lastName, full_name: fullName },
         },
       });
       return { error: error?.message ?? null };
