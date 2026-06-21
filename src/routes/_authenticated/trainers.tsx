@@ -276,7 +276,7 @@ function TrainersPage() {
                       <TableCell>{t.role === "admin" ? "—" : genderLabel(t.gender)}</TableCell>
                       <TableCell>{t.role === "admin" ? "—" : (t.specialization ?? "—")}</TableCell>
                       <TableCell className="max-w-[320px] truncate text-muted-foreground">
-                        {t.role === "admin" ? "—" : (t.bio ?? "—")}
+                        {t.bio ?? "—"}
                       </TableCell>
                       <TableCell>
                         {t.role === "admin" ? (
