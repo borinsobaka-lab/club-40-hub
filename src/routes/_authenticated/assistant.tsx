@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Sparkles, Send, Loader2 } from "lucide-react";
+import { Cat, Send, Loader2, Mic, Square } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/assistant")({
   head: () => ({ meta: [{ title: "Kate — AI ассистент" }] }),
@@ -53,7 +54,7 @@ function AssistantPage() {
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-purple-500 to-cyan-500 text-white">
-                <Sparkles className="h-7 w-7" />
+                <Cat className="h-7 w-7" />
               </div>
               <div>
                 <p className="text-base font-medium text-foreground">Привет! Я Kate.</p>
@@ -106,6 +107,12 @@ function AssistantPage() {
               placeholder="Напишите вопрос Kate…"
               rows={1}
               className="min-h-[40px] resize-none"
+            />
+            <VoiceInputButton
+              disabled={isLoading}
+              onTranscribed={(text) =>
+                setInput((prev) => (prev ? `${prev} ${text}` : text).trim())
+              }
             />
             <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
               <Send className="h-4 w-4" />
