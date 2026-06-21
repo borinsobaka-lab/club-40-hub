@@ -10,12 +10,20 @@ import { PageShell } from "@/components/page-shell";
 export const Route = createFileRoute("/schedule")({
   head: () => ({
     meta: [
-      { title: "Расписание — CLUB 40" },
-      { name: "description", content: "Расписание тренировок CLUB 40 на ближайшие дни." },
+      { title: "Бронь — CLUB 40" },
+      { name: "description", content: "Бронирование занятий CLUB 40." },
     ],
   }),
   component: SchedulePage,
 });
+
+const TABS = [
+  { key: "class", label: "Класс" },
+  { key: "personal", label: "Персональные" },
+  { key: "diagnostics", label: "Диагностика" },
+  { key: "mine", label: "Мои бронирования" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
 
 type Entry = {
   id: string;
