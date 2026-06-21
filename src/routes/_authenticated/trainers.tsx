@@ -391,18 +391,20 @@ function TrainerDialog({
       return;
     }
     setSaving(true);
+    const isAdmin = role === "admin";
     const payload = {
       studio_id: studioId,
+      role,
       full_name: fullName.trim(),
-      gender: gender || null,
-      specialization: specialization.trim() || null,
-      bio: bio.trim() || null,
+      gender: isAdmin ? null : (gender || null),
+      specialization: isAdmin ? null : (specialization.trim() || null),
+      bio: isAdmin ? null : (bio.trim() || null),
       photo_url: photoUrl,
-      telegram: telegram.trim() || null,
-      whatsapp: whatsapp.trim() || null,
-      instagram: instagram.trim() || null,
-      facebook: facebook.trim() || null,
-      tiktok: tiktok.trim() || null,
+      telegram: isAdmin ? null : (telegram.trim() || null),
+      whatsapp: isAdmin ? null : (whatsapp.trim() || null),
+      instagram: isAdmin ? null : (instagram.trim() || null),
+      facebook: isAdmin ? null : (facebook.trim() || null),
+      tiktok: isAdmin ? null : (tiktok.trim() || null),
     };
     const { error } = trainer
       ? await supabase.from("trainers").update(payload).eq("id", trainer.id)
@@ -412,7 +414,7 @@ function TrainerDialog({
       toast.error("Ошибка сохранения: " + error.message);
       return;
     }
-    toast.success(trainer ? "Тренер обновлён" : "Тренер добавлен");
+    toast.success(trainer ? "Сохранено" : "Добавлено");
     onOpenChange(false);
     onSaved();
   };
