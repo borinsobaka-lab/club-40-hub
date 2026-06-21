@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { LogOut, Loader2, Pencil } from "lucide-react";
+import { LogOut, Loader2, Pencil, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,32 +51,25 @@ type ClientRow = {
   phone?: string | null;
   birthday?: string | null;
   gender?: string | null;
+  avatar_url?: string | null;
+};
+
+type ClientUpdate = {
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  phone?: string | null;
+  email?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
+  avatar_url?: string | null;
 };
 
 const profileSchema = z.object({
-  first_name: z
-    .string()
-    .trim()
-    .min(1, "Укажите имя")
-    .max(60, "Слишком длинное имя"),
-  last_name: z
-    .string()
-    .trim()
-    .min(1, "Укажите фамилию")
-    .max(60, "Слишком длинная фамилия"),
-  phone: z
-    .string()
-    .trim()
-    .max(32, "Слишком длинный номер")
-    .optional()
-    .or(z.literal("")),
-  email: z
-    .string()
-    .trim()
-    .email("Некорректный email")
-    .max(255)
-    .optional()
-    .or(z.literal("")),
+  first_name: z.string().trim().min(1, "Укажите имя").max(60, "Слишком длинное имя"),
+  last_name: z.string().trim().min(1, "Укажите фамилию").max(60, "Слишком длинная фамилия"),
+  phone: z.string().trim().max(32, "Слишком длинный номер").optional().or(z.literal("")),
+  email: z.string().trim().email("Некорректный email").max(255).optional().or(z.literal("")),
   birthday: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
 });
@@ -94,11 +87,20 @@ function splitFullName(full: string | null | undefined): { first: string; last: 
   return { last: parts[0], first: parts.slice(1).join(" ") };
 }
 
+/** Получить временный URL для приватной аватарки. */
+async function loadAvatarUrl(path: string | null | undefined): Promise<string | null> {
+  if (!path) return null;
+  if (/^(https?:|data:|blob:)/i.test(path)) return path;
+  const { data } = await supabase.storage.from("avatars").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
+}
+
 function ProfilePage() {
   const { user, signOut } = useAuth();
   const [client, setClient] = useState<ClientRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -111,7 +113,7 @@ function ProfilePage() {
         .eq("user_id", user.id)
         .maybeSingle();
       if (!cancelled) {
-        setClient((data as ClientRow) ?? null);
+        setClient((data as ClientRow | null) ?? null);
         setLoading(false);
       }
     };
@@ -132,6 +134,16 @@ function ProfilePage() {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAvatarUrl(client?.avatar_url).then((url) => {
+      if (!cancelled) setAvatarUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client?.avatar_url]);
 
   const fullName =
     composeFullName(client) ||
@@ -155,6 +167,7 @@ function ProfilePage() {
         <Card className="p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
               </AvatarFallback>
@@ -170,9 +183,7 @@ function ProfilePage() {
             <div>
               <div className="text-xs text-muted-foreground">Дата рождения</div>
               <div className="font-medium">
-                {birthday
-                  ? new Date(birthday).toLocaleDateString("ru-RU")
-                  : "—"}
+                {birthday ? new Date(birthday).toLocaleDateString("ru-RU") : "—"}
               </div>
             </div>
             <div>
@@ -204,6 +215,7 @@ function ProfilePage() {
             open={editOpen}
             onOpenChange={setEditOpen}
             client={client}
+            avatarUrl={avatarUrl}
             onSaved={(updated) => setClient((prev) => ({ ...prev, ...updated }))}
           />
         )}
@@ -216,14 +228,17 @@ function EditProfileSheet({
   open,
   onOpenChange,
   client,
+  avatarUrl,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client: ClientRow;
+  avatarUrl: string | null;
   onSaved: (updated: ClientRow) => void;
 }) {
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const initial = (() => {
     const split = splitFullName(client.full_name);
     return {
@@ -237,6 +252,8 @@ function EditProfileSheet({
   })();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -249,8 +266,55 @@ function EditProfileSheet({
         birthday: client.birthday ?? "",
         gender: client.gender ?? "",
       });
+      setLocalAvatarPreview(null);
     }
   }, [open, client]);
+
+  const handlePickAvatar = () => fileInputRef.current?.click();
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Выберите файл изображения");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Файл слишком большой (макс. 5 МБ)");
+      return;
+    }
+    setUploading(true);
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) {
+      setUploading(false);
+      toast.error("Не удалось загрузить: " + uploadError.message);
+      return;
+    }
+
+    const update: ClientUpdate = { avatar_url: path };
+    const { data, error } = await supabase
+      .from("clients")
+      .update(update)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+    setUploading(false);
+    if (error) {
+      toast.error("Не удалось сохранить аватар: " + error.message);
+      return;
+    }
+    const { data: signed } = await supabase.storage
+      .from("avatars")
+      .createSignedUrl(path, 60 * 60);
+    setLocalAvatarPreview(signed?.signedUrl ?? null);
+    if (data) onSaved(data as ClientRow);
+    toast.success("Аватар обновлён");
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -261,7 +325,7 @@ function EditProfileSheet({
     }
     const v = parsed.data;
     const fullName = [v.last_name, v.first_name].filter(Boolean).join(" ").trim();
-    const payload: Record<string, unknown> = {
+    const payload: ClientUpdate = {
       first_name: v.first_name,
       last_name: v.last_name,
       full_name: fullName,
@@ -272,21 +336,11 @@ function EditProfileSheet({
     };
 
     setSaving(true);
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("clients")
       .update(payload)
       .eq("user_id", user.id)
       .select();
-    // Fallback if first_name/last_name columns don't exist yet on the DB side
-    if (error && /first_name|last_name/.test(error.message)) {
-      const { first_name: _f, last_name: _l, ...legacy } = payload;
-      void _f; void _l;
-      ({ data, error } = await supabase
-        .from("clients")
-        .update(legacy)
-        .eq("user_id", user.id)
-        .select());
-    }
     setSaving(false);
 
     if (error) {
@@ -295,8 +349,6 @@ function EditProfileSheet({
     }
     const rows = (data as ClientRow[] | null) ?? [];
     if (rows.length === 0) {
-      // No row matched, or RLS UPDATE policy blocked the write.
-      // Try to create the row for this user if it doesn't exist.
       const insertPayload = { ...payload, user_id: user.id };
       const { data: inserted, error: insertError } = await supabase
         .from("clients")
@@ -304,10 +356,7 @@ function EditProfileSheet({
         .select()
         .maybeSingle();
       if (insertError) {
-        toast.error(
-          "Не удалось сохранить. Проверьте права доступа (RLS) для таблицы clients: " +
-            insertError.message,
-        );
+        toast.error("Не удалось сохранить: " + insertError.message);
         return;
       }
       toast.success("Профиль обновлён");
@@ -320,6 +369,8 @@ function EditProfileSheet({
     onOpenChange(false);
   };
 
+  const displayName = composeFullName(client) || "Участник";
+  const previewSrc = localAvatarPreview ?? avatarUrl;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -332,6 +383,41 @@ function EditProfileSheet({
         </SheetHeader>
 
         <div className="space-y-4 py-4">
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePickAvatar}
+              disabled={uploading}
+              className="relative group"
+              aria-label="Изменить аватар"
+            >
+              <Avatar className="h-24 w-24">
+                {previewSrc && <AvatarImage src={previewSrc} alt={displayName} />}
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+                  {initials(displayName)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center shadow-md ring-2 ring-background">
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePickAvatar}
+              disabled={uploading}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {uploading ? "Загрузка…" : "Изменить фото"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="last_name">Фамилия</Label>
             <Input
