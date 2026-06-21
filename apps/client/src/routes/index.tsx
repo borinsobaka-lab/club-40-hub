@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Gift, ChevronRight, Newspaper, Ghost } from "lucide-react";
+import { Bell, Gift, ChevronRight, Newspaper, Ghost, CalendarDays, BarChart3, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,6 +186,26 @@ function HomePage() {
       }
     >
       <div className="px-4 pt-6 pb-8 space-y-8">
+        {/* Быстрые действия */}
+        <section className="rounded-2xl bg-[#25262A] p-4">
+          <div className="flex items-stretch justify-between gap-2">
+            {[
+              { icon: CalendarDays, label: "Расписание" },
+              { icon: BarChart3, label: "Прогресс" },
+              { icon: Target, label: "Цели" },
+            ].map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                className="flex flex-1 flex-col items-center gap-2 rounded-xl bg-background/50 px-2 py-3 active:bg-background/70 transition-colors"
+              >
+                <item.icon className="h-6 w-6 text-white" />
+                <span className="text-xs text-white/80">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* Тренировки */}
         <section>
           <h2 className="text-2xl font-bold italic uppercase mb-3">
