@@ -8,6 +8,7 @@ export type WorkoutDrawerData = {
   id: string;
   name: string;
   trainerName: string | null;
+  trainerPhoto: string | null;
 };
 
 export function WorkoutDrawer({
@@ -44,15 +45,23 @@ export function WorkoutDrawer({
                     </DrawerPrimitive.Title>
                     {data.trainerName && (
                       <div className="mt-3 flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
-                          {data.trainerName
-                            .split(/\s+/)
-                            .map((p) => p[0])
-                            .filter(Boolean)
-                            .slice(0, 2)
-                            .join("")
-                            .toUpperCase()}
-                        </div>
+                        {data.trainerPhoto ? (
+                          <img
+                            src={data.trainerPhoto}
+                            alt={data.trainerName}
+                            className="h-8 w-8 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0">
+                            {data.trainerName
+                              .split(/\s+/)
+                              .map((p) => p[0])
+                              .filter(Boolean)
+                              .slice(0, 2)
+                              .join("")
+                              .toUpperCase()}
+                          </div>
+                        )}
                         <div className="text-sm text-muted-foreground truncate">
                           {data.trainerName}
                         </div>
