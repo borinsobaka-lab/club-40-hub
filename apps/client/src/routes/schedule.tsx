@@ -40,9 +40,6 @@ function addDays(d: Date, n: number) {
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
-function durationMin(s: string, e: string) {
-  return Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60000);
-}
 
 const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
   strength: { label: "Силовая", icon: Dumbbell, cls: "bg-red-500/10 text-red-600 border-red-500/20" },
@@ -185,6 +182,8 @@ function SchedulePage() {
                   .filter(Boolean)
                   .join(", ") || "—";
               const isLast = idx === dayEntries.length - 1;
+              // TODO: replace with real capacity/bookings data from backend
+              const spotsLeft = ((c.id.charCodeAt(0) + c.id.charCodeAt(1)) % 8) + 2;
               return (
                 <div key={c.id} className="relative flex gap-3 pb-4">
                   <div className="flex flex-col items-center w-14 shrink-0 pt-1">
@@ -194,30 +193,32 @@ function SchedulePage() {
                     <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
                       {fmtTime(c.ends_at)}
                     </div>
-                    <div className="mt-2 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
+                    <div className="mt-2 h-2.5 w-2.5 rounded-full bg-[#FFE500] shrink-0" />
                     {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
                   </div>
-                  <Card className="p-4 flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
-                      <div className="text-xs text-muted-foreground truncate">{coaches}</div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {(() => {
-                          const meta = workoutTypeMeta(c.workout?.type);
-                          const Icon = meta.icon;
-                          return (
-                            <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
-                              <Icon className="h-3 w-3" />
-                              {meta.label}
-                            </Badge>
-                          );
-                        })()}
-                        <Badge variant="secondary" className="text-[10px]">
-                          {durationMin(c.starts_at, c.ends_at)} мин
-                        </Badge>
-                      </div>
+                  <Card className="p-4 flex flex-col gap-3 flex-1 min-w-0">
+                    <div className="font-semibold break-words leading-snug">
+                      {c.workout?.name ?? "Занятие"}
                     </div>
-                    <Button size="sm">Записаться</Button>
+                    <div className="text-xs text-muted-foreground break-words">{coaches}</div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(() => {
+                        const meta = workoutTypeMeta(c.workout?.type);
+                        const Icon = meta.icon;
+                        return (
+                          <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
+                            <Icon className="h-3 w-3" />
+                            {meta.label}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex items-center justify-end gap-3 mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        осталось {spotsLeft} мест
+                      </span>
+                      <Button size="sm">Записаться</Button>
+                    </div>
                   </Card>
                 </div>
               );
