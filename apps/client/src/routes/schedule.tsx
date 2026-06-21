@@ -83,7 +83,7 @@ function SchedulePage() {
     (async () => {
       setLoading(true);
       setError(null);
-      const from = today.toISOString();
+      const from = addDays(today, -3).toISOString();
       const to = addDays(today, 7).toISOString();
       const { data, error } = await supabase
         .from("schedule_entries")
