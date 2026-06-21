@@ -155,7 +155,7 @@ function HomePage() {
                     key={n.id}
                     type="button"
                     onClick={() => setOpenNewsId(n.id)}
-                    className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
+                    className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform border border-white/10"
                   >
                     {(() => {
                       const url = mediaUrl(n.image_url);
