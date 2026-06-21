@@ -51,7 +51,7 @@ type ClientRow = {
   phone?: string | null;
   birthday?: string | null;
   gender?: string | null;
-  photo_url?: string | null;
+  avatar_url?: string | null;
 };
 
 type ClientUpdate = {
@@ -147,7 +147,7 @@ function ProfilePage() {
         <Card className="p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
+              {client?.avatar_url && <AvatarImage src={client.avatar_url} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
               </AvatarFallback>
@@ -228,7 +228,7 @@ function EditProfileSheet({
   })();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(client.photo_url ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(client.avatar_url ?? null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -257,7 +257,7 @@ function EditProfileSheet({
     }
     const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
     const publicUrl = pub.publicUrl;
-    const avatarUpdate = { photo_url: publicUrl } as never;
+    const avatarUpdate = { avatar_url: publicUrl } as never;
     const { data: updated, error: dbErr } = await supabase
       .from("clients")
       .update(avatarUpdate)
