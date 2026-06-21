@@ -28,6 +28,7 @@ type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
+  trainer_name: string | null;
   workout: { name: string; type: string | null } | null;
 };
 
@@ -47,19 +48,21 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string; bg: string }> = {
-  strength: { label: "Силовая", icon: Dumbbell, color: "text-red-600", bg: "bg-red-500/10" },
-  cardio: { label: "Кардио", icon: HeartPulse, color: "text-blue-600", bg: "bg-blue-500/10" },
-  hybrid: { label: "Гибрид", icon: Shuffle, color: "text-violet-600", bg: "bg-violet-500/10" },
-  recovery: { label: "Восстановление", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-500/10" },
+const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string; bg: string; stripe: string }> = {
+  cardio: { label: "Кардио", icon: HeartPulse, color: "text-blue-600", bg: "bg-blue-500/10", stripe: "bg-blue-500" },
+  strength: { label: "Силовая", icon: Dumbbell, color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
+  hybrid: { label: "Гибрид", icon: Shuffle, color: "text-violet-600", bg: "bg-violet-500/10", stripe: "bg-violet-500" },
+  recovery: { label: "Восстановление", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-500/10", stripe: "bg-emerald-500" },
 };
 
+const TYPE_ORDER = ["cardio", "strength", "hybrid", "recovery"];
+
 function workoutTypeMeta(type: string | null | undefined) {
-  if (!type) return { label: "Тренировка", icon: Activity, color: "text-muted-foreground", bg: "bg-muted" };
+  if (!type) return { label: "Тренировка", icon: Activity, color: "text-muted-foreground", bg: "bg-muted", stripe: "bg-muted-foreground/40" };
   const key = type.toLowerCase().trim();
   if (TYPE_META[key]) return TYPE_META[key];
   const byLabel = Object.values(TYPE_META).find((m) => m.label.toLowerCase() === key);
-  return byLabel ?? { label: type, icon: Activity, color: "text-muted-foreground", bg: "bg-muted" };
+  return byLabel ?? { label: type, icon: Activity, color: "text-muted-foreground", bg: "bg-muted", stripe: "bg-muted-foreground/40" };
 }
 
 function SchedulePage() {
@@ -82,7 +85,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, workout:workouts(name, type)",
+          "id, starts_at, ends_at, trainer_name, workout:workouts(name, type)",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -106,7 +109,7 @@ function SchedulePage() {
       const t = e.workout?.type?.toLowerCase().trim();
       if (t) set.add(t);
     });
-    return Array.from(set);
+    return TYPE_ORDER.filter((t) => set.has(t));
   }, [entries]);
 
   const dayEntries = entries.filter((e) => {
@@ -213,6 +216,7 @@ function SchedulePage() {
           ) : (
             <div className="relative">
               {dayEntries.map((c) => {
+                const meta = workoutTypeMeta(c.workout?.type);
                 return (
                   <div key={c.id} className="relative flex gap-3 pb-4">
                     <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right pr-2">
@@ -223,20 +227,17 @@ function SchedulePage() {
                         {fmtTime(c.ends_at)}
                       </div>
                     </div>
-                    <Card className="p-3 flex items-center gap-3 flex-1 min-w-0">
-                      {(() => {
-                        const meta = workoutTypeMeta(c.workout?.type);
-                        const Icon = meta.icon;
-                        return (
-                          <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${meta.bg}`}>
-                            <Icon className={`h-4 w-4 ${meta.color}`} />
-                          </div>
-                        );
-                      })()}
+                    <Card className="relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold break-words leading-snug">
                           {c.workout?.name ?? "Занятие"}
                         </div>
+                        {c.trainer_name && (
+                          <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {c.trainer_name}
+                          </div>
+                        )}
                       </div>
                       <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center">
                         <Plus className="h-6 w-6" strokeWidth={2.5} />
