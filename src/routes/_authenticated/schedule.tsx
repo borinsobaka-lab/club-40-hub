@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { workoutTypeColor } from "@/lib/workout-types";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
   head: () => ({ meta: [{ title: "Расписание — CLUB 40 Admin" }] }),
