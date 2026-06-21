@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bell, ChevronRight, Newspaper, Ghost, Phone, MessageSquare, Star } from "lucide-react";
 import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ type MyBooking = {
 function HomePage() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState<string>("Участник");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [news, setNews] = useState<News[] | null>(null);
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
@@ -85,7 +86,7 @@ function HomePage() {
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        const row = data as { full_name?: string | null; first_name?: string | null; last_name?: string | null } | null;
+        const row = data as { full_name?: string | null; first_name?: string | null; last_name?: string | null; photo_url?: string | null } | null;
         const composed = [row?.last_name, row?.first_name].filter(Boolean).join(" ").trim();
         const name =
           composed ||
@@ -93,6 +94,7 @@ function HomePage() {
           (user.user_metadata?.full_name as string | undefined) ||
           "Участник";
         setFullName(name);
+        setAvatarUrl(row?.photo_url ?? null);
       });
     return () => {
       cancelled = true;
@@ -136,6 +138,7 @@ function HomePage() {
               className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition-colors"
             >
               <Avatar className="h-11 w-11">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {initials(fullName)}
                 </AvatarFallback>
