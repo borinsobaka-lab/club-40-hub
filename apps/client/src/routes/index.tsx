@@ -44,10 +44,10 @@ function durationMin(s: string, e: string) {
 }
 
 const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
-  silovaya: { label: "Силовая", icon: Dumbbell, cls: "bg-red-500/10 text-red-600 border-red-500/20" },
+  strength: { label: "Силовая", icon: Dumbbell, cls: "bg-red-500/10 text-red-600 border-red-500/20" },
   cardio: { label: "Кардио", icon: HeartPulse, cls: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  gibrid: { label: "Гибрид", icon: Shuffle, cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
-  vosstanovlenie: { label: "Восстановление", icon: Leaf, cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+  hybrid: { label: "Гибрид", icon: Shuffle, cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
+  recovery: { label: "Восстановление", icon: Leaf, cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
 };
 
 function workoutTypeMeta(type: string | null | undefined) {
