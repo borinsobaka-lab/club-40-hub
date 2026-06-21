@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
