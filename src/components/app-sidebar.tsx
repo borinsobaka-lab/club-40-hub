@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Smartphone, Newspaper } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Newspaper } from "lucide-react";
 
 import {
   Sidebar,
@@ -39,8 +39,7 @@ const mobileItems = [
   { title: "Новости", url: "/news", icon: Newspaper },
 ];
 
-// reference Smartphone icon to satisfy bundler tree-shake of unused imports
-void Smartphone;
+
 
 const accessItems = [
   { title: "Доступы", url: "/employees", icon: UserCog },
