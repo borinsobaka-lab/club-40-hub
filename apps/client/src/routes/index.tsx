@@ -227,10 +227,10 @@ function HomePage() {
 
           {/* Быстрые действия */}
           <section className="px-4 my-3">
-            <div className="rounded-2xl bg-white/10 p-1.5">
+            <div className="rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-1.5">
               <div className="flex items-stretch justify-between gap-2">
                 {[
-                  { icon: MessageSquare, label: "Связаться" },
+                  { icon: MessageSquare, label: "Написать" },
                   { icon: Phone, label: "Позвонить" },
                   { icon: Star, label: "Фидбэк" },
                 ].map((item) => (
