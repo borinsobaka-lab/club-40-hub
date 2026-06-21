@@ -22,7 +22,6 @@ type Entry = {
   starts_at: string;
   ends_at: string;
   workout: { name: string; type: string | null } | null;
-  schedule_entry_trainers: { trainer: { full_name: string } | null }[];
 };
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
@@ -75,7 +74,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, workout:workouts(name, type), schedule_entry_trainers(trainer:trainers(full_name))",
+          "id, starts_at, ends_at, workout:workouts(name, type)",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -176,11 +175,6 @@ function SchedulePage() {
         ) : (
           <div className="relative">
             {dayEntries.map((c, idx) => {
-              const coaches =
-                c.schedule_entry_trainers
-                  ?.map((x) => x.trainer?.full_name)
-                  .filter(Boolean)
-                  .join(", ") || "—";
               const isLast = idx === dayEntries.length - 1;
               // TODO: replace with real capacity/bookings data from backend
               const spotsLeft = ((c.id.charCodeAt(0) + c.id.charCodeAt(1)) % 8) + 2;
@@ -200,7 +194,6 @@ function SchedulePage() {
                     <div className="font-semibold break-words leading-snug">
                       {c.workout?.name ?? "Занятие"}
                     </div>
-                    <div className="text-xs text-muted-foreground break-words">{coaches}</div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {(() => {
                         const meta = workoutTypeMeta(c.workout?.type);
