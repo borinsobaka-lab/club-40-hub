@@ -44,7 +44,8 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
     const { data: roles, error: rolesErr } = await admin
       .from("user_roles")
       .select("user_id, role, created_at")
-      .eq("studio_id", studioId);
+      .eq("studio_id", studioId)
+      .in("role", ["owner", "admin", "trainer"]);
     if (rolesErr) throw new Error(rolesErr.message);
 
     const userIds = Array.from(new Set((roles ?? []).map((r: any) => r.user_id as string)));
@@ -86,7 +87,7 @@ const createSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   full_name: z.string().min(1),
-  role: z.enum(["owner", "admin", "trainer", "member"]),
+  role: z.enum(["owner", "admin", "trainer"]),
 });
 
 export const createEmployee = createServerFn({ method: "POST" })

@@ -38,7 +38,7 @@ function EmployeesPage() {
   });
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "trainer" as const });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "trainer" as "owner" | "admin" | "trainer" });
 
   const createMut = useMutation({
     mutationFn: (input: typeof form) => createFn({ data: input }),
@@ -108,7 +108,6 @@ function EmployeesPage() {
                       <SelectItem value="owner">Владелец</SelectItem>
                       <SelectItem value="admin">Администратор</SelectItem>
                       <SelectItem value="trainer">Тренер</SelectItem>
-                      <SelectItem value="member">Участник</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
