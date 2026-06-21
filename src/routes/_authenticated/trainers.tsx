@@ -546,16 +546,6 @@ function TrainerDialog({
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="bio">О тренере</Label>
-                <Textarea
-                  id="bio"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={3}
-                  placeholder="Опыт, достижения, подход к работе"
-                />
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
