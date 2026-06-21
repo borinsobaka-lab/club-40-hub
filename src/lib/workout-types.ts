@@ -1,15 +1,14 @@
-export type WorkoutType = "strength" | "cardio" | "hybrid" | "recovery";
+export type DayType = "strength" | "cardio" | "hybrid" | "recovery";
 
-export const WORKOUT_TYPES: { value: WorkoutType; label: string }[] = [
+export const DAY_TYPES: { value: DayType; label: string }[] = [
   { value: "strength", label: "Силовая" },
   { value: "cardio", label: "Кардио" },
   { value: "hybrid", label: "Гибрид" },
   { value: "recovery", label: "Восстановление" },
 ];
 
-// Distinct, accessible colors per workout type.
-export const WORKOUT_TYPE_COLORS: Record<
-  WorkoutType,
+export const DAY_TYPE_COLORS: Record<
+  DayType,
   { dot: string; bg: string; text: string; border: string; hex: string }
 > = {
   strength: {
@@ -42,13 +41,20 @@ export const WORKOUT_TYPE_COLORS: Record<
   },
 };
 
-export function workoutTypeLabel(v: string | null | undefined) {
-  return WORKOUT_TYPES.find((t) => t.value === v)?.label ?? "—";
+export function dayTypeLabel(v: string | null | undefined) {
+  return DAY_TYPES.find((t) => t.value === v)?.label ?? "—";
 }
 
-export function workoutTypeColor(v: string | null | undefined) {
-  if (v && v in WORKOUT_TYPE_COLORS) {
-    return WORKOUT_TYPE_COLORS[v as WorkoutType];
+export function dayTypeColor(v: string | null | undefined) {
+  if (v && v in DAY_TYPE_COLORS) {
+    return DAY_TYPE_COLORS[v as DayType];
   }
   return null;
 }
+
+// Backwards compatibility aliases (kept so existing imports keep working).
+export type WorkoutType = DayType;
+export const WORKOUT_TYPES = DAY_TYPES;
+export const WORKOUT_TYPE_COLORS = DAY_TYPE_COLORS;
+export const workoutTypeLabel = dayTypeLabel;
+export const workoutTypeColor = dayTypeColor;
