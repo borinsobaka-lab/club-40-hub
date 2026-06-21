@@ -184,18 +184,18 @@ function WorkoutsPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Поиск по названию или описанию"
-                  className="pl-8"
+                  className="h-8 pl-8"
                 />
               </div>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="sm:w-[200px]">
+                <SelectTrigger className="h-8 sm:w-[200px]">
                   <SelectValue placeholder="Все типы" />
                 </SelectTrigger>
                 <SelectContent>
