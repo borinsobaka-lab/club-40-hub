@@ -507,90 +507,94 @@ function TrainerDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="gender">Пол</Label>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="gender">
-                <SelectValue placeholder="Не указан" />
-              </SelectTrigger>
-              <SelectContent>
-                {GENDERS.map((g) => (
-                  <SelectItem key={g.value} value={g.value}>
-                    {g.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {role === "trainer" && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="gender">Пол</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger id="gender">
+                    <SelectValue placeholder="Не указан" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="specialization">Специализация</Label>
-            <Input
-              id="specialization"
-              value={specialization}
-              onChange={(e) => setSpecialization(e.target.value)}
-              placeholder="Силовой тренинг, кроссфит"
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="specialization">Специализация</Label>
+                <Input
+                  id="specialization"
+                  value={specialization}
+                  onChange={(e) => setSpecialization(e.target.value)}
+                  placeholder="Силовой тренинг, кроссфит"
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="bio">О тренере</Label>
-            <Textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={3}
-              placeholder="Опыт, достижения, подход к работе"
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bio">О тренере</Label>
+                <Textarea
+                  id="bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={3}
+                  placeholder="Опыт, достижения, подход к работе"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="telegram">Telegram</Label>
-              <Input
-                id="telegram"
-                value={telegram}
-                onChange={(e) => setTelegram(e.target.value)}
-                placeholder="username или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="whatsapp">WhatsApp</Label>
-              <Input
-                id="whatsapp"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="+7... или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="instagram">Instagram</Label>
-              <Input
-                id="instagram"
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-                placeholder="username или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="facebook">Facebook</Label>
-              <Input
-                id="facebook"
-                value={facebook}
-                onChange={(e) => setFacebook(e.target.value)}
-                placeholder="username или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tiktok">TikTok</Label>
-              <Input
-                id="tiktok"
-                value={tiktok}
-                onChange={(e) => setTiktok(e.target.value)}
-                placeholder="@username или ссылка"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="telegram">Telegram</Label>
+                  <Input
+                    id="telegram"
+                    value={telegram}
+                    onChange={(e) => setTelegram(e.target.value)}
+                    placeholder="username или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="whatsapp">WhatsApp</Label>
+                  <Input
+                    id="whatsapp"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="+7... или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="instagram">Instagram</Label>
+                  <Input
+                    id="instagram"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    placeholder="username или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="facebook">Facebook</Label>
+                  <Input
+                    id="facebook"
+                    value={facebook}
+                    onChange={(e) => setFacebook(e.target.value)}
+                    placeholder="username или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiktok">TikTok</Label>
+                  <Input
+                    id="tiktok"
+                    value={tiktok}
+                    onChange={(e) => setTiktok(e.target.value)}
+                    placeholder="@username или ссылка"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
