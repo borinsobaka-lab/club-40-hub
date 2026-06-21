@@ -37,9 +37,11 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/trainers")({
-  head: () => ({ meta: [{ title: "Тренеры — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Сотрудники — CLUB 40 Admin" }] }),
   component: TrainersPage,
 });
+
+type TrainerRole = "trainer" | "admin";
 
 type Trainer = {
   id: string;
@@ -54,6 +56,7 @@ type Trainer = {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  role: TrainerRole;
 };
 
 const GENDERS = [
@@ -63,6 +66,10 @@ const GENDERS = [
 
 function genderLabel(v: string | null) {
   return GENDERS.find((g) => g.value === v)?.label ?? "—";
+}
+
+function roleLabel(r: TrainerRole) {
+  return r === "admin" ? "Админ студии" : "Тренер";
 }
 
 function initials(name: string) {
