@@ -20,11 +20,11 @@ export const WORKOUT_TYPE_COLORS: Record<
     hex: "#f43f5e",
   },
   cardio: {
-    dot: "bg-amber-500",
-    bg: "bg-amber-500",
+    dot: "bg-sky-500",
+    bg: "bg-sky-500",
     text: "text-white",
-    border: "border-amber-600",
-    hex: "#f59e0b",
+    border: "border-sky-600",
+    hex: "#0ea5e9",
   },
   hybrid: {
     dot: "bg-violet-500",
