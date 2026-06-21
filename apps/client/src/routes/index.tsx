@@ -286,6 +286,14 @@ function HomePage() {
           )}
         </section>
       </div>
+
+      <NewsDrawer
+        newsId={openNewsId}
+        open={openNewsId !== null}
+        onOpenChange={(o) => {
+          if (!o) setOpenNewsId(null);
+        }}
+      />
     </PageShell>
   );
 }
