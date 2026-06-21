@@ -322,14 +322,17 @@ function TrainerDialog({
   onOpenChange,
   studioId,
   trainer,
+  defaultRole,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
   trainer: Trainer | null;
+  defaultRole: TrainerRole;
   onSaved: () => void;
 }) {
+  const [role, setRole] = useState<TrainerRole>("trainer");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<string>("");
   const [specialization, setSpecialization] = useState("");
@@ -346,6 +349,7 @@ function TrainerDialog({
 
   useEffect(() => {
     if (open) {
+      setRole(trainer?.role ?? defaultRole);
       setFullName(trainer?.full_name ?? "");
       setGender(trainer?.gender ?? "");
       setSpecialization(trainer?.specialization ?? "");
@@ -357,7 +361,8 @@ function TrainerDialog({
       setFacebook(trainer?.facebook ?? "");
       setTiktok(trainer?.tiktok ?? "");
     }
-  }, [open, trainer]);
+  }, [open, trainer, defaultRole]);
+
 
   const handleUpload = async (file: File) => {
     if (!studioId) return;
