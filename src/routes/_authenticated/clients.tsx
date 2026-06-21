@@ -114,7 +114,7 @@ function DateRangeFilter({
         <PopoverTrigger asChild>
           <Button variant="outline" className="h-9 w-[260px] justify-start text-left font-normal">
             <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">{text}</span>
+            <span className={cn("truncate", !value?.from && "text-muted-foreground")}>{text}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
