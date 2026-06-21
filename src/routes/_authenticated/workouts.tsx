@@ -214,6 +214,7 @@ function WorkoutsPage() {
                   <TableRow>
                     <TableHead className="w-[100px]">Фото</TableHead>
                     <TableHead>Название</TableHead>
+                    <TableHead className="w-[160px]">Тип</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead className="w-[120px]">Вместимость</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
@@ -222,13 +223,13 @@ function WorkoutsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         {workouts.length === 0
                           ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
                           : "Ничего не найдено по выбранным фильтрам."}
@@ -241,6 +242,9 @@ function WorkoutsPage() {
                           <WorkoutPhoto value={w.photo_url} name={w.name} />
                         </TableCell>
                         <TableCell className="font-medium">{w.name}</TableCell>
+                        <TableCell>
+                          <WorkoutTypeBadge value={w.type} />
+                        </TableCell>
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ?? "—"}
                         </TableCell>
