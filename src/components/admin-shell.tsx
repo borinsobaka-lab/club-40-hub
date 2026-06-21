@@ -6,6 +6,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
+import { triggerRefresh } from "@/lib/refresh-bus";
+
 
 
 export function AdminShell({
