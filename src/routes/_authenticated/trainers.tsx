@@ -37,9 +37,11 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/trainers")({
-  head: () => ({ meta: [{ title: "Тренеры — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Сотрудники — CLUB 40 Admin" }] }),
   component: TrainersPage,
 });
+
+type TrainerRole = "trainer" | "admin";
 
 type Trainer = {
   id: string;
@@ -54,6 +56,7 @@ type Trainer = {
   instagram: string | null;
   facebook: string | null;
   tiktok: string | null;
+  role: TrainerRole;
 };
 
 const GENDERS = [
@@ -63,6 +66,10 @@ const GENDERS = [
 
 function genderLabel(v: string | null) {
   return GENDERS.find((g) => g.value === v)?.label ?? "—";
+}
+
+function roleLabel(r: TrainerRole) {
+  return r === "admin" ? "Админ студии" : "Тренер";
 }
 
 function initials(name: string) {
@@ -147,6 +154,7 @@ function TrainersPage() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Trainer | null>(null);
+  const [creatingRole, setCreatingRole] = useState<TrainerRole>("trainer");
 
   const fetchTrainers = async () => {
     if (!studioId) {
@@ -184,7 +192,8 @@ function TrainersPage() {
     fetchTrainers();
   };
 
-  const openCreate = () => {
+  const openCreate = (role: TrainerRole) => {
+    setCreatingRole(role);
     setEditing(null);
     setOpen(true);
   };
@@ -196,13 +205,19 @@ function TrainersPage() {
 
   return (
     <AdminShell
-      title="Тренеры"
-      description="Список тренеров студии"
+      title="Сотрудники"
+      description="Тренеры и админы студии"
       actions={
-        <Button size="sm" onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
-          Добавить тренера
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => openCreate("admin")} disabled={!studioId}>
+            <Plus className="mr-1 h-4 w-4" />
+            Добавить админа
+          </Button>
+          <Button size="sm" onClick={() => openCreate("trainer")} disabled={!studioId}>
+            <Plus className="mr-1 h-4 w-4" />
+            Добавить тренера
+          </Button>
+        </div>
       }
     >
       <div className="mx-auto max-w-6xl">
@@ -217,9 +232,10 @@ function TrainersPage() {
                 <TableRow>
                   <TableHead className="w-[80px]">Фото</TableHead>
                   <TableHead>ФИО</TableHead>
+                  <TableHead>Роль</TableHead>
                   <TableHead>Пол</TableHead>
                   <TableHead>Специализация</TableHead>
-                  <TableHead>О тренере</TableHead>
+                  <TableHead>О сотруднике</TableHead>
                   <TableHead>Соцсети</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
@@ -227,14 +243,14 @@ function TrainersPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                       <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : trainers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                      Пока нет тренеров. Нажмите «Добавить тренера».
+                    <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      Пока нет сотрудников. Нажмите «Добавить тренера» или «Добавить админа».
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -245,13 +261,29 @@ function TrainersPage() {
                       </TableCell>
 
                       <TableCell className="font-medium">{t.full_name}</TableCell>
-                      <TableCell>{genderLabel(t.gender)}</TableCell>
-                      <TableCell>{t.specialization ?? "—"}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
+                            (t.role === "admin"
+                              ? "bg-violet-100 text-violet-700"
+                              : "bg-sky-100 text-sky-700")
+                          }
+                        >
+                          {roleLabel(t.role)}
+                        </span>
+                      </TableCell>
+                      <TableCell>{t.role === "admin" ? "—" : genderLabel(t.gender)}</TableCell>
+                      <TableCell>{t.role === "admin" ? "—" : (t.specialization ?? "—")}</TableCell>
                       <TableCell className="max-w-[320px] truncate text-muted-foreground">
-                        {t.bio ?? "—"}
+                        {t.role === "admin" ? "—" : (t.bio ?? "—")}
                       </TableCell>
                       <TableCell>
-                        <SocialLinks trainer={t} />
+                        {t.role === "admin" ? (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        ) : (
+                          <SocialLinks trainer={t} />
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -277,25 +309,30 @@ function TrainersPage() {
         onOpenChange={setOpen}
         studioId={studioId}
         trainer={editing}
+        defaultRole={creatingRole}
         onSaved={fetchTrainers}
       />
     </AdminShell>
   );
 }
 
+
 function TrainerDialog({
   open,
   onOpenChange,
   studioId,
   trainer,
+  defaultRole,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
   trainer: Trainer | null;
+  defaultRole: TrainerRole;
   onSaved: () => void;
 }) {
+  const [role, setRole] = useState<TrainerRole>("trainer");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<string>("");
   const [specialization, setSpecialization] = useState("");
@@ -312,6 +349,7 @@ function TrainerDialog({
 
   useEffect(() => {
     if (open) {
+      setRole(trainer?.role ?? defaultRole);
       setFullName(trainer?.full_name ?? "");
       setGender(trainer?.gender ?? "");
       setSpecialization(trainer?.specialization ?? "");
@@ -323,7 +361,8 @@ function TrainerDialog({
       setFacebook(trainer?.facebook ?? "");
       setTiktok(trainer?.tiktok ?? "");
     }
-  }, [open, trainer]);
+  }, [open, trainer, defaultRole]);
+
 
   const handleUpload = async (file: File) => {
     if (!studioId) return;
@@ -352,18 +391,20 @@ function TrainerDialog({
       return;
     }
     setSaving(true);
+    const isAdmin = role === "admin";
     const payload = {
       studio_id: studioId,
+      role,
       full_name: fullName.trim(),
-      gender: gender || null,
-      specialization: specialization.trim() || null,
-      bio: bio.trim() || null,
+      gender: isAdmin ? null : (gender || null),
+      specialization: isAdmin ? null : (specialization.trim() || null),
+      bio: isAdmin ? null : (bio.trim() || null),
       photo_url: photoUrl,
-      telegram: telegram.trim() || null,
-      whatsapp: whatsapp.trim() || null,
-      instagram: instagram.trim() || null,
-      facebook: facebook.trim() || null,
-      tiktok: tiktok.trim() || null,
+      telegram: isAdmin ? null : (telegram.trim() || null),
+      whatsapp: isAdmin ? null : (whatsapp.trim() || null),
+      instagram: isAdmin ? null : (instagram.trim() || null),
+      facebook: isAdmin ? null : (facebook.trim() || null),
+      tiktok: isAdmin ? null : (tiktok.trim() || null),
     };
     const { error } = trainer
       ? await supabase.from("trainers").update(payload).eq("id", trainer.id)
@@ -373,20 +414,45 @@ function TrainerDialog({
       toast.error("Ошибка сохранения: " + error.message);
       return;
     }
-    toast.success(trainer ? "Тренер обновлён" : "Тренер добавлен");
+    toast.success(trainer ? "Сохранено" : "Добавлено");
     onOpenChange(false);
     onSaved();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{trainer ? "Редактировать тренера" : "Новый тренер"}</DialogTitle>
-          <DialogDescription>Заполните данные тренера студии.</DialogDescription>
+          <DialogTitle>
+            {trainer
+              ? role === "admin"
+                ? "Редактировать админа"
+                : "Редактировать тренера"
+              : role === "admin"
+                ? "Новый админ студии"
+                : "Новый тренер"}
+          </DialogTitle>
+          <DialogDescription>
+            {role === "admin"
+              ? "Укажите ФИО и фото админа студии."
+              : "Заполните данные тренера студии."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="role">Роль</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
+              <SelectTrigger id="role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="trainer">Тренер</SelectItem>
+                <SelectItem value="admin">Админ студии</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-center gap-4">
             <TrainerPhoto value={photoUrl} name={fullName || "?"} />
 
@@ -441,90 +507,94 @@ function TrainerDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="gender">Пол</Label>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger id="gender">
-                <SelectValue placeholder="Не указан" />
-              </SelectTrigger>
-              <SelectContent>
-                {GENDERS.map((g) => (
-                  <SelectItem key={g.value} value={g.value}>
-                    {g.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {role === "trainer" && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="gender">Пол</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger id="gender">
+                    <SelectValue placeholder="Не указан" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="specialization">Специализация</Label>
-            <Input
-              id="specialization"
-              value={specialization}
-              onChange={(e) => setSpecialization(e.target.value)}
-              placeholder="Силовой тренинг, кроссфит"
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="specialization">Специализация</Label>
+                <Input
+                  id="specialization"
+                  value={specialization}
+                  onChange={(e) => setSpecialization(e.target.value)}
+                  placeholder="Силовой тренинг, кроссфит"
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="bio">О тренере</Label>
-            <Textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={3}
-              placeholder="Опыт, достижения, подход к работе"
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bio">О тренере</Label>
+                <Textarea
+                  id="bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={3}
+                  placeholder="Опыт, достижения, подход к работе"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="telegram">Telegram</Label>
-              <Input
-                id="telegram"
-                value={telegram}
-                onChange={(e) => setTelegram(e.target.value)}
-                placeholder="username или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="whatsapp">WhatsApp</Label>
-              <Input
-                id="whatsapp"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="+7... или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="instagram">Instagram</Label>
-              <Input
-                id="instagram"
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-                placeholder="username или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="facebook">Facebook</Label>
-              <Input
-                id="facebook"
-                value={facebook}
-                onChange={(e) => setFacebook(e.target.value)}
-                placeholder="username или ссылка"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tiktok">TikTok</Label>
-              <Input
-                id="tiktok"
-                value={tiktok}
-                onChange={(e) => setTiktok(e.target.value)}
-                placeholder="@username или ссылка"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="telegram">Telegram</Label>
+                  <Input
+                    id="telegram"
+                    value={telegram}
+                    onChange={(e) => setTelegram(e.target.value)}
+                    placeholder="username или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="whatsapp">WhatsApp</Label>
+                  <Input
+                    id="whatsapp"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="+7... или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="instagram">Instagram</Label>
+                  <Input
+                    id="instagram"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    placeholder="username или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="facebook">Facebook</Label>
+                  <Input
+                    id="facebook"
+                    value={facebook}
+                    onChange={(e) => setFacebook(e.target.value)}
+                    placeholder="username или ссылка"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiktok">TikTok</Label>
+                  <Input
+                    id="tiktok"
+                    value={tiktok}
+                    onChange={(e) => setTiktok(e.target.value)}
+                    placeholder="@username или ссылка"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>

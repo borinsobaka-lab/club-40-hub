@@ -15,12 +15,12 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Тренеры", url: "/trainers", icon: Dumbbell },
+  { title: "Сотрудники", url: "/trainers", icon: Dumbbell },
   { title: "Тренировки", url: "/workouts", icon: Flame },
   { title: "Расписание", url: "/schedule", icon: Calendar },
   { title: "Клиенты", url: "/clients", icon: Users },
   { title: "Номенклатуры", url: "/memberships", icon: Tag },
-  { title: "Сотрудники", url: "/employees", icon: UserCog },
+  { title: "Доступы", url: "/employees", icon: UserCog },
 ];
 
 export function AppSidebar() {
