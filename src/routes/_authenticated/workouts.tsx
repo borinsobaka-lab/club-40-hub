@@ -39,7 +39,12 @@ export const Route = createFileRoute("/_authenticated/workouts")({
   component: WorkoutsPage,
 });
 
-type WorkoutType = "strength" | "cardio" | "hybrid" | "recovery";
+import {
+  WORKOUT_TYPES as TYPES,
+  workoutTypeColor,
+  workoutTypeLabel as typeLabel,
+  type WorkoutType,
+} from "@/lib/workout-types";
 
 type Workout = {
   id: string;
@@ -50,15 +55,15 @@ type Workout = {
   type: WorkoutType | null;
 };
 
-const TYPES: { value: WorkoutType; label: string }[] = [
-  { value: "strength", label: "Силовая" },
-  { value: "cardio", label: "Кардио" },
-  { value: "hybrid", label: "Гибрид" },
-  { value: "recovery", label: "Восстановление" },
-];
-
-function typeLabel(v: string | null) {
-  return TYPES.find((t) => t.value === v)?.label ?? "—";
+function TypeBadge({ value }: { value: string | null }) {
+  const color = workoutTypeColor(value);
+  if (!color) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${color.dot}`} aria-hidden />
+      {typeLabel(value)}
+    </span>
+  );
 }
 
 function isHttpUrl(v: string | null | undefined) {
@@ -244,7 +249,7 @@ function WorkoutsPage() {
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ?? "—"}
                         </TableCell>
-                        <TableCell>{typeLabel(w.type)}</TableCell>
+                        <TableCell><TypeBadge value={w.type} /></TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
