@@ -212,8 +212,7 @@ function SchedulePage() {
             </Card>
           ) : (
             <div className="relative">
-              {dayEntries.map((c, idx) => {
-                const isLast = idx === dayEntries.length - 1;
+              {dayEntries.map((c) => {
                 return (
                   <div key={c.id} className="relative flex gap-3 pb-4">
                     <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right">
