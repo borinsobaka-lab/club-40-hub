@@ -40,9 +40,6 @@ function addDays(d: Date, n: number) {
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
-function durationMin(s: string, e: string) {
-  return Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60000);
-}
 
 const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
   strength: { label: "Силовая", icon: Dumbbell, cls: "bg-red-500/10 text-red-600 border-red-500/20" },
