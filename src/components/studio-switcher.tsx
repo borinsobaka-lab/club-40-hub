@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
@@ -71,7 +70,6 @@ export function StudioSwitcher() {
 
   return (
     <div className="flex items-center gap-2">
-      <Building2 className="h-4 w-4 text-muted-foreground" />
       <Select value={active ?? undefined} onValueChange={onChange} disabled={loading || studios.length === 0}>
         <SelectTrigger className="h-8 w-[200px] text-xs">
           <SelectValue

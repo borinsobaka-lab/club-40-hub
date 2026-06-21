@@ -154,14 +154,16 @@ function ClientsPage() {
           </div>
         ) : (
           <>
-            <div className="relative max-w-sm">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск по имени, телефону, email"
-                className="pl-9"
-              />
+            <div className="rounded-lg border bg-background px-3 py-2">
+              <div className="relative max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Поиск по имени, телефону, email"
+                  className="h-8 pl-9"
+                />
+              </div>
             </div>
 
             <div className="rounded-lg border bg-background">
