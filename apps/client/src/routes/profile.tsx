@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { LogOut, Loader2, Pencil, Camera } from "lucide-react";
+import { LogOut, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,7 +51,6 @@ type ClientRow = {
   phone?: string | null;
   birthday?: string | null;
   gender?: string | null;
-  avatar_url?: string | null;
 };
 
 type ClientUpdate = {
@@ -62,7 +61,6 @@ type ClientUpdate = {
   email?: string | null;
   birthday?: string | null;
   gender?: string | null;
-  avatar_url?: string | null;
 };
 
 const profileSchema = z.object({
@@ -87,20 +85,11 @@ function splitFullName(full: string | null | undefined): { first: string; last: 
   return { last: parts[0], first: parts.slice(1).join(" ") };
 }
 
-/** Получить временный URL для приватной аватарки. */
-async function loadAvatarUrl(path: string | null | undefined): Promise<string | null> {
-  if (!path) return null;
-  if (/^(https?:|data:|blob:)/i.test(path)) return path;
-  const { data } = await supabase.storage.from("avatars").createSignedUrl(path, 60 * 60);
-  return data?.signedUrl ?? null;
-}
-
 function ProfilePage() {
   const { user, signOut } = useAuth();
   const [client, setClient] = useState<ClientRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -135,16 +124,6 @@ function ProfilePage() {
     };
   }, [user]);
 
-  useEffect(() => {
-    let cancelled = false;
-    loadAvatarUrl(client?.avatar_url).then((url) => {
-      if (!cancelled) setAvatarUrl(url);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client?.avatar_url]);
-
   const fullName =
     composeFullName(client) ||
     (user?.user_metadata?.full_name as string) ||
@@ -167,7 +146,6 @@ function ProfilePage() {
         <Card className="p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
               </AvatarFallback>
@@ -215,7 +193,6 @@ function ProfilePage() {
             open={editOpen}
             onOpenChange={setEditOpen}
             client={client}
-            avatarUrl={avatarUrl}
             onSaved={(updated) => setClient((prev) => ({ ...prev, ...updated }))}
           />
         )}
