@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { Cat } from "lucide-react";
+import { Link, useRouter } from "@tanstack/react-router";
+import { Cat, RefreshCw } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
+import { Button } from "@/components/ui/button";
+
 
 export function AdminShell({
   title,
