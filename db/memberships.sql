@@ -26,6 +26,9 @@ alter table public.memberships
   add column if not exists price numeric(12,2) not null default 0,
   add column if not exists created_at timestamptz not null default now();
 
+-- Remove legacy user_id column if it exists (older schema versions had it NOT NULL).
+alter table public.memberships drop column if exists user_id;
+
 notify pgrst, 'reload schema';
 
 create index if not exists memberships_studio_idx on public.memberships(studio_id);
