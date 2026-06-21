@@ -14,15 +14,24 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const items = [
+const workspaceItems = [
   { title: "Дашборд", url: "/dashboard", icon: LayoutDashboard },
   { title: "Расписание", url: "/schedule", icon: Calendar },
   { title: "Клиенты", url: "/clients", icon: Users },
+];
+
+const studioItems = [
   { title: "Сотрудники", url: "/trainers", icon: Dumbbell },
   { title: "Тренировки", url: "/workouts", icon: Flame },
   { title: "Номенклатуры", url: "/memberships", icon: Tag },
+];
+
+const feedbackItems = [
   { title: "Обратная связь", url: "/feedback", icon: MessageSquare },
   { title: "NPS-опросы", url: "/nps", icon: BarChart3 },
+];
+
+const accessItems = [
   { title: "Доступы", url: "/employees", icon: UserCog },
 ];
 
@@ -35,6 +44,25 @@ export function AppSidebar() {
 
   const isActive = (path: string) =>
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
+
+  const renderItems = (items: typeof workspaceItems) => (
+    <SidebarMenu>
+      {items.map((item) => (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton
+            asChild
+            isActive={isActive(item.url)}
+            className="text-white hover:bg-white/10 hover:text-white data-[active=true]:bg-white/10 data-[active=true]:text-white"
+          >
+            <Link to={item.url} className="flex items-center gap-2">
+              <item.icon className="h-4 w-4 text-sidebar-icon" />
+              {!collapsed && <span>{item.title}</span>}
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -54,20 +82,22 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-white/50">Рабочее пространство</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} className="text-white hover:bg-white/10 hover:text-white data-[active=true]:bg-white/10 data-[active=true]:text-white">
-                    <Link to={item.url} className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4 text-sidebar-icon" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
+          <SidebarGroupContent>{renderItems(workspaceItems)}</SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-white/50">Студия</SidebarGroupLabel>
+          <SidebarGroupContent>{renderItems(studioItems)}</SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-white/50">Обратная связь</SidebarGroupLabel>
+          <SidebarGroupContent>{renderItems(feedbackItems)}</SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupLabel className="text-white/50">Доступы</SidebarGroupLabel>
+          <SidebarGroupContent>{renderItems(accessItems)}</SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
