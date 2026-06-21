@@ -184,7 +184,7 @@ function ClientsPage() {
                     className="h-8 pl-9"
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                   <div className="grid gap-1.5">
                     <Label className="text-xs text-muted-foreground">Пол</Label>
                     <Select value={genderFilter} onValueChange={setGenderFilter}>
