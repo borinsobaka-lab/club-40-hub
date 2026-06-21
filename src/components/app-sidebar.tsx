@@ -32,6 +32,7 @@ const feedbackItems = [
 ];
 
 const financeItems = [
+  { title: "Продажи", url: "/sales", icon: Receipt },
   { title: "Касса", url: "/cash", icon: Wallet },
 ];
 
