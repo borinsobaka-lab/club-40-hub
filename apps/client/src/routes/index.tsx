@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Gift, ChevronRight, Newspaper, Ghost } from "lucide-react";
+import { Bell, Gift, ChevronRight, Newspaper, Ghost, CalendarDays, BarChart3, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
