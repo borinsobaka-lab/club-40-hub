@@ -257,7 +257,6 @@ function HomePage() {
             </div>
           )}
         </section>
-        </div>
       </div>
     </PageShell>
   );
