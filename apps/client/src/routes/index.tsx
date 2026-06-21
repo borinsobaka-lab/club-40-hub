@@ -44,8 +44,8 @@ function durationMin(s: string, e: string) {
 }
 
 const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
-  silovaya: { label: "Силовая", icon: Dumbbell, cls: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
-  cardio: { label: "Кардио", icon: HeartPulse, cls: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
+  silovaya: { label: "Силовая", icon: Dumbbell, cls: "bg-red-500/10 text-red-600 border-red-500/20" },
+  cardio: { label: "Кардио", icon: HeartPulse, cls: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
   gibrid: { label: "Гибрид", icon: Shuffle, cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
   vosstanovlenie: { label: "Восстановление", icon: Leaf, cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
 };
