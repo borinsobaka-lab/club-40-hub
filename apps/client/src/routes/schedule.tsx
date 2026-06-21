@@ -112,6 +112,13 @@ function SchedulePage() {
     };
   }, [today, activeTab]);
 
+  useEffect(() => {
+    const btn = dayBtnRefs.current[activeIdx];
+    if (btn) {
+      btn.scrollIntoView({ inline: "start", block: "nearest", behavior: "auto" });
+    }
+  }, []);
+
   async function toggleBooking(entryId: string) {
     if (pendingId) return;
     setPendingId(entryId);
