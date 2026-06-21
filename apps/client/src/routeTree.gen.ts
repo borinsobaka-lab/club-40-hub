@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as BookingsRouteImport } from './routes/bookings'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ResultsRoute = ResultsRouteImport.update({
@@ -29,6 +30,11 @@ const BookingsRoute = BookingsRouteImport.update({
   path: '/bookings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/bookings': typeof BookingsRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/bookings': typeof BookingsRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/bookings': typeof BookingsRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/bookings' | '/profile' | '/results'
+  fullPaths: '/' | '/auth' | '/bookings' | '/profile' | '/results'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/bookings' | '/profile' | '/results'
-  id: '__root__' | '/' | '/bookings' | '/profile' | '/results'
+  to: '/' | '/auth' | '/bookings' | '/profile' | '/results'
+  id: '__root__' | '/' | '/auth' | '/bookings' | '/profile' | '/results'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   BookingsRoute: typeof BookingsRoute
   ProfileRoute: typeof ProfileRoute
   ResultsRoute: typeof ResultsRoute
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   BookingsRoute: BookingsRoute,
   ProfileRoute: ProfileRoute,
   ResultsRoute: ResultsRoute,
