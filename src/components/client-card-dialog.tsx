@@ -186,7 +186,9 @@ export function ClientCardDialog({
                       <div className="text-xs text-muted-foreground">
                         {formatDate(s.sold_at)}
                         {s.admin_name ? ` · ${s.admin_name}` : ""}
-                        {s.installments > 1 ? ` · рассрочка ${s.installments} мес.` : ""}
+                        {s.remaining_installments > 0
+                          ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
+                          : ""}
                       </div>
                     </div>
                     <div className="shrink-0 font-medium">{formatMoney(Number(s.total_amount))}</div>
