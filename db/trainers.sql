@@ -36,6 +36,7 @@ create table if not exists public.trainers (
   instagram text,
   facebook text,
   tiktok text,
+  role text not null default 'trainer' check (role in ('trainer','admin')),
   created_at timestamptz not null default now()
 );
 create index if not exists trainers_studio_idx on public.trainers(studio_id);
