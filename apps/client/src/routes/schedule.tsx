@@ -117,7 +117,8 @@ function SchedulePage() {
     const container = daysContainerRef.current;
     const btn = dayBtnRefs.current[activeIdx];
     if (!container || !btn) return;
-    container.scrollLeft = btn.offsetLeft;
+    const padLeft = parseFloat(getComputedStyle(container).paddingLeft) || 0;
+    container.scrollLeft = Math.max(0, btn.offsetLeft - padLeft);
   }, []);
 
   async function toggleBooking(entryId: string) {
