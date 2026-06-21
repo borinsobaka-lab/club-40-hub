@@ -109,7 +109,7 @@ function SchedulePage() {
       const t = e.workout?.type?.toLowerCase().trim();
       if (t) set.add(t);
     });
-    return Array.from(set);
+    return TYPE_ORDER.filter((t) => set.has(t));
   }, [entries]);
 
   const dayEntries = entries.filter((e) => {
