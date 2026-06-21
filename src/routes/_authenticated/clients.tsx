@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
