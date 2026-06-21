@@ -47,20 +47,19 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
-  strength: { label: "Силовая", icon: Dumbbell, cls: "bg-red-500/10 text-red-600 border-red-500/20" },
-  cardio: { label: "Кардио", icon: HeartPulse, cls: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  hybrid: { label: "Гибрид", icon: Shuffle, cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
-  recovery: { label: "Восстановление", icon: Leaf, cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+const TYPE_META: Record<string, { label: string; icon: LucideIcon; color: string; bg: string }> = {
+  strength: { label: "Силовая", icon: Dumbbell, color: "text-red-600", bg: "bg-red-500/10" },
+  cardio: { label: "Кардио", icon: HeartPulse, color: "text-blue-600", bg: "bg-blue-500/10" },
+  hybrid: { label: "Гибрид", icon: Shuffle, color: "text-violet-600", bg: "bg-violet-500/10" },
+  recovery: { label: "Восстановление", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-500/10" },
 };
 
 function workoutTypeMeta(type: string | null | undefined) {
-  if (!type) return { label: "Тренировка", icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
+  if (!type) return { label: "Тренировка", icon: Activity, color: "text-muted-foreground", bg: "bg-muted" };
   const key = type.toLowerCase().trim();
   if (TYPE_META[key]) return TYPE_META[key];
-  // match by russian label too
   const byLabel = Object.values(TYPE_META).find((m) => m.label.toLowerCase() === key);
-  return byLabel ?? { label: type, icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
+  return byLabel ?? { label: type, icon: Activity, color: "text-muted-foreground", bg: "bg-muted" };
 }
 
 function SchedulePage() {
