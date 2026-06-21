@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Gift, ChevronRight, Newspaper, CalendarDays } from "lucide-react";
+import { Bell, Gift, ChevronRight, Newspaper, Ghost } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -100,7 +100,6 @@ function HomePage() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="text-xs text-white/70">Профиль</div>
                 <div className="flex items-center gap-1 min-w-0">
                   <span className="font-semibold truncate">{fullName}</span>
                   <ChevronRight className="h-4 w-4 text-white/70 shrink-0" />
@@ -190,9 +189,7 @@ function HomePage() {
             Тренировки
           </h2>
           <div className="rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-              <CalendarDays className="h-5 w-5 text-muted-foreground" />
-            </div>
+            <Ghost className="h-14 w-14 text-muted-foreground" strokeWidth={1.5} />
             <div className="text-sm text-muted-foreground">
               Тренировок на сегодня нет
             </div>
@@ -203,12 +200,12 @@ function HomePage() {
         </section>
 
         {/* Услуги */}
-        <section>
-          <h2 className="text-2xl font-bold italic uppercase mb-3">
+        <section className="-mx-4">
+          <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
             Услуги
           </h2>
           {news === null ? (
-            <div className="flex gap-3 overflow-hidden pb-2">
+            <div className="flex gap-3 overflow-hidden px-4 pb-2">
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
@@ -217,12 +214,12 @@ function HomePage() {
               ))}
             </div>
           ) : news.length === 0 ? (
-            <div className="h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
+            <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
               <Newspaper className="h-6 w-6" />
               <span className="text-sm">Пока нет услуг</span>
             </div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-6 scroll-pr-4">
+            <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory no-scrollbar">
               {news.map((n) => (
                 <div
                   key={n.id}
