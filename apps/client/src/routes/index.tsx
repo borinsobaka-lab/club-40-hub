@@ -34,6 +34,16 @@ type News = {
   position: number;
 };
 
+type MyBooking = {
+  entry_id: string;
+  entry: {
+    id: string;
+    starts_at: string;
+    ends_at: string;
+    workout: { name: string; type: string | null } | null;
+  } | null;
+};
+
 function HomePage() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState<string>("Участник");
