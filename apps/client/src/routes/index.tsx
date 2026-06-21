@@ -23,6 +23,20 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
+const WEEKDAYS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+function DayDivider({ date }: { date: Date }) {
+  const weekday = WEEKDAYS[date.getDay()];
+  const day = date.getDate();
+  const month = MONTHS[date.getMonth()];
+  return (
+    <div className="w-full bg-muted/60 border-y border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      {weekday}, {day} {month}
+    </div>
+  );
+}
+
 type News = {
   id: string;
   title: string;
@@ -182,24 +196,26 @@ function HomePage() {
         </div>
       }
     >
-      <div className="px-4 pt-6 pb-8 space-y-8">
+      <div className="pt-6 pb-8 space-y-8">
         {/* Расписание на сегодня */}
         <section>
-          <h2 className="text-2xl font-bold italic uppercase mb-3">
-            Тренировки
-          </h2>
-          <div className="rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-              <CalendarDays className="h-5 w-5 text-muted-foreground" />
+          <DayDivider date={new Date()} />
+          <div className="px-4 mt-4">
+            <div className="rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <CalendarDays className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Тренировок на сегодня нет
+              </div>
+              <Button asChild>
+                <Link to="/schedule">Забронировать тренировку</Link>
+              </Button>
             </div>
-            <div className="text-sm text-muted-foreground">
-              Тренировок на сегодня нет
-            </div>
-            <Button asChild>
-              <Link to="/schedule">Забронировать тренировку</Link>
-            </Button>
           </div>
         </section>
+
+        <div className="px-4 space-y-8">
 
         {/* Услуги */}
         <section>
@@ -256,6 +272,7 @@ function HomePage() {
             </div>
           )}
         </section>
+        </div>
       </div>
     </PageShell>
   );
