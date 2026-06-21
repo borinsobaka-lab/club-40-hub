@@ -368,12 +368,15 @@ function EditProfileSheet({
                   {initials(displayName)}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+              <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
                 {uploadingAvatar ? (
                   <Loader2 className="h-6 w-6 text-white animate-spin" />
                 ) : (
-                  <Camera className="h-6 w-6 text-white" />
+                  <Camera className="h-6 w-6 text-white drop-shadow" />
                 )}
+              </div>
+              <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
+                <Camera className="h-3.5 w-3.5" />
               </div>
             </button>
             <input
