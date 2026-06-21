@@ -27,13 +27,25 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 type Trainer = { id: string; full_name: string | null; photo_url: string | null };
+type Workout = {
+  name: string;
+  type: string | null;
+  description: string | null;
+  photo_url: string | null;
+};
 type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
-  workout: { name: string; type: string | null } | null;
+  workout: Workout | null;
   trainers: { trainer: Trainer | null }[] | null;
 };
+
+function resolvePublicUrl(bucket: string, path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
