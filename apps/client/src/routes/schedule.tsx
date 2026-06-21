@@ -28,8 +28,7 @@ type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
-  trainer_name: string | null;
-  workout: { name: string; type: string | null } | null;
+  workout: { name: string; type: string | null; trainer_name: string | null } | null;
 };
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
