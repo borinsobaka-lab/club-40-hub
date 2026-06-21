@@ -234,11 +234,17 @@ function SchedulePage() {
                         <div className="font-semibold break-words leading-snug">
                           {c.workout?.name ?? "Занятие"}
                         </div>
-                        {c.workout?.trainer_name && (
-                          <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                            {c.workout.trainer_name}
-                          </div>
-                        )}
+                        {(() => {
+                          const names = (c.trainers ?? [])
+                            .map((t) => t.trainer?.full_name)
+                            .filter((n): n is string => !!n);
+                          if (names.length === 0) return null;
+                          return (
+                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {names.join(", ")}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center">
                         <Plus className="h-6 w-6" strokeWidth={2.5} />
