@@ -81,15 +81,17 @@ export function WorkoutDrawer({
                     )}
                   </div>
                   <img
-                    src={logoSrc}
+                    src={data.photo ?? logoSrc}
                     alt=""
-                    className="w-28 h-28 rounded-full object-cover shrink-0"
+                    className="w-28 h-28 rounded-full object-cover shrink-0 bg-muted"
                   />
                 </div>
 
-                <p className="mt-4 text-[15px] leading-relaxed text-foreground/90">
-                  {PLACEHOLDER_DESCRIPTION}
-                </p>
+                {data.description && (
+                  <p className="mt-4 text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {data.description}
+                  </p>
+                )}
 
                 <button
                   type="button"
