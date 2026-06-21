@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog } from "lucide-react";
 
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
+  { title: "Дашборд", url: "/dashboard", icon: LayoutDashboard },
   { title: "Расписание", url: "/schedule", icon: Calendar },
   { title: "Клиенты", url: "/clients", icon: Users },
   { title: "Сотрудники", url: "/trainers", icon: Dumbbell },
