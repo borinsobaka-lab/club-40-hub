@@ -26,8 +26,17 @@ alter table public.memberships
   add column if not exists price numeric(12,2) not null default 0,
   add column if not exists created_at timestamptz not null default now();
 
--- Remove legacy user_id column if it exists (older schema versions had it NOT NULL).
-alter table public.memberships drop column if exists user_id;
+-- Remove legacy membership-assignment fields if they exist (older schema versions
+-- had user_id and plan_name as NOT NULL, which breaks saving the current form).
+drop policy if exists "memberships self or trainer select" on public.memberships;
+drop index if exists public.memberships_user_id_idx;
+alter table public.memberships
+  drop column if exists user_id,
+  drop column if exists plan_name,
+  drop column if exists status,
+  drop column if exists started_at,
+  drop column if exists ends_at,
+  drop column if exists price_cents;
 
 notify pgrst, 'reload schema';
 
