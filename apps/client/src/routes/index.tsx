@@ -220,7 +220,7 @@ function HomePage() {
             <div className="text-sm text-muted-foreground">
               Тренировок на сегодня нет
             </div>
-            <Button asChild className="text-base font-bold">
+            <Button asChild className="text-sm font-bold">
               <Link to="/schedule">Забронировать</Link>
             </Button>
           </div>
