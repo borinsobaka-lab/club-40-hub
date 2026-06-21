@@ -50,11 +50,9 @@ export function WorkoutDrawer({
                     </DrawerPrimitive.Title>
 
                     {typeMeta && (
-                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border border-transparent">
-                        <span className={`inline-flex items-center justify-center rounded-full ${typeMeta.bg} px-2 py-0.5 ${typeMeta.color}`}>
-                          {TypeIcon && <TypeIcon className="h-3.5 w-3.5 mr-1" />}
-                          {typeMeta.label}
-                        </span>
+                      <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${typeMeta.bg} ${typeMeta.color}`}>
+                        {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
+                        {typeMeta.label}
                       </div>
                     )}
 
