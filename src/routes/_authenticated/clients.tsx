@@ -77,6 +77,60 @@ function genderLabel(v: string | null) {
   return GENDERS.find((g) => g.value === v)?.label ?? "—";
 }
 
+function toISODate(d: Date) {
+  return format(d, "yyyy-MM-dd");
+}
+
+function inDateRange(value: string | null, range: DateRange | undefined) {
+  if (!range || (!range.from && !range.to)) return true;
+  if (!value) return false;
+  const from = range.from ? toISODate(range.from) : null;
+  const to = range.to ? toISODate(range.to) : null;
+  if (from && value < from) return false;
+  if (to && value > to) return false;
+  return true;
+}
+
+function DateRangeFilter({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: DateRange | undefined;
+  onChange: (v: DateRange | undefined) => void;
+}) {
+  const text = value?.from
+    ? value.to
+      ? `${format(value.from, "dd.MM.yyyy", { locale: ru })} — ${format(value.to, "dd.MM.yyyy", { locale: ru })}`
+      : `от ${format(value.from, "dd.MM.yyyy", { locale: ru })}`
+    : label;
+
+  return (
+    <div className="grid gap-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="h-9 w-[260px] justify-start text-left font-normal">
+            <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">{text}</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="range"
+            selected={value}
+            onSelect={onChange}
+            numberOfMonths={2}
+            locale={ru}
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 function formatDate(v: string | null) {
   if (!v) return "—";
   try {
