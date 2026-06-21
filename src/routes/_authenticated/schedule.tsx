@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_authenticated/schedule")({
   component: SchedulePage,
 });
 
-type Workout = { id: string; name: string; type?: string | null };
+type Workout = { id: string; name: string; type?: string | null; capacity?: number | null };
 type Trainer = { id: string; full_name: string };
 type Entry = {
   id: string;
@@ -42,7 +42,9 @@ type Entry = {
   workout_id: string;
   starts_at: string;
   ends_at: string;
-  workout?: { name: string; type?: string } | null;
+  capacity: number | null;
+  booked_count: number;
+  workout?: { name: string; type?: string; capacity?: number | null } | null;
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
 
