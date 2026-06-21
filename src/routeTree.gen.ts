@@ -20,6 +20,7 @@ import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/np
 import { Route as AuthenticatedMusicRouteImport } from './routes/_authenticated/music'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
 import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
+import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
@@ -80,6 +81,11 @@ const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/music': typeof AuthenticatedMusicRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/music': typeof AuthenticatedMusicRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/events': typeof AuthenticatedEventsRoute
+  '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/music': typeof AuthenticatedMusicRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/employees'
     | '/events'
+    | '/feedback'
     | '/members'
     | '/memberships'
     | '/music'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/employees'
     | '/events'
+    | '/feedback'
     | '/members'
     | '/memberships'
     | '/music'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients'
     | '/_authenticated/employees'
     | '/_authenticated/events'
+    | '/_authenticated/feedback'
     | '/_authenticated/members'
     | '/_authenticated/memberships'
     | '/_authenticated/music'
@@ -288,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/feedback': {
+      id: '/_authenticated/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/events': {
       id: '/_authenticated/events'
       path: '/events'
@@ -324,6 +343,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
+  AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedMusicRoute: typeof AuthenticatedMusicRoute
@@ -340,6 +360,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,
+  AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedMusicRoute: AuthenticatedMusicRoute,
