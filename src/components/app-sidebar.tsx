@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet } from "lucide-react";
 
 import {
   Sidebar,
@@ -29,6 +29,10 @@ const studioItems = [
 const feedbackItems = [
   { title: "Обратная связь", url: "/feedback", icon: MessageSquare },
   { title: "NPS-опросы", url: "/nps", icon: BarChart3 },
+];
+
+const financeItems = [
+  { title: "Касса", url: "/cash", icon: Wallet },
 ];
 
 const accessItems = [
