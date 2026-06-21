@@ -206,11 +206,11 @@ function SchedulePage() {
                         );
                       })()}
                     </div>
-                    <div className="flex items-center justify-end gap-3 mt-1">
+                    <div className="flex items-center gap-3 mt-1">
+                      <Button size="sm">Записаться</Button>
                       <span className="text-xs text-muted-foreground">
                         осталось {spotsLeft} мест
                       </span>
-                      <Button size="sm">Записаться</Button>
                     </div>
                   </Card>
                 </div>
