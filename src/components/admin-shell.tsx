@@ -53,11 +53,7 @@ export function AdminShell({
                 {actions}
                 <Link
                   to="/assistant"
-                  className="group relative inline-flex h-9 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(135deg,#ec4899 0%,#a855f7 35%,#6366f1 65%,#06b6d4 100%)",
-                  }}
+                  className="ai-gradient group relative inline-flex h-9 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
                 >
                   <Cat className="h-4 w-4" />
                   <span>Kate</span>
