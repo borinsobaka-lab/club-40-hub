@@ -4,7 +4,10 @@
 create table if not exists public.clients (
   id uuid primary key default gen_random_uuid(),
   studio_id uuid not null references public.studios(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
   full_name text not null,
+  first_name text,
+  last_name text,
   phone text,
   email text,
   birthday date,
@@ -14,9 +17,11 @@ create table if not exists public.clients (
   last_visit_date date,
   crm_link text,
   photo_url text,
+  avatar_url text,
   created_at timestamptz not null default now()
 );
 create index if not exists clients_studio_idx on public.clients(studio_id);
+create index if not exists clients_user_idx on public.clients(user_id);
 
 grant select, insert, update, delete on public.clients to authenticated;
 grant all on public.clients to service_role;
