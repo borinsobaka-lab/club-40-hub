@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -24,6 +25,7 @@ import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
+import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as AuthenticatedAnnouncementsRouteImport } from './routes/_authenticated/announcements'
 
 const AuthRoute = AuthRouteImport.update({
@@ -39,6 +41,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
   id: '/workouts',
@@ -101,6 +108,11 @@ const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnnouncementsRoute =
   AuthenticatedAnnouncementsRouteImport.update({
     id: '/announcements',
@@ -112,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/assistant': typeof AuthenticatedAssistantRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/events': typeof AuthenticatedEventsRoute
@@ -124,10 +137,12 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/assistant': typeof AuthenticatedAssistantRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/events': typeof AuthenticatedEventsRoute
@@ -140,6 +155,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
+  '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
@@ -147,6 +163,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/announcements': typeof AuthenticatedAnnouncementsRoute
+  '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/events': typeof AuthenticatedEventsRoute
@@ -159,6 +176,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
+  '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
@@ -167,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/announcements'
+    | '/assistant'
     | '/clients'
     | '/employees'
     | '/events'
@@ -179,10 +198,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/trainers'
     | '/workouts'
+    | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/announcements'
+    | '/assistant'
     | '/clients'
     | '/employees'
     | '/events'
@@ -195,12 +216,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/trainers'
     | '/workouts'
+    | '/api/chat'
     | '/'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/announcements'
+    | '/_authenticated/assistant'
     | '/_authenticated/clients'
     | '/_authenticated/employees'
     | '/_authenticated/events'
@@ -213,12 +236,14 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/trainers'
     | '/_authenticated/workouts'
+    | '/api/chat'
     | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -243,6 +268,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/workouts': {
       id: '/_authenticated/workouts'
@@ -328,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/assistant': {
+      id: '/_authenticated/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AuthenticatedAssistantRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/announcements': {
       id: '/_authenticated/announcements'
       path: '/announcements'
@@ -340,6 +379,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnnouncementsRoute: typeof AuthenticatedAnnouncementsRoute
+  AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
@@ -357,6 +397,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnnouncementsRoute: AuthenticatedAnnouncementsRoute,
+  AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,
@@ -378,6 +419,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
