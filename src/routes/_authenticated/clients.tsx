@@ -166,6 +166,13 @@ function ClientsPage() {
   const [visitRange, setVisitRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardClient, setCardClient] = useState<Client | null>(null);
+
+  const openCard = (c: Client) => {
+    setCardClient(c);
+    setCardOpen(true);
+  };
 
   const fetchClients = async () => {
     if (!studioId) {
