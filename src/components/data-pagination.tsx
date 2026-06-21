@@ -55,8 +55,7 @@ export function DataPagination({
   setPageSize,
   className,
 }: Props) {
-  if (total === 0) return null;
-  const from = (page - 1) * pageSize + 1;
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
   return (
