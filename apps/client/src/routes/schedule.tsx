@@ -211,12 +211,10 @@ function SchedulePage() {
             <div className="relative">
               {dayEntries.map((c, idx) => {
                 const isLast = idx === dayEntries.length - 1;
-                // TODO: replace with real capacity/bookings data from backend
-                const spotsLeft = ((c.id.charCodeAt(0) + c.id.charCodeAt(1)) % 8) + 2;
                 return (
                   <div key={c.id} className="relative flex gap-3 pb-4">
-                    <div className="flex flex-col items-center w-14 shrink-0 pt-1">
-                      <div className="text-sm font-semibold tabular-nums leading-tight">
+                    <div className="flex flex-col items-center w-16 shrink-0 pt-1">
+                      <div className="text-xl font-bold italic tabular-nums leading-tight">
                         {fmtTime(c.starts_at)}
                       </div>
                       <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
@@ -225,28 +223,27 @@ function SchedulePage() {
                       <div className="mt-2 h-2.5 w-2.5 rounded-full bg-[#FFE500] shrink-0" />
                       {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
                     </div>
-                    <Card className="p-4 flex flex-col gap-3 flex-1 min-w-0">
-                      <div className="font-semibold break-words leading-snug">
-                        {c.workout?.name ?? "Занятие"}
+                    <Card className="p-3 flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold break-words leading-snug">
+                          {c.workout?.name ?? "Занятие"}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          {(() => {
+                            const meta = workoutTypeMeta(c.workout?.type);
+                            const Icon = meta.icon;
+                            return (
+                              <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
+                                <Icon className="h-3 w-3" />
+                                {meta.label}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {(() => {
-                          const meta = workoutTypeMeta(c.workout?.type);
-                          const Icon = meta.icon;
-                          return (
-                            <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
-                              <Icon className="h-3 w-3" />
-                              {meta.label}
-                            </Badge>
-                          );
-                        })()}
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <Button size="sm">Записаться</Button>
-                        <span className="text-xs text-muted-foreground">
-                          осталось {spotsLeft} мест
-                        </span>
-                      </div>
+                      <button className="shrink-0 h-12 w-12 rounded-full bg-[#1B1C1F] text-[#FFE500] flex items-center justify-center shadow-md">
+                        <Plus className="h-6 w-6" />
+                      </button>
                     </Card>
                   </div>
                 );
