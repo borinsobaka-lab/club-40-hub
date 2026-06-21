@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { Ticket, Clock, Dumbbell, Check, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Ticket, Clock, Dumbbell, Check, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/memberships")({
   head: () => ({
@@ -19,68 +21,131 @@ export const Route = createFileRoute("/memberships")({
 type Membership = {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
+  benefits: string[] | null;
+  visits_count: number | null;
+  duration_days: number;
   price: number;
-  visits: number | null;
-  durationDays: number;
-  features: string[];
-  color: string;
+  installment_enabled: boolean | null;
+  studio_id: string;
 };
 
-const MOCK_MEMBERSHIPS: Membership[] = [
-  {
-    id: "basic",
-    name: "Базовый",
-    description: "Отличный старт для знакомства с клубом",
-    price: 4000,
-    visits: 4,
-    durationDays: 30,
-    features: ["4 занятия", "Срок действия 30 дней", "Все типы тренировок"],
-    color: "#0ea5e9",
-  },
-  {
-    id: "standard",
-    name: "Стандартный",
-    description: "Оптимальный баланс цены и количества занятий",
-    price: 7000,
-    visits: 8,
-    durationDays: 30,
-    features: ["8 занятий", "Срок действия 30 дней", "Все типы тренировок", "Приоритетное бронирование"],
-    color: "#8b5cf6",
-  },
-  {
-    id: "premium",
-    name: "Премиум",
-    description: "Максимум возможностей для прогресса",
-    price: 9000,
-    visits: 12,
-    durationDays: 30,
-    features: ["12 занятий", "Срок действия 30 дней", "Все типы тренировок", "Приоритетное бронирование", "Гостевой визит"],
-    color: "#f43f5e",
-  },
-  {
-    id: "unlimited",
-    name: "Безлимитный",
-    description: "Тренируйтесь без ограничений",
-    price: 15000,
-    visits: null,
-    durationDays: 30,
-    features: ["Безлимит посещений", "Срок действия 30 дней", "Все типы тренировок", "Приоритетное бронирование", "2 гостевых визита"],
-    color: "#10b981",
-  },
-];
+type ActiveMembership = {
+  id: string;
+  ends_at: string | null;
+  visits_left: number | null;
+  memberships: { name: string } | null;
+};
+
+const COLORS = ["#0ea5e9", "#8b5cf6", "#f43f5e", "#10b981", "#f59e0b", "#ec4899"];
+const db = supabase as unknown as {
+  from: (table: string) => any;
+};
 
 function MembershipsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const [client, setClient] = useState<{ id: string; studio_id: string } | null>(null);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [active, setActive] = useState<ActiveMembership | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Membership | null>(null);
   const [purchasing, setPurchasing] = useState(false);
 
-  const handlePurchase = () => {
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: c, error: cErr } = await db
+          .from("clients")
+          .select("id, studio_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (cErr) throw cErr;
+        if (!c || !c.studio_id) {
+          if (!cancelled) {
+            setClient(null);
+            setLoading(false);
+            setError("Профиль клиента не привязан к студии. Обратитесь к администратору.");
+          }
+          return;
+        }
+        if (cancelled) return;
+        setClient({ id: c.id, studio_id: c.studio_id });
+
+        const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
+          db
+            .from("memberships")
+            .select(
+              "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id",
+            )
+            .eq("studio_id", c.studio_id)
+            .order("price", { ascending: true }),
+          db
+            .from("client_memberships")
+            .select("id, ends_at, visits_left, memberships(name)")
+            .eq("client_id", c.id)
+            .eq("status", "active")
+            .maybeSingle(),
+        ]);
+        if (mErr) throw mErr;
+        if (aErr) throw aErr;
+        if (cancelled) return;
+        setMemberships((m as Membership[]) ?? []);
+        setActive((act as ActiveMembership) ?? null);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? "Не удалось загрузить абонементы");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading]);
+
+  const handlePurchase = async () => {
+    if (!selected || !client) return;
+    if (active) {
+      toast.error("У вас уже есть активный абонемент");
+      return;
+    }
     setPurchasing(true);
-    setTimeout(() => {
-      setPurchasing(false);
-      toast.success(`Абонемент «${selected?.name}» оформлен!`);
+    try {
+      const { error: insErr } = await db.from("sales").insert({
+        studio_id: client.studio_id,
+        client_id: client.id,
+        membership_id: selected.id,
+        sold_at: new Date().toISOString().slice(0, 10),
+        total_amount: selected.price,
+        down_payment_amount: selected.price,
+        remaining_installments: 0,
+        source: "mobile",
+      });
+      if (insErr) throw insErr;
+
+      const { data: act } = await db
+        .from("client_memberships")
+        .select("id, ends_at, visits_left, memberships(name)")
+        .eq("client_id", client.id)
+        .eq("status", "active")
+        .maybeSingle();
+      setActive((act as ActiveMembership) ?? null);
+
+      toast.success(`Абонемент «${selected.name}» оформлен!`);
       setSelected(null);
-    }, 1500);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Не удалось оформить абонемент");
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   return (
@@ -93,58 +158,104 @@ function MembershipsPage() {
       }
     >
       <div className="p-4 space-y-4 pb-24">
-        {MOCK_MEMBERSHIPS.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => setSelected(m)}
-            className="w-full text-left"
-          >
-            <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
-              <div
-                className="absolute left-0 top-0 bottom-0 w-1"
-                style={{ backgroundColor: m.color }}
-              />
-              <div className="flex items-start justify-between gap-3 pl-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold">{m.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
-                  <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                    {m.visits !== null ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Dumbbell className="h-3.5 w-3.5" />
-                        {m.visits} занятий
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1">
-                        <Dumbbell className="h-3.5 w-3.5" />
-                        Безлимит
-                      </span>
-                    )}
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {m.durationDays} дней
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-xl font-black">{m.price.toLocaleString("ru-RU")}₽</div>
+        {!user && !authLoading && (
+          <Card className="p-4 text-sm text-muted-foreground">
+            Войдите в аккаунт, чтобы увидеть абонементы.
+          </Card>
+        )}
+
+        {(loading || authLoading) && user && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {error && !loading && (
+          <Card className="p-4 text-sm text-destructive">{error}</Card>
+        )}
+
+        {!loading && user && active && (
+          <Card className="p-4 border-emerald-500/30 bg-emerald-500/5">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground">Активный абонемент</div>
+                <div className="font-bold">{active.memberships?.name ?? "Абонемент"}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {active.visits_left === null
+                    ? "Безлимит посещений"
+                    : `Осталось посещений: ${active.visits_left}`}
+                  {active.ends_at
+                    ? ` · до ${new Date(active.ends_at).toLocaleDateString("ru-RU")}`
+                    : ""}
                 </div>
               </div>
-            </Card>
-          </button>
-        ))}
+            </div>
+          </Card>
+        )}
+
+        {!loading && user && !error && memberships.length === 0 && !active && (
+          <Card className="p-4 text-sm text-muted-foreground">
+            В вашей студии пока нет доступных абонементов.
+          </Card>
+        )}
+
+        {!loading &&
+          memberships.map((m, idx) => {
+            const color = COLORS[idx % COLORS.length];
+            return (
+              <button
+                key={m.id}
+                onClick={() => setSelected({ ...m })}
+                className="w-full text-left"
+              >
+                <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1"
+                    style={{ backgroundColor: color }}
+                  />
+                  <div className="flex items-start justify-between gap-3 pl-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold">{m.name}</h3>
+                      {m.description && (
+                        <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Dumbbell className="h-3.5 w-3.5" />
+                          {m.visits_count === null ? "Безлимит" : `${m.visits_count} занятий`}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {m.duration_days} дней
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-xl font-black">
+                        {Number(m.price).toLocaleString("ru-RU")}₽
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </button>
+            );
+          })}
       </div>
 
-      {/* Drawer для деталей абонемента */}
       {selected && (
         <MembershipDrawer
           membership={selected}
+          color={COLORS[memberships.findIndex((x) => x.id === selected.id) % COLORS.length] || COLORS[0]}
           open={!!selected}
           onOpenChange={(open) => {
             if (!open) setSelected(null);
           }}
           onPurchase={handlePurchase}
           purchasing={purchasing}
+          disabled={!!active}
         />
       )}
     </PageShell>
@@ -153,17 +264,29 @@ function MembershipsPage() {
 
 function MembershipDrawer({
   membership,
+  color,
   open,
   onOpenChange,
   onPurchase,
   purchasing,
+  disabled,
 }: {
   membership: Membership;
+  color: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPurchase: () => void;
   purchasing: boolean;
+  disabled: boolean;
 }) {
+  const features = [
+    membership.visits_count === null
+      ? "Безлимит посещений"
+      : `${membership.visits_count} занятий`,
+    `Срок действия ${membership.duration_days} дней`,
+    ...((membership.benefits ?? []).filter(Boolean) as string[]),
+  ];
+
   return (
     <div
       className={`fixed inset-0 z-50 ${open ? "pointer-events-auto" : "pointer-events-none"}`}
@@ -182,18 +305,20 @@ function MembershipDrawer({
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-2xl font-bold leading-tight">{membership.name}</h2>
-              <p className="text-sm text-muted-foreground mt-1">{membership.description}</p>
+              {membership.description && (
+                <p className="text-sm text-muted-foreground mt-1">{membership.description}</p>
+              )}
             </div>
             <div
               className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: membership.color + "20" }}
+              style={{ backgroundColor: color + "20" }}
             >
-              <Ticket className="h-7 w-7" style={{ color: membership.color }} />
+              <Ticket className="h-7 w-7" style={{ color }} />
             </div>
           </div>
 
           <div className="mt-5 space-y-2">
-            {membership.features.map((f, i) => (
+            {features.map((f, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4 text-emerald-500 shrink-0" />
                 <span>{f}</span>
@@ -204,23 +329,29 @@ function MembershipDrawer({
           <div className="mt-5 flex items-center gap-2 rounded-xl bg-muted p-3 text-sm">
             <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-muted-foreground">
-              Абонемент активируется с момента первого посещения
+              Абонемент активируется автоматически после оформления
             </span>
           </div>
 
           <div className="mt-6 flex items-center justify-between">
             <div>
               <div className="text-xs text-muted-foreground">Стоимость</div>
-              <div className="text-2xl font-black">{membership.price.toLocaleString("ru-RU")}₽</div>
+              <div className="text-2xl font-black">
+                {Number(membership.price).toLocaleString("ru-RU")}₽
+              </div>
             </div>
           </div>
 
           <Button
             onClick={onPurchase}
-            disabled={purchasing}
-            className="mt-4 w-full h-14 rounded-2xl bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
+            disabled={purchasing || disabled}
+            className="mt-4 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
           >
-            {purchasing ? "Оформляем…" : "Приобрести"}
+            {disabled
+              ? "У вас уже есть активный абонемент"
+              : purchasing
+                ? "Оформляем…"
+                : "Приобрести"}
           </Button>
         </div>
         <div className="h-[env(safe-area-inset-bottom)]" />
