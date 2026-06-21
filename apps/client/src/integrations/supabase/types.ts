@@ -141,21 +141,18 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          trainer_name: string | null
           type: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          trainer_name?: string | null
           type?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          trainer_name?: string | null
           type?: string | null
         }
         Relationships: []

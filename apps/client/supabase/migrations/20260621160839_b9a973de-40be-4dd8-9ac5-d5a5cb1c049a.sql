@@ -1,0 +1,1 @@
+ALTER TABLE public.workouts DROP COLUMN IF EXISTS trainer_name;

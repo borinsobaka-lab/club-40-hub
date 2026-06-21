@@ -24,11 +24,13 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
+type Trainer = { id: string; full_name: string | null };
 type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
-  workout: { name: string; type: string | null; trainer_name: string | null } | null;
+  workout: { name: string; type: string | null } | null;
+  trainers: { trainer: Trainer | null }[] | null;
 };
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
@@ -84,7 +86,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, workout:workouts(name, type, trainer_name)",
+          "id, starts_at, ends_at, workout:workouts(name, type), trainers:schedule_entry_trainers(trainer:trainers(id, full_name))",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -232,11 +234,17 @@ function SchedulePage() {
                         <div className="font-semibold break-words leading-snug">
                           {c.workout?.name ?? "Занятие"}
                         </div>
-                        {c.workout?.trainer_name && (
-                          <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                            {c.workout.trainer_name}
-                          </div>
-                        )}
+                        {(() => {
+                          const names = (c.trainers ?? [])
+                            .map((t) => t.trainer?.full_name)
+                            .filter((n): n is string => !!n);
+                          if (names.length === 0) return null;
+                          return (
+                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {names.join(", ")}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center">
                         <Plus className="h-6 w-6" strokeWidth={2.5} />
