@@ -28,8 +28,7 @@ type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
-  trainer_name: string | null;
-  workout: { name: string; type: string | null } | null;
+  workout: { name: string; type: string | null; trainer_name: string | null } | null;
 };
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
@@ -85,7 +84,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, trainer_name, workout:workouts(name, type)",
+          "id, starts_at, ends_at, workout:workouts(name, type, trainer_name)",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -233,9 +232,9 @@ function SchedulePage() {
                         <div className="font-semibold break-words leading-snug">
                           {c.workout?.name ?? "Занятие"}
                         </div>
-                        {c.trainer_name && (
+                        {c.workout?.trainer_name && (
                           <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                            {c.trainer_name}
+                            {c.workout.trainer_name}
                           </div>
                         )}
                       </div>
