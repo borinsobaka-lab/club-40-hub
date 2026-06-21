@@ -10,13 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -39,32 +32,13 @@ export const Route = createFileRoute("/_authenticated/workouts")({
   component: WorkoutsPage,
 });
 
-import {
-  WORKOUT_TYPES as TYPES,
-  workoutTypeColor,
-  workoutTypeLabel as typeLabel,
-  type WorkoutType,
-} from "@/lib/workout-types";
-
 type Workout = {
   id: string;
   studio_id: string;
   name: string;
   description: string | null;
   photo_url: string | null;
-  type: WorkoutType | null;
 };
-
-function TypeBadge({ value }: { value: string | null }) {
-  const color = workoutTypeColor(value);
-  if (!color) return <span className="text-muted-foreground">—</span>;
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className={`h-2.5 w-2.5 rounded-full ${color.dot}`} aria-hidden />
-      {typeLabel(value)}
-    </span>
-  );
-}
 
 function isHttpUrl(v: string | null | undefined) {
   return !!v && /^https?:\/\//i.test(v);
@@ -114,10 +88,8 @@ function WorkoutsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Workout | null>(null);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const filteredWorkouts = workouts.filter((w) => {
-    if (typeFilter !== "all" && (w.type ?? "") !== typeFilter) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
