@@ -27,7 +27,7 @@ type Membership = {
   duration_days: number;
   price: number;
   installment_enabled: boolean | null;
-  studio_id: string;
+  studio_id: string | null;
 };
 
 type ActiveMembership = {
@@ -80,12 +80,12 @@ function MembershipsPage() {
         if (cancelled) return;
         setClient({ id: c.id, studio_id: c.studio_id });
 
+        const membershipSelect =
+          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id";
         const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
           db
             .from("memberships")
-            .select(
-              "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id",
-            )
+            .select(membershipSelect)
             .eq("studio_id", c.studio_id)
             .order("price", { ascending: true }),
           db
@@ -97,8 +97,19 @@ function MembershipsPage() {
         ]);
         if (mErr) throw mErr;
         if (aErr) throw aErr;
+
+        let membershipRows = (m as Membership[]) ?? [];
+        if (membershipRows.length === 0) {
+          const { data: fallbackMemberships, error: fallbackErr } = await db
+            .from("memberships")
+            .select(membershipSelect)
+            .order("price", { ascending: true });
+          if (fallbackErr) throw fallbackErr;
+          membershipRows = (fallbackMemberships as Membership[]) ?? [];
+        }
+
         if (cancelled) return;
-        setMemberships((m as Membership[]) ?? []);
+        setMemberships(membershipRows);
         setActive((act as ActiveMembership) ?? null);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Не удалось загрузить абонементы");
@@ -120,7 +131,7 @@ function MembershipsPage() {
     setPurchasing(true);
     try {
       const { error: insErr } = await db.from("sales").insert({
-        studio_id: client.studio_id,
+        studio_id: selected.studio_id ?? client.studio_id,
         client_id: client.id,
         membership_id: selected.id,
         sold_at: new Date().toISOString().slice(0, 10),
@@ -198,7 +209,7 @@ function MembershipsPage() {
 
         {!loading && user && !error && memberships.length === 0 && !active && (
           <Card className="p-4 text-sm text-muted-foreground">
-            В вашей студии пока нет доступных абонементов.
+            Пока нет доступных абонементов.
           </Card>
         )}
 
