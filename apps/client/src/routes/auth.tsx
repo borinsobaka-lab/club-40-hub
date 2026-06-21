@@ -21,7 +21,8 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -39,12 +40,12 @@ function AuthPage() {
       const { error } = await signIn(email.trim(), password);
       if (error) setError(error);
     } else {
-      if (fullName.trim().length < 2) {
-        setError("Укажите ФИО");
+      if (firstName.trim().length < 1 || lastName.trim().length < 1) {
+        setError("Укажите фамилию и имя");
         setBusy(false);
         return;
       }
-      const { error } = await signUp(email.trim(), password, fullName.trim());
+      const { error } = await signUp(email.trim(), password, firstName.trim(), lastName.trim());
       if (error) setError(error);
       else setInfo("Аккаунт создан. Если включено подтверждение почты — проверьте ящик.");
     }
@@ -69,17 +70,30 @@ function AuthPage() {
 
           <form onSubmit={submit} className="space-y-3">
             {mode === "signup" && (
-              <div className="space-y-1">
-                <Label htmlFor="fullName">Фамилия Имя Отчество</Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Иванов Иван Иванович"
-                  autoComplete="name"
-                  required
-                />
-              </div>
+              <>
+                <div className="space-y-1">
+                  <Label htmlFor="lastName">Фамилия</Label>
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Иванов"
+                    autoComplete="family-name"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="firstName">Имя</Label>
+                  <Input
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Иван"
+                    autoComplete="given-name"
+                    required
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-1">
               <Label htmlFor="email">Почта</Label>

@@ -10,7 +10,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Home, Dumbbell, BookmarkCheck, Trophy, User, Loader2 } from "lucide-react";
+import { Home, Dumbbell, Trophy, User, Loader2 } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -121,13 +121,13 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const navItems = [
+const mainNavItems = [
   { to: "/", label: "Главное", icon: Home, exact: true },
   { to: "/schedule", label: "Бронь", icon: Dumbbell, exact: false },
-  { to: "/bookings", label: "Брони", icon: BookmarkCheck, exact: false },
   { to: "/results", label: "Результаты", icon: Trophy, exact: false },
-  { to: "/profile", label: "Профиль", icon: User, exact: false },
 ] as const;
+
+const profileNavItem = { to: "/profile", label: "Профиль", icon: User, exact: false } as const;
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -182,17 +182,17 @@ function AppShell() {
         </main>
 
 
-        <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
-          <div className="w-full max-w-md pointer-events-auto bg-background/95 backdrop-blur border-t border-border">
-            <ul className="grid grid-cols-5">
-              {navItems.map(({ to, label, icon: Icon, exact }) => (
-                <li key={to}>
+        <nav className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+          <div className="pointer-events-auto flex w-full max-w-md items-center gap-2">
+            <ul className="flex flex-1 items-center justify-around rounded-full border border-white/10 bg-background/60 px-2 py-1 shadow-lg backdrop-blur-xl backdrop-saturate-150">
+              {mainNavItems.map(({ to, label, icon: Icon, exact }) => (
+                <li key={to} className="flex-1">
                   <Link
                     to={to}
                     activeOptions={{ exact }}
                     activeProps={{ className: "text-primary" }}
                     inactiveProps={{ className: "text-muted-foreground" }}
-                    className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
+                    className="flex h-12 flex-col items-center justify-center gap-0.5 text-[10px] transition-colors"
                   >
                     <Icon className="h-5 w-5" />
                     <span>{label}</span>
@@ -200,7 +200,15 @@ function AppShell() {
                 </li>
               ))}
             </ul>
-            <div className="h-[env(safe-area-inset-bottom)]" />
+            <Link
+              to={profileNavItem.to}
+              activeOptions={{ exact: profileNavItem.exact }}
+              activeProps={{ className: "text-primary" }}
+              inactiveProps={{ className: "text-muted-foreground" }}
+              className="flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border border-white/10 bg-background/60 text-[10px] shadow-lg backdrop-blur-xl backdrop-saturate-150 transition-colors"
+            >
+              <profileNavItem.icon className="h-5 w-5" />
+            </Link>
           </div>
         </nav>
       </div>

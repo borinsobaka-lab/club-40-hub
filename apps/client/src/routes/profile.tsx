@@ -45,6 +45,8 @@ function initials(name: string) {
 type ClientRow = {
   id?: string;
   full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
   phone?: string | null;
   birthday?: string | null;
@@ -52,11 +54,16 @@ type ClientRow = {
 };
 
 const profileSchema = z.object({
-  full_name: z
+  first_name: z
     .string()
     .trim()
     .min(1, "Укажите имя")
-    .max(120, "Слишком длинное имя"),
+    .max(60, "Слишком длинное имя"),
+  last_name: z
+    .string()
+    .trim()
+    .min(1, "Укажите фамилию")
+    .max(60, "Слишком длинная фамилия"),
   phone: z
     .string()
     .trim()
@@ -73,6 +80,19 @@ const profileSchema = z.object({
   birthday: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
 });
+
+function composeFullName(c: Pick<ClientRow, "full_name" | "first_name" | "last_name"> | null | undefined) {
+  if (!c) return "";
+  const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
+  return composed || (c.full_name ?? "");
+}
+
+function splitFullName(full: string | null | undefined): { first: string; last: string } {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { last: parts[0], first: parts.slice(1).join(" ") };
+}
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -114,7 +134,7 @@ function ProfilePage() {
   }, [user]);
 
   const fullName =
-    client?.full_name ||
+    composeFullName(client) ||
     (user?.user_metadata?.full_name as string) ||
     "Участник";
   const email = client?.email || user?.email || "";
@@ -204,19 +224,26 @@ function EditProfileSheet({
   onSaved: (updated: ClientRow) => void;
 }) {
   const { user } = useAuth();
-  const [form, setForm] = useState({
-    full_name: client.full_name ?? "",
-    phone: client.phone ?? "",
-    email: client.email ?? "",
-    birthday: client.birthday ?? "",
-    gender: client.gender ?? "",
-  });
+  const initial = (() => {
+    const split = splitFullName(client.full_name);
+    return {
+      first_name: client.first_name ?? split.first,
+      last_name: client.last_name ?? split.last,
+      phone: client.phone ?? "",
+      email: client.email ?? "",
+      birthday: client.birthday ?? "",
+      gender: client.gender ?? "",
+    };
+  })();
+  const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
+      const split = splitFullName(client.full_name);
       setForm({
-        full_name: client.full_name ?? "",
+        first_name: client.first_name ?? split.first,
+        last_name: client.last_name ?? split.last,
         phone: client.phone ?? "",
         email: client.email ?? "",
         birthday: client.birthday ?? "",
@@ -233,8 +260,11 @@ function EditProfileSheet({
       return;
     }
     const v = parsed.data;
-    const payload = {
-      full_name: v.full_name,
+    const fullName = [v.last_name, v.first_name].filter(Boolean).join(" ").trim();
+    const payload: Record<string, unknown> = {
+      first_name: v.first_name,
+      last_name: v.last_name,
+      full_name: fullName,
       phone: v.phone ? v.phone : null,
       email: v.email ? v.email : null,
       birthday: v.birthday ? v.birthday : null,
@@ -242,12 +272,23 @@ function EditProfileSheet({
     };
 
     setSaving(true);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("clients")
       .update(payload)
       .eq("user_id", user.id)
       .select()
       .maybeSingle();
+    // Fallback if first_name/last_name columns don't exist yet on the DB side
+    if (error && /first_name|last_name/.test(error.message)) {
+      const { first_name: _f, last_name: _l, ...legacy } = payload;
+      void _f; void _l;
+      ({ data, error } = await supabase
+        .from("clients")
+        .update(legacy)
+        .eq("user_id", user.id)
+        .select()
+        .maybeSingle());
+    }
     setSaving(false);
 
     if (error) {
@@ -271,13 +312,24 @@ function EditProfileSheet({
 
         <div className="space-y-4 py-4">
           <div className="space-y-1.5">
-            <Label htmlFor="full_name">Имя</Label>
+            <Label htmlFor="last_name">Фамилия</Label>
             <Input
-              id="full_name"
-              value={form.full_name}
-              onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-              maxLength={120}
-              autoComplete="name"
+              id="last_name"
+              value={form.last_name}
+              onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
+              maxLength={60}
+              autoComplete="family-name"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="first_name">Имя</Label>
+            <Input
+              id="first_name"
+              value={form.first_name}
+              onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
+              maxLength={60}
+              autoComplete="given-name"
             />
           </div>
 
