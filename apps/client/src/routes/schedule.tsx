@@ -260,55 +260,84 @@ function SchedulePage() {
                 const isPending = pendingId === c.id;
                 return (
                   <div key={c.id} className="relative flex gap-1 pb-4">
-                    <div className="flex flex-col items-center w-12 shrink-0 pt-1 pr-2 gap-2">
-                      <div className="text-base font-bold italic tabular-nums leading-tight text-center">
-                        {fmtTime(c.starts_at)}
-                      </div>
-                      <img src={logoSrc} alt="" className="w-9 h-9 rounded-full object-cover" />
-                    </div>
-                    <Card
-                      className={`relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg transition-colors ${
-                        isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
-                      }`}
-                    >
-                      <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold break-words leading-snug">
-                          {c.workout?.name ?? "Занятие"}
-                        </div>
-                        {(() => {
-                          const names = (c.trainers ?? [])
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trainerName =
+                          (c.trainers ?? [])
                             .map((t) => t.trainer?.full_name)
-                            .filter((n): n is string => !!n);
-                          if (names.length === 0) return null;
-                          return (
-                            <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
-                              {names.join(", ")}
-                            </div>
-                          );
-                        })()}
+                            .filter((n): n is string => !!n)
+                            .join(", ") || null;
+                        setOpenEntry({
+                          id: c.id,
+                          name: c.workout?.name ?? "Занятие",
+                          trainerName,
+                        });
+                      }}
+                      className="flex gap-1 flex-1 min-w-0 text-left active:opacity-80 transition-opacity"
+                    >
+                      <div className="flex flex-col items-center w-12 shrink-0 pt-1 pr-2 gap-2">
+                        <div className="text-base font-bold italic tabular-nums leading-tight text-center">
+                          {fmtTime(c.starts_at)}
+                        </div>
+                        <img src={logoSrc} alt="" className="w-9 h-9 rounded-full object-cover" />
                       </div>
-                      <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={() => toggleBooking(c.id)}
-                        className={`shrink-0 h-12 w-12 rounded-full flex items-center justify-center transition-colors disabled:opacity-60 ${
-                          isBooked
-                            ? "bg-white text-[#1B1C1F] border border-[#1B1C1F]/10"
-                            : "bg-[#FFE500] text-[#1B1C1F]"
+                      <Card
+                        className={`relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg transition-colors ${
+                          isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
                         }`}
-                        aria-label={isBooked ? "Отменить запись" : "Записаться"}
                       >
-                        {isPending ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : isBooked ? (
-                          <Minus className="h-6 w-6" strokeWidth={2.5} />
-                        ) : (
-                          <Plus className="h-6 w-6" strokeWidth={2.5} />
-                        )}
-                      </button>
-                    </Card>
-
+                        <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold break-words leading-snug">
+                            {c.workout?.name ?? "Занятие"}
+                          </div>
+                          {(() => {
+                            const names = (c.trainers ?? [])
+                              .map((t) => t.trainer?.full_name)
+                              .filter((n): n is string => !!n);
+                            if (names.length === 0) return null;
+                            return (
+                              <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
+                                {names.join(", ")}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-disabled={isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isPending) toggleBooking(c.id);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (!isPending) toggleBooking(c.id);
+                            }
+                          }}
+                          className={`shrink-0 h-12 w-12 rounded-full flex items-center justify-center transition-colors ${
+                            isPending ? "opacity-60" : ""
+                          } ${
+                            isBooked
+                              ? "bg-white text-[#1B1C1F] border border-[#1B1C1F]/10"
+                              : "bg-[#FFE500] text-[#1B1C1F]"
+                          }`}
+                          aria-label={isBooked ? "Отменить запись" : "Записаться"}
+                        >
+                          {isPending ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : isBooked ? (
+                            <Minus className="h-6 w-6" strokeWidth={2.5} />
+                          ) : (
+                            <Plus className="h-6 w-6" strokeWidth={2.5} />
+                          )}
+                        </span>
+                      </Card>
+                    </button>
                   </div>
                 );
               })}
@@ -316,6 +345,18 @@ function SchedulePage() {
           )}
         </div>
       )}
+      <WorkoutDrawer
+        data={openEntry}
+        open={openEntry !== null}
+        onOpenChange={(o) => {
+          if (!o) setOpenEntry(null);
+        }}
+        isBooked={openEntry ? bookedIds.has(openEntry.id) : false}
+        isPending={openEntry ? pendingId === openEntry.id : false}
+        onBook={() => {
+          if (openEntry) toggleBooking(openEntry.id);
+        }}
+      />
     </PageShell>
   );
 }
