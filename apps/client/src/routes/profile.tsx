@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarSignedUrl, useAvatarUrl } from "@/lib/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -51,7 +52,7 @@ type ClientRow = {
   phone?: string | null;
   birthday?: string | null;
   gender?: string | null;
-  photo_url?: string | null;
+  avatar_url?: string | null;
 };
 
 type ClientUpdate = {
@@ -133,6 +134,7 @@ function ProfilePage() {
   const phone = client?.phone || "";
   const birthday = client?.birthday || "";
   const gender = client?.gender || "";
+  const resolvedAvatarUrl = useAvatarUrl(client?.avatar_url);
 
   return (
     <PageShell
@@ -147,7 +149,7 @@ function ProfilePage() {
         <Card className="p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
+              {resolvedAvatarUrl && <AvatarImage src={resolvedAvatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
               </AvatarFallback>
@@ -228,7 +230,16 @@ function EditProfileSheet({
   })();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(client.photo_url ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getAvatarSignedUrl(client.avatar_url).then((u) => {
+      if (!cancelled) setAvatarUrl(u);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client.avatar_url]);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -255,12 +266,9 @@ function EditProfileSheet({
       toast.error("Не удалось загрузить: " + upErr.message);
       return;
     }
-    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-    const publicUrl = pub.publicUrl;
-    const avatarUpdate = { photo_url: publicUrl } as never;
     const { data: updated, error: dbErr } = await supabase
       .from("clients")
-      .update(avatarUpdate)
+      .update({ avatar_url: path })
       .eq("user_id", user.id)
       .select()
       .maybeSingle();
@@ -269,7 +277,8 @@ function EditProfileSheet({
       toast.error("Не удалось сохранить: " + dbErr.message);
       return;
     }
-    setAvatarUrl(publicUrl);
+    const signed = await getAvatarSignedUrl(path);
+    setAvatarUrl(signed);
     if (updated) onSaved(updated as ClientRow);
     toast.success("Аватар обновлён");
   };
