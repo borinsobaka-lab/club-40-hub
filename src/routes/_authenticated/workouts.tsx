@@ -122,10 +122,12 @@ function WorkoutsPage() {
     setWorkouts((data as Workout[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchWorkouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
   const handleDelete = async (w: Workout) => {
     if (!confirm(`Удалить тренировку «${w.name}»?`)) return;
