@@ -134,6 +134,7 @@ function ProfilePage() {
   const phone = client?.phone || "";
   const birthday = client?.birthday || "";
   const gender = client?.gender || "";
+  const resolvedAvatarUrl = useAvatarUrl(client?.avatar_url);
 
   return (
     <PageShell
