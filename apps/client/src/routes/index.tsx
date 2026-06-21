@@ -94,7 +94,7 @@ function HomePage() {
   return (
     <PageShell
       header={
-        <div className="pt-2 pb-6">
+        <div className="pt-2 pb-2">
           {/* Header */}
           <div className="px-4 flex items-center justify-between">
             <Link
@@ -186,29 +186,28 @@ function HomePage() {
               </div>
             )}
           </section>
+
+          {/* Быстрые действия */}
+          <section className="px-4 pt-2">
+            <div className="rounded-2xl bg-[#25262A] p-2">
+              <div className="flex items-stretch justify-between gap-2">
+                {[
+                  { icon: CalendarDays, label: "Расписание" },
+                  { icon: BarChart3, label: "Прогресс" },
+                  { icon: Target, label: "Цели" },
+                ].map((item) => (
+                  <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
+                    <item.icon className="h-5 w-5 text-white" />
+                    <span className="text-[11px] text-white/80">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
       }
     >
       <div className="px-4 pt-6 pb-8 space-y-8">
-        {/* Быстрые действия */}
-        <section className="rounded-2xl bg-[#25262A] p-4">
-          <div className="flex items-stretch justify-between gap-2">
-            {[
-              { icon: CalendarDays, label: "Расписание" },
-              { icon: BarChart3, label: "Прогресс" },
-              { icon: Target, label: "Цели" },
-            ].map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                className="flex flex-1 flex-col items-center gap-2 rounded-xl px-2 py-3 active:opacity-70 transition-opacity"
-              >
-                <item.icon className="h-6 w-6 text-white" />
-                <span className="text-xs text-white/80">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
 
         {/* Тренировки */}
         <section>
