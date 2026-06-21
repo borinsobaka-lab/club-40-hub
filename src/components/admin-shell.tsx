@@ -46,7 +46,7 @@ export function AdminShell({
                       "linear-gradient(135deg,#ec4899 0%,#a855f7 35%,#6366f1 65%,#06b6d4 100%)",
                   }}
                 >
-                  <Sparkles className="h-4 w-4" />
+                  <Cat className="h-4 w-4" />
                   <span>Kate</span>
                 </Link>
                 <StudioSwitcher />
