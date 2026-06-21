@@ -356,7 +356,13 @@ function ClientsPage() {
                                 {initials(displayName(c))}
                               </AvatarFallback>
                             </Avatar>
-                            <span>{displayName(c)}</span>
+                            <button
+                              type="button"
+                              onClick={() => openCard(c)}
+                              className="text-left underline-offset-2 hover:underline hover:text-primary"
+                            >
+                              {displayName(c)}
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
