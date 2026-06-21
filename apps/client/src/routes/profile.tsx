@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { LogOut, Loader2, Pencil, Camera } from "lucide-react";
+import { LogOut, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,7 +51,6 @@ type ClientRow = {
   phone?: string | null;
   birthday?: string | null;
   gender?: string | null;
-  avatar_url?: string | null;
 };
 
 type ClientUpdate = {
@@ -62,7 +61,6 @@ type ClientUpdate = {
   email?: string | null;
   birthday?: string | null;
   gender?: string | null;
-  avatar_url?: string | null;
 };
 
 const profileSchema = z.object({
@@ -87,20 +85,11 @@ function splitFullName(full: string | null | undefined): { first: string; last: 
   return { last: parts[0], first: parts.slice(1).join(" ") };
 }
 
-/** Получить временный URL для приватной аватарки. */
-async function loadAvatarUrl(path: string | null | undefined): Promise<string | null> {
-  if (!path) return null;
-  if (/^(https?:|data:|blob:)/i.test(path)) return path;
-  const { data } = await supabase.storage.from("avatars").createSignedUrl(path, 60 * 60);
-  return data?.signedUrl ?? null;
-}
-
 function ProfilePage() {
   const { user, signOut } = useAuth();
   const [client, setClient] = useState<ClientRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -135,16 +124,6 @@ function ProfilePage() {
     };
   }, [user]);
 
-  useEffect(() => {
-    let cancelled = false;
-    loadAvatarUrl(client?.avatar_url).then((url) => {
-      if (!cancelled) setAvatarUrl(url);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client?.avatar_url]);
-
   const fullName =
     composeFullName(client) ||
     (user?.user_metadata?.full_name as string) ||
@@ -167,7 +146,6 @@ function ProfilePage() {
         <Card className="p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
               </AvatarFallback>
@@ -215,7 +193,6 @@ function ProfilePage() {
             open={editOpen}
             onOpenChange={setEditOpen}
             client={client}
-            avatarUrl={avatarUrl}
             onSaved={(updated) => setClient((prev) => ({ ...prev, ...updated }))}
           />
         )}
@@ -228,17 +205,14 @@ function EditProfileSheet({
   open,
   onOpenChange,
   client,
-  avatarUrl,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client: ClientRow;
-  avatarUrl: string | null;
   onSaved: (updated: ClientRow) => void;
 }) {
   const { user } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const initial = (() => {
     const split = splitFullName(client.full_name);
     return {
@@ -252,8 +226,6 @@ function EditProfileSheet({
   })();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -266,55 +238,8 @@ function EditProfileSheet({
         birthday: client.birthday ?? "",
         gender: client.gender ?? "",
       });
-      setLocalAvatarPreview(null);
     }
   }, [open, client]);
-
-  const handlePickAvatar = () => fileInputRef.current?.click();
-
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !user) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Выберите файл изображения");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Файл слишком большой (макс. 5 МБ)");
-      return;
-    }
-    setUploading(true);
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, contentType: file.type });
-    if (uploadError) {
-      setUploading(false);
-      toast.error("Не удалось загрузить: " + uploadError.message);
-      return;
-    }
-
-    const update: ClientUpdate = { avatar_url: path };
-    const { data, error } = await supabase
-      .from("clients")
-      .update(update)
-      .eq("user_id", user.id)
-      .select()
-      .maybeSingle();
-    setUploading(false);
-    if (error) {
-      toast.error("Не удалось сохранить аватар: " + error.message);
-      return;
-    }
-    const { data: signed } = await supabase.storage
-      .from("avatars")
-      .createSignedUrl(path, 60 * 60);
-    setLocalAvatarPreview(signed?.signedUrl ?? null);
-    if (data) onSaved(data as ClientRow);
-    toast.success("Аватар обновлён");
-  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -370,7 +295,6 @@ function EditProfileSheet({
   };
 
   const displayName = composeFullName(client) || "Участник";
-  const previewSrc = localAvatarPreview ?? avatarUrl;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -384,38 +308,11 @@ function EditProfileSheet({
 
         <div className="space-y-4 py-4">
           <div className="flex flex-col items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePickAvatar}
-              disabled={uploading}
-              className="relative group"
-              aria-label="Изменить аватар"
-            >
-              <Avatar className="h-24 w-24">
-                {previewSrc && <AvatarImage src={previewSrc} alt={displayName} />}
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
-                  {initials(displayName)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center shadow-md ring-2 ring-background">
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handlePickAvatar}
-              disabled={uploading}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {uploading ? "Загрузка…" : "Изменить фото"}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
+            <Avatar className="h-24 w-24">
+              <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+                {initials(displayName)}
+              </AvatarFallback>
+            </Avatar>
           </div>
 
           <div className="space-y-1.5">
