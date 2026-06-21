@@ -328,7 +328,22 @@ function ClientsPage() {
                   ) : (
                     filtered.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{displayName(c)}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-8 w-8">
+                              {(c.avatar_url || c.photo_url) && (
+                                <AvatarImage
+                                  src={c.avatar_url || c.photo_url || ""}
+                                  alt={displayName(c)}
+                                />
+                              )}
+                              <AvatarFallback className="text-xs">
+                                {initials(displayName(c))}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{displayName(c)}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>
