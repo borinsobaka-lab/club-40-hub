@@ -43,6 +43,22 @@ function durationMin(s: string, e: string) {
   return Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60000);
 }
 
+const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
+  silovaya: { label: "Силовая", icon: Dumbbell, cls: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  cardio: { label: "Кардио", icon: HeartPulse, cls: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
+  gibrid: { label: "Гибрид", icon: Shuffle, cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
+  vosstanovlenie: { label: "Восстановление", icon: Leaf, cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+};
+
+function workoutTypeMeta(type: string | null | undefined) {
+  if (!type) return { label: "Тренировка", icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
+  const key = type.toLowerCase().trim();
+  if (TYPE_META[key]) return TYPE_META[key];
+  // match by russian label too
+  const byLabel = Object.values(TYPE_META).find((m) => m.label.toLowerCase() === key);
+  return byLabel ?? { label: type, icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
+}
+
 function SchedulePage() {
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
