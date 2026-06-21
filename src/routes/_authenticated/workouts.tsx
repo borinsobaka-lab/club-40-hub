@@ -29,6 +29,19 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DAY_TYPES,
+  type DayType,
+  dayTypeColor,
+  dayTypeLabel,
+} from "@/lib/workout-types";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — CLUB 40 Admin" }] }),
@@ -42,7 +55,21 @@ type Workout = {
   description: string | null;
   photo_url: string | null;
   capacity: number | null;
+  type: DayType | null;
 };
+
+const NONE_TYPE = "__none__" as const;
+
+function WorkoutTypeBadge({ value }: { value: DayType | null }) {
+  const color = dayTypeColor(value);
+  if (!color) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm">
+      <span className={`inline-block h-2.5 w-2.5 rounded-full ${color.dot}`} />
+      {dayTypeLabel(value)}
+    </span>
+  );
+}
 
 function isHttpUrl(v: string | null | undefined) {
   return !!v && /^https?:\/\//i.test(v);
@@ -98,7 +125,8 @@ function WorkoutsPage() {
     if (!q) return true;
     return (
       w.name.toLowerCase().includes(q) ||
-      (w.description ?? "").toLowerCase().includes(q)
+      (w.description ?? "").toLowerCase().includes(q) ||
+      dayTypeLabel(w.type).toLowerCase().includes(q)
     );
   });
 
@@ -186,6 +214,7 @@ function WorkoutsPage() {
                   <TableRow>
                     <TableHead className="w-[100px]">Фото</TableHead>
                     <TableHead>Название</TableHead>
+                    <TableHead className="w-[160px]">Тип</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead className="w-[120px]">Вместимость</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
@@ -194,13 +223,13 @@ function WorkoutsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         {workouts.length === 0
                           ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
                           : "Ничего не найдено по выбранным фильтрам."}
@@ -213,6 +242,9 @@ function WorkoutsPage() {
                           <WorkoutPhoto value={w.photo_url} name={w.name} />
                         </TableCell>
                         <TableCell className="font-medium">{w.name}</TableCell>
+                        <TableCell>
+                          <WorkoutTypeBadge value={w.type} />
+                        </TableCell>
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ?? "—"}
                         </TableCell>
@@ -268,6 +300,7 @@ function WorkoutDialog({
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [capacity, setCapacity] = useState<string>("");
+  const [type, setType] = useState<DayType | typeof NONE_TYPE>(NONE_TYPE);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -278,6 +311,7 @@ function WorkoutDialog({
       setDescription(workout?.description ?? "");
       setPhotoUrl(workout?.photo_url ?? null);
       setCapacity(workout?.capacity != null ? String(workout.capacity) : "");
+      setType((workout?.type as DayType | null) ?? NONE_TYPE);
     }
   }, [open, workout]);
 
@@ -317,6 +351,7 @@ function WorkoutDialog({
       description: description.trim() || null,
       photo_url: photoUrl,
       capacity: capacityNum,
+      type: type === NONE_TYPE ? null : type,
     };
     const { error } = workout
       ? await supabase.from("workouts").update(payload).eq("id", workout.id)
@@ -402,6 +437,31 @@ function WorkoutDialog({
               rows={3}
               placeholder="Краткое описание тренировки"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="type">Тип тренировки</Label>
+            <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
+              <SelectTrigger id="type">
+                <SelectValue placeholder="Выберите тип" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_TYPE}>
+                  <span className="text-muted-foreground">Не указан</span>
+                </SelectItem>
+                {DAY_TYPES.map((t) => {
+                  const c = dayTypeColor(t.value)!;
+                  return (
+                    <SelectItem key={t.value} value={t.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${c.dot}`} />
+                        {t.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
