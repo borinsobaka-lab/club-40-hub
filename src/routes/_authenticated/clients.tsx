@@ -191,12 +191,11 @@ function ClientsPage() {
                       <SelectTrigger className="h-8 w-full">
                         <SelectValue placeholder="Все" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Все</SelectItem>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
-                        ))}
-                      </SelectContent>
+                    <SelectContent>
+                      {GENDERS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                      ))}
+                    </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-1.5">
