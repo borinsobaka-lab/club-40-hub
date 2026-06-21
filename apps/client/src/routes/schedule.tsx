@@ -26,7 +26,7 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-type Trainer = { id: string; full_name: string | null };
+type Trainer = { id: string; full_name: string | null; photo_url: string | null };
 type Entry = {
   id: string;
   starts_at: string;
@@ -91,7 +91,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, workout:workouts(name, type), trainers:schedule_entry_trainers(trainer:trainers(id, full_name))",
+          "id, starts_at, ends_at, workout:workouts(name, type), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -263,15 +263,21 @@ function SchedulePage() {
                     <button
                       type="button"
                       onClick={() => {
+                        const trainerList = (c.trainers ?? [])
+                          .map((t) => t.trainer)
+                          .filter((t): t is Trainer => !!t);
                         const trainerName =
-                          (c.trainers ?? [])
-                            .map((t) => t.trainer?.full_name)
+                          trainerList
+                            .map((t) => t.full_name)
                             .filter((n): n is string => !!n)
                             .join(", ") || null;
+                        const trainerPhoto =
+                          trainerList.find((t) => !!t.photo_url)?.photo_url ?? null;
                         setOpenEntry({
                           id: c.id,
                           name: c.workout?.name ?? "Занятие",
                           trainerName,
+                          trainerPhoto,
                         });
                       }}
                       className="flex gap-1 flex-1 min-w-0 text-left active:opacity-80 transition-opacity"
