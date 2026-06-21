@@ -70,7 +70,8 @@ type SaleRow = {
   id: string;
   sold_at: string;
   total_amount: number;
-  installments: number;
+  down_payment_amount: number;
+  remaining_installments: number;
   admin_name: string | null;
   comment: string | null;
   memberships: { name: string } | null;
@@ -99,7 +100,7 @@ export function ClientCardDialog({
     setLoadingSales(true);
     supabase
       .from("sales")
-      .select("id, sold_at, total_amount, installments, admin_name, comment, memberships(name)")
+      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, admin_name, comment, memberships(name)")
       .eq("client_id", client.id)
       .order("sold_at", { ascending: false })
       .then(({ data, error }) => {
@@ -185,7 +186,9 @@ export function ClientCardDialog({
                       <div className="text-xs text-muted-foreground">
                         {formatDate(s.sold_at)}
                         {s.admin_name ? ` · ${s.admin_name}` : ""}
-                        {s.installments > 1 ? ` · рассрочка ${s.installments} мес.` : ""}
+                        {s.remaining_installments > 0
+                          ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
+                          : ""}
                       </div>
                     </div>
                     <div className="shrink-0 font-medium">{formatMoney(Number(s.total_amount))}</div>

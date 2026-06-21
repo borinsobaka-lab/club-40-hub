@@ -45,6 +45,7 @@ type Membership = {
   visits_count: number | null;
   duration_days: number | null;
   auto_renew: boolean;
+  installment_enabled: boolean;
   price: number;
 };
 
@@ -155,12 +156,13 @@ function MembershipsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Название</TableHead>
+                  <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Преимущества</TableHead>
                     <TableHead>Посещения</TableHead>
                     <TableHead>Срок</TableHead>
                     <TableHead>Автопродление</TableHead>
+                    <TableHead>Рассрочка</TableHead>
                     <TableHead>Цена</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
@@ -168,13 +170,13 @@ function MembershipsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                         {items.length === 0
                           ? "Пока нет абонементов. Нажмите «Добавить абонемент»."
                           : "Ничего не найдено."}
@@ -201,6 +203,7 @@ function MembershipsPage() {
                         <TableCell>{m.visits_count == null ? "Безлимит" : m.visits_count}</TableCell>
                         <TableCell>{formatDuration(m.duration_days)}</TableCell>
                         <TableCell>{m.auto_renew ? "Да" : "Нет"}</TableCell>
+                        <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
                         <TableCell className="font-medium">{formatPrice(Number(m.price))}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -262,6 +265,7 @@ function MembershipDialog({
   const [visitsCount, setVisitsCount] = useState<string>("");
   const [durationDays, setDurationDays] = useState<string>("");
   const [autoRenew, setAutoRenew] = useState(false);
+  const [installmentEnabled, setInstallmentEnabled] = useState(false);
   const [price, setPrice] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -275,6 +279,7 @@ function MembershipDialog({
     setVisitsCount(membership?.visits_count != null ? String(membership.visits_count) : "");
     setDurationDays(membership?.duration_days != null ? String(membership.duration_days) : "");
     setAutoRenew(membership?.auto_renew ?? false);
+    setInstallmentEnabled(membership?.installment_enabled ?? false);
     setPrice(membership?.price != null ? String(membership.price) : "");
   }, [open, membership]);
 
@@ -304,6 +309,7 @@ function MembershipDialog({
       visits_count: unlimited ? null : visitsCount ? Number(visitsCount) : null,
       duration_days: durationDays ? Number(durationDays) : null,
       auto_renew: autoRenew,
+      installment_enabled: installmentEnabled,
       price: price ? Number(price) : 0,
     };
     const { error } = membership
@@ -418,6 +424,11 @@ function MembershipDialog({
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} />
             Автопродление
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={installmentEnabled} onCheckedChange={(v) => setInstallmentEnabled(!!v)} />
+            Рассрочка доступна
           </label>
         </div>
 

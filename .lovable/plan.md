@@ -10,7 +10,8 @@
 
 ### Страница `/sales`
 - Таблица продаж студии с пагинацией (`DataPagination`, как везде).
-- Колонки: Дата · Клиент (ссылка на карточку) · Абонемент · Сумма · Рассрочка (1/2/3) · Администратор · Комментарий · действия (удалить).
+- Колонки: Дата · Клиент (ссылка на карточку) · Абонемент · Сумма · Первый взнос · Рассрочка · Администратор · Комментарий · действия (удалить).
+  - Если у абонемента не включена рассрочка — в колонках «Первый взнос» и «Рассрочка» ставится «—».
 - Поиск по клиенту/абонементу, кнопка «Новая продажа».
 
 ### Диалог «Новая продажа»
@@ -19,10 +20,13 @@
 - **Абонемент** — `Combobox` с поиском по `memberships` студии.
 - **Стоимость** — авто-подставляется из выбранного абонемента, можно перебить вручную.
 - **Администратор** — предзаполнено именем текущего пользователя (read-only текст + скрытый id).
-- **Рассрочка** — radio: «Сразу», «2 месяца», «3 месяца».
-  - При выборе 2/3 показывается превью: список «дата → сумма» (равные части, первая — сегодня, далее +30/+60 дней; последняя часть добирает остаток до копейки).
+- **Рассрочка** — показывается только если у выбранного абонемента `installment_enabled = true`:
+  - Поле **Первый взнос**, ₽.
+  - Выбор **Ещё платежей** — 2 или 3 месяца.
+  - Превью графика: первый взнос сегодня + оставшиеся платежи через 1, 2 (или 3) месяца. Оставшаяся сумма (`total − первый взнос`) делится поровну, последний платеж добирает остаток до копейки.
+- Если рассрочка у абонемента **не доступна**, поля рассрочки скрыты, а `down_payment_amount = total_amount`, `remaining_installments = 0`.
 - **Комментарий** — `Textarea`, необязательный.
-- Кнопка «Сохранить» создаёт запись в `sales` и, при рассрочке, строки в `sale_installments`.
+- Кнопка «Сохранить» создаёт запись в `sales` и строки в `sale_installments` (первый взнос с `paid = true`, остальные с `paid = false`).
 
 ## 3. База данных — новая миграция `db/sales.sql`
 
@@ -33,10 +37,11 @@ create table public.sales (
   client_id uuid not null references public.clients(id) on delete restrict,
   membership_id uuid not null references public.memberships(id) on delete restrict,
   admin_id uuid references auth.users(id) on delete set null,
-  admin_name text,                    -- snapshot имени админа
+  admin_name text,
   sold_at date not null default current_date,
-  total_amount numeric(12,2) not null,
-  installments smallint not null default 1 check (installments in (1,2,3)),
+  total_amount numeric(12,2) not null check (total_amount >= 0),
+  down_payment_amount numeric(12,2) not null default 0 check (down_payment_amount >= 0 and down_payment_amount <= total_amount),
+  remaining_installments smallint not null default 0 check (remaining_installments in (0,2,3)),
   comment text,
   created_at timestamptz not null default now()
 );
@@ -45,12 +50,13 @@ create table public.sale_installments (
   id uuid primary key default gen_random_uuid(),
   sale_id uuid not null references public.sales(id) on delete cascade,
   due_date date not null,
-  amount numeric(12,2) not null,
+  amount numeric(12,2) not null check (amount >= 0),
   paid boolean not null default false,
   created_at timestamptz not null default now()
 );
 ```
 
+- В `db/memberships.sql` добавить `installment_enabled boolean not null default false`.
 - GRANT'ы для `authenticated` / `service_role`.
 - RLS: SELECT/INSERT/UPDATE/DELETE — `public.is_trainer(auth.uid(), studio_id)`; для `sale_installments` — через `exists (select 1 from sales s where s.id = sale_id and is_trainer(...))`.
 - Индексы: `sales(studio_id, sold_at desc)`, `sales(client_id)`, `sale_installments(sale_id)`.
