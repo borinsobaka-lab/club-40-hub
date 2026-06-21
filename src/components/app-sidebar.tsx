@@ -95,6 +95,11 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
+          <SidebarGroupLabel className="text-white/50">Финансы</SidebarGroupLabel>
+          <SidebarGroupContent>{renderItems(financeItems)}</SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
           <SidebarGroupLabel className="text-white/50">Обратная связь</SidebarGroupLabel>
           <SidebarGroupContent>{renderItems(feedbackItems)}</SidebarGroupContent>
         </SidebarGroup>
