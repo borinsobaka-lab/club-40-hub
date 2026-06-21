@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { LogOut, Loader2, Pencil } from "lucide-react";
+import { LogOut, Loader2, Pencil, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,6 +51,7 @@ type ClientRow = {
   phone?: string | null;
   birthday?: string | null;
   gender?: string | null;
+  avatar_url?: string | null;
 };
 
 type ClientUpdate = {
@@ -61,6 +62,7 @@ type ClientUpdate = {
   email?: string | null;
   birthday?: string | null;
   gender?: string | null;
+  avatar_url?: string | null;
 };
 
 const profileSchema = z.object({
@@ -146,6 +148,7 @@ function ProfilePage() {
         <Card className="p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
+              {client?.avatar_url && <AvatarImage src={client.avatar_url} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
               </AvatarFallback>
@@ -226,6 +229,50 @@ function EditProfileSheet({
   })();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(client.avatar_url ?? null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Выберите изображение");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Файл больше 5 МБ");
+      return;
+    }
+    setUploadingAvatar(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+    if (upErr) {
+      setUploadingAvatar(false);
+      toast.error("Не удалось загрузить: " + upErr.message);
+      return;
+    }
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const publicUrl = pub.publicUrl;
+    const { data: updated, error: dbErr } = await supabase
+      .from("clients")
+      .update({ avatar_url: publicUrl })
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+    setUploadingAvatar(false);
+    if (dbErr) {
+      toast.error("Не удалось сохранить: " + dbErr.message);
+      return;
+    }
+    setAvatarUrl(publicUrl);
+    if (updated) onSaved(updated as ClientRow);
+    toast.success("Аватар обновлён");
+  };
 
   useEffect(() => {
     if (open) {
@@ -308,11 +355,42 @@ function EditProfileSheet({
 
         <div className="space-y-4 py-4">
           <div className="flex flex-col items-center gap-2">
-            <Avatar className="h-24 w-24">
-              <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
-                {initials(displayName)}
-              </AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
+              aria-label="Загрузить аватар"
+            >
+              <Avatar className="h-24 w-24">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+                  {initials(displayName)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+                {uploadingAvatar ? (
+                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6 text-white" />
+                )}
+              </div>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            <button
+              type="button"
+              className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+            >
+              {avatarUrl ? "Заменить фото" : "Загрузить фото"}
+            </button>
           </div>
 
           <div className="space-y-1.5">
