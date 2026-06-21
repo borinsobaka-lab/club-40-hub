@@ -219,7 +219,7 @@ function SchedulePage() {
               {dayEntries.map((c) => {
                 const meta = workoutTypeMeta(c.workout?.type);
                 return (
-                  <div key={c.id} className="relative flex gap-3 pb-4">
+                  <div key={c.id} className="relative flex gap-2 pb-4">
                     <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right pr-2">
                       <div className="text-base font-bold italic tabular-nums leading-tight">
                         {fmtTime(c.starts_at)}
@@ -228,7 +228,7 @@ function SchedulePage() {
                         {fmtTime(c.ends_at)}
                       </div>
                     </div>
-                    <Card className="relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                    <Card className="relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg">
                       <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold break-words leading-snug">
