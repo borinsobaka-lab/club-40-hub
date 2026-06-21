@@ -135,60 +135,63 @@ function ProfilePage() {
   const gender = client?.gender || "";
 
   return (
-    <PageShell
-      header={
-        <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black italic uppercase">Профиль</h1>
-          <p className="text-sm text-white/70">Ваши данные и настройки</p>
+    <PageShell header={<div className="h-10" />}>
+      <div className="px-4 pb-8 space-y-6">
+        {/* Аватар + имя */}
+        <div className="flex flex-col items-center pt-2">
+          <Avatar className="h-28 w-28 ring-4 ring-background shadow-xl">
+            {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
+            <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-bold">
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : initials(fullName)}
+            </AvatarFallback>
+          </Avatar>
+          <h2 className="mt-4 text-2xl font-bold text-center leading-tight">{fullName}</h2>
+          {email && <p className="mt-1 text-sm text-muted-foreground">{email}</p>}
+          {phone && <p className="text-sm text-muted-foreground">{phone}</p>}
         </div>
-      }
-    >
-      <div className="p-4 space-y-5">
-        <Card className="p-5">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-lg truncate">{fullName}</div>
-              <div className="text-xs text-muted-foreground truncate">{email}</div>
-              {phone && <div className="text-xs text-muted-foreground truncate">{phone}</div>}
-            </div>
-          </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <div className="text-xs text-muted-foreground">Дата рождения</div>
-              <div className="font-medium">
+        {/* Данные */}
+        <Card className="overflow-hidden divide-y divide-border">
+          <div className="flex items-center gap-3 p-4">
+            <CalendarDays className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Дата рождения</p>
+              <p className="text-sm font-medium">
                 {birthday ? new Date(birthday).toLocaleDateString("ru-RU") : "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Пол</div>
-              <div className="font-medium">
-                {gender === "male" ? "Мужской" : gender === "female" ? "Женский" : "—"}
-              </div>
+              </p>
             </div>
           </div>
+          <div className="flex items-center gap-3 p-4">
+            <User className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Пол</p>
+              <p className="text-sm font-medium">
+                {gender === "male" ? "Мужской" : gender === "female" ? "Женский" : "—"}
+              </p>
+            </div>
+          </div>
+        </Card>
 
+        {/* Кнопки */}
+        <div className="flex gap-3">
           <Button
             variant="outline"
-            className="w-full mt-5"
+            className="flex-1 h-11"
             onClick={() => setEditOpen(true)}
             disabled={loading || !client}
           >
             <Pencil className="h-4 w-4 mr-2" />
-            Редактировать профиль
+            Редактировать
           </Button>
-        </Card>
-
-        <Button variant="outline" className="w-full" onClick={() => signOut()}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Выйти
-        </Button>
+          <Button
+            variant="ghost"
+            className="flex-1 h-11 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => signOut()}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Выйти
+          </Button>
+        </div>
 
         {client && (
           <EditProfileSheet
