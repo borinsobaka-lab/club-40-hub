@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, ChevronRight, Newspaper, Ghost, CalendarDays, BarChart3, Target } from "lucide-react";
+import { Bell, ChevronRight, Newspaper, Ghost, Phone, MessageSquare, Star } from "lucide-react";
 import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
