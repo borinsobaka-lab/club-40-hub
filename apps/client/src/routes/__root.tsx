@@ -184,14 +184,14 @@ function AppShell() {
 
         <nav className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
           <div className="pointer-events-auto flex w-full max-w-md items-center gap-2">
-            <ul className="flex flex-1 items-center justify-around rounded-full border border-white/10 bg-background/60 px-2 py-1 shadow-lg backdrop-blur-xl backdrop-saturate-150">
+            <ul className="glass-dark flex flex-1 items-center justify-around rounded-full px-2 py-1">
               {mainNavItems.map(({ to, label, icon: Icon, exact }) => (
                 <li key={to} className="flex-1">
                   <Link
                     to={to}
                     activeOptions={{ exact }}
-                    activeProps={{ className: "text-primary" }}
-                    inactiveProps={{ className: "text-muted-foreground" }}
+                    activeProps={{ className: "text-white" }}
+                    inactiveProps={{ className: "text-white/60" }}
                     className="flex h-12 flex-col items-center justify-center gap-0.5 text-[10px] transition-colors"
                   >
                     <Icon className="h-5 w-5" />
@@ -203,9 +203,9 @@ function AppShell() {
             <Link
               to={profileNavItem.to}
               activeOptions={{ exact: profileNavItem.exact }}
-              activeProps={{ className: "text-primary" }}
-              inactiveProps={{ className: "text-muted-foreground" }}
-              className="flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border border-white/10 bg-background/60 text-[10px] shadow-lg backdrop-blur-xl backdrop-saturate-150 transition-colors"
+              activeProps={{ className: "text-white" }}
+              inactiveProps={{ className: "text-white/60" }}
+              className="glass-dark flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] transition-colors"
             >
               <profileNavItem.icon className="h-5 w-5" />
             </Link>
