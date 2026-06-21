@@ -309,6 +309,7 @@ function MembershipDialog({
       visits_count: unlimited ? null : visitsCount ? Number(visitsCount) : null,
       duration_days: durationDays ? Number(durationDays) : null,
       auto_renew: autoRenew,
+      installment_enabled: installmentEnabled,
       price: price ? Number(price) : 0,
     };
     const { error } = membership
@@ -423,6 +424,11 @@ function MembershipDialog({
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} />
             Автопродление
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={installmentEnabled} onCheckedChange={(v) => setInstallmentEnabled(!!v)} />
+            Рассрочка доступна
           </label>
         </div>
 
