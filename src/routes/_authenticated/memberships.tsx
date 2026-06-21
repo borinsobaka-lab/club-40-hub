@@ -265,6 +265,7 @@ function MembershipDialog({
   const [visitsCount, setVisitsCount] = useState<string>("");
   const [durationDays, setDurationDays] = useState<string>("");
   const [autoRenew, setAutoRenew] = useState(false);
+  const [installmentEnabled, setInstallmentEnabled] = useState(false);
   const [price, setPrice] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -278,6 +279,7 @@ function MembershipDialog({
     setVisitsCount(membership?.visits_count != null ? String(membership.visits_count) : "");
     setDurationDays(membership?.duration_days != null ? String(membership.duration_days) : "");
     setAutoRenew(membership?.auto_renew ?? false);
+    setInstallmentEnabled(membership?.installment_enabled ?? false);
     setPrice(membership?.price != null ? String(membership.price) : "");
   }, [open, membership]);
 
