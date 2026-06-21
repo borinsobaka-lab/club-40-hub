@@ -184,7 +184,7 @@ function SchedulePage() {
       title="Расписание"
       description="Недельное расписание занятий"
       actions={
-        <Button size="sm" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
+        <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
           <Plus className="mr-1 h-4 w-4" />
           Добавить занятие
         </Button>

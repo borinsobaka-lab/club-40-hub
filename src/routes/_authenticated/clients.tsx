@@ -169,7 +169,7 @@ function ClientsPage() {
       title="Клиенты"
       description="База клиентов студии"
       actions={
-        <Button size="sm" onClick={openCreate} disabled={!studioId}>
+        <Button size="default" onClick={openCreate} disabled={!studioId}>
           <Plus className="mr-1 h-4 w-4" />
           Добавить клиента
         </Button>
