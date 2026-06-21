@@ -371,6 +371,24 @@ function SchedulePage() {
                                   }}
                                   className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 ${colorClasses}`}
                                 >
+                                  {(() => {
+                                    const cap = e.capacity ?? e.workout?.capacity ?? 0;
+                                    if (!cap) return null;
+                                    const left = Math.max(0, cap - e.booked_count);
+                                    const tone =
+                                      left === 0
+                                        ? "bg-red-500/90 text-white"
+                                        : left <= 5
+                                          ? "bg-amber-500/90 text-white"
+                                          : "bg-black/25 text-white";
+                                    return (
+                                      <div
+                                        className={`absolute right-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
+                                      >
+                                        {e.booked_count}/{cap}
+                                      </div>
+                                    );
+                                  })()}
                                   <div className="opacity-80">
                                     {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
                                   </div>
