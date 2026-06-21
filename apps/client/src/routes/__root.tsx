@@ -181,17 +181,17 @@ function AppShell() {
         </main>
 
 
-        <nav className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
-          <div className="pointer-events-auto flex w-full max-w-md items-center gap-2">
-            <ul className="flex flex-1 items-center justify-around rounded-full bg-white/90 px-2 py-1 shadow-lg backdrop-blur-md border border-white/60">
-              {mainNavItems.map(({ to, label, icon: Icon, exact }) => (
-                <li key={to} className="flex-1">
+        <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
+          <div className="w-full max-w-md pointer-events-auto bg-background/95 backdrop-blur border-t border-border">
+            <ul className="grid grid-cols-4">
+              {navItems.map(({ to, label, icon: Icon, exact }) => (
+                <li key={to}>
                   <Link
                     to={to}
                     activeOptions={{ exact }}
-                    activeProps={{ className: "text-gray-900" }}
-                    inactiveProps={{ className: "text-gray-400" }}
-                    className="flex h-12 flex-col items-center justify-center gap-0.5 text-[10px] transition-colors"
+                    activeProps={{ className: "text-primary" }}
+                    inactiveProps={{ className: "text-muted-foreground" }}
+                    className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
                   >
                     <Icon className="h-5 w-5" />
                     <span>{label}</span>
@@ -199,15 +199,7 @@ function AppShell() {
                 </li>
               ))}
             </ul>
-            <Link
-              to={profileNavItem.to}
-              activeOptions={{ exact: profileNavItem.exact }}
-              activeProps={{ className: "text-gray-900" }}
-              inactiveProps={{ className: "text-gray-400" }}
-              className="flex h-14 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full bg-white/90 text-[10px] transition-colors shadow-lg backdrop-blur-md border border-white/60"
-            >
-              <profileNavItem.icon className="h-5 w-5" />
-            </Link>
+            <div className="h-[env(safe-area-inset-bottom)]" />
           </div>
         </nav>
       </div>
