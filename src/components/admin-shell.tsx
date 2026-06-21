@@ -45,7 +45,11 @@ export function AdminShell({
                   variant="ghost"
                   size="icon"
                   aria-label="Обновить"
-                  onClick={() => router.invalidate()}
+                  onClick={() => {
+                    router.invalidate();
+                    triggerRefresh();
+                  }}
+
                 >
                   <RefreshCw className="h-5 w-5" />
                 </Button>
