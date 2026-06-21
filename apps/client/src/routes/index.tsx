@@ -42,13 +42,16 @@ function HomePage() {
     let cancelled = false;
     supabase
       .from("clients")
-      .select("full_name")
+      .select("full_name, first_name, last_name")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
+        const row = data as { full_name?: string | null; first_name?: string | null; last_name?: string | null } | null;
+        const composed = [row?.last_name, row?.first_name].filter(Boolean).join(" ").trim();
         const name =
-          (data?.full_name as string | undefined) ||
+          composed ||
+          (row?.full_name as string | undefined) ||
           (user.user_metadata?.full_name as string | undefined) ||
           "Участник";
         setFullName(name);
