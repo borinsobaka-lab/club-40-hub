@@ -70,36 +70,38 @@ function NewsDetailPage() {
   const title = item.full_title || item.title;
 
   return (
-    <div className="pb-8">
-      <div className="relative">
-        {hero ? (
-          <img
-            src={hero}
-            alt={title}
-            className="w-full aspect-[4/3] object-cover"
-          />
-        ) : (
-          <div className="w-full aspect-[4/3] bg-gradient-to-br from-primary/80 to-primary" />
-        )}
-        <Link
-          to="/"
-          aria-label="Назад"
-          className="absolute top-3 left-3 h-9 w-9 rounded-full flex items-center justify-center bg-background/85 backdrop-blur active:bg-background transition-colors"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Link>
-      </div>
+    <div className="flex flex-col flex-1">
+      <div className="flex-1 overflow-y-auto pb-24">
+        <div className="relative">
+          {hero ? (
+            <img
+              src={hero}
+              alt={title}
+              className="w-full aspect-[4/3] object-cover"
+            />
+          ) : (
+            <div className="w-full aspect-[4/3] bg-gradient-to-br from-primary/80 to-primary" />
+          )}
+          <Link
+            to="/"
+            aria-label="Назад"
+            className="absolute top-3 left-3 h-9 w-9 rounded-full flex items-center justify-center bg-background/85 backdrop-blur active:bg-background transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+        </div>
 
-      <div className="px-4 mt-5 space-y-3">
-        <h1 className="text-2xl font-bold leading-tight">{title}</h1>
-        {item.description && (
-          <p className="text-muted-foreground text-base">{item.description}</p>
-        )}
-        {item.full_text && (
-          <div className="text-foreground text-[15px] whitespace-pre-wrap leading-relaxed pt-2">
-            {item.full_text}
-          </div>
-        )}
+        <div className="px-4 mt-5 space-y-3">
+          <h1 className="text-2xl font-bold leading-tight">{title}</h1>
+          {item.description && (
+            <p className="text-muted-foreground text-base">{item.description}</p>
+          )}
+          {item.full_text && (
+            <div className="text-foreground text-[15px] whitespace-pre-wrap leading-relaxed pt-2">
+              {item.full_text}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

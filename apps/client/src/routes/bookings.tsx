@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageShell } from "@/components/page-shell";
 
 export const Route = createFileRoute("/bookings")({
   head: () => ({
@@ -20,12 +21,15 @@ const upcoming = [
 
 function BookingsPage() {
   return (
-    <div className="min-h-full bg-muted/60">
-      <div className="pt-4 pb-6 px-4">
-        <h1 className="text-2xl font-bold">Мои брони</h1>
-        <p className="text-sm text-muted-foreground">Управляйте записями на тренировки</p>
-      </div>
-      <div className="relative -mt-4 rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] min-h-[70vh] p-4 space-y-4">
+    <PageShell
+      header={
+        <div className="pt-4 pb-6 px-4">
+          <h1 className="text-2xl font-bold">Мои брони</h1>
+          <p className="text-sm text-muted-foreground">Управляйте записями на тренировки</p>
+        </div>
+      }
+    >
+      <div className="p-4 space-y-4">
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Предстоящие</h2>
           {upcoming.map((b) => (
@@ -52,7 +56,7 @@ function BookingsPage() {
           </Card>
         </section>
       </div>
-    </div>
+    </PageShell>
   );
 }
 
