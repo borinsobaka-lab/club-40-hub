@@ -232,9 +232,9 @@ function SchedulePage() {
                         <div className="font-semibold break-words leading-snug">
                           {c.workout?.name ?? "Занятие"}
                         </div>
-                        {c.trainer_name && (
+                        {c.workout?.trainer_name && (
                           <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                            {c.trainer_name}
+                            {c.workout.trainer_name}
                           </div>
                         )}
                       </div>
