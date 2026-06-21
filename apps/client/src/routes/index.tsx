@@ -49,6 +49,30 @@ function HomePage() {
   const [fullName, setFullName] = useState<string>("Участник");
   const [news, setNews] = useState<News[] | null>(null);
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
+  const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setMyBookings([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await (supabase as any)
+        .from("schedule_bookings")
+        .select("entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type))")
+        .eq("status", "booked");
+      if (cancelled) return;
+      const rows = ((data as MyBooking[] | null) ?? [])
+        .filter((r) => r.entry && new Date(r.entry.starts_at).getTime() >= Date.now())
+        .sort((a, b) => new Date(a.entry!.starts_at).getTime() - new Date(b.entry!.starts_at).getTime());
+      setMyBookings(rows);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
 
   useEffect(() => {
