@@ -17,6 +17,7 @@ create table if not exists public.memberships (
 -- does not add new columns. Keep this block so re-running the SQL repairs the
 -- schema and refreshes the API cache.
 alter table public.memberships
+  add column if not exists name text,
   add column if not exists description text,
   add column if not exists benefits text[] not null default '{}',
   add column if not exists visits_count int,
