@@ -74,6 +74,8 @@ function SchedulePage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== "class") return;
@@ -95,11 +97,43 @@ function SchedulePage() {
       if (error) setError(error.message);
       else setEntries((data as unknown as Entry[]) ?? []);
       setLoading(false);
+
+      const { data: b } = await (supabase as any)
+        .from("schedule_bookings")
+        .select("entry_id")
+        .eq("status", "booked");
+      if (!cancelled && b) {
+        setBookedIds(new Set((b as { entry_id: string }[]).map((r) => r.entry_id)));
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, [today, activeTab]);
+
+  async function toggleBooking(entryId: string) {
+    if (pendingId) return;
+    setPendingId(entryId);
+    const isBooked = bookedIds.has(entryId);
+    const fn = isBooked ? "cancel_schedule_booking" : "book_schedule_entry";
+    const { data, error } = await (supabase as any).rpc(fn, { p_entry_id: entryId });
+    setPendingId(null);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    const res = data as { ok: boolean; reason?: string } | null;
+    if (res?.ok) {
+      setBookedIds((prev) => {
+        const next = new Set(prev);
+        if (isBooked) next.delete(entryId);
+        else next.add(entryId);
+        return next;
+      });
+    } else if (res?.reason === "already_booked") {
+      setBookedIds((prev) => new Set(prev).add(entryId));
+    }
+  }
 
   const activeDay = days[activeIdx];
   const [activeType, setActiveType] = useState<string>("all");
