@@ -141,10 +141,12 @@ function CashPage() {
     setLoading(false);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
   // Reset category when kind changes
   useEffect(() => {
