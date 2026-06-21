@@ -106,6 +106,7 @@ function HomePage() {
               className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition-colors"
             >
               <Avatar className="h-11 w-11">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {initials(fullName)}
                 </AvatarFallback>
