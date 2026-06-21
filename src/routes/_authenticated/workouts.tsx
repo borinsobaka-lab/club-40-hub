@@ -440,6 +440,32 @@ function WorkoutDialog({
           </div>
 
           <div className="space-y-1.5">
+          <div className="space-y-1.5">
+            <Label htmlFor="type">Тип тренировки</Label>
+            <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
+              <SelectTrigger id="type">
+                <SelectValue placeholder="Выберите тип" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_TYPE}>
+                  <span className="text-muted-foreground">Не указан</span>
+                </SelectItem>
+                {DAY_TYPES.map((t) => {
+                  const c = dayTypeColor(t.value)!;
+                  return (
+                    <SelectItem key={t.value} value={t.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${c.dot}`} />
+                        {t.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="capacity">Вместимость (чел.)</Label>
             <Input
               id="capacity"
