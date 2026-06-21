@@ -184,7 +184,7 @@ function HomePage() {
         </div>
       }
     >
-      {/* Future sections (акции и др.) появятся здесь */}
+      <div />
     </PageShell>
   );
 }
