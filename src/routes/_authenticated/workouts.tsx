@@ -171,19 +171,6 @@ function WorkoutsPage() {
                   className="h-8 pl-8"
                 />
               </div>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="h-8 sm:w-[200px]">
-                  <SelectValue placeholder="Все типы" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все типы</SelectItem>
-                  {TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="rounded-lg border bg-background">
               <Table>
@@ -192,20 +179,19 @@ function WorkoutsPage() {
                     <TableHead className="w-[100px]">Фото</TableHead>
                     <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
-                    <TableHead>Тип</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                         {workouts.length === 0
                           ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
                           : "Ничего не найдено по выбранным фильтрам."}
@@ -221,7 +207,7 @@ function WorkoutsPage() {
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ?? "—"}
                         </TableCell>
-                        <TableCell><TypeBadge value={w.type} /></TableCell>
+                        
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
@@ -268,7 +254,6 @@ function WorkoutDialog({
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState<string>("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -278,7 +263,6 @@ function WorkoutDialog({
     if (open) {
       setName(workout?.name ?? "");
       setDescription(workout?.description ?? "");
-      setType(workout?.type ?? "");
       setPhotoUrl(workout?.photo_url ?? null);
     }
   }, [open, workout]);
@@ -311,7 +295,6 @@ function WorkoutDialog({
       studio_id: studioId,
       name: name.trim(),
       description: description.trim() || null,
-      type: (type || null) as WorkoutType | null,
       photo_url: photoUrl,
     };
     const { error } = workout
@@ -398,22 +381,6 @@ function WorkoutDialog({
               rows={3}
               placeholder="Краткое описание тренировки"
             />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="type">Тип</Label>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger id="type">
-                <SelectValue placeholder="Не указан" />
-              </SelectTrigger>
-              <SelectContent>
-                {TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
