@@ -10,7 +10,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Home, Dumbbell, Trophy, User, Loader2 } from "lucide-react";
+import { Home, Dumbbell, Trophy, User, Loader2, CreditCard } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -125,6 +125,7 @@ const navItems = [
   { to: "/", label: "Главное", icon: Home, exact: true },
   { to: "/schedule", label: "Бронь", icon: Dumbbell, exact: false },
   { to: "/results", label: "Результаты", icon: Trophy, exact: false },
+  { to: "/memberships", label: "Абонементы", icon: CreditCard, exact: false },
   { to: "/profile", label: "Профиль", icon: User, exact: false },
 ] as const;
 
@@ -183,7 +184,7 @@ function AppShell() {
 
         <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
           <div className="w-full max-w-md pointer-events-auto bg-background border-t border-border">
-            <ul className="grid grid-cols-4">
+            <ul className="grid grid-cols-5">
               {navItems.map(({ to, label, icon: Icon, exact }) => (
                 <li key={to}>
                   <Link

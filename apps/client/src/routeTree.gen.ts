@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as MembershipsRouteImport } from './routes/memberships'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NewsNewsIdRouteImport } from './routes/news.$newsId'
@@ -29,6 +30,11 @@ const ResultsRoute = ResultsRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MembershipsRoute = MembershipsRouteImport.update({
+  id: '/memberships',
+  path: '/memberships',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -50,6 +56,7 @@ const NewsNewsIdRoute = NewsNewsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/memberships': typeof MembershipsRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/schedule': typeof ScheduleRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/memberships': typeof MembershipsRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/schedule': typeof ScheduleRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/memberships': typeof MembershipsRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/schedule': typeof ScheduleRoute
@@ -77,16 +86,25 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/memberships'
     | '/profile'
     | '/results'
     | '/schedule'
     | '/news/$newsId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/profile' | '/results' | '/schedule' | '/news/$newsId'
+  to:
+    | '/'
+    | '/auth'
+    | '/memberships'
+    | '/profile'
+    | '/results'
+    | '/schedule'
+    | '/news/$newsId'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/memberships'
     | '/profile'
     | '/results'
     | '/schedule'
@@ -96,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  MembershipsRoute: typeof MembershipsRoute
   ProfileRoute: typeof ProfileRoute
   ResultsRoute: typeof ResultsRoute
   ScheduleRoute: typeof ScheduleRoute
@@ -125,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/memberships': {
+      id: '/memberships'
+      path: '/memberships'
+      fullPath: '/memberships'
+      preLoaderRoute: typeof MembershipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -152,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  MembershipsRoute: MembershipsRoute,
   ProfileRoute: ProfileRoute,
   ResultsRoute: ResultsRoute,
   ScheduleRoute: ScheduleRoute,
