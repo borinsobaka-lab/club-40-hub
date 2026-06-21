@@ -27,13 +27,25 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 type Trainer = { id: string; full_name: string | null; photo_url: string | null };
+type Workout = {
+  name: string;
+  type: string | null;
+  description: string | null;
+  photo_url: string | null;
+};
 type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
-  workout: { name: string; type: string | null } | null;
+  workout: Workout | null;
   trainers: { trainer: Trainer | null }[] | null;
 };
+
+function resolvePublicUrl(bucket: string, path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
@@ -76,7 +88,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, workout:workouts(name, type), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
+          "id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -243,6 +255,7 @@ function SchedulePage() {
                 const meta = workoutTypeMeta(c.workout?.type);
                 const isBooked = bookedIds.has(c.id);
                 const isPending = pendingId === c.id;
+                const workoutPhoto = resolvePublicUrl("workout-photos", c.workout?.photo_url);
                 return (
                   <div key={c.id} className="relative flex gap-1 pb-4">
                     <button
@@ -256,19 +269,16 @@ function SchedulePage() {
                             .map((t) => t.full_name)
                             .filter((n): n is string => !!n)
                             .join(", ") || null;
-                        const trainerPhotoPath =
-                          trainerList.find((t) => !!t.photo_url)?.photo_url ?? null;
-                        const trainerPhoto = trainerPhotoPath
-                          ? /^https?:\/\//.test(trainerPhotoPath)
-                            ? trainerPhotoPath
-                            : supabase.storage
-                                .from("trainer-photos")
-                                .getPublicUrl(trainerPhotoPath).data.publicUrl
-                          : null;
+                        const trainerPhoto = resolvePublicUrl(
+                          "trainer-photos",
+                          trainerList.find((t) => !!t.photo_url)?.photo_url,
+                        );
                         setOpenEntry({
                           id: c.id,
                           name: c.workout?.name ?? "Занятие",
                           type: c.workout?.type ?? null,
+                          description: c.workout?.description ?? null,
+                          photo: workoutPhoto,
                           trainerName,
                           trainerPhoto,
                         });
@@ -279,7 +289,11 @@ function SchedulePage() {
                         <div className="text-base font-bold italic tabular-nums leading-tight text-center">
                           {fmtTime(c.starts_at)}
                         </div>
-                        <img src={logoSrc} alt="" className="w-9 h-9 rounded-full object-cover" />
+                        <img
+                          src={workoutPhoto ?? logoSrc}
+                          alt=""
+                          className="w-9 h-9 rounded-full object-cover bg-muted"
+                        />
                       </div>
                       <Card
                         className={`relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg transition-colors ${

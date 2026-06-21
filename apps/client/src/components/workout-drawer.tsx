@@ -2,13 +2,12 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
 
-const PLACEHOLDER_DESCRIPTION =
-  "Функциональная тренировка, направленная на развитие силы, выносливости и координации. Подходит для всех уровней подготовки. Занятие проходит под руководством тренера в малой группе.";
-
 export type WorkoutDrawerData = {
   id: string;
   name: string;
   type: string | null;
+  description: string | null;
+  photo: string | null;
   trainerName: string | null;
   trainerPhoto: string | null;
 };
@@ -82,15 +81,17 @@ export function WorkoutDrawer({
                     )}
                   </div>
                   <img
-                    src={logoSrc}
+                    src={data.photo ?? logoSrc}
                     alt=""
-                    className="w-28 h-28 rounded-full object-cover shrink-0"
+                    className="w-28 h-28 rounded-full object-cover shrink-0 bg-muted"
                   />
                 </div>
 
-                <p className="mt-4 text-[15px] leading-relaxed text-foreground/90">
-                  {PLACEHOLDER_DESCRIPTION}
-                </p>
+                {data.description && (
+                  <p className="mt-4 text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {data.description}
+                  </p>
+                )}
 
                 <button
                   type="button"
