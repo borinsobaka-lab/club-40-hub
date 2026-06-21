@@ -141,10 +141,12 @@ function SchedulePage() {
     setTrainers((tRes.data as Trainer[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, weekStart]);
+  }, [studioId, weekStart, refreshSignal]);
+
 
   const openSlot = (day: Date, hour: number) => {
     const d = new Date(day);
