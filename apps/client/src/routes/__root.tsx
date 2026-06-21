@@ -125,6 +125,7 @@ const navItems = [
   { to: "/", label: "Главное", icon: Home, exact: true },
   { to: "/schedule", label: "Бронь", icon: Dumbbell, exact: false },
   { to: "/results", label: "Результаты", icon: Trophy, exact: false },
+  { to: "/memberships", label: "Абонементы", icon: CreditCard, exact: false },
   { to: "/profile", label: "Профиль", icon: User, exact: false },
 ] as const;
 
