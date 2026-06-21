@@ -194,16 +194,13 @@ function WorkoutsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground"></TableCell></TableRow></TableHead></TableHead></TableHead></TableHead></TableHead></TableHead></TableHead>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
                         {workouts.length === 0
                           ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
                           : "Ничего не найдено по выбранным фильтрам."}
@@ -219,7 +216,9 @@ function WorkoutsPage() {
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ?? "—"}
                         </TableCell>
-                        
+                        <TableCell className="text-sm text-muted-foreground">
+                          {w.capacity ?? "—"}
+                        </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
