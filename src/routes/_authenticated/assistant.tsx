@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Sparkles, Send, Loader2 } from "lucide-react";
+import { Cat, Send, Loader2, Mic, Square } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/assistant")({
   head: () => ({ meta: [{ title: "Kate — AI ассистент" }] }),
@@ -53,7 +54,7 @@ function AssistantPage() {
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-purple-500 to-cyan-500 text-white">
-                <Sparkles className="h-7 w-7" />
+                <Cat className="h-7 w-7" />
               </div>
               <div>
                 <p className="text-base font-medium text-foreground">Привет! Я Kate.</p>
@@ -107,6 +108,12 @@ function AssistantPage() {
               rows={1}
               className="min-h-[40px] resize-none"
             />
+            <VoiceInputButton
+              disabled={isLoading}
+              onTranscribed={(text) =>
+                setInput((prev) => (prev ? `${prev} ${text}` : text).trim())
+              }
+            />
             <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
               <Send className="h-4 w-4" />
             </Button>
@@ -141,5 +148,96 @@ function MessageBubble({ message }: { message: UIMessage }) {
         <div className="whitespace-pre-wrap">{text}</div>
       </div>
     </div>
+  );
+}
+
+function VoiceInputButton({
+  disabled,
+  onTranscribed,
+}: {
+  disabled?: boolean;
+  onTranscribed: (text: string) => void;
+}) {
+  const [recording, setRecording] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const start = async () => {
+    if (disabled || busy) return;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      toast.error("Нужен доступ к микрофону");
+      return;
+    }
+    const mimeType = ["audio/webm", "audio/mp4"].find((t) =>
+      typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
+    );
+    if (!mimeType) {
+      stream.getTracks().forEach((t) => t.stop());
+      toast.error("Браузер не поддерживает запись аудио");
+      return;
+    }
+    const rec = new MediaRecorder(stream, { mimeType });
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType });
+      if (blob.size < 1024) {
+        toast.error("Запись пустая, попробуйте ещё раз");
+        return;
+      }
+      setBusy(true);
+      try {
+        const ext = rec.mimeType.includes("mp4") ? "mp4" : "webm";
+        const fd = new FormData();
+        fd.append("file", blob, `recording.${ext}`);
+        const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(await res.text());
+        const data = (await res.json()) as { text?: string };
+        const text = (data.text ?? "").trim();
+        if (text) onTranscribed(text);
+        else toast.error("Не удалось распознать речь");
+      } catch (err) {
+        toast.error(`Ошибка распознавания: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    recorderRef.current = rec;
+    streamRef.current = stream;
+    rec.start();
+    setRecording(true);
+  };
+
+  const stop = () => {
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+    setRecording(false);
+  };
+
+  return (
+    <Button
+      type="button"
+      variant={recording ? "destructive" : "outline"}
+      size="icon"
+      disabled={disabled || busy}
+      onClick={recording ? stop : start}
+      title={recording ? "Закончить запись" : "Голосовой ввод"}
+    >
+      {busy ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : recording ? (
+        <Square className="h-4 w-4" />
+      ) : (
+        <Mic className="h-4 w-4" />
+      )}
+    </Button>
   );
 }
