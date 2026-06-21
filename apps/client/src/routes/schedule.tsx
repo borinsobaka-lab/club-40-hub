@@ -239,7 +239,7 @@ function SchedulePage() {
                           {c.workout?.name ?? "Занятие"}
                         </div>
                       </div>
-                      <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center shadow-md">
+                      <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center">
                         <Plus className="h-6 w-6" strokeWidth={2.5} />
                       </button>
                     </Card>
