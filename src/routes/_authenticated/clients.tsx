@@ -43,6 +43,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { ClientCardDialog } from "@/components/client-card-dialog";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
@@ -165,6 +166,13 @@ function ClientsPage() {
   const [visitRange, setVisitRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardClient, setCardClient] = useState<Client | null>(null);
+
+  const openCard = (c: Client) => {
+    setCardClient(c);
+    setCardOpen(true);
+  };
 
   const fetchClients = async () => {
     if (!studioId) {
@@ -348,7 +356,13 @@ function ClientsPage() {
                                 {initials(displayName(c))}
                               </AvatarFallback>
                             </Avatar>
-                            <span>{displayName(c)}</span>
+                            <button
+                              type="button"
+                              onClick={() => openCard(c)}
+                              className="text-left underline-offset-2 hover:underline hover:text-primary"
+                            >
+                              {displayName(c)}
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
@@ -402,6 +416,17 @@ function ClientsPage() {
         studioId={studioId}
         client={editing}
         onSaved={fetchClients}
+      />
+
+      <ClientCardDialog
+        open={cardOpen}
+        onOpenChange={setCardOpen}
+        client={cardClient}
+        onEdit={(c) => {
+          setCardOpen(false);
+          setEditing(c as Client);
+          setOpen(true);
+        }}
       />
     </AdminShell>
   );
