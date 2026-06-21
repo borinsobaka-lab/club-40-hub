@@ -2,13 +2,12 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
 
-const PLACEHOLDER_DESCRIPTION =
-  "Функциональная тренировка, направленная на развитие силы, выносливости и координации. Подходит для всех уровней подготовки. Занятие проходит под руководством тренера в малой группе.";
-
 export type WorkoutDrawerData = {
   id: string;
   name: string;
   type: string | null;
+  description: string | null;
+  photo: string | null;
   trainerName: string | null;
   trainerPhoto: string | null;
 };
