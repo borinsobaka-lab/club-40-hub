@@ -230,7 +230,16 @@ function EditProfileSheet({
   })();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(client.avatar_url ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getAvatarSignedUrl(client.avatar_url).then((u) => {
+      if (!cancelled) setAvatarUrl(u);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client.avatar_url]);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
