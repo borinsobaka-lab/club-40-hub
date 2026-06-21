@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -60,8 +61,18 @@ type Client = {
   last_visit_date: string | null;
   crm_link: string | null;
   photo_url: string | null;
+  avatar_url: string | null;
   created_at: string;
 };
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+}
 
 function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
   const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
@@ -317,7 +328,22 @@ function ClientsPage() {
                   ) : (
                     filtered.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{displayName(c)}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-8 w-8">
+                              {(c.avatar_url || c.photo_url) && (
+                                <AvatarImage
+                                  src={c.avatar_url || c.photo_url || ""}
+                                  alt={displayName(c)}
+                                />
+                              )}
+                              <AvatarFallback className="text-xs">
+                                {initials(displayName(c))}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{displayName(c)}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>
