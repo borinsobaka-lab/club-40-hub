@@ -101,8 +101,44 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_bookings: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          entry_id: string
+          id: string
+          status: Database["public"]["Enums"]["booking_status"]
+          user_id: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          entry_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          user_id: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          entry_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_bookings_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_entries: {
         Row: {
+          booked_count: number
           capacity: number | null
           created_at: string
           ends_at: string
@@ -111,6 +147,7 @@ export type Database = {
           workout_id: string | null
         }
         Insert: {
+          booked_count?: number
           capacity?: number | null
           created_at?: string
           ends_at: string
@@ -119,6 +156,7 @@ export type Database = {
           workout_id?: string | null
         }
         Update: {
+          booked_count?: number
           capacity?: number | null
           created_at?: string
           ends_at?: string
@@ -138,18 +176,21 @@ export type Database = {
       }
       workouts: {
         Row: {
+          capacity: number | null
           created_at: string
           id: string
           name: string
           type: string | null
         }
         Insert: {
+          capacity?: number | null
           created_at?: string
           id?: string
           name: string
           type?: string | null
         }
         Update: {
+          capacity?: number | null
           created_at?: string
           id?: string
           name?: string
@@ -162,10 +203,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      book_schedule_entry: { Args: { p_entry_id: string }; Returns: Json }
+      cancel_schedule_booking: { Args: { p_entry_id: string }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      booking_status: "booked" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -292,6 +334,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      booking_status: ["booked", "cancelled"],
+    },
   },
 } as const
