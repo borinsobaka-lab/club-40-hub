@@ -182,53 +182,70 @@ function ClientsPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-lg border bg-background p-3">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                <div className="relative max-w-sm flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Поиск по имени, телефону, email"
-                    className="h-8 pl-9"
-                  />
-                </div>
-                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Пол</Label>
+            <div className="rounded-lg border bg-background p-4">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Поиск по имени, телефону, email"
+                      className="h-9 pl-9"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Пол</Label>
                     <Select value={genderFilter} onValueChange={setGenderFilter}>
-                      <SelectTrigger className="h-8 w-full">
+                      <SelectTrigger className="h-9 w-[140px]">
                         <SelectValue placeholder="Все" />
                       </SelectTrigger>
-                    <SelectContent>
-                      {GENDERS.map((g) => (
-                        <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
-                      ))}
-                    </SelectContent>
+                      <SelectContent>
+                        {GENDERS.map((g) => (
+                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Регистрация с</Label>
-                    <Input type="date" value={regFrom} onChange={(e) => setRegFrom(e.target.value)} className="h-8" />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Регистрация по</Label>
-                    <Input type="date" value={regTo} onChange={(e) => setRegTo(e.target.value)} className="h-8" />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Последний визит с</Label>
-                    <Input type="date" value={visitFrom} onChange={(e) => setVisitFrom(e.target.value)} className="h-8" />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Последний визит по</Label>
-                    <Input type="date" value={visitTo} onChange={(e) => setVisitTo(e.target.value)} className="h-8" />
-                  </div>
+                  <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9">
+                    Сбросить
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8">
-                  Сбросить
-                </Button>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <fieldset className="rounded-md border bg-muted/30 px-3 pb-3 pt-2">
+                    <legend className="px-1 text-xs font-medium text-muted-foreground">Дата регистрации</legend>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 grid gap-1">
+                        <Label className="text-[11px] text-muted-foreground">с</Label>
+                        <Input type="date" value={regFrom} onChange={(e) => setRegFrom(e.target.value)} className="h-9 bg-background" />
+                      </div>
+                      <div className="mt-5 text-muted-foreground">—</div>
+                      <div className="flex-1 grid gap-1">
+                        <Label className="text-[11px] text-muted-foreground">по</Label>
+                        <Input type="date" value={regTo} onChange={(e) => setRegTo(e.target.value)} className="h-9 bg-background" />
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="rounded-md border bg-muted/30 px-3 pb-3 pt-2">
+                    <legend className="px-1 text-xs font-medium text-muted-foreground">Последний визит</legend>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 grid gap-1">
+                        <Label className="text-[11px] text-muted-foreground">с</Label>
+                        <Input type="date" value={visitFrom} onChange={(e) => setVisitFrom(e.target.value)} className="h-9 bg-background" />
+                      </div>
+                      <div className="mt-5 text-muted-foreground">—</div>
+                      <div className="flex-1 grid gap-1">
+                        <Label className="text-[11px] text-muted-foreground">по</Label>
+                        <Input type="date" value={visitTo} onChange={(e) => setVisitTo(e.target.value)} className="h-9 bg-background" />
+                      </div>
+                    </div>
+                  </fieldset>
+                </div>
               </div>
             </div>
+
 
 
             <div className="rounded-lg border bg-background">
