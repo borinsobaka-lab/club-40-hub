@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Dumbbell, Flame, Calendar, Users, UserCog, Tag, BarChart3, MessageSquare } from "lucide-react";
+import { Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog } from "lucide-react";
 
 import {
   Sidebar,
@@ -15,13 +15,13 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Сотрудники", url: "/trainers", icon: Dumbbell },
-  { title: "Тренировки", url: "/workouts", icon: Flame },
   { title: "Расписание", url: "/schedule", icon: Calendar },
   { title: "Клиенты", url: "/clients", icon: Users },
+  { title: "Сотрудники", url: "/trainers", icon: Dumbbell },
+  { title: "Тренировки", url: "/workouts", icon: Flame },
   { title: "Номенклатуры", url: "/memberships", icon: Tag },
-  { title: "NPS-опросы", url: "/nps", icon: BarChart3 },
   { title: "Обратная связь", url: "/feedback", icon: MessageSquare },
+  { title: "NPS-опросы", url: "/nps", icon: BarChart3 },
   { title: "Доступы", url: "/employees", icon: UserCog },
 ];
 
