@@ -104,9 +104,12 @@ function NpsPage() {
     setLoading(false);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     void fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
+
 
   const submitNew = async () => {
     setSaving(true);
