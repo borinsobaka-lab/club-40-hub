@@ -189,7 +189,7 @@ function HomePage() {
 
           {/* Быстрые действия */}
           <section className="px-4 pt-2">
-            <div className="rounded-2xl bg-[#25262A] p-2">
+            <div className="rounded-2xl bg-white/10 p-2">
               <div className="flex items-stretch justify-between gap-2">
                 {[
                   { icon: CalendarDays, label: "Расписание" },
