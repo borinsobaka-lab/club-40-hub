@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, Search, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
+import { Plus, Loader2, Pencil, Trash2, Search, ExternalLink, CalendarIcon } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -9,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -72,6 +77,60 @@ function genderLabel(v: string | null) {
   return GENDERS.find((g) => g.value === v)?.label ?? "—";
 }
 
+function toISODate(d: Date) {
+  return format(d, "yyyy-MM-dd");
+}
+
+function inDateRange(value: string | null, range: DateRange | undefined) {
+  if (!range || (!range.from && !range.to)) return true;
+  if (!value) return false;
+  const from = range.from ? toISODate(range.from) : null;
+  const to = range.to ? toISODate(range.to) : null;
+  if (from && value < from) return false;
+  if (to && value > to) return false;
+  return true;
+}
+
+function DateRangeFilter({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: DateRange | undefined;
+  onChange: (v: DateRange | undefined) => void;
+}) {
+  const text = value?.from
+    ? value.to
+      ? `${format(value.from, "dd.MM.yyyy", { locale: ru })} — ${format(value.to, "dd.MM.yyyy", { locale: ru })}`
+      : `от ${format(value.from, "dd.MM.yyyy", { locale: ru })}`
+    : label;
+
+  return (
+    <div className="grid gap-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="h-9 w-[260px] justify-start text-left font-normal">
+            <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">{text}</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="range"
+            selected={value}
+            onSelect={onChange}
+            numberOfMonths={2}
+            locale={ru}
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 function formatDate(v: string | null) {
   if (!v) return "—";
   try {
@@ -87,10 +146,8 @@ function ClientsPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<string>("");
-  const [regFrom, setRegFrom] = useState("");
-  const [regTo, setRegTo] = useState("");
-  const [visitFrom, setVisitFrom] = useState("");
-  const [visitTo, setVisitTo] = useState("");
+  const [regRange, setRegRange] = useState<DateRange | undefined>();
+  const [visitRange, setVisitRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
 
@@ -141,10 +198,8 @@ function ClientsPage() {
 
   const resetFilters = () => {
     setGenderFilter("");
-    setRegFrom("");
-    setRegTo("");
-    setVisitFrom("");
-    setVisitTo("");
+    setRegRange(undefined);
+    setVisitRange(undefined);
   };
 
   const q = search.trim().toLowerCase();
@@ -156,10 +211,8 @@ function ClientsPage() {
       (c.email ?? "").toLowerCase().includes(q)
     )) return false;
     if (genderFilter && c.gender !== genderFilter) return false;
-    if (regFrom && (!c.registration_date || c.registration_date < regFrom)) return false;
-    if (regTo && (!c.registration_date || c.registration_date > regTo)) return false;
-    if (visitFrom && (!c.last_visit_date || c.last_visit_date < visitFrom)) return false;
-    if (visitTo && (!c.last_visit_date || c.last_visit_date > visitTo)) return false;
+    if (!inDateRange(c.registration_date, regRange)) return false;
+    if (!inDateRange(c.last_visit_date, visitRange)) return false;
     return true;
   });
 
@@ -183,9 +236,9 @@ function ClientsPage() {
         ) : (
           <>
             <div className="rounded-lg border bg-background p-4">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="relative flex-1">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                  <div className="relative flex-1 min-w-[240px]">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={search}
@@ -194,8 +247,9 @@ function ClientsPage() {
                       className="h-9 pl-9"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Пол</Label>
+
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Пол</Label>
                     <Select value={genderFilter} onValueChange={setGenderFilter}>
                       <SelectTrigger className="h-9 w-[140px]">
                         <SelectValue placeholder="Все" />
@@ -207,41 +261,21 @@ function ClientsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <DateRangeFilter
+                    label="Дата регистрации"
+                    value={regRange}
+                    onChange={setRegRange}
+                  />
+                  <DateRangeFilter
+                    label="Последний визит"
+                    value={visitRange}
+                    onChange={setVisitRange}
+                  />
+
                   <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9">
                     Сбросить
                   </Button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <fieldset className="rounded-md border bg-muted/30 px-3 pb-3 pt-2">
-                    <legend className="px-1 text-xs font-medium text-muted-foreground">Дата регистрации</legend>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">с</Label>
-                        <Input type="date" value={regFrom} onChange={(e) => setRegFrom(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                      <div className="mt-5 text-muted-foreground">—</div>
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">по</Label>
-                        <Input type="date" value={regTo} onChange={(e) => setRegTo(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset className="rounded-md border bg-muted/30 px-3 pb-3 pt-2">
-                    <legend className="px-1 text-xs font-medium text-muted-foreground">Последний визит</legend>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">с</Label>
-                        <Input type="date" value={visitFrom} onChange={(e) => setVisitFrom(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                      <div className="mt-5 text-muted-foreground">—</div>
-                      <div className="flex-1 grid gap-1">
-                        <Label className="text-[11px] text-muted-foreground">по</Label>
-                        <Input type="date" value={visitTo} onChange={(e) => setVisitTo(e.target.value)} className="h-9 bg-background" />
-                      </div>
-                    </div>
-                  </fieldset>
                 </div>
               </div>
             </div>
