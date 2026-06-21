@@ -18,7 +18,7 @@ export const Route = createFileRoute("/schedule")({
 });
 
 const TABS = [
-  { key: "class", label: "Класс" },
+  { key: "class", label: "Классы" },
   { key: "personal", label: "Персональные" },
   { key: "diagnostics", label: "Диагностика" },
   { key: "mine", label: "Мои бронирования" },
@@ -140,7 +140,7 @@ function SchedulePage() {
               key={t.key}
               onClick={() => setActiveTab(t.key)}
               className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
-                active ? "text-foreground" : "text-muted-foreground"
+                active ? "text-foreground" : "text-card-foreground"
               }`}
             >
               {t.label}
