@@ -71,7 +71,7 @@ export function StudioSwitcher() {
   return (
     <div className="flex items-center gap-2">
       <Select value={active ?? undefined} onValueChange={onChange} disabled={loading || studios.length === 0}>
-        <SelectTrigger className="h-8 min-w-[140px] w-auto text-xs">
+        <SelectTrigger className="h-8 w-[170px] text-xs">
           <SelectValue
             placeholder={loading ? "Загрузка…" : studios.length === 0 ? "Нет студий" : "Выберите студию"}
           />
