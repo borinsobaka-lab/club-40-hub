@@ -182,7 +182,81 @@ function HomePage() {
         </div>
       }
     >
-      <div />
+      <div className="px-4 pt-6 pb-8 space-y-8">
+        {/* Расписание на сегодня */}
+        <section>
+          <h2 className="text-2xl font-bold italic uppercase mb-3">
+            Расписание на сегодня
+          </h2>
+          <div className="rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+              <CalendarDays className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Тренировок на сегодня нет
+            </div>
+            <Button asChild>
+              <Link to="/schedule">Забронировать тренировку</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* Услуги */}
+        <section>
+          <h2 className="text-2xl font-bold italic uppercase mb-3">
+            Услуги
+          </h2>
+          {news === null ? (
+            <div className="flex gap-3 overflow-hidden pb-2">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="shrink-0 w-56 h-32 rounded-2xl bg-muted animate-pulse"
+                />
+              ))}
+            </div>
+          ) : news.length === 0 ? (
+            <div className="h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
+              <Newspaper className="h-6 w-6" />
+              <span className="text-sm">Пока нет услуг</span>
+            </div>
+          ) : (
+            <div className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar">
+              {news.map((n) => (
+                <div
+                  key={n.id}
+                  className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden bg-muted"
+                >
+                  {(() => {
+                    const url = mediaUrl(n.image_url);
+                    return url ? (
+                      <img
+                        src={url}
+                        alt={n.title}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                    );
+                  })()}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 flex flex-col justify-end p-3">
+                    <div className="text-white text-sm font-semibold leading-tight">
+                      {n.title}
+                    </div>
+                    {n.description && (
+                      <div className="text-white/80 text-[11px] leading-tight mt-0.5 line-clamp-1">
+                        {n.description}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </PageShell>
   );
 }
