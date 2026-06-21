@@ -201,7 +201,7 @@ function HomePage() {
               <button
                 key={item.label}
                 type="button"
-                className="flex flex-1 flex-col items-center gap-2 rounded-xl bg-background/50 px-2 py-3 active:bg-background/70 transition-colors"
+                className="flex flex-1 flex-col items-center gap-2 rounded-xl px-2 py-3 active:opacity-70 transition-opacity"
               >
                 <item.icon className="h-6 w-6 text-white" />
                 <span className="text-xs text-white/80">{item.label}</span>
