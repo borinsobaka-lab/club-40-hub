@@ -255,9 +255,10 @@ function SchedulePage() {
                 const meta = workoutTypeMeta(c.workout?.type);
                 const isBooked = bookedIds.has(c.id);
                 const isPending = pendingId === c.id;
+                const isPast = new Date(c.ends_at) < new Date();
                 const workoutPhoto = resolvePublicUrl("workout-photos", c.workout?.photo_url);
                 return (
-                  <div key={c.id} className="relative flex gap-1 pb-4">
+                  <div key={c.id} className={`relative flex gap-1 pb-4 ${isPast ? "opacity-50" : ""}`}>
                     <button
                       type="button"
                       onClick={() => {
