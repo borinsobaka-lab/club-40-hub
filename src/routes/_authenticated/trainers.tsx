@@ -178,10 +178,12 @@ function TrainersPage() {
     setTrainers((data as Trainer[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchTrainers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
 
   const handleDelete = async (t: Trainer) => {
