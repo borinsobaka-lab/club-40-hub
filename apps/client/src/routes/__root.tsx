@@ -4,14 +4,17 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Calendar, BookmarkCheck, Trophy, User } from "lucide-react";
+import { Calendar, BookmarkCheck, Trophy, User, Loader2 } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
 function NotFoundComponent() {
   return (
@@ -125,43 +128,82 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background text-foreground flex justify-center">
-        <div className="w-full max-w-md flex flex-col min-h-screen relative">
-          <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
-            <div className="h-14 flex items-center px-4">
-              <Link to="/" className="font-bold tracking-widest text-base">
-                CLUB <span className="text-primary">40</span>
-              </Link>
-            </div>
-          </header>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
 
-          <main className="flex-1 pb-24">
+function AppShell() {
+  const { session, loading } = useAuth();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const onAuthRoute = pathname === "/auth";
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session && !onAuthRoute) navigate({ to: "/auth", replace: true });
+    if (session && onAuthRoute) navigate({ to: "/", replace: true });
+  }, [loading, session, onAuthRoute, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (onAuthRoute || !session) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex justify-center">
+        <div className="w-full max-w-md flex flex-col min-h-screen">
+          <main className="flex-1">
             <Outlet />
           </main>
-
-          <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
-            <div className="w-full max-w-md pointer-events-auto bg-background/95 backdrop-blur border-t border-border">
-              <ul className="grid grid-cols-4">
-                {navItems.map(({ to, label, icon: Icon, exact }) => (
-                  <li key={to}>
-                    <Link
-                      to={to}
-                      activeOptions={{ exact }}
-                      activeProps={{ className: "text-primary" }}
-                      inactiveProps={{ className: "text-muted-foreground" }}
-                      className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span>{label}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <div className="h-[env(safe-area-inset-bottom)]" />
-            </div>
-          </nav>
         </div>
       </div>
-    </QueryClientProvider>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex justify-center">
+      <div className="w-full max-w-md flex flex-col min-h-screen relative">
+        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
+          <div className="h-14 flex items-center px-4">
+            <Link to="/" className="font-bold tracking-widest text-base">
+              CLUB <span className="text-primary">40</span>
+            </Link>
+          </div>
+        </header>
+
+        <main className="flex-1 pb-24">
+          <Outlet />
+        </main>
+
+        <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
+          <div className="w-full max-w-md pointer-events-auto bg-background/95 backdrop-blur border-t border-border">
+            <ul className="grid grid-cols-4">
+              {navItems.map(({ to, label, icon: Icon, exact }) => (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    activeOptions={{ exact }}
+                    activeProps={{ className: "text-primary" }}
+                    inactiveProps={{ className: "text-muted-foreground" }}
+                    className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="h-[env(safe-area-inset-bottom)]" />
+          </div>
+        </nav>
+      </div>
+    </div>
   );
 }
