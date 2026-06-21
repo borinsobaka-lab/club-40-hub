@@ -3,6 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { Cat, Send, Loader2, Mic, Square } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { AdminShell } from "@/components/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -182,7 +184,13 @@ function MessageBubble({ message }: { message: UIMessage }) {
             🔧 запрос к данным…
           </div>
         )}
-        <div className="whitespace-pre-wrap">{text}</div>
+        {isUser ? (
+          <div className="whitespace-pre-wrap">{text}</div>
+        ) : (
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-headings:my-2 prose-ul:my-2 prose-ol:my-2 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   );

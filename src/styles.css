@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -169,41 +170,24 @@
 }
 
 @keyframes ai-glow-pulse {
-  0%, 100% { opacity: 0.65; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
 }
 
 @utility ai-thinking-glow {
   position: relative;
   isolation: isolate;
-  &::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-    padding: 2px;
-    background: linear-gradient(135deg, #ec4899 0%, #a855f7 25%, #6366f1 50%, #06b6d4 75%, #ec4899 100%);
-    background-size: 300% 300%;
-    animation: gradient-flow 4s ease infinite;
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-    pointer-events: none;
-    z-index: 1;
-  }
   &::after {
     content: "";
     position: absolute;
-    inset: -1px;
+    inset: -6px;
     border-radius: inherit;
-    box-shadow:
-      0 0 24px 2px rgba(168, 85, 247, 0.5),
-      0 0 48px 8px rgba(6, 182, 212, 0.35),
-      0 0 72px 14px rgba(99, 102, 241, 0.25);
-    animation: ai-glow-pulse 2.4s ease-in-out infinite;
+    background: linear-gradient(135deg, #ec4899 0%, #a855f7 25%, #6366f1 50%, #06b6d4 75%, #ec4899 100%);
+    background-size: 300% 300%;
+    animation: gradient-flow 2.5s ease infinite, ai-glow-pulse 1.4s ease-in-out infinite;
+    filter: blur(32px);
+    opacity: 1;
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
   }
 }
