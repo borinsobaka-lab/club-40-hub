@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — CLUB 40 Admin" }] }),
@@ -97,6 +98,8 @@ function WorkoutsPage() {
       (w.description ?? "").toLowerCase().includes(q)
     );
   });
+
+  const pg = usePagination(filteredWorkouts);
 
   const fetchWorkouts = async () => {
     if (!studioId) {
@@ -198,7 +201,7 @@ function WorkoutsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredWorkouts.map((w) => (
+                    pg.paged.map((w) => (
                       <TableRow key={w.id}>
                         <TableCell>
                           <WorkoutPhoto value={w.photo_url} name={w.name} />
@@ -223,6 +226,7 @@ function WorkoutsPage() {
                   )}
                 </TableBody>
               </Table>
+              <DataPagination {...pg} />
             </div>
           </>
         )}
