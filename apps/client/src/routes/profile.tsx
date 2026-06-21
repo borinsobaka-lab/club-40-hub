@@ -62,7 +62,6 @@ type ClientUpdate = {
   email?: string | null;
   birthday?: string | null;
   gender?: string | null;
-  photo_url?: string | null;
 };
 
 const profileSchema = z.object({
