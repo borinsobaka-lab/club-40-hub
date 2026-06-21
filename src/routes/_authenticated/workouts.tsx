@@ -440,7 +440,6 @@ function WorkoutDialog({
           </div>
 
           <div className="space-y-1.5">
-          <div className="space-y-1.5">
             <Label htmlFor="type">Тип тренировки</Label>
             <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
               <SelectTrigger id="type">
