@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import logoSrc from "@/assets/frame-13.svg";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 
 import { Loader2, Plus, Minus } from "lucide-react";
@@ -76,6 +76,7 @@ function SchedulePage() {
   const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
+  const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     if (activeTab !== "class") return;
@@ -110,6 +111,13 @@ function SchedulePage() {
       cancelled = true;
     };
   }, [today, activeTab]);
+
+  useEffect(() => {
+    const btn = dayBtnRefs.current[activeIdx];
+    if (btn) {
+      btn.scrollIntoView({ inline: "start", block: "nearest", behavior: "auto" });
+    }
+  }, []);
 
   async function toggleBooking(entryId: string) {
     if (pendingId) return;
@@ -199,9 +207,10 @@ function SchedulePage() {
           <div className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
 
             {days.map((d, i) => (
-              <button
-                key={d.toISOString()}
-                onClick={() => setActiveIdx(i)}
+                <button
+                  key={d.toISOString()}
+                  ref={(el) => { dayBtnRefs.current[i] = el; }}
+                  onClick={() => setActiveIdx(i)}
                 className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
                   i === activeIdx
                     ? "bg-[#1B1C1F] text-[#FFE500]"
@@ -258,7 +267,7 @@ function SchedulePage() {
                 const isPast = new Date(c.starts_at) < new Date();
                 const workoutPhoto = resolvePublicUrl("workout-photos", c.workout?.photo_url);
                 return (
-                  <div key={c.id} className={`relative flex gap-1 pb-4 ${isPast ? "opacity-50" : ""}`}>
+                  <div key={c.id} className={`relative flex gap-1 pb-4 ${isPast ? "opacity-20" : ""}`}>
                     <button
                       type="button"
                       onClick={() => {
