@@ -1,4 +1,3 @@
-import { LogOut } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +18,6 @@ export function SignOutButton() {
 
   return (
     <Button size="sm" variant="outline" onClick={handleSignOut}>
-      <LogOut className="mr-2 h-4 w-4" />
       Выйти
     </Button>
   );
