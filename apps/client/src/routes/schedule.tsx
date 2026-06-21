@@ -10,12 +10,20 @@ import { PageShell } from "@/components/page-shell";
 export const Route = createFileRoute("/schedule")({
   head: () => ({
     meta: [
-      { title: "Расписание — CLUB 40" },
-      { name: "description", content: "Расписание тренировок CLUB 40 на ближайшие дни." },
+      { title: "Бронь — CLUB 40" },
+      { name: "description", content: "Бронирование занятий CLUB 40." },
     ],
   }),
   component: SchedulePage,
 });
+
+const TABS = [
+  { key: "class", label: "Класс" },
+  { key: "personal", label: "Персональные" },
+  { key: "diagnostics", label: "Диагностика" },
+  { key: "mine", label: "Мои бронирования" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
 
 type Entry = {
   id: string;
@@ -59,12 +67,14 @@ function workoutTypeMeta(type: string | null | undefined) {
 function SchedulePage() {
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
+  const [activeTab, setActiveTab] = useState<TabKey>("class");
   const [activeIdx, setActiveIdx] = useState(0);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (activeTab !== "class") return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -87,7 +97,7 @@ function SchedulePage() {
     return () => {
       cancelled = true;
     };
-  }, [today]);
+  }, [today, activeTab]);
 
   const activeDay = days[activeIdx];
   const [activeType, setActiveType] = useState<string>("all");
@@ -117,108 +127,137 @@ function SchedulePage() {
     <PageShell
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-bold italic uppercase">Расписание</h1>
+          <h1 className="text-3xl font-bold italic uppercase">Бронь</h1>
           <p className="text-sm text-white/70">Выберите день и забронируйте тренировку</p>
         </div>
       }
     >
-      <div className="p-4 space-y-4">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
-          {days.map((d, i) => (
-            <button
-              key={d.toISOString()}
-              onClick={() => setActiveIdx(i)}
-              className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
-                i === activeIdx
-                  ? "bg-[#1B1C1F] text-[#FFE500]"
-                  : "bg-card text-card-foreground"
-              }`}
-            >
-              <span className={`text-xs ${i === activeIdx ? "" : "opacity-70"}`}>
-                {DAY_NAMES[d.getDay()]}
-              </span>
-              <span className="text-lg font-bold italic">{d.getDate()}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
-          {typeFilters.map((t) => {
-            const active = activeType === t.key;
+      <div className="border-b border-border -mt-px">
+        <div className="flex gap-6 overflow-x-auto no-scrollbar px-4">
+          {TABS.map((t) => {
+            const active = activeTab === t.key;
             return (
               <button
                 key={t.key}
-                onClick={() => setActiveType(t.key)}
-                className={`shrink-0 px-3 h-7 rounded-full border text-xs font-semibold transition-colors ${
-                  active
-                    ? "bg-[#1B1C1F] text-white border-[#1B1C1F]"
-                    : "bg-transparent text-foreground border-border"
+                onClick={() => setActiveTab(t.key)}
+                className={`shrink-0 relative py-3 text-sm font-semibold transition-colors ${
+                  active ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {t.label}
+                {active && (
+                  <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-foreground rounded-full" />
+                )}
               </button>
             );
           })}
         </div>
+      </div>
 
-
-        {loading ? (
-          <div className="flex justify-center py-10 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        ) : error ? (
-          <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
-        ) : dayEntries.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-muted-foreground">
-            На этот день тренировок пока нет
+      {activeTab !== "class" ? (
+        <div className="p-4">
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            Функционал скоро будет доступен
           </Card>
-        ) : (
-          <div className="relative">
-            {dayEntries.map((c, idx) => {
-              const isLast = idx === dayEntries.length - 1;
-              // TODO: replace with real capacity/bookings data from backend
-              const spotsLeft = ((c.id.charCodeAt(0) + c.id.charCodeAt(1)) % 8) + 2;
+        </div>
+      ) : (
+        <div className="p-4 space-y-4">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+            {days.map((d, i) => (
+              <button
+                key={d.toISOString()}
+                onClick={() => setActiveIdx(i)}
+                className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
+                  i === activeIdx
+                    ? "bg-[#1B1C1F] text-[#FFE500]"
+                    : "bg-card text-card-foreground"
+                }`}
+              >
+                <span className={`text-xs ${i === activeIdx ? "" : "opacity-70"}`}>
+                  {DAY_NAMES[d.getDay()]}
+                </span>
+                <span className="text-lg font-bold italic">{d.getDate()}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+            {typeFilters.map((t) => {
+              const active = activeType === t.key;
               return (
-                <div key={c.id} className="relative flex gap-3 pb-4">
-                  <div className="flex flex-col items-center w-14 shrink-0 pt-1">
-                    <div className="text-sm font-semibold tabular-nums leading-tight">
-                      {fmtTime(c.starts_at)}
-                    </div>
-                    <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
-                      {fmtTime(c.ends_at)}
-                    </div>
-                    <div className="mt-2 h-2.5 w-2.5 rounded-full bg-[#FFE500] shrink-0" />
-                    {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
-                  </div>
-                  <Card className="p-4 flex flex-col gap-3 flex-1 min-w-0">
-                    <div className="font-semibold break-words leading-snug">
-                      {c.workout?.name ?? "Занятие"}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {(() => {
-                        const meta = workoutTypeMeta(c.workout?.type);
-                        const Icon = meta.icon;
-                        return (
-                          <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
-                            <Icon className="h-3 w-3" />
-                            {meta.label}
-                          </Badge>
-                        );
-                      })()}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <Button size="sm">Записаться</Button>
-                      <span className="text-xs text-muted-foreground">
-                        осталось {spotsLeft} мест
-                      </span>
-                    </div>
-                  </Card>
-                </div>
+                <button
+                  key={t.key}
+                  onClick={() => setActiveType(t.key)}
+                  className={`shrink-0 px-3 h-7 rounded-full border text-xs font-semibold transition-colors ${
+                    active
+                      ? "bg-[#1B1C1F] text-white border-[#1B1C1F]"
+                      : "bg-transparent text-foreground border-border"
+                  }`}
+                >
+                  {t.label}
+                </button>
               );
             })}
           </div>
-        )}
-      </div>
+
+          {loading ? (
+            <div className="flex justify-center py-10 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : error ? (
+            <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
+          ) : dayEntries.length === 0 ? (
+            <Card className="p-6 text-center text-sm text-muted-foreground">
+              На этот день тренировок пока нет
+            </Card>
+          ) : (
+            <div className="relative">
+              {dayEntries.map((c, idx) => {
+                const isLast = idx === dayEntries.length - 1;
+                // TODO: replace with real capacity/bookings data from backend
+                const spotsLeft = ((c.id.charCodeAt(0) + c.id.charCodeAt(1)) % 8) + 2;
+                return (
+                  <div key={c.id} className="relative flex gap-3 pb-4">
+                    <div className="flex flex-col items-center w-14 shrink-0 pt-1">
+                      <div className="text-sm font-semibold tabular-nums leading-tight">
+                        {fmtTime(c.starts_at)}
+                      </div>
+                      <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
+                        {fmtTime(c.ends_at)}
+                      </div>
+                      <div className="mt-2 h-2.5 w-2.5 rounded-full bg-[#FFE500] shrink-0" />
+                      {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
+                    </div>
+                    <Card className="p-4 flex flex-col gap-3 flex-1 min-w-0">
+                      <div className="font-semibold break-words leading-snug">
+                        {c.workout?.name ?? "Занятие"}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {(() => {
+                          const meta = workoutTypeMeta(c.workout?.type);
+                          const Icon = meta.icon;
+                          return (
+                            <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
+                              <Icon className="h-3 w-3" />
+                              {meta.label}
+                            </Badge>
+                          );
+                        })()}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <Button size="sm">Записаться</Button>
+                        <span className="text-xs text-muted-foreground">
+                          осталось {spotsLeft} мест
+                        </span>
+                      </div>
+                    </Card>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </PageShell>
   );
 }

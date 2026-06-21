@@ -10,7 +10,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Home, Calendar, BookmarkCheck, Trophy, User, Loader2 } from "lucide-react";
+import { Home, Dumbbell, BookmarkCheck, Trophy, User, Loader2 } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -123,7 +123,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 const navItems = [
   { to: "/", label: "Главное", icon: Home, exact: true },
-  { to: "/schedule", label: "Расписание", icon: Calendar, exact: false },
+  { to: "/schedule", label: "Бронь", icon: Dumbbell, exact: false },
   { to: "/bookings", label: "Брони", icon: BookmarkCheck, exact: false },
   { to: "/results", label: "Результаты", icon: Trophy, exact: false },
   { to: "/profile", label: "Профиль", icon: User, exact: false },
