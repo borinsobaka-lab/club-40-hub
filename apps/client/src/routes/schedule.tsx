@@ -257,12 +257,12 @@ function SchedulePage() {
                 const isPending = pendingId === c.id;
                 return (
                   <div key={c.id} className="relative flex gap-1 pb-4">
-                    <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right pr-2">
-                      <div className="text-base font-bold italic tabular-nums leading-tight">
+                    <div className="flex flex-col items-center w-12 shrink-0 pt-1 pr-2 gap-2">
+                      <div className="text-base font-bold italic tabular-nums leading-tight text-center">
                         {fmtTime(c.starts_at)}
                       </div>
-                      <div className="text-[10px] tabular-nums leading-tight text-muted-foreground/60">
-                        {fmtTime(c.ends_at)}
+                      <div className="w-9 h-7 bg-[#2A2B2E] rounded-md flex items-center justify-center">
+                        <span className="text-[8px] text-muted-foreground/40 font-medium">LOGO</span>
                       </div>
                     </div>
                     <Card
