@@ -46,7 +46,8 @@ type Entry = {
 
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
-const SLOT_PX = 64;
+const SLOT_PX_FULL = 72;
+const SLOT_PX_EMPTY = 28;
 const ALL_FILTER_VALUE = "all";
 
 function startOfWeek(d: Date) {
@@ -294,74 +295,94 @@ function SchedulePage() {
                   );
                 })}
 
-                {HOURS.map((hour) => (
-                  <div key={`row-${hour}`} className="contents">
-                    <div
-                      className="border-b border-r px-2 text-right text-xs text-muted-foreground"
-                      style={{ height: SLOT_PX, lineHeight: "1rem", paddingTop: 4 }}
-                    >
-                      {pad(hour)}:00
-                    </div>
-                    {weekDays.map((day, di) => {
-                      const slotEntries = entries.filter((e) => {
-                        const s = new Date(e.starts_at);
-                        const matchesDayHour =
-                          s.toDateString() === day.toDateString() &&
-                          s.getHours() === hour;
-                        if (!matchesDayHour) return false;
-                        if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) return false;
-                        if (filterTrainerId !== ALL_FILTER_VALUE) {
-                          const hasTrainer = e.schedule_entry_trainers?.some(
-                            (x) => x.trainer_id === filterTrainerId,
-                          );
-                          if (!hasTrainer) return false;
-                        }
-                        return true;
-                      });
-                      return (
-                        <button
-                          key={`${hour}-${di}`}
-                          type="button"
-                          onClick={() => openSlot(day, hour)}
-                          className="relative border-b border-r text-left transition hover:bg-accent/40"
-                          style={{ height: SLOT_PX }}
-                        >
-                          {slotEntries.map((e) => {
-                            const names =
-                              e.schedule_entry_trainers
-                                ?.map((x) => x.trainer?.full_name)
-                                .filter(Boolean)
-                                .join(", ") ?? "";
-                            const color = workoutTypeColor(e.workout?.type);
-                            const colorClasses = color
-                              ? `${color.bg} ${color.text}`
-                              : "bg-primary text-primary-foreground";
-                            return (
-                              <div
-                                key={e.id}
-                                onClick={(ev) => {
-                                  ev.stopPropagation();
-                                  openEdit(e);
-                                }}
-                                className={`absolute inset-x-1 top-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 ${colorClasses}`}
-                              >
-                                <div className="opacity-80">
-                                  {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
-                                </div>
-                                <div className="truncate font-medium">
-                                  {e.workout?.name ?? "Занятие"}
-                                </div>
-                                {names && (
-                                  <div className="truncate opacity-80">{names}</div>
-                                )}
-                              </div>
+                {HOURS.map((hour) => {
+                  const hasAnyForHour = weekDays.some((day) =>
+                    entries.some((e) => {
+                      const s = new Date(e.starts_at);
+                      const matchesDayHour =
+                        s.toDateString() === day.toDateString() &&
+                        s.getHours() === hour;
+                      if (!matchesDayHour) return false;
+                      if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) return false;
+                      if (filterTrainerId !== ALL_FILTER_VALUE) {
+                        const hasTrainer = e.schedule_entry_trainers?.some(
+                          (x) => x.trainer_id === filterTrainerId,
+                        );
+                        if (!hasTrainer) return false;
+                      }
+                      return true;
+                    }),
+                  );
+                  const rowHeight = hasAnyForHour ? SLOT_PX_FULL : SLOT_PX_EMPTY;
+                  return (
+                    <div key={`row-${hour}`} className="contents">
+                      <div
+                        className="border-b border-r px-2 text-right text-xs text-muted-foreground"
+                        style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
+                      >
+                        {pad(hour)}:00
+                      </div>
+                      {weekDays.map((day, di) => {
+                        const slotEntries = entries.filter((e) => {
+                          const s = new Date(e.starts_at);
+                          const matchesDayHour =
+                            s.toDateString() === day.toDateString() &&
+                            s.getHours() === hour;
+                          if (!matchesDayHour) return false;
+                          if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) return false;
+                          if (filterTrainerId !== ALL_FILTER_VALUE) {
+                            const hasTrainer = e.schedule_entry_trainers?.some(
+                              (x) => x.trainer_id === filterTrainerId,
                             );
-                          })}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+                            if (!hasTrainer) return false;
+                          }
+                          return true;
+                        });
+                        return (
+                          <button
+                            key={`${hour}-${di}`}
+                            type="button"
+                            onClick={() => openSlot(day, hour)}
+                            className="relative border-b border-r text-left transition hover:bg-accent/40"
+                            style={{ height: rowHeight }}
+                          >
+                            {slotEntries.map((e) => {
+                              const names =
+                                e.schedule_entry_trainers
+                                  ?.map((x) => x.trainer?.full_name)
+                                  .filter(Boolean)
+                                  .join(", ") ?? "";
+                              const color = workoutTypeColor(e.workout?.type);
+                              const colorClasses = color
+                                ? `${color.bg} ${color.text}`
+                                : "bg-primary text-primary-foreground";
+                              return (
+                                <div
+                                  key={e.id}
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    openEdit(e);
+                                  }}
+                                  className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 ${colorClasses}`}
+                                >
+                                  <div className="opacity-80">
+                                    {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
+                                  </div>
+                                  <div className="truncate font-medium">
+                                    {e.workout?.name ?? "Занятие"}
+                                  </div>
+                                  {names && (
+                                    <div className="truncate opacity-80">{names}</div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
