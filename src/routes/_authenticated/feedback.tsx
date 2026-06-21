@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -19,12 +18,16 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({ meta: [{ title: "Обратная связь — CLUB 40 Admin" }] }),
@@ -181,6 +184,8 @@ function FeedbackPage() {
     toast.success("Удалено");
   };
 
+  const hasFilters = topicFilter !== "all" || statusFilter !== "all" || moodFilter !== "all";
+
   return (
     <AdminShell
       title="Обратная связь"
@@ -190,26 +195,29 @@ function FeedbackPage() {
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Добавить</Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Новое обращение</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>Тема</Label>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Новое обращение</DialogTitle>
+              <DialogDescription>Заполните данные обращения клиента.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="topic">Тема</Label>
                 <Select value={form.topic} onValueChange={(v) => setForm({ ...form, topic: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="topic"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(TOPICS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Сообщение</Label>
-                <Textarea rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+              <div className="space-y-1.5">
+                <Label htmlFor="message">Сообщение</Label>
+                <Textarea id="message" rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
               </div>
-              <div>
-                <Label>Оценка</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="mood">Оценка</Label>
                 <Select value={form.mood || "none"} onValueChange={(v) => setForm({ ...form, mood: v === "none" ? "" : v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="mood"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Без оценки</SelectItem>
                     <SelectItem value="negative">😞 Плохо</SelectItem>
@@ -219,146 +227,155 @@ function FeedbackPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Имя</Label>
-                  <Input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
+                <div className="space-y-1.5">
+                  <Label htmlFor="cname">Имя</Label>
+                  <Input id="cname" value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
                 </div>
-                <div>
-                  <Label>Контакт</Label>
-                  <Input value={form.client_contact} onChange={(e) => setForm({ ...form, client_contact: e.target.value })} />
+                <div className="space-y-1.5">
+                  <Label htmlFor="ccontact">Контакт</Label>
+                  <Input id="ccontact" value={form.client_contact} onChange={(e) => setForm({ ...form, client_contact: e.target.value })} />
                 </div>
               </div>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setAddOpen(false)}>Отмена</Button>
               <Button onClick={submitNew} disabled={saving}>
-                {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Сохранить
+                {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       }
     >
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card><CardContent className="p-5">
+      <div className="mx-auto max-w-6xl space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">В этом месяце</p>
             <p className="mt-1 text-2xl font-bold">{thisMonth.length}</p>
-          </CardContent></Card>
-          <Card className={pendingCount > 0 ? "border-destructive/30 bg-destructive/5" : ""}>
-            <CardContent className="p-5">
-              <p className="text-xs text-muted-foreground">Не отработано</p>
-              <p className={`mt-1 text-2xl font-bold ${pendingCount > 0 ? "text-destructive" : ""}`}>{pendingCount}</p>
-            </CardContent>
-          </Card>
-          <Card><CardContent className="p-5">
+          </div>
+          <div className={`rounded-lg border bg-background p-4 ${pendingCount > 0 ? "border-destructive/30 bg-destructive/5" : ""}`}>
+            <p className="text-xs text-muted-foreground">Не отработано</p>
+            <p className={`mt-1 text-2xl font-bold ${pendingCount > 0 ? "text-destructive" : ""}`}>{pendingCount}</p>
+          </div>
+          <div className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">Отработано в этом месяце</p>
             <p className="mt-1 text-2xl font-bold">{resolvedThisMonth}</p>
-          </CardContent></Card>
+          </div>
         </div>
 
-        <Card>
-          <CardContent className="flex flex-wrap items-end gap-3 p-4">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Тема</Label>
-              <Select value={topicFilter} onValueChange={setTopicFilter}>
-                <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все</SelectItem>
-                  {Object.entries(TOPICS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Статус</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все</SelectItem>
-                  <SelectItem value="pending">Не отработано</SelectItem>
-                  <SelectItem value="resolved">Отработано</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Оценка</Label>
-              <Select value={moodFilter} onValueChange={setMoodFilter}>
-                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все</SelectItem>
-                  <SelectItem value="negative">😞 Плохо</SelectItem>
-                  <SelectItem value="neutral">😐 Нормально</SelectItem>
-                  <SelectItem value="positive">😊 Хорошо</SelectItem>
-                  <SelectItem value="none">Без оценки</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {(topicFilter !== "all" || statusFilter !== "all" || moodFilter !== "all") && (
-              <Button variant="ghost" size="sm" onClick={() => { setTopicFilter("all"); setStatusFilter("all"); setMoodFilter("all"); }}>
-                <X className="mr-1 h-3.5 w-3.5" /> Сбросить
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
+          <Select value={topicFilter} onValueChange={setTopicFilter}>
+            <SelectTrigger className="h-8 sm:w-[180px]"><SelectValue placeholder="Все темы" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все темы</SelectItem>
+              {Object.entries(TOPICS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 sm:w-[160px]"><SelectValue placeholder="Все статусы" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              <SelectItem value="pending">Не отработано</SelectItem>
+              <SelectItem value="resolved">Отработано</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={moodFilter} onValueChange={setMoodFilter}>
+            <SelectTrigger className="h-8 sm:w-[160px]"><SelectValue placeholder="Все оценки" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все оценки</SelectItem>
+              <SelectItem value="negative">😞 Плохо</SelectItem>
+              <SelectItem value="neutral">😐 Нормально</SelectItem>
+              <SelectItem value="positive">😊 Хорошо</SelectItem>
+              <SelectItem value="none">Без оценки</SelectItem>
+            </SelectContent>
+          </Select>
+          {hasFilters && (
+            <Button variant="ghost" size="sm" className="h-8" onClick={() => { setTopicFilter("all"); setStatusFilter("all"); setMoodFilter("all"); }}>
+              <X className="mr-1 h-3.5 w-3.5" /> Сбросить
+            </Button>
+          )}
+        </div>
 
-        {loading ? (
-          <p className="text-muted-foreground">Загрузка…</p>
-        ) : filtered.length === 0 ? (
-          <Card><CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-            <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">Обращений нет</p>
-          </CardContent></Card>
-        ) : (
-          <Card>
-            <CardContent className="overflow-x-auto p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    {["Дата", "Тема", "Сообщение", "Оценка", "Имя", "Контакт", "Статус", "Отработал", ""].map((h) => (
-                      <th key={h} className="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((i) => (
-                    <tr key={i.id} onClick={() => { setSelectedId(i.id); setResolutionComment(i.resolution_comment || ""); }}
-                      className="cursor-pointer border-b last:border-0 hover:bg-muted/30">
-                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                        {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2">{TOPICS[i.topic] || i.topic}</td>
-                      <td className="max-w-[280px] truncate px-3 py-2 text-foreground/80">{i.message}</td>
-                      <td className="px-3 py-2 text-center text-lg">{i.mood ? MOOD[i.mood] : "—"}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-foreground/80">{i.client_name || "—"}</td>
-                      <td className="max-w-[140px] truncate whitespace-nowrap px-3 py-2 text-foreground/80">{i.client_contact || "—"}</td>
-                      <td className="px-3 py-2">
-                        {i.status === "pending" ? (
-                          <span className="rounded-md bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">Не отработано</span>
-                        ) : (
-                          <span className="rounded-md bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">Отработано</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
-                        {i.resolved_by_name ? (
-                          <>
-                            {i.resolved_by_name}
-                            {i.resolved_at && <div>{format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}</div>}
-                          </>
-                        ) : "—"}
-                      </td>
-                      <td className="px-2 py-2">
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteId(i.id); }}
-                          className="text-muted-foreground/40 hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        )}
+        <div className="rounded-lg border bg-background">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Дата</TableHead>
+                <TableHead>Тема</TableHead>
+                <TableHead>Сообщение</TableHead>
+                <TableHead className="w-[80px] text-center">Оценка</TableHead>
+                <TableHead>Имя</TableHead>
+                <TableHead>Контакт</TableHead>
+                <TableHead>Статус</TableHead>
+                <TableHead>Отработал</TableHead>
+                <TableHead className="w-[60px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                  </TableCell>
+                </TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
+                    <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                    Обращений нет.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((i) => (
+                  <TableRow
+                    key={i.id}
+                    onClick={() => { setSelectedId(i.id); setResolutionComment(i.resolution_comment || ""); }}
+                    className="cursor-pointer"
+                  >
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{TOPICS[i.topic] || i.topic}</TableCell>
+                    <TableCell className="max-w-[280px] truncate">{i.message}</TableCell>
+                    <TableCell className="text-center text-lg">{i.mood ? MOOD[i.mood] : "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{i.client_name || "—"}</TableCell>
+                    <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">{i.client_contact || "—"}</TableCell>
+                    <TableCell>
+                      {i.status === "pending" ? (
+                        <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                          Не отработано
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          Отработано
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      {i.resolved_by_name ? (
+                        <>
+                          {i.resolved_by_name}
+                          {i.resolved_at && <div>{format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}</div>}
+                        </>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); setDeleteId(i.id); }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
@@ -368,29 +385,30 @@ function FeedbackPage() {
           </SheetHeader>
           {selected && (
             <div className="mt-6 space-y-4">
-              <div>
+              <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Дата</p>
                 <p className="text-sm">{format(new Date(selected.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}</p>
               </div>
-              <div>
+              <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Сообщение</p>
                 <p className="whitespace-pre-wrap text-sm">{selected.message}</p>
               </div>
               {selected.mood && (
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Оценка</p>
                   <p className="text-lg">{MOOD[selected.mood]}</p>
                 </div>
               )}
               {(selected.client_name || selected.client_contact) && (
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Клиент</p>
                   <p className="text-sm">{selected.client_name || "—"}{selected.client_contact ? ` · ${selected.client_contact}` : ""}</p>
                 </div>
               )}
-              <div>
-                <Label className="text-xs">Комментарий обработки</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="resolution">Комментарий обработки</Label>
                 <Textarea
+                  id="resolution"
                   value={resolutionComment}
                   onChange={(e) => setResolutionComment(e.target.value)}
                   placeholder="Что сделано?"
@@ -404,7 +422,10 @@ function FeedbackPage() {
                 <>
                   <div className="rounded-lg border bg-muted/30 p-3">
                     <p className="text-xs text-muted-foreground">Обработано</p>
-                    <p className="text-sm">{selected.resolved_by_name || "—"}{selected.resolved_at && ` · ${format(new Date(selected.resolved_at), "d MMM yyyy", { locale: ru })}`}</p>
+                    <p className="text-sm">
+                      {selected.resolved_by_name || "—"}
+                      {selected.resolved_at && ` · ${format(new Date(selected.resolved_at), "d MMM yyyy", { locale: ru })}`}
+                    </p>
                     {selected.resolution_comment && (
                       <p className="mt-2 whitespace-pre-wrap text-sm">{selected.resolution_comment}</p>
                     )}
