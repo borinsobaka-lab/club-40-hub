@@ -41,6 +41,7 @@ type Workout = {
   name: string;
   description: string | null;
   photo_url: string | null;
+  capacity: number | null;
 };
 
 function isHttpUrl(v: string | null | undefined) {
