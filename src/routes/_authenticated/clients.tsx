@@ -61,8 +61,18 @@ type Client = {
   last_visit_date: string | null;
   crm_link: string | null;
   photo_url: string | null;
+  avatar_url: string | null;
   created_at: string;
 };
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+}
 
 function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
   const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
