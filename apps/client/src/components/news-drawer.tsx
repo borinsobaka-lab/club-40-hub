@@ -66,7 +66,7 @@ export function NewsDrawer({
             ) : (
               <>
                 {hero && (
-                  <div className="px-4 pt-3">
+                  <div className="px-3 pt-1">
                     <img
                       src={hero}
                       alt={title}
@@ -74,7 +74,7 @@ export function NewsDrawer({
                     />
                   </div>
                 )}
-                <div className="px-4 pt-5 space-y-3">
+                <div className="px-3 pt-3 space-y-3">
                   <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
                     {title}
                   </DrawerPrimitive.Title>
