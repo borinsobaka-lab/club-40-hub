@@ -256,7 +256,7 @@ function SchedulePage() {
                 const isBooked = bookedIds.has(c.id);
                 const isPending = pendingId === c.id;
                 return (
-                  <div key={c.id} className="relative flex gap-2 pb-4">
+                  <div key={c.id} className="relative flex gap-1 pb-4">
                     <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right pr-2">
                       <div className="text-base font-bold italic tabular-nums leading-tight">
                         {fmtTime(c.starts_at)}
