@@ -97,7 +97,7 @@ export function WorkoutDrawer({
                   type="button"
                   onClick={onBook}
                   disabled={isPending}
-                  className="mt-6 w-full h-14 rounded-2xl bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                  className="mt-6 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
                 >
                   {isPending ? "..." : isBooked ? "Отменить запись" : "Записаться"}
                 </button>
