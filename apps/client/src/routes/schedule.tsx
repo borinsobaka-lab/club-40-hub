@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import { Loader2, Dumbbell, HeartPulse, Shuffle, Leaf, Activity, Plus, type LucideIcon } from "lucide-react";
+import { Loader2, Dumbbell, HeartPulse, Shuffle, Leaf, Activity, Plus, Minus, type LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
 
@@ -74,6 +74,8 @@ function SchedulePage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== "class") return;
@@ -95,11 +97,43 @@ function SchedulePage() {
       if (error) setError(error.message);
       else setEntries((data as unknown as Entry[]) ?? []);
       setLoading(false);
+
+      const { data: b } = await (supabase as any)
+        .from("schedule_bookings")
+        .select("entry_id")
+        .eq("status", "booked");
+      if (!cancelled && b) {
+        setBookedIds(new Set((b as { entry_id: string }[]).map((r) => r.entry_id)));
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, [today, activeTab]);
+
+  async function toggleBooking(entryId: string) {
+    if (pendingId) return;
+    setPendingId(entryId);
+    const isBooked = bookedIds.has(entryId);
+    const fn = isBooked ? "cancel_schedule_booking" : "book_schedule_entry";
+    const { data, error } = await (supabase as any).rpc(fn, { p_entry_id: entryId });
+    setPendingId(null);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    const res = data as { ok: boolean; reason?: string } | null;
+    if (res?.ok) {
+      setBookedIds((prev) => {
+        const next = new Set(prev);
+        if (isBooked) next.delete(entryId);
+        else next.add(entryId);
+        return next;
+      });
+    } else if (res?.reason === "already_booked") {
+      setBookedIds((prev) => new Set(prev).add(entryId));
+    }
+  }
 
   const activeDay = days[activeIdx];
   const [activeType, setActiveType] = useState<string>("all");
@@ -219,6 +253,8 @@ function SchedulePage() {
             <div className="relative">
               {dayEntries.map((c) => {
                 const meta = workoutTypeMeta(c.workout?.type);
+                const isBooked = bookedIds.has(c.id);
+                const isPending = pendingId === c.id;
                 return (
                   <div key={c.id} className="relative flex gap-2 pb-4">
                     <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right pr-2">
@@ -229,7 +265,11 @@ function SchedulePage() {
                         {fmtTime(c.ends_at)}
                       </div>
                     </div>
-                    <Card className="relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg">
+                    <Card
+                      className={`relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg transition-colors ${
+                        isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
+                      }`}
+                    >
                       <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold break-words leading-snug">
@@ -241,14 +281,30 @@ function SchedulePage() {
                             .filter((n): n is string => !!n);
                           if (names.length === 0) return null;
                           return (
-                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                            <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
                               {names.join(", ")}
                             </div>
                           );
                         })()}
                       </div>
-                      <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center">
-                        <Plus className="h-6 w-6" strokeWidth={2.5} />
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => toggleBooking(c.id)}
+                        className={`shrink-0 h-12 w-12 rounded-full flex items-center justify-center transition-colors disabled:opacity-60 ${
+                          isBooked
+                            ? "bg-white text-[#1B1C1F] border border-[#1B1C1F]/10"
+                            : "bg-[#FFE500] text-[#1B1C1F]"
+                        }`}
+                        aria-label={isBooked ? "Отменить запись" : "Записаться"}
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : isBooked ? (
+                          <Minus className="h-6 w-6" strokeWidth={2.5} />
+                        ) : (
+                          <Plus className="h-6 w-6" strokeWidth={2.5} />
+                        )}
                       </button>
                     </Card>
 
