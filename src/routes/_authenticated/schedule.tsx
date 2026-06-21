@@ -116,13 +116,13 @@ function SchedulePage() {
       supabase
         .from("schedule_entries")
         .select(
-          "*, workout:workouts(name, type), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
+          "*, workout:workouts(name, type, capacity), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
         )
         .eq("studio_id", studioId)
         .gte("starts_at", weekStart.toISOString())
         .lt("starts_at", weekEnd.toISOString())
         .order("starts_at"),
-      supabase.from("workouts").select("id, name, type").eq("studio_id", studioId).order("name"),
+      supabase.from("workouts").select("id, name, type, capacity").eq("studio_id", studioId).order("name"),
       supabase.from("trainers").select("id, full_name").eq("studio_id", studioId).order("full_name"),
     ]);
     setLoading(false);
