@@ -493,7 +493,8 @@ function SaleDialog({
       .eq("status", "active")
       .maybeSingle();
     if (existing) {
-      const name = (existing as { memberships: { name: string } | null }).memberships?.name ?? "—";
+      const m = (existing as unknown as { memberships: { name: string } | { name: string }[] | null }).memberships;
+      const name = Array.isArray(m) ? (m[0]?.name ?? "—") : (m?.name ?? "—");
       if (!confirm(`У клиента уже есть активный абонемент «${name}». Новая продажа заменит его. Продолжить?`)) {
         return;
       }
