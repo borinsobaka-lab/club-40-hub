@@ -25,7 +25,7 @@ function BookingsPage() {
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-bold italic uppercase">Мои брони</h1>
-          <p className="text-sm font-bold italic uppercase text-white/70">Управляйте записями на тренировки</p>
+          <p className="text-sm text-white/70">Управляйте записями на тренировки</p>
         </div>
       }
     >

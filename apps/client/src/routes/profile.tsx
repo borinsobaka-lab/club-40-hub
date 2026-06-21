@@ -127,7 +127,7 @@ function ProfilePage() {
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-bold italic uppercase">Профиль</h1>
-          <p className="text-sm font-bold italic uppercase text-white/70">Ваши данные и настройки</p>
+          <p className="text-sm text-white/70">Ваши данные и настройки</p>
         </div>
       }
     >
