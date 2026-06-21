@@ -73,15 +73,17 @@ function NewsDetailPage() {
     <div className="flex flex-col flex-1">
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="relative">
-          {hero ? (
-            <img
-              src={hero}
-              alt={title}
-              className="w-full aspect-[4/3] object-cover"
-            />
-          ) : (
-            <div className="w-full aspect-[4/3] bg-gradient-to-br from-primary/80 to-primary" />
-          )}
+          <div className="px-4 pt-4">
+            {hero ? (
+              <img
+                src={hero}
+                alt={title}
+                className="w-full aspect-[4/3] object-cover rounded-xl"
+              />
+            ) : (
+              <div className="w-full aspect-[4/3] bg-gradient-to-br from-primary/80 to-primary rounded-xl" />
+            )}
+          </div>
           <Link
             to="/"
             aria-label="Назад"
