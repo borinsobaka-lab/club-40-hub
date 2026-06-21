@@ -67,9 +67,9 @@ function fmtTime(iso: string) {
 
 function SchedulePage() {
   const today = useMemo(() => startOfDay(new Date()), []);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
+  const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
   const [activeTab, setActiveTab] = useState<TabKey>("class");
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [activeIdx, setActiveIdx] = useState(3);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
