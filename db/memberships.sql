@@ -12,6 +12,20 @@ create table if not exists public.memberships (
   price numeric(12,2) not null default 0,
   created_at timestamptz not null default now()
 );
+
+-- If the table existed before this file was updated, CREATE TABLE IF NOT EXISTS
+-- does not add new columns. Keep this block so re-running the SQL repairs the
+-- schema and refreshes the API cache.
+alter table public.memberships
+  add column if not exists benefits text[] not null default '{}',
+  add column if not exists visits_count int,
+  add column if not exists duration_days int,
+  add column if not exists auto_renew boolean not null default false,
+  add column if not exists price numeric(12,2) not null default 0,
+  add column if not exists created_at timestamptz not null default now();
+
+notify pgrst, 'reload schema';
+
 create index if not exists memberships_studio_idx on public.memberships(studio_id);
 
 grant select, insert, update, delete on public.memberships to authenticated;
