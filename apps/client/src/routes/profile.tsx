@@ -229,6 +229,50 @@ function EditProfileSheet({
   })();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(client.avatar_url ?? null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Выберите изображение");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Файл больше 5 МБ");
+      return;
+    }
+    setUploadingAvatar(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+    if (upErr) {
+      setUploadingAvatar(false);
+      toast.error("Не удалось загрузить: " + upErr.message);
+      return;
+    }
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const publicUrl = pub.publicUrl;
+    const { data: updated, error: dbErr } = await supabase
+      .from("clients")
+      .update({ avatar_url: publicUrl })
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+    setUploadingAvatar(false);
+    if (dbErr) {
+      toast.error("Не удалось сохранить: " + dbErr.message);
+      return;
+    }
+    setAvatarUrl(publicUrl);
+    if (updated) onSaved(updated as ClientRow);
+    toast.success("Аватар обновлён");
+  };
 
   useEffect(() => {
     if (open) {
