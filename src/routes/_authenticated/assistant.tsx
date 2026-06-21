@@ -150,3 +150,94 @@ function MessageBubble({ message }: { message: UIMessage }) {
     </div>
   );
 }
+
+function VoiceInputButton({
+  disabled,
+  onTranscribed,
+}: {
+  disabled?: boolean;
+  onTranscribed: (text: string) => void;
+}) {
+  const [recording, setRecording] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const start = async () => {
+    if (disabled || busy) return;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      toast.error("Нужен доступ к микрофону");
+      return;
+    }
+    const mimeType = ["audio/webm", "audio/mp4"].find((t) =>
+      typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
+    );
+    if (!mimeType) {
+      stream.getTracks().forEach((t) => t.stop());
+      toast.error("Браузер не поддерживает запись аудио");
+      return;
+    }
+    const rec = new MediaRecorder(stream, { mimeType });
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType });
+      if (blob.size < 1024) {
+        toast.error("Запись пустая, попробуйте ещё раз");
+        return;
+      }
+      setBusy(true);
+      try {
+        const ext = rec.mimeType.includes("mp4") ? "mp4" : "webm";
+        const fd = new FormData();
+        fd.append("file", blob, `recording.${ext}`);
+        const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(await res.text());
+        const data = (await res.json()) as { text?: string };
+        const text = (data.text ?? "").trim();
+        if (text) onTranscribed(text);
+        else toast.error("Не удалось распознать речь");
+      } catch (err) {
+        toast.error(`Ошибка распознавания: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    recorderRef.current = rec;
+    streamRef.current = stream;
+    rec.start();
+    setRecording(true);
+  };
+
+  const stop = () => {
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+    setRecording(false);
+  };
+
+  return (
+    <Button
+      type="button"
+      variant={recording ? "destructive" : "outline"}
+      size="icon"
+      disabled={disabled || busy}
+      onClick={recording ? stop : start}
+      title={recording ? "Закончить запись" : "Голосовой ввод"}
+    >
+      {busy ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : recording ? (
+        <Square className="h-4 w-4" />
+      ) : (
+        <Mic className="h-4 w-4" />
+      )}
+    </Button>
+  );
+}
