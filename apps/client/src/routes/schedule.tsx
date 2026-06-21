@@ -180,21 +180,25 @@ function SchedulePage() {
           <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
             {typeFilters.map((t) => {
               const active = activeType === t.key;
+              const meta = t.key === "all" ? null : workoutTypeMeta(t.key);
+              const Icon = meta?.icon;
               return (
                 <button
                   key={t.key}
                   onClick={() => setActiveType(t.key)}
-                  className={`shrink-0 px-3 h-7 rounded-full border text-xs font-semibold transition-colors ${
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 h-7 rounded-full border text-xs font-semibold transition-colors ${
                     active
                       ? "bg-[#1B1C1F] text-white border-[#1B1C1F]"
                       : "bg-transparent text-foreground border-border"
                   }`}
                 >
+                  {Icon && <Icon className={`h-3.5 w-3.5 ${meta!.color}`} />}
                   {t.label}
                 </button>
               );
             })}
           </div>
+
 
           {loading ? (
             <div className="flex justify-center py-10 text-muted-foreground">
