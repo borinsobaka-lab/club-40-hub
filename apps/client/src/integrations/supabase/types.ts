@@ -108,7 +108,6 @@ export type Database = {
           ends_at: string
           id: string
           starts_at: string
-          trainer_name: string | null
           workout_id: string | null
         }
         Insert: {
@@ -117,7 +116,6 @@ export type Database = {
           ends_at: string
           id?: string
           starts_at: string
-          trainer_name?: string | null
           workout_id?: string | null
         }
         Update: {
@@ -126,7 +124,6 @@ export type Database = {
           ends_at?: string
           id?: string
           starts_at?: string
-          trainer_name?: string | null
           workout_id?: string | null
         }
         Relationships: [
@@ -144,18 +141,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          trainer_name: string | null
           type: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          trainer_name?: string | null
           type?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          trainer_name?: string | null
           type?: string | null
         }
         Relationships: []
