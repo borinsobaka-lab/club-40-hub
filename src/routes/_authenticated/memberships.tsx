@@ -45,6 +45,7 @@ type Membership = {
   visits_count: number | null;
   duration_days: number | null;
   auto_renew: boolean;
+  installment_enabled: boolean;
   price: number;
 };
 
@@ -155,12 +156,13 @@ function MembershipsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Название</TableHead>
+                  <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Преимущества</TableHead>
                     <TableHead>Посещения</TableHead>
                     <TableHead>Срок</TableHead>
                     <TableHead>Автопродление</TableHead>
+                    <TableHead>Рассрочка</TableHead>
                     <TableHead>Цена</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
@@ -168,13 +170,13 @@ function MembershipsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                         {items.length === 0
                           ? "Пока нет абонементов. Нажмите «Добавить абонемент»."
                           : "Ничего не найдено."}
@@ -201,6 +203,7 @@ function MembershipsPage() {
                         <TableCell>{m.visits_count == null ? "Безлимит" : m.visits_count}</TableCell>
                         <TableCell>{formatDuration(m.duration_days)}</TableCell>
                         <TableCell>{m.auto_renew ? "Да" : "Нет"}</TableCell>
+                        <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
                         <TableCell className="font-medium">{formatPrice(Number(m.price))}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
