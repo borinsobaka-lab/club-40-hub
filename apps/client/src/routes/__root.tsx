@@ -15,6 +15,7 @@ import { Home, Calendar, BookmarkCheck, Trophy, User, Loader2 } from "lucide-rea
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -135,6 +136,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AppShell />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
