@@ -47,6 +47,7 @@ type MyBooking = {
 function HomePage() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState<string>("Участник");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [news, setNews] = useState<News[] | null>(null);
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
