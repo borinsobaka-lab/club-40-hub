@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { useEffect, useRef, useState } from "react";
 import { Plus, Loader2, Pencil, Trash2, ImageIcon, Search } from "lucide-react";
 
@@ -120,10 +122,12 @@ function WorkoutsPage() {
     setWorkouts((data as Workout[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchWorkouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
   const handleDelete = async (w: Workout) => {
     if (!confirm(`Удалить тренировку «${w.name}»?`)) return;

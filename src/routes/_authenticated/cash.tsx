@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
@@ -139,10 +141,12 @@ function CashPage() {
     setLoading(false);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
   // Reset category when kind changes
   useEffect(() => {

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, MessageSquare, X, Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -94,9 +96,12 @@ function FeedbackPage() {
     setLoading(false);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     void fetchItems();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
+
 
   const filtered = useMemo(() => {
     return items.filter((i) => {

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { useEffect, useState } from "react";
 import { Plus, Loader2, Pencil, Trash2, X, Search } from "lucide-react";
 
@@ -84,10 +86,12 @@ function MembershipsPage() {
     setItems((data as Membership[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
   const handleDelete = async (m: Membership) => {
     if (!confirm(`Удалить «${m.name}»?`)) return;

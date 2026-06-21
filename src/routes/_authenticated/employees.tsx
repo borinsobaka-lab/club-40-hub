@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { toast } from "sonner";
 import { Trash2, UserPlus, Loader2 } from "lucide-react";
 
@@ -37,6 +39,12 @@ function EmployeesPage() {
     queryKey: ["employees"],
     queryFn: () => getCtx(),
   });
+
+  const refreshSignal = useRefreshSignal();
+  useEffect(() => {
+    if (refreshSignal > 0) qc.invalidateQueries({ queryKey: ["employees"] });
+  }, [refreshSignal, qc]);
+
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "trainer" as "owner" | "admin" | "trainer" });

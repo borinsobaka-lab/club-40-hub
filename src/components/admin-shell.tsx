@@ -6,6 +6,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
+import { triggerRefresh } from "@/lib/refresh-bus";
+
 
 
 export function AdminShell({
@@ -43,7 +45,11 @@ export function AdminShell({
                   variant="ghost"
                   size="icon"
                   aria-label="Обновить"
-                  onClick={() => router.invalidate()}
+                  onClick={() => {
+                    router.invalidate();
+                    triggerRefresh();
+                  }}
+
                 >
                   <RefreshCw className="h-5 w-5" />
                 </Button>

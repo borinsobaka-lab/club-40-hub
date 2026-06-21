@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRefreshSignal } from "@/lib/refresh-bus";
+
 import { useEffect, useRef, useState } from "react";
 import { Plus, Loader2, Pencil, Trash2, MessageCircle, Phone } from "lucide-react";
 
@@ -176,10 +178,12 @@ function TrainersPage() {
     setTrainers((data as Trainer[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchTrainers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
 
   const handleDelete = async (t: Trainer) => {
