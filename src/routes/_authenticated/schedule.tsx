@@ -332,6 +332,10 @@ function SchedulePage() {
                                 ?.map((x) => x.trainer?.full_name)
                                 .filter(Boolean)
                                 .join(", ") ?? "";
+                            const color = workoutTypeColor(e.workout?.type);
+                            const colorClasses = color
+                              ? `${color.bg} ${color.text}`
+                              : "bg-primary text-primary-foreground";
                             return (
                               <div
                                 key={e.id}
@@ -339,7 +343,7 @@ function SchedulePage() {
                                   ev.stopPropagation();
                                   openEdit(e);
                                 }}
-                                className="absolute inset-x-1 top-1 cursor-pointer overflow-hidden rounded-md bg-primary px-2 py-1 text-[11px] leading-tight text-primary-foreground shadow-sm hover:opacity-90"
+                                className={`absolute inset-x-1 top-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 ${colorClasses}`}
                               >
                                 <div className="opacity-80">
                                   {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
