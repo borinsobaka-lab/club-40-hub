@@ -249,7 +249,7 @@ function WorkoutsPage() {
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ?? "—"}
                         </TableCell>
-                        <TableCell>{typeLabel(w.type)}</TableCell>
+                        <TableCell><TypeBadge value={w.type} /></TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
