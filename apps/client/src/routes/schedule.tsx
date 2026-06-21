@@ -215,11 +215,11 @@ function SchedulePage() {
               {dayEntries.map((c) => {
                 return (
                   <div key={c.id} className="relative flex gap-3 pb-4">
-                    <div className="flex flex-col items-start w-12 shrink-0 pt-1 text-left">
-                      <div className="text-xl font-bold italic tabular-nums leading-tight">
+                    <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right pr-2">
+                      <div className="text-base font-bold italic tabular-nums leading-tight">
                         {fmtTime(c.starts_at)}
                       </div>
-                      <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
+                      <div className="text-[10px] tabular-nums leading-tight text-muted-foreground/60">
                         {fmtTime(c.ends_at)}
                       </div>
                     </div>
