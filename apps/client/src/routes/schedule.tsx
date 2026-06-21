@@ -85,7 +85,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, workout:workouts(name, type)",
+          "id, starts_at, ends_at, trainer_name, workout:workouts(name, type)",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
