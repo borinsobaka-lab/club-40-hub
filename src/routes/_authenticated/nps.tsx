@@ -30,6 +30,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/nps")({
   head: () => ({ meta: [{ title: "NPS-опросы — CLUB 40 Admin" }] }),
@@ -191,6 +192,8 @@ function NpsPage() {
   }, [responses, typeFilter]);
 
   const global = statsFor(typeFilter);
+
+  const pg = usePagination(tableData);
 
   return (
     <AdminShell
@@ -371,14 +374,14 @@ function NpsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tableData.length === 0 ? (
+                  {pg.total === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         Нет ответов.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    tableData.map((r) => {
+                    pg.paged.map((r) => {
                       const c = category(r.score);
                       return (
                         <TableRow key={r.id}>
@@ -407,6 +410,7 @@ function NpsPage() {
                   )}
                 </TableBody>
               </Table>
+              <DataPagination {...pg} />
             </div>
           </div>
         )}

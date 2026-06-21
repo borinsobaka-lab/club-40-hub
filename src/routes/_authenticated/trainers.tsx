@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 import {
   Dialog,
   DialogContent,
@@ -203,6 +204,8 @@ function TrainersPage() {
     setOpen(true);
   };
 
+  const pg = usePagination(trainers);
+
   return (
     <AdminShell
       title="Сотрудники"
@@ -254,7 +257,7 @@ function TrainersPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  trainers.map((t) => (
+                  pg.paged.map((t) => (
                     <TableRow key={t.id}>
                       <TableCell>
                         <TrainerPhoto value={t.photo_url} name={t.full_name} />
@@ -300,6 +303,7 @@ function TrainersPage() {
                 )}
               </TableBody>
             </Table>
+            <DataPagination {...pg} />
           </div>
         )}
       </div>

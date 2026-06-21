@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
@@ -228,6 +229,8 @@ function ClientsPage() {
     return true;
   });
 
+  const pg = usePagination(filtered);
+
   return (
 
     <AdminShell
@@ -326,7 +329,7 @@ function ClientsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((c) => (
+                    pg.paged.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2.5">
@@ -383,6 +386,7 @@ function ClientsPage() {
                   )}
                 </TableBody>
               </Table>
+              <DataPagination {...pg} />
             </div>
           </>
         )}

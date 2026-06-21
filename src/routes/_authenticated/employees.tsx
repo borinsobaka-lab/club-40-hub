@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Сотрудники — CLUB 40 Admin" }] }),
@@ -61,6 +62,7 @@ function EmployeesPage() {
   });
 
   const isOwner = data?.isOwner ?? false;
+  const pg = usePagination(data?.employees ?? []);
 
   return (
     <div className="space-y-4 p-4">
@@ -138,7 +140,7 @@ function EmployeesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.employees.map((e) => (
+              {pg.paged.map((e) => (
                 <TableRow key={e.user_id}>
                   <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
                   <TableCell>{e.email ?? "—"}</TableCell>
@@ -168,6 +170,7 @@ function EmployeesPage() {
               )}
             </TableBody>
           </Table>
+          <DataPagination {...pg} />
         </div>
       )}
     </div>

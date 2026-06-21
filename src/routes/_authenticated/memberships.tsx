@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — CLUB 40 Admin" }] }),
@@ -108,6 +109,8 @@ function MembershipsPage() {
       )
     : items;
 
+  const pg = usePagination(filtered);
+
   return (
     <AdminShell
       title="Номенклатуры"
@@ -174,7 +177,7 @@ function MembershipsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((m) => (
+                    pg.paged.map((m) => (
                       <TableRow key={m.id}>
                         <TableCell className="font-medium">{m.name}</TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
@@ -217,6 +220,7 @@ function MembershipsPage() {
                   )}
                 </TableBody>
               </Table>
+              <DataPagination {...pg} />
             </div>
           </>
         )}

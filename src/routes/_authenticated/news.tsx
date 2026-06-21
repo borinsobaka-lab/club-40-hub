@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({ meta: [{ title: "Новости — CLUB 40 Admin" }] }),
@@ -201,6 +202,8 @@ function NewsPage() {
     setOpen(true);
   };
 
+  const pg = usePagination(items);
+
   return (
     <AdminShell
       title="Новости"
@@ -243,7 +246,9 @@ function NewsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  items.map((n, idx) => (
+                  pg.paged.map((n) => {
+                    const idx = items.indexOf(n);
+                    return (
                     <TableRow key={n.id}>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -293,10 +298,12 @@ function NewsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
+            <DataPagination {...pg} />
           </div>
         )}
       </div>

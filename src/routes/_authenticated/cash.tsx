@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/cash")({
   head: () => ({ meta: [{ title: "Касса — CLUB 40 Admin" }] }),
@@ -220,6 +221,8 @@ function CashPage() {
 
   const categories = kind === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
+  const pg = usePagination(ops);
+
   return (
     <AdminShell title="Касса">
       <div className="mx-auto max-w-6xl space-y-4">
@@ -371,7 +374,7 @@ function CashPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    ops.map((o) => (
+                    pg.paged.map((o) => (
                       <TableRow key={o.id}>
                         <TableCell className="whitespace-nowrap text-sm">
                           {new Date(o.occurred_at).toLocaleString("ru-RU", {
@@ -412,6 +415,7 @@ function CashPage() {
                   )}
                 </TableBody>
               </Table>
+              <DataPagination {...pg} />
             </div>
           </>
         )}
