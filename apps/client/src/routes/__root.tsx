@@ -121,13 +121,12 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const mainNavItems = [
+const navItems = [
   { to: "/", label: "Главное", icon: Home, exact: true },
   { to: "/schedule", label: "Бронь", icon: Dumbbell, exact: false },
   { to: "/results", label: "Результаты", icon: Trophy, exact: false },
+  { to: "/profile", label: "Профиль", icon: User, exact: false },
 ] as const;
-
-const profileNavItem = { to: "/profile", label: "Профиль", icon: User, exact: false } as const;
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -177,7 +176,7 @@ function AppShell() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
       <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
-        <main className="flex-1 min-h-0 overflow-hidden">
+        <main className="flex-1 min-h-0 overflow-hidden pb-20">
           <Outlet />
         </main>
 
