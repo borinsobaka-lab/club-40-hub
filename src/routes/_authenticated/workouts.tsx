@@ -125,7 +125,8 @@ function WorkoutsPage() {
     if (!q) return true;
     return (
       w.name.toLowerCase().includes(q) ||
-      (w.description ?? "").toLowerCase().includes(q)
+      (w.description ?? "").toLowerCase().includes(q) ||
+      dayTypeLabel(w.type).toLowerCase().includes(q)
     );
   });
 
