@@ -1,0 +1,1 @@
+ALTER TABLE public.schedule_entries ADD COLUMN IF NOT EXISTS trainer_name text;
