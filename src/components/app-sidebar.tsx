@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Smartphone, Newspaper } from "lucide-react";
 
 import {
   Sidebar,
@@ -34,6 +34,13 @@ const feedbackItems = [
 const financeItems = [
   { title: "Касса", url: "/cash", icon: Wallet },
 ];
+
+const mobileItems = [
+  { title: "Новости", url: "/news", icon: Newspaper },
+];
+
+// reference Smartphone icon to satisfy bundler tree-shake of unused imports
+void Smartphone;
 
 const accessItems = [
   { title: "Доступы", url: "/employees", icon: UserCog },
@@ -97,6 +104,11 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="text-white/50">Финансы</SidebarGroupLabel>
           <SidebarGroupContent>{renderItems(financeItems)}</SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-white/50">Мобильное приложение</SidebarGroupLabel>
+          <SidebarGroupContent>{renderItems(mobileItems)}</SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
