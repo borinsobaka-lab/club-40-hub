@@ -184,8 +184,10 @@ function ProfilePage() {
           onSaved={(updated) => setClient((prev) => ({ ...prev, ...updated }))}
         />
       )}
+      </div>
     </div>
   );
+
 }
 
 function EditProfileSheet({
