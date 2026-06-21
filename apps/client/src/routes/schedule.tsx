@@ -94,10 +94,28 @@ function SchedulePage() {
   }, [today]);
 
   const activeDay = days[activeIdx];
+  const [activeType, setActiveType] = useState<string>("all");
+
+  const availableTypes = useMemo(() => {
+    const set = new Set<string>();
+    entries.forEach((e) => {
+      const t = e.workout?.type?.toLowerCase().trim();
+      if (t) set.add(t);
+    });
+    return Array.from(set);
+  }, [entries]);
+
   const dayEntries = entries.filter((e) => {
     const d = startOfDay(new Date(e.starts_at));
-    return d.getTime() === activeDay.getTime();
+    if (d.getTime() !== activeDay.getTime()) return false;
+    if (activeType === "all") return true;
+    return (e.workout?.type?.toLowerCase().trim() ?? "") === activeType;
   });
+
+  const typeFilters = [
+    { key: "all", label: "Все" },
+    ...availableTypes.map((t) => ({ key: t, label: workoutTypeMeta(t).label })),
+  ];
 
   return (
     <PageShell
@@ -114,10 +132,10 @@ function SchedulePage() {
             <button
               key={d.toISOString()}
               onClick={() => setActiveIdx(i)}
-              className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl border transition-colors ${
+              className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
                 i === activeIdx
-                  ? "bg-[#1B1C1F] text-[#FFE500] border-[#1B1C1F]"
-                  : "bg-card text-card-foreground border-border"
+                  ? "bg-[#1B1C1F] text-[#FFE500]"
+                  : "bg-card text-card-foreground"
               }`}
             >
               <span className={`text-xs ${i === activeIdx ? "" : "opacity-70"}`}>
@@ -127,6 +145,26 @@ function SchedulePage() {
             </button>
           ))}
         </div>
+
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+          {typeFilters.map((t) => {
+            const active = activeType === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveType(t.key)}
+                className={`shrink-0 px-4 h-9 rounded-full border text-sm font-semibold transition-colors ${
+                  active
+                    ? "bg-[#1B1C1F] text-white border-[#1B1C1F]"
+                    : "bg-transparent text-foreground border-border"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
 
         {loading ? (
           <div className="flex justify-center py-10 text-muted-foreground">
