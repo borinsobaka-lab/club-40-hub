@@ -148,7 +148,7 @@ function WorkoutsPage() {
       title="Тренировки"
       description="Список тренировок студии"
       actions={
-        <Button size="sm" onClick={openCreate} disabled={!studioId}>
+        <Button size="default" onClick={openCreate} disabled={!studioId}>
           <Plus className="mr-1 h-4 w-4" />
           Добавить тренировку
         </Button>

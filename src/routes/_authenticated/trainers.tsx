@@ -209,11 +209,11 @@ function TrainersPage() {
       description="Тренеры и админы студии"
       actions={
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => openCreate("admin")} disabled={!studioId}>
+          <Button size="default" variant="outline" onClick={() => openCreate("admin")} disabled={!studioId}>
             <Plus className="mr-1 h-4 w-4" />
             Добавить админа
           </Button>
-          <Button size="sm" onClick={() => openCreate("trainer")} disabled={!studioId}>
+          <Button size="default" onClick={() => openCreate("trainer")} disabled={!studioId}>
             <Plus className="mr-1 h-4 w-4" />
             Добавить тренера
           </Button>

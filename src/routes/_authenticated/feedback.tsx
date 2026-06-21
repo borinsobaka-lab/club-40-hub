@@ -193,7 +193,7 @@ function FeedbackPage() {
       actions={
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Добавить</Button>
+            <Button size="default"><Plus className="mr-1 h-4 w-4" /> Добавить</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>

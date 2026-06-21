@@ -113,7 +113,7 @@ function MembershipsPage() {
       title="Номенклатуры"
       actions={
         <Button
-          size="sm"
+          size="default"
           onClick={() => {
             setEditing(null);
             setOpen(true);
