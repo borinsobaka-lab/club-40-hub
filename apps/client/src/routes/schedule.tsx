@@ -67,9 +67,9 @@ function fmtTime(iso: string) {
 
 function SchedulePage() {
   const today = useMemo(() => startOfDay(new Date()), []);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
+  const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
   const [activeTab, setActiveTab] = useState<TabKey>("class");
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [activeIdx, setActiveIdx] = useState(3);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +83,7 @@ function SchedulePage() {
     (async () => {
       setLoading(true);
       setError(null);
-      const from = today.toISOString();
+      const from = addDays(today, -3).toISOString();
       const to = addDays(today, 7).toISOString();
       const { data, error } = await supabase
         .from("schedule_entries")
@@ -255,9 +255,10 @@ function SchedulePage() {
                 const meta = workoutTypeMeta(c.workout?.type);
                 const isBooked = bookedIds.has(c.id);
                 const isPending = pendingId === c.id;
+                const isPast = new Date(c.starts_at) < new Date();
                 const workoutPhoto = resolvePublicUrl("workout-photos", c.workout?.photo_url);
                 return (
-                  <div key={c.id} className="relative flex gap-1 pb-4">
+                  <div key={c.id} className={`relative flex gap-1 pb-4 ${isPast ? "opacity-50" : ""}`}>
                     <button
                       type="button"
                       onClick={() => {
