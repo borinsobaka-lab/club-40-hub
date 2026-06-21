@@ -108,7 +108,6 @@ function EmployeesPage() {
                       <SelectItem value="owner">Владелец</SelectItem>
                       <SelectItem value="admin">Администратор</SelectItem>
                       <SelectItem value="trainer">Тренер</SelectItem>
-                      <SelectItem value="member">Участник</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
