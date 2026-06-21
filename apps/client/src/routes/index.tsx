@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bell, Gift, ChevronRight, Newspaper } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { mediaUrl } from "@/lib/media";
 
 export const Route = createFileRoute("/")({
   head: () => ({
