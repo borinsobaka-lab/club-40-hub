@@ -31,6 +31,7 @@ type News = {
 function HomePage() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState<string>("Участник");
+  const [news, setNews] = useState<News[] | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -52,6 +53,32 @@ function HomePage() {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      supabase
+        .from("news")
+        .select("id,title,description,image_url,position")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: false })
+        .then(({ data }) => {
+          if (!cancelled) setNews((data as News[] | null) ?? []);
+        });
+    load();
+    const channel = supabase
+      .channel("news-feed")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "news" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <div className="pt-2">
