@@ -55,7 +55,21 @@ type Workout = {
   description: string | null;
   photo_url: string | null;
   capacity: number | null;
+  type: DayType | null;
 };
+
+const NONE_TYPE = "__none__" as const;
+
+function WorkoutTypeBadge({ value }: { value: DayType | null }) {
+  const color = dayTypeColor(value);
+  if (!color) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm">
+      <span className={`inline-block h-2.5 w-2.5 rounded-full ${color.dot}`} />
+      {dayTypeLabel(value)}
+    </span>
+  );
+}
 
 function isHttpUrl(v: string | null | undefined) {
   return !!v && /^https?:\/\//i.test(v);
