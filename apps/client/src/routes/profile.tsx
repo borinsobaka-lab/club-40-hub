@@ -123,6 +123,10 @@ function ProfilePage() {
 
   return (
     <div className="p-4 space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold">Профиль</h1>
+        <p className="text-sm text-muted-foreground">Ваши данные и настройки</p>
+      </div>
       <Card className="p-5">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">

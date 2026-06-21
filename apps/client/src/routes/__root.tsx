@@ -177,14 +177,6 @@ function AppShell() {
   return (
     <div className="min-h-screen bg-background text-foreground flex justify-center">
       <div className="w-full max-w-md flex flex-col min-h-screen relative">
-        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
-          <div className="h-14 flex items-center px-4">
-            <Link to="/" className="font-bold tracking-widest text-base">
-              CLUB <span className="text-primary">40</span>
-            </Link>
-          </div>
-        </header>
-
         <main className="flex-1 pb-24">
           <Outlet />
         </main>
