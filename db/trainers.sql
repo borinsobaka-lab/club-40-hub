@@ -18,6 +18,9 @@ begin
   if not exists (select 1 from information_schema.columns where table_name='trainers' and column_name='tiktok') then
     alter table public.trainers add column tiktok text;
   end if;
+  if not exists (select 1 from information_schema.columns where table_name='trainers' and column_name='role') then
+    alter table public.trainers add column role text not null default 'trainer' check (role in ('trainer','admin'));
+  end if;
 end $$;
 
 create table if not exists public.trainers (
