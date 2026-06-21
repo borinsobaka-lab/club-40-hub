@@ -1,0 +1,1 @@
+CREATE POLICY "Avatars bucket is visible" ON storage.buckets FOR SELECT TO public USING (id = 'avatars');
