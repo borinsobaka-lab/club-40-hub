@@ -417,6 +417,17 @@ function ClientsPage() {
         client={editing}
         onSaved={fetchClients}
       />
+
+      <ClientCardDialog
+        open={cardOpen}
+        onOpenChange={setCardOpen}
+        client={cardClient}
+        onEdit={(c) => {
+          setCardOpen(false);
+          setEditing(c as Client);
+          setOpen(true);
+        }}
+      />
     </AdminShell>
   );
 }
