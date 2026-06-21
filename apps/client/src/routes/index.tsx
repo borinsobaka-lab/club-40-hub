@@ -193,8 +193,8 @@ function HomePage() {
             <div className="rounded-2xl bg-white/10 p-1.5">
               <div className="flex items-stretch justify-between gap-2">
                 {[
-                  { icon: Phone, label: "Позвонить" },
                   { icon: MessageSquare, label: "Связаться" },
+                  { icon: Phone, label: "Позвонить" },
                   { icon: Star, label: "Фидбэк" },
                 ].map((item) => (
                   <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1">
