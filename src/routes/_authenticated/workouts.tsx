@@ -187,10 +187,14 @@ function WorkoutsPage() {
                     <TableHead className="w-[100px]">Фото</TableHead>
                     <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
+                    <TableHead className="w-[120px]">Вместимость</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground"></TableCell></TableRow></TableHead></TableHead></TableHead></TableHead></TableHead></TableHead></TableHead>
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
