@@ -154,8 +154,8 @@ function ClientsPage() {
     return true;
   });
 
-
   return (
+
     <AdminShell
       title="Клиенты"
       description="База клиентов студии"
