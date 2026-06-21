@@ -12,13 +12,12 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Step = "credentials" | "otp";
+type Step = "credentials" | "sent";
 
 function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
   const [step, setStep] = useState<Step>("credentials");
   const [loading, setLoading] = useState(false);
 
@@ -32,10 +31,13 @@ function AuthPage() {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  const sendCode = async (forEmail: string) => {
+  const sendMagicLink = async (forEmail: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email: forEmail,
-      options: { shouldCreateUser: false },
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/`,
+      },
     });
     if (error) throw error;
   };
@@ -50,39 +52,23 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
-    // Password correct — drop the session and require an email OTP as 2FA
+    // Password correct — drop the session and require a magic link as 2FA
     await supabase.auth.signOut();
     try {
-      await sendCode(email);
-      setStep("otp");
-      toast.success("Мы отправили код подтверждения на вашу почту");
+      await sendMagicLink(email);
+      setStep("sent");
+      toast.success("Мы отправили ссылку для входа на вашу почту");
     } catch (err) {
       toast.error((err as Error).message);
     }
     setLoading(false);
   };
 
-  const verifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: code.trim(),
-      type: "email",
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Вход выполнен");
-  };
-
   const resend = async () => {
     setLoading(true);
     try {
-      await sendCode(email);
-      toast.success("Новый код отправлен");
+      await sendMagicLink(email);
+      toast.success("Ссылка отправлена ещё раз");
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -97,7 +83,7 @@ function AuthPage() {
           <CardDescription>
             {step === "credentials"
               ? "Вход для сотрудников клуба"
-              : "Введите код подтверждения, отправленный на вашу почту"}
+              : "Проверьте почту и перейдите по ссылке для входа"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,31 +106,15 @@ function AuthPage() {
               </p>
             </form>
           ) : (
-            <form onSubmit={verifyCode} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="si-code">Код из письма</Label>
-                <Input
-                  id="si-code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  required
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="6-значный код"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading || code.trim().length < 4}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Подтвердить
-              </Button>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Мы отправили письмо на <span className="font-medium text-foreground">{email}</span>. Перейдите по ссылке из письма, чтобы завершить вход.
+              </p>
               <div className="flex items-center justify-between text-xs">
                 <button
                   type="button"
                   className="text-muted-foreground underline-offset-2 hover:underline"
-                  onClick={() => {
-                    setStep("credentials");
-                    setCode("");
-                  }}
+                  onClick={() => setStep("credentials")}
                 >
                   Назад
                 </button>
@@ -154,10 +124,10 @@ function AuthPage() {
                   onClick={resend}
                   disabled={loading}
                 >
-                  Отправить код ещё раз
+                  Отправить ссылку ещё раз
                 </button>
               </div>
-            </form>
+            </div>
           )}
         </CardContent>
       </Card>
