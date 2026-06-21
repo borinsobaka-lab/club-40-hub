@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -18,19 +18,33 @@ function AssistantPage() {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const transport = new DefaultChatTransport({
-    api: "/api/chat",
-    fetch: async (url, init) => {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      const headers = new Headers(init?.headers);
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      return fetch(url, { ...init, headers });
-    },
-  });
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        fetch: async (url, init) => {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          const headers = new Headers(init?.headers);
+          if (token) headers.set("Authorization", `Bearer ${token}`);
+          const response = await fetch(url, { ...init, headers });
+          if (response.ok) return response;
+
+          const contentType = response.headers.get("content-type") ?? "";
+          const body = await response.clone().text().catch(() => "");
+          const isHtmlError = contentType.includes("text/html") || body.trimStart().startsWith("<!doctype");
+          return new Response(
+            isHtmlError ? "Сервис ассистента временно недоступен. Попробуйте ещё раз." : body,
+            { status: response.status, headers: { "Content-Type": "text/plain; charset=utf-8" } },
+          );
+        },
+      }),
+    [],
+  );
 
   const { messages, sendMessage, status, error } = useChat({
     transport,
+    onError: (err) => toast.error(formatAssistantError(err)),
   });
 
   useEffect(() => {
@@ -39,12 +53,20 @@ function AssistantPage() {
 
   const isLoading = status === "submitted" || status === "streaming";
 
+  const sendText = async (text: string) => {
+    try {
+      await sendMessage({ text });
+    } catch (err) {
+      console.error("[assistant] send failed", err);
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text || isLoading) return;
     setInput("");
-    await sendMessage({ text });
+    await sendText(text);
   };
 
   return (
@@ -70,7 +92,7 @@ function AssistantPage() {
                 ].map((s) => (
                   <button
                     key={s}
-                    onClick={() => sendMessage({ text: s })}
+                    onClick={() => sendText(s)}
                     className="rounded-md border bg-muted/30 px-3 py-2 text-foreground transition hover:bg-muted"
                   >
                     {s}
@@ -129,6 +151,14 @@ function AssistantPage() {
       </div>
     </AdminShell>
   );
+}
+
+function formatAssistantError(error: Error) {
+  const message = error.message.trim();
+  if (!message || message.startsWith("<!doctype") || message.includes("This page didn't load")) {
+    return "Сервис ассистента временно недоступен. Попробуйте ещё раз.";
+  }
+  return message;
 }
 
 function MessageBubble({ message }: { message: UIMessage }) {
