@@ -85,9 +85,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
       { name: "theme-color", content: "#0a0a0a" },
       { property: "og:title", content: "CLUB 40" },
-      { property: "og:description", content: "Расписание, бронирование, результаты и профиль участника CLUB 40." },
+      { property: "og:description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "CLUB 40" },
+      { name: "twitter:description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/83058599-cd2d-4522-bec0-9597ea49b89d/id-preview-c3cf9aaf--934cc671-e34f-443f-9c31-e2ba8d266073.lovable.app-1782032103103.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/83058599-cd2d-4522-bec0-9597ea49b89d/id-preview-c3cf9aaf--934cc671-e34f-443f-9c31-e2ba8d266073.lovable.app-1782032103103.png" },
     ],
     links: [
       {
