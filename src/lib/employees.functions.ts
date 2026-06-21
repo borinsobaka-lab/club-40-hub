@@ -44,7 +44,8 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
     const { data: roles, error: rolesErr } = await admin
       .from("user_roles")
       .select("user_id, role, created_at")
-      .eq("studio_id", studioId);
+      .eq("studio_id", studioId)
+      .in("role", ["owner", "admin", "trainer"]);
     if (rolesErr) throw new Error(rolesErr.message);
 
     const userIds = Array.from(new Set((roles ?? []).map((r: any) => r.user_id as string)));
