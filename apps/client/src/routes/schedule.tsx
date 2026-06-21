@@ -139,7 +139,7 @@ function SchedulePage() {
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`shrink-0 relative pt-3 pb-1 text-sm font-semibold transition-colors ${
+              className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
                 active ? "text-foreground" : "text-muted-foreground"
               }`}
             >
