@@ -70,6 +70,7 @@ type MembershipRow = {
   price: number;
   duration_days: number | null;
   visits_count: number | null;
+  installment_enabled: boolean;
 };
 
 type Sale = {
@@ -81,7 +82,8 @@ type Sale = {
   admin_name: string | null;
   sold_at: string;
   total_amount: number;
-  installments: number;
+  down_payment_amount: number;
+  remaining_installments: number;
   comment: string | null;
   created_at: string;
   clients: { id: string; full_name: string; first_name: string | null; last_name: string | null } | null;
@@ -123,12 +125,10 @@ function addMonthsISO(iso: string, months: number) {
 }
 
 function splitAmount(total: number, parts: number) {
-  // Split into equal parts; last one absorbs rounding.
   const part = Math.round((total / parts) * 100) / 100;
   const arr = Array(parts).fill(part);
-  const sum = part * parts;
   arr[parts - 1] = Math.round((total - part * (parts - 1)) * 100) / 100;
-  return sum === total ? arr.map((v) => Math.round(v * 100) / 100) : arr;
+  return arr.map((v) => Math.round(v * 100) / 100);
 }
 
 function SalesPage() {
@@ -151,7 +151,7 @@ function SalesPage() {
     const { data, error } = await supabase
       .from("sales")
       .select(
-        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, installments, comment, created_at, clients(id, full_name, first_name, last_name), memberships(id, name)",
+        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, comment, created_at, clients(id, full_name, first_name, last_name), memberships(id, name)",
       )
       .eq("studio_id", studioId)
       .order("sold_at", { ascending: false });
@@ -249,6 +249,7 @@ function SalesPage() {
                     <TableHead>Клиент</TableHead>
                     <TableHead>Абонемент</TableHead>
                     <TableHead>Сумма</TableHead>
+                    <TableHead>Первый взнос</TableHead>
                     <TableHead>Рассрочка</TableHead>
                     <TableHead>Администратор</TableHead>
                     <TableHead>Комментарий</TableHead>
@@ -258,13 +259,13 @@ function SalesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                         {sales.length === 0
                           ? "Продаж пока нет. Нажмите «Новая продажа»."
                           : "Ничего не найдено."}
@@ -290,7 +291,14 @@ function SalesPage() {
                         <TableCell>{s.memberships?.name ?? "—"}</TableCell>
                         <TableCell className="font-medium">{formatMoney(Number(s.total_amount))}</TableCell>
                         <TableCell>
-                          {s.installments > 1 ? `${s.installments} мес.` : "Сразу"}
+                          {s.remaining_installments > 0
+                            ? formatMoney(Number(s.down_payment_amount))
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {s.remaining_installments > 0
+                            ? `1 + ${s.remaining_installments}`
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{s.admin_name ?? "—"}</TableCell>
                         <TableCell className="max-w-[220px] truncate text-muted-foreground">
@@ -349,7 +357,8 @@ function SaleDialog({
   const [membershipId, setMembershipId] = useState<string>("");
   const [soldAt, setSoldAt] = useState<string>(todayISO());
   const [amount, setAmount] = useState<string>("");
-  const [installments, setInstallments] = useState<1 | 2 | 3>(1);
+  const [downPayment, setDownPayment] = useState<string>("");
+  const [remainingCount, setRemainingCount] = useState<2 | 3>(2);
   const [comment, setComment] = useState<string>("");
   const [adminName, setAdminName] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -360,7 +369,8 @@ function SaleDialog({
     setMembershipId("");
     setSoldAt(todayISO());
     setAmount("");
-    setInstallments(1);
+    setDownPayment("");
+    setRemainingCount(2);
     setComment("");
   }, [open]);
 
@@ -368,7 +378,7 @@ function SaleDialog({
     if (!open || !studioId) return;
     supabase
       .from("memberships")
-      .select("id, name, price, duration_days, visits_count")
+      .select("id, name, price, duration_days, visits_count, installment_enabled")
       .eq("studio_id", studioId)
       .order("name")
       .then(({ data }) => setMemberships((data as MembershipRow[]) ?? []));
@@ -390,21 +400,42 @@ function SaleDialog({
 
   const selectedMembership = memberships.find((m) => m.id === membershipId) ?? null;
   const selectedClient = clients.find((c) => c.id === clientId) ?? null;
+  const installmentEnabled = selectedMembership?.installment_enabled ?? false;
 
   // Auto-fill price when membership changes.
   useEffect(() => {
-    if (selectedMembership) setAmount(String(selectedMembership.price ?? 0));
+    if (selectedMembership) {
+      const price = String(selectedMembership.price ?? 0);
+      setAmount(price);
+      if (selectedMembership.installment_enabled) {
+        setDownPayment("");
+        setRemainingCount(2);
+      } else {
+        setDownPayment(price);
+      }
+    } else {
+      setAmount("");
+      setDownPayment("");
+    }
   }, [selectedMembership]);
 
   const total = Number(amount) || 0;
+  const down = installmentEnabled ? Number(downPayment) || 0 : total;
+  const remaining = installmentEnabled ? remainingCount : 0;
+  const remainingTotal = Math.max(0, total - down);
+
   const schedule = useMemo(() => {
-    if (installments === 1) return [];
-    const parts = splitAmount(total, installments);
-    return parts.map((p, i) => ({
-      date: i === 0 ? soldAt : addMonthsISO(soldAt, i),
-      amount: p,
-    }));
-  }, [installments, total, soldAt]);
+    if (!installmentEnabled || remaining === 0 || remainingTotal <= 0) return [];
+    const parts = splitAmount(remainingTotal, remaining);
+    return [
+      { date: soldAt, amount: down, isDownPayment: true },
+      ...parts.map((p, i) => ({
+        date: addMonthsISO(soldAt, i + 1),
+        amount: p,
+        isDownPayment: false,
+      })),
+    ];
+  }, [installmentEnabled, remaining, remainingTotal, down, soldAt]);
 
   const handleSave = async () => {
     if (!studioId) return;
@@ -420,6 +451,21 @@ function SaleDialog({
       toast.error("Укажите стоимость");
       return;
     }
+    if (installmentEnabled) {
+      if (down <= 0) {
+        toast.error("Укажите первый взнос");
+        return;
+      }
+      if (down >= total) {
+        toast.error("Первый взнос должен быть меньше общей суммы");
+        return;
+      }
+      if (remainingTotal <= 0) {
+        toast.error("Остаток после первого взноса должен быть больше 0");
+        return;
+      }
+    }
+
     setSaving(true);
     const { data: sale, error } = await supabase
       .from("sales")
@@ -431,7 +477,8 @@ function SaleDialog({
         admin_name: adminName || null,
         sold_at: soldAt,
         total_amount: total,
-        installments,
+        down_payment_amount: down,
+        remaining_installments: remaining,
         comment: comment.trim() || null,
       })
       .select("id")
@@ -441,11 +488,12 @@ function SaleDialog({
       toast.error("Ошибка сохранения: " + (error?.message ?? "unknown"));
       return;
     }
-    if (installments > 1 && schedule.length > 0) {
+    if (schedule.length > 0) {
       const rows = schedule.map((s) => ({
         sale_id: sale.id,
         due_date: s.date,
         amount: s.amount,
+        paid: s.isDownPayment,
       }));
       const { error: instErr } = await supabase.from("sale_installments").insert(rows);
       if (instErr) {
@@ -526,35 +574,57 @@ function SaleDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Рассрочка</Label>
-            <div className="flex gap-2">
-              {([1, 2, 3] as const).map((n) => (
-                <Button
-                  key={n}
-                  type="button"
-                  variant={installments === n ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setInstallments(n)}
-                >
-                  {n === 1 ? "Сразу" : `${n} мес.`}
-                </Button>
-              ))}
+          {installmentEnabled ? (
+            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="s-down">Первый взнос, ₽</Label>
+                <Input
+                  id="s-down"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={downPayment}
+                  onChange={(e) => setDownPayment(e.target.value)}
+                  placeholder="Сколько клиент вносит сейчас"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Ещё платежей</Label>
+                <div className="flex gap-2">
+                  {([2, 3] as const).map((n) => (
+                    <Button
+                      key={n}
+                      type="button"
+                      variant={remainingCount === n ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setRemainingCount(n)}
+                    >
+                      {n} мес.
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {schedule.length > 0 && (
+                <ul className="divide-y rounded-md border bg-background text-sm">
+                  {schedule.map((p, i) => (
+                    <li key={i} className="flex items-center justify-between px-3 py-1.5">
+                      <span className="text-muted-foreground">
+                        {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} — {formatDate(p.date)}
+                      </span>
+                      <span className="font-medium">{formatMoney(p.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {schedule.length > 0 && (
-              <ul className="mt-2 divide-y rounded-md border bg-muted/30 text-sm">
-                {schedule.map((p, i) => (
-                  <li key={i} className="flex items-center justify-between px-3 py-1.5">
-                    <span className="text-muted-foreground">
-                      Платёж {i + 1} — {formatDate(p.date)}
-                    </span>
-                    <span className="font-medium">{formatMoney(p.amount)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          ) : selectedMembership ? (
+            <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
+              Рассрочка недоступна для этого абонемента. Оплата производится сразу.
+            </div>
+          ) : null}
 
           <div className="space-y-1.5">
             <Label htmlFor="s-comment">Комментарий</Label>
