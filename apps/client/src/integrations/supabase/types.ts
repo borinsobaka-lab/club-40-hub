@@ -14,7 +14,149 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          avatar_url: string | null
+          birthday: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          full_name: string | null
+          gender: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          birthday?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          birthday?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news: {
+        Row: {
+          banner_url: string | null
+          created_at: string
+          description: string | null
+          full_text: string | null
+          full_title: string | null
+          id: string
+          image_url: string | null
+          position: number
+          published: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string
+          description?: string | null
+          full_text?: string | null
+          full_title?: string | null
+          id?: string
+          image_url?: string | null
+          position?: number
+          published?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string
+          description?: string | null
+          full_text?: string | null
+          full_title?: string | null
+          id?: string
+          image_url?: string | null
+          position?: number
+          published?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      schedule_entries: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          ends_at: string
+          id: string
+          starts_at: string
+          workout_id: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          ends_at: string
+          id?: string
+          starts_at: string
+          workout_id?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          ends_at?: string
+          id?: string
+          starts_at?: string
+          workout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_entries_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workouts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          type: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          type?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
