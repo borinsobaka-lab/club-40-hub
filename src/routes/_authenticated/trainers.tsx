@@ -507,6 +507,17 @@ function TrainerDialog({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="bio">{role === "admin" ? "Об администраторе" : "О тренере"}</Label>
+            <Textarea
+              id="bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={3}
+              placeholder={role === "admin" ? "Должность, обязанности, контакты" : "Опыт, достижения, подход к работе"}
+            />
+          </div>
+
           {role === "trainer" && (
             <>
               <div className="space-y-1.5">
