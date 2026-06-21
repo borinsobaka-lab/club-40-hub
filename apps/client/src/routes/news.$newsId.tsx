@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { mediaUrl } from "@/lib/media";
 
 export const Route = createFileRoute("/news/$newsId")({
   head: () => ({
@@ -65,7 +66,7 @@ function NewsDetailPage() {
     );
   }
 
-  const hero = item.banner_url || item.image_url;
+  const hero = mediaUrl(item.banner_url) || mediaUrl(item.image_url);
   const title = item.full_title || item.title;
 
   return (
