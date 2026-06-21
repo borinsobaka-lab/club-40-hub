@@ -205,7 +205,7 @@ function SchedulePage() {
         </div>
       ) : (
         <div className="p-4 space-y-4">
-          <div className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
+          <div ref={daysContainerRef} className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
 
             {days.map((d, i) => (
                 <button
