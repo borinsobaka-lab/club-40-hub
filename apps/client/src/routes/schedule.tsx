@@ -7,7 +7,7 @@ import { Loader2, Plus, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
-import { workoutTypeMeta } from "@/lib/workout-types";
+import { workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
@@ -51,7 +51,7 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-import { TYPE_ORDER } from "@/lib/workout-types";
+
 
 function SchedulePage() {
   const today = useMemo(() => startOfDay(new Date()), []);
