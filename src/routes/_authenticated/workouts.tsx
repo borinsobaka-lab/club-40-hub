@@ -212,7 +212,7 @@ function WorkoutsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">Фото</TableHead>
+                    <TableHead className="w-[100px]">Иконка</TableHead>
                     <TableHead>Название</TableHead>
                     <TableHead className="w-[160px]">Тип</TableHead>
                     <TableHead>Описание</TableHead>
