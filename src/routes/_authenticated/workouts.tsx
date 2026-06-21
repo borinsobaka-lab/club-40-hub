@@ -29,6 +29,19 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DAY_TYPES,
+  type DayType,
+  dayTypeColor,
+  dayTypeLabel,
+} from "@/lib/workout-types";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — CLUB 40 Admin" }] }),
