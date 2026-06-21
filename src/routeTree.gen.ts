@@ -16,6 +16,7 @@ import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
+import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedMusicRouteImport } from './routes/_authenticated/music'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
 import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
@@ -56,6 +57,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
   id: '/schedule',
   path: '/schedule',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedNpsRoute = AuthenticatedNpsRouteImport.update({
+  id: '/nps',
+  path: '/nps',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMusicRoute = AuthenticatedMusicRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/music': typeof AuthenticatedMusicRoute
+  '/nps': typeof AuthenticatedNpsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/music': typeof AuthenticatedMusicRoute
+  '/nps': typeof AuthenticatedNpsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/music': typeof AuthenticatedMusicRoute
+  '/_authenticated/nps': typeof AuthenticatedNpsRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/members'
     | '/memberships'
     | '/music'
+    | '/nps'
     | '/schedule'
     | '/settings'
     | '/trainers'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/members'
     | '/memberships'
     | '/music'
+    | '/nps'
     | '/schedule'
     | '/settings'
     | '/trainers'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/_authenticated/members'
     | '/_authenticated/memberships'
     | '/_authenticated/music'
+    | '/_authenticated/nps'
     | '/_authenticated/schedule'
     | '/_authenticated/settings'
     | '/_authenticated/trainers'
@@ -248,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScheduleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/nps': {
+      id: '/_authenticated/nps'
+      path: '/nps'
+      fullPath: '/nps'
+      preLoaderRoute: typeof AuthenticatedNpsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/music': {
       id: '/_authenticated/music'
       path: '/music'
@@ -308,6 +327,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedMusicRoute: typeof AuthenticatedMusicRoute
+  AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTrainersRoute: typeof AuthenticatedTrainersRoute
@@ -323,6 +343,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedMusicRoute: AuthenticatedMusicRoute,
+  AuthenticatedNpsRoute: AuthenticatedNpsRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTrainersRoute: AuthenticatedTrainersRoute,
