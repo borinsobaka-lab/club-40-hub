@@ -78,6 +78,11 @@ function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [genderFilter, setGenderFilter] = useState<string>("");
+  const [regFrom, setRegFrom] = useState("");
+  const [regTo, setRegTo] = useState("");
+  const [visitFrom, setVisitFrom] = useState("");
+  const [visitTo, setVisitTo] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
 
@@ -126,15 +131,29 @@ function ClientsPage() {
     setOpen(true);
   };
 
+  const resetFilters = () => {
+    setGenderFilter("");
+    setRegFrom("");
+    setRegTo("");
+    setVisitFrom("");
+    setVisitTo("");
+  };
+
   const q = search.trim().toLowerCase();
-  const filtered = q
-    ? clients.filter(
-        (c) =>
-          c.full_name.toLowerCase().includes(q) ||
-          (c.phone ?? "").toLowerCase().includes(q) ||
-          (c.email ?? "").toLowerCase().includes(q),
-      )
-    : clients;
+  const filtered = clients.filter((c) => {
+    if (q && !(
+      c.full_name.toLowerCase().includes(q) ||
+      (c.phone ?? "").toLowerCase().includes(q) ||
+      (c.email ?? "").toLowerCase().includes(q)
+    )) return false;
+    if (genderFilter && c.gender !== genderFilter) return false;
+    if (regFrom && (!c.registration_date || c.registration_date < regFrom)) return false;
+    if (regTo && (!c.registration_date || c.registration_date > regTo)) return false;
+    if (visitFrom && (!c.last_visit_date || c.last_visit_date < visitFrom)) return false;
+    if (visitTo && (!c.last_visit_date || c.last_visit_date > visitTo)) return false;
+    return true;
+  });
+
 
   return (
     <AdminShell
