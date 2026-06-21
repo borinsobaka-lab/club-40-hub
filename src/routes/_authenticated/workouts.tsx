@@ -41,6 +41,7 @@ type Workout = {
   name: string;
   description: string | null;
   photo_url: string | null;
+  capacity: number | null;
 };
 
 function isHttpUrl(v: string | null | undefined) {
@@ -186,19 +187,20 @@ function WorkoutsPage() {
                     <TableHead className="w-[100px]">Фото</TableHead>
                     <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
+                    <TableHead className="w-[120px]">Вместимость</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
                         {workouts.length === 0
                           ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
                           : "Ничего не найдено по выбранным фильтрам."}
@@ -214,7 +216,9 @@ function WorkoutsPage() {
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
                           {w.description ?? "—"}
                         </TableCell>
-                        
+                        <TableCell className="text-sm text-muted-foreground">
+                          {w.capacity ?? "—"}
+                        </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
@@ -263,6 +267,7 @@ function WorkoutDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [capacity, setCapacity] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -272,6 +277,7 @@ function WorkoutDialog({
       setName(workout?.name ?? "");
       setDescription(workout?.description ?? "");
       setPhotoUrl(workout?.photo_url ?? null);
+      setCapacity(workout?.capacity != null ? String(workout.capacity) : "");
     }
   }, [open, workout]);
 
@@ -299,11 +305,18 @@ function WorkoutDialog({
       return;
     }
     setSaving(true);
+    const capacityNum = capacity.trim() === "" ? null : Number(capacity);
+    if (capacityNum != null && (!Number.isFinite(capacityNum) || capacityNum < 0)) {
+      setSaving(false);
+      toast.error("Вместимость должна быть неотрицательным числом");
+      return;
+    }
     const payload = {
       studio_id: studioId,
       name: name.trim(),
       description: description.trim() || null,
       photo_url: photoUrl,
+      capacity: capacityNum,
     };
     const { error } = workout
       ? await supabase.from("workouts").update(payload).eq("id", workout.id)
@@ -389,6 +402,21 @@ function WorkoutDialog({
               rows={3}
               placeholder="Краткое описание тренировки"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="capacity">Вместимость (чел.)</Label>
+            <Input
+              id="capacity"
+              type="number"
+              min={0}
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              placeholder="Например: 12"
+            />
+            <p className="text-xs text-muted-foreground">
+              Используется по умолчанию для всех занятий этой тренировки в расписании.
+            </p>
           </div>
         </div>
 

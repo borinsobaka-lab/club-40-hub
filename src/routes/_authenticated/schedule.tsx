@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_authenticated/schedule")({
   component: SchedulePage,
 });
 
-type Workout = { id: string; name: string; type?: string | null };
+type Workout = { id: string; name: string; type?: string | null; capacity?: number | null };
 type Trainer = { id: string; full_name: string };
 type Entry = {
   id: string;
@@ -42,7 +42,9 @@ type Entry = {
   workout_id: string;
   starts_at: string;
   ends_at: string;
-  workout?: { name: string; type?: string } | null;
+  capacity: number | null;
+  booked_count: number;
+  workout?: { name: string; type?: string; capacity?: number | null } | null;
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
 
@@ -114,13 +116,13 @@ function SchedulePage() {
       supabase
         .from("schedule_entries")
         .select(
-          "*, workout:workouts(name, type), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
+          "*, workout:workouts(name, type, capacity), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
         )
         .eq("studio_id", studioId)
         .gte("starts_at", weekStart.toISOString())
         .lt("starts_at", weekEnd.toISOString())
         .order("starts_at"),
-      supabase.from("workouts").select("id, name, type").eq("studio_id", studioId).order("name"),
+      supabase.from("workouts").select("id, name, type, capacity").eq("studio_id", studioId).order("name"),
       supabase.from("trainers").select("id, full_name").eq("studio_id", studioId).order("full_name"),
     ]);
     setLoading(false);
@@ -369,6 +371,24 @@ function SchedulePage() {
                                   }}
                                   className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 ${colorClasses}`}
                                 >
+                                  {(() => {
+                                    const cap = e.capacity ?? e.workout?.capacity ?? 0;
+                                    if (!cap) return null;
+                                    const left = Math.max(0, cap - e.booked_count);
+                                    const tone =
+                                      left === 0
+                                        ? "bg-red-500/90 text-white"
+                                        : left <= 5
+                                          ? "bg-amber-500/90 text-white"
+                                          : "bg-black/25 text-white";
+                                    return (
+                                      <div
+                                        className={`absolute right-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
+                                      >
+                                        {e.booked_count}/{cap}
+                                      </div>
+                                    );
+                                  })()}
                                   <div className="opacity-80">
                                     {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
                                   </div>
