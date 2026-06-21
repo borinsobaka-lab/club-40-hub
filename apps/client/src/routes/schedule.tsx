@@ -216,6 +216,7 @@ function SchedulePage() {
           ) : (
             <div className="relative">
               {dayEntries.map((c) => {
+                const meta = workoutTypeMeta(c.workout?.type);
                 return (
                   <div key={c.id} className="relative flex gap-3 pb-4">
                     <div className="flex flex-col items-end w-12 shrink-0 pt-1 text-right pr-2">
@@ -226,20 +227,17 @@ function SchedulePage() {
                         {fmtTime(c.ends_at)}
                       </div>
                     </div>
-                    <Card className="p-3 flex items-center gap-3 flex-1 min-w-0">
-                      {(() => {
-                        const meta = workoutTypeMeta(c.workout?.type);
-                        const Icon = meta.icon;
-                        return (
-                          <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${meta.bg}`}>
-                            <Icon className={`h-4 w-4 ${meta.color}`} />
-                          </div>
-                        );
-                      })()}
+                    <Card className="relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold break-words leading-snug">
                           {c.workout?.name ?? "Занятие"}
                         </div>
+                        {c.trainer_name && (
+                          <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {c.trainer_name}
+                          </div>
+                        )}
                       </div>
                       <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center">
                         <Plus className="h-6 w-6" strokeWidth={2.5} />
