@@ -300,6 +300,7 @@ function WorkoutDialog({
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [capacity, setCapacity] = useState<string>("");
+  const [type, setType] = useState<DayType | typeof NONE_TYPE>(NONE_TYPE);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -310,6 +311,7 @@ function WorkoutDialog({
       setDescription(workout?.description ?? "");
       setPhotoUrl(workout?.photo_url ?? null);
       setCapacity(workout?.capacity != null ? String(workout.capacity) : "");
+      setType((workout?.type as DayType | null) ?? NONE_TYPE);
     }
   }, [open, workout]);
 
