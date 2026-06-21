@@ -38,30 +38,49 @@ export function StudioSwitcher() {
   const [active, setActive] = useState<string | null>(() => getActiveStudioId());
   const [loading, setLoading] = useState(true);
 
+// Module-level cache so the switcher doesn't re-fetch / flicker on route changes.
+let studiosCache: Studio[] | null = null;
+let studiosPromise: Promise<Studio[]> | null = null;
+
+function loadStudios(): Promise<Studio[]> {
+  if (studiosCache) return Promise.resolve(studiosCache);
+  if (studiosPromise) return studiosPromise;
+  studiosPromise = (async () => {
+    const { data, error } = await supabase
+      .from("studios")
+      .select("id, name")
+      .order("name");
+    if (error || !data) {
+      studiosPromise = null;
+      return [];
+    }
+    studiosCache = data as Studio[];
+    return studiosCache;
+  })();
+  return studiosPromise;
+}
+
+export function StudioSwitcher() {
+  const [studios, setStudios] = useState<Studio[]>(() => studiosCache ?? []);
+  const [active, setActive] = useState<string | null>(() => getActiveStudioId());
+  const [loading, setLoading] = useState(() => studiosCache === null);
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("studios")
-        .select("id, name")
-        .order("name");
+    loadStudios().then((data) => {
       if (cancelled) return;
-      if (error || !data) {
-        setStudios([]);
-      } else {
-        setStudios(data as Studio[]);
-        if (data.length > 0 && (!active || !data.find((s) => s.id === active))) {
-          setActive(data[0].id);
-          setActiveStudioId(data[0].id);
-        }
+      setStudios(data);
+      if (data.length > 0 && (!getActiveStudioId() || !data.find((s) => s.id === getActiveStudioId()))) {
+        setActive(data[0].id);
+        setActiveStudioId(data[0].id);
       }
       setLoading(false);
-    })();
+    });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   const onChange = (value: string) => {
     setActive(value);
