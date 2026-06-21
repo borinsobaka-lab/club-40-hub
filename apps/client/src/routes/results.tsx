@@ -30,7 +30,7 @@ function ResultsPage() {
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-bold italic uppercase">Результаты</h1>
-          <p className="text-sm font-bold italic uppercase text-white/70">Ваш прогресс и личные рекорды</p>
+          <p className="text-sm text-white/70">Ваш прогресс и личные рекорды</p>
         </div>
       }
     >
