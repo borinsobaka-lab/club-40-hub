@@ -207,9 +207,10 @@ function SchedulePage() {
           <div className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
 
             {days.map((d, i) => (
-              <button
-                key={d.toISOString()}
-                onClick={() => setActiveIdx(i)}
+                <button
+                  key={d.toISOString()}
+                  ref={(el) => { dayBtnRefs.current[i] = el; }}
+                  onClick={() => setActiveIdx(i)}
                 className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
                   i === activeIdx
                     ? "bg-[#1B1C1F] text-[#FFE500]"
