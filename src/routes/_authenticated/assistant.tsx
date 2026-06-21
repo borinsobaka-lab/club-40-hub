@@ -75,7 +75,7 @@ function AssistantPage() {
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6">
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-purple-500 to-cyan-500 text-white">
+              <div className="ai-gradient flex h-14 w-14 items-center justify-center rounded-full text-white">
                 <Cat className="h-7 w-7" />
               </div>
               <div>
