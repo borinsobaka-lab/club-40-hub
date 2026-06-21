@@ -400,9 +400,9 @@ function WorkoutDialog({
                     <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
                   </>
                 ) : photoUrl ? (
-                  "Заменить фото"
+                  "Заменить иконку"
                 ) : (
-                  "Загрузить фото"
+                  "Загрузить иконку"
                 )}
               </Button>
               {photoUrl && (
