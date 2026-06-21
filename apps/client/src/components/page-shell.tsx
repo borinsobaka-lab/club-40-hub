@@ -7,10 +7,10 @@ interface PageShellProps {
 
 export function PageShell({ header, children }: PageShellProps) {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 bg-muted/60">{header}</div>
-      <div className="-mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="min-h-full rounded-t-3xl bg-background pb-24 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]">
+    <div className="h-full min-h-0 flex-1 overflow-hidden bg-muted/60">
+      <div className="h-full overflow-y-auto overscroll-contain">
+        <div className="sticky top-0 z-0 bg-muted/60">{header}</div>
+        <div className="relative z-10 -mt-4 min-h-full rounded-t-3xl bg-background pb-24 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]">
           {children}
         </div>
       </div>
