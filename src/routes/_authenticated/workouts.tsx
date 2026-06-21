@@ -403,6 +403,21 @@ function WorkoutDialog({
               placeholder="Краткое описание тренировки"
             />
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="capacity">Вместимость (чел.)</Label>
+            <Input
+              id="capacity"
+              type="number"
+              min={0}
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              placeholder="Например: 12"
+            />
+            <p className="text-xs text-muted-foreground">
+              Используется по умолчанию для всех занятий этой тренировки в расписании.
+            </p>
+          </div>
         </div>
 
         <DialogFooter>
