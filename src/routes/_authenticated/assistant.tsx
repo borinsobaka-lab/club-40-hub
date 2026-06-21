@@ -151,6 +151,7 @@ function AssistantPage() {
             </div>
           </div>
         </form>
+        </div>
       </div>
     </AdminShell>
   );
