@@ -118,9 +118,10 @@ function HomePage() {
               <button
                 type="button"
                 aria-label="Подарки"
-                className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
+                className="h-10 px-5 rounded-xl flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-violet-300 active:opacity-90 transition-opacity shadow-md"
               >
                 <img src={giftAsset.url} alt="Подарки" className="h-5 w-5 object-contain" />
+                <span className="text-white text-xs font-semibold">Подарки</span>
               </button>
               <button
                 type="button"
