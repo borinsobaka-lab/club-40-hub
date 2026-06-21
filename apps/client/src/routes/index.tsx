@@ -118,7 +118,7 @@ function HomePage() {
               <button
                 type="button"
                 aria-label="Подарки"
-                className="h-10 w-11 rounded-xl flex items-center justify-center bg-gradient-to-r from-violet-700 to-indigo-950 active:opacity-90 transition-opacity shadow-md"
+                className="h-10 w-12 rounded-full flex items-center justify-center bg-gradient-to-r from-violet-700 to-indigo-950 active:opacity-90 transition-opacity shadow-md"
               >
                 <img src={giftAsset.url} alt="Подарки" className="h-5 w-5 object-contain" />
               </button>
