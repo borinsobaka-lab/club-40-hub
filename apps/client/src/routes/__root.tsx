@@ -10,7 +10,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Home, Calendar, BookmarkCheck, Trophy, User, Loader2 } from "lucide-react";
+import { Home, Dumbbell, BookmarkCheck, Trophy, User, Loader2 } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
