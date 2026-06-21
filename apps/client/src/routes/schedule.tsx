@@ -24,11 +24,13 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
+type Trainer = { id: string; full_name: string | null };
 type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
-  workout: { name: string; type: string | null; trainer_name: string | null } | null;
+  workout: { name: string; type: string | null } | null;
+  trainers: { trainer: Trainer | null }[] | null;
 };
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
