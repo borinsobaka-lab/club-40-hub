@@ -78,6 +78,7 @@ function SchedulePage() {
   const [error, setError] = useState<string | null>(null);
   const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
 
   useEffect(() => {
     if (activeTab !== "class") return;
