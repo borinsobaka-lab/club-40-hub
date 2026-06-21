@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Dumbbell, HeartPulse, Shuffle, Leaf, Activity, Plus, Minus, type LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
+import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
