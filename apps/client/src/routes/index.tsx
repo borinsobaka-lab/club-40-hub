@@ -126,31 +126,28 @@ function HomePage() {
 
           {/* News */}
           <section className="mt-6">
-            <h2 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Новости
-            </h2>
             {news === null ? (
-              <div className="mt-3 flex gap-3 overflow-hidden px-4 pb-2">
+              <div className="flex gap-3 overflow-hidden px-4 pb-2">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="shrink-0 w-44 h-44 rounded-2xl bg-background/60 animate-pulse"
+                    className="shrink-0 w-32 h-44 rounded-2xl bg-background/60 animate-pulse"
                   />
                 ))}
               </div>
             ) : news.length === 0 ? (
-              <div className="mt-3 mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
+              <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
                 <Newspaper className="h-6 w-6" />
                 <span className="text-sm">Пока нет новостей</span>
               </div>
             ) : (
-              <div className="mt-3 flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none">
+              <div className="flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none">
                 {news.map((n) => (
                   <Link
                     key={n.id}
                     to="/news/$newsId"
                     params={{ newsId: n.id }}
-                    className="relative shrink-0 snap-start w-44 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
+                    className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
                   >
                     {(() => {
                       const url = mediaUrl(n.image_url);
@@ -165,17 +162,6 @@ function HomePage() {
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
                       );
                     })()}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    <div className="relative h-full w-full p-3 flex flex-col justify-end text-white">
-                      <div className="font-semibold text-sm leading-tight line-clamp-2">
-                        {n.title}
-                      </div>
-                      {n.description && (
-                        <div className="text-[11px]/4 opacity-90 mt-1 line-clamp-2">
-                          {n.description}
-                        </div>
-                      )}
-                    </div>
                   </Link>
                 ))}
               </div>
