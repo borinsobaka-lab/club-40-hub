@@ -78,6 +78,11 @@ function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [genderFilter, setGenderFilter] = useState<string>("");
+  const [regFrom, setRegFrom] = useState("");
+  const [regTo, setRegTo] = useState("");
+  const [visitFrom, setVisitFrom] = useState("");
+  const [visitTo, setVisitTo] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
 
@@ -126,17 +131,31 @@ function ClientsPage() {
     setOpen(true);
   };
 
+  const resetFilters = () => {
+    setGenderFilter("");
+    setRegFrom("");
+    setRegTo("");
+    setVisitFrom("");
+    setVisitTo("");
+  };
+
   const q = search.trim().toLowerCase();
-  const filtered = q
-    ? clients.filter(
-        (c) =>
-          c.full_name.toLowerCase().includes(q) ||
-          (c.phone ?? "").toLowerCase().includes(q) ||
-          (c.email ?? "").toLowerCase().includes(q),
-      )
-    : clients;
+  const filtered = clients.filter((c) => {
+    if (q && !(
+      c.full_name.toLowerCase().includes(q) ||
+      (c.phone ?? "").toLowerCase().includes(q) ||
+      (c.email ?? "").toLowerCase().includes(q)
+    )) return false;
+    if (genderFilter && c.gender !== genderFilter) return false;
+    if (regFrom && (!c.registration_date || c.registration_date < regFrom)) return false;
+    if (regTo && (!c.registration_date || c.registration_date > regTo)) return false;
+    if (visitFrom && (!c.last_visit_date || c.last_visit_date < visitFrom)) return false;
+    if (visitTo && (!c.last_visit_date || c.last_visit_date > visitTo)) return false;
+    return true;
+  });
 
   return (
+
     <AdminShell
       title="Клиенты"
       description="База клиентов студии"
@@ -154,17 +173,54 @@ function ClientsPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-lg border bg-background px-3 py-2">
-              <div className="relative max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Поиск по имени, телефону, email"
-                  className="h-8 pl-9"
-                />
+            <div className="rounded-lg border bg-background p-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="relative max-w-sm flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Поиск по имени, телефону, email"
+                    className="h-8 pl-9"
+                  />
+                </div>
+                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Пол</Label>
+                    <Select value={genderFilter} onValueChange={setGenderFilter}>
+                      <SelectTrigger className="h-8 w-full">
+                        <SelectValue placeholder="Все" />
+                      </SelectTrigger>
+                    <SelectContent>
+                      {GENDERS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Регистрация с</Label>
+                    <Input type="date" value={regFrom} onChange={(e) => setRegFrom(e.target.value)} className="h-8" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Регистрация по</Label>
+                    <Input type="date" value={regTo} onChange={(e) => setRegTo(e.target.value)} className="h-8" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Последний визит с</Label>
+                    <Input type="date" value={visitFrom} onChange={(e) => setVisitFrom(e.target.value)} className="h-8" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Последний визит по</Label>
+                    <Input type="date" value={visitTo} onChange={(e) => setVisitTo(e.target.value)} className="h-8" />
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8">
+                  Сбросить
+                </Button>
               </div>
             </div>
+
 
             <div className="rounded-lg border bg-background">
               <Table>
