@@ -1,183 +1,147 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Dumbbell, HeartPulse, Shuffle, Leaf, Activity, type LucideIcon } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Bell, Gift, ChevronRight } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Расписание — CLUB 40" },
-      { name: "description", content: "Расписание тренировок CLUB 40 на ближайшие дни." },
+      { title: "Главное — CLUB 40" },
+      { name: "description", content: "Главная страница CLUB 40: новости, акции и быстрый доступ к профилю." },
     ],
   }),
-  component: SchedulePage,
+  component: HomePage,
 });
 
-type Entry = {
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+type Announcement = {
   id: string;
-  starts_at: string;
-  ends_at: string;
-  workout: { name: string; type: string | null } | null;
-  schedule_entry_trainers: { trainer: { full_name: string } | null }[];
+  title: string;
+  subtitle: string;
+  gradient: string;
 };
 
-const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+const ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: "1",
+    title: "Новый сезон тренировок",
+    subtitle: "Расписание обновлено",
+    gradient: "from-red-500 to-orange-500",
+  },
+  {
+    id: "2",
+    title: "Приведи друга",
+    subtitle: "Получи бонусную тренировку",
+    gradient: "from-violet-500 to-fuchsia-500",
+  },
+  {
+    id: "3",
+    title: "Зимний интенсив",
+    subtitle: "Запись открыта",
+    gradient: "from-blue-500 to-cyan-500",
+  },
+  {
+    id: "4",
+    title: "Восстановление",
+    subtitle: "Новый формат занятий",
+    gradient: "from-emerald-500 to-teal-500",
+  },
+];
 
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-}
-function durationMin(s: string, e: string) {
-  return Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60000);
-}
-
-const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
-  strength: { label: "Силовая", icon: Dumbbell, cls: "bg-red-500/10 text-red-600 border-red-500/20" },
-  cardio: { label: "Кардио", icon: HeartPulse, cls: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  hybrid: { label: "Гибрид", icon: Shuffle, cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
-  recovery: { label: "Восстановление", icon: Leaf, cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-};
-
-function workoutTypeMeta(type: string | null | undefined) {
-  if (!type) return { label: "Тренировка", icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
-  const key = type.toLowerCase().trim();
-  if (TYPE_META[key]) return TYPE_META[key];
-  // match by russian label too
-  const byLabel = Object.values(TYPE_META).find((m) => m.label.toLowerCase() === key);
-  return byLabel ?? { label: type, icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
-}
-
-function SchedulePage() {
-  const today = useMemo(() => startOfDay(new Date()), []);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function HomePage() {
+  const { user } = useAuth();
+  const [fullName, setFullName] = useState<string>("Участник");
 
   useEffect(() => {
+    if (!user) return;
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      const from = today.toISOString();
-      const to = addDays(today, 7).toISOString();
-      const { data, error } = await supabase
-        .from("schedule_entries")
-        .select(
-          "id, starts_at, ends_at, workout:workouts(name, type), schedule_entry_trainers(trainer:trainers(full_name))",
-        )
-        .gte("starts_at", from)
-        .lt("starts_at", to)
-        .order("starts_at");
-      if (cancelled) return;
-      if (error) setError(error.message);
-      else setEntries((data as unknown as Entry[]) ?? []);
-      setLoading(false);
-    })();
+    supabase
+      .from("clients")
+      .select("full_name")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const name =
+          (data?.full_name as string | undefined) ||
+          (user.user_metadata?.full_name as string | undefined) ||
+          "Участник";
+        setFullName(name);
+      });
     return () => {
       cancelled = true;
     };
-  }, [today]);
-
-  const activeDay = days[activeIdx];
-  const dayEntries = entries.filter((e) => {
-    const d = startOfDay(new Date(e.starts_at));
-    return d.getTime() === activeDay.getTime();
-  });
+  }, [user]);
 
   return (
-    <div className="p-4 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Расписание</h1>
-        <p className="text-sm text-muted-foreground">Выберите день и забронируйте тренировку</p>
-      </div>
+    <div className="pt-2">
+      {/* Header */}
+      <div className="px-4 flex items-center justify-between">
+        <Link
+          to="/profile"
+          className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition-colors"
+        >
+          <Avatar className="h-11 w-11">
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+              {initials(fullName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs text-muted-foreground">Профиль</div>
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="font-semibold truncate">{fullName}</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </div>
+          </div>
+        </Link>
 
-      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
-        {days.map((d, i) => (
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            key={d.toISOString()}
-            onClick={() => setActiveIdx(i)}
-            className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl border text-sm transition-colors ${
-              i === activeIdx ? "bg-primary text-primary-foreground border-primary" : "border-border"
-            }`}
+            type="button"
+            aria-label="Уведомления"
+            className="h-10 w-10 rounded-full flex items-center justify-center bg-accent/60 active:bg-accent transition-colors"
           >
-            <span className="text-xs opacity-70">{DAY_NAMES[d.getDay()]}</span>
-            <span className="font-semibold">{d.getDate()}</span>
+            <Bell className="h-5 w-5" />
           </button>
-        ))}
+          <button
+            type="button"
+            aria-label="Подарки"
+            className="h-10 w-10 rounded-full flex items-center justify-center bg-accent/60 active:bg-accent transition-colors"
+          >
+            <Gift className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-10 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-        </div>
-      ) : error ? (
-        <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
-      ) : dayEntries.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">
-          На этот день тренировок пока нет
-        </Card>
-      ) : (
-        <div className="relative">
-          {dayEntries.map((c, idx) => {
-            const coaches =
-              c.schedule_entry_trainers
-                ?.map((x) => x.trainer?.full_name)
-                .filter(Boolean)
-                .join(", ") || "—";
-            const isLast = idx === dayEntries.length - 1;
-            return (
-              <div key={c.id} className="relative flex gap-3 pb-4">
-                <div className="flex flex-col items-center w-14 shrink-0 pt-1">
-                  <div className="text-sm font-semibold tabular-nums leading-tight">
-                    {fmtTime(c.starts_at)}
-                  </div>
-                  <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
-                    {fmtTime(c.ends_at)}
-                  </div>
-                  <div className="mt-2 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
-                  {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
+      {/* Announcements */}
+      <section className="mt-6">
+        <h2 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Новости
+        </h2>
+        <div className="mt-3 flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none">
+          {ANNOUNCEMENTS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              className={`relative shrink-0 snap-start w-44 h-44 rounded-2xl overflow-hidden text-left bg-gradient-to-br ${a.gradient} active:scale-[0.98] transition-transform`}
+            >
+              <div className="absolute inset-0 bg-black/10" />
+              <div className="relative h-full w-full p-4 flex flex-col justify-end text-white">
+                <div className="text-xs/4 opacity-90">{a.subtitle}</div>
+                <div className="font-semibold text-base mt-1 leading-tight">
+                  {a.title}
                 </div>
-                <Card className="p-4 flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
-                    <div className="text-xs text-muted-foreground truncate">{coaches}</div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {(() => {
-                        const meta = workoutTypeMeta(c.workout?.type);
-                        const Icon = meta.icon;
-                        return (
-                          <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
-                            <Icon className="h-3 w-3" />
-                            {meta.label}
-                          </Badge>
-                        );
-                      })()}
-                      <Badge variant="secondary" className="text-[10px]">
-                        {durationMin(c.starts_at, c.ends_at)} мин
-                      </Badge>
-                    </div>
-                  </div>
-                  <Button size="sm">Записаться</Button>
-                </Card>
               </div>
-            );
-          })}
+            </button>
+          ))}
         </div>
-      )}
+      </section>
     </div>
   );
 }
