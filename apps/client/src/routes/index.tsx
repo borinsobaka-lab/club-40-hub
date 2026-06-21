@@ -171,6 +171,7 @@ function HomePage() {
                       );
                     })()}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#404144]" />
                     <div className="absolute inset-0 flex flex-col justify-end p-2.5">
                       <div className="text-white text-xs font-semibold leading-tight">
                         {n.title}
