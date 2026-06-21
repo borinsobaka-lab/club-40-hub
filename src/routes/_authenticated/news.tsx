@@ -298,10 +298,12 @@ function NewsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
+            <DataPagination {...pg} />
           </div>
         )}
       </div>
