@@ -42,7 +42,7 @@ function HomePage() {
     let cancelled = false;
     supabase
       .from("clients")
-      .select("full_name, first_name, last_name")
+      .select("*")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
