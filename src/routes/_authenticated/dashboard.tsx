@@ -54,7 +54,7 @@ function DashboardPage() {
   const [open, setOpen] = useState(false);
 
   return (
-    <AdminShell title="Дашборд" subtitle="Сводная статистика за выбранный период">
+    <AdminShell title="Дашборд" description="Сводная статистика за выбранный период">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-3">
           <Popover open={open} onOpenChange={setOpen}>
