@@ -20,39 +20,13 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-type Announcement = {
+type News = {
   id: string;
   title: string;
-  subtitle: string;
-  gradient: string;
+  description: string | null;
+  image_url: string | null;
+  position: number;
 };
-
-const ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: "1",
-    title: "Новый сезон тренировок",
-    subtitle: "Расписание обновлено",
-    gradient: "from-red-500 to-orange-500",
-  },
-  {
-    id: "2",
-    title: "Приведи друга",
-    subtitle: "Получи бонусную тренировку",
-    gradient: "from-violet-500 to-fuchsia-500",
-  },
-  {
-    id: "3",
-    title: "Зимний интенсив",
-    subtitle: "Запись открыта",
-    gradient: "from-blue-500 to-cyan-500",
-  },
-  {
-    id: "4",
-    title: "Восстановление",
-    subtitle: "Новый формат занятий",
-    gradient: "from-emerald-500 to-teal-500",
-  },
-];
 
 function HomePage() {
   const { user } = useAuth();
