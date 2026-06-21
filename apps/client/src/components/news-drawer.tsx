@@ -66,7 +66,7 @@ export function NewsDrawer({
             ) : (
               <>
                 {hero && (
-                  <div className="px-4 pt-5">
+                  <div className="px-4 pt-3">
                     <img
                       src={hero}
                       alt={title}
