@@ -157,9 +157,21 @@ function SchedulePage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
                     <div className="text-xs text-muted-foreground truncate">{coaches}</div>
-                    <Badge variant="secondary" className="mt-1 text-[10px]">
-                      Свободно · {durationMin(c.starts_at, c.ends_at)} мин
-                    </Badge>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {(() => {
+                        const meta = workoutTypeMeta(c.workout?.type);
+                        const Icon = meta.icon;
+                        return (
+                          <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
+                            <Icon className="h-3 w-3" />
+                            {meta.label}
+                          </Badge>
+                        );
+                      })()}
+                      <Badge variant="secondary" className="text-[10px]">
+                        {durationMin(c.starts_at, c.ends_at)} мин
+                      </Badge>
+                    </div>
                   </div>
                   <Button size="sm">Записаться</Button>
                 </Card>
