@@ -84,11 +84,28 @@ type Sale = {
   total_amount: number;
   down_payment_amount: number;
   remaining_installments: number;
+  source: "admin" | "mobile";
   comment: string | null;
   created_at: string;
   clients: { id: string; full_name: string; first_name: string | null; last_name: string | null } | null;
   memberships: { id: string; name: string } | null;
 };
+
+function SourceBadge({ source }: { source: "admin" | "mobile" }) {
+  const isMobile = source === "mobile";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+        isMobile
+          ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+          : "bg-muted text-muted-foreground",
+      )}
+    >
+      {isMobile ? "Приложение" : "Портал"}
+    </span>
+  );
+}
 
 function clientName(c: { first_name: string | null; last_name: string | null; full_name: string }) {
   return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
@@ -151,7 +168,7 @@ function SalesPage() {
     const { data, error } = await supabase
       .from("sales")
       .select(
-        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, comment, created_at, clients(id, full_name, first_name, last_name), memberships(id, name)",
+        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, comment, created_at, clients(id, full_name, first_name, last_name), memberships(id, name)",
       )
       .eq("studio_id", studioId)
       .order("sold_at", { ascending: false });
@@ -246,6 +263,7 @@ function SalesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Дата</TableHead>
+                    <TableHead>Источник</TableHead>
                     <TableHead>Клиент</TableHead>
                     <TableHead>Абонемент</TableHead>
                     <TableHead>Сумма</TableHead>
@@ -259,13 +277,13 @@ function SalesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
                         {sales.length === 0
                           ? "Продаж пока нет. Нажмите «Новая продажа»."
                           : "Ничего не найдено."}
@@ -275,6 +293,7 @@ function SalesPage() {
                     pg.paged.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell>{formatDate(s.sold_at)}</TableCell>
+                        <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
                         <TableCell>
                           {s.clients ? (
                             <button
