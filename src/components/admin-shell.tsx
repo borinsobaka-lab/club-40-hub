@@ -47,7 +47,7 @@ export function AdminShell({
                   }}
                 >
                   <Sparkles className="h-4 w-4" />
-                  <span>Kate AI</span>
+                  <span>Kate</span>
                 </Link>
                 <StudioSwitcher />
                 <SignOutButton />
