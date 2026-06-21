@@ -267,6 +267,7 @@ function WorkoutDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [capacity, setCapacity] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -276,6 +277,7 @@ function WorkoutDialog({
       setName(workout?.name ?? "");
       setDescription(workout?.description ?? "");
       setPhotoUrl(workout?.photo_url ?? null);
+      setCapacity(workout?.capacity != null ? String(workout.capacity) : "");
     }
   }, [open, workout]);
 
