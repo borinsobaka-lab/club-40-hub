@@ -421,13 +421,38 @@ function TrainerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{trainer ? "Редактировать тренера" : "Новый тренер"}</DialogTitle>
-          <DialogDescription>Заполните данные тренера студии.</DialogDescription>
+          <DialogTitle>
+            {trainer
+              ? role === "admin"
+                ? "Редактировать админа"
+                : "Редактировать тренера"
+              : role === "admin"
+                ? "Новый админ студии"
+                : "Новый тренер"}
+          </DialogTitle>
+          <DialogDescription>
+            {role === "admin"
+              ? "Укажите ФИО и фото админа студии."
+              : "Заполните данные тренера студии."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="role">Роль</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
+              <SelectTrigger id="role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="trainer">Тренер</SelectItem>
+                <SelectItem value="admin">Админ студии</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-center gap-4">
             <TrainerPhoto value={photoUrl} name={fullName || "?"} />
 
