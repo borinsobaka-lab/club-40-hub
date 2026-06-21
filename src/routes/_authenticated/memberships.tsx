@@ -86,10 +86,12 @@ function MembershipsPage() {
     setItems((data as Membership[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
   const handleDelete = async (m: Membership) => {
     if (!confirm(`Удалить «${m.name}»?`)) return;
