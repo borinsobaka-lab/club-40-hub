@@ -149,7 +149,7 @@ function ProfilePage() {
         <Card className="p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              {client?.avatar_url && <AvatarImage src={client.avatar_url} alt={fullName} />}
+              {resolvedAvatarUrl && <AvatarImage src={resolvedAvatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
               </AvatarFallback>
