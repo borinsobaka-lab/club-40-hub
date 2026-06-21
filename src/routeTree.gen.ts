@@ -16,9 +16,11 @@ import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
+import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedMusicRouteImport } from './routes/_authenticated/music'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
 import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
+import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
@@ -58,6 +60,11 @@ const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedNpsRoute = AuthenticatedNpsRouteImport.update({
+  id: '/nps',
+  path: '/nps',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMusicRoute = AuthenticatedMusicRouteImport.update({
   id: '/music',
   path: '/music',
@@ -72,6 +79,11 @@ const AuthenticatedMembershipsRoute =
 const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
   id: '/members',
   path: '/members',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
@@ -103,9 +115,11 @@ export interface FileRoutesByFullPath {
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/music': typeof AuthenticatedMusicRoute
+  '/nps': typeof AuthenticatedNpsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
@@ -117,9 +131,11 @@ export interface FileRoutesByTo {
   '/clients': typeof AuthenticatedClientsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/members': typeof AuthenticatedMembersRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/music': typeof AuthenticatedMusicRoute
+  '/nps': typeof AuthenticatedNpsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/trainers': typeof AuthenticatedTrainersRoute
@@ -134,9 +150,11 @@ export interface FileRoutesById {
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/events': typeof AuthenticatedEventsRoute
+  '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/members': typeof AuthenticatedMembersRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/music': typeof AuthenticatedMusicRoute
+  '/_authenticated/nps': typeof AuthenticatedNpsRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
@@ -152,9 +170,11 @@ export interface FileRouteTypes {
     | '/clients'
     | '/employees'
     | '/events'
+    | '/feedback'
     | '/members'
     | '/memberships'
     | '/music'
+    | '/nps'
     | '/schedule'
     | '/settings'
     | '/trainers'
@@ -166,9 +186,11 @@ export interface FileRouteTypes {
     | '/clients'
     | '/employees'
     | '/events'
+    | '/feedback'
     | '/members'
     | '/memberships'
     | '/music'
+    | '/nps'
     | '/schedule'
     | '/settings'
     | '/trainers'
@@ -182,9 +204,11 @@ export interface FileRouteTypes {
     | '/_authenticated/clients'
     | '/_authenticated/employees'
     | '/_authenticated/events'
+    | '/_authenticated/feedback'
     | '/_authenticated/members'
     | '/_authenticated/memberships'
     | '/_authenticated/music'
+    | '/_authenticated/nps'
     | '/_authenticated/schedule'
     | '/_authenticated/settings'
     | '/_authenticated/trainers'
@@ -248,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScheduleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/nps': {
+      id: '/_authenticated/nps'
+      path: '/nps'
+      fullPath: '/nps'
+      preLoaderRoute: typeof AuthenticatedNpsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/music': {
       id: '/_authenticated/music'
       path: '/music'
@@ -267,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/members'
       fullPath: '/members'
       preLoaderRoute: typeof AuthenticatedMembersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/feedback': {
+      id: '/_authenticated/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/events': {
@@ -305,9 +343,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
+  AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedMusicRoute: typeof AuthenticatedMusicRoute
+  AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTrainersRoute: typeof AuthenticatedTrainersRoute
@@ -320,9 +360,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,
+  AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedMembersRoute: AuthenticatedMembersRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedMusicRoute: AuthenticatedMusicRoute,
+  AuthenticatedNpsRoute: AuthenticatedNpsRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTrainersRoute: AuthenticatedTrainersRoute,
