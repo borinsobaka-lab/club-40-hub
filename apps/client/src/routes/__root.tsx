@@ -175,11 +175,12 @@ function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex justify-center">
-      <div className="w-full max-w-md flex flex-col min-h-screen relative">
+    <div className="min-h-screen bg-muted/60 text-foreground flex justify-center">
+      <div className="w-full max-w-md flex flex-col min-h-screen relative bg-muted/60">
         <main className="flex-1 pb-24">
           <Outlet />
         </main>
+
 
         <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
           <div className="w-full max-w-md pointer-events-auto bg-background/95 backdrop-blur border-t border-border">

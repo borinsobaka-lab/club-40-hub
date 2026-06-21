@@ -20,37 +20,39 @@ const upcoming = [
 
 function BookingsPage() {
   return (
-    <div className="p-4 space-y-4">
-      <div>
+    <div className="min-h-full bg-muted/60">
+      <div className="pt-4 pb-6 px-4">
         <h1 className="text-2xl font-bold">Мои брони</h1>
         <p className="text-sm text-muted-foreground">Управляйте записями на тренировки</p>
       </div>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Предстоящие</h2>
-        {upcoming.map((b) => (
-          <Card key={b.id} className="p-4 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-semibold">{b.title}</div>
-                <div className="text-xs text-muted-foreground">{b.coach}</div>
+      <div className="relative -mt-4 rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] min-h-[70vh] p-4 space-y-4">
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Предстоящие</h2>
+          {upcoming.map((b) => (
+            <Card key={b.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-semibold">{b.title}</div>
+                  <div className="text-xs text-muted-foreground">{b.coach}</div>
+                </div>
+                <Badge>Подтверждено</Badge>
               </div>
-              <Badge>Подтверждено</Badge>
-            </div>
-            <div className="text-sm">{b.date}</div>
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" size="sm" className="flex-1">Отменить</Button>
-            </div>
-          </Card>
-        ))}
-      </section>
+              <div className="text-sm">{b.date}</div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" size="sm" className="flex-1">Отменить</Button>
+              </div>
+            </Card>
+          ))}
+        </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">История</h2>
-        <Card className="p-6 text-center text-sm text-muted-foreground">
-          Завершённые тренировки появятся здесь
-        </Card>
-      </section>
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">История</h2>
+          <Card className="p-6 text-center text-sm text-muted-foreground">
+            Завершённые тренировки появятся здесь
+          </Card>
+        </section>
+      </div>
     </div>
   );
 }
+
