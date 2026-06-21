@@ -334,7 +334,8 @@ function ClientDialog({
   client: Client | null;
   onSaved: () => void;
 }) {
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [birthday, setBirthday] = useState("");
@@ -348,7 +349,16 @@ function ClientDialog({
 
   useEffect(() => {
     if (open) {
-      setFullName(client?.full_name ?? "");
+      // Backfill from full_name when first/last are missing (legacy rows).
+      let fn = client?.first_name ?? "";
+      let ln = client?.last_name ?? "";
+      if (!fn && !ln && client?.full_name) {
+        const parts = client.full_name.trim().split(/\s+/);
+        fn = parts[0] ?? "";
+        ln = parts.slice(1).join(" ");
+      }
+      setFirstName(fn);
+      setLastName(ln);
       setPhone(client?.phone ?? "");
       setEmail(client?.email ?? "");
       setBirthday(client?.birthday ?? "");
@@ -363,14 +373,19 @@ function ClientDialog({
 
   const handleSave = async () => {
     if (!studioId) return;
-    if (!fullName.trim()) {
-      toast.error("Укажите ФИО");
+    const fn = firstName.trim();
+    const ln = lastName.trim();
+    if (!fn && !ln) {
+      toast.error("Укажите имя или фамилию");
       return;
     }
     setSaving(true);
+    const fullName = [ln, fn].filter(Boolean).join(" ");
     const payload = {
       studio_id: studioId,
-      full_name: fullName.trim(),
+      first_name: fn || null,
+      last_name: ln || null,
+      full_name: fullName,
       phone: phone.trim() || null,
       email: email.trim() || null,
       birthday: birthday || null,
@@ -394,6 +409,7 @@ function ClientDialog({
     onSaved();
   };
 
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -409,7 +425,7 @@ function ClientDialog({
               {photoUrl ? (
                 <img
                   src={photoUrl}
-                  alt={fullName || "Фото клиента"}
+                  alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
                   className="h-full w-full object-cover"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -417,15 +433,22 @@ function ClientDialog({
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
-                  {(fullName || "?").trim().charAt(0).toUpperCase()}
+                  {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
-            <div className="grid flex-1 gap-1.5">
-              <Label htmlFor="cl-name">ФИО *</Label>
-              <Input id="cl-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <div className="grid flex-1 grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-last-name">Фамилия</Label>
+                <Input id="cl-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-first-name">Имя *</Label>
+                <Input id="cl-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </div>
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="cl-phone">Телефон</Label>
