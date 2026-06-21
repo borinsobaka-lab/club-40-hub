@@ -38,7 +38,7 @@ function EmployeesPage() {
   });
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "trainer" as const });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "trainer" as "owner" | "admin" | "trainer" });
 
   const createMut = useMutation({
     mutationFn: (input: typeof form) => createFn({ data: input }),
