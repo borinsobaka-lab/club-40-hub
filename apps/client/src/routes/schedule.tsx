@@ -227,27 +227,25 @@ function SchedulePage() {
                       {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
                     </div>
                     <Card className="p-3 flex items-center gap-3 flex-1 min-w-0">
+                      {(() => {
+                        const meta = workoutTypeMeta(c.workout?.type);
+                        const Icon = meta.icon;
+                        return (
+                          <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${meta.bg}`}>
+                            <Icon className={`h-5 w-5 ${meta.color}`} />
+                          </div>
+                        );
+                      })()}
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold break-words leading-snug">
                           {c.workout?.name ?? "Занятие"}
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                          {(() => {
-                            const meta = workoutTypeMeta(c.workout?.type);
-                            const Icon = meta.icon;
-                            return (
-                              <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
-                                <Icon className="h-3 w-3" />
-                                {meta.label}
-                              </Badge>
-                            );
-                          })()}
-                        </div>
                       </div>
-                      <button className="shrink-0 h-12 w-12 rounded-full bg-[#1B1C1F] text-[#FFE500] flex items-center justify-center shadow-md">
-                        <Plus className="h-6 w-6" />
+                      <button className="shrink-0 h-12 w-12 rounded-full bg-[#FFE500] text-[#1B1C1F] flex items-center justify-center shadow-md">
+                        <Plus className="h-6 w-6" strokeWidth={2.5} />
                       </button>
                     </Card>
+
                   </div>
                 );
               })}
