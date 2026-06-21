@@ -101,7 +101,7 @@ function HomePage() {
                 <div className="text-xs text-white/70">Профиль</div>
                 <div className="flex items-center gap-1 min-w-0">
                   <span className="font-semibold truncate">{fullName}</span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-white/70 shrink-0" />
                 </div>
               </div>
             </Link>
@@ -110,16 +110,16 @@ function HomePage() {
               <button
                 type="button"
                 aria-label="Уведомления"
-                className="h-10 w-10 rounded-full flex items-center justify-center bg-background/70 active:bg-background transition-colors"
+                className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-5 w-5 text-white" />
               </button>
               <button
                 type="button"
                 aria-label="Подарки"
-                className="h-10 w-10 rounded-full flex items-center justify-center bg-background/70 active:bg-background transition-colors"
+                className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
               >
-                <Gift className="h-5 w-5" />
+                <Gift className="h-5 w-5 text-white" />
               </button>
             </div>
           </div>
