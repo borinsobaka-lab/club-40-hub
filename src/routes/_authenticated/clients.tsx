@@ -359,7 +359,7 @@ function ClientsPage() {
                             <button
                               type="button"
                               onClick={() => openCard(c)}
-                              className="text-left underline-offset-2 hover:underline hover:text-primary"
+                              className="cursor-pointer text-left text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                             >
                               {displayName(c)}
                             </button>
