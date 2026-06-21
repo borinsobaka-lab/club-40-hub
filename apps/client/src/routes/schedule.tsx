@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -261,9 +262,7 @@ function SchedulePage() {
                       <div className="text-base font-bold italic tabular-nums leading-tight text-center">
                         {fmtTime(c.starts_at)}
                       </div>
-                      <div className="w-9 h-9 bg-[#2A2B2E] rounded-full flex items-center justify-center">
-                        <span className="text-[8px] text-muted-foreground/40 font-medium">LOGO</span>
-                      </div>
+                      <img src={logoSrc} alt="" className="w-9 h-9 rounded-full object-cover" />
                     </div>
                     <Card
                       className={`relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg transition-colors ${
