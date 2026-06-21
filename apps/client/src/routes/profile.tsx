@@ -45,6 +45,8 @@ function initials(name: string) {
 type ClientRow = {
   id?: string;
   full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
   phone?: string | null;
   birthday?: string | null;
@@ -52,11 +54,16 @@ type ClientRow = {
 };
 
 const profileSchema = z.object({
-  full_name: z
+  first_name: z
     .string()
     .trim()
     .min(1, "Укажите имя")
-    .max(120, "Слишком длинное имя"),
+    .max(60, "Слишком длинное имя"),
+  last_name: z
+    .string()
+    .trim()
+    .min(1, "Укажите фамилию")
+    .max(60, "Слишком длинная фамилия"),
   phone: z
     .string()
     .trim()
@@ -73,6 +80,19 @@ const profileSchema = z.object({
   birthday: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
 });
+
+function composeFullName(c: Pick<ClientRow, "full_name" | "first_name" | "last_name"> | null | undefined) {
+  if (!c) return "";
+  const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
+  return composed || (c.full_name ?? "");
+}
+
+function splitFullName(full: string | null | undefined): { first: string; last: string } {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { last: parts[0], first: parts.slice(1).join(" ") };
+}
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
