@@ -115,30 +115,39 @@ function SchedulePage() {
           На этот день тренировок пока нет
         </Card>
       ) : (
-        <div className="space-y-3">
-          {dayEntries.map((c) => {
+        <div className="relative">
+          {dayEntries.map((c, idx) => {
             const coaches =
               c.schedule_entry_trainers
                 ?.map((x) => x.trainer?.full_name)
                 .filter(Boolean)
                 .join(", ") || "—";
+            const isLast = idx === dayEntries.length - 1;
             return (
-              <Card key={c.id} className="p-4 flex items-center gap-4">
-                <div className="text-center">
-                  <div className="text-lg font-bold tabular-nums">{fmtTime(c.starts_at)}</div>
-                  <div className="text-[10px] uppercase text-muted-foreground">
-                    {durationMin(c.starts_at, c.ends_at)} мин
+              <div key={c.id} className="relative flex gap-3 pb-4">
+                <div className="flex flex-col items-end w-12 shrink-0 pt-3">
+                  <div className="text-sm font-semibold tabular-nums leading-tight">
+                    {fmtTime(c.starts_at)}
+                  </div>
+                  <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
+                    {fmtTime(c.ends_at)}
                   </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
-                  <div className="text-xs text-muted-foreground truncate">{coaches}</div>
-                  <Badge variant="secondary" className="mt-1 text-[10px]">
-                    Свободно
-                  </Badge>
+                <div className="relative flex flex-col items-center shrink-0">
+                  <div className="mt-4 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
+                  {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
                 </div>
-                <Button size="sm">Записаться</Button>
-              </Card>
+                <Card className="p-4 flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
+                    <div className="text-xs text-muted-foreground truncate">{coaches}</div>
+                    <Badge variant="secondary" className="mt-1 text-[10px]">
+                      Свободно · {durationMin(c.starts_at, c.ends_at)} мин
+                    </Badge>
+                  </div>
+                  <Button size="sm">Записаться</Button>
+                </Card>
+              </div>
             );
           })}
         </div>
