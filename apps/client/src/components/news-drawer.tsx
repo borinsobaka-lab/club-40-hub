@@ -66,21 +66,18 @@ export function NewsDrawer({
             ) : (
               <>
                 {hero && (
-                  <img
-                    src={hero}
-                    alt={title}
-                    className="block w-full h-auto"
-                  />
+                  <div className="px-4 pt-5">
+                    <img
+                      src={hero}
+                      alt={title}
+                      className="w-full h-auto rounded-2xl"
+                    />
+                  </div>
                 )}
                 <div className="px-4 pt-5 space-y-3">
                   <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
                     {title}
                   </DrawerPrimitive.Title>
-                  {item.description && (
-                    <p className="text-muted-foreground text-base leading-snug">
-                      {item.description}
-                    </p>
-                  )}
                   {item.full_text && (
                     <div className="text-foreground text-[15px] whitespace-pre-wrap leading-relaxed pt-2">
                       {item.full_text}
