@@ -8,6 +8,11 @@ export const Route = createFileRoute("/api/transcribe")({
           const key = process.env.LOVABLE_API_KEY;
           if (!key) return new Response("AI распознавание не настроено", { status: 500 });
 
+          const contentType = request.headers.get("content-type") ?? "";
+          if (!contentType.includes("multipart/form-data") && !contentType.includes("application/x-www-form-urlencoded")) {
+            return new Response("Нужен аудиофайл", { status: 400 });
+          }
+
           const inForm = await request.formData();
           const file = inForm.get("file");
           if (!(file instanceof File) || file.size === 0) {
