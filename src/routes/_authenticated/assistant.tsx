@@ -71,7 +71,7 @@ function AssistantPage() {
 
   return (
     <AdminShell title="KATE — AI АССИСТЕНТ">
-      <div className="mx-auto flex h-[calc(100vh-8rem)] max-w-3xl flex-col rounded-lg border bg-background">
+      <div className={`mx-auto flex h-[calc(100vh-8rem)] max-w-3xl flex-col rounded-lg border bg-background ${isLoading ? "ai-thinking-glow" : ""}`}>
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6">
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
