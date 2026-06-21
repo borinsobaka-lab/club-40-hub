@@ -69,7 +69,7 @@ function genderLabel(v: string | null) {
 }
 
 function roleLabel(r: TrainerRole) {
-  return r === "admin" ? "Админ студии" : "Тренер";
+  return r === "admin" ? "Админ" : "Тренер";
 }
 
 function initials(name: string) {
