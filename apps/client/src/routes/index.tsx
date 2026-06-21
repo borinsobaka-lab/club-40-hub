@@ -94,7 +94,7 @@ function HomePage() {
   return (
     <PageShell
       header={
-        <div className="pt-2 pb-2">
+        <div className="pt-2 pb-6">
           {/* Header */}
           <div className="px-4 flex items-center justify-between">
             <Link
