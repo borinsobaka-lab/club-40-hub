@@ -86,7 +86,7 @@ function HomePage() {
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        const row = data as { full_name?: string | null; first_name?: string | null; last_name?: string | null } | null;
+        const row = data as { full_name?: string | null; first_name?: string | null; last_name?: string | null; photo_url?: string | null } | null;
         const composed = [row?.last_name, row?.first_name].filter(Boolean).join(" ").trim();
         const name =
           composed ||
@@ -94,6 +94,7 @@ function HomePage() {
           (user.user_metadata?.full_name as string | undefined) ||
           "Участник";
         setFullName(name);
+        setAvatarUrl(row?.photo_url ?? null);
       });
     return () => {
       cancelled = true;
