@@ -261,7 +261,7 @@ function SchedulePage() {
                       <div className="text-base font-bold italic tabular-nums leading-tight text-center">
                         {fmtTime(c.starts_at)}
                       </div>
-                      <div className="w-9 h-7 bg-[#2A2B2E] rounded-md flex items-center justify-center">
+                      <div className="w-9 h-9 bg-[#2A2B2E] rounded-full flex items-center justify-center">
                         <span className="text-[8px] text-muted-foreground/40 font-medium">LOGO</span>
                       </div>
                     </div>
