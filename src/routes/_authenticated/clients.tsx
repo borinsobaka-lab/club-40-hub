@@ -198,10 +198,8 @@ function ClientsPage() {
 
   const resetFilters = () => {
     setGenderFilter("");
-    setRegFrom("");
-    setRegTo("");
-    setVisitFrom("");
-    setVisitTo("");
+    setRegRange(undefined);
+    setVisitRange(undefined);
   };
 
   const q = search.trim().toLowerCase();
@@ -213,10 +211,8 @@ function ClientsPage() {
       (c.email ?? "").toLowerCase().includes(q)
     )) return false;
     if (genderFilter && c.gender !== genderFilter) return false;
-    if (regFrom && (!c.registration_date || c.registration_date < regFrom)) return false;
-    if (regTo && (!c.registration_date || c.registration_date > regTo)) return false;
-    if (visitFrom && (!c.last_visit_date || c.last_visit_date < visitFrom)) return false;
-    if (visitTo && (!c.last_visit_date || c.last_visit_date > visitTo)) return false;
+    if (!inDateRange(c.registration_date, regRange)) return false;
+    if (!inDateRange(c.last_visit_date, visitRange)) return false;
     return true;
   });
 
