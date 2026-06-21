@@ -212,7 +212,7 @@ function WorkoutsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">Фото</TableHead>
+                    <TableHead className="w-[100px]">Иконка</TableHead>
                     <TableHead>Название</TableHead>
                     <TableHead className="w-[160px]">Тип</TableHead>
                     <TableHead>Описание</TableHead>
@@ -400,9 +400,9 @@ function WorkoutDialog({
                     <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
                   </>
                 ) : photoUrl ? (
-                  "Заменить фото"
+                  "Заменить иконку"
                 ) : (
-                  "Загрузить фото"
+                  "Загрузить иконку"
                 )}
               </Button>
               {photoUrl && (
