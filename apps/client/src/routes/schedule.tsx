@@ -97,7 +97,7 @@ function SchedulePage() {
     return () => {
       cancelled = true;
     };
-  }, [today]);
+  }, [today, activeTab]);
 
   const activeDay = days[activeIdx];
   const [activeType, setActiveType] = useState<string>("all");
