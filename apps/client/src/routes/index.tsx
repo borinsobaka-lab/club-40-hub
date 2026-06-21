@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Gift, ChevronRight } from "lucide-react";
+import { Bell, Gift, ChevronRight, Newspaper } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,43 +20,18 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-type Announcement = {
+type News = {
   id: string;
   title: string;
-  subtitle: string;
-  gradient: string;
+  description: string | null;
+  image_url: string | null;
+  position: number;
 };
-
-const ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: "1",
-    title: "Новый сезон тренировок",
-    subtitle: "Расписание обновлено",
-    gradient: "from-red-500 to-orange-500",
-  },
-  {
-    id: "2",
-    title: "Приведи друга",
-    subtitle: "Получи бонусную тренировку",
-    gradient: "from-violet-500 to-fuchsia-500",
-  },
-  {
-    id: "3",
-    title: "Зимний интенсив",
-    subtitle: "Запись открыта",
-    gradient: "from-blue-500 to-cyan-500",
-  },
-  {
-    id: "4",
-    title: "Восстановление",
-    subtitle: "Новый формат занятий",
-    gradient: "from-emerald-500 to-teal-500",
-  },
-];
 
 function HomePage() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState<string>("Участник");
+  const [news, setNews] = useState<News[] | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -78,6 +53,32 @@ function HomePage() {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      supabase
+        .from("news")
+        .select("id,title,description,image_url,position")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: false })
+        .then(({ data }) => {
+          if (!cancelled) setNews((data as News[] | null) ?? []);
+        });
+    load();
+    const channel = supabase
+      .channel("news-feed")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "news" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <div className="pt-2">
@@ -119,28 +120,59 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Announcements */}
+      {/* News */}
       <section className="mt-6">
         <h2 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           Новости
         </h2>
-        <div className="mt-3 flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none">
-          {ANNOUNCEMENTS.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className={`relative shrink-0 snap-start w-44 h-44 rounded-2xl overflow-hidden text-left bg-gradient-to-br ${a.gradient} active:scale-[0.98] transition-transform`}
-            >
-              <div className="absolute inset-0 bg-black/10" />
-              <div className="relative h-full w-full p-4 flex flex-col justify-end text-white">
-                <div className="text-xs/4 opacity-90">{a.subtitle}</div>
-                <div className="font-semibold text-base mt-1 leading-tight">
-                  {a.title}
+        {news === null ? (
+          <div className="mt-3 flex gap-3 overflow-hidden px-4 pb-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="shrink-0 w-44 h-44 rounded-2xl bg-muted animate-pulse"
+              />
+            ))}
+          </div>
+        ) : news.length === 0 ? (
+          <div className="mt-3 mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
+            <Newspaper className="h-6 w-6" />
+            <span className="text-sm">Пока нет новостей</span>
+          </div>
+        ) : (
+          <div className="mt-3 flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none">
+            {news.map((n) => (
+              <Link
+                key={n.id}
+                to="/news/$newsId"
+                params={{ newsId: n.id }}
+                className="relative shrink-0 snap-start w-44 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
+              >
+                {n.image_url ? (
+                  <img
+                    src={n.image_url}
+                    alt={n.title}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="relative h-full w-full p-3 flex flex-col justify-end text-white">
+                  <div className="font-semibold text-sm leading-tight line-clamp-2">
+                    {n.title}
+                  </div>
+                  {n.description && (
+                    <div className="text-[11px]/4 opacity-90 mt-1 line-clamp-2">
+                      {n.description}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </button>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
