@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Gift, ChevronRight, Newspaper, Ghost, CalendarDays, BarChart3, Target } from "lucide-react";
+import { Bell, ChevronRight, Newspaper, Ghost, CalendarDays, BarChart3, Target } from "lucide-react";
+import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,17 +114,17 @@ function HomePage() {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
+                aria-label="Подарки"
+                className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
+              >
+                <img src={giftAsset.url} alt="Подарки" className="h-5 w-5 object-contain" />
+              </button>
+              <button
+                type="button"
                 aria-label="Уведомления"
                 className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
               >
                 <Bell className="h-5 w-5 text-white" />
-              </button>
-              <button
-                type="button"
-                aria-label="Подарки"
-                className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
-              >
-                <Gift className="h-5 w-5 text-white" />
               </button>
             </div>
           </div>
