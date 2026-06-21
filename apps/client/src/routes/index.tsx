@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, Dumbbell, HeartPulse, Shuffle, Leaf, Activity, type LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -41,6 +41,22 @@ function fmtTime(iso: string) {
 }
 function durationMin(s: string, e: string) {
   return Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60000);
+}
+
+const TYPE_META: Record<string, { label: string; icon: LucideIcon; cls: string }> = {
+  silovaya: { label: "Силовая", icon: Dumbbell, cls: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  cardio: { label: "Кардио", icon: HeartPulse, cls: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
+  gibrid: { label: "Гибрид", icon: Shuffle, cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
+  vosstanovlenie: { label: "Восстановление", icon: Leaf, cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+};
+
+function workoutTypeMeta(type: string | null | undefined) {
+  if (!type) return { label: "Тренировка", icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
+  const key = type.toLowerCase().trim();
+  if (TYPE_META[key]) return TYPE_META[key];
+  // match by russian label too
+  const byLabel = Object.values(TYPE_META).find((m) => m.label.toLowerCase() === key);
+  return byLabel ?? { label: type, icon: Activity, cls: "bg-muted text-muted-foreground border-border" };
 }
 
 function SchedulePage() {
@@ -141,9 +157,21 @@ function SchedulePage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
                     <div className="text-xs text-muted-foreground truncate">{coaches}</div>
-                    <Badge variant="secondary" className="mt-1 text-[10px]">
-                      Свободно · {durationMin(c.starts_at, c.ends_at)} мин
-                    </Badge>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {(() => {
+                        const meta = workoutTypeMeta(c.workout?.type);
+                        const Icon = meta.icon;
+                        return (
+                          <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
+                            <Icon className="h-3 w-3" />
+                            {meta.label}
+                          </Badge>
+                        );
+                      })()}
+                      <Badge variant="secondary" className="text-[10px]">
+                        {durationMin(c.starts_at, c.ends_at)} мин
+                      </Badge>
+                    </div>
                   </div>
                   <Button size="sm">Записаться</Button>
                 </Card>
