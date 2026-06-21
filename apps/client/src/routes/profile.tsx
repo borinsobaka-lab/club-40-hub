@@ -51,6 +51,7 @@ type ClientRow = {
   phone?: string | null;
   birthday?: string | null;
   gender?: string | null;
+  avatar_url?: string | null;
 };
 
 type ClientUpdate = {
@@ -61,6 +62,7 @@ type ClientUpdate = {
   email?: string | null;
   birthday?: string | null;
   gender?: string | null;
+  avatar_url?: string | null;
 };
 
 const profileSchema = z.object({
