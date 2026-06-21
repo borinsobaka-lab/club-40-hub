@@ -23,6 +23,20 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
+const WEEKDAYS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+function DayDivider({ date }: { date: Date }) {
+  const weekday = WEEKDAYS[date.getDay()];
+  const day = date.getDate();
+  const month = MONTHS[date.getMonth()];
+  return (
+    <div className="w-full bg-muted/60 border-y border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      {weekday}, {day} {month}
+    </div>
+  );
+}
+
 type News = {
   id: string;
   title: string;
