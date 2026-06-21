@@ -192,7 +192,8 @@ function TrainersPage() {
     fetchTrainers();
   };
 
-  const openCreate = () => {
+  const openCreate = (role: TrainerRole) => {
+    setCreatingRole(role);
     setEditing(null);
     setOpen(true);
   };
@@ -204,13 +205,19 @@ function TrainersPage() {
 
   return (
     <AdminShell
-      title="Тренеры"
-      description="Список тренеров студии"
+      title="Сотрудники"
+      description="Тренеры и админы студии"
       actions={
-        <Button size="sm" onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
-          Добавить тренера
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => openCreate("admin")} disabled={!studioId}>
+            <Plus className="mr-1 h-4 w-4" />
+            Добавить админа
+          </Button>
+          <Button size="sm" onClick={() => openCreate("trainer")} disabled={!studioId}>
+            <Plus className="mr-1 h-4 w-4" />
+            Добавить тренера
+          </Button>
+        </div>
       }
     >
       <div className="mx-auto max-w-6xl">
@@ -225,9 +232,10 @@ function TrainersPage() {
                 <TableRow>
                   <TableHead className="w-[80px]">Фото</TableHead>
                   <TableHead>ФИО</TableHead>
+                  <TableHead>Роль</TableHead>
                   <TableHead>Пол</TableHead>
                   <TableHead>Специализация</TableHead>
-                  <TableHead>О тренере</TableHead>
+                  <TableHead>О сотруднике</TableHead>
                   <TableHead>Соцсети</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
@@ -235,14 +243,14 @@ function TrainersPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                       <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : trainers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                      Пока нет тренеров. Нажмите «Добавить тренера».
+                    <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      Пока нет сотрудников. Нажмите «Добавить тренера» или «Добавить админа».
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -253,13 +261,29 @@ function TrainersPage() {
                       </TableCell>
 
                       <TableCell className="font-medium">{t.full_name}</TableCell>
-                      <TableCell>{genderLabel(t.gender)}</TableCell>
-                      <TableCell>{t.specialization ?? "—"}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
+                            (t.role === "admin"
+                              ? "bg-violet-100 text-violet-700"
+                              : "bg-sky-100 text-sky-700")
+                          }
+                        >
+                          {roleLabel(t.role)}
+                        </span>
+                      </TableCell>
+                      <TableCell>{t.role === "admin" ? "—" : genderLabel(t.gender)}</TableCell>
+                      <TableCell>{t.role === "admin" ? "—" : (t.specialization ?? "—")}</TableCell>
                       <TableCell className="max-w-[320px] truncate text-muted-foreground">
-                        {t.bio ?? "—"}
+                        {t.role === "admin" ? "—" : (t.bio ?? "—")}
                       </TableCell>
                       <TableCell>
-                        <SocialLinks trainer={t} />
+                        {t.role === "admin" ? (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        ) : (
+                          <SocialLinks trainer={t} />
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -285,11 +309,13 @@ function TrainersPage() {
         onOpenChange={setOpen}
         studioId={studioId}
         trainer={editing}
+        defaultRole={creatingRole}
         onSaved={fetchTrainers}
       />
     </AdminShell>
   );
 }
+
 
 function TrainerDialog({
   open,
