@@ -33,11 +33,6 @@ export function useActiveStudioId(): string | null {
   return id;
 }
 
-export function StudioSwitcher() {
-  const [studios, setStudios] = useState<Studio[]>([]);
-  const [active, setActive] = useState<string | null>(() => getActiveStudioId());
-  const [loading, setLoading] = useState(true);
-
 // Module-level cache so the switcher doesn't re-fetch / flicker on route changes.
 let studiosCache: Studio[] | null = null;
 let studiosPromise: Promise<Studio[]> | null = null;
@@ -60,6 +55,11 @@ function loadStudios(): Promise<Studio[]> {
   return studiosPromise;
 }
 
+export function refreshStudiosCache() {
+  studiosCache = null;
+  studiosPromise = null;
+}
+
 export function StudioSwitcher() {
   const [studios, setStudios] = useState<Studio[]>(() => studiosCache ?? []);
   const [active, setActive] = useState<string | null>(() => getActiveStudioId());
@@ -70,7 +70,8 @@ export function StudioSwitcher() {
     loadStudios().then((data) => {
       if (cancelled) return;
       setStudios(data);
-      if (data.length > 0 && (!getActiveStudioId() || !data.find((s) => s.id === getActiveStudioId()))) {
+      const current = getActiveStudioId();
+      if (data.length > 0 && (!current || !data.find((s) => s.id === current))) {
         setActive(data[0].id);
         setActiveStudioId(data[0].id);
       }
@@ -80,7 +81,6 @@ export function StudioSwitcher() {
       cancelled = true;
     };
   }, []);
-
 
   const onChange = (value: string) => {
     setActive(value);
