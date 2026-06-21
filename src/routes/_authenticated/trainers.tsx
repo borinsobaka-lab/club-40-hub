@@ -398,7 +398,7 @@ function TrainerDialog({
       full_name: fullName.trim(),
       gender: isAdmin ? null : (gender || null),
       specialization: isAdmin ? null : (specialization.trim() || null),
-      bio: isAdmin ? null : (bio.trim() || null),
+      bio: bio.trim() || null,
       photo_url: photoUrl,
       telegram: isAdmin ? null : (telegram.trim() || null),
       whatsapp: isAdmin ? null : (whatsapp.trim() || null),
