@@ -94,7 +94,7 @@ function AssistantPage() {
           )}
         </div>
         <form onSubmit={onSubmit} className="border-t p-3">
-          <div className="flex items-end gap-2">
+          <div className="flex items-start gap-2">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -105,18 +105,25 @@ function AssistantPage() {
                 }
               }}
               placeholder="Напишите вопрос Kate…"
-              rows={1}
-              className="min-h-[40px] resize-none"
+              rows={2}
+              className="min-h-[80px] resize-none flex-1"
             />
-            <VoiceInputButton
-              disabled={isLoading}
-              onTranscribed={(text) =>
-                setInput((prev) => (prev ? `${prev} ${text}` : text).trim())
-              }
-            />
-            <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="flex h-[80px] items-center gap-2">
+              <VoiceInputButton
+                disabled={isLoading}
+                onTranscribed={(text) =>
+                  setInput((prev) => (prev ? `${prev} ${text}` : text).trim())
+                }
+              />
+              <Button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                size="icon"
+                className="h-10 w-10"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </form>
       </div>
@@ -230,6 +237,7 @@ function VoiceInputButton({
       disabled={disabled || busy}
       onClick={recording ? stop : start}
       title={recording ? "Закончить запись" : "Голосовой ввод"}
+      className="h-10 w-10"
     >
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin" />
