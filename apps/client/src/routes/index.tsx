@@ -221,7 +221,7 @@ function HomePage() {
               <span className="text-sm">Пока нет услуг</span>
             </div>
           ) : (
-            <div className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar">
+            <div className="-mx-4 pl-6 pr-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar">
               {news.map((n) => (
                 <div
                   key={n.id}
