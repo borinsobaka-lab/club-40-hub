@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Calendar, BookmarkCheck, Trophy, User } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -17,16 +18,16 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Страница не найдена</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          Запрошенная страница не существует или была перемещена.
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go home
+            На главную
           </Link>
         </div>
       </div>
@@ -45,10 +46,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          Страница не загрузилась
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Что-то пошло не так. Попробуйте обновить или вернуться на главную.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -58,13 +59,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            Попробовать снова
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            На главную
           </a>
         </div>
       </div>
@@ -76,15 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
+      { title: "CLUB 40" },
+      { name: "description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
+      { name: "theme-color", content: "#0a0a0a" },
+      { property: "og:title", content: "CLUB 40" },
+      { property: "og:description", content: "Расписание, бронирование, результаты и профиль участника CLUB 40." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -101,7 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <head>
         <HeadContent />
       </head>
@@ -113,13 +113,55 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+const navItems = [
+  { to: "/", label: "Расписание", icon: Calendar, exact: true },
+  { to: "/bookings", label: "Брони", icon: BookmarkCheck, exact: false },
+  { to: "/results", label: "Результаты", icon: Trophy, exact: false },
+  { to: "/profile", label: "Профиль", icon: User, exact: false },
+] as const;
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="min-h-screen bg-background text-foreground flex justify-center">
+        <div className="w-full max-w-md flex flex-col min-h-screen relative">
+          <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
+            <div className="h-14 flex items-center px-4">
+              <Link to="/" className="font-bold tracking-widest text-base">
+                CLUB <span className="text-primary">40</span>
+              </Link>
+            </div>
+          </header>
+
+          <main className="flex-1 pb-24">
+            <Outlet />
+          </main>
+
+          <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
+            <div className="w-full max-w-md pointer-events-auto bg-background/95 backdrop-blur border-t border-border">
+              <ul className="grid grid-cols-4">
+                {navItems.map(({ to, label, icon: Icon, exact }) => (
+                  <li key={to}>
+                    <Link
+                      to={to}
+                      activeOptions={{ exact }}
+                      activeProps={{ className: "text-primary" }}
+                      inactiveProps={{ className: "text-muted-foreground" }}
+                      className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{label}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="h-[env(safe-area-inset-bottom)]" />
+            </div>
+          </nav>
+        </div>
+      </div>
     </QueryClientProvider>
   );
 }
