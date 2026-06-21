@@ -130,10 +130,12 @@ function NewsPage() {
     setItems((data as NewsItem[]) ?? []);
   };
 
+  const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId]);
+  }, [studioId, refreshSignal]);
+
 
   const handleDelete = async (n: NewsItem) => {
     if (!confirm(`Удалить новость «${n.title}»?`)) return;
