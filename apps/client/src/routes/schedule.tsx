@@ -132,26 +132,24 @@ function SchedulePage() {
         </div>
       }
     >
-      <div className="border-b border-border -mt-px">
-        <div className="flex gap-6 overflow-x-auto no-scrollbar px-4">
-          {TABS.map((t) => {
-            const active = activeTab === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`shrink-0 relative py-3 text-sm font-semibold transition-colors ${
-                  active ? "text-foreground" : "text-muted-foreground"
-                }`}
-              >
-                {t.label}
-                {active && (
-                  <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-foreground rounded-full" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+      <div className="flex gap-3 overflow-x-auto no-scrollbar px-6 pt-4 pb-2">
+        {TABS.map((t) => {
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`shrink-0 relative py-3 text-sm font-semibold transition-colors ${
+                active ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {t.label}
+              {active && (
+                <span className="absolute left-0 right-0 -bottom-px h-1 bg-[#FFE500] rounded-full" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab !== "class" ? (
