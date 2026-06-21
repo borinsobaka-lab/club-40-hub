@@ -151,7 +151,7 @@ export const Route = createFileRoute("/api/chat")({
             "клиенты, тренеры, расписание, абонементы, сводка. Используй их когда нужно. " +
             "Если данных нет — честно скажи. Никогда не выдумывай цифры. " +
             "Текущая дата: " + new Date().toISOString().slice(0, 10) + ".",
-          messages: convertToModelMessages(messages as UIMessage[]),
+          messages: await convertToModelMessages(messages as UIMessage[]),
           tools,
           stopWhen: stepCountIs(10),
         });
