@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
+import { PageShell } from "@/components/page-shell";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
@@ -25,12 +26,15 @@ const records = [
 
 function ResultsPage() {
   return (
-    <div className="min-h-full bg-muted/60">
-      <div className="pt-4 pb-6 px-4">
-        <h1 className="text-2xl font-bold">Результаты</h1>
-        <p className="text-sm text-muted-foreground">Ваш прогресс и личные рекорды</p>
-      </div>
-      <div className="relative -mt-4 rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] min-h-[70vh] p-4 space-y-5">
+    <PageShell
+      header={
+        <div className="pt-4 pb-6 px-4">
+          <h1 className="text-2xl font-bold">Результаты</h1>
+          <p className="text-sm text-muted-foreground">Ваш прогресс и личные рекорды</p>
+        </div>
+      }
+    >
+      <div className="p-4 space-y-5">
         <div className="grid grid-cols-3 gap-3">
           {stats.map((s) => (
             <Card key={s.label} className="p-3 text-center">
@@ -55,7 +59,7 @@ function ResultsPage() {
           </Card>
         </section>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

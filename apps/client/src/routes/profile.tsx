@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { PageShell } from "@/components/page-shell";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -122,72 +123,73 @@ function ProfilePage() {
   const gender = client?.gender || "";
 
   return (
-    <div className="min-h-full bg-muted/60">
-      <div className="pt-4 pb-6 px-4">
-        <h1 className="text-2xl font-bold">Профиль</h1>
-        <p className="text-sm text-muted-foreground">Ваши данные и настройки</p>
-      </div>
-      <div className="relative -mt-4 rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] min-h-[70vh] p-4 space-y-5">
-      <Card className="p-5">
-
-        <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-lg truncate">{fullName}</div>
-            <div className="text-xs text-muted-foreground truncate">{email}</div>
-            {phone && <div className="text-xs text-muted-foreground truncate">{phone}</div>}
-          </div>
+    <PageShell
+      header={
+        <div className="pt-4 pb-6 px-4">
+          <h1 className="text-2xl font-bold">Профиль</h1>
+          <p className="text-sm text-muted-foreground">Ваши данные и настройки</p>
         </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-xs text-muted-foreground">Дата рождения</div>
-            <div className="font-medium">
-              {birthday
-                ? new Date(birthday).toLocaleDateString("ru-RU")
-                : "—"}
+      }
+    >
+      <div className="p-4 space-y-5">
+        <Card className="p-5">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16">
+              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-lg truncate">{fullName}</div>
+              <div className="text-xs text-muted-foreground truncate">{email}</div>
+              {phone && <div className="text-xs text-muted-foreground truncate">{phone}</div>}
             </div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Пол</div>
-            <div className="font-medium">
-              {gender === "male" ? "Мужской" : gender === "female" ? "Женский" : "—"}
+
+          <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-xs text-muted-foreground">Дата рождения</div>
+              <div className="font-medium">
+                {birthday
+                  ? new Date(birthday).toLocaleDateString("ru-RU")
+                  : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Пол</div>
+              <div className="font-medium">
+                {gender === "male" ? "Мужской" : gender === "female" ? "Женский" : "—"}
+              </div>
             </div>
           </div>
-        </div>
 
-        <Button
-          variant="outline"
-          className="w-full mt-5"
-          onClick={() => setEditOpen(true)}
-          disabled={loading || !client}
-        >
-          <Pencil className="h-4 w-4 mr-2" />
-          Редактировать профиль
+          <Button
+            variant="outline"
+            className="w-full mt-5"
+            onClick={() => setEditOpen(true)}
+            disabled={loading || !client}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Редактировать профиль
+          </Button>
+        </Card>
+
+        <Button variant="outline" className="w-full" onClick={() => signOut()}>
+          <LogOut className="h-4 w-4 mr-2" />
+          Выйти
         </Button>
-      </Card>
 
-      <Button variant="outline" className="w-full" onClick={() => signOut()}>
-        <LogOut className="h-4 w-4 mr-2" />
-        Выйти
-      </Button>
-
-      {client && (
-        <EditProfileSheet
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          client={client}
-          onSaved={(updated) => setClient((prev) => ({ ...prev, ...updated }))}
-        />
-      )}
+        {client && (
+          <EditProfileSheet
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            client={client}
+            onSaved={(updated) => setClient((prev) => ({ ...prev, ...updated }))}
+          />
+        )}
       </div>
-    </div>
+    </PageShell>
   );
-
 }
 
 function EditProfileSheet({

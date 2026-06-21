@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Dumbbell, HeartPulse, Shuffle, Leaf, Activity, type LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageShell } from "@/components/page-shell";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
@@ -99,89 +100,90 @@ function SchedulePage() {
   });
 
   return (
-    <div className="min-h-full bg-muted/60">
-      <div className="pt-4 pb-6 px-4">
-        <h1 className="text-2xl font-bold">Расписание</h1>
-        <p className="text-sm text-muted-foreground">Выберите день и забронируйте тренировку</p>
-      </div>
-      <div className="relative -mt-4 rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] min-h-[70vh] p-4 space-y-4">
-
-
-      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
-        {days.map((d, i) => (
-          <button
-            key={d.toISOString()}
-            onClick={() => setActiveIdx(i)}
-            className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl border text-sm transition-colors ${
-              i === activeIdx ? "bg-primary text-primary-foreground border-primary" : "border-border"
-            }`}
-          >
-            <span className="text-xs opacity-70">{DAY_NAMES[d.getDay()]}</span>
-            <span className="font-semibold">{d.getDate()}</span>
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-10 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
+    <PageShell
+      header={
+        <div className="pt-4 pb-6 px-4">
+          <h1 className="text-2xl font-bold">Расписание</h1>
+          <p className="text-sm text-muted-foreground">Выберите день и забронируйте тренировку</p>
         </div>
-      ) : error ? (
-        <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
-      ) : dayEntries.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">
-          На этот день тренировок пока нет
-        </Card>
-      ) : (
-        <div className="relative">
-          {dayEntries.map((c, idx) => {
-            const coaches =
-              c.schedule_entry_trainers
-                ?.map((x) => x.trainer?.full_name)
-                .filter(Boolean)
-                .join(", ") || "—";
-            const isLast = idx === dayEntries.length - 1;
-            return (
-              <div key={c.id} className="relative flex gap-3 pb-4">
-                <div className="flex flex-col items-center w-14 shrink-0 pt-1">
-                  <div className="text-sm font-semibold tabular-nums leading-tight">
-                    {fmtTime(c.starts_at)}
-                  </div>
-                  <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
-                    {fmtTime(c.ends_at)}
-                  </div>
-                  <div className="mt-2 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
-                  {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
-                </div>
-                <Card className="p-4 flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
-                    <div className="text-xs text-muted-foreground truncate">{coaches}</div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {(() => {
-                        const meta = workoutTypeMeta(c.workout?.type);
-                        const Icon = meta.icon;
-                        return (
-                          <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
-                            <Icon className="h-3 w-3" />
-                            {meta.label}
-                          </Badge>
-                        );
-                      })()}
-                      <Badge variant="secondary" className="text-[10px]">
-                        {durationMin(c.starts_at, c.ends_at)} мин
-                      </Badge>
+      }
+    >
+      <div className="p-4 space-y-4">
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1">
+          {days.map((d, i) => (
+            <button
+              key={d.toISOString()}
+              onClick={() => setActiveIdx(i)}
+              className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl border text-sm transition-colors ${
+                i === activeIdx ? "bg-primary text-primary-foreground border-primary" : "border-border"
+              }`}
+            >
+              <span className="text-xs opacity-70">{DAY_NAMES[d.getDay()]}</span>
+              <span className="font-semibold">{d.getDate()}</span>
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-10 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        ) : error ? (
+          <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
+        ) : dayEntries.length === 0 ? (
+          <Card className="p-6 text-center text-sm text-muted-foreground">
+            На этот день тренировок пока нет
+          </Card>
+        ) : (
+          <div className="relative">
+            {dayEntries.map((c, idx) => {
+              const coaches =
+                c.schedule_entry_trainers
+                  ?.map((x) => x.trainer?.full_name)
+                  .filter(Boolean)
+                  .join(", ") || "—";
+              const isLast = idx === dayEntries.length - 1;
+              return (
+                <div key={c.id} className="relative flex gap-3 pb-4">
+                  <div className="flex flex-col items-center w-14 shrink-0 pt-1">
+                    <div className="text-sm font-semibold tabular-nums leading-tight">
+                      {fmtTime(c.starts_at)}
                     </div>
+                    <div className="text-xs tabular-nums leading-tight text-muted-foreground/60">
+                      {fmtTime(c.ends_at)}
+                    </div>
+                    <div className="mt-2 h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
+                    {!isLast && <div className="flex-1 w-px bg-border mt-1" />}
                   </div>
-                  <Button size="sm">Записаться</Button>
-                </Card>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  <Card className="p-4 flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">{c.workout?.name ?? "Занятие"}</div>
+                      <div className="text-xs text-muted-foreground truncate">{coaches}</div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {(() => {
+                          const meta = workoutTypeMeta(c.workout?.type);
+                          const Icon = meta.icon;
+                          return (
+                            <Badge variant="outline" className={`text-[10px] gap-1 ${meta.cls}`}>
+                              <Icon className="h-3 w-3" />
+                              {meta.label}
+                            </Badge>
+                          );
+                        })()}
+                        <Badge variant="secondary" className="text-[10px]">
+                          {durationMin(c.starts_at, c.ends_at)} мин
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button size="sm">Записаться</Button>
+                  </Card>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

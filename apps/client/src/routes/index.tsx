@@ -5,6 +5,7 @@ import { Bell, Gift, ChevronRight, Newspaper } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
+import { PageShell } from "@/components/page-shell";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -82,110 +83,109 @@ function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-full bg-muted/60">
-      <div className="pt-2 pb-6">
-        {/* Header */}
-        <div className="px-4 flex items-center justify-between">
-          <Link
-            to="/profile"
-            className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition-colors"
-          >
-            <Avatar className="h-11 w-11">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                {initials(fullName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs text-muted-foreground">Профиль</div>
-              <div className="flex items-center gap-1 min-w-0">
-                <span className="font-semibold truncate">{fullName}</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+    <PageShell
+      header={
+        <div className="pt-2 pb-6">
+          {/* Header */}
+          <div className="px-4 flex items-center justify-between">
+            <Link
+              to="/profile"
+              className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition-colors"
+            >
+              <Avatar className="h-11 w-11">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                  {initials(fullName)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-muted-foreground">Профиль</div>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="font-semibold truncate">{fullName}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              aria-label="Уведомления"
-              className="h-10 w-10 rounded-full flex items-center justify-center bg-background/70 active:bg-background transition-colors"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Подарки"
-              className="h-10 w-10 rounded-full flex items-center justify-center bg-background/70 active:bg-background transition-colors"
-            >
-              <Gift className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                aria-label="Уведомления"
+                className="h-10 w-10 rounded-full flex items-center justify-center bg-background/70 active:bg-background transition-colors"
+              >
+                <Bell className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Подарки"
+                className="h-10 w-10 rounded-full flex items-center justify-center bg-background/70 active:bg-background transition-colors"
+              >
+                <Gift className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* News */}
-        <section className="mt-6">
-          <h2 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Новости
-          </h2>
-          {news === null ? (
-            <div className="mt-3 flex gap-3 overflow-hidden px-4 pb-2">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="shrink-0 w-44 h-44 rounded-2xl bg-background/60 animate-pulse"
-                />
-              ))}
-            </div>
-          ) : news.length === 0 ? (
-            <div className="mt-3 mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
-              <Newspaper className="h-6 w-6" />
-              <span className="text-sm">Пока нет новостей</span>
-            </div>
-          ) : (
-            <div className="mt-3 flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none">
-              {news.map((n) => (
-                <Link
-                  key={n.id}
-                  to="/news/$newsId"
-                  params={{ newsId: n.id }}
-                  className="relative shrink-0 snap-start w-44 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
-                >
-                  {(() => {
-                    const url = mediaUrl(n.image_url);
-                    return url ? (
-                      <img
-                        src={url}
-                        alt={n.title}
-                        className="absolute inset-0 h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
-                    );
-                  })()}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  <div className="relative h-full w-full p-3 flex flex-col justify-end text-white">
-                    <div className="font-semibold text-sm leading-tight line-clamp-2">
-                      {n.title}
-                    </div>
-                    {n.description && (
-                      <div className="text-[11px]/4 opacity-90 mt-1 line-clamp-2">
-                        {n.description}
+          {/* News */}
+          <section className="mt-6">
+            <h2 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Новости
+            </h2>
+            {news === null ? (
+              <div className="mt-3 flex gap-3 overflow-hidden px-4 pb-2">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="shrink-0 w-44 h-44 rounded-2xl bg-background/60 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : news.length === 0 ? (
+              <div className="mt-3 mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
+                <Newspaper className="h-6 w-6" />
+                <span className="text-sm">Пока нет новостей</span>
+              </div>
+            ) : (
+              <div className="mt-3 flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none">
+                {news.map((n) => (
+                  <Link
+                    key={n.id}
+                    to="/news/$newsId"
+                    params={{ newsId: n.id }}
+                    className="relative shrink-0 snap-start w-44 h-44 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
+                  >
+                    {(() => {
+                      const url = mediaUrl(n.image_url);
+                      return url ? (
+                        <img
+                          src={url}
+                          alt={n.title}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                      );
+                    })()}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    <div className="relative h-full w-full p-3 flex flex-col justify-end text-white">
+                      <div className="font-semibold text-sm leading-tight line-clamp-2">
+                        {n.title}
                       </div>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Sheet — content slides over the gray plate */}
-      <div className="relative -mt-4 rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] min-h-[60vh]">
-        {/* Future sections (акции и др.) появятся здесь */}
-      </div>
-    </div>
+                      {n.description && (
+                        <div className="text-[11px]/4 opacity-90 mt-1 line-clamp-2">
+                          {n.description}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      }
+    >
+      <div />
+    </PageShell>
   );
 }
 
