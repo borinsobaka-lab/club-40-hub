@@ -146,10 +146,8 @@ function ClientsPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<string>("");
-  const [regFrom, setRegFrom] = useState("");
-  const [regTo, setRegTo] = useState("");
-  const [visitFrom, setVisitFrom] = useState("");
-  const [visitTo, setVisitTo] = useState("");
+  const [regRange, setRegRange] = useState<DateRange | undefined>();
+  const [visitRange, setVisitRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
 
