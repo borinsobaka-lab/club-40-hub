@@ -131,7 +131,7 @@ function formatDate(v: string | null | undefined) {
 function formatMoney(n: number) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
-    currency: "RUB",
+    currency: "GEL",
     maximumFractionDigits: 0,
   }).format(n);
 }

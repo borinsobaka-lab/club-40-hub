@@ -72,7 +72,7 @@ function categoryLabel(v: string) {
 function formatMoney(v: number) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
-    currency: "RUB",
+    currency: "GEL",
     maximumFractionDigits: 2,
   }).format(v);
 }
@@ -293,7 +293,7 @@ function CashPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="amount">Сумма, ₽</Label>
+                  <Label htmlFor="amount">Сумма, ₾</Label>
                   <Input
                     id="amount"
                     type="number"

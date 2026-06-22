@@ -114,7 +114,7 @@ function clientName(c: { first_name: string | null; last_name: string | null; fu
 function formatMoney(n: number) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
-    currency: "RUB",
+    currency: "GEL",
     maximumFractionDigits: 0,
   }).format(n);
 }
@@ -598,7 +598,7 @@ function SaleDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="s-amount">Стоимость, ₽</Label>
+            <Label htmlFor="s-amount">Стоимость, ₾</Label>
             <Input
               id="s-amount"
               type="number"
@@ -612,7 +612,7 @@ function SaleDialog({
           {installmentEnabled ? (
             <div className="space-y-3 rounded-md border bg-muted/30 p-3">
               <div className="space-y-1.5">
-                <Label htmlFor="s-down">Первый взнос, ₽</Label>
+                <Label htmlFor="s-down">Первый взнос, ₾</Label>
                 <Input
                   id="s-down"
                   type="number"
