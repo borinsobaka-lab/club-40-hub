@@ -26,12 +26,14 @@ export function NewsDrawer({
 }) {
   const [item, setItem] = useState<NewsFull | null>(null);
   const [loading, setLoading] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
     if (!open || !newsId) return;
     let cancelled = false;
     setLoading(true);
     setItem(null);
+    setImgLoaded(false);
     supabase
       .from("news")
       .select("id,title,description,image_url,banner_url,full_title,full_text")
@@ -61,18 +63,36 @@ export function NewsDrawer({
           <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
           <div className="flex-1 overflow-y-auto overscroll-contain pb-10">
             {loading || !item ? (
-              <div className="flex justify-center py-16">
-                <Refresh className="h-5 w-5 text-muted-foreground animate-spin" weight="BoldDuotone" />
-              </div>
+              <>
+                <div className="px-3 pt-1">
+                  <div className="w-full aspect-[4/3] rounded-2xl bg-muted animate-pulse" />
+                </div>
+                <div className="px-3 pt-4 space-y-3">
+                  <div className="h-7 w-3/4 rounded-md bg-muted animate-pulse" />
+                  <div className="h-4 w-full rounded-md bg-muted animate-pulse" />
+                  <div className="h-4 w-5/6 rounded-md bg-muted animate-pulse" />
+                  <div className="h-4 w-2/3 rounded-md bg-muted animate-pulse" />
+                </div>
+              </>
             ) : (
               <>
                 {hero && (
                   <div className="px-3 pt-1">
-                    <img
-                      src={hero}
-                      alt={title}
-                      className="w-full h-auto rounded-2xl"
-                    />
+                    <div className="relative w-full">
+                      {!imgLoaded && (
+                        <div className="w-full aspect-[4/3] rounded-2xl bg-muted animate-pulse" />
+                      )}
+                      <img
+                        src={hero}
+                        alt={title}
+                        onLoad={() => setImgLoaded(true)}
+                        onError={() => setImgLoaded(true)}
+                        className={cn(
+                          "w-full h-auto rounded-2xl transition-opacity duration-200",
+                          imgLoaded ? "opacity-100" : "opacity-0 absolute inset-0",
+                        )}
+                      />
+                    </div>
                   </div>
                 )}
                 <div className="px-3 pt-3 space-y-3">
