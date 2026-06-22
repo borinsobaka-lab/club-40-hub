@@ -9,8 +9,6 @@ import {
   Star,
   ClipboardText,
   Ghost,
-  Refresh,
-  MinusSquare,
 } from "@solar-icons/react";
 import giftIcon from "@/assets/gift.png";
 import { Button } from "@/components/ui/button";
