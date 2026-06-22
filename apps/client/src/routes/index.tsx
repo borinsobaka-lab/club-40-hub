@@ -9,8 +9,8 @@ import {
   Star,
   ClipboardText,
   Ghost,
-  Gift,
 } from "@solar-icons/react";
+import giftIcon from "@/assets/gift.png";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
