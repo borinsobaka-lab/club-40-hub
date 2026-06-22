@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import { ExternalLink, Loader2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
