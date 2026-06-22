@@ -169,10 +169,10 @@
 .gradient-blobs::after {
   content: "";
   position: absolute;
-  width: 64%;
+  width: 41.6%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(38px);
+  filter: blur(27px);
   opacity: 0.9;
   will-change: transform;
 }
@@ -180,133 +180,133 @@
   background: radial-gradient(circle, rgba(250, 204, 21, 0.98), rgba(250, 204, 21, 0) 70%);
   top: 5%;
   left: 8%;
-  animation: blob-drift-a 2.5s ease-in-out infinite alternate;
+  animation: blob-drift-a 5s ease-in-out infinite alternate;
 }
 .gradient-blobs::after {
   background: radial-gradient(circle, rgba(255, 170, 50, 0.95), rgba(255, 170, 50, 0) 70%);
   bottom: 8%;
   right: 5%;
-  animation: blob-drift-b 3s ease-in-out infinite alternate;
+  animation: blob-drift-b 6s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(1) {
   position: absolute;
-  width: 48%;
+  width: 31.2%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(32px);
+  filter: blur(22px);
   opacity: 0.85;
   background: radial-gradient(circle, rgba(253, 224, 71, 0.98), rgba(253, 224, 71, 0) 70%);
   top: 35%;
   left: 45%;
-  animation: blob-drift-c 2s ease-in-out infinite alternate;
+  animation: blob-drift-c 4s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(2) {
   position: absolute;
-  width: 44%;
+  width: 28.6%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(28px);
+  filter: blur(20px);
   opacity: 0.8;
   background: radial-gradient(circle, rgba(251, 191, 36, 0.98), rgba(251, 191, 36, 0) 70%);
   top: 50%;
   left: 15%;
-  animation: blob-drift-d 2.75s ease-in-out infinite alternate;
+  animation: blob-drift-d 5.5s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(3) {
   position: absolute;
-  width: 40%;
+  width: 26%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(26px);
+  filter: blur(18px);
   opacity: 0.75;
   background: radial-gradient(circle, rgba(255, 200, 60, 0.98), rgba(255, 200, 60, 0) 70%);
   top: 10%;
   right: 20%;
-  animation: blob-drift-e 2.25s ease-in-out infinite alternate;
+  animation: blob-drift-e 4.5s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(4) {
   position: absolute;
-  width: 56%;
+  width: 36.4%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(34px);
+  filter: blur(24px);
   opacity: 0.88;
   background: radial-gradient(circle, rgba(250, 210, 50, 0.98), rgba(250, 210, 50, 0) 70%);
   bottom: 2%;
   left: 35%;
-  animation: blob-drift-f 3s ease-in-out infinite alternate;
+  animation: blob-drift-f 6s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(5) {
   position: absolute;
-  width: 36%;
+  width: 23.4%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(22px);
+  filter: blur(15px);
   opacity: 0.72;
   background: radial-gradient(circle, rgba(254, 240, 138, 0.98), rgba(254, 240, 138, 0) 70%);
   top: 60%;
   right: 10%;
-  animation: blob-drift-g 1.5s ease-in-out infinite alternate;
+  animation: blob-drift-g 3s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(6) {
   position: absolute;
-  width: 32%;
+  width: 20.8%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(26px);
+  filter: blur(18px);
   opacity: 0.78;
   background: radial-gradient(circle, rgba(253, 224, 71, 0.98), rgba(253, 224, 71, 0) 70%);
   top: 20%;
   left: 60%;
-  animation: blob-drift-h 1.25s ease-in-out infinite alternate;
+  animation: blob-drift-h 2.5s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(7) {
   position: absolute;
-  width: 38%;
+  width: 24.7%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(28px);
+  filter: blur(20px);
   opacity: 0.73;
   background: radial-gradient(circle, rgba(255, 170, 50, 0.98), rgba(255, 170, 50, 0) 70%);
   top: 65%;
   left: 30%;
-  animation: blob-drift-i 1.75s ease-in-out infinite alternate;
+  animation: blob-drift-i 3.5s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(8) {
   position: absolute;
-  width: 28%;
+  width: 18.2%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(22px);
+  filter: blur(15px);
   opacity: 0.65;
   background: radial-gradient(circle, rgba(250, 210, 50, 0.98), rgba(250, 210, 50, 0) 70%);
   top: 40%;
   right: 2%;
-  animation: blob-drift-j 1s ease-in-out infinite alternate;
+  animation: blob-drift-j 2s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(9) {
   position: absolute;
-  width: 42%;
+  width: 27.3%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(32px);
+  filter: blur(22px);
   opacity: 0.82;
   background: radial-gradient(circle, rgba(251, 191, 36, 0.98), rgba(251, 191, 36, 0) 70%);
   top: 2%;
   left: 40%;
-  animation: blob-drift-k 1.5s ease-in-out infinite alternate;
+  animation: blob-drift-k 3s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(10) {
   position: absolute;
-  width: 24%;
+  width: 15.6%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(34px);
+  filter: blur(24px);
   opacity: 0.58;
   background: radial-gradient(circle, rgba(254, 240, 138, 0.98), rgba(254, 240, 138, 0) 70%);
   bottom: 10%;
   right: 35%;
-  animation: blob-drift-l 1.25s ease-in-out infinite alternate;
+  animation: blob-drift-l 2.5s ease-in-out infinite alternate;
 }
 
 @keyframes blob-drift-a {
@@ -359,99 +359,99 @@
 }
 .gradient-blobs > span:nth-child(11) {
   position: absolute;
-  width: 52%;
+  width: 33.8%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(38px);
+  filter: blur(27px);
   opacity: 0.9;
   background: radial-gradient(circle, rgba(255, 200, 50, 0.98), rgba(255, 200, 50, 0) 70%);
   top: 75%;
   left: 5%;
-  animation: blob-drift-m 2s ease-in-out infinite alternate;
+  animation: blob-drift-m 4s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(12) {
   position: absolute;
-  width: 30%;
+  width: 19.5%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(26px);
+  filter: blur(18px);
   opacity: 0.7;
   background: radial-gradient(circle, rgba(250, 180, 40, 0.98), rgba(250, 180, 40, 0) 70%);
   top: 12%;
   right: 8%;
-  animation: blob-drift-n 1.2s ease-in-out infinite alternate;
+  animation: blob-drift-n 2.4s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(13) {
-  position: absolute;
-  width: 40%;
-  aspect-ratio: 1 / 1;
-  border-radius: 9999px;
-  filter: blur(32px);
-  opacity: 0.82;
-  background: radial-gradient(circle, rgba(254, 230, 100, 0.98), rgba(254, 230, 100, 0) 70%);
-  top: 48%;
-  left: 72%;
-  animation: blob-drift-o 1.8s ease-in-out infinite alternate;
-}
-.gradient-blobs > span:nth-child(14) {
-  position: absolute;
-  width: 34%;
-  aspect-ratio: 1 / 1;
-  border-radius: 9999px;
-  filter: blur(28px);
-  opacity: 0.76;
-  background: radial-gradient(circle, rgba(255, 210, 70, 0.98), rgba(255, 210, 70, 0) 70%);
-  bottom: 18%;
-  left: 55%;
-  animation: blob-drift-p 1.4s ease-in-out infinite alternate;
-}
-.gradient-blobs > span:nth-child(15) {
-  position: absolute;
-  width: 46%;
-  aspect-ratio: 1 / 1;
-  border-radius: 9999px;
-  filter: blur(34px);
-  opacity: 0.86;
-  background: radial-gradient(circle, rgba(253, 200, 60, 0.98), rgba(253, 200, 60, 0) 70%);
-  top: 82%;
-  right: 25%;
-  animation: blob-drift-q 2.2s ease-in-out infinite alternate;
-}
-.gradient-blobs > span:nth-child(16) {
   position: absolute;
   width: 26%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
   filter: blur(22px);
+  opacity: 0.82;
+  background: radial-gradient(circle, rgba(254, 230, 100, 0.98), rgba(254, 230, 100, 0) 70%);
+  top: 48%;
+  left: 72%;
+  animation: blob-drift-o 3.6s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(14) {
+  position: absolute;
+  width: 22.1%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(20px);
+  opacity: 0.76;
+  background: radial-gradient(circle, rgba(255, 210, 70, 0.98), rgba(255, 210, 70, 0) 70%);
+  bottom: 18%;
+  left: 55%;
+  animation: blob-drift-p 2.8s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(15) {
+  position: absolute;
+  width: 29.9%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(24px);
+  opacity: 0.86;
+  background: radial-gradient(circle, rgba(253, 200, 60, 0.98), rgba(253, 200, 60, 0) 70%);
+  top: 82%;
+  right: 25%;
+  animation: blob-drift-q 4.4s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(16) {
+  position: absolute;
+  width: 16.9%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(15px);
   opacity: 0.68;
   background: radial-gradient(circle, rgba(250, 220, 80, 0.98), rgba(250, 220, 80, 0) 70%);
   top: 28%;
   left: 3%;
-  animation: blob-drift-r 1.1s ease-in-out infinite alternate;
+  animation: blob-drift-r 2.2s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(17) {
   position: absolute;
-  width: 38%;
+  width: 24.7%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(30px);
+  filter: blur(21px);
   opacity: 0.8;
   background: radial-gradient(circle, rgba(255, 190, 45, 0.98), rgba(255, 190, 45, 0) 70%);
   top: 58%;
   right: 45%;
-  animation: blob-drift-s 1.6s ease-in-out infinite alternate;
+  animation: blob-drift-s 3.2s ease-in-out infinite alternate;
 }
 .gradient-blobs > span:nth-child(18) {
   position: absolute;
-  width: 32%;
+  width: 20.8%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(26px);
+  filter: blur(18px);
   opacity: 0.74;
   background: radial-gradient(circle, rgba(252, 215, 90, 0.98), rgba(252, 215, 90, 0) 70%);
   top: 88%;
   left: 20%;
-  animation: blob-drift-t 1.3s ease-in-out infinite alternate;
+  animation: blob-drift-t 2.6s ease-in-out infinite alternate;
 }
 
 @keyframes blob-drift-m {
