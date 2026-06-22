@@ -3,7 +3,7 @@ import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { Ticket, Clock, Dumbbell, Check, ShieldCheck, Loader2 } from "lucide-react";
+import { BIcon } from "@/components/b-icon";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -177,7 +177,7 @@ function MembershipsPage() {
 
         {(loading || authLoading) && user && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <BIcon name="arrow-clockwise" spin className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
 
@@ -189,7 +189,7 @@ function MembershipsPage() {
           <Card className="p-4 border-emerald-500/30 bg-emerald-500/5">
             <div className="flex items-start gap-3">
               <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                <ShieldCheck className="h-5 w-5 text-emerald-500" />
+                <BIcon name="shield-fill-check" className="h-5 w-5 text-emerald-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground">Активный абонемент</div>
@@ -235,11 +235,11 @@ function MembershipsPage() {
                       )}
                       <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          <Dumbbell className="h-3.5 w-3.5" />
+                          <BIcon name="lightning-charge-fill" className="h-3.5 w-3.5" />
                           {m.visits_count === null ? "Безлимит" : `${m.visits_count} занятий`}
                         </span>
                         <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
+                          <BIcon name="clock-fill" className="h-3.5 w-3.5" />
                           {m.duration_days} дней
                         </span>
                       </div>
@@ -324,21 +324,21 @@ function MembershipDrawer({
               className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: color + "20" }}
             >
-              <Ticket className="h-7 w-7" style={{ color }} />
+              <BIcon name="ticket-perforated-fill" className="h-7 w-7" style={{ color }} />
             </div>
           </div>
 
           <div className="mt-5 space-y-2">
             {features.map((f, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                <BIcon name="check-lg" className="h-4 w-4 text-emerald-500 shrink-0" />
                 <span>{f}</span>
               </div>
             ))}
           </div>
 
           <div className="mt-5 flex items-center gap-2 rounded-xl bg-muted p-3 text-sm">
-            <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+            <BIcon name="shield-fill-check" className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-muted-foreground">
               Абонемент активируется автоматически после оформления
             </span>

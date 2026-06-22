@@ -1,22 +1,22 @@
-import { Dumbbell, HeartPulse, Shuffle, Leaf, Activity, type LucideIcon } from "lucide-react";
-
 export const TYPE_META: Record<
   string,
-  { label: string; icon: LucideIcon; color: string; bg: string; stripe: string }
+  { label: string; icon: string; color: string; bg: string; stripe: string }
 > = {
-  cardio: { label: "Кардио", icon: HeartPulse, color: "text-blue-600", bg: "bg-blue-500/10", stripe: "bg-blue-500" },
-  strength: { label: "Силовая", icon: Dumbbell, color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
-  hybrid: { label: "Гибрид", icon: Shuffle, color: "text-violet-600", bg: "bg-violet-500/10", stripe: "bg-violet-500" },
-  recovery: { label: "Восстановление", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-500/10", stripe: "bg-emerald-500" },
+  cardio: { label: "Кардио", icon: "heart-pulse-fill", color: "text-blue-600", bg: "bg-blue-500/10", stripe: "bg-blue-500" },
+  strength: { label: "Силовая", icon: "lightning-charge-fill", color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
+  hybrid: { label: "Гибрид", icon: "shuffle", color: "text-violet-600", bg: "bg-violet-500/10", stripe: "bg-violet-500" },
+  recovery: { label: "Восстановление", icon: "flower1", color: "text-emerald-600", bg: "bg-emerald-500/10", stripe: "bg-emerald-500" },
 };
 
 export const TYPE_ORDER = ["cardio", "strength", "hybrid", "recovery"];
+
+const FALLBACK_ICON = "activity";
 
 export function workoutTypeMeta(type: string | null | undefined) {
   if (!type)
     return {
       label: "Тренировка",
-      icon: Activity,
+      icon: FALLBACK_ICON,
       color: "text-muted-foreground",
       bg: "bg-muted",
       stripe: "bg-muted-foreground/40",
@@ -27,7 +27,7 @@ export function workoutTypeMeta(type: string | null | undefined) {
   return (
     byLabel ?? {
       label: type,
-      icon: Activity,
+      icon: FALLBACK_ICON,
       color: "text-muted-foreground",
       bg: "bg-muted",
       stripe: "bg-muted-foreground/40",

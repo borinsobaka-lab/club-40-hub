@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+import { BIcon } from "@/components/b-icon";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/auth")({
@@ -124,12 +124,12 @@ function AuthPage() {
 
             <TabsContent value="signin" className="m-0">
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Войти"}
+                {busy ? <BIcon name="arrow-clockwise" spin className="h-4 w-4" /> : "Войти"}
               </Button>
             </TabsContent>
             <TabsContent value="signup" className="m-0">
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Создать аккаунт"}
+                {busy ? <BIcon name="arrow-clockwise" spin className="h-4 w-4" /> : "Создать аккаунт"}
               </Button>
             </TabsContent>
           </form>

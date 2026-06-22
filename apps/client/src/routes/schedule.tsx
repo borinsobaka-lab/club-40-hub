@@ -3,7 +3,7 @@ import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 
-import { Loader2, Plus, Minus } from "lucide-react";
+import { BIcon } from "@/components/b-icon";
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
@@ -242,7 +242,7 @@ function SchedulePage() {
                       : "bg-transparent text-foreground border-border"
                   }`}
                 >
-                  {Icon && <Icon className={`h-3.5 w-3.5 ${meta!.color}`} />}
+                  {Icon && <BIcon name={Icon} className={`h-3.5 w-3.5 ${meta!.color}`} />}
                   {t.label}
                 </button>
               );
@@ -252,7 +252,7 @@ function SchedulePage() {
 
           {loading ? (
             <div className="flex justify-center py-10 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <BIcon name="arrow-clockwise" spin className="h-5 w-5" />
             </div>
           ) : error ? (
             <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
@@ -354,11 +354,11 @@ function SchedulePage() {
                           aria-label={isBooked ? "Отменить запись" : "Записаться"}
                         >
                           {isPending ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <BIcon name="arrow-clockwise" spin className="h-5 w-5" />
                           ) : isBooked ? (
-                            <Minus className="h-6 w-6" strokeWidth={2.5} />
+                            <BIcon name="dash-lg" className="h-6 w-6" />
                           ) : (
-                            <Plus className="h-6 w-6" strokeWidth={2.5} />
+                            <BIcon name="plus-lg" className="h-6 w-6" />
                           )}
                         </span>
                       </Card>
