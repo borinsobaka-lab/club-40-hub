@@ -19,6 +19,14 @@ export function PageShell({ header, children }: PageShellProps) {
         <span />
         <span />
         <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
       </div>
       <div className="no-scrollbar relative z-10 h-full overflow-y-auto overscroll-contain">
         <div className="sticky top-0 z-0 text-white">{header}</div>
