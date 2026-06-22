@@ -51,7 +51,7 @@ export function BottomNav() {
       <div className="pointer-events-auto w-full max-w-md px-3 pb-3">
         <div className="flex items-end gap-2">
           {/* Main glass tile with 4 sections */}
-          <div className="glass-dark relative flex-1 rounded-2xl px-1.5 py-1.5">
+          <div className="glass-dark relative flex-1 rounded-3xl px-1.5 py-1.5">
             <ul className="grid grid-cols-4">
               {mainItems.map(({ to, label, Icon, exact }) => (
                 <li key={to}>
@@ -85,7 +85,7 @@ export function BottomNav() {
                 {moreOpen && (
                   <div
                     role="menu"
-                    className="glass-dark absolute bottom-full right-0 mb-2 w-52 origin-bottom-right rounded-2xl p-1.5 animate-in fade-in zoom-in-95"
+                    className="glass-dark absolute bottom-full right-0 mb-2 w-52 origin-bottom-right rounded-3xl p-1.5 animate-in fade-in zoom-in-95"
                   >
                     {moreItems.map(({ to, label, Icon }) => {
                       const active = pathname.startsWith(to);
@@ -115,7 +115,7 @@ export function BottomNav() {
             disabled
             aria-label="Ассистент (скоро)"
             title="Скоро"
-            className="assistant-glow glass-dark flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl text-white/70 cursor-not-allowed"
+            className="assistant-glow glass-dark flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-3xl text-white/70 cursor-not-allowed"
           >
             <span className="glow-orb" />
             <span className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[15px] font-black leading-none">
