@@ -10,7 +10,14 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { BIcon } from "@/components/b-icon";
+import {
+  Home,
+  CalendarCheck,
+  Trophy,
+  CreditCard,
+  User,
+  Loader2,
+} from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -122,11 +129,11 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 const navItems = [
-  { to: "/", label: "Главное", icon: "house-door-fill", exact: true },
-  { to: "/schedule", label: "Бронь", icon: "calendar-check-fill", exact: false },
-  { to: "/results", label: "Результаты", icon: "trophy-fill", exact: false },
-  { to: "/memberships", label: "Абонементы", icon: "credit-card-fill", exact: false },
-  { to: "/profile", label: "Профиль", icon: "person-fill", exact: false },
+  { to: "/", label: "Главное", Icon: Home, exact: true },
+  { to: "/schedule", label: "Бронь", Icon: CalendarCheck, exact: false },
+  { to: "/results", label: "Результаты", Icon: Trophy, exact: false },
+  { to: "/memberships", label: "Абонементы", Icon: CreditCard, exact: false },
+  { to: "/profile", label: "Профиль", Icon: User, exact: false },
 ] as const;
 
 function RootComponent() {
@@ -157,7 +164,7 @@ function AppShell() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <BIcon name="arrow-clockwise" spin className="h-6 w-6 text-muted-foreground" />
+        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
       </div>
     );
   }
@@ -185,7 +192,7 @@ function AppShell() {
         <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
           <div className="w-full max-w-md pointer-events-auto bg-background border-t border-border">
             <ul className="grid grid-cols-5">
-              {navItems.map(({ to, label, icon, exact }) => (
+              {navItems.map(({ to, label, Icon, exact }) => (
                 <li key={to}>
                   <Link
                     to={to}
@@ -194,7 +201,7 @@ function AppShell() {
                     inactiveProps={{ className: "text-muted-foreground" }}
                     className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
                   >
-                    <BIcon name={icon} className="h-5 w-5" />
+                    <Icon className="h-5 w-5" />
                     <span>{label}</span>
                   </Link>
                 </li>

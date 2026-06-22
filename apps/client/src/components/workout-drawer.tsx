@@ -1,7 +1,6 @@
 import { Drawer as DrawerPrimitive } from "vaul";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
-import { BIcon } from "@/components/b-icon";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -51,7 +50,7 @@ export function WorkoutDrawer({
 
                     {typeMeta && (
                       <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${typeMeta.bg} ${typeMeta.color}`}>
-                        {TypeIcon && <BIcon name={TypeIcon} className="h-3.5 w-3.5" />}
+                        {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
                         {typeMeta.label}
                       </div>
                     )}
