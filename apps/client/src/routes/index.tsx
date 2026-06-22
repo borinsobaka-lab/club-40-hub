@@ -243,7 +243,7 @@ function HomePage() {
             <div className="rounded-2xl bg-white/10 backdrop-blur-md p-1.5">
               <div className="flex items-stretch justify-between gap-2">
                 {[
-                  { icon: MessageSquare, label: "Написать" },
+                  { icon: ChatSquare, label: "Написать" },
                   { icon: Phone, label: "Позвонить" },
                   { icon: Star, label: "Фидбэк" },
                 ].map((item) => (
