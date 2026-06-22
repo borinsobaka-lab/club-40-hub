@@ -450,3 +450,73 @@
   0%   { transform: translate(0%, 0%) scale(1); }
   100% { transform: translate(25%, -12%) scale(1.15); }
 }
+
+/* Floating yellow glow for AI assistant button */
+.assistant-glow {
+  position: relative;
+  overflow: hidden;
+}
+.assistant-glow::before,
+.assistant-glow::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(14px);
+  pointer-events: none;
+  will-change: transform;
+}
+.assistant-glow::before {
+  width: 44px;
+  height: 44px;
+  background: radial-gradient(circle, rgba(255, 220, 0, 0.95), rgba(255, 200, 0, 0) 70%);
+  top: -6px;
+  left: -4px;
+  animation: assistant-blob-a 3s ease-in-out infinite alternate;
+}
+.assistant-glow::after {
+  width: 38px;
+  height: 38px;
+  background: radial-gradient(circle, rgba(255, 170, 30, 0.92), rgba(255, 170, 30, 0) 70%);
+  bottom: -4px;
+  right: -2px;
+  animation: assistant-blob-b 2.4s ease-in-out infinite alternate;
+}
+.assistant-glow > .glow-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(10px);
+  pointer-events: none;
+  will-change: transform;
+}
+.assistant-glow > .glow-orb:nth-of-type(1) {
+  width: 32px;
+  height: 32px;
+  background: radial-gradient(circle, rgba(255, 240, 80, 0.9), rgba(255, 240, 80, 0) 70%);
+  top: 8px;
+  right: -6px;
+  animation: assistant-blob-c 2.8s ease-in-out infinite alternate;
+}
+.assistant-glow > .glow-orb:nth-of-type(2) {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle, rgba(250, 200, 50, 0.88), rgba(250, 200, 50, 0) 70%);
+  bottom: 6px;
+  left: 2px;
+  animation: assistant-blob-d 3.2s ease-in-out infinite alternate;
+}
+@keyframes assistant-blob-a {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(8px, 6px) scale(1.15); }
+}
+@keyframes assistant-blob-b {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(-6px, -5px) scale(1.2); }
+}
+@keyframes assistant-blob-c {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(-5px, 7px) scale(1.1); }
+}
+@keyframes assistant-blob-d {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(6px, -4px) scale(0.95); }
+}
