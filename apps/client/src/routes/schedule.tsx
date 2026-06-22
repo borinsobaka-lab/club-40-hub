@@ -334,6 +334,16 @@ function SchedulePage() {
                               </div>
                             );
                           })()}
+                          {(() => {
+                            const left = remainingSpots(c.capacity, c.booked_count);
+                            if (left === null || left > 5 || left === 0) return null;
+                            return (
+                              <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
+                                <Fire className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                <span>Осталось {left} {pluralSeats(left)}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <span
                           role="button"
