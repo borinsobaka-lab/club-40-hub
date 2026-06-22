@@ -445,7 +445,7 @@
   pointer-events: none;
   will-change: transform;
   background: radial-gradient(circle, rgba(255, 230, 40, 1), rgba(255, 200, 0, 0.6) 45%, rgba(255, 180, 0, 0) 75%);
-  animation: assistant-orb 3.8s cubic-bezier(0.45, 0, 0.15, 1) infinite;
+  animation: assistant-orb 7.6s cubic-bezier(0.45, 0, 0.15, 1) infinite;
 }
 @keyframes assistant-orb {
   0%   { transform: translate(-13px, -9px) scale(1); }
