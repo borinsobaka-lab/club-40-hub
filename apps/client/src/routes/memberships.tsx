@@ -185,29 +185,8 @@ function MembershipsPage() {
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-black italic uppercase">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
-        </div>
-      }
-    >
-      <div className="p-4 space-y-4 pb-24">
-        {!user && !authLoading && (
-          <Card className="p-4 text-sm text-muted-foreground">
-            Войдите в аккаунт, чтобы увидеть абонементы.
-          </Card>
-        )}
-
-        {(loading || authLoading) && user && (
-          <div className="flex items-center justify-center py-12">
-            <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
-          </div>
-        )}
-
-        {error && !loading && (
-          <Card className="p-4 text-sm text-destructive">{error}</Card>
-        )}
-
-        {!loading && user && active && (
-          <div>
-            <Card className="p-4 border-emerald-500/30 bg-emerald-500/5">
+          {!loading && user && active && (
+            <Card className="mt-4 p-4 border-emerald-500/30 bg-emerald-500/5">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
                   <ShieldCheck className="h-5 w-5 text-emerald-500" />
@@ -226,7 +205,25 @@ function MembershipsPage() {
                 </div>
               </div>
             </Card>
+          )}
+        </div>
+      }
+    >
+      <div className="p-4 space-y-4 pb-24">
+        {!user && !authLoading && (
+          <Card className="p-4 text-sm text-muted-foreground">
+            Войдите в аккаунт, чтобы увидеть абонементы.
+          </Card>
+        )}
+
+        {(loading || authLoading) && user && (
+          <div className="flex items-center justify-center py-12">
+            <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
           </div>
+        )}
+
+        {error && !loading && (
+          <Card className="p-4 text-sm text-destructive">{error}</Card>
         )}
 
         {!loading && user && !error && memberships.length === 0 && !active && (
