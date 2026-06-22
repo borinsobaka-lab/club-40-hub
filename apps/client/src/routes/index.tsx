@@ -428,6 +428,8 @@ function HomePage() {
                               photo: resolvePublicUrl("workout-photos", e.workout?.photo_url),
                               trainerName,
                               trainerPhoto,
+                              startsAt: e.starts_at,
+                              endsAt: e.ends_at,
                             });
                           }}
                           className="w-full text-left active:opacity-80 transition-opacity"
