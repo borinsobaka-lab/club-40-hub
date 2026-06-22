@@ -306,8 +306,8 @@ function SchedulePage() {
                             {fmtTime(c.starts_at)}
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold break-words leading-snug">
+                        <div className="flex-1 min-w-0 ml-1">
+                          <div className="font-medium break-words leading-snug">
                             {c.workout?.name ?? "Занятие"}
                           </div>
                           {(() => {
