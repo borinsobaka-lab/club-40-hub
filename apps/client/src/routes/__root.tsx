@@ -10,7 +10,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Refresh } from "@solar-icons/react";
+import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
 
 import appCss from "../styles.css?url";
