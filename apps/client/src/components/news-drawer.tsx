@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { BIcon } from "@/components/b-icon";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 
@@ -61,7 +61,7 @@ export function NewsDrawer({
           <div className="flex-1 overflow-y-auto overscroll-contain pb-10">
             {loading || !item ? (
               <div className="flex justify-center py-16">
-                <BIcon name="arrow-clockwise" spin className="h-5 w-5 text-muted-foreground" />
+                <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
               </div>
             ) : (
               <>
