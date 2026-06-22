@@ -1,100 +1,81 @@
-# Активные абонементы и продажи из мобильного приложения
+## Проблема
 
-## Что меняется в схеме БД (SQL)
+Ошибка `new row violates row-level security policy for table "sales"` возникает потому, что у таблицы `public.sales` сейчас одна-единственная RLS-политика:
 
-Новый файл `db/client_memberships.sql` плюс правки в `db/sales.sql`.
-
-### 1. `public.sales` — источник продажи
+```sql
+create policy "sales studio rw" on public.sales
+  for all to authenticated
+  using (public.is_trainer(auth.uid(), studio_id))
+  with check (public.is_trainer(auth.uid(), studio_id));
 ```
-alter table public.sales
-  add column if not exists source text not null default 'admin'
-    check (source in ('admin','mobile'));
+
+Она разрешает читать/писать `sales` **только тренерам студии**. Когда мобильное приложение делает `insert` от имени обычного клиента (он не тренер), `WITH CHECK` не проходит — и Postgres возвращает ту самую ошибку. Я в прошлый раз написал «RLS уже настроен, клиент может вставлять sales от своего имени» — это было неверно, политику для клиента я не добавил. Извиняюсь.
+
+В базе всё корректно структурно, не хватает только политики, которая разрешает клиенту вставить продажу для самого себя.
+
+## Что сделаю
+
+Добавлю миграцию `db/sales_client_rls.sql`, которая:
+
+1. Добавит INSERT-политику для клиента — он может вставить строку в `sales`, только если:
+   - `client_id` действительно его (`exists (select 1 from clients c where c.id = sales.client_id and c.user_id = auth.uid())`),
+   - `studio_id` совпадает со студией этого клиента,
+   - `admin_id IS NULL` (поле `admin_id` остаётся для портала — клиент не должен подсовывать туда чужой uid),
+   - `remaining_installments = 0` (рассрочку оформляет только администратор; клиент в приложении платит сразу).
+2. Добавит SELECT-политику для клиента — он видит только свои продажи (`client_id` его).
+3. Аналогично для `sale_installments` через EXISTS по `sales`.
+
+Тренерскую политику `sales studio rw` не трогаю — она продолжает работать для портала.
+
+## SQL, который нужно будет выполнить
+
+```sql
+-- SELECT собственных продаж для клиента мобильного приложения
+drop policy if exists "sales client select own" on public.sales;
+create policy "sales client select own" on public.sales
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.clients c
+      where c.id = sales.client_id
+        and c.user_id = auth.uid()
+    )
+  );
+
+-- INSERT собственной покупки из мобильного приложения
+drop policy if exists "sales client insert own" on public.sales;
+create policy "sales client insert own" on public.sales
+  for insert to authenticated
+  with check (
+    admin_id is null
+    and remaining_installments = 0
+    and exists (
+      select 1 from public.clients c
+      where c.id = sales.client_id
+        and c.user_id = auth.uid()
+        and c.studio_id = sales.studio_id
+    )
+  );
+
+-- Те же права на sale_installments через родительский sale
+drop policy if exists "sale_installments client select own" on public.sale_installments;
+create policy "sale_installments client select own" on public.sale_installments
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.sales s
+      join public.clients c on c.id = s.client_id
+      where s.id = sale_installments.sale_id
+        and c.user_id = auth.uid()
+    )
+  );
 ```
-`admin` — продажа вручную на портале (может быть с рассрочкой).
-`mobile` — оплата из мобильного приложения (всегда полная, `remaining_installments = 0`).
 
-### 2. `public.client_memberships` — активный абонемент клиента
-```
-create table public.client_memberships (
-  id uuid primary key default gen_random_uuid(),
-  studio_id uuid not null references public.studios(id) on delete cascade,
-  client_id uuid not null references public.clients(id) on delete cascade,
-  membership_id uuid not null references public.memberships(id) on delete restrict,
-  sale_id uuid references public.sales(id) on delete set null,
-  source text not null default 'admin' check (source in ('admin','mobile')),
-  started_at date not null default current_date,
-  ends_at date,                 -- null = бессрочно
-  visits_left int,              -- null = безлимит
-  status text not null default 'active' check (status in ('active','replaced','expired','cancelled')),
-  created_at timestamptz not null default now()
-);
-```
-Уникальный частичный индекс — гарантирует один активный абонемент на клиента:
-```
-create unique index client_memberships_one_active
-  on public.client_memberships(client_id) where status = 'active';
-```
-GRANT + RLS как у `sales` (по `is_trainer` и `current_studio_id`).
+## Что сказать мобильному разработчику
 
-### 3. Триггер автосоздания активного абонемента при `INSERT INTO sales`
-Серверная функция `public.activate_membership_from_sale()` (SECURITY DEFINER):
-- если у клиента уже есть `active` — переводит его в `replaced`;
-- считает `ends_at = sold_at + memberships.duration_days`;
-- `visits_left = memberships.visits_count` (или NULL = безлимит);
-- вставляет новую строку `active` с `source = NEW.source`.
+- Схема та же, ничего в коде менять не нужно: всё тот же `insert` в `public.sales` со студией/клиентом/абонементом и `down_payment_amount = total_amount`, `remaining_installments = 0`, `admin_id = null`, `admin_name = null`.
+- После выполнения миграции покупка пройдёт, и клиент сам сможет читать свои продажи через `select * from sales where client_id = <его client.id>`.
 
-Это покрывает оба сценария — и портал, и мобильное приложение (мобильное просто вставит `sales` с `source='mobile'`).
+## После применения
 
-## Что меняется в портале
-
-### `src/routes/_authenticated/sales.tsx`
-- Колонка «Источник» (badge: «Портал» / «Приложение»).
-- В `SaleDialog`:
-  - Поле `source` фиксировано `admin` (не выбирается).
-  - Перед сохранением — проверка: если у клиента уже есть активный абонемент, показать модалку-подтверждение «У клиента уже есть активный абонемент «X». Новая продажа заменит его. Продолжить?». При подтверждении продажа создаётся, триггер сам переведёт старый в `replaced`.
-  - Рассрочка остаётся только для `admin`-продаж.
-
-### `src/components/client-card-dialog.tsx`
-- Новый блок «Активный абонемент» сверху, над историей продаж:
-  - Название, источник, `started_at → ends_at`, «осталось посещений: N / безлимит».
-  - Кнопка «Редактировать» — открывает `EditActiveMembershipDialog` (новый компонент): поля `ends_at` (date) и `visits_left` (number или «безлимит»). Сохраняет `update client_memberships`.
-  - Если активного нет — пометка «Нет активного абонемента».
-- История продаж получает бейдж источника возле даты.
-
-### Новый компонент `src/components/edit-active-membership-dialog.tsx`
-Простой Dialog с двумя полями + сохранение в `client_memberships`.
-
-## Инструкция для мобильной разработки
-
-При успешной оплате абонемента мобильное приложение делает один insert:
-```
-insert into sales (
-  studio_id, client_id, membership_id,
-  sold_at, total_amount,
-  down_payment_amount, remaining_installments,
-  source
-) values (
-  :studio_id, :client_id, :membership_id,
-  current_date, :price,
-  :price, 0,
-  'mobile'
-);
-```
-Триггер сам:
-- создаст/перепишет `client_memberships` (активный),
-- проставит срок и оставшиеся посещения по выбранной номенклатуре.
-
-Перед покупкой клиент в приложении должен получать ошибку, если уже есть активный абонемент. Простой запрос:
-```
-select id, membership_id, ends_at, visits_left
-from client_memberships
-where client_id = :client_id and status = 'active'
-limit 1;
-```
-Если строка есть — покупка из приложения запрещена (на портале админ может «перебить»).
-
-## Проверка после внедрения
-1. Создать продажу на портале → у клиента появляется активный абонемент с верными датой/посещениями.
-2. Создать вторую продажу → диалог-подтверждение, старый абонемент `replaced`, новый `active`.
-3. В карточке клиента отредактировать срок/посещения — сохраняется в `client_memberships`.
-4. Эмуляция мобильной покупки: `insert into sales (..., source='mobile')` через SQL → активный абонемент создаётся без рассрочки, в списке продаж видна как «Приложение».
+Прогоним сквозной тест: покупка из мобильного → запись появилась в `sales` → видна на портале в разделе «Продажи».
