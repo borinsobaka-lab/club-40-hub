@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, X, Search } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, X, Search, Copy } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -47,6 +49,7 @@ type Membership = {
   auto_renew: boolean;
   installment_enabled: boolean;
   price: number;
+  is_active: boolean;
 };
 
 function formatPrice(v: number) {
@@ -103,6 +106,29 @@ function MembershipsPage() {
     }
     toast.success("Номенклатура удалена");
     fetchItems();
+  };
+
+  const handleToggleActive = async (m: Membership, next: boolean) => {
+    const { error } = await supabase
+      .from("memberships")
+      .update({ is_active: next })
+      .eq("id", m.id);
+    if (error) {
+      toast.error("Не удалось изменить статус: " + error.message);
+      return;
+    }
+    toast.success(next ? "Абонемент активен" : "Абонемент скрыт в приложении");
+    fetchItems();
+  };
+
+  const handleClone = (m: Membership) => {
+    setEditing({
+      ...m,
+      id: "",
+      name: `${m.name} (копия)`,
+      is_active: true,
+    });
+    setOpen(true);
   };
 
   const q = search.trim().toLowerCase();
@@ -164,19 +190,20 @@ function MembershipsPage() {
                     <TableHead>Автопродление</TableHead>
                     <TableHead>Рассрочка</TableHead>
                     <TableHead>Цена</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead className="w-[140px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
                         {items.length === 0
                           ? "Пока нет абонементов. Нажмите «Добавить абонемент»."
                           : "Ничего не найдено."}
@@ -184,7 +211,7 @@ function MembershipsPage() {
                     </TableRow>
                   ) : (
                     pg.paged.map((m) => (
-                      <TableRow key={m.id}>
+                      <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
                         <TableCell className="font-medium">{m.name}</TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
                           {m.description ?? "—"}
@@ -206,10 +233,32 @@ function MembershipsPage() {
                         <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
                         <TableCell className="font-medium">{formatPrice(Number(m.price))}</TableCell>
                         <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={m.is_active}
+                              onCheckedChange={(v) => handleToggleActive(m, v)}
+                            />
+                            {m.is_active ? (
+                              <Badge variant="secondary">Активен</Badge>
+                            ) : (
+                              <Badge variant="outline">Скрыт</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
+                              title="Дублировать (создать обновлённую копию)"
+                              onClick={() => handleClone(m)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Редактировать"
                               onClick={() => {
                                 setEditing(m);
                                 setOpen(true);
@@ -217,7 +266,7 @@ function MembershipsPage() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}>
+                            <Button variant="ghost" size="icon" title="Удалить" onClick={() => handleDelete(m)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -267,7 +316,10 @@ function MembershipDialog({
   const [autoRenew, setAutoRenew] = useState(false);
   const [installmentEnabled, setInstallmentEnabled] = useState(false);
   const [price, setPrice] = useState<string>("");
+  const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const isEditing = !!membership?.id;
 
   useEffect(() => {
     if (!open) return;
@@ -281,6 +333,7 @@ function MembershipDialog({
     setAutoRenew(membership?.auto_renew ?? false);
     setInstallmentEnabled(membership?.installment_enabled ?? false);
     setPrice(membership?.price != null ? String(membership.price) : "");
+    setIsActive(membership?.is_active ?? true);
   }, [open, membership]);
 
   const addBenefit = () => {
@@ -311,16 +364,17 @@ function MembershipDialog({
       auto_renew: autoRenew,
       installment_enabled: installmentEnabled,
       price: price ? Number(price) : 0,
+      is_active: isActive,
     };
-    const { error } = membership
-      ? await supabase.from("memberships").update(payload).eq("id", membership.id)
+    const { error } = isEditing
+      ? await supabase.from("memberships").update(payload).eq("id", membership!.id)
       : await supabase.from("memberships").insert(payload);
     setSaving(false);
     if (error) {
       toast.error("Ошибка сохранения: " + error.message);
       return;
     }
-    toast.success(membership ? "Абонемент обновлён" : "Абонемент добавлен");
+    toast.success(isEditing ? "Абонемент обновлён" : "Абонемент добавлен");
     onOpenChange(false);
     onSaved();
   };
@@ -329,7 +383,7 @@ function MembershipDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{membership ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
           <DialogDescription>Заполните параметры номенклатуры.</DialogDescription>
         </DialogHeader>
 
@@ -430,6 +484,24 @@ function MembershipDialog({
             <Checkbox checked={installmentEnabled} onCheckedChange={(v) => setInstallmentEnabled(!!v)} />
             Рассрочка доступна
           </label>
+
+          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">Показывать в мобильном приложении</div>
+              <div className="text-xs text-muted-foreground">
+                Выключите, чтобы новые клиенты не могли его купить. Уже купившие сохранят условия.
+              </div>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
+          {isEditing && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+              Изменения цены и условий применятся ко всем будущим продажам этого абонемента.
+              Если у вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию,
+              а старую запись скройте переключателем выше.
+            </div>
+          )}
         </div>
 
         <DialogFooter>

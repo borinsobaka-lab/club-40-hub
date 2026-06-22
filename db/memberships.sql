@@ -11,6 +11,7 @@ create table if not exists public.memberships (
   auto_renew boolean not null default false,
   installment_enabled boolean not null default false,
   price numeric(12,2) not null default 0,
+  is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -26,6 +27,7 @@ alter table public.memberships
   add column if not exists auto_renew boolean not null default false,
   add column if not exists installment_enabled boolean not null default false,
   add column if not exists price numeric(12,2) not null default 0,
+  add column if not exists is_active boolean not null default true,
   add column if not exists created_at timestamptz not null default now();
 
 -- Remove legacy membership-assignment fields if they exist (older schema versions
