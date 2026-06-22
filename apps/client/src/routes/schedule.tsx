@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Refresh, MinusSquare } from "@solar-icons/react";
+import { Refresh, MinusSquare, Fire } from "@solar-icons/react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
@@ -36,6 +36,8 @@ type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
+  capacity: number | null;
+  booked_count: number;
   workout: Workout | null;
   trainers: { trainer: Trainer | null }[] | null;
 };
@@ -60,6 +62,17 @@ function addDays(d: Date, n: number) {
 }
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+function remainingSpots(capacity: number | null, booked: number) {
+  if (capacity == null) return null;
+  return Math.max(0, capacity - booked);
+}
+function pluralSeats(n: number) {
+  if (n % 100 >= 11 && n % 100 <= 14) return "мест";
+  const r = n % 10;
+  if (r === 1) return "место";
+  if (r >= 2 && r <= 4) return "места";
+  return "мест";
 }
 
 
@@ -89,7 +102,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
+          "id, starts_at, ends_at, capacity, booked_count, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -318,6 +331,16 @@ function SchedulePage() {
                             return (
                               <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
                                 {names.join(", ")}
+                              </div>
+                            );
+                          })()}
+                          {(() => {
+                            const left = remainingSpots(c.capacity, c.booked_count);
+                            if (left === null || left > 5 || left === 0) return null;
+                            return (
+                              <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
+                                <Fire className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                <span>Осталось {left} {pluralSeats(left)}</span>
                               </div>
                             );
                           })()}
