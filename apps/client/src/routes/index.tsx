@@ -396,7 +396,7 @@ function HomePage() {
                     {group.items.map((b) => {
                       const e = b.entry!;
                       const meta = workoutTypeMeta(e.workout?.type);
-                      const isPending = pendingId === e.id;
+                      void pendingId;
                       const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
                         hour: "2-digit",
                         minute: "2-digit",
