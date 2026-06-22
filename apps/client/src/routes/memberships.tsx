@@ -316,78 +316,72 @@ function MembershipDrawer({
     ...((membership.benefits ?? []).filter(Boolean) as string[]),
   ];
 
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <div
-      className={`fixed inset-0 z-[100] ${open ? "pointer-events-auto" : "pointer-events-none"}`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onOpenChange(false);
-      }}
-    >
-      <div
-        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0"}`}
-      />
-      <div
-        className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-2xl bg-background transition-transform duration-300 ${open ? "translate-y-0" : "translate-y-full"}`}
-      >
-        <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
-        <div className="overflow-y-auto overscroll-contain px-4 pt-3 pb-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-bold leading-tight">{membership.name}</h2>
-              {membership.description && (
-                <p className="text-sm text-muted-foreground mt-1">{membership.description}</p>
-              )}
+  return (
+    <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
+      <DrawerPrimitive.Portal>
+        <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
+        <DrawerPrimitive.Content
+          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-2xl border-t border-border bg-background outline-none"
+          aria-describedby={undefined}
+        >
+          <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+24px)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
+                  {membership.name}
+                </DrawerPrimitive.Title>
+                {membership.description && (
+                  <p className="text-sm text-muted-foreground mt-1">{membership.description}</p>
+                )}
+              </div>
+              <div
+                className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: color + "20" }}
+              >
+                <Ticket className="h-7 w-7" style={{ color }} />
+              </div>
             </div>
-            <div
-              className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: color + "20" }}
+
+            <div className="mt-5 space-y-2">
+              {features.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" weight="BoldDuotone" />
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center gap-2 rounded-xl bg-muted p-3 text-sm">
+              <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground">
+                Абонемент активируется автоматически после оформления
+              </span>
+            </div>
+
+            <div className="mt-6 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-muted-foreground">Стоимость</div>
+                <div className="text-2xl font-black">
+                  {Number(membership.price).toLocaleString("ru-RU")}₽
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={onPurchase}
+              disabled={purchasing || disabled}
+              className="mt-4 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
             >
-              <Ticket className="h-7 w-7" style={{ color }} />
-            </div>
+              {disabled
+                ? "У вас уже есть активный абонемент"
+                : purchasing
+                  ? "Оформляем…"
+                  : "Приобрести"}
+            </Button>
           </div>
-
-          <div className="mt-5 space-y-2">
-            {features.map((f, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" weight="BoldDuotone" />
-                <span>{f}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 flex items-center gap-2 rounded-xl bg-muted p-3 text-sm">
-            <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-muted-foreground">
-              Абонемент активируется автоматически после оформления
-            </span>
-          </div>
-
-          <div className="mt-6 flex items-center justify-between">
-            <div>
-              <div className="text-xs text-muted-foreground">Стоимость</div>
-              <div className="text-2xl font-black">
-                {Number(membership.price).toLocaleString("ru-RU")}₽
-              </div>
-            </div>
-          </div>
-
-          <Button
-            onClick={onPurchase}
-            disabled={purchasing || disabled}
-            className="mt-4 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
-          >
-            {disabled
-              ? "У вас уже есть активный абонемент"
-              : purchasing
-                ? "Оформляем…"
-                : "Приобрести"}
-          </Button>
-        </div>
-        <div className="h-[env(safe-area-inset-bottom)]" />
-      </div>
-    </div>,
-    document.body,
+        </DrawerPrimitive.Content>
+      </DrawerPrimitive.Portal>
+    </DrawerPrimitive.Root>
   );
 }
