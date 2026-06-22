@@ -207,7 +207,7 @@ function MembershipsPage() {
 
         {!loading && user && active && (
           <div>
-            <h2 className="text-sm font-semibold text-foreground mb-2">Мой абонемент</h2>
+            <h2 className="text-2xl font-bold italic uppercase mb-3">Мой абонемент</h2>
             <Card className="p-4 border-emerald-500/30 bg-emerald-500/5">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
@@ -239,8 +239,8 @@ function MembershipsPage() {
         {!loading &&
           memberships.some((m) => m.visits_count !== null) && (
             <div>
-              <h2 className="text-sm font-semibold text-foreground mb-1">Пакеты тренировок</h2>
-              <p className="text-xs text-muted-foreground mb-2">Оптимально для тех, кто занимается один-два раза в неделю</p>
+              <h2 className="text-2xl font-bold italic uppercase mb-3">Пакеты тренировок</h2>
+              <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается один-два раза в неделю</p>
               <div className="space-y-3">
                 {memberships
                   .filter((m) => m.visits_count !== null)
@@ -291,8 +291,8 @@ function MembershipsPage() {
         {!loading &&
           memberships.some((m) => m.visits_count === null) && (
             <div>
-              <h2 className="text-sm font-semibold text-foreground mb-1">Безлимитные абонементы</h2>
-              <p className="text-xs text-muted-foreground mb-2">Оптимально для тех, кто занимается три и более раз в неделю</p>
+              <h2 className="text-2xl font-bold italic uppercase mb-3">Безлимитные абонементы</h2>
+              <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается три и более раз в неделю</p>
               <div className="space-y-3">
                 {memberships
                   .filter((m) => m.visits_count === null)
