@@ -207,7 +207,7 @@ function MembershipsPage() {
 
         {!loading && user && active && (
           <div>
-            <h2 className="text-sm font-semibold text-white/90 mb-2">Мой абонемент</h2>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Мой абонемент</h2>
             <Card className="p-4 border-emerald-500/30 bg-emerald-500/5">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
