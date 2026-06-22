@@ -49,6 +49,7 @@ type Membership = {
   auto_renew: boolean;
   installment_enabled: boolean;
   price: number;
+  is_active: boolean;
 };
 
 function formatPrice(v: number) {
