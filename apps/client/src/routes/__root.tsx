@@ -10,14 +10,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import {
-  Home,
-  CalendarCheck,
-  Trophy,
-  CreditCard,
-  User,
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BottomNav } from "@/components/bottom-nav";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -128,13 +122,6 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const navItems = [
-  { to: "/", label: "Главное", Icon: Home, exact: true },
-  { to: "/schedule", label: "Бронь", Icon: CalendarCheck, exact: false },
-  { to: "/results", label: "Результаты", Icon: Trophy, exact: false },
-  { to: "/memberships", label: "Абонементы", Icon: CreditCard, exact: false },
-  { to: "/profile", label: "Профиль", Icon: User, exact: false },
-] as const;
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -188,28 +175,7 @@ function AppShell() {
           <Outlet />
         </main>
 
-
-        <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
-          <div className="w-full max-w-md pointer-events-auto bg-background border-t border-border">
-            <ul className="grid grid-cols-5">
-              {navItems.map(({ to, label, Icon, exact }) => (
-                <li key={to}>
-                  <Link
-                    to={to}
-                    activeOptions={{ exact }}
-                    activeProps={{ className: "text-primary" }}
-                    inactiveProps={{ className: "text-muted-foreground" }}
-                    className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{label}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="h-[env(safe-area-inset-bottom)]" />
-          </div>
-        </nav>
+        <BottomNav />
       </div>
     </div>
   );
