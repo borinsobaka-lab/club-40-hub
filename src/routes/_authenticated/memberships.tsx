@@ -50,7 +50,7 @@ type Membership = {
 };
 
 function formatPrice(v: number) {
-  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(v);
+  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "GEL", maximumFractionDigits: 0 }).format(v);
 }
 
 function formatDuration(days: number | null) {
@@ -408,7 +408,7 @@ function MembershipDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="m-price">Цена, ₽</Label>
+              <Label htmlFor="m-price">Цена, ₾</Label>
               <Input
                 id="m-price"
                 type="number"
