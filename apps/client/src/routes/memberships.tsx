@@ -169,7 +169,7 @@ function MembershipsPage() {
   return (
     <PageShell
       header={
-        <div className="pt-4 pb-8 px-4">
+        <div className="pt-4 pb-40 px-4">
           <h1 className="text-3xl font-black italic uppercase">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
         </div>
