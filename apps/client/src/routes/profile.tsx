@@ -370,7 +370,7 @@ function EditProfileSheet({
               </Avatar>
               <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
                 {uploadingAvatar ? (
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 ) : (
                   <Camera className="h-6 w-6 text-white drop-shadow" />
                 )}
@@ -485,7 +485,7 @@ function EditProfileSheet({
             Отмена
           </Button>
           <Button className="flex-1" onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {saving && <Refresh className="h-4 w-4 mr-2 animate-spin" weight="BoldDuotone" />}
             Сохранить
           </Button>
         </SheetFooter>
