@@ -175,28 +175,7 @@ function AppShell() {
           <Outlet />
         </main>
 
-
-        <nav className="fixed bottom-0 inset-x-0 z-30 flex justify-center pointer-events-none">
-          <div className="w-full max-w-md pointer-events-auto bg-background border-t border-border">
-            <ul className="grid grid-cols-5">
-              {navItems.map(({ to, label, Icon, exact }) => (
-                <li key={to}>
-                  <Link
-                    to={to}
-                    activeOptions={{ exact }}
-                    activeProps={{ className: "text-primary" }}
-                    inactiveProps={{ className: "text-muted-foreground" }}
-                    className="flex flex-col items-center justify-center gap-1 h-16 text-xs transition-colors"
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{label}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="h-[env(safe-area-inset-bottom)]" />
-          </div>
-        </nav>
+        <BottomNav />
       </div>
     </div>
   );
