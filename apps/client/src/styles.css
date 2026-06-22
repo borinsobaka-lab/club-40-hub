@@ -437,15 +437,15 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 22px;
-  height: 22px;
-  margin: -11px 0 0 -11px;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
   border-radius: 9999px;
-  filter: blur(3px);
+  filter: blur(5px);
   pointer-events: none;
   will-change: transform;
   background: radial-gradient(circle, rgba(255, 230, 40, 1), rgba(255, 200, 0, 0.6) 45%, rgba(255, 180, 0, 0) 75%);
-  animation: assistant-orb 2.35s cubic-bezier(0.45, 0, 0.15, 1) infinite;
+  animation: assistant-orb 3.8s cubic-bezier(0.45, 0, 0.15, 1) infinite;
 }
 @keyframes assistant-orb {
   0%   { transform: translate(-13px, -9px) scale(1); }
