@@ -87,6 +87,16 @@ function MembershipsPage() {
         if (cancelled) return;
         setClient({ id: c.id, studio_id: c.studio_id });
 
+        await db.from("profiles").upsert(
+          {
+            id: user.id,
+            studio_id: c.studio_id,
+            full_name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "",
+            email: user.email ?? null,
+          },
+          { onConflict: "id" },
+        );
+
         const membershipSelect =
           "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id";
         const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
