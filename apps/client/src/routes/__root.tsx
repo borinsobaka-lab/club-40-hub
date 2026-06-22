@@ -123,8 +123,6 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 
-import { SolarProvider } from "@solar-icons/react";
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
