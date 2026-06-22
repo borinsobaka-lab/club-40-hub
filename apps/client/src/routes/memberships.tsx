@@ -3,6 +3,7 @@ import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Refresh,
   ShieldCheck,
@@ -315,9 +316,11 @@ function MembershipDrawer({
     ...((membership.benefits ?? []).filter(Boolean) as string[]),
   ];
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className={`fixed inset-0 z-50 ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+      className={`fixed inset-0 z-[100] ${open ? "pointer-events-auto" : "pointer-events-none"}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onOpenChange(false);
       }}
@@ -384,6 +387,7 @@ function MembershipDrawer({
         </div>
         <div className="h-[env(safe-area-inset-bottom)]" />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
