@@ -246,7 +246,67 @@
   background: radial-gradient(circle, rgba(254, 240, 138, 0.95), rgba(254, 240, 138, 0) 70%);
   top: 65%;
   right: 15%;
-  animation: blob-drift-g 3.5s ease-in-out infinite alternate;
+  animation: blob-drift-g 3s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(6) {
+  position: absolute;
+  width: 9%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(10px);
+  opacity: 0.7;
+  background: radial-gradient(circle, rgba(253, 224, 71, 0.95), rgba(253, 224, 71, 0) 70%);
+  top: 25%;
+  left: 65%;
+  animation: blob-drift-h 2.5s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(7) {
+  position: absolute;
+  width: 11%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(12px);
+  opacity: 0.65;
+  background: radial-gradient(circle, rgba(255, 170, 50, 0.95), rgba(255, 170, 50, 0) 70%);
+  top: 70%;
+  left: 35%;
+  animation: blob-drift-i 3.5s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(8) {
+  position: absolute;
+  width: 8%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(8px);
+  opacity: 0.55;
+  background: radial-gradient(circle, rgba(250, 210, 50, 0.95), rgba(250, 210, 50, 0) 70%);
+  top: 45%;
+  right: 5%;
+  animation: blob-drift-j 2s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(9) {
+  position: absolute;
+  width: 13%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(14px);
+  opacity: 0.75;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.95), rgba(251, 191, 36, 0) 70%);
+  top: 5%;
+  left: 45%;
+  animation: blob-drift-k 3s ease-in-out infinite alternate;
+}
+.gradient-blobs > span:nth-child(10) {
+  position: absolute;
+  width: 7%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: blur(6px);
+  opacity: 0.5;
+  background: radial-gradient(circle, rgba(254, 240, 138, 0.95), rgba(254, 240, 138, 0) 70%);
+  bottom: 15%;
+  right: 40%;
+  animation: blob-drift-l 2.5s ease-in-out infinite alternate;
 }
 
 @keyframes blob-drift-a {
@@ -276,4 +336,24 @@
 @keyframes blob-drift-g {
   0%   { transform: translate(0%, 0%) scale(1); }
   100% { transform: translate(-20%, -15%) scale(0.95); }
+}
+@keyframes blob-drift-h {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(-18%, 22%) scale(1.08); }
+}
+@keyframes blob-drift-i {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(15%, -18%) scale(0.92); }
+}
+@keyframes blob-drift-j {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(-22%, 12%) scale(1.05); }
+}
+@keyframes blob-drift-k {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(10%, 28%) scale(0.9); }
+}
+@keyframes blob-drift-l {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  100% { transform: translate(-12%, -20%) scale(1.12); }
 }
