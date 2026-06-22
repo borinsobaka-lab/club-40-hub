@@ -23,7 +23,7 @@ const moreItems = [
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLLIElement>(null);
 
   const moreActive = moreItems.some((i) => pathname.startsWith(i.to));
 
