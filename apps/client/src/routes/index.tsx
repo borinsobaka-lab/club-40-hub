@@ -150,6 +150,32 @@ function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      (supabase as any)
+        .from("services")
+        .select("id,title,description,image_url,button_text,button_url,position")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: false })
+        .then(({ data }: { data: Service[] | null }) => {
+          if (!cancelled) setServices((data as Service[] | null) ?? []);
+        });
+    load();
+    const channel = supabase
+      .channel("services-feed")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "services" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <PageShell
       header={
