@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 type SquircleAvatarProps = React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> & {
   /** Pixel size of the avatar (square). Defaults to 44. */
   size?: number;
-  /** Corner radius in px. Defaults to ~24% of size. */
+  /** Corner radius in px. Defaults to ~40% of size for a softer Clubhouse shape. */
   cornerRadius?: number;
-  /** 0..1 smoothing (Figma slider 0..100%). Defaults to 0.6 (Clubhouse-like). */
+  /** 0..1 smoothing (Figma slider 0..100%). Defaults to 0.8 (stronger Clubhouse rounding). */
   cornerSmoothing?: number;
 };
 
@@ -30,7 +30,7 @@ const SquircleAvatar = React.forwardRef<
         width: size,
         height: size,
         cornerRadius: radius,
-        cornerSmoothing,
+        cornerSmoothing: smoothing,
       }),
     [size, radius, cornerSmoothing],
   );
@@ -79,8 +79,8 @@ SquircleAvatarFallback.displayName = "SquircleAvatarFallback";
 export { SquircleAvatar, SquircleAvatarImage, SquircleAvatarFallback };
 
 /** Returns a CSS `clip-path: path(...)` value for a Clubhouse-style squircle. */
-export function squircleClipPath(size: number, cornerRadius?: number, cornerSmoothing = 0.6) {
-  const radius = cornerRadius ?? Math.round(size * 0.24);
+export function squircleClipPath(size: number, cornerRadius?: number, cornerSmoothing = 0.8) {
+  const radius = cornerRadius ?? Math.round(size * 0.4);
   const path = getSvgPath({ width: size, height: size, cornerRadius: radius, cornerSmoothing });
   return `path('${path}')`;
 }
