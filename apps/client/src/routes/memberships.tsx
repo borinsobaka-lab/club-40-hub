@@ -235,9 +235,9 @@ function MembershipsPage() {
 
         {!loading && user && !error && memberships.length > 0 && (
           <Tabs defaultValue="unlimited" className="w-full">
-            <TabsList className="w-full mb-4">
-              <TabsTrigger value="unlimited" className="flex-1">Безлимитные</TabsTrigger>
-              <TabsTrigger value="packages" className="flex-1">Пакеты тренировок</TabsTrigger>
+            <TabsList className="w-full mt-6 mb-4 h-12 rounded-full bg-muted p-1">
+              <TabsTrigger value="unlimited" className="flex-1 h-full rounded-full data-[state=active]:bg-[#1B1C1F] data-[state=active]:text-white data-[state=active]:shadow-none">Безлимитные</TabsTrigger>
+              <TabsTrigger value="packages" className="flex-1 h-full rounded-full data-[state=active]:bg-[#1B1C1F] data-[state=active]:text-white data-[state=active]:shadow-none">Пакеты тренировок</TabsTrigger>
             </TabsList>
             <TabsContent value="unlimited">
               <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается три и более раз в неделю</p>
