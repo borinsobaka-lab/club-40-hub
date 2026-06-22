@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Refresh, MinusSquare } from "@solar-icons/react";
