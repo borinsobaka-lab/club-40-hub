@@ -356,9 +356,9 @@ function SchedulePage() {
                           {isPending ? (
                             <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
                           ) : isBooked ? (
-                            <Minus className="h-6 w-6" />
+                            <MinusSquare className="h-6 w-6" weight="BoldDuotone" />
                           ) : (
-                            <Plus className="h-6 w-6" />
+                            <AddSquare className="h-6 w-6" weight="BoldDuotone" />
                           )}
                         </span>
                       </Card>
