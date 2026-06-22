@@ -63,6 +63,17 @@ function addDays(d: Date, n: number) {
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
+function remainingSpots(capacity: number | null, booked: number) {
+  if (capacity == null) return null;
+  return Math.max(0, capacity - booked);
+}
+function pluralSeats(n: number) {
+  if (n % 100 >= 11 && n % 100 <= 14) return "мест";
+  const r = n % 10;
+  if (r === 1) return "место";
+  if (r >= 2 && r <= 4) return "места";
+  return "мест";
+}
 
 
 
