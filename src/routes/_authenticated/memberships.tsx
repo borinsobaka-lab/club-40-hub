@@ -190,19 +190,20 @@ function MembershipsPage() {
                     <TableHead>Автопродление</TableHead>
                     <TableHead>Рассрочка</TableHead>
                     <TableHead>Цена</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead className="w-[140px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
                         {items.length === 0
                           ? "Пока нет абонементов. Нажмите «Добавить абонемент»."
                           : "Ничего не найдено."}
@@ -210,7 +211,7 @@ function MembershipsPage() {
                     </TableRow>
                   ) : (
                     pg.paged.map((m) => (
-                      <TableRow key={m.id}>
+                      <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
                         <TableCell className="font-medium">{m.name}</TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
                           {m.description ?? "—"}
@@ -232,10 +233,32 @@ function MembershipsPage() {
                         <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
                         <TableCell className="font-medium">{formatPrice(Number(m.price))}</TableCell>
                         <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={m.is_active}
+                              onCheckedChange={(v) => handleToggleActive(m, v)}
+                            />
+                            {m.is_active ? (
+                              <Badge variant="secondary">Активен</Badge>
+                            ) : (
+                              <Badge variant="outline">Скрыт</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
+                              title="Дублировать (создать обновлённую копию)"
+                              onClick={() => handleClone(m)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Редактировать"
                               onClick={() => {
                                 setEditing(m);
                                 setOpen(true);
@@ -243,7 +266,7 @@ function MembershipsPage() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}>
+                            <Button variant="ghost" size="icon" title="Удалить" onClick={() => handleDelete(m)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
