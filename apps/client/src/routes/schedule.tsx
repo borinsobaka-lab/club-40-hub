@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Refresh, MinusSquare, Fire } from "@solar-icons/react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
@@ -142,9 +143,16 @@ function SchedulePage() {
     const { data, error } = await (supabase as any).rpc(fn, { p_entry_id: entryId });
     setPendingId(null);
     if (error) {
-      setError(error.message);
+      toast.error(`Не удалось ${isBooked ? "отменить запись" : "записаться"}: ${error.message}`);
       return;
     }
+    const reasonMessages: Record<string, string> = {
+      unauthorized: "Войдите в аккаунт, чтобы записаться",
+      not_found: "Тренировка не найдена",
+      past: "Эта тренировка уже прошла",
+      full: "Свободных мест больше нет",
+      not_booked: "Вы не были записаны на эту тренировку",
+    };
     const res = data as { ok: boolean; reason?: string } | null;
     if (res?.ok) {
       setBookedIds((prev) => {
@@ -153,8 +161,11 @@ function SchedulePage() {
         else next.add(entryId);
         return next;
       });
+      toast.success(isBooked ? "Запись отменена" : "Вы записаны на тренировку");
     } else if (res?.reason === "already_booked") {
       setBookedIds((prev) => new Set(prev).add(entryId));
+    } else if (res?.reason) {
+      toast.error(reasonMessages[res.reason] ?? `Не удалось выполнить действие: ${res.reason}`);
     }
   }
 
