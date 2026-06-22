@@ -239,7 +239,7 @@ function MembershipsPage() {
         {!loading &&
           memberships.some((m) => m.visits_count !== null) && (
             <div>
-              <h2 className="text-sm font-semibold text-white/90 mb-1">Пакеты тренировок</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-1">Пакеты тренировок</h2>
               <p className="text-xs text-muted-foreground mb-2">Оптимально для тех, кто занимается один-два раза в неделю</p>
               <div className="space-y-3">
                 {memberships
@@ -291,7 +291,7 @@ function MembershipsPage() {
         {!loading &&
           memberships.some((m) => m.visits_count === null) && (
             <div>
-              <h2 className="text-sm font-semibold text-white/90 mb-1">Безлимитные абонементы</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-1">Безлимитные абонементы</h2>
               <p className="text-xs text-muted-foreground mb-2">Оптимально для тех, кто занимается три и более раз в неделю</p>
               <div className="space-y-3">
                 {memberships
