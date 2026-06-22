@@ -164,30 +164,7 @@
 }
 
 /* Animated yellow gradient blobs for dark header zone */
-.gradient-blobs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
-.gradient-blobs::before,
-.gradient-blobs::after {
-  content: "";
-  position: absolute;
-  width: 41.6%;
-  aspect-ratio: 1 / 1;
-  border-radius: 9999px;
-  filter: blur(27px);
-  opacity: 0.9;
-  will-change: transform;
-}
-.gradient-blobs::before {
-  background: radial-gradient(circle, rgba(250, 204, 21, 0.98), rgba(250, 204, 21, 0) 70%);
-  top: var(--blob-before-top, 5%);
-  left: var(--blob-before-left, 8%);
-  animation: blob-drift-a 5s ease-in-out infinite alternate;
-}
-.gradient-blobs::after {
-  background: radial-gradient(circle, rgba(255, 170, 50, 0.95), rgba(255, 170, 50, 0) 70%);
-  bottom: var(--blob-after-bottom, 8%);
-  right: var(--blob-after-right, 5%);
-  animation: blob-drift-b 6s ease-in-out infinite alternate;
-}
+.gradient-blobs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; opacity: 0.65; }
 .gradient-blobs > span:nth-child(1) {
   position: absolute;
   width: 31.2%;
@@ -451,72 +428,29 @@
   100% { transform: translate(25%, -12%) scale(1.15); }
 }
 
-/* Floating yellow glow for AI assistant button */
+/* Floating yellow glow for AI assistant button — single bright orb */
 .assistant-glow {
   position: relative;
   overflow: hidden;
 }
-.assistant-glow::before,
-.assistant-glow::after {
-  content: "";
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(5px);
-  pointer-events: none;
-  will-change: transform;
-}
-.assistant-glow::before {
-  width: 22px;
-  height: 22px;
-  background: radial-gradient(circle, rgba(255, 225, 0, 1), rgba(255, 200, 0, 0) 72%);
-  top: 10px;
-  left: 8px;
-  animation: assistant-blob-a 3s ease-in-out infinite alternate;
-}
-.assistant-glow::after {
-  width: 18px;
-  height: 18px;
-  background: radial-gradient(circle, rgba(255, 160, 0, 1), rgba(255, 140, 0, 0) 72%);
-  bottom: 10px;
-  right: 8px;
-  animation: assistant-blob-b 2.4s ease-in-out infinite alternate;
-}
 .assistant-glow > .glow-orb {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
   border-radius: 9999px;
-  filter: blur(4px);
+  filter: blur(3px);
   pointer-events: none;
   will-change: transform;
+  background: radial-gradient(circle, rgba(255, 230, 40, 1), rgba(255, 200, 0, 0.6) 45%, rgba(255, 180, 0, 0) 75%);
+  animation: assistant-orb 3.2s ease-in-out infinite;
 }
-.assistant-glow > .glow-orb:nth-of-type(1) {
-  width: 16px;
-  height: 16px;
-  background: radial-gradient(circle, rgba(255, 245, 80, 1), rgba(255, 245, 80, 0) 72%);
-  top: 16px;
-  right: 8px;
-  animation: assistant-blob-c 2.8s ease-in-out infinite alternate;
-}
-.assistant-glow > .glow-orb:nth-of-type(2) {
-  width: 14px;
-  height: 14px;
-  background: radial-gradient(circle, rgba(255, 190, 0, 1), rgba(255, 190, 0, 0) 72%);
-  bottom: 16px;
-  left: 8px;
-  animation: assistant-blob-d 3.2s ease-in-out infinite alternate;
-}
-@keyframes assistant-blob-a {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(5px, 4px) scale(1.15); }
-}
-@keyframes assistant-blob-b {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-4px, -3px) scale(1.2); }
-}
-@keyframes assistant-blob-c {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-3px, 5px) scale(1.1); }
-}
-@keyframes assistant-blob-d {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(4px, -3px) scale(0.95); }
+@keyframes assistant-orb {
+  0%   { transform: translate(-14px, -10px) scale(1); }
+  25%  { transform: translate(13px, -12px) scale(1.15); }
+  50%  { transform: translate(14px, 11px) scale(0.95); }
+  75%  { transform: translate(-12px, 12px) scale(1.1); }
+  100% { transform: translate(-14px, -10px) scale(1); }
 }

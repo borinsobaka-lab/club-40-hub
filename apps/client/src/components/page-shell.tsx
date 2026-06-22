@@ -14,9 +14,9 @@ function seededRandom(seed: string) {
   };
 }
 
-const GRID_COLS = 5;
-const GRID_ROWS = 4; // 20 cells, drop 2 for variety -> 18 evenly distributed blobs
-const BLOB_COUNT = GRID_COLS * GRID_ROWS - 2;
+const GRID_COLS = 4;
+const GRID_ROWS = 3; // 12 cells, drop 4 -> 8 evenly distributed blobs
+const BLOB_COUNT = GRID_COLS * GRID_ROWS - 4;
 
 interface PageShellProps {
   header: ReactNode;
