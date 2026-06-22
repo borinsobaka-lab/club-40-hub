@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 import {
   AltArrowRight,
@@ -9,15 +9,21 @@ import {
   Star,
   ClipboardText,
   Ghost,
+  Refresh,
+  MinusSquare,
 } from "@solar-icons/react";
 import giftIcon from "@/assets/gift.png";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { NewsDrawer } from "@/components/news-drawer";
 import { ServiceDrawer } from "@/components/service-drawer";
+import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
+import { workoutTypeMeta } from "@/lib/workout-types";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,6 +34,20 @@ export const Route = createFileRoute("/")({
   }),
   component: HomePage,
 });
+
+function resolvePublicUrl(bucket: string, path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+const DAY_NAMES_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -57,13 +77,20 @@ type Service = {
   position: number;
 };
 
+type Trainer = { id: string; full_name: string | null; photo_url: string | null };
 type MyBooking = {
   entry_id: string;
   entry: {
     id: string;
     starts_at: string;
     ends_at: string;
-    workout: { name: string; type: string | null } | null;
+    workout: {
+      name: string;
+      type: string | null;
+      description: string | null;
+      photo_url: string | null;
+    } | null;
+    trainers: { trainer: Trainer | null }[] | null;
   } | null;
 };
 
@@ -76,6 +103,8 @@ function HomePage() {
   const [services, setServices] = useState<Service[] | null>(null);
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
+  const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -86,7 +115,7 @@ function HomePage() {
     const load = async () => {
       const { data } = await (supabase as any)
         .from("schedule_bookings")
-        .select("entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type))")
+        .select("entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))")
         .eq("status", "booked");
       if (cancelled) return;
       const rows = ((data as MyBooking[] | null) ?? [])
@@ -99,6 +128,42 @@ function HomePage() {
       cancelled = true;
     };
   }, [user]);
+
+  const groupedBookings = useMemo(() => {
+    if (!myBookings) return null;
+    const groups = new Map<number, MyBooking[]>();
+    for (const b of myBookings) {
+      if (!b.entry) continue;
+      const key = startOfDay(new Date(b.entry.starts_at)).getTime();
+      const arr = groups.get(key) ?? [];
+      arr.push(b);
+      groups.set(key, arr);
+    }
+    return Array.from(groups.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([ts, items]) => ({ ts, items }));
+  }, [myBookings]);
+
+  async function cancelBooking(entryId: string) {
+    if (pendingId) return;
+    setPendingId(entryId);
+    const { data, error } = await (supabase as any).rpc("cancel_schedule_booking", { p_entry_id: entryId });
+    setPendingId(null);
+    if (error) {
+      toast.error(`Не удалось отменить запись: ${error.message}`);
+      return;
+    }
+    const res = data as { ok: boolean; reason?: string } | null;
+    if (res?.ok) {
+      setMyBookings((prev) => (prev ?? []).filter((b) => b.entry_id !== entryId));
+      setOpenEntry(null);
+      toast.success("Запись отменена");
+    } else if (res?.reason) {
+      toast.error(`Не удалось отменить запись: ${res.reason}`);
+    }
+  }
+
+
 
 
   useEffect(() => {
@@ -318,31 +383,108 @@ function HomePage() {
               </Button>
             </div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
-              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
-              {myBookings.map((b) => {
-                const e = b.entry!;
-                const d = new Date(e.starts_at);
-                const dayLabel = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
-                const timeLabel = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+            <div className="px-4 space-y-5">
+              {groupedBookings!.map((group) => {
+                const d = new Date(group.ts);
+                const weekday = DAY_NAMES_FULL[d.getDay()];
+                const dateLabel = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
                 return (
-                  <Link
-                    key={b.entry_id}
-                    to="/schedule"
-                    className="shrink-0 snap-start w-60 rounded-2xl bg-[#FFE500] text-[#1B1C1F] p-4 flex flex-col gap-2 active:scale-[0.98] transition-transform"
-                  >
-                    <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
-                      {dayLabel} · {timeLabel}
+                  <div key={group.ts} className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {weekday}, {dateLabel}
                     </div>
-                    <div className="text-base font-bold leading-snug break-words">
-                      {e.workout?.name ?? "Занятие"}
-                    </div>
-                  </Link>
+                    {group.items.map((b) => {
+                      const e = b.entry!;
+                      const meta = workoutTypeMeta(e.workout?.type);
+                      const isPending = pendingId === e.id;
+                      const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      const trainerNames = (e.trainers ?? [])
+                        .map((t) => t.trainer?.full_name)
+                        .filter((n): n is string => !!n);
+                      return (
+                        <button
+                          key={b.entry_id}
+                          type="button"
+                          onClick={() => {
+                            const trainerList = (e.trainers ?? [])
+                              .map((t) => t.trainer)
+                              .filter((t): t is Trainer => !!t);
+                            const trainerName = trainerList
+                              .map((t) => t.full_name)
+                              .filter((n): n is string => !!n)
+                              .join(", ") || null;
+                            const trainerPhoto = resolvePublicUrl(
+                              "trainer-photos",
+                              trainerList.find((t) => !!t.photo_url)?.photo_url,
+                            );
+                            setOpenEntry({
+                              id: e.id,
+                              name: e.workout?.name ?? "Занятие",
+                              type: e.workout?.type ?? null,
+                              description: e.workout?.description ?? null,
+                              photo: resolvePublicUrl("workout-photos", e.workout?.photo_url),
+                              trainerName,
+                              trainerPhoto,
+                            });
+                          }}
+                          className="w-full text-left active:opacity-80 transition-opacity"
+                        >
+                          <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]">
+                            <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
+                            <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                              <div className="text-base font-bold italic tabular-nums leading-tight text-center">
+                                {timeLabel}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0 ml-1">
+                              <div className="font-medium break-words leading-snug">
+                                {e.workout?.name ?? "Занятие"}
+                              </div>
+                              {trainerNames.length > 0 && (
+                                <div className="text-xs mt-0.5 truncate text-[#1B1C1F]/70">
+                                  {trainerNames.join(", ")}
+                                </div>
+                              )}
+                            </div>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-disabled={isPending}
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                if (!isPending) cancelBooking(e.id);
+                              }}
+                              onKeyDown={(ev) => {
+                                if (ev.key === "Enter" || ev.key === " ") {
+                                  ev.preventDefault();
+                                  ev.stopPropagation();
+                                  if (!isPending) cancelBooking(e.id);
+                                }
+                              }}
+                              className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-white text-[#1B1C1F] border border-[#1B1C1F]/10 ${
+                                isPending ? "opacity-60" : ""
+                              }`}
+                              aria-label="Отменить запись"
+                            >
+                              {isPending ? (
+                                <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+                              ) : (
+                                <MinusSquare className="h-5 w-5" weight="BoldDuotone" />
+                              )}
+                            </span>
+                          </Card>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
-              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
             </div>
           )}
+
         </section>
 
         {/* Услуги */}
@@ -421,6 +563,19 @@ function HomePage() {
         open={openServiceId !== null}
         onOpenChange={(o) => {
           if (!o) setOpenServiceId(null);
+        }}
+      />
+
+      <WorkoutDrawer
+        data={openEntry}
+        open={openEntry !== null}
+        onOpenChange={(o) => {
+          if (!o) setOpenEntry(null);
+        }}
+        isBooked={true}
+        isPending={openEntry ? pendingId === openEntry.id : false}
+        onBook={() => {
+          if (openEntry) cancelBooking(openEntry.id);
         }}
       />
     </PageShell>
