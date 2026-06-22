@@ -1,11 +1,11 @@
 import {
   HeartPulse,
-  Zap,
+  Lightning,
   Shuffle,
-  Flower2,
-  Activity,
-  type LucideIcon,
-} from "lucide-react";
+  Leaf,
+  Pulse,
+  type Icon,
+} from "@solar-icons/react";
 
 export const TYPE_META: Record<
   string,
