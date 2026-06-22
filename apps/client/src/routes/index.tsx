@@ -72,6 +72,7 @@ function HomePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [news, setNews] = useState<News[] | null>(null);
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[] | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
 
   useEffect(() => {
