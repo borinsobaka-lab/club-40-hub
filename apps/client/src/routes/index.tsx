@@ -9,8 +9,8 @@ import {
   Star,
   ClipboardText,
   Ghost,
+  Gift,
 } from "@solar-icons/react";
-import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,7 +208,7 @@ function HomePage() {
                 aria-label="Подарки"
                 className="h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 active:opacity-90 transition-opacity shadow-md"
               >
-                <img src={giftAsset.url} alt="Подарки" className="h-5 w-5 object-contain" />
+                <Gift className="h-5 w-5 text-white" weight="BoldDuotone" />
               </button>
               <Link
                 to="/notifications"
