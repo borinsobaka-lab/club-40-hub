@@ -1,7 +1,9 @@
 import { Drawer as DrawerPrimitive } from "vaul";
+import { Calendar } from "@solar-icons/react";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
+import { addToCalendar } from "@/lib/calendar";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -11,6 +13,8 @@ export type WorkoutDrawerData = {
   photo: string | null;
   trainerName: string | null;
   trainerPhoto: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
 };
 
 export function WorkoutDrawer({
