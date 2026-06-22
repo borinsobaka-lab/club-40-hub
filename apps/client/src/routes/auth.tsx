@@ -124,7 +124,7 @@ function AuthPage() {
 
             <TabsContent value="signin" className="m-0">
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Войти"}
+                {busy ? <Refresh className="h-4 w-4 animate-spin" weight="BoldDuotone" /> : "Войти"}
               </Button>
             </TabsContent>
             <TabsContent value="signup" className="m-0">

@@ -61,7 +61,7 @@ export function NewsDrawer({
           <div className="flex-1 overflow-y-auto overscroll-contain pb-10">
             {loading || !item ? (
               <div className="flex justify-center py-16">
-                <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                <Refresh className="h-5 w-5 text-muted-foreground animate-spin" weight="BoldDuotone" />
               </div>
             ) : (
               <>

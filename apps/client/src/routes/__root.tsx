@@ -151,7 +151,7 @@ function AppShell() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+        <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
       </div>
     );
   }
