@@ -325,7 +325,7 @@ function HomePage() {
             </div>
           ) : news.length === 0 ? (
             <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
-              <Newspaper className="h-6 w-6" />
+              <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
               <span className="text-sm">Пока нет услуг</span>
             </div>
           ) : (
