@@ -274,7 +274,7 @@ function HomePage() {
           ) : myBookings.length === 0 ? (
             <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
               <Ghost className="h-14 w-14 text-muted-foreground" />
-              <div className="text-sm text-muted-foreground">Тренировок пока нет</div>
+              <div className="text-sm text-muted-foreground">У вас нет запланированных тренировок</div>
               <Button asChild className="text-sm font-bold">
                 <Link to="/schedule">Забронировать</Link>
               </Button>
