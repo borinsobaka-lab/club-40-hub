@@ -188,6 +188,8 @@ export function ClientCardDialog({
   const [active, setActive] = useState<ActiveCM | null>(null);
   const [loadingActive, setLoadingActive] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [profile, setProfile] = useState<MemberProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const load = () => {
     if (!client?.id) return;
@@ -212,12 +214,27 @@ export function ClientCardDialog({
         setLoadingActive(false);
         setActive((data as unknown as ActiveCM | null) ?? null);
       });
+    if (client.user_id) {
+      setLoadingProfile(true);
+      (supabase as unknown as { from: (t: string) => any })
+        .from("member_profiles")
+        .select("*")
+        .eq("user_id", client.user_id)
+        .maybeSingle()
+        .then(({ data }: { data: MemberProfile | null }) => {
+          setLoadingProfile(false);
+          setProfile(data ?? null);
+        });
+    } else {
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
     if (!open || !client?.id) {
       setSales([]);
       setActive(null);
+      setProfile(null);
       return;
     }
     load();
