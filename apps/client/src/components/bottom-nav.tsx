@@ -24,6 +24,7 @@ export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const moreActive = moreItems.some((i) => pathname.startsWith(i.to));
 
@@ -34,7 +35,13 @@ export function BottomNav() {
   useEffect(() => {
     if (!moreOpen) return;
     const onDown = (e: MouseEvent | TouchEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        moreRef.current &&
+        !moreRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
         setMoreOpen(false);
       }
     };
@@ -49,7 +56,7 @@ export function BottomNav() {
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center">
       <div className="pointer-events-auto w-full max-w-md px-3 pb-3">
-        <div className="flex items-end gap-2">
+        <div className="relative flex items-end gap-2">
           {/* Main glass tile with 4 sections */}
           <div className="glass-dark relative flex-1 rounded-3xl px-1.5 py-1.5">
             <ul className="grid grid-cols-4">
@@ -81,33 +88,34 @@ export function BottomNav() {
                   <MenuDots className="h-6 w-6" weight="BoldDuotone" />
                   <span>Ещё</span>
                 </button>
-
-                {moreOpen && (
-                  <div
-                    role="menu"
-                    className="glass-dark absolute bottom-full right-0 mb-2 w-52 origin-bottom-right rounded-3xl p-1.5 animate-in fade-in zoom-in-95"
-                  >
-                    {moreItems.map(({ to, label, Icon }) => {
-                      const active = pathname.startsWith(to);
-                      return (
-                        <Link
-                          key={to}
-                          to={to}
-                          role="menuitem"
-                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors active:bg-white/10 ${
-                            active ? "text-[#FFE500]" : "text-white/90"
-                          }`}
-                        >
-                          <Icon className="h-5 w-5" weight="BoldDuotone" />
-                          <span>{label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
               </li>
             </ul>
           </div>
+
+          {moreOpen && (
+            <div
+              ref={menuRef}
+              role="menu"
+              className="glass-dark absolute bottom-full right-[calc(0.5rem+68px)] mb-2 w-52 origin-bottom-right rounded-3xl p-1.5 animate-in fade-in zoom-in-95"
+            >
+              {moreItems.map(({ to, label, Icon }) => {
+                const active = pathname.startsWith(to);
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    role="menuitem"
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors active:bg-white/10 ${
+                      active ? "text-[#FFE500]" : "text-white/90"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" weight="BoldDuotone" />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
           {/* Assistant tile (disabled) */}
           <button
