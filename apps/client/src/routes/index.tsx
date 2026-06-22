@@ -34,6 +34,10 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
+function firstNameOnly(value: string | null | undefined) {
+  return value?.trim().split(/\s+/)[0] || "";
+}
+
 
 type News = {
   id: string;
@@ -96,11 +100,11 @@ function HomePage() {
       .then(({ data }) => {
         if (cancelled) return;
         const row = data as { full_name?: string | null; first_name?: string | null; last_name?: string | null; photo_url?: string | null } | null;
-        const composed = [row?.last_name, row?.first_name].filter(Boolean).join(" ").trim();
         const name =
-          composed ||
-          (row?.full_name as string | undefined) ||
-          (user.user_metadata?.full_name as string | undefined) ||
+          row?.first_name?.trim() ||
+          firstNameOnly(row?.full_name) ||
+          firstNameOnly(user.user_metadata?.first_name as string | undefined) ||
+          firstNameOnly(user.user_metadata?.full_name as string | undefined) ||
           "Участник";
         setFullName(name);
         setAvatarUrl(row?.photo_url ?? null);
