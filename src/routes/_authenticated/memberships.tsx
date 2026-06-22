@@ -351,7 +351,7 @@ function MembershipDialog({
       toast.error("Ошибка сохранения: " + error.message);
       return;
     }
-    toast.success(membership ? "Абонемент обновлён" : "Абонемент добавлен");
+    toast.success(isEditing ? "Абонемент обновлён" : "Абонемент добавлен");
     onOpenChange(false);
     onSaved();
   };
@@ -360,7 +360,7 @@ function MembershipDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{membership ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
           <DialogDescription>Заполните параметры номенклатуры.</DialogDescription>
         </DialogHeader>
 
