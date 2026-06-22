@@ -5,7 +5,7 @@ import {
   Leaf,
   Pulse,
 } from "@solar-icons/react";
-import { Shuffle } from "@solar-icons/react/icons/video";
+import { Shuffle } from "@solar-icons/react/icons/video/Shuffle";
 
 export const TYPE_META: Record<
   string,
