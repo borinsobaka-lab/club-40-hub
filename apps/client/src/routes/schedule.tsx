@@ -209,7 +209,7 @@ function SchedulePage() {
         </div>
       }
     >
-      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pt-4 pb-2">
+      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pt-4 pb-0">
         {TABS.map((t) => {
           const active = activeTab === t.key;
           return (
