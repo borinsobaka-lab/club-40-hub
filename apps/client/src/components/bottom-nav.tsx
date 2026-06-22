@@ -85,7 +85,7 @@ export function BottomNav() {
                 {moreOpen && (
                   <div
                     role="menu"
-                    className="glass-dark absolute bottom-full right-0 mb-2 w-52 origin-bottom-right rounded-3xl p-1.5 animate-in fade-in zoom-in-95"
+                    className="absolute bottom-full right-0 mb-2 w-52 origin-bottom-right rounded-3xl p-1.5 animate-in fade-in zoom-in-95 glass-menu"
                   >
                     {moreItems.map(({ to, label, Icon }) => {
                       const active = pathname.startsWith(to);
