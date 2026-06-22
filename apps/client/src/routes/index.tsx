@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 import {
   AltArrowRight,
   Bell,
@@ -188,12 +188,12 @@ function HomePage() {
               to="/profile"
               className="flex items-center gap-3 min-w-0 flex-1 -ml-1 rounded-xl px-1 py-1 active:bg-accent/50 transition-colors"
             >
-              <Avatar className="h-11 w-11">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName} />}
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+              <SquircleAvatar size={44}>
+                {avatarUrl && <SquircleAvatarImage src={avatarUrl} alt={fullName} />}
+                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {initials(fullName)}
-                </AvatarFallback>
-              </Avatar>
+                </SquircleAvatarFallback>
+              </SquircleAvatar>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 min-w-0">
                   <span className="font-semibold truncate">{fullName}</span>
