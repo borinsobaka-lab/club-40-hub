@@ -118,7 +118,6 @@ export function BottomNav() {
             className="assistant-glow glass-dark flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl text-white/70 cursor-not-allowed"
           >
             <span className="glow-orb" />
-            <span className="glow-orb" />
             <span className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[15px] font-black leading-none">
               W
             </span>
