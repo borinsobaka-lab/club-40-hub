@@ -295,15 +295,17 @@ function SchedulePage() {
                       }}
                       className="w-full text-left active:opacity-80 transition-opacity"
                     >
-                      <div className="text-base font-bold italic tabular-nums leading-tight mb-1 px-1">
-                        {fmtTime(c.starts_at)}
-                      </div>
                       <Card
                         className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
                           isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
                         }`}
                       >
                         <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
+                        <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                          <div className="text-base font-bold italic tabular-nums leading-tight text-center">
+                            {fmtTime(c.starts_at)}
+                          </div>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold break-words leading-snug">
                             {c.workout?.name ?? "Занятие"}
@@ -335,7 +337,7 @@ function SchedulePage() {
                               if (!isPending) toggleBooking(c.id);
                             }
                           }}
-                          className={`shrink-0 h-12 w-12 rounded-full flex items-center justify-center transition-colors ${
+                          className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors ${
                             isPending ? "opacity-60" : ""
                           } ${
                             isBooked
@@ -347,11 +349,11 @@ function SchedulePage() {
                           {isPending ? (
                             <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
                           ) : isBooked ? (
-                            <MinusSquare className="h-6 w-6" weight="BoldDuotone" />
+                            <MinusSquare className="h-5 w-5" weight="BoldDuotone" />
                           ) : (
                             <svg
-                              width="24"
-                              height="24"
+                              width="20"
+                              height="20"
                               viewBox="0 0 24 24"
                               fill="none"
                               xmlns="http://www.w3.org/2000/svg"
@@ -360,7 +362,7 @@ function SchedulePage() {
                               <path
                                 d="M12 5V19M5 12H19"
                                 stroke="currentColor"
-                                strokeWidth="3"
+                                strokeWidth="2.5"
                                 strokeLinecap="round"
                               />
                             </svg>
