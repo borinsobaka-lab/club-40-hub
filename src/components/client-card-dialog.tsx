@@ -410,3 +410,112 @@ function Field({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function ProfileRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 py-2">
+      <div className="text-xs uppercase text-muted-foreground">{label}</div>
+      <div className="text-sm">{value ?? "—"}</div>
+    </div>
+  );
+}
+
+function ProfileTab({
+  profile,
+  loading,
+  hasUser,
+}: {
+  profile: MemberProfile | null;
+  loading: boolean;
+  hasUser: boolean;
+}) {
+  if (!hasUser) {
+    return (
+      <div className="rounded-lg border bg-background p-6 text-center text-sm text-muted-foreground">
+        Клиент ещё не зарегистрирован в мобильном приложении — анкета появится после регистрации и прохождения онбординга.
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="rounded-lg border bg-background p-6 text-center text-sm text-muted-foreground">
+        Клиент пока не прошёл онбординг.
+      </div>
+    );
+  }
+
+  const goal = profile.primary_goal ? GOAL_LABELS[profile.primary_goal] ?? profile.primary_goal : null;
+  const exp = profile.experience_level ? EXPERIENCE_LABELS[profile.experience_level] ?? profile.experience_level : null;
+  const tf = profile.target_timeframe ? TIMEFRAME_LABELS[profile.target_timeframe] ?? profile.target_timeframe : null;
+  const act = profile.current_weekly_activity != null ? ACTIVITY_LABELS[profile.current_weekly_activity] ?? String(profile.current_weekly_activity) : null;
+  const hiit = profile.tried_group_hiit == null ? null : profile.tried_group_hiit ? "Да, формат знаком" : "Нет, будет впервые";
+  const flags = (profile.health_flags ?? []).map((f) => HEALTH_LABELS[f] ?? f).join(", ") || null;
+  const times = (profile.preferred_times ?? []).map((t) => TIME_LABELS[t] ?? t).join(", ") || null;
+  const gender = profile.gender ? PROFILE_GENDER[profile.gender] ?? profile.gender : null;
+  const ref = profile.referral_source ? REFERRAL_LABELS[profile.referral_source] ?? profile.referral_source : null;
+  const freq = profile.desired_frequency
+    ? profile.desired_frequency >= 4
+      ? "4+ раз в неделю"
+      : `${profile.desired_frequency} раз в неделю`
+    : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <span>
+          {profile.onboarding_completed_at
+            ? `Онбординг пройден ${new Date(profile.onboarding_completed_at).toLocaleDateString("ru-RU")}`
+            : "Онбординг не завершён — данные неполные"}
+        </span>
+        {profile.updated_at && (
+          <span>обновлено {new Date(profile.updated_at).toLocaleDateString("ru-RU")}</span>
+        )}
+      </div>
+
+      <Section title="Цели и мотивация">
+        <ProfileRow label="Главная цель" value={goal} />
+        <ProfileRow label="Что подтолкнуло" value={profile.goal_motivation} />
+        <ProfileRow label="Срок" value={tf} />
+        <ProfileRow label="Желаемая частота" value={freq} />
+      </Section>
+
+      <Section title="Опыт и нагрузка">
+        <ProfileRow label="Опыт тренировок" value={exp} />
+        <ProfileRow label="Текущая активность" value={act} />
+        <ProfileRow label="Групповой формат (HIIT)" value={hiit} />
+        <ProfileRow label="Здоровье" value={flags} />
+        <ProfileRow label="Комментарий по здоровью" value={profile.health_notes} />
+      </Section>
+
+      <Section title="Базовые параметры">
+        <div className="grid grid-cols-2 gap-x-6">
+          <ProfileRow label="Рост" value={profile.height_cm ? `${profile.height_cm} см` : null} />
+          <ProfileRow label="Вес" value={profile.weight_kg ? `${profile.weight_kg} кг` : null} />
+          <ProfileRow label="Год рождения" value={profile.birth_year} />
+          <ProfileRow label="Пол" value={gender} />
+        </div>
+      </Section>
+
+      <Section title="Логистика и маркетинг">
+        <ProfileRow label="Удобное время" value={times} />
+        <ProfileRow label="Откуда узнал(а)" value={ref} />
+      </Section>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border bg-background p-3">
+      <div className="mb-1 text-xs font-medium uppercase text-muted-foreground">{title}</div>
+      <div className="divide-y">{children}</div>
+    </div>
+  );
+}
