@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, CalendarCheck, User, MoreHorizontal, Trophy, CreditCard } from "lucide-react";
+import { Home, Dumbbell, User, MoreHorizontal, Trophy, CreditCard } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {
@@ -11,7 +11,7 @@ type NavItem = {
 
 const mainItems: NavItem[] = [
   { to: "/", label: "Главное", Icon: Home, exact: true },
-  { to: "/schedule", label: "Бронь", Icon: CalendarCheck, exact: false },
+  { to: "/schedule", label: "Бронь", Icon: Dumbbell, exact: false },
   { to: "/profile", label: "Профиль", Icon: User, exact: false },
 ];
 
