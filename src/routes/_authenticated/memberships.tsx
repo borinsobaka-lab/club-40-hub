@@ -108,6 +108,29 @@ function MembershipsPage() {
     fetchItems();
   };
 
+  const handleToggleActive = async (m: Membership, next: boolean) => {
+    const { error } = await supabase
+      .from("memberships")
+      .update({ is_active: next })
+      .eq("id", m.id);
+    if (error) {
+      toast.error("Не удалось изменить статус: " + error.message);
+      return;
+    }
+    toast.success(next ? "Абонемент активен" : "Абонемент скрыт в приложении");
+    fetchItems();
+  };
+
+  const handleClone = (m: Membership) => {
+    setEditing({
+      ...m,
+      id: "",
+      name: `${m.name} (копия)`,
+      is_active: true,
+    });
+    setOpen(true);
+  };
+
   const q = search.trim().toLowerCase();
   const filtered = q
     ? items.filter(
