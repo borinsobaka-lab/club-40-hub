@@ -46,6 +46,16 @@ type News = {
   position: number;
 };
 
+type Service = {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  button_text: string | null;
+  button_url: string | null;
+  position: number;
+};
+
 type MyBooking = {
   entry_id: string;
   entry: {
