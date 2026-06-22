@@ -31,6 +31,7 @@ type Workout = {
   type: string | null;
   description: string | null;
   photo_url: string | null;
+  capacity: number | null;
 };
 type Entry = {
   id: string;
