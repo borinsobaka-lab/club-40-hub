@@ -77,13 +77,20 @@ type Service = {
   position: number;
 };
 
+type Trainer = { id: string; full_name: string | null; photo_url: string | null };
 type MyBooking = {
   entry_id: string;
   entry: {
     id: string;
     starts_at: string;
     ends_at: string;
-    workout: { name: string; type: string | null } | null;
+    workout: {
+      name: string;
+      type: string | null;
+      description: string | null;
+      photo_url: string | null;
+    } | null;
+    trainers: { trainer: Trainer | null }[] | null;
   } | null;
 };
 
