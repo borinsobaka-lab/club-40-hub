@@ -577,74 +577,84 @@ function EntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={entry ? "max-w-4xl" : "max-w-md"}>
         <DialogHeader>
           <DialogTitle>{entry ? "Редактировать занятие" : "Новое занятие"}</DialogTitle>
-          <DialogDescription>Выберите тренировку, время и тренеров.</DialogDescription>
+          <DialogDescription>
+            {entry
+              ? "Слева — настройки занятия, справа — записанные участники."
+              : "Выберите тренировку, время и тренеров."}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Тренировка</Label>
-            <Select value={workoutId} onValueChange={setWorkoutId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите тренировку" />
-              </SelectTrigger>
-              <SelectContent>
-                {workouts.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className={entry ? "grid gap-6 md:grid-cols-2" : ""}>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Тренировка</Label>
+              <Select value={workoutId} onValueChange={setWorkoutId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите тренировку" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workouts.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Начало</Label>
+                <Input
+                  type="datetime-local"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Окончание</Label>
+                <Input
+                  type="datetime-local"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Тренеры</Label>
+              {trainers.length === 0 ? (
+                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
+                </div>
+              ) : (
+                <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
+                  {trainers.map((t) => {
+                    const checked = trainerIds.includes(t.id);
+                    return (
+                      <label
+                        key={t.id}
+                        className="flex cursor-pointer items-center gap-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleTrainer(t.id)}
+                        />
+                        <span>{t.full_name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Начало</Label>
-              <Input
-                type="datetime-local"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Окончание</Label>
-              <Input
-                type="datetime-local"
-                value={endsAt}
-                onChange={(e) => setEndsAt(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Тренеры</Label>
-            {trainers.length === 0 ? (
-              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
-              </div>
-            ) : (
-              <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
-                {trainers.map((t) => {
-                  const checked = trainerIds.includes(t.id);
-                  return (
-                    <label
-                      key={t.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => toggleTrainer(t.id)}
-                      />
-                      <span>{t.full_name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {entry && (
+            <BookingsPanel entry={entry} open={open} onChanged={onSaved} />
+          )}
         </div>
 
         <DialogFooter className="flex sm:justify-between">
@@ -674,5 +684,216 @@ function EntryDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type BookingRow = {
+  id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
+};
+
+type ClientRow = {
+  id: string;
+  user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+};
+
+type ActiveMembershipRow = {
+  client_id: string;
+  started_at: string | null;
+  ends_at: string | null;
+  visits_left: number | null;
+  membership: { name: string | null } | null;
+};
+
+function BookingsPanel({
+  entry,
+  open,
+  onChanged,
+}: {
+  entry: Entry;
+  open: boolean;
+  onChanged: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [clients, setClients] = useState<Record<string, ClientRow>>({});
+  const [memberships, setMemberships] = useState<Record<string, ActiveMembershipRow>>({});
+  const [confirmBooking, setConfirmBooking] = useState<BookingRow | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data: bData, error: bErr } = await supabase
+      .from("schedule_bookings")
+      .select("id, user_id, status, created_at")
+      .eq("entry_id", entry.id)
+      .eq("status", "booked")
+      .order("created_at");
+    if (bErr) {
+      setLoading(false);
+      toast.error("Ошибка загрузки записей: " + bErr.message);
+      return;
+    }
+    const rows = (bData as BookingRow[]) ?? [];
+    setBookings(rows);
+    const userIds = Array.from(new Set(rows.map((r) => r.user_id))).filter(Boolean);
+    if (userIds.length === 0) {
+      setClients({});
+      setMemberships({});
+      setLoading(false);
+      return;
+    }
+    const { data: cData } = await supabase
+      .from("clients")
+      .select("id, user_id, first_name, last_name, full_name, phone, email")
+      .eq("studio_id", entry.studio_id)
+      .in("user_id", userIds);
+    const cMap: Record<string, ClientRow> = {};
+    const clientIds: string[] = [];
+    ((cData as ClientRow[]) ?? []).forEach((c) => {
+      if (c.user_id) cMap[c.user_id] = c;
+      clientIds.push(c.id);
+    });
+    setClients(cMap);
+    if (clientIds.length > 0) {
+      const { data: mData } = await supabase
+        .from("client_memberships")
+        .select("client_id, started_at, ends_at, visits_left, membership:memberships(name)")
+        .eq("status", "active")
+        .in("client_id", clientIds);
+      const mMap: Record<string, ActiveMembershipRow> = {};
+      ((mData as unknown as ActiveMembershipRow[]) ?? []).forEach((m) => {
+        mMap[m.client_id] = m;
+      });
+      setMemberships(mMap);
+    } else {
+      setMemberships({});
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, entry.id]);
+
+  const handleCancel = async () => {
+    if (!confirmBooking) return;
+    setCancelling(true);
+    const { data, error } = await supabase.rpc("cancel_schedule_booking_admin", {
+      p_booking_id: confirmBooking.id,
+    });
+    setCancelling(false);
+    if (error) {
+      toast.error("Ошибка отмены: " + error.message);
+      return;
+    }
+    const result = data as { ok?: boolean; reason?: string } | null;
+    if (!result?.ok) {
+      toast.error("Не удалось отписать: " + (result?.reason ?? "неизвестно"));
+      return;
+    }
+    toast.success("Запись отменена");
+    setConfirmBooking(null);
+    await load();
+    onChanged();
+  };
+
+  const fmtMembershipDates = (m: ActiveMembershipRow) => {
+    const fmt = (d: string | null) =>
+      d ? new Date(d).toLocaleDateString("ru-RU") : "—";
+    return `${fmt(m.started_at)} – ${m.ends_at ? fmt(m.ends_at) : "∞"}`;
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>Записанные участники</Label>
+        <span className="text-xs text-muted-foreground">
+          {bookings.length}
+          {entry.capacity != null ? ` / ${entry.capacity}` : ""}
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="flex h-32 items-center justify-center rounded-md border">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : bookings.length === 0 ? (
+        <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+          Пока никто не записан.
+        </div>
+      ) : (
+        <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+          {bookings.map((b) => {
+            const c = clients[b.user_id];
+            const m = c ? memberships[c.id] : undefined;
+            const name = c
+              ? [c.last_name, c.first_name].filter(Boolean).join(" ") || c.full_name
+              : "Пользователь без анкеты";
+            return (
+              <div
+                key={b.id}
+                className="rounded-md border p-3 text-sm space-y-1"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-medium">{name}</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmBooking(b)}
+                  >
+                    Отписать
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  {c?.phone && <div>📞 {c.phone}</div>}
+                  {c?.email && <div>✉ {c.email}</div>}
+                  {m ? (
+                    <div>
+                      🎟 {m.membership?.name ?? "Абонемент"} ·{" "}
+                      {m.visits_left != null ? `осталось ${m.visits_left}` : "безлимит"} ·{" "}
+                      {fmtMembershipDates(m)}
+                    </div>
+                  ) : (
+                    <div className="italic">Нет активного абонемента</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <AlertDialog
+        open={!!confirmBooking}
+        onOpenChange={(v) => !v && setConfirmBooking(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Отписать пользователя?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Бронирование будет отменено. Пользователь сможет записаться снова,
+              если останутся места.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancel} disabled={cancelling}>
+              {cancelling && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+              Отписать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
