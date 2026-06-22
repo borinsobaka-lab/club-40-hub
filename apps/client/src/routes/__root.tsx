@@ -122,13 +122,6 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-const navItems = [
-  { to: "/", label: "Главное", Icon: Home, exact: true },
-  { to: "/schedule", label: "Бронь", Icon: CalendarCheck, exact: false },
-  { to: "/results", label: "Результаты", Icon: Trophy, exact: false },
-  { to: "/memberships", label: "Абонементы", Icon: CreditCard, exact: false },
-  { to: "/profile", label: "Профиль", Icon: User, exact: false },
-] as const;
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
