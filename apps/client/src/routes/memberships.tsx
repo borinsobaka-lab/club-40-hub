@@ -4,13 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
-  Loader2,
+  Refresh,
   ShieldCheck,
-  Zap,
-  Clock,
+  Lightning,
+  ClockCircle,
   Ticket,
-  Check,
-} from "lucide-react";
+  CheckCircle,
+} from "@solar-icons/react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
