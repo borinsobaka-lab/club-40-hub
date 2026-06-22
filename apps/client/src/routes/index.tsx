@@ -2,15 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  ChevronRight,
+  AltArrowRight,
   Bell,
-  MessageSquare,
+  ChatSquare,
   Phone,
   Star,
-  Newspaper,
+  ClipboardText,
   Ghost,
-  Loader2,
-} from "lucide-react";
+} from "@solar-icons/react";
+import { Loader2 } from "lucide-react";
 import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
