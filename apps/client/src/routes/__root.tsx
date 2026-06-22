@@ -12,6 +12,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
+import { cn } from "@/lib/utils";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -173,20 +174,19 @@ function AppShell() {
     };
   }, [loading, user, onAuthRoute, onOnboardingRoute, navigate]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
-      </div>
-    );
-  }
+  const LoadingOverlay = () => (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
+    </div>
+  );
 
-  if (onAuthRoute || !session) {
+  if (onAuthRoute) {
     return (
       <div className="min-h-screen bg-background text-foreground flex justify-center">
-        <div className="w-full max-w-md flex flex-col min-h-screen">
-          <main className="flex-1">
+        <div className="w-full max-w-md flex flex-col min-h-screen relative">
+          <main className="flex-1 relative">
             <Outlet />
+            {loading && <LoadingOverlay />}
           </main>
         </div>
       </div>
@@ -196,8 +196,9 @@ function AppShell() {
   if (onOnboardingRoute) {
     return (
       <div className="min-h-[100dvh] bg-background text-foreground flex justify-center">
-        <div className="w-full max-w-md flex flex-col min-h-[100dvh]">
+        <div className="w-full max-w-md flex flex-col min-h-[100dvh] relative">
           <Outlet />
+          {loading && <LoadingOverlay />}
         </div>
       </div>
     );
@@ -206,8 +207,9 @@ function AppShell() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
       <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
-        <main className="flex-1 min-h-0 overflow-hidden">
+        <main className="flex-1 min-h-0 overflow-hidden relative">
           <Outlet />
+          {loading && <LoadingOverlay />}
         </main>
 
         <BottomNav />
