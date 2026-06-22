@@ -9,8 +9,6 @@ import {
   Star,
   ClipboardText,
   Ghost,
-  Refresh,
-  MinusSquare,
 } from "@solar-icons/react";
 import giftIcon from "@/assets/gift.png";
 import { Button } from "@/components/ui/button";
@@ -396,7 +394,7 @@ function HomePage() {
                     {group.items.map((b) => {
                       const e = b.entry!;
                       const meta = workoutTypeMeta(e.workout?.type);
-                      const isPending = pendingId === e.id;
+                      void pendingId;
                       const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -428,6 +426,8 @@ function HomePage() {
                               photo: resolvePublicUrl("workout-photos", e.workout?.photo_url),
                               trainerName,
                               trainerPhoto,
+                              startsAt: e.starts_at,
+                              endsAt: e.ends_at,
                             });
                           }}
                           className="w-full text-left active:opacity-80 transition-opacity"
@@ -449,32 +449,6 @@ function HomePage() {
                                 </div>
                               )}
                             </div>
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              aria-disabled={isPending}
-                              onClick={(ev) => {
-                                ev.stopPropagation();
-                                if (!isPending) cancelBooking(e.id);
-                              }}
-                              onKeyDown={(ev) => {
-                                if (ev.key === "Enter" || ev.key === " ") {
-                                  ev.preventDefault();
-                                  ev.stopPropagation();
-                                  if (!isPending) cancelBooking(e.id);
-                                }
-                              }}
-                              className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-white text-[#1B1C1F] border border-[#1B1C1F]/10 ${
-                                isPending ? "opacity-60" : ""
-                              }`}
-                              aria-label="Отменить запись"
-                            >
-                              {isPending ? (
-                                <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-                              ) : (
-                                <MinusSquare className="h-5 w-5" weight="BoldDuotone" />
-                              )}
-                            </span>
                           </Card>
                         </button>
                       );

@@ -1,7 +1,9 @@
 import { Drawer as DrawerPrimitive } from "vaul";
+import { Calendar } from "@solar-icons/react";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
+import { addToCalendar } from "@/lib/calendar";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -11,6 +13,8 @@ export type WorkoutDrawerData = {
   photo: string | null;
   trainerName: string | null;
   trainerPhoto: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
 };
 
 export function WorkoutDrawer({
@@ -91,14 +95,45 @@ export function WorkoutDrawer({
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  onClick={onBook}
-                  disabled={isPending}
-                  className="mt-6 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
-                >
-                  {isPending ? "..." : isBooked ? "Отменить запись" : "Записаться"}
-                </button>
+                {isBooked ? (
+                  <div className="mt-6 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={onBook}
+                      disabled={isPending}
+                      className="flex-1 h-14 rounded-full bg-white text-[#1B1C1F] border border-[#1B1C1F]/10 font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                    >
+                      {isPending ? "..." : "Отменить запись"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!data.startsAt || !data.endsAt) return;
+                        addToCalendar({
+                          id: data.id,
+                          title: data.name,
+                          startsAt: data.startsAt,
+                          endsAt: data.endsAt,
+                          description: data.description,
+                        });
+                      }}
+                      disabled={!data.startsAt || !data.endsAt}
+                      className="flex-1 h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
+                    >
+                      <Calendar className="h-5 w-5" weight="BoldDuotone" />
+                      В календарь
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onBook}
+                    disabled={isPending}
+                    className="mt-6 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                  >
+                    {isPending ? "..." : "Записаться"}
+                  </button>
+                )}
               </>
             )}
           </div>
