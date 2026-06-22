@@ -179,6 +179,26 @@ export function WorkoutDrawer({
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
+
+      <Dialog open={calendarPickerOpen} onOpenChange={setCalendarPickerOpen}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Выберите календарь</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 flex flex-col gap-2">
+            {calendarOptions.map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={opt.onClick}
+                className="w-full h-12 rounded-full bg-muted text-foreground font-semibold text-sm active:scale-[0.99] transition"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DrawerPrimitive.Root>
   );
 }
