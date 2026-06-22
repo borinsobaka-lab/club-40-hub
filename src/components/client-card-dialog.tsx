@@ -87,6 +87,7 @@ const PROFILE_GENDER: Record<string, string> = {
 
 type ClientLike = {
   id: string;
+  user_id?: string | null;
   full_name: string;
   first_name: string | null;
   last_name: string | null;
