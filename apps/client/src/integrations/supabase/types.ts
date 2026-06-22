@@ -59,6 +59,72 @@ export type Database = {
         }
         Relationships: []
       }
+      member_profiles: {
+        Row: {
+          birth_year: number | null
+          created_at: string
+          current_weekly_activity: number | null
+          desired_frequency: number | null
+          experience_level: string | null
+          gender: string | null
+          goal_motivation: string | null
+          health_flags: string[]
+          health_notes: string | null
+          height_cm: number | null
+          onboarding_completed_at: string | null
+          preferred_times: string[]
+          primary_goal: string | null
+          referral_source: string | null
+          target_timeframe: string | null
+          tried_group_hiit: boolean | null
+          updated_at: string
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          birth_year?: number | null
+          created_at?: string
+          current_weekly_activity?: number | null
+          desired_frequency?: number | null
+          experience_level?: string | null
+          gender?: string | null
+          goal_motivation?: string | null
+          health_flags?: string[]
+          health_notes?: string | null
+          height_cm?: number | null
+          onboarding_completed_at?: string | null
+          preferred_times?: string[]
+          primary_goal?: string | null
+          referral_source?: string | null
+          target_timeframe?: string | null
+          tried_group_hiit?: boolean | null
+          updated_at?: string
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          birth_year?: number | null
+          created_at?: string
+          current_weekly_activity?: number | null
+          desired_frequency?: number | null
+          experience_level?: string | null
+          gender?: string | null
+          goal_motivation?: string | null
+          health_flags?: string[]
+          health_notes?: string | null
+          height_cm?: number | null
+          onboarding_completed_at?: string | null
+          preferred_times?: string[]
+          primary_goal?: string | null
+          referral_source?: string | null
+          target_timeframe?: string | null
+          tried_group_hiit?: boolean | null
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       news: {
         Row: {
           banner_url: string | null
