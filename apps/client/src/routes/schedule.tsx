@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Refresh, MinusSquare } from "@solar-icons/react";
@@ -267,9 +266,8 @@ function SchedulePage() {
                 const isBooked = bookedIds.has(c.id);
                 const isPending = pendingId === c.id;
                 const isPast = new Date(c.starts_at) < new Date();
-                const workoutPhoto = resolvePublicUrl("workout-photos", c.workout?.photo_url);
                 return (
-                  <div key={c.id} className={`relative flex gap-1 pb-4 ${isPast ? "opacity-20" : ""}`}>
+                  <div key={c.id} className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}>
                     <button
                       type="button"
                       onClick={() => {
@@ -290,25 +288,18 @@ function SchedulePage() {
                           name: c.workout?.name ?? "Занятие",
                           type: c.workout?.type ?? null,
                           description: c.workout?.description ?? null,
-                          photo: workoutPhoto,
+                          photo: resolvePublicUrl("workout-photos", c.workout?.photo_url),
                           trainerName,
                           trainerPhoto,
                         });
                       }}
-                      className="flex gap-1 flex-1 min-w-0 text-left active:opacity-80 transition-opacity"
+                      className="w-full text-left active:opacity-80 transition-opacity"
                     >
-                      <div className="flex flex-col items-center w-12 shrink-0 pt-1 pr-2 gap-2">
-                        <div className="text-base font-bold italic tabular-nums leading-tight text-center">
-                          {fmtTime(c.starts_at)}
-                        </div>
-                        <img
-                          src={workoutPhoto ?? logoSrc}
-                          alt=""
-                          className="w-9 h-9 rounded-full object-cover bg-muted"
-                        />
+                      <div className="text-base font-bold italic tabular-nums leading-tight mb-1 px-1">
+                        {fmtTime(c.starts_at)}
                       </div>
                       <Card
-                        className={`relative p-3 pl-4 flex items-center gap-3 flex-1 min-w-0 overflow-hidden rounded-lg transition-colors ${
+                        className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
                           isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
                         }`}
                       >
