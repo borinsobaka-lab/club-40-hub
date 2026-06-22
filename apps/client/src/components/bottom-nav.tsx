@@ -78,7 +78,7 @@ export function BottomNav() {
                     moreActive || moreOpen ? "text-[#FFE500]" : "text-white/70"
                   }`}
                 >
-                  <MoreHorizontal className="h-6 w-6" strokeWidth={2.2} />
+                  <MenuDots className="h-6 w-6" weight="BoldDuotone" />
                   <span>Ещё</span>
                 </button>
 
