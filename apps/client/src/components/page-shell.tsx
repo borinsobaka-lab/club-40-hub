@@ -14,7 +14,9 @@ function seededRandom(seed: string) {
   };
 }
 
-const BLOB_COUNT = 18;
+const GRID_COLS = 5;
+const GRID_ROWS = 4; // 20 cells, drop 2 for variety -> 18 evenly distributed blobs
+const BLOB_COUNT = GRID_COLS * GRID_ROWS - 2;
 
 interface PageShellProps {
   header: ReactNode;
@@ -26,20 +28,35 @@ export function PageShell({ header, children }: PageShellProps) {
 
   const blobStyles = useMemo(() => {
     const rand = seededRandom(pathname + ":blobs");
-    return Array.from({ length: BLOB_COUNT }, () => ({
-      top: `${Math.floor(rand() * 95)}%`,
-      left: `${Math.floor(rand() * 95)}%`,
-    }));
+    const cells: Array<{ row: number; col: number }> = [];
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) cells.push({ row: r, col: c });
+    }
+    // Fisher-Yates shuffle so the dropped cells differ per page
+    for (let i = cells.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [cells[i], cells[j]] = [cells[j], cells[i]];
+    }
+    const picked = cells.slice(0, BLOB_COUNT);
+    const cellW = 100 / GRID_COLS;
+    const cellH = 100 / GRID_ROWS;
+    return picked.map(({ row, col }) => {
+      const jitterX = (rand() - 0.5) * cellW * 0.7;
+      const jitterY = (rand() - 0.5) * cellH * 0.7;
+      return {
+        top: `${(cellH * (row + 0.5) + jitterY).toFixed(2)}%`,
+        left: `${(cellW * (col + 0.5) + jitterX).toFixed(2)}%`,
+      };
+    });
   }, [pathname]);
 
   const pseudoVars = useMemo(() => {
-    const beforeRand = seededRandom(pathname + ":before");
-    const afterRand = seededRandom(pathname + ":after");
+    const rand = seededRandom(pathname + ":pseudo");
     return {
-      "--blob-before-top": `${Math.floor(beforeRand() * 95)}%`,
-      "--blob-before-left": `${Math.floor(beforeRand() * 95)}%`,
-      "--blob-after-bottom": `${Math.floor(afterRand() * 95)}%`,
-      "--blob-after-right": `${Math.floor(afterRand() * 95)}%`,
+      "--blob-before-top": `${Math.floor(rand() * 40)}%`,
+      "--blob-before-left": `${Math.floor(rand() * 40)}%`,
+      "--blob-after-bottom": `${Math.floor(rand() * 40)}%`,
+      "--blob-after-right": `${Math.floor(rand() * 40)}%`,
     } as React.CSSProperties;
   }, [pathname]);
 
