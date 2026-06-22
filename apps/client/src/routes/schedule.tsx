@@ -336,7 +336,8 @@ function SchedulePage() {
                             );
                           })()}
                           {(() => {
-                            const left = remainingSpots(c.capacity, c.booked_count);
+                            const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
+                            const left = remainingSpots(effectiveCapacity, c.booked_count);
                             if (left === null || left > 5 || left === 0) return null;
                             return (
                               <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
