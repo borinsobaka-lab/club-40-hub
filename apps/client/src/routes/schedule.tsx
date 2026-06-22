@@ -359,17 +359,17 @@ function SchedulePage() {
                             <MinusSquare className="h-6 w-6" weight="BoldDuotone" />
                           ) : (
                             <svg
-                              width="28"
-                              height="28"
-                              viewBox="0 0 28 28"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
                               fill="none"
                               xmlns="http://www.w3.org/2000/svg"
                               className="text-[#1B1C1F]"
                             >
                               <path
-                                d="M14 5V23M5 14H23"
+                                d="M12 5V19M5 12H19"
                                 stroke="currentColor"
-                                strokeWidth="3.5"
+                                strokeWidth="3"
                                 strokeLinecap="round"
                               />
                             </svg>
