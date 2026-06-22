@@ -3,6 +3,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { Refresh } from "@solar-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
+import { cn } from "@/lib/utils";
 
 type NewsFull = {
   id: string;
