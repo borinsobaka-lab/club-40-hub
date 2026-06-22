@@ -1,9 +1,18 @@
+import { useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Calendar } from "@solar-icons/react";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
-import { addToCalendar } from "@/lib/calendar";
+import {
+  googleCalendarUrl,
+  outlookLiveUrl,
+  office365Url,
+  yahooCalendarUrl,
+  downloadICS,
+  type CalendarEvent,
+} from "@/lib/calendar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -34,6 +43,46 @@ export function WorkoutDrawer({
 }) {
   const typeMeta = data ? workoutTypeMeta(data.type) : null;
   const TypeIcon = typeMeta?.icon ?? null;
+  const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
+
+  const calendarEvent: CalendarEvent | null =
+    data && data.startsAt && data.endsAt
+      ? {
+          id: data.id,
+          title: data.name,
+          startsAt: data.startsAt,
+          endsAt: data.endsAt,
+          description: data.description,
+        }
+      : null;
+
+  const openExternal = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+    setCalendarPickerOpen(false);
+  };
+
+  const calendarOptions = calendarEvent
+    ? [
+        { label: "Google Календарь", onClick: () => openExternal(googleCalendarUrl(calendarEvent)) },
+        {
+          label: "Apple Календарь",
+          onClick: () => {
+            downloadICS(calendarEvent);
+            setCalendarPickerOpen(false);
+          },
+        },
+        { label: "Outlook", onClick: () => openExternal(outlookLiveUrl(calendarEvent)) },
+        { label: "Office 365", onClick: () => openExternal(office365Url(calendarEvent)) },
+        { label: "Yahoo Календарь", onClick: () => openExternal(yahooCalendarUrl(calendarEvent)) },
+        {
+          label: "Другой (.ics файл)",
+          onClick: () => {
+            downloadICS(calendarEvent);
+            setCalendarPickerOpen(false);
+          },
+        },
+      ]
+    : [];
 
   return (
     <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
@@ -107,21 +156,12 @@ export function WorkoutDrawer({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!data.startsAt || !data.endsAt) return;
-                        addToCalendar({
-                          id: data.id,
-                          title: data.name,
-                          startsAt: data.startsAt,
-                          endsAt: data.endsAt,
-                          description: data.description,
-                        });
-                      }}
-                      disabled={!data.startsAt || !data.endsAt}
+                      onClick={() => setCalendarPickerOpen(true)}
+                      disabled={!calendarEvent}
                       className="flex-1 h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
                     >
                       <Calendar className="h-5 w-5" weight="BoldDuotone" />
-                      Добавить в календарь
+                      В календарь
                     </button>
                   </div>
                 ) : (
