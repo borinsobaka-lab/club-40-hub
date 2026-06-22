@@ -10,14 +10,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import {
-  Home,
-  CalendarCheck,
-  Trophy,
-  CreditCard,
-  User,
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BottomNav } from "@/components/bottom-nav";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
