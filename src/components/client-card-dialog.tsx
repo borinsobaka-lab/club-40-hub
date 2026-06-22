@@ -277,91 +277,109 @@ export function ClientCardDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
-            <Field label="Пол" value={genderLabel(client.gender)} />
-            <Field label="Дата рождения" value={formatDate(client.birthday)} />
-            <Field label="Регистрация" value={formatDate(client.registration_date)} />
-            <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
-          </div>
+          <Tabs defaultValue="card" className="w-full">
+            <TabsList>
+              <TabsTrigger value="card">Карточка</TabsTrigger>
+              <TabsTrigger value="profile">Анкета</TabsTrigger>
+            </TabsList>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <div className="text-xs uppercase text-muted-foreground">Активный абонемент</div>
-              {active && (
-                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                  Редактировать
-                </Button>
-              )}
-            </div>
-            {loadingActive ? (
-              <div className="flex justify-center py-3">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <TabsContent value="card" className="mt-4 space-y-5">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
+                <Field label="Пол" value={genderLabel(client.gender)} />
+                <Field label="Дата рождения" value={formatDate(client.birthday)} />
+                <Field label="Регистрация" value={formatDate(client.registration_date)} />
+                <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
               </div>
-            ) : !active ? (
-              <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
-                Нет активного абонемента.
-              </div>
-            ) : (
-              <div className="rounded-lg border bg-background p-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium">{membershipName(active.memberships)}</div>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    {sourceLabel(active.source)}
-                  </span>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs uppercase text-muted-foreground">Активный абонемент</div>
+                  {active && (
+                    <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                      <Pencil className="mr-1 h-3.5 w-3.5" />
+                      Редактировать
+                    </Button>
+                  )}
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {formatDate(active.started_at)} → {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
-                  {" · "}
-                  {active.visits_left == null ? "посещения: безлимит" : `осталось посещений: ${active.visits_left}`}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {client.notes && (
-            <div>
-              <div className="mb-1 text-xs uppercase text-muted-foreground">Заметки</div>
-              <div className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
-                {client.notes}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <div className="mb-2 text-xs uppercase text-muted-foreground">История продаж</div>
-            {loadingSales ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : sales.length === 0 ? (
-              <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
-                Продаж пока нет.
-              </div>
-            ) : (
-              <ul className="divide-y rounded-lg border bg-background">
-                {sales.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">
-                        {membershipName(s.memberships)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(s.sold_at)}
-                        {" · "}{sourceLabel(s.source)}
-                        {s.admin_name ? ` · ${s.admin_name}` : ""}
-                        {s.remaining_installments > 0
-                          ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
-                          : ""}
-                      </div>
+                {loadingActive ? (
+                  <div className="flex justify-center py-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !active ? (
+                  <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
+                    Нет активного абонемента.
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-background p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium">{membershipName(active.memberships)}</div>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {sourceLabel(active.source)}
+                      </span>
                     </div>
-                    <div className="shrink-0 font-medium">{formatMoney(Number(s.total_amount))}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {formatDate(active.started_at)} → {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                      {" · "}
+                      {active.visits_left == null ? "посещения: безлимит" : `осталось посещений: ${active.visits_left}`}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {client.notes && (
+                <div>
+                  <div className="mb-1 text-xs uppercase text-muted-foreground">Заметки</div>
+                  <div className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
+                    {client.notes}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="mb-2 text-xs uppercase text-muted-foreground">История продаж</div>
+                {loadingSales ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : sales.length === 0 ? (
+                  <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
+                    Продаж пока нет.
+                  </div>
+                ) : (
+                  <ul className="divide-y rounded-lg border bg-background">
+                    {sales.map((s) => (
+                      <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">
+                            {membershipName(s.memberships)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(s.sold_at)}
+                            {" · "}{sourceLabel(s.source)}
+                            {s.admin_name ? ` · ${s.admin_name}` : ""}
+                            {s.remaining_installments > 0
+                              ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
+                              : ""}
+                          </div>
+                        </div>
+                        <div className="shrink-0 font-medium">{formatMoney(Number(s.total_amount))}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="profile" className="mt-4">
+              <ProfileTab
+                profile={profile}
+                loading={loadingProfile}
+                hasUser={!!client.user_id}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
+
 
         <DialogFooter>
           {onEdit && (
