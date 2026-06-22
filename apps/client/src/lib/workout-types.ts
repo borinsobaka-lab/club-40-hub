@@ -1,11 +1,11 @@
+import type { ComponentType } from "react";
 import {
   HeartPulse,
   Lightning,
-  Shuffle,
   Leaf,
   Pulse,
-  type Icon,
 } from "@solar-icons/react";
+import { Shuffle } from "@solar-icons/react/csr/video";
 
 export const TYPE_META: Record<
   string,
