@@ -106,12 +106,17 @@ begin
   where w.id = v_entry.workout_id;
 
   -- активный абонемент пользователя в этой студии
+  -- memberships — это справочник тарифов; активные абонементы клиента
+  -- хранятся в client_memberships, а пользователь привязан через clients.user_id.
   select exists (
-    select 1 from public.memberships m
-    where m.user_id = v_user
-      and m.studio_id = v_entry.studio_id
-      and m.status = 'active'
-      and (m.ends_at is null or m.ends_at > now())
+    select 1
+      from public.client_memberships cm
+      join public.clients c on c.id = cm.client_id
+     where c.user_id = v_user
+       and cm.studio_id = v_entry.studio_id
+       and cm.status = 'active'
+       and (cm.ends_at is null or cm.ends_at >= current_date)
+       and (cm.visits_left is null or cm.visits_left > 0)
   ) into v_has_membership;
 
   if not v_has_membership then
