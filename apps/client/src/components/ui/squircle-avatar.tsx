@@ -77,3 +77,10 @@ const SquircleAvatarFallback = React.forwardRef<
 SquircleAvatarFallback.displayName = "SquircleAvatarFallback";
 
 export { SquircleAvatar, SquircleAvatarImage, SquircleAvatarFallback };
+
+/** Returns a CSS `clip-path: path(...)` value for a Clubhouse-style squircle. */
+export function squircleClipPath(size: number, cornerRadius?: number, cornerSmoothing = 0.6) {
+  const radius = cornerRadius ?? Math.round(size * 0.24);
+  const path = getSvgPath({ width: size, height: size, cornerRadius: radius, cornerSmoothing });
+  return `path('${path}')`;
+}

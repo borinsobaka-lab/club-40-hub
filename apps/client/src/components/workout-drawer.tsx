@@ -1,6 +1,7 @@
 import { Drawer as DrawerPrimitive } from "vaul";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
+import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -57,14 +58,11 @@ export function WorkoutDrawer({
 
                     {data.trainerName && (
                       <div className="mt-3 flex items-center gap-2">
-                        {data.trainerPhoto ? (
-                          <img
-                            src={data.trainerPhoto}
-                            alt={data.trainerName}
-                            className="h-8 w-8 rounded-full object-cover shrink-0"
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0">
+                        <SquircleAvatar size={32}>
+                          {data.trainerPhoto && (
+                            <SquircleAvatarImage src={data.trainerPhoto} alt={data.trainerName} />
+                          )}
+                          <SquircleAvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground">
                             {data.trainerName
                               .split(/\s+/)
                               .map((p) => p[0])
@@ -72,8 +70,8 @@ export function WorkoutDrawer({
                               .slice(0, 2)
                               .join("")
                               .toUpperCase()}
-                          </div>
-                        )}
+                          </SquircleAvatarFallback>
+                        </SquircleAvatar>
                         <div className="text-sm text-muted-foreground truncate">
                           {data.trainerName}
                         </div>

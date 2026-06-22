@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage, squircleClipPath } from "@/components/ui/squircle-avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -146,12 +146,12 @@ function ProfilePage() {
       <div className="p-4 space-y-5">
         <Card className="p-5">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
+            <SquircleAvatar size={64}>
+              {client?.photo_url && <SquircleAvatarImage src={client.photo_url} alt={fullName} />}
+              <SquircleAvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                 {loading ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
-              </AvatarFallback>
-            </Avatar>
+              </SquircleAvatarFallback>
+            </SquircleAvatar>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-lg truncate">{fullName}</div>
               <div className="text-xs text-muted-foreground truncate">{email}</div>
@@ -359,16 +359,17 @@ function EditProfileSheet({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="relative group rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
+              className="relative group focus:outline-none focus:ring-2 focus:ring-primary"
+              style={{ width: 96, height: 96, clipPath: squircleClipPath(96), WebkitClipPath: squircleClipPath(96) }}
               aria-label="Загрузить аватар"
             >
-              <Avatar className="h-24 w-24">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+              <SquircleAvatar size={96}>
+                {avatarUrl && <SquircleAvatarImage src={avatarUrl} alt={displayName} />}
+                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
                   {initials(displayName)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
+                </SquircleAvatarFallback>
+              </SquircleAvatar>
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
                 {uploadingAvatar ? (
                   <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 ) : (
