@@ -115,7 +115,7 @@ function HomePage() {
     const load = async () => {
       const { data } = await (supabase as any)
         .from("schedule_bookings")
-        .select("entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type))")
+        .select("entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))")
         .eq("status", "booked");
       if (cancelled) return;
       const rows = ((data as MyBooking[] | null) ?? [])
