@@ -210,13 +210,13 @@ function HomePage() {
               >
                 <img src={giftAsset.url} alt="Подарки" className="h-5 w-5 object-contain" />
               </button>
-              <button
-                type="button"
+              <Link
+                to="/notifications"
                 aria-label="Уведомления"
                 className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
               >
                 <Bell className="h-5 w-5 text-white" />
-              </button>
+              </Link>
             </div>
           </div>
 
