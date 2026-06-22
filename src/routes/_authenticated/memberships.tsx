@@ -293,7 +293,10 @@ function MembershipDialog({
   const [autoRenew, setAutoRenew] = useState(false);
   const [installmentEnabled, setInstallmentEnabled] = useState(false);
   const [price, setPrice] = useState<string>("");
+  const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const isEditing = !!membership?.id;
 
   useEffect(() => {
     if (!open) return;
@@ -307,6 +310,7 @@ function MembershipDialog({
     setAutoRenew(membership?.auto_renew ?? false);
     setInstallmentEnabled(membership?.installment_enabled ?? false);
     setPrice(membership?.price != null ? String(membership.price) : "");
+    setIsActive(membership?.is_active ?? true);
   }, [open, membership]);
 
   const addBenefit = () => {
@@ -337,9 +341,10 @@ function MembershipDialog({
       auto_renew: autoRenew,
       installment_enabled: installmentEnabled,
       price: price ? Number(price) : 0,
+      is_active: isActive,
     };
-    const { error } = membership
-      ? await supabase.from("memberships").update(payload).eq("id", membership.id)
+    const { error } = isEditing
+      ? await supabase.from("memberships").update(payload).eq("id", membership!.id)
       : await supabase.from("memberships").insert(payload);
     setSaving(false);
     if (error) {
