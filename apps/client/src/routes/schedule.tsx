@@ -31,6 +31,7 @@ type Workout = {
   type: string | null;
   description: string | null;
   photo_url: string | null;
+  capacity: number | null;
 };
 type Entry = {
   id: string;
@@ -102,7 +103,7 @@ function SchedulePage() {
       const { data, error } = await supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, capacity, booked_count, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
+          "id, starts_at, ends_at, capacity, booked_count, workout:workouts(name, type, description, photo_url, capacity), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)
@@ -335,7 +336,8 @@ function SchedulePage() {
                             );
                           })()}
                           {(() => {
-                            const left = remainingSpots(c.capacity, c.booked_count);
+                            const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
+                            const left = remainingSpots(effectiveCapacity, c.booked_count);
                             if (left === null || left > 5 || left === 0) return null;
                             return (
                               <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
