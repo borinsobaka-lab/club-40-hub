@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, ChevronRight, Newspaper, Ghost, Phone, MessageSquare, Star } from "lucide-react";
+import { BIcon } from "@/components/b-icon";
 import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -146,7 +146,7 @@ function HomePage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 min-w-0">
                   <span className="font-semibold truncate">{fullName}</span>
-                  <ChevronRight className="h-4 w-4 text-white/70 shrink-0" />
+                  <BIcon name="chevron-right" className="h-4 w-4 text-white/70 shrink-0" />
                 </div>
               </div>
             </Link>
@@ -164,7 +164,7 @@ function HomePage() {
                 aria-label="Уведомления"
                 className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
               >
-                <Bell className="h-5 w-5 text-white" />
+                <BIcon name="bell-fill" className="h-5 w-5 text-white" />
               </button>
             </div>
           </div>
@@ -182,7 +182,7 @@ function HomePage() {
               </div>
             ) : news.length === 0 ? (
               <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
-                <Newspaper className="h-6 w-6" />
+                <BIcon name="newspaper" className="h-6 w-6" />
                 <span className="text-sm">Пока нет новостей</span>
               </div>
             ) : (
@@ -230,12 +230,12 @@ function HomePage() {
             <div className="rounded-2xl bg-white/10 backdrop-blur-md p-1.5">
               <div className="flex items-stretch justify-between gap-2">
                 {[
-                  { icon: MessageSquare, label: "Написать" },
-                  { icon: Phone, label: "Позвонить" },
-                  { icon: Star, label: "Фидбэк" },
+                  { icon: "chat-fill", label: "Написать" },
+                  { icon: "telephone-fill", label: "Позвонить" },
+                  { icon: "star-fill", label: "Фидбэк" },
                 ].map((item) => (
                   <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1">
-                    <item.icon className="h-5 w-5 text-white" />
+                    <BIcon name={item.icon} className="h-5 w-5 text-white" />
                     <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
                   </div>
                 ))}
@@ -260,7 +260,7 @@ function HomePage() {
             </div>
           ) : myBookings.length === 0 ? (
             <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
-              <Ghost className="h-14 w-14 text-muted-foreground" strokeWidth={1.5} />
+              <BIcon name="emoji-frown" className="h-14 w-14 text-muted-foreground" />
               <div className="text-sm text-muted-foreground">Тренировок пока нет</div>
               <Button asChild className="text-sm font-bold">
                 <Link to="/schedule">Забронировать</Link>
@@ -312,7 +312,7 @@ function HomePage() {
             </div>
           ) : news.length === 0 ? (
             <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
-              <Newspaper className="h-6 w-6" />
+              <BIcon name="newspaper" className="h-6 w-6" />
               <span className="text-sm">Пока нет услуг</span>
             </div>
           ) : (
