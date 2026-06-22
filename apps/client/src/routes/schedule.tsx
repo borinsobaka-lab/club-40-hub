@@ -367,52 +367,48 @@ function SchedulePage() {
                             );
                           })()}
                         </div>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          aria-disabled={isPending}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isPending) toggleBooking(c.id);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
+                        {!isBooked && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={isPending}
+                            onClick={(e) => {
                               e.stopPropagation();
                               if (!isPending) toggleBooking(c.id);
-                            }
-                          }}
-                          className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors ${
-                            isPending ? "opacity-60" : ""
-                          } ${
-                            isBooked
-                              ? "bg-white text-[#1B1C1F] border border-[#1B1C1F]/10"
-                              : "bg-[#FFE500] text-[#1B1C1F]"
-                          }`}
-                          aria-label={isBooked ? "Отменить запись" : "Записаться"}
-                        >
-                          {isPending ? (
-                            <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-                          ) : isBooked ? (
-                            <MinusSquare className="h-5 w-5" weight="BoldDuotone" />
-                          ) : (
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="text-[#1B1C1F]"
-                            >
-                              <path
-                                d="M12 5V19M5 12H19"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                          )}
-                        </span>
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!isPending) toggleBooking(c.id);
+                              }
+                            }}
+                            className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
+                              isPending ? "opacity-60" : ""
+                            }`}
+                            aria-label="Записаться"
+                          >
+                            {isPending ? (
+                              <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+                            ) : (
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="text-[#1B1C1F]"
+                              >
+                                <path
+                                  d="M12 5V19M5 12H19"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                        )}
                       </Card>
                     </button>
                   </div>
