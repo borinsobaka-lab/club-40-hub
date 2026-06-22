@@ -46,6 +46,16 @@ type News = {
   position: number;
 };
 
+type Service = {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  button_text: string | null;
+  button_url: string | null;
+  position: number;
+};
+
 type MyBooking = {
   entry_id: string;
   entry: {
@@ -62,6 +72,7 @@ function HomePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [news, setNews] = useState<News[] | null>(null);
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[] | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
 
   useEffect(() => {
@@ -130,6 +141,32 @@ function HomePage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "news" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      (supabase as any)
+        .from("services")
+        .select("id,title,description,image_url,button_text,button_url,position")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: false })
+        .then(({ data }: { data: Service[] | null }) => {
+          if (!cancelled) setServices((data as Service[] | null) ?? []);
+        });
+    load();
+    const channel = supabase
+      .channel("services-feed")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "services" },
         () => load(),
       )
       .subscribe();
@@ -311,7 +348,7 @@ function HomePage() {
           <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
             Услуги
           </h2>
-          {news === null ? (
+          {services === null ? (
             <div className="flex gap-3 overflow-hidden pb-2">
               <div className="w-1 shrink-0" aria-hidden="true" />
               {[0, 1, 2].map((i) => (
@@ -322,7 +359,7 @@ function HomePage() {
               ))}
               <div className="w-1 shrink-0" aria-hidden="true" />
             </div>
-          ) : news.length === 0 ? (
+          ) : services.length === 0 ? (
             <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
               <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
               <span className="text-sm">Пока нет услуг</span>
@@ -330,37 +367,53 @@ function HomePage() {
           ) : (
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
               <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
-              {news.map((n) => (
-                <div
-                  key={n.id}
-                  className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden bg-muted"
-                >
-                  {(() => {
-                    const url = mediaUrl(n.image_url);
-                    return url ? (
+              {services.map((s) => {
+                const url = mediaUrl(s.image_url, "services-media");
+                const hasCta = !!s.button_text && !!s.button_url;
+                const content = (
+                  <>
+                    {url ? (
                       <img
                         src={url}
-                        alt={n.title}
+                        alt={s.title}
                         className="absolute inset-0 h-full w-full object-cover"
                         loading="lazy"
                       />
                     ) : (
                       <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
-                    );
-                  })()}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  <div className="absolute inset-0 flex flex-col justify-end p-3">
-                    <div className="text-white text-sm font-semibold leading-tight">
-                      {n.title}
-                    </div>
-                    {n.description && (
-                      <div className="text-white/80 text-[11px] leading-tight mt-0.5 line-clamp-1">
-                        {n.description}
-                      </div>
                     )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    <div className="absolute inset-0 flex flex-col justify-end p-3">
+                      <div className="text-white text-sm font-semibold leading-tight">
+                        {s.title}
+                      </div>
+                      {s.description && (
+                        <div className="text-white/80 text-[11px] leading-tight mt-0.5 line-clamp-1">
+                          {s.description}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+                return hasCta ? (
+                  <a
+                    key={s.id}
+                    href={s.button_url!}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden bg-muted active:scale-[0.98] transition-transform"
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <div
+                    key={s.id}
+                    className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden bg-muted"
+                  >
+                    {content}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
             </div>
           )}
