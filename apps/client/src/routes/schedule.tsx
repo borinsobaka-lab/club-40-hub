@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Refresh, MinusSquare, Fire } from "@solar-icons/react";
+import { Refresh, Fire } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
