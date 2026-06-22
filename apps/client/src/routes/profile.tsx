@@ -149,7 +149,7 @@ function ProfilePage() {
             <Avatar className="h-16 w-16">
               {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
+                {loading ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
@@ -180,13 +180,13 @@ function ProfilePage() {
             onClick={() => setEditOpen(true)}
             disabled={loading || !client}
           >
-            <Pencil className="h-4 w-4 mr-2" />
+            <Pen className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Редактировать профиль
           </Button>
         </Card>
 
         <Button variant="outline" className="w-full" onClick={() => signOut()}>
-          <LogOut className="h-4 w-4 mr-2" />
+          <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
           Выйти
         </Button>
 
