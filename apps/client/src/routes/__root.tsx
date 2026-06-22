@@ -139,16 +139,44 @@ function RootComponent() {
 }
 
 function AppShell() {
-  const { session, loading } = useAuth();
+  const { session, user, loading } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAuthRoute = pathname === "/auth";
+  const onOnboardingRoute = pathname === "/onboarding";
 
   useEffect(() => {
     if (loading) return;
     if (!session && !onAuthRoute) navigate({ to: "/auth", replace: true });
     if (session && onAuthRoute) navigate({ to: "/", replace: true });
   }, [loading, session, onAuthRoute, navigate]);
+
+  // Onboarding gate: if logged in and member_profiles.onboarding_completed_at IS NULL → /onboarding
+  useEffect(() => {
+    if (loading || !user) return;
+    if (onAuthRoute || onOnboardingRoute) return;
+    let cancelled = false;
+    let skipped = false;
+    try {
+      skipped = sessionStorage.getItem("onboarding-skipped") === "1";
+    } catch {}
+    if (skipped) return;
+    (async () => {
+      const { supabase: sb } = await import("@/integrations/supabase/client");
+      const { data } = await (sb as any)
+        .from("member_profiles")
+        .select("onboarding_completed_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!data || !data.onboarding_completed_at) {
+        navigate({ to: "/onboarding", replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, user, onAuthRoute, onOnboardingRoute, navigate]);
 
   if (loading) {
     return (
@@ -170,6 +198,16 @@ function AppShell() {
     );
   }
 
+  if (onOnboardingRoute) {
+    return (
+      <div className="min-h-[100dvh] bg-background text-foreground flex justify-center">
+        <div className="w-full max-w-md flex flex-col min-h-[100dvh]">
+          <Outlet />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
       <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
@@ -182,3 +220,4 @@ function AppShell() {
     </div>
   );
 }
+

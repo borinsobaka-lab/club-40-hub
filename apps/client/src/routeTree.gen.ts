@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MembershipsRouteImport } from './routes/memberships'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -31,6 +32,11 @@ const ResultsRoute = ResultsRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/memberships': typeof MembershipsRoute
   '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/schedule': typeof ScheduleRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/memberships': typeof MembershipsRoute
   '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/schedule': typeof ScheduleRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/memberships': typeof MembershipsRoute
   '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/schedule': typeof ScheduleRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/memberships'
     | '/notifications'
+    | '/onboarding'
     | '/profile'
     | '/results'
     | '/schedule'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/memberships'
     | '/notifications'
+    | '/onboarding'
     | '/profile'
     | '/results'
     | '/schedule'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/memberships'
     | '/notifications'
+    | '/onboarding'
     | '/profile'
     | '/results'
     | '/schedule'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   MembershipsRoute: typeof MembershipsRoute
   NotificationsRoute: typeof NotificationsRoute
+  OnboardingRoute: typeof OnboardingRoute
   ProfileRoute: typeof ProfileRoute
   ResultsRoute: typeof ResultsRoute
   ScheduleRoute: typeof ScheduleRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   MembershipsRoute: MembershipsRoute,
   NotificationsRoute: NotificationsRoute,
+  OnboardingRoute: OnboardingRoute,
   ProfileRoute: ProfileRoute,
   ResultsRoute: ResultsRoute,
   ScheduleRoute: ScheduleRoute,
