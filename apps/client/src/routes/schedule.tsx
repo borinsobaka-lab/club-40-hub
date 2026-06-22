@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Refresh, MinusSquare, Fire } from "@solar-icons/react";
@@ -80,6 +80,7 @@ function pluralSeats(n: number) {
 
 
 function SchedulePage() {
+  const navigate = useNavigate();
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
   const [activeTab, setActiveTab] = useState<TabKey>("class");
@@ -167,6 +168,9 @@ function SchedulePage() {
       toast.success(isBooked ? "Запись отменена" : "Вы записаны на тренировку");
     } else if (res?.reason === "already_booked") {
       setBookedIds((prev) => new Set(prev).add(entryId));
+    } else if (res?.reason === "no_membership" || res?.reason === "no_visits_left") {
+      toast.info(reasonMessages[res.reason]);
+      navigate({ to: "/memberships" });
     } else if (res?.reason) {
       toast.error(reasonMessages[res.reason] ?? `Не удалось выполнить действие: ${res.reason}`);
     }
