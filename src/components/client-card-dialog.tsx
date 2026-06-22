@@ -10,7 +10,80 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
+
+type MemberProfile = {
+  user_id: string;
+  primary_goal: string | null;
+  goal_motivation: string | null;
+  target_timeframe: string | null;
+  desired_frequency: number | null;
+  experience_level: string | null;
+  current_weekly_activity: number | null;
+  tried_group_hiit: boolean | null;
+  health_flags: string[] | null;
+  health_notes: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  birth_year: number | null;
+  gender: string | null;
+  preferred_times: string[] | null;
+  referral_source: string | null;
+  onboarding_completed_at: string | null;
+  updated_at: string | null;
+};
+
+const GOAL_LABELS: Record<string, string> = {
+  weight_loss: "Снизить вес",
+  muscle_strength: "Сила / мышцы",
+  endurance: "Выносливость и форма",
+  energy_wellbeing: "Энергия и самочувствие",
+  stress_habit: "Снять стресс, привычка",
+  event_prep: "Подготовка к событию",
+};
+const EXPERIENCE_LABELS: Record<string, string> = {
+  beginner: "Новичок / большой перерыв",
+  occasional: "Время от времени",
+  regular: "Регулярно, 2–3 раза в неделю",
+  advanced: "Опытный, интенсивно",
+};
+const TIMEFRAME_LABELS: Record<string, string> = {
+  no_rush: "Без спешки",
+  few_months: "1–3 месяца",
+  event_date: "К конкретной дате",
+};
+const ACTIVITY_LABELS: Record<number, string> = {
+  0: "Почти не двигаюсь",
+  1: "1 раз в неделю",
+  3: "2–3 раза в неделю",
+  5: "4+ раз в неделю",
+};
+const HEALTH_LABELS: Record<string, string> = {
+  back_joints: "Спина / суставы",
+  cardio_pressure: "Сердце / давление",
+  recent_injury: "Недавняя травма или операция",
+  pregnancy: "Беременность",
+  chronic: "Хроническое заболевание",
+  none: "Ничего из перечисленного",
+};
+const TIME_LABELS: Record<string, string> = {
+  morning: "Утро",
+  day: "День",
+  evening: "Вечер",
+};
+const REFERRAL_LABELS: Record<string, string> = {
+  instagram: "Instagram / соцсети",
+  referral: "Рекомендация друга",
+  walk_by: "Проходил(а) мимо",
+  search: "Поиск / карты",
+  other: "Другое",
+};
+const PROFILE_GENDER: Record<string, string> = {
+  female: "Женский",
+  male: "Мужской",
+  other: "Другое",
+};
 
 type ClientLike = {
   id: string;
