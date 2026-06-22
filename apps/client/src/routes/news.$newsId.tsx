@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { BIcon } from "@/components/b-icon";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 
