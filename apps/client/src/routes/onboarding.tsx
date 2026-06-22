@@ -172,12 +172,6 @@ function OnboardingPage() {
     }
   }
 
-  function skipForNow() {
-    try {
-      sessionStorage.setItem("onboarding-skipped", "1");
-    } catch {}
-    navigate({ to: "/", replace: true });
-  }
 
   const stepValid = useMemo(() => {
     switch (step) {
@@ -194,7 +188,7 @@ function OnboardingPage() {
     }
   }, [step, form]);
 
-  const optionalSteps = new Set([2, 3, 6, 8, 9, 10]);
+  
 
   if (authLoading || (!bootstrapped && user)) {
     return (
@@ -215,17 +209,10 @@ function OnboardingPage() {
             Это займёт около 2 минут. Поможет тренеру подобрать правильную нагрузку с первого занятия.
           </p>
         </div>
-        <div className="px-6 pb-8 pt-4 space-y-3">
+        <div className="px-6 pb-8 pt-4">
           <Button className="w-full h-12 text-base font-semibold" onClick={() => setStep(1)}>
             Начать
           </Button>
-          <button
-            type="button"
-            className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
-            onClick={skipForNow}
-          >
-            Заполнить позже
-          </button>
         </div>
       </Shell>
     );
@@ -375,15 +362,6 @@ function OnboardingPage() {
             "Далее"
           )}
         </Button>
-        {optionalSteps.has(step) && (
-          <button
-            type="button"
-            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => goNext(step + 1)}
-          >
-            Пропустить
-          </button>
-        )}
       </div>
     </Shell>
   );
