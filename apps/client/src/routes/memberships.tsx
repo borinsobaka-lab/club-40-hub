@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import {
@@ -232,109 +233,116 @@ function MembershipsPage() {
           </Card>
         )}
 
-        {!loading &&
-          memberships.some((m) => m.visits_count !== null) && (
-            <div>
-              <h2 className="text-2xl font-bold italic uppercase mb-1">Пакеты тренировок</h2>
-              <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается один-два раза в неделю</p>
-              <div className="space-y-3">
-                {memberships
-                  .filter((m) => m.visits_count !== null)
-                  .map((m, idx) => {
-                    const color = COLORS[idx % COLORS.length];
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => setSelected({ ...m })}
-                        className="w-full text-left"
-                      >
-                        <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
-                          <div
-                            className="absolute left-0 top-0 bottom-0 w-1"
-                            style={{ backgroundColor: color }}
-                          />
-                          <div className="flex items-start justify-between gap-3 pl-3">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-lg font-bold">{m.name}</h3>
-                              {m.description && (
-                                <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
-                              )}
-                              <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                                <span className="inline-flex items-center gap-1">
-                                  <Lightning className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                  {m.visits_count} занятий
-                                </span>
-                                <span className="inline-flex items-center gap-1">
-                                  <ClockCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                  {m.duration_days} дней
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <div className="text-xl font-black">
-                                {Number(m.price).toLocaleString("ru-RU")} ₾
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      </button>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-        {!loading &&
-          memberships.some((m) => m.visits_count === null) && (
-            <div>
-              <h2 className="text-2xl font-bold italic uppercase mb-1">Безлимитные абонементы</h2>
+        {!loading && user && !error && memberships.length > 0 && (
+          <Tabs defaultValue="unlimited" className="w-full">
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="unlimited" className="flex-1">Безлимитные</TabsTrigger>
+              <TabsTrigger value="packages" className="flex-1">Пакеты тренировок</TabsTrigger>
+            </TabsList>
+            <TabsContent value="unlimited">
               <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается три и более раз в неделю</p>
-              <div className="space-y-3">
-                {memberships
-                  .filter((m) => m.visits_count === null)
-                  .map((m, idx) => {
-                    const color = COLORS[idx % COLORS.length];
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => setSelected({ ...m })}
-                        className="w-full text-left"
-                      >
-                        <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
-                          <div
-                            className="absolute left-0 top-0 bottom-0 w-1"
-                            style={{ backgroundColor: color }}
-                          />
-                          <div className="flex items-start justify-between gap-3 pl-3">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-lg font-bold">{m.name}</h3>
-                              {m.description && (
-                                <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
-                              )}
-                              <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                                <span className="inline-flex items-center gap-1">
-                                  <Lightning className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                  Безлимит
-                                </span>
-                                <span className="inline-flex items-center gap-1">
-                                  <ClockCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                  {m.duration_days} дней
-                                </span>
+              {memberships.some((m) => m.visits_count === null) ? (
+                <div className="space-y-3">
+                  {memberships
+                    .filter((m) => m.visits_count === null)
+                    .map((m, idx) => {
+                      const color = COLORS[idx % COLORS.length];
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => setSelected({ ...m })}
+                          className="w-full text-left"
+                        >
+                          <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-1"
+                              style={{ backgroundColor: color }}
+                            />
+                            <div className="flex items-start justify-between gap-3 pl-3">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold">{m.name}</h3>
+                                {m.description && (
+                                  <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
+                                )}
+                                <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                                  <span className="inline-flex items-center gap-1">
+                                    <Lightning className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                    Безлимит
+                                  </span>
+                                  <span className="inline-flex items-center gap-1">
+                                    <ClockCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                    {m.duration_days} дней
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-xl font-black">
+                                  {Number(m.price).toLocaleString("ru-RU")} ₾
+                                </div>
                               </div>
                             </div>
-                            <div className="text-right shrink-0">
-                              <div className="text-xl font-black">
-                                {Number(m.price).toLocaleString("ru-RU")} ₾
+                          </Card>
+                        </button>
+                      );
+                    })}
+                </div>
+              ) : (
+                <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных безлимитных абонементов.</Card>
+              )}
+            </TabsContent>
+            <TabsContent value="packages">
+              <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается один-два раза в неделю</p>
+              {memberships.some((m) => m.visits_count !== null) ? (
+                <div className="space-y-3">
+                  {memberships
+                    .filter((m) => m.visits_count !== null)
+                    .map((m, idx) => {
+                      const color = COLORS[idx % COLORS.length];
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => setSelected({ ...m })}
+                          className="w-full text-left"
+                        >
+                          <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-1"
+                              style={{ backgroundColor: color }}
+                            />
+                            <div className="flex items-start justify-between gap-3 pl-3">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold">{m.name}</h3>
+                                {m.description && (
+                                  <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
+                                )}
+                                <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                                  <span className="inline-flex items-center gap-1">
+                                    <Lightning className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                    {m.visits_count} занятий
+                                  </span>
+                                  <span className="inline-flex items-center gap-1">
+                                    <ClockCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                    {m.duration_days} дней
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-xl font-black">
+                                  {Number(m.price).toLocaleString("ru-RU")} ₾
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </Card>
-                      </button>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
+                          </Card>
+                        </button>
+                      );
+                    })}
+                </div>
+              ) : (
+                <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных пакетов тренировок.</Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       {selected && (
