@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 import {
   AltArrowRight,
@@ -9,15 +9,21 @@ import {
   Star,
   ClipboardText,
   Ghost,
+  Refresh,
+  MinusSquare,
 } from "@solar-icons/react";
 import giftIcon from "@/assets/gift.png";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { NewsDrawer } from "@/components/news-drawer";
 import { ServiceDrawer } from "@/components/service-drawer";
+import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
+import { workoutTypeMeta } from "@/lib/workout-types";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,6 +34,20 @@ export const Route = createFileRoute("/")({
   }),
   component: HomePage,
 });
+
+function resolvePublicUrl(bucket: string, path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+const DAY_NAMES_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
