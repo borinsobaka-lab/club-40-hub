@@ -115,14 +115,13 @@ export function BottomNav() {
             disabled
             aria-label="Ассистент (скоро)"
             title="Скоро"
-            className="assistant-glow glass-dark flex h-[68px] w-[68px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl text-white/55 opacity-80 cursor-not-allowed"
+            className="assistant-glow glass-dark flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl text-white/70 cursor-not-allowed"
           >
             <span className="glow-orb" />
             <span className="glow-orb" />
-            <span className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-[13px] font-black leading-none">
+            <span className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[15px] font-black leading-none">
               W
             </span>
-            <span className="relative z-10 text-[10px] font-medium">Ассистент</span>
           </button>
         </div>
         <div className="h-[env(safe-area-inset-bottom)]" />

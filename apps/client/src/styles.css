@@ -461,62 +461,62 @@
   content: "";
   position: absolute;
   border-radius: 9999px;
-  filter: blur(14px);
+  filter: blur(5px);
   pointer-events: none;
   will-change: transform;
 }
 .assistant-glow::before {
-  width: 44px;
-  height: 44px;
-  background: radial-gradient(circle, rgba(255, 220, 0, 0.95), rgba(255, 200, 0, 0) 70%);
-  top: -6px;
-  left: -4px;
+  width: 22px;
+  height: 22px;
+  background: radial-gradient(circle, rgba(255, 225, 0, 1), rgba(255, 200, 0, 0) 72%);
+  top: 10px;
+  left: 8px;
   animation: assistant-blob-a 3s ease-in-out infinite alternate;
 }
 .assistant-glow::after {
-  width: 38px;
-  height: 38px;
-  background: radial-gradient(circle, rgba(255, 170, 30, 0.92), rgba(255, 170, 30, 0) 70%);
-  bottom: -4px;
-  right: -2px;
+  width: 18px;
+  height: 18px;
+  background: radial-gradient(circle, rgba(255, 160, 0, 1), rgba(255, 140, 0, 0) 72%);
+  bottom: 10px;
+  right: 8px;
   animation: assistant-blob-b 2.4s ease-in-out infinite alternate;
 }
 .assistant-glow > .glow-orb {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(10px);
+  filter: blur(4px);
   pointer-events: none;
   will-change: transform;
 }
 .assistant-glow > .glow-orb:nth-of-type(1) {
-  width: 32px;
-  height: 32px;
-  background: radial-gradient(circle, rgba(255, 240, 80, 0.9), rgba(255, 240, 80, 0) 70%);
-  top: 8px;
-  right: -6px;
+  width: 16px;
+  height: 16px;
+  background: radial-gradient(circle, rgba(255, 245, 80, 1), rgba(255, 245, 80, 0) 72%);
+  top: 16px;
+  right: 8px;
   animation: assistant-blob-c 2.8s ease-in-out infinite alternate;
 }
 .assistant-glow > .glow-orb:nth-of-type(2) {
-  width: 28px;
-  height: 28px;
-  background: radial-gradient(circle, rgba(250, 200, 50, 0.88), rgba(250, 200, 50, 0) 70%);
-  bottom: 6px;
-  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle, rgba(255, 190, 0, 1), rgba(255, 190, 0, 0) 72%);
+  bottom: 16px;
+  left: 8px;
   animation: assistant-blob-d 3.2s ease-in-out infinite alternate;
 }
 @keyframes assistant-blob-a {
   0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(8px, 6px) scale(1.15); }
+  100% { transform: translate(5px, 4px) scale(1.15); }
 }
 @keyframes assistant-blob-b {
   0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-6px, -5px) scale(1.2); }
+  100% { transform: translate(-4px, -3px) scale(1.2); }
 }
 @keyframes assistant-blob-c {
   0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-5px, 7px) scale(1.1); }
+  100% { transform: translate(-3px, 5px) scale(1.1); }
 }
 @keyframes assistant-blob-d {
   0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(6px, -4px) scale(0.95); }
+  100% { transform: translate(4px, -3px) scale(0.95); }
 }
