@@ -105,6 +105,7 @@ function MembershipsPage() {
             .from("memberships")
             .select(membershipSelect)
             .eq("studio_id", c.studio_id)
+            .eq("is_active", true)
             .order("price", { ascending: true }),
           db
             .from("client_memberships")
@@ -121,6 +122,7 @@ function MembershipsPage() {
           const { data: fallbackMemberships, error: fallbackErr } = await db
             .from("memberships")
             .select(membershipSelect)
+            .eq("is_active", true)
             .order("price", { ascending: true });
           if (fallbackErr) throw fallbackErr;
           membershipRows = (fallbackMemberships as Membership[]) ?? [];
