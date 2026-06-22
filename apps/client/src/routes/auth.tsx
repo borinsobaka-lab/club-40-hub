@@ -124,12 +124,12 @@ function AuthPage() {
 
             <TabsContent value="signin" className="m-0">
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Войти"}
+                {busy ? <BIcon name="arrow-clockwise" spin className="h-4 w-4" /> : "Войти"}
               </Button>
             </TabsContent>
             <TabsContent value="signup" className="m-0">
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Создать аккаунт"}
+                {busy ? <BIcon name="arrow-clockwise" spin className="h-4 w-4" /> : "Создать аккаунт"}
               </Button>
             </TabsContent>
           </form>
