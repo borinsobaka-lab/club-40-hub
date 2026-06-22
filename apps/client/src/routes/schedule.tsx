@@ -323,6 +323,8 @@ function SchedulePage() {
                           photo: resolvePublicUrl("workout-photos", c.workout?.photo_url),
                           trainerName,
                           trainerPhoto,
+                          startsAt: c.starts_at,
+                          endsAt: c.ends_at,
                         });
                       }}
                       className="w-full text-left active:opacity-80 transition-opacity"
