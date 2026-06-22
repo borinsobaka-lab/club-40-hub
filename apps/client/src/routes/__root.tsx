@@ -156,11 +156,6 @@ function AppShell() {
     if (loading || !user) return;
     if (onAuthRoute || onOnboardingRoute) return;
     let cancelled = false;
-    let skipped = false;
-    try {
-      skipped = sessionStorage.getItem("onboarding-skipped") === "1";
-    } catch {}
-    if (skipped) return;
     (async () => {
       const { supabase: sb } = await import("@/integrations/supabase/client");
       const { data } = await (sb as any)
