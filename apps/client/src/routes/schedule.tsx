@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Loader2, Minus, Plus } from "lucide-react";
+import { Refresh, MinusSquare, AddSquare } from "@solar-icons/react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
