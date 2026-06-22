@@ -16,6 +16,7 @@ import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
+import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
@@ -60,6 +61,11 @@ const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
 const AuthenticatedTrainersRoute = AuthenticatedTrainersRouteImport.update({
   id: '/trainers',
   path: '/trainers',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedServicesRoute = AuthenticatedServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/nps': typeof AuthenticatedNpsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
+  '/services': typeof AuthenticatedServicesRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/chat': typeof ApiChatRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/nps': typeof AuthenticatedNpsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
+  '/services': typeof AuthenticatedServicesRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/chat': typeof ApiChatRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
   '/_authenticated/sales': typeof AuthenticatedSalesRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
+  '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/chat': typeof ApiChatRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/nps'
     | '/sales'
     | '/schedule'
+    | '/services'
     | '/trainers'
     | '/workouts'
     | '/api/chat'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/nps'
     | '/sales'
     | '/schedule'
+    | '/services'
     | '/trainers'
     | '/workouts'
     | '/api/chat'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/_authenticated/nps'
     | '/_authenticated/sales'
     | '/_authenticated/schedule'
+    | '/_authenticated/services'
     | '/_authenticated/trainers'
     | '/_authenticated/workouts'
     | '/api/chat'
@@ -295,6 +307,13 @@ declare module '@tanstack/react-router' {
       path: '/trainers'
       fullPath: '/trainers'
       preLoaderRoute: typeof AuthenticatedTrainersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/services': {
+      id: '/_authenticated/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof AuthenticatedServicesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/schedule': {
@@ -389,6 +408,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
   AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
+  AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedTrainersRoute: typeof AuthenticatedTrainersRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -406,6 +426,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,
   AuthenticatedSalesRoute: AuthenticatedSalesRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
+  AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedTrainersRoute: AuthenticatedTrainersRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
@@ -423,13 +444,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
