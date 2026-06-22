@@ -264,7 +264,7 @@ function MembershipsPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-xl font-black">
-                        {Number(m.price).toLocaleString("ru-RU")}₽
+                        {Number(m.price).toLocaleString("ru-RU")} ₾
                       </div>
                     </div>
                   </div>
