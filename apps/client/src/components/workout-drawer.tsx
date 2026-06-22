@@ -103,7 +103,7 @@ export function WorkoutDrawer({
                       disabled={isPending}
                       className="flex-1 h-14 rounded-full bg-white text-[#1B1C1F] border border-[#1B1C1F]/10 font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
                     >
-                      {isPending ? "..." : "Отменить запись"}
+                      {isPending ? "..." : "Отменить"}
                     </button>
                     <button
                       type="button"
@@ -121,7 +121,7 @@ export function WorkoutDrawer({
                       className="flex-1 h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
                     >
                       <Calendar className="h-5 w-5" weight="BoldDuotone" />
-                      В календарь
+                      Добавить в календарь
                     </button>
                   </div>
                 ) : (
