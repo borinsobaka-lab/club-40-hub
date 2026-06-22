@@ -22,15 +22,15 @@ type SquircleAvatarProps = React.ComponentPropsWithoutRef<typeof AvatarPrimitive
 const SquircleAvatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
   SquircleAvatarProps
->(({ className, style, size = 44, cornerRadius, cornerSmoothing = 0.6, ...props }, ref) => {
-  const radius = cornerRadius ?? Math.round(size * 0.24);
+>(({ className, style, size = 44, cornerRadius, cornerSmoothing = 0.8, ...props }, ref) => {
+  const radius = cornerRadius ?? Math.round(size * 0.4);
   const path = React.useMemo(
     () =>
       getSvgPath({
         width: size,
         height: size,
         cornerRadius: radius,
-        cornerSmoothing: smoothing,
+        cornerSmoothing,
       }),
     [size, radius, cornerSmoothing],
   );
