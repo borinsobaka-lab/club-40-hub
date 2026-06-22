@@ -169,50 +169,47 @@
 .gradient-blobs::after {
   content: "";
   position: absolute;
-  width: 70%;
+  width: 22%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(60px);
-  opacity: 0.55;
+  filter: blur(18px);
+  opacity: 0.85;
   will-change: transform;
 }
 .gradient-blobs::before {
-  background: radial-gradient(circle, rgba(250, 204, 21, 0.75), rgba(250, 204, 21, 0) 70%);
-  top: -20%;
-  left: -15%;
-  animation: blob-drift-a 18s ease-in-out infinite alternate;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.95), rgba(250, 204, 21, 0) 70%);
+  top: 8%;
+  left: 12%;
+  animation: blob-drift-a 9s ease-in-out infinite alternate;
 }
 .gradient-blobs::after {
-  background: radial-gradient(circle, rgba(255, 170, 50, 0.6), rgba(255, 170, 50, 0) 70%);
-  bottom: -30%;
-  right: -20%;
-  animation: blob-drift-b 22s ease-in-out infinite alternate;
+  background: radial-gradient(circle, rgba(255, 170, 50, 0.9), rgba(255, 170, 50, 0) 70%);
+  bottom: 12%;
+  right: 8%;
+  animation: blob-drift-b 11s ease-in-out infinite alternate;
 }
 .gradient-blobs > span {
   position: absolute;
-  width: 55%;
+  width: 18%;
   aspect-ratio: 1 / 1;
   border-radius: 9999px;
-  filter: blur(70px);
-  opacity: 0.45;
-  background: radial-gradient(circle, rgba(253, 224, 71, 0.7), rgba(253, 224, 71, 0) 70%);
-  top: 20%;
-  left: 40%;
-  animation: blob-drift-c 26s ease-in-out infinite alternate;
+  filter: blur(16px);
+  opacity: 0.8;
+  background: radial-gradient(circle, rgba(253, 224, 71, 0.95), rgba(253, 224, 71, 0) 70%);
+  top: 45%;
+  left: 55%;
+  animation: blob-drift-c 7s ease-in-out infinite alternate;
 }
 
 @keyframes blob-drift-a {
   0%   { transform: translate(0%, 0%) scale(1); }
-  50%  { transform: translate(30%, 20%) scale(1.15); }
-  100% { transform: translate(60%, 10%) scale(0.95); }
+  100% { transform: translate(35%, 25%) scale(1.1); }
 }
 @keyframes blob-drift-b {
   0%   { transform: translate(0%, 0%) scale(1); }
-  50%  { transform: translate(-25%, -15%) scale(1.1); }
-  100% { transform: translate(-50%, 10%) scale(1.05); }
+  100% { transform: translate(-30%, -20%) scale(1.15); }
 }
 @keyframes blob-drift-c {
   0%   { transform: translate(0%, 0%) scale(1); }
-  50%  { transform: translate(-30%, 25%) scale(1.2); }
-  100% { transform: translate(20%, -20%) scale(0.9); }
+  100% { transform: translate(-25%, 35%) scale(0.95); }
 }
