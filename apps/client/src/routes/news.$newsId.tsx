@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { AltArrowLeft, Refresh } from "@solar-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 
@@ -50,7 +50,7 @@ function NewsDetailPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+        <Refresh className="h-5 w-5 text-muted-foreground animate-spin" weight="BoldDuotone" />
       </div>
     );
   }
@@ -89,7 +89,7 @@ function NewsDetailPage() {
             aria-label="Назад"
             className="absolute top-3 left-3 h-9 w-9 rounded-full flex items-center justify-center bg-background/85 backdrop-blur active:bg-background transition-colors"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
           </Link>
         </div>
 

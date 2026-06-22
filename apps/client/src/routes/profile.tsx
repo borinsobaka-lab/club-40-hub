@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Loader2, Pencil, LogOut, Camera } from "lucide-react";
+import { Refresh, Pen, Logout, Camera } from "@solar-icons/react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -149,7 +149,7 @@ function ProfilePage() {
             <Avatar className="h-16 w-16">
               {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
+                {loading ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
@@ -180,13 +180,13 @@ function ProfilePage() {
             onClick={() => setEditOpen(true)}
             disabled={loading || !client}
           >
-            <Pencil className="h-4 w-4 mr-2" />
+            <Pen className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Редактировать профиль
           </Button>
         </Card>
 
         <Button variant="outline" className="w-full" onClick={() => signOut()}>
-          <LogOut className="h-4 w-4 mr-2" />
+          <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
           Выйти
         </Button>
 
@@ -370,7 +370,7 @@ function EditProfileSheet({
               </Avatar>
               <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
                 {uploadingAvatar ? (
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 ) : (
                   <Camera className="h-6 w-6 text-white drop-shadow" />
                 )}
@@ -485,7 +485,7 @@ function EditProfileSheet({
             Отмена
           </Button>
           <Button className="flex-1" onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {saving && <Refresh className="h-4 w-4 mr-2 animate-spin" weight="BoldDuotone" />}
             Сохранить
           </Button>
         </SheetFooter>

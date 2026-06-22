@@ -2,15 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  ChevronRight,
+  AltArrowRight,
   Bell,
-  MessageSquare,
+  ChatSquare,
   Phone,
   Star,
-  Newspaper,
+  ClipboardText,
   Ghost,
-  Loader2,
-} from "lucide-react";
+} from "@solar-icons/react";
 import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -159,7 +158,7 @@ function HomePage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 min-w-0">
                   <span className="font-semibold truncate">{fullName}</span>
-                  <ChevronRight className="h-4 w-4 text-white/70 shrink-0" />
+                  <AltArrowRight className="h-4 w-4 text-white/70 shrink-0" weight="BoldDuotone" />
                 </div>
               </div>
             </Link>
@@ -195,7 +194,7 @@ function HomePage() {
               </div>
             ) : news.length === 0 ? (
               <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
-                <Newspaper className="h-6 w-6" />
+                <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
                 <span className="text-sm">Пока нет новостей</span>
               </div>
             ) : (
@@ -243,7 +242,7 @@ function HomePage() {
             <div className="rounded-2xl bg-white/10 backdrop-blur-md p-1.5">
               <div className="flex items-stretch justify-between gap-2">
                 {[
-                  { icon: MessageSquare, label: "Написать" },
+                  { icon: ChatSquare, label: "Написать" },
                   { icon: Phone, label: "Позвонить" },
                   { icon: Star, label: "Фидбэк" },
                 ].map((item) => (
@@ -325,7 +324,7 @@ function HomePage() {
             </div>
           ) : news.length === 0 ? (
             <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
-              <Newspaper className="h-6 w-6" />
+              <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
               <span className="text-sm">Пока нет услуг</span>
             </div>
           ) : (

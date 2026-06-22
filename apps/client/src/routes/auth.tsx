@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
+import { Refresh } from "@solar-icons/react";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/auth")({
@@ -124,12 +124,12 @@ function AuthPage() {
 
             <TabsContent value="signin" className="m-0">
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Войти"}
+                {busy ? <Refresh className="h-4 w-4 animate-spin" weight="BoldDuotone" /> : "Войти"}
               </Button>
             </TabsContent>
             <TabsContent value="signup" className="m-0">
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Создать аккаунт"}
+                {busy ? <Refresh className="h-4 w-4 animate-spin" weight="BoldDuotone" /> : "Создать аккаунт"}
               </Button>
             </TabsContent>
           </form>

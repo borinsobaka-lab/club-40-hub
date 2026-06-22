@@ -10,7 +10,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
 
 import appCss from "../styles.css?url";
@@ -129,8 +129,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppShell />
-        <Toaster />
+        <SolarProvider value={{ weight: "BoldDuotone" }}>
+          <AppShell />
+          <Toaster />
+        </SolarProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
@@ -151,7 +153,7 @@ function AppShell() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+        <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
       </div>
     );
   }

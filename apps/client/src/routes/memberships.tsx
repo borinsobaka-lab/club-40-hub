@@ -4,13 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
-  Loader2,
+  Refresh,
   ShieldCheck,
-  Zap,
-  Clock,
+  Lightning,
+  ClockCircle,
   Ticket,
-  Check,
-} from "lucide-react";
+  CheckCircle,
+} from "@solar-icons/react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -194,7 +194,7 @@ function MembershipsPage() {
 
         {(loading || authLoading) && user && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+            <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
           </div>
         )}
 
@@ -252,11 +252,11 @@ function MembershipsPage() {
                       )}
                       <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          <Zap className="h-3.5 w-3.5" />
+                          <Lightning className="h-3.5 w-3.5" weight="BoldDuotone" />
                           {m.visits_count === null ? "Безлимит" : `${m.visits_count} занятий`}
                         </span>
                         <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
+                          <ClockCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
                           {m.duration_days} дней
                         </span>
                       </div>
@@ -348,7 +348,7 @@ function MembershipDrawer({
           <div className="mt-5 space-y-2">
             {features.map((f, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" weight="BoldDuotone" />
                 <span>{f}</span>
               </div>
             ))}

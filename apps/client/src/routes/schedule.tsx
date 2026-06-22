@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Loader2, Minus, Plus } from "lucide-react";
+import { Refresh, MinusSquare, AddSquare } from "@solar-icons/react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
@@ -252,7 +252,7 @@ function SchedulePage() {
 
           {loading ? (
             <div className="flex justify-center py-10 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
             </div>
           ) : error ? (
             <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
@@ -354,11 +354,11 @@ function SchedulePage() {
                           aria-label={isBooked ? "Отменить запись" : "Записаться"}
                         >
                           {isPending ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
                           ) : isBooked ? (
-                            <Minus className="h-6 w-6" />
+                            <MinusSquare className="h-6 w-6" weight="BoldDuotone" />
                           ) : (
-                            <Plus className="h-6 w-6" />
+                            <AddSquare className="h-6 w-6" weight="BoldDuotone" />
                           )}
                         </span>
                       </Card>

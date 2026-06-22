@@ -1,25 +1,25 @@
+import type { ComponentType } from "react";
 import {
   HeartPulse,
-  Zap,
-  Shuffle,
-  Flower2,
-  Activity,
-  type LucideIcon,
-} from "lucide-react";
+  Lightning,
+  Leaf,
+  Pulse,
+} from "@solar-icons/react";
+import Shuffle from "@solar-icons/react/icons/video/Shuffle";
 
 export const TYPE_META: Record<
   string,
-  { label: string; icon: LucideIcon; color: string; bg: string; stripe: string }
+  { label: string; icon: ComponentType<{ className?: string }>; color: string; bg: string; stripe: string }
 > = {
   cardio: { label: "Кардио", icon: HeartPulse, color: "text-blue-600", bg: "bg-blue-500/10", stripe: "bg-blue-500" },
-  strength: { label: "Силовая", icon: Zap, color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
+  strength: { label: "Силовая", icon: Lightning, color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
   hybrid: { label: "Гибрид", icon: Shuffle, color: "text-violet-600", bg: "bg-violet-500/10", stripe: "bg-violet-500" },
-  recovery: { label: "Восстановление", icon: Flower2, color: "text-emerald-600", bg: "bg-emerald-500/10", stripe: "bg-emerald-500" },
+  recovery: { label: "Восстановление", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-500/10", stripe: "bg-emerald-500" },
 };
 
 export const TYPE_ORDER = ["cardio", "strength", "hybrid", "recovery"];
 
-const FALLBACK_ICON = Activity;
+const FALLBACK_ICON = Pulse;
 
 export function workoutTypeMeta(type: string | null | undefined) {
   if (!type)

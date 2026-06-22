@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, User, MoreHorizontal, Trophy, CreditCard } from "lucide-react";
+import { Home, Dumbbell, User, MenuDots, CupStar, Card } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {
@@ -16,8 +16,8 @@ const mainItems: NavItem[] = [
 ];
 
 const moreItems = [
-  { to: "/results" as const, label: "Результаты", Icon: Trophy },
-  { to: "/memberships" as const, label: "Абонементы", Icon: CreditCard },
+  { to: "/results" as const, label: "Результаты", Icon: CupStar },
+  { to: "/memberships" as const, label: "Абонементы", Icon: Card },
 ];
 
 export function BottomNav() {
@@ -62,7 +62,7 @@ export function BottomNav() {
                     inactiveProps={{ className: "text-white/70" }}
                     className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5"
                   >
-                    <Icon className="h-6 w-6" strokeWidth={2.2} />
+                    <Icon className="h-6 w-6" weight="BoldDuotone" />
                     <span>{label}</span>
                   </Link>
                 </li>
@@ -78,7 +78,7 @@ export function BottomNav() {
                     moreActive || moreOpen ? "text-[#FFE500]" : "text-white/70"
                   }`}
                 >
-                  <MoreHorizontal className="h-6 w-6" strokeWidth={2.2} />
+                  <MenuDots className="h-6 w-6" weight="BoldDuotone" />
                   <span>Ещё</span>
                 </button>
 
@@ -98,7 +98,7 @@ export function BottomNav() {
                             active ? "text-[#FFE500]" : "text-white/90"
                           }`}
                         >
-                          <Icon className="h-5 w-5" strokeWidth={2.2} />
+                          <Icon className="h-5 w-5" weight="BoldDuotone" />
                           <span>{label}</span>
                         </Link>
                       );
