@@ -62,7 +62,7 @@ export function BottomNav() {
                     inactiveProps={{ className: "text-white/70" }}
                     className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5"
                   >
-                    <Icon className="h-5 w-5" strokeWidth={2.2} />
+                    <Icon className="h-6 w-6" strokeWidth={2.2} />
                     <span>{label}</span>
                   </Link>
                 </li>
@@ -78,7 +78,7 @@ export function BottomNav() {
                     moreActive || moreOpen ? "text-[#FFE500]" : "text-white/70"
                   }`}
                 >
-                  <MoreHorizontal className="h-5 w-5" strokeWidth={2.2} />
+                  <MoreHorizontal className="h-6 w-6" strokeWidth={2.2} />
                   <span>Ещё</span>
                 </button>
 
@@ -98,7 +98,7 @@ export function BottomNav() {
                             active ? "text-[#FFE500]" : "text-white/90"
                           }`}
                         >
-                          <Icon className="h-4.5 w-4.5" strokeWidth={2.2} />
+                          <Icon className="h-5 w-5" strokeWidth={2.2} />
                           <span>{label}</span>
                         </Link>
                       );
