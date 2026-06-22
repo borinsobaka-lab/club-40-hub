@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { LogOut, Loader2, Pencil, Camera } from "lucide-react";
+import { BIcon } from "@/components/b-icon";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -149,7 +149,7 @@ function ProfilePage() {
             <Avatar className="h-16 w-16">
               {client?.photo_url && <AvatarImage src={client.photo_url} alt={fullName} />}
               <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : initials(fullName)}
+                {loading ? <BIcon name="arrow-clockwise" spin className="h-5 w-5" /> : initials(fullName)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
@@ -180,13 +180,13 @@ function ProfilePage() {
             onClick={() => setEditOpen(true)}
             disabled={loading || !client}
           >
-            <Pencil className="h-4 w-4 mr-2" />
+            <BIcon name="pencil-fill" className="h-4 w-4 mr-2" />
             Редактировать профиль
           </Button>
         </Card>
 
         <Button variant="outline" className="w-full" onClick={() => signOut()}>
-          <LogOut className="h-4 w-4 mr-2" />
+          <BIcon name="box-arrow-right" className="h-4 w-4 mr-2" />
           Выйти
         </Button>
 
@@ -370,13 +370,13 @@ function EditProfileSheet({
               </Avatar>
               <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
                 {uploadingAvatar ? (
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  <BIcon name="arrow-clockwise" spin className="h-6 w-6 text-white" />
                 ) : (
-                  <Camera className="h-6 w-6 text-white drop-shadow" />
+                  <BIcon name="camera-fill" className="h-6 w-6 text-white drop-shadow" />
                 )}
               </div>
               <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
-                <Camera className="h-3.5 w-3.5" />
+                <BIcon name="camera-fill" className="h-3.5 w-3.5" />
               </div>
             </button>
             <input
@@ -485,7 +485,7 @@ function EditProfileSheet({
             Отмена
           </Button>
           <Button className="flex-1" onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {saving && <BIcon name="arrow-clockwise" spin className="h-4 w-4 mr-2" />}
             Сохранить
           </Button>
         </SheetFooter>
