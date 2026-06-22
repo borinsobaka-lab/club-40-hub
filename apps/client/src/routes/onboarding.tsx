@@ -188,7 +188,7 @@ function OnboardingPage() {
     }
   }, [step, form]);
 
-  const optionalSteps = new Set([2, 3, 6, 8, 9, 10]);
+  
 
   if (authLoading || (!bootstrapped && user)) {
     return (
