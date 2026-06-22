@@ -36,6 +36,8 @@ type Entry = {
   id: string;
   starts_at: string;
   ends_at: string;
+  capacity: number | null;
+  booked_count: number;
   workout: Workout | null;
   trainers: { trainer: Trainer | null }[] | null;
 };
