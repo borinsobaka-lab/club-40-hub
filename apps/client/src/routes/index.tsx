@@ -383,31 +383,108 @@ function HomePage() {
               </Button>
             </div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
-              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
-              {myBookings.map((b) => {
-                const e = b.entry!;
-                const d = new Date(e.starts_at);
-                const dayLabel = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
-                const timeLabel = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+            <div className="px-4 space-y-5">
+              {groupedBookings!.map((group) => {
+                const d = new Date(group.ts);
+                const weekday = DAY_NAMES_FULL[d.getDay()];
+                const dateLabel = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
                 return (
-                  <Link
-                    key={b.entry_id}
-                    to="/schedule"
-                    className="shrink-0 snap-start w-60 rounded-2xl bg-[#FFE500] text-[#1B1C1F] p-4 flex flex-col gap-2 active:scale-[0.98] transition-transform"
-                  >
-                    <div className="text-xs font-semibold uppercase tracking-wide opacity-70">
-                      {dayLabel} · {timeLabel}
+                  <div key={group.ts} className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {weekday}, {dateLabel}
                     </div>
-                    <div className="text-base font-bold leading-snug break-words">
-                      {e.workout?.name ?? "Занятие"}
-                    </div>
-                  </Link>
+                    {group.items.map((b) => {
+                      const e = b.entry!;
+                      const meta = workoutTypeMeta(e.workout?.type);
+                      const isPending = pendingId === e.id;
+                      const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      const trainerNames = (e.trainers ?? [])
+                        .map((t) => t.trainer?.full_name)
+                        .filter((n): n is string => !!n);
+                      return (
+                        <button
+                          key={b.entry_id}
+                          type="button"
+                          onClick={() => {
+                            const trainerList = (e.trainers ?? [])
+                              .map((t) => t.trainer)
+                              .filter((t): t is Trainer => !!t);
+                            const trainerName = trainerList
+                              .map((t) => t.full_name)
+                              .filter((n): n is string => !!n)
+                              .join(", ") || null;
+                            const trainerPhoto = resolvePublicUrl(
+                              "trainer-photos",
+                              trainerList.find((t) => !!t.photo_url)?.photo_url,
+                            );
+                            setOpenEntry({
+                              id: e.id,
+                              name: e.workout?.name ?? "Занятие",
+                              type: e.workout?.type ?? null,
+                              description: e.workout?.description ?? null,
+                              photo: resolvePublicUrl("workout-photos", e.workout?.photo_url),
+                              trainerName,
+                              trainerPhoto,
+                            });
+                          }}
+                          className="w-full text-left active:opacity-80 transition-opacity"
+                        >
+                          <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]">
+                            <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
+                            <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                              <div className="text-base font-bold italic tabular-nums leading-tight text-center">
+                                {timeLabel}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0 ml-1">
+                              <div className="font-medium break-words leading-snug">
+                                {e.workout?.name ?? "Занятие"}
+                              </div>
+                              {trainerNames.length > 0 && (
+                                <div className="text-xs mt-0.5 truncate text-[#1B1C1F]/70">
+                                  {trainerNames.join(", ")}
+                                </div>
+                              )}
+                            </div>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-disabled={isPending}
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                if (!isPending) cancelBooking(e.id);
+                              }}
+                              onKeyDown={(ev) => {
+                                if (ev.key === "Enter" || ev.key === " ") {
+                                  ev.preventDefault();
+                                  ev.stopPropagation();
+                                  if (!isPending) cancelBooking(e.id);
+                                }
+                              }}
+                              className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-white text-[#1B1C1F] border border-[#1B1C1F]/10 ${
+                                isPending ? "opacity-60" : ""
+                              }`}
+                              aria-label="Отменить запись"
+                            >
+                              {isPending ? (
+                                <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+                              ) : (
+                                <MinusSquare className="h-5 w-5" weight="BoldDuotone" />
+                              )}
+                            </span>
+                          </Card>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
-              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
             </div>
           )}
+
         </section>
 
         {/* Услуги */}
