@@ -10,7 +10,6 @@ import {
   ClipboardText,
   Ghost,
 } from "@solar-icons/react";
-import { Loader2 } from "lucide-react";
 import giftAsset from "@/assets/gift.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
