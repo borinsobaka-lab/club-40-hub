@@ -16,8 +16,8 @@ const mainItems: NavItem[] = [
 ];
 
 const moreItems = [
-  { to: "/results" as const, label: "Результаты", Icon: Trophy },
-  { to: "/memberships" as const, label: "Абонементы", Icon: CreditCard },
+  { to: "/results" as const, label: "Результаты", Icon: CupStar },
+  { to: "/memberships" as const, label: "Абонементы", Icon: Card },
 ];
 
 export function BottomNav() {
