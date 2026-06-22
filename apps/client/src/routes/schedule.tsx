@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import logoSrc from "@/assets/frame-13.svg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Refresh, MinusSquare, AddSquare } from "@solar-icons/react";
+import { Refresh, MinusSquare } from "@solar-icons/react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
@@ -358,7 +358,21 @@ function SchedulePage() {
                           ) : isBooked ? (
                             <MinusSquare className="h-6 w-6" weight="BoldDuotone" />
                           ) : (
-                            <AddSquare className="h-6 w-6" weight="BoldDuotone" />
+                            <svg
+                              width="28"
+                              height="28"
+                              viewBox="0 0 28 28"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="text-[#1B1C1F]"
+                            >
+                              <path
+                                d="M14 5V23M5 14H23"
+                                stroke="currentColor"
+                                strokeWidth="3.5"
+                                strokeLinecap="round"
+                              />
+                            </svg>
                           )}
                         </span>
                       </Card>
