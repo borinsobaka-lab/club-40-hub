@@ -103,6 +103,8 @@ function HomePage() {
   const [services, setServices] = useState<Service[] | null>(null);
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
+  const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
