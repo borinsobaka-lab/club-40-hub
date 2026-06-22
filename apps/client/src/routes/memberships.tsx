@@ -348,7 +348,7 @@ function MembershipDrawer({
           <div className="mt-5 space-y-2">
             {features.map((f, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" weight="BoldDuotone" />
                 <span>{f}</span>
               </div>
             ))}
