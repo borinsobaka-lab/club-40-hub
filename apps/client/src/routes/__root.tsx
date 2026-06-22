@@ -123,14 +123,18 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 
+import { SolarProvider } from "@solar-icons/react";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppShell />
-        <Toaster />
+        <SolarProvider value={{ weight: "BoldDuotone" }}>
+          <AppShell />
+          <Toaster />
+        </SolarProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
