@@ -363,7 +363,7 @@ function MembershipDrawer({
               <div>
                 <div className="text-xs text-muted-foreground">Стоимость</div>
                 <div className="text-2xl font-black">
-                  {Number(membership.price).toLocaleString("ru-RU")}₽
+                  {Number(membership.price).toLocaleString("ru-RU")} ₾
                 </div>
               </div>
             </div>
