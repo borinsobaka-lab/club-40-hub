@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { NewsDrawer } from "@/components/news-drawer";
+import { ServiceDrawer } from "@/components/service-drawer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -73,6 +74,7 @@ function HomePage() {
   const [news, setNews] = useState<News[] | null>(null);
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
   const [services, setServices] = useState<Service[] | null>(null);
+  const [openServiceId, setOpenServiceId] = useState<string | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
 
   useEffect(() => {
@@ -369,9 +371,13 @@ function HomePage() {
               <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
               {services.map((s) => {
                 const url = mediaUrl(s.image_url, "services-media");
-                const hasCta = !!s.button_text && !!s.button_url;
-                const content = (
-                  <>
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setOpenServiceId(s.id)}
+                    className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
+                  >
                     {url ? (
                       <img
                         src={url}
@@ -393,25 +399,7 @@ function HomePage() {
                         </div>
                       )}
                     </div>
-                  </>
-                );
-                return hasCta ? (
-                  <a
-                    key={s.id}
-                    href={s.button_url!}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden bg-muted active:scale-[0.98] transition-transform"
-                  >
-                    {content}
-                  </a>
-                ) : (
-                  <div
-                    key={s.id}
-                    className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden bg-muted"
-                  >
-                    {content}
-                  </div>
+                  </button>
                 );
               })}
               <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
@@ -425,6 +413,14 @@ function HomePage() {
         open={openNewsId !== null}
         onOpenChange={(o) => {
           if (!o) setOpenNewsId(null);
+        }}
+      />
+
+      <ServiceDrawer
+        serviceId={openServiceId}
+        open={openServiceId !== null}
+        onOpenChange={(o) => {
+          if (!o) setOpenServiceId(null);
         }}
       />
     </PageShell>
