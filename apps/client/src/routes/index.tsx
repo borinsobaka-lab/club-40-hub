@@ -8,7 +8,7 @@ import {
   Phone,
   Star,
   Newspaper,
-  Frown,
+  Ghost,
   Loader2,
 } from "lucide-react";
 import giftAsset from "@/assets/gift.png.asset.json";
@@ -269,7 +269,7 @@ function HomePage() {
             </div>
           ) : myBookings.length === 0 ? (
             <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
-              <Frown className="h-14 w-14 text-muted-foreground" />
+              <Ghost className="h-14 w-14 text-muted-foreground" />
               <div className="text-sm text-muted-foreground">Тренировок пока нет</div>
               <Button asChild className="text-sm font-bold">
                 <Link to="/schedule">Забронировать</Link>
