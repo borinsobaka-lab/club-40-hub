@@ -129,6 +129,42 @@ function HomePage() {
     };
   }, [user]);
 
+  const groupedBookings = useMemo(() => {
+    if (!myBookings) return null;
+    const groups = new Map<number, MyBooking[]>();
+    for (const b of myBookings) {
+      if (!b.entry) continue;
+      const key = startOfDay(new Date(b.entry.starts_at)).getTime();
+      const arr = groups.get(key) ?? [];
+      arr.push(b);
+      groups.set(key, arr);
+    }
+    return Array.from(groups.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([ts, items]) => ({ ts, items }));
+  }, [myBookings]);
+
+  async function cancelBooking(entryId: string) {
+    if (pendingId) return;
+    setPendingId(entryId);
+    const { data, error } = await (supabase as any).rpc("cancel_schedule_booking", { p_entry_id: entryId });
+    setPendingId(null);
+    if (error) {
+      toast.error(`Не удалось отменить запись: ${error.message}`);
+      return;
+    }
+    const res = data as { ok: boolean; reason?: string } | null;
+    if (res?.ok) {
+      setMyBookings((prev) => (prev ?? []).filter((b) => b.entry_id !== entryId));
+      setOpenEntry(null);
+      toast.success("Запись отменена");
+    } else if (res?.reason) {
+      toast.error(`Не удалось отменить запись: ${res.reason}`);
+    }
+  }
+
+
+
 
   useEffect(() => {
     if (!user) return;
