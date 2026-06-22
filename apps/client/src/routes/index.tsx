@@ -565,6 +565,19 @@ function HomePage() {
           if (!o) setOpenServiceId(null);
         }}
       />
+
+      <WorkoutDrawer
+        data={openEntry}
+        open={openEntry !== null}
+        onOpenChange={(o) => {
+          if (!o) setOpenEntry(null);
+        }}
+        isBooked={true}
+        isPending={openEntry ? pendingId === openEntry.id : false}
+        onBook={() => {
+          if (openEntry) cancelBooking(openEntry.id);
+        }}
+      />
     </PageShell>
   );
 }
