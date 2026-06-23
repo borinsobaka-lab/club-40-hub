@@ -27,6 +27,7 @@ import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/cash'
+import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 
 const AuthRoute = AuthRouteImport.update({
@@ -119,6 +120,12 @@ const AuthenticatedCashRoute = AuthenticatedCashRouteImport.update({
   path: '/cash',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBookingsLogRoute =
+  AuthenticatedBookingsLogRouteImport.update({
+    id: '/bookings-log',
+    path: '/bookings-log',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
@@ -129,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/assistant': typeof AuthenticatedAssistantRoute
+  '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -148,6 +156,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/assistant': typeof AuthenticatedAssistantRoute
+  '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -170,6 +179,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
+  '/_authenticated/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/_authenticated/cash': typeof AuthenticatedCashRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/assistant'
+    | '/bookings-log'
     | '/cash'
     | '/clients'
     | '/dashboard'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/assistant'
+    | '/bookings-log'
     | '/cash'
     | '/clients'
     | '/dashboard'
@@ -233,6 +245,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/assistant'
+    | '/_authenticated/bookings-log'
     | '/_authenticated/cash'
     | '/_authenticated/clients'
     | '/_authenticated/dashboard'
@@ -386,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCashRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/bookings-log': {
+      id: '/_authenticated/bookings-log'
+      path: '/bookings-log'
+      fullPath: '/bookings-log'
+      preLoaderRoute: typeof AuthenticatedBookingsLogRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/assistant': {
       id: '/_authenticated/assistant'
       path: '/assistant'
@@ -398,6 +418,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
+  AuthenticatedBookingsLogRoute: typeof AuthenticatedBookingsLogRoute
   AuthenticatedCashRoute: typeof AuthenticatedCashRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -416,6 +437,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
+  AuthenticatedBookingsLogRoute: AuthenticatedBookingsLogRoute,
   AuthenticatedCashRoute: AuthenticatedCashRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
@@ -444,13 +466,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
