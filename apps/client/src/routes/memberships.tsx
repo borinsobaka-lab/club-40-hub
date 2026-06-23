@@ -59,6 +59,7 @@ function MembershipsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Membership | null>(null);
+  const [activeTab, setActiveTab] = useState<"unlimited" | "packages">("unlimited");
   const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
