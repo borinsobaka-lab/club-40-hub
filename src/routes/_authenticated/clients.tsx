@@ -355,6 +355,7 @@ function ClientsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ФИО</TableHead>
+                    <TableHead className="w-[80px]">Статус</TableHead>
                     <TableHead>Телефон</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Пол</TableHead>
@@ -369,13 +370,13 @@ function ClientsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
                         {clients.length === 0
                           ? "Пока нет клиентов. Нажмите «Добавить клиента»."
                           : "Ничего не найдено."}
