@@ -39,9 +39,6 @@ type Membership = {
 };
 
 function formatPeriod(days: number): string {
-  if (days === 30) return "в месяц";
-  if (days === 365 || days === 360) return "в год";
-function formatPeriod(days: number): string {
   if (days === 30) return "раз в месяц";
   if (days === 365 || days === 360) return "раз в год";
   if (days > 0 && days % 30 === 0) {
