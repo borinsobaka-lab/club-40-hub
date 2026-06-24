@@ -202,13 +202,18 @@ export function WorkoutDrawer({
                 key={opt.label}
                 type="button"
                 onClick={opt.onClick}
-                className="w-full h-12 rounded-full bg-muted text-foreground font-semibold text-sm active:scale-[0.99] transition inline-flex items-center justify-center gap-2 px-4"
+                className="relative w-full h-12 rounded-full bg-muted text-foreground font-semibold text-sm active:scale-[0.99] transition flex items-center px-4"
               >
-                {opt.icon && <img src={opt.icon} alt="" className="h-6 w-6 shrink-0" />}
-                {opt.label}
+                {opt.icon && (
+                  <img
+                    src={opt.icon}
+                    alt=""
+                    className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2"
+                  />
+                )}
+                <span className="w-full text-center">{opt.label}</span>
               </button>
             ))}
-
           </div>
         </DialogContent>
       </Dialog>
