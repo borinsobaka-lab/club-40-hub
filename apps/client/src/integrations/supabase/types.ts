@@ -59,6 +59,33 @@ export type Database = {
         }
         Relationships: []
       }
+      club_settings: {
+        Row: {
+          call_url: string | null
+          cancel_booking_minutes: number
+          feedback_url: string | null
+          id: boolean
+          updated_at: string
+          write_url: string | null
+        }
+        Insert: {
+          call_url?: string | null
+          cancel_booking_minutes?: number
+          feedback_url?: string | null
+          id?: boolean
+          updated_at?: string
+          write_url?: string | null
+        }
+        Update: {
+          call_url?: string | null
+          cancel_booking_minutes?: number
+          feedback_url?: string | null
+          id?: boolean
+          updated_at?: string
+          write_url?: string | null
+        }
+        Relationships: []
+      }
       member_profiles: {
         Row: {
           birth_year: number | null
