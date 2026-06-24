@@ -72,7 +72,17 @@ type ActiveMembership = {
   id: string;
   ends_at: string | null;
   visits_left: number | null;
-  memberships: { name: string } | null;
+  auto_renew: boolean | null;
+  memberships:
+    | {
+        name: string;
+        description: string | null;
+        benefits: string[] | null;
+        visits_count: number | null;
+        duration_days: number | null;
+        price: number | null;
+      }
+    | null;
 };
 
 const COLORS = ["#0ea5e9", "#8b5cf6", "#f43f5e", "#10b981", "#f59e0b", "#ec4899"];
