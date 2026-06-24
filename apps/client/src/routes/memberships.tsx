@@ -562,7 +562,7 @@ function MembershipsPage() {
       )}
 
       <AlertDialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
-        <AlertDialogContent className="rounded-2xl mx-4">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Перейти на этот абонемент?</AlertDialogTitle>
             <AlertDialogDescription>
