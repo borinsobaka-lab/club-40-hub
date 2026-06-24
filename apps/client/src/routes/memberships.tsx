@@ -78,6 +78,66 @@ function MembershipsPage() {
   const [activeTab, setActiveTab] = useState<"unlimited" | "packages">("unlimited");
   const [purchasing, setPurchasing] = useState(false);
 
+  const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const packagesTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const packagesBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const [unlimitedTopHeight, setUnlimitedTopHeight] = useState(0);
+  const [unlimitedBottomHeight, setUnlimitedBottomHeight] = useState(0);
+  const [packagesTopHeight, setPackagesTopHeight] = useState(0);
+  const [packagesBottomHeight, setPackagesBottomHeight] = useState(0);
+
+  const unlimitedMemberships = useMemo(
+    () => memberships.filter((m) => m.visits_count === null),
+    [memberships]
+  );
+  const packagesMemberships = useMemo(
+    () => memberships.filter((m) => m.visits_count !== null),
+    [memberships]
+  );
+
+  function measureGroup(
+    topRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
+    bottomRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
+    setTop: (h: number) => void,
+    setBottom: (h: number) => void
+  ) {
+    let maxTop = 0;
+    topRefs.current.forEach((el) => {
+      maxTop = Math.max(maxTop, el.getBoundingClientRect().height);
+    });
+    let maxBottom = 0;
+    bottomRefs.current.forEach((el) => {
+      maxBottom = Math.max(maxBottom, el.getBoundingClientRect().height);
+    });
+    setTop(maxTop);
+    setBottom(maxBottom);
+  }
+
+  useLayoutEffect(() => {
+    if (unlimitedMemberships.length > 0) {
+      measureGroup(
+        unlimitedTopRefs,
+        unlimitedBottomRefs,
+        setUnlimitedTopHeight,
+        setUnlimitedBottomHeight
+      );
+    }
+  }, [unlimitedMemberships]);
+
+  useLayoutEffect(() => {
+    if (packagesMemberships.length > 0) {
+      measureGroup(
+        packagesTopRefs,
+        packagesBottomRefs,
+        setPackagesTopHeight,
+        setPackagesBottomHeight
+      );
+    }
+  }, [packagesMemberships]);
+
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
