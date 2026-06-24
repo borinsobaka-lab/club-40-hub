@@ -326,133 +326,157 @@ function SchedulePage() {
             </div>
           ) : error ? (
             <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
-          ) : dayEntries.length === 0 ? (
-            <Card className="p-6 text-center text-sm text-muted-foreground">
-              На этот день тренировок пока нет
-            </Card>
           ) : (
-            <div className="relative">
-              {dayEntries.map((c) => {
-                const meta = workoutTypeMeta(c.workout?.type);
-                const isBooked = bookedIds.has(c.id);
-                const isPending = pendingId === c.id;
-                const isPast = new Date(c.starts_at) < new Date();
-                return (
-                  <div key={c.id} className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const trainerList = (c.trainers ?? [])
-                          .map((t) => t.trainer)
-                          .filter((t): t is Trainer => !!t);
-                        const trainerName =
-                          trainerList
-                            .map((t) => t.full_name)
-                            .filter((n): n is string => !!n)
-                            .join(", ") || null;
-                        const trainerPhoto = resolvePublicUrl(
-                          "trainer-photos",
-                          trainerList.find((t) => !!t.photo_url)?.photo_url,
-                        );
-                        setOpenEntry({
-                          id: c.id,
-                          name: c.workout?.name ?? "Занятие",
-                          type: c.workout?.type ?? null,
-                          description: c.workout?.description ?? null,
-                          photo: resolvePublicUrl("workout-photos", c.workout?.photo_url),
-                          trainerName,
-                          trainerPhoto,
-                          startsAt: c.starts_at,
-                          endsAt: c.ends_at,
-                        });
-                      }}
-                      className="w-full text-left active:opacity-80 transition-opacity"
-                    >
-                      <Card
-                        className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
-                          isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
-                        }`}
-                      >
-                        <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
-                        <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                          <div className="text-base font-bold italic tabular-nums leading-tight text-center">
-                            {fmtTime(c.starts_at)}
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0 ml-1">
-                          <div className="font-medium break-words leading-snug">
-                            {c.workout?.name ?? "Занятие"}
-                          </div>
-                          {(() => {
-                            const names = (c.trainers ?? [])
-                              .map((t) => t.trainer?.full_name)
-                              .filter((n): n is string => !!n);
-                            if (names.length === 0) return null;
-                            return (
-                              <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
-                                {names.join(", ")}
-                              </div>
-                            );
-                          })()}
-                          {(() => {
-                            const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
-                            const left = remainingSpots(effectiveCapacity, c.booked_count);
-                            if (left === null || left > 5 || left === 0) return null;
-                            return (
-                              <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
-                                <Fire className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                <span>Осталось {left} {pluralSeats(left)}</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        {!isBooked && (
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            aria-disabled={isPending}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isPending) toggleBooking(c.id);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!isPending) toggleBooking(c.id);
-                              }
-                            }}
-                            className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
-                              isPending ? "opacity-60" : ""
-                            }`}
-                            aria-label="Записаться"
-                          >
-                            {isPending ? (
-                              <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-                            ) : (
-                              <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="text-[#1B1C1F]"
+            <div
+              ref={listRef}
+              onScroll={() => {
+                const el = listRef.current;
+                if (!el || !slideWidth || programmaticScrollRef.current) return;
+                const idx = Math.round(el.scrollLeft / slideWidth);
+                if (idx !== activeIdx && idx >= 0 && idx < days.length) {
+                  setActiveIdx(idx);
+                }
+              }}
+              className="-mx-4 flex overflow-x-auto no-scrollbar snap-x snap-mandatory overscroll-x-contain"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {entriesByDay.map((dayList, dayIdx) => (
+                <div
+                  key={days[dayIdx].toISOString()}
+                  className="shrink-0 snap-start px-4"
+                  style={{ width: slideWidth || "100%" }}
+                >
+                  {dayList.length === 0 ? (
+                    <Card className="p-6 text-center text-sm text-muted-foreground">
+                      На этот день тренировок пока нет
+                    </Card>
+                  ) : (
+                    <div className="relative">
+                      {dayList.map((c) => {
+                        const meta = workoutTypeMeta(c.workout?.type);
+                        const isBooked = bookedIds.has(c.id);
+                        const isPending = pendingId === c.id;
+                        const isPast = new Date(c.starts_at) < new Date();
+                        return (
+                          <div key={c.id} className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const trainerList = (c.trainers ?? [])
+                                  .map((t) => t.trainer)
+                                  .filter((t): t is Trainer => !!t);
+                                const trainerName =
+                                  trainerList
+                                    .map((t) => t.full_name)
+                                    .filter((n): n is string => !!n)
+                                    .join(", ") || null;
+                                const trainerPhoto = resolvePublicUrl(
+                                  "trainer-photos",
+                                  trainerList.find((t) => !!t.photo_url)?.photo_url,
+                                );
+                                setOpenEntry({
+                                  id: c.id,
+                                  name: c.workout?.name ?? "Занятие",
+                                  type: c.workout?.type ?? null,
+                                  description: c.workout?.description ?? null,
+                                  photo: resolvePublicUrl("workout-photos", c.workout?.photo_url),
+                                  trainerName,
+                                  trainerPhoto,
+                                  startsAt: c.starts_at,
+                                  endsAt: c.ends_at,
+                                });
+                              }}
+                              className="w-full text-left active:opacity-80 transition-opacity"
+                            >
+                              <Card
+                                className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
+                                  isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
+                                }`}
                               >
-                                <path
-                                  d="M12 5V19M5 12H19"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            )}
-                          </span>
-                        )}
-                      </Card>
-                    </button>
-                  </div>
-                );
-              })}
+                                <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
+                                <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                                  <div className="text-base font-bold italic tabular-nums leading-tight text-center">
+                                    {fmtTime(c.starts_at)}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0 ml-1">
+                                  <div className="font-medium break-words leading-snug">
+                                    {c.workout?.name ?? "Занятие"}
+                                  </div>
+                                  {(() => {
+                                    const names = (c.trainers ?? [])
+                                      .map((t) => t.trainer?.full_name)
+                                      .filter((n): n is string => !!n);
+                                    if (names.length === 0) return null;
+                                    return (
+                                      <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
+                                        {names.join(", ")}
+                                      </div>
+                                    );
+                                  })()}
+                                  {(() => {
+                                    const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
+                                    const left = remainingSpots(effectiveCapacity, c.booked_count);
+                                    if (left === null || left > 5 || left === 0) return null;
+                                    return (
+                                      <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
+                                        <Fire className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                        <span>Осталось {left} {pluralSeats(left)}</span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                                {!isBooked && (
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-disabled={isPending}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!isPending) toggleBooking(c.id);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (!isPending) toggleBooking(c.id);
+                                      }
+                                    }}
+                                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
+                                      isPending ? "opacity-60" : ""
+                                    }`}
+                                    aria-label="Записаться"
+                                  >
+                                    {isPending ? (
+                                      <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+                                    ) : (
+                                      <svg
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="text-[#1B1C1F]"
+                                      >
+                                        <path
+                                          d="M12 5V19M5 12H19"
+                                          stroke="currentColor"
+                                          strokeWidth="2.5"
+                                          strokeLinecap="round"
+                                        />
+                                      </svg>
+                                    )}
+                                  </span>
+                                )}
+                              </Card>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
