@@ -884,7 +884,7 @@ function BookingsPanel({
                         {attendingId === b.id && (
                           <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                         )}
-                        Зафиксировать посещение
+                        Посетил
                       </Button>
                       <Button
                         variant="outline"
