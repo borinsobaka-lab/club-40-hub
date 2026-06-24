@@ -252,9 +252,9 @@ function ProfilePage() {
             className="w-full mt-5 rounded-[14px] bg-muted px-4 py-3 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <div className="flex flex-col">
-              <span className="font-semibold text-base">Бонусы</span>
+              <span className="font-semibold text-sm">Бонусы</span>
               <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <MedalStar className="h-4 w-4 text-primary" weight="BoldDuotone" />
+                <MedalStar className="h-5 w-5 text-yellow-500" weight="BoldDuotone" />
                 <span className="font-semibold text-foreground">1 250</span>
               </span>
             </div>
