@@ -192,7 +192,7 @@ function ProfilePage() {
               type="button"
               onClick={() => setEditOpen(true)}
               disabled={loading || !client}
-              className="absolute top-3 right-3 h-9 w-9 rounded-full bg-muted text-foreground flex items-center justify-center disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring"
+              className="absolute top-3 right-3 h-9 w-9 rounded-full bg-muted text-muted-foreground flex items-center justify-center disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="Редактировать профиль"
             >
               <Pen className="h-4 w-4" weight="BoldDuotone" />
@@ -217,7 +217,7 @@ function ProfilePage() {
                   <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 </div>
               )}
-              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-white text-foreground flex items-center justify-center border-2 border-background">
+              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center border-2 border-background">
                 <Camera className="h-4 w-4" />
               </span>
             </button>
@@ -253,8 +253,8 @@ function ProfilePage() {
             <div className="flex flex-col">
               <span className="font-semibold text-sm">Бонусы</span>
               <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <MedalStar className="h-5 w-5 text-yellow-500" weight="BoldDuotone" />
-                <span className="font-semibold text-foreground">1 250</span>
+                <MedalStar className="h-6 w-6 text-yellow-500" weight="BoldDuotone" />
+                <span className="font-semibold text-foreground text-base">1 250</span>
               </span>
             </div>
             <AltArrowRight className="h-5 w-5 text-muted-foreground" weight="LineDuotone" />
