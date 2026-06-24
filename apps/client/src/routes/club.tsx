@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Ranking } from "@solar-icons/react";
+import { Target } from "lucide-react";
 
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
@@ -26,7 +26,7 @@ function ClubPage() {
     >
       <div className="p-4">
         <Card className="flex flex-col items-center justify-center gap-3 p-10 text-center">
-          <Ranking className="h-10 w-10 text-muted-foreground" weight="BoldDuotone" />
+          <Target className="h-10 w-10 text-muted-foreground" />
           <div className="text-base font-semibold">Скоро здесь будет жизнь клуба</div>
           <p className="text-sm text-muted-foreground">
             Челленджи, рейтинги и другие участники появятся в одном из ближайших обновлений.
