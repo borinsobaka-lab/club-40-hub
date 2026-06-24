@@ -355,6 +355,16 @@ export function ClientCardDialog({
                       {" · "}
                       {active.visits_left == null ? "посещения: безлимит" : `осталось посещений: ${active.visits_left}`}
                     </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <MembershipStatusBadge m={active} />
+                      <AutoRenewBadge on={active.auto_renew} />
+                    </div>
+                    {active.cancelled_at && (
+                      <div className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+                        Отменён: {formatDate(active.cancelled_at)}
+                        {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
