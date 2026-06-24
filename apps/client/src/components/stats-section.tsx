@@ -1,25 +1,91 @@
-import { useEffect, useState } from "react";
-import { Fire, DumbbellLargeMinimalistic, ChartSquare, Cup } from "@solar-icons/react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import {
+  Fire,
+  DumbbellLargeMinimalistic,
+  ChartSquare,
+  Cup,
+  Fire as FireIcon,
+  ChartSquare as DonutIcon,
+} from "@solar-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
-type Spark = { week: string; count: number };
-type Stats = {
-  ok: boolean;
-  total: number;
-  this_month: number;
-  best_month: number;
-  streak_weeks: number;
-  sparkline: Spark[];
-  by_type: { type: string; count: number }[];
-  benchmark: { cohort: number; percentile: number | null };
+// ---- Types ----
+
+type BookingRow = {
+  starts_at: string;
+  duration_min: number | null;
+  calories: number | null;
+  workout_id: string | null;
+  workout_type: string | null;
+  studio_id: string | null;
+};
+
+type StatsMv = {
+  studio_id: string;
+  user_id: string;
+  visits_30d: number;
+  calories_30d: number;
+  visits_percentile: number | null;
+  calories_percentile: number | null;
+  cohort_size: number;
+};
+
+type WorkoutType = "cardio" | "strength" | "hybrid" | "recovery" | "unknown";
+
+const TYPE_LABEL: Record<WorkoutType, string> = {
+  cardio: "Кардио",
+  strength: "Сила",
+  hybrid: "Гибрид",
+  recovery: "Восст.",
+  unknown: "Прочее",
+};
+
+const TYPE_COLOR: Record<WorkoutType, string> = {
+  cardio: "bg-rose-500",
+  strength: "bg-blue-500",
+  hybrid: "bg-violet-500",
+  recovery: "bg-emerald-500",
+  unknown: "bg-muted-foreground",
 };
 
 const MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
-
 function nextMilestone(total: number) {
   return MILESTONES.find((m) => m > total) ?? total + 100;
 }
+
+function normalizeType(t: string | null | undefined): WorkoutType {
+  const v = (t ?? "").toLowerCase();
+  if (v === "cardio" || v === "strength" || v === "hybrid" || v === "recovery") return v;
+  return "unknown";
+}
+
+function startOfWeek(d: Date): Date {
+  // ISO week start = Monday
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const day = x.getDay(); // 0=Sun
+  const diff = (day === 0 ? -6 : 1 - day);
+  x.setDate(x.getDate() + diff);
+  return x;
+}
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function monthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function weekKey(d: Date) {
+  const w = startOfWeek(d);
+  return `${w.getFullYear()}-${String(w.getMonth() + 1).padStart(2, "0")}-${String(w.getDate()).padStart(2, "0")}`;
+}
+
+function formatNumber(n: number) {
+  return n.toLocaleString("ru-RU");
+}
+
+// ---- Small UI helpers ----
 
 function Sparkline({ data }: { data: number[] }) {
   if (data.length === 0) return null;
@@ -44,6 +110,22 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
+function TypeBar({ parts }: { parts: { type: WorkoutType; count: number }[] }) {
+  const total = parts.reduce((s, p) => s + p.count, 0);
+  if (total === 0) return null;
+  return (
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      {parts.map((p) => (
+        <div
+          key={p.type}
+          className={TYPE_COLOR[p.type]}
+          style={{ width: `${(p.count / total) * 100}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function Card({
   icon,
   label,
@@ -51,6 +133,7 @@ function Card({
   hint,
   right,
   accent,
+  footer,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -58,6 +141,7 @@ function Card({
   hint?: string;
   right?: React.ReactNode;
   accent?: string;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl bg-card border border-border/40 p-4 flex flex-col gap-2 min-h-[112px]">
@@ -72,6 +156,7 @@ function Card({
         <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
         {hint ? <div className="text-[11px] text-muted-foreground/80 mt-1">{hint}</div> : null}
       </div>
+      {footer}
     </div>
   );
 }
@@ -87,40 +172,176 @@ function EmptyState() {
   );
 }
 
+// ---- Aggregation ----
+
+type Aggregated = {
+  total: number;
+  thisMonth: number;
+  bestMonth: number;
+  streakWeeks: number;
+  sparkline: number[]; // last 8 weeks
+  byType: { type: WorkoutType; count: number }[];
+  calories30d: number;
+  calories30dHasNull: boolean;
+};
+
+function aggregate(rows: BookingRow[]): Aggregated {
+  const now = new Date();
+  const monthCounts = new Map<string, number>();
+  const weekSet = new Set<string>();
+  const typeCounts = new Map<WorkoutType, number>();
+
+  const sparkBuckets: number[] = Array(8).fill(0);
+  const sparkAnchors: string[] = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i * 7);
+    sparkAnchors.push(weekKey(d));
+  }
+
+  let total = 0;
+  let thisMonth = 0;
+  let calories30d = 0;
+  let calories30dHasNull = false;
+
+  const thisMonthKey = monthKey(now);
+  const cutoff30 = new Date(now);
+  cutoff30.setDate(cutoff30.getDate() - 30);
+
+  for (const r of rows) {
+    const d = new Date(r.starts_at);
+    if (d > now) continue; // only past
+    total += 1;
+    const mk = monthKey(d);
+    monthCounts.set(mk, (monthCounts.get(mk) ?? 0) + 1);
+    if (mk === thisMonthKey) thisMonth += 1;
+    weekSet.add(weekKey(d));
+    const t = normalizeType(r.workout_type);
+    typeCounts.set(t, (typeCounts.get(t) ?? 0) + 1);
+
+    const wk = weekKey(d);
+    const idx = sparkAnchors.indexOf(wk);
+    if (idx >= 0) sparkBuckets[idx] += 1;
+
+    if (d >= cutoff30) {
+      if (r.calories == null) calories30dHasNull = true;
+      else calories30d += r.calories;
+    }
+  }
+
+  let bestMonth = 0;
+  monthCounts.forEach((v) => {
+    if (v > bestMonth) bestMonth = v;
+  });
+
+  // Weekly streak — consecutive ISO weeks ending at current/last week with >=1 visit
+  let streak = 0;
+  for (let i = 0; i < 520; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i * 7);
+    const wk = weekKey(d);
+    const has = weekSet.has(wk);
+    if (i === 0 && !has) continue; // allow skipping current week if empty
+    if (has) streak += 1;
+    else break;
+  }
+
+  const byType: { type: WorkoutType; count: number }[] = [];
+  (["cardio", "strength", "hybrid", "recovery", "unknown"] as WorkoutType[]).forEach((t) => {
+    const c = typeCounts.get(t) ?? 0;
+    if (c > 0) byType.push({ type: t, count: c });
+  });
+
+  return {
+    total,
+    thisMonth,
+    bestMonth,
+    streakWeeks: streak,
+    sparkline: sparkBuckets,
+    byType,
+    calories30d,
+    calories30dHasNull,
+  };
+}
+
+// ---- Main component ----
+
 export function StatsSection() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [rows, setRows] = useState<BookingRow[] | null>(null);
+  const [mv, setMv] = useState<StatsMv | null>(null);
+  const [hasWeight, setHasWeight] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
-      setStats(null);
+      setRows(null);
+      setMv(null);
+      setHasWeight(null);
       setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
-    supabase
-      .rpc("get_my_stats")
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error || !data) {
-          setStats(null);
-        } else {
-          setStats(data as unknown as Stats);
-        }
-        setLoading(false);
-      });
+
+    (async () => {
+      const [logs, stats, profile] = await Promise.all([
+        (supabase as unknown as { from: (t: string) => any })
+          .from("bookings_log")
+          .select("starts_at,duration_min,calories,workout_id,workout_type,studio_id")
+          .eq("user_id", user.id)
+          .eq("status", "attended")
+          .order("starts_at", { ascending: false })
+          .limit(2000),
+        (supabase as unknown as { from: (t: string) => any })
+          .from("client_stats_30d_mv")
+          .select("studio_id,user_id,visits_30d,calories_30d,visits_percentile,calories_percentile,cohort_size")
+          .eq("user_id", user.id)
+          .order("visits_30d", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("member_profiles")
+          .select("weight_kg")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
+
+      if (cancelled) return;
+      setRows((logs.data ?? []) as BookingRow[]);
+      setMv((stats.data ?? null) as StatsMv | null);
+      setHasWeight(profile.data?.weight_kg != null);
+      setLoading(false);
+    })().catch(() => {
+      if (cancelled) return;
+      setRows([]);
+      setMv(null);
+      setHasWeight(null);
+      setLoading(false);
+    });
+
     return () => {
       cancelled = true;
     };
   }, [user]);
 
+  const agg = useMemo(() => (rows ? aggregate(rows) : null), [rows]);
+
+  const cohortOk = !!mv && mv.cohort_size >= 11;
+  const visitsPct =
+    cohortOk && mv?.visits_percentile != null
+      ? Math.min(99, Math.round(mv.visits_percentile * 100))
+      : null;
+  const caloriesPct =
+    cohortOk && mv?.calories_percentile != null
+      ? Math.min(99, Math.round(mv.calories_percentile * 100))
+      : null;
+
   if (!user) {
     return (
       <section className="bg-background rounded-t-[14px] rounded-b-[14px] pt-5 pb-5">
-      <h2 className="px-4 text-2xl font-bold italic uppercase">Статистика</h2>
-      <p className="px-4 text-sm text-muted-foreground mb-3">Прогресс, рекорды и ориентиры</p>
+        <h2 className="px-4 text-2xl font-bold italic uppercase">Статистика</h2>
+        <p className="px-4 text-sm text-muted-foreground mb-3">Прогресс, рекорды и ориентиры</p>
         <p className="px-4 text-sm text-muted-foreground">
           Войдите, чтобы видеть свою персональную статистику тренировок.
         </p>
@@ -139,9 +360,7 @@ export function StatsSection() {
             <div key={i} className="rounded-2xl bg-card border border-border/40 h-[112px] animate-pulse" />
           ))}
         </div>
-      ) : !stats || !stats.ok ? (
-        <EmptyState />
-      ) : stats.total === 0 ? (
+      ) : !agg || agg.total === 0 ? (
         <EmptyState />
       ) : (
         <>
@@ -150,48 +369,100 @@ export function StatsSection() {
             <Card
               icon={<Fire size={18} weight="Bold" />}
               accent="bg-orange-500/15 text-orange-500"
-              value={`${stats.streak_weeks} нед.`}
-              label={stats.streak_weeks > 0 ? "недель подряд 🔥" : "начни новую серию"}
-              right={<Sparkline data={stats.sparkline.map((s) => s.count)} />}
+              value={`${agg.streakWeeks} нед.`}
+              label={agg.streakWeeks > 0 ? "недель подряд 🔥" : "начни новую серию"}
+              right={<Sparkline data={agg.sparkline} />}
             />
 
             {/* Всего тренировок */}
             <Card
               icon={<DumbbellLargeMinimalistic size={18} weight="Bold" />}
-              value={`${stats.total}`}
+              value={`${agg.total}`}
               label="всего тренировок"
-              hint={`до ${nextMilestone(stats.total)} осталось ${nextMilestone(stats.total) - stats.total}`}
+              hint={`до ${nextMilestone(agg.total)} осталось ${nextMilestone(agg.total) - agg.total}`}
             />
 
             {/* За месяц + бенчмарк */}
             <Card
               icon={<ChartSquare size={18} weight="Bold" />}
               accent="bg-blue-500/15 text-blue-500"
-              value={`${stats.this_month}`}
+              value={`${agg.thisMonth}`}
               label="за этот месяц"
               hint={
-                stats.benchmark.percentile !== null
-                  ? `чаще, чем ${Math.round(stats.benchmark.percentile * 100)}% клиентов`
-                  : "недостаточно данных для сравнения"
+                visitsPct !== null
+                  ? `чаще, чем ${visitsPct}% клиентов`
+                  : "сравнение появится позже"
               }
             />
+
+            {/* Калории за 30 дней */}
+            <Card
+              icon={<FireIcon size={18} weight="Bold" />}
+              accent="bg-amber-500/15 text-amber-600"
+              value={
+                hasWeight === false && agg.calories30d === 0
+                  ? "—"
+                  : `≈ ${formatNumber(agg.calories30d)}`
+              }
+              label="ккал за 30 дней"
+              hint={
+                hasWeight === false
+                  ? "укажите вес в профиле"
+                  : caloriesPct !== null
+                  ? `больше, чем у ${caloriesPct}% клиентов`
+                  : "оценка по типу и длительности"
+              }
+              footer={
+                hasWeight === false ? (
+                  <Link
+                    to="/profile"
+                    className="mt-2 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    Перейти в профиль →
+                  </Link>
+                ) : null
+              }
+            />
+
+            {/* Распределение по типам */}
+            {agg.byType.length > 0 ? (
+              <Card
+                icon={<DonutIcon size={18} weight="Bold" />}
+                accent="bg-violet-500/15 text-violet-500"
+                value={`${agg.byType.length} тип${agg.byType.length === 1 ? "" : agg.byType.length < 5 ? "а" : "ов"}`}
+                label="баланс тренировок"
+                footer={
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    <TypeBar parts={agg.byType} />
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                      {agg.byType.map((p) => (
+                        <span key={p.type} className="inline-flex items-center gap-1">
+                          <span className={`inline-block w-1.5 h-1.5 rounded-full ${TYPE_COLOR[p.type]}`} />
+                          {TYPE_LABEL[p.type]} {p.count}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                }
+              />
+            ) : null}
 
             {/* Лучший месяц */}
             <Card
               icon={<Cup size={18} weight="Bold" />}
               accent="bg-emerald-500/15 text-emerald-500"
-              value={`${stats.best_month}`}
+              value={`${agg.bestMonth}`}
               label="лучший месяц"
               hint={
-                stats.this_month >= stats.best_month && stats.best_month > 0
+                agg.thisMonth >= agg.bestMonth && agg.bestMonth > 0
                   ? "это твой рекорд!"
-                  : `до рекорда: ${Math.max(0, stats.best_month - stats.this_month + 1)}`
+                  : `до рекорда: ${Math.max(0, agg.bestMonth - agg.thisMonth + 1)}`
               }
             />
           </div>
 
           <p className="px-4 mt-3 text-[11px] text-muted-foreground/70">
-            Сравнение со средним по клубу анонимно и обновляется автоматически.
+            Калории — оценка по типу и длительности. Сравнение со средним по клубу анонимно и обновляется раз в сутки.
           </p>
         </>
       )}
