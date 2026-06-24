@@ -260,6 +260,7 @@ function PushDialog({
 }) {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [actionUrl, setActionUrl] = useState("");
   const [allSelected, setAllSelected] = useState(true);
   const [segments, setSegments] = useState<ClubStatus[]>([]);
   const [sendMode, setSendMode] = useState<"now" | "schedule">("now");
@@ -270,6 +271,7 @@ function PushDialog({
     if (!open) return;
     setTitle(item?.title ?? "");
     setMessage(item?.message ?? "");
+    setActionUrl(item?.action_url ?? "");
     const segs = item?.segments ?? ["all"];
     if (segs.includes("all")) {
       setAllSelected(true);
@@ -330,6 +332,7 @@ function PushDialog({
       title: title.trim(),
       message: message.trim() || null,
       segments: finalSegments,
+      action_url: actionUrl.trim() || null,
       scheduled_at: scheduled,
       sent_at: sentAt,
       status,
