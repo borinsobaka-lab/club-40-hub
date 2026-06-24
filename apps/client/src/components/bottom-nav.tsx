@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, User, MenuDots, Card, Star } from "@solar-icons/react";
+import { Home, DumbbellLarge, User, MenuDots, Card, Star } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {
@@ -11,7 +11,7 @@ type NavItem = {
 
 const mainItems: NavItem[] = [
   { to: "/", label: "Главное", Icon: Home, exact: true },
-  { to: "/schedule", label: "Бронь", Icon: Dumbbell, exact: false },
+  { to: "/schedule", label: "Бронь", Icon: DumbbellLarge, exact: false },
   { to: "/club", label: "Клуб", Icon: Star, exact: false },
 ];
 
@@ -123,7 +123,7 @@ export function BottomNav() {
                       active ? "text-[#FFE500]" : "text-white/90"
                     }`}
                   >
-                    <Icon className="h-5 w-5" weight="BoldDuotone" />
+                    <Icon className="h-6 w-6" weight="BoldDuotone" />
                     <span>{label}</span>
                   </Link>
                 );
