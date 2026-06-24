@@ -31,6 +31,7 @@ alter table public.memberships
   add column if not exists price numeric(12,2) not null default 0,
   add column if not exists is_active boolean not null default true,
   add column if not exists cover_url text,
+  add column if not exists for_couple boolean not null default false,
   add column if not exists created_at timestamptz not null default now();
 
 -- Storage bucket for membership cover images (SVG/PNG/JPG)
