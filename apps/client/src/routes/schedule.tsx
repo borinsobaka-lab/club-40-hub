@@ -328,13 +328,13 @@ function SchedulePage() {
               onWheel={(e) => {
                 if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
                 e.preventDefault();
-                if (wheelLockedRef.current) return;
-                wheelLockedRef.current = true;
-                shiftDay(e.deltaX > 0 ? 1 : -1);
                 if (wheelReleaseRef.current !== null) window.clearTimeout(wheelReleaseRef.current);
                 wheelReleaseRef.current = window.setTimeout(() => {
                   wheelLockedRef.current = false;
-                }, 520);
+                }, 420);
+                if (wheelLockedRef.current) return;
+                wheelLockedRef.current = true;
+                shiftDay(e.deltaX > 0 ? 1 : -1);
               }}
               onPointerDown={(e) => {
                 if (e.pointerType === "mouse") return;
