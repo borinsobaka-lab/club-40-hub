@@ -81,6 +81,10 @@ function pluralSeats(n: number) {
 
 
 function SchedulePage() {
+  useEffect(() => {
+    const t = setTimeout(() => toast.info("Тестовое уведомление"), 600);
+    return () => clearTimeout(t);
+  }, []);
   const navigate = useNavigate();
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
