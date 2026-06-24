@@ -479,6 +479,7 @@ function MembershipDialog({
                   size="sm"
                   disabled={uploadingCover || !studioId}
                   onClick={() => coverRef.current?.click()}
+                            }
                 >
                   {uploadingCover ? (
                     <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…</>
@@ -491,6 +492,9 @@ function MembershipDialog({
                 )}
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Рекомендуемые размеры: соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px
+            </p>
           </div>
 
           <div className="space-y-1.5">
