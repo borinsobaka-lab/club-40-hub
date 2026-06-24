@@ -110,6 +110,8 @@ function SchedulePage() {
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
   const [copySource, setCopySource] = useState<Entry | null>(null);
   const [pasting, setPasting] = useState(false);
+  const [duplicateWeekOpen, setDuplicateWeekOpen] = useState(false);
+  const [duplicatingWeek, setDuplicatingWeek] = useState(false);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
