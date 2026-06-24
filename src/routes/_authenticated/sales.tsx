@@ -295,6 +295,7 @@ function SalesPage() {
                     <TableHead>Дата</TableHead>
                     <TableHead>Источник</TableHead>
                     <TableHead>Абонемент</TableHead>
+                    <TableHead>Статус</TableHead>
                     <TableHead>Тип оплаты</TableHead>
                     <TableHead>Промо-код</TableHead>
                     <TableHead>Сумма</TableHead>
