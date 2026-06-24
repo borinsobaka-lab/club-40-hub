@@ -268,10 +268,26 @@ function MembershipsPage() {
     };
   }, [user, authLoading]);
 
+  const refreshActive = async () => {
+    if (!client) return;
+    const { data: act } = await db
+      .from("client_memberships")
+      .select(
+        "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)"
+      )
+      .eq("client_id", client.id)
+      .eq("status", "active")
+      .maybeSingle();
+    setActive((act as ActiveMembership) ?? null);
+  };
+
+  const isSwitching = !!active && !!selected && selected.id !== (active as any).membership_id;
+
   const handlePurchase = async () => {
     if (!selected || !client) return;
-    if (active) {
-      toast.error("У вас уже есть активный абонемент");
+    // If user has active membership and is picking a different one → require confirmation first
+    if (active && !confirmSwitchOpen) {
+      setConfirmSwitchOpen(true);
       return;
     }
     setPurchasing(true);
@@ -288,20 +304,38 @@ function MembershipsPage() {
       });
       if (insErr) throw insErr;
 
-      const { data: act } = await db
-        .from("client_memberships")
-        .select("id, ends_at, visits_left, memberships(name)")
-        .eq("client_id", client.id)
-        .eq("status", "active")
-        .maybeSingle();
-      setActive((act as ActiveMembership) ?? null);
+      await refreshActive();
 
-      toast.success(`Абонемент «${selected.name}» оформлен!`);
+      toast.success(
+        active
+          ? `Вы перешли на «${selected.name}»`
+          : `Абонемент «${selected.name}» оформлен!`
+      );
       setSelected(null);
+      setConfirmSwitchOpen(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Не удалось оформить абонемент");
     } finally {
       setPurchasing(false);
+    }
+  };
+
+  const handleCancelAutorenew = async () => {
+    if (!active) return;
+    setCancellingRenew(true);
+    try {
+      const { error: rpcErr } = await (supabase as any).rpc("cancel_membership_autorenew", {
+        _client_membership_id: active.id,
+        _source: "mobile",
+      });
+      if (rpcErr) throw rpcErr;
+      await refreshActive();
+      toast.success("Автопродление отключено");
+      setConfirmCancelRenewOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Не удалось отключить автопродление");
+    } finally {
+      setCancellingRenew(false);
     }
   };
 
