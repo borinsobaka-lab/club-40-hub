@@ -12,7 +12,7 @@ import {
   CheckCircle,
   CloseCircle,
 } from "@solar-icons/react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,6 +104,8 @@ function MembershipsPage() {
   const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
   const [confirmCancelRenewOpen, setConfirmCancelRenewOpen] = useState(false);
   const [cancellingRenew, setCancellingRenew] = useState(false);
+  const [confirmManageOpen, setConfirmManageOpen] = useState(false);
+  const [cancellingMembership, setCancellingMembership] = useState(false);
 
   const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -339,6 +341,26 @@ function MembershipsPage() {
     }
   };
 
+  const handleCancelMembership = async () => {
+    if (!active) return;
+    setCancellingMembership(true);
+    try {
+      const { error: rpcErr } = await (supabase as any).rpc("cancel_membership", {
+        _client_membership_id: active.id,
+        _source: "mobile",
+      });
+      if (rpcErr) throw rpcErr;
+      await refreshActive();
+      toast.success("Абонемент отменён");
+      setConfirmManageOpen(false);
+      setActiveOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Не удалось отменить абонемент");
+    } finally {
+      setCancellingMembership(false);
+    }
+  };
+
   return (
     <PageShell
       scrollKey={activeTab}
@@ -557,7 +579,7 @@ function MembershipsPage() {
           active={active}
           open={activeOpen}
           onOpenChange={setActiveOpen}
-          onCancelAutorenew={() => setConfirmCancelRenewOpen(true)}
+          onManage={() => setConfirmManageOpen(true)}
         />
       )}
 
@@ -608,6 +630,31 @@ function MembershipsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Управление абонементом</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы можете отменить текущий абонемент. После отмены доступ к занятиям сохранится до конца оплаченного периода.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancellingMembership}>Закрыть</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={cancellingMembership}
+              className="bg-[#EF4444] text-white hover:bg-[#EF4444]/90"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelMembership();
+              }}
+            >
+              {cancellingMembership ? "Отменяем…" : "Отменить абонемент"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </PageShell>
   );
 }
@@ -797,12 +844,12 @@ function ActiveMembershipDrawer({
   active,
   open,
   onOpenChange,
-  onCancelAutorenew,
+  onManage,
 }: {
   active: ActiveMembership;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCancelAutorenew: () => void;
+  onManage: () => void;
 }) {
   const m = active.memberships;
   const autoOn = active.auto_renew !== false;
@@ -876,18 +923,20 @@ function ActiveMembershipDrawer({
 
             <div className="mt-6 flex items-center gap-3">
               <Button
-                onClick={onCancelAutorenew}
-                disabled={!autoOn}
-                className="flex-1 h-14 rounded-full bg-[#EF4444] text-white font-bold text-base hover:bg-[#EF4444]/90 active:scale-[0.99] transition disabled:opacity-50"
-              >
-                Отменить автопродление
-              </Button>
-              <Button
-                onClick={() => onOpenChange(false)}
                 variant="secondary"
+                onClick={onManage}
+                disabled={!autoOn}
                 className="flex-1 h-14 rounded-full font-semibold text-base"
               >
+                Управление
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => onOpenChange(false)}
+                className="flex-1 h-14 rounded-full font-semibold text-base gap-2"
+              >
                 Выйти
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
