@@ -48,6 +48,7 @@ import {
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
+import { MembershipStatusBadge, AutoRenewBadge, effectiveStatus } from "@/components/membership-status-badge";
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({ meta: [{ title: "Продажи — CLUB 40 Admin" }] }),
@@ -109,6 +110,15 @@ type Sale = {
       }
     | null;
   memberships: { id: string; name: string } | null;
+  client_memberships:
+    | {
+        id: string;
+        status: string;
+        auto_renew: boolean | null;
+        ends_at: string | null;
+        cancelled_at: string | null;
+      }[]
+    | null;
 };
 
 const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
@@ -192,7 +202,7 @@ function SalesPage() {
     const { data, error } = await supabase
       .from("sales")
       .select(
-        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name)",
+        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)",
       )
       .eq("studio_id", studioId)
       .order("sold_at", { ascending: false });
@@ -286,6 +296,7 @@ function SalesPage() {
                     <TableHead>Дата</TableHead>
                     <TableHead>Источник</TableHead>
                     <TableHead>Абонемент</TableHead>
+                    <TableHead>Статус</TableHead>
                     <TableHead>Тип оплаты</TableHead>
                     <TableHead>Промо-код</TableHead>
                     <TableHead>Сумма</TableHead>
@@ -299,20 +310,22 @@ function SalesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={14} className="py-8 text-center text-sm text-muted-foreground">
                         {sales.length === 0
                           ? "Продаж пока нет. Нажмите «Новая продажа»."
                           : "Ничего не найдено."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pg.paged.map((s) => (
+                    pg.paged.map((s) => {
+                      const cm = s.client_memberships?.[0] ?? null;
+                      return (
                       <TableRow key={s.id}>
                         <TableCell>
                           {s.clients ? (
@@ -330,6 +343,18 @@ function SalesPage() {
                         <TableCell>{formatDate(s.sold_at)}</TableCell>
                         <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
                         <TableCell>{s.memberships?.name ?? "—"}</TableCell>
+                        <TableCell>
+                          {cm ? (
+                            <div className="flex flex-col gap-1">
+                              <MembershipStatusBadge m={cm} />
+                              {effectiveStatus(cm) === "active" && (
+                                <AutoRenewBadge on={cm.auto_renew} />
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm">
                           {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
                         </TableCell>
@@ -357,7 +382,8 @@ function SalesPage() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

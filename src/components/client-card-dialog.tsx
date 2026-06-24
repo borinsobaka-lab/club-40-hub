@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
+import { MembershipStatusBadge, AutoRenewBadge, effectiveStatus } from "@/components/membership-status-badge";
 import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
 
 type MemberProfile = {
@@ -159,6 +160,15 @@ type SaleRow = {
   admin_name: string | null;
   comment: string | null;
   memberships: { name: string } | { name: string }[] | null;
+  client_memberships:
+    | {
+        id: string;
+        status: string;
+        auto_renew: boolean | null;
+        ends_at: string | null;
+        cancelled_at: string | null;
+      }[]
+    | null;
 };
 
 type ActiveCM = {
@@ -167,8 +177,13 @@ type ActiveCM = {
   started_at: string;
   ends_at: string | null;
   visits_left: number | null;
+  auto_renew: boolean | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
   memberships: { name: string } | { name: string }[] | null;
 };
+
+type ActiveCMWithStatus = ActiveCM & { status: string };
 
 function membershipName(m: ActiveCM["memberships"] | SaleRow["memberships"]) {
   if (!m) return "—";
@@ -189,7 +204,7 @@ export function ClientCardDialog({
 }) {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [loadingSales, setLoadingSales] = useState(false);
-  const [active, setActive] = useState<ActiveCM | null>(null);
+  const [active, setActive] = useState<ActiveCMWithStatus | null>(null);
   const [loadingActive, setLoadingActive] = useState(false);
   const [allMemberships, setAllMemberships] = useState<MembershipLite[]>([]);
   const [editOpen, setEditOpen] = useState(false);
@@ -201,7 +216,7 @@ export function ClientCardDialog({
     setLoadingSales(true);
     supabase
       .from("sales")
-      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name)")
+      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)")
       .eq("client_id", client.id)
       .order("sold_at", { ascending: false })
       .then(({ data, error }) => {
@@ -211,7 +226,7 @@ export function ClientCardDialog({
     setLoadingActive(true);
     supabase
       .from("client_memberships")
-      .select("id, status, source, started_at, ends_at, visits_left, memberships(name)")
+      .select("id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, memberships(name)")
       .eq("client_id", client.id)
       .order("started_at", { ascending: false })
       .then(({ data }) => {
@@ -342,6 +357,16 @@ export function ClientCardDialog({
                       {" · "}
                       {active.visits_left == null ? "посещения: безлимит" : `осталось посещений: ${active.visits_left}`}
                     </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <MembershipStatusBadge m={active} />
+                      <AutoRenewBadge on={active.auto_renew} />
+                    </div>
+                    {active.cancelled_at && (
+                      <div className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+                        Отменён: {formatDate(active.cancelled_at)}
+                        {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -367,11 +392,19 @@ export function ClientCardDialog({
                   </div>
                 ) : (
                   <ul className="divide-y rounded-lg border bg-background">
-                    {sales.map((s) => (
+                    {sales.map((s) => {
+                      const cm = s.client_memberships?.[0] ?? null;
+                      return (
                       <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                         <div className="min-w-0">
-                          <div className="font-medium truncate">
-                            {membershipName(s.memberships)}
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium truncate">
+                              {membershipName(s.memberships)}
+                            </div>
+                            {cm && <MembershipStatusBadge m={cm} />}
+                            {cm && effectiveStatus(cm) === "active" && (
+                              <AutoRenewBadge on={cm.auto_renew} />
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {formatDate(s.sold_at)}
@@ -384,7 +417,8 @@ export function ClientCardDialog({
                         </div>
                         <div className="shrink-0 font-medium">{formatMoney(Number(s.total_amount))}</div>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
               </div>
