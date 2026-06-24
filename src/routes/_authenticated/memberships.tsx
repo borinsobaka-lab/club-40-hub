@@ -51,6 +51,7 @@ type Membership = {
   price: number;
   is_active: boolean;
   cover_url: string | null;
+  for_couple: boolean;
 };
 
 const COVER_BUCKET = "memberships-media";
@@ -255,7 +256,12 @@ function MembershipsPage() {
                     pg.paged.map((m) => (
                       <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
                         <TableCell><CoverThumb value={m.cover_url} alt={m.name} /></TableCell>
-                        <TableCell className="font-medium">{m.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{m.name}</span>
+                            {m.for_couple && <Badge variant="outline">Для двоих</Badge>}
+                          </div>
+                        </TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
                           {m.description ?? "—"}
                         </TableCell>
@@ -363,6 +369,7 @@ function MembershipDialog({
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverRef = useRef<HTMLInputElement>(null);
+  const [forCouple, setForCouple] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const isEditing = !!membership?.id;
@@ -381,6 +388,7 @@ function MembershipDialog({
     setPrice(membership?.price != null ? String(membership.price) : "");
     setIsActive(membership?.is_active ?? true);
     setCoverUrl(membership?.cover_url ?? null);
+    setForCouple(membership?.for_couple ?? false);
   }, [open, membership]);
 
   const uploadCover = async (file: File) => {
@@ -429,6 +437,7 @@ function MembershipDialog({
       price: price ? Number(price) : 0,
       is_active: isActive,
       cover_url: coverUrl,
+      for_couple: forCouple,
     };
     const { error } = isEditing
       ? await supabase.from("memberships").update(payload).eq("id", membership!.id)
@@ -586,6 +595,20 @@ function MembershipDialog({
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={installmentEnabled} onCheckedChange={(v) => setInstallmentEnabled(!!v)} />
             Рассрочка доступна
+          </label>
+
+          <label className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <Checkbox
+              checked={forCouple}
+              onCheckedChange={(v) => setForCouple(!!v)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <div className="font-medium">Абонемент для двоих</div>
+              <div className="text-xs text-muted-foreground">
+                Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении.
+              </div>
+            </div>
           </label>
 
           <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
