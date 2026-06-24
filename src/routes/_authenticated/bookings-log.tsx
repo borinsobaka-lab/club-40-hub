@@ -346,20 +346,24 @@ function BookingsLogPage() {
                     <TableHead>Тренировка</TableHead>
                     <TableHead className="w-[160px]">Дата и время</TableHead>
                     <TableHead className="w-[140px]">Статус</TableHead>
+                    <TableHead className="w-[70px] text-right">MET</TableHead>
+                    <TableHead className="w-[80px] text-right">Вес, кг</TableHead>
+                    <TableHead className="w-[80px] text-right">Длит., мин</TableHead>
+                    <TableHead className="w-[90px] text-right">Ккал</TableHead>
                     <TableHead className="w-[160px]">Отменена</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center">
+                      <TableCell colSpan={10} className="py-8 text-center">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={10}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         Записей не найдено.
