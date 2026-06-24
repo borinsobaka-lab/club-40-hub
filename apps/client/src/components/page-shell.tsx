@@ -30,10 +30,20 @@ export function PageShell({ header, children, scrollKey }: PageShellProps) {
   const scrollIdentity = `${pathname}:${scrollKey ?? "page"}`;
 
   useLayoutEffect(() => {
-    const scrollNode = scrollRef.current;
-    if (!scrollNode) return;
-    scrollNode.scrollTop = 0;
-    scrollNode.scrollLeft = 0;
+    const resetScroll = () => {
+      const scrollNode = scrollRef.current;
+      if (!scrollNode) return;
+      scrollNode.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    };
+
+    resetScroll();
+    const frameId = window.requestAnimationFrame(resetScroll);
+    const timeoutId = window.setTimeout(resetScroll, 0);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
   }, [scrollIdentity]);
 
   const blobStyles = useMemo(() => {
@@ -72,7 +82,13 @@ export function PageShell({ header, children, scrollKey }: PageShellProps) {
 
   return (
     <div className="relative h-full min-h-0 flex-1 overflow-hidden bg-[#2A2B2F]">
-      <div key={scrollIdentity} ref={scrollRef} data-page-scroll className="no-scrollbar relative z-10 h-full overflow-y-auto overscroll-contain">
+      <div
+        key={scrollIdentity}
+        ref={scrollRef}
+        data-page-scroll
+        data-scroll-restoration-id="page-shell"
+        className="no-scrollbar relative z-10 h-full overflow-y-auto overscroll-contain"
+      >
         <div className="sticky top-0 z-0 text-white">
           <div className="relative">
             <div className="gradient-blobs" style={pseudoVars}>

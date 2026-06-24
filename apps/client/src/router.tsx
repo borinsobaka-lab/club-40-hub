@@ -9,6 +9,7 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    scrollToTopSelectors: ["[data-page-scroll]"],
     defaultPreloadStaleTime: 0,
   });
 
