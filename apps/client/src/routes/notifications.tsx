@@ -107,7 +107,7 @@ function NotificationsPage() {
             type="button"
             onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}
             disabled={unread === 0}
-            className="text-sm font-semibold text-[#1B1C1F] disabled:text-muted-foreground disabled:cursor-not-allowed active:opacity-70 transition-opacity"
+            className="text-sm font-semibold text-[#1B1C1F] bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-1.5 transition-colors"
           >
             Прочитать все
           </button>
@@ -122,8 +122,15 @@ function NotificationsPage() {
             {items.map((n) => (
               <li key={n.id}>
                 <Card
+                  onClick={() => {
+                    if (!n.read) {
+                      setItems((prev) =>
+                        prev.map((it) => (it.id === n.id ? { ...it, read: true } : it)),
+                      );
+                    }
+                  }}
                   className={`p-4 transition-colors ${
-                    n.read ? "" : "border-[#FFE500] bg-[#FFE500]/5"
+                    n.read ? "" : "border-[#FFE500] bg-[#FFE500]/5 cursor-pointer active:opacity-80"
                   }`}
                 >
                   <div className="flex items-start gap-2">
@@ -137,8 +144,30 @@ function NotificationsPage() {
                       <p className="mt-1 text-sm text-foreground/80 whitespace-pre-line break-words">
                         {n.body}
                       </p>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {formatReceivedAt(n.receivedAt)}
+                      <div className="mt-2 flex items-end justify-between gap-3">
+                        <div className="text-xs text-muted-foreground">
+                          {formatReceivedAt(n.receivedAt)}
+                        </div>
+                        {n.link && (
+                          <a
+                            href={n.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!n.read) {
+                                setItems((prev) =>
+                                  prev.map((it) =>
+                                    it.id === n.id ? { ...it, read: true } : it,
+                                  ),
+                                );
+                              }
+                            }}
+                            className="shrink-0 text-xs font-bold text-[#1B1C1F] bg-[#FFE500] hover:bg-[#FFE500]/90 active:bg-[#FFE500]/80 rounded-full px-3 py-1.5 transition-colors"
+                          >
+                            Перейти
+                          </a>
+                        )}
                       </div>
                     </div>
                   </div>
