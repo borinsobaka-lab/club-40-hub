@@ -185,10 +185,10 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="pt-6 pb-8">
+      <div className="pt-2 pb-8">
         <div className="bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-b-[14px] px-4 py-5">
+        <section className="bg-background rounded-b-[14px] px-4 pt-3 pb-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
@@ -209,7 +209,7 @@ function ProfilePage() {
                   <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 </div>
               )}
-              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
+              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-white text-foreground flex items-center justify-center border-2 border-background">
                 <Camera className="h-4 w-4" />
               </span>
             </button>
