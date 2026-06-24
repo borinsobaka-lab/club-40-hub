@@ -544,3 +544,119 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </div>
   );
 }
+
+type VisitRow = {
+  id: string;
+  workout_name: string | null;
+  starts_at: string;
+  status: "booked" | "completed" | "cancelled" | "attended" | "no_show" | "rejected";
+  cancelled_at: string | null;
+};
+
+const VISIT_STATUS_LABEL: Record<VisitRow["status"], string> = {
+  booked: "Забронировано",
+  attended: "Посещено",
+  no_show: "Пропущено",
+  cancelled: "Отменено",
+  rejected: "Отклонена",
+  completed: "Проведено",
+};
+
+function visitStatusBadge(v: VisitRow["status"]) {
+  if (v === "attended" || v === "completed") return <Badge variant="default">{VISIT_STATUS_LABEL[v]}</Badge>;
+  if (v === "cancelled") return <Badge variant="destructive">{VISIT_STATUS_LABEL[v]}</Badge>;
+  if (v === "rejected")
+    return (
+      <Badge
+        variant="outline"
+        className="text-orange-600 border-orange-600 dark:text-orange-400 dark:border-orange-400"
+      >
+        {VISIT_STATUS_LABEL[v]}
+      </Badge>
+    );
+  if (v === "no_show") return <Badge variant="outline">{VISIT_STATUS_LABEL[v]}</Badge>;
+  return <Badge variant="secondary">{VISIT_STATUS_LABEL[v]}</Badge>;
+}
+
+function fmtDateTime(v: string | null | undefined) {
+  if (!v) return "—";
+  return new Date(v).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function VisitsTab({ open, userId }: { open: boolean; userId: string | null }) {
+  const [rows, setRows] = useState<VisitRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !userId) {
+      setRows([]);
+      return;
+    }
+    setLoading(true);
+    supabase
+      .from("bookings_log")
+      .select("id, workout_name, starts_at, status, cancelled_at")
+      .eq("user_id", userId)
+      .order("starts_at", { ascending: false })
+      .limit(500)
+      .then(({ data }) => {
+        setLoading(false);
+        setRows((data as unknown as VisitRow[]) ?? []);
+      });
+  }, [open, userId]);
+
+  if (!userId) {
+    return (
+      <div className="rounded-lg border bg-background p-6 text-center text-sm text-muted-foreground">
+        Клиент ещё не зарегистрирован в мобильном приложении — посещений нет.
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border bg-background p-6 text-center text-sm text-muted-foreground">
+        Посещений пока нет.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border bg-background">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">Тренировка</th>
+            <th className="px-3 py-2 text-left font-medium">Дата и время</th>
+            <th className="px-3 py-2 text-left font-medium">Статус</th>
+            <th className="px-3 py-2 text-left font-medium">Отменена</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td className="px-3 py-2">{r.workout_name ?? "—"}</td>
+              <td className="px-3 py-2">{fmtDateTime(r.starts_at)}</td>
+              <td className="px-3 py-2">{visitStatusBadge(r.status)}</td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">
+                {fmtDateTime(r.cancelled_at)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
