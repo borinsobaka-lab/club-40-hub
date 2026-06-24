@@ -45,8 +45,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
-import { CLUB_STATUS_LABEL as _CLUB_STATUS_LABEL, computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
-void _CLUB_STATUS_LABEL;
+import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
