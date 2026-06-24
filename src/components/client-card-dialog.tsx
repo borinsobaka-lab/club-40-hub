@@ -224,7 +224,7 @@ export function ClientCardDialog({
     setLoadingActive(true);
     supabase
       .from("client_memberships")
-      .select("id, status, source, started_at, ends_at, visits_left, memberships(name)")
+      .select("id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, memberships(name)")
       .eq("client_id", client.id)
       .order("started_at", { ascending: false })
       .then(({ data }) => {
