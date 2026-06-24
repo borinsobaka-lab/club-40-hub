@@ -488,6 +488,23 @@ function WorkoutDialog({
               Используется по умолчанию для всех занятий этой тренировки в расписании.
             </p>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="met">MET — интенсивность</Label>
+            <Input
+              id="met"
+              type="number"
+              step="0.1"
+              min={0}
+              value={metValue}
+              onChange={(e) => setMetValue(e.target.value)}
+              placeholder="Кардио 8.5 · Силовая 7.0 · Гибрид 8.0 · Восстановление 2.8"
+            />
+            <p className="text-xs text-muted-foreground">
+              Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто — берётся
+              значение по умолчанию для типа тренировки.
+            </p>
+          </div>
         </div>
 
         <DialogFooter>
