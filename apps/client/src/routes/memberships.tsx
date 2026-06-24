@@ -41,10 +41,13 @@ type Membership = {
 function formatPeriod(days: number): string {
   if (days === 30) return "в месяц";
   if (days === 365 || days === 360) return "в год";
+function formatPeriod(days: number): string {
+  if (days === 30) return "раз в месяц";
+  if (days === 365 || days === 360) return "раз в год";
   if (days > 0 && days % 30 === 0) {
     const months = days / 30;
     const word = months === 1 ? "месяц" : months >= 2 && months <= 4 ? "месяца" : "месяцев";
-    return `за ${months} ${word}`;
+    return `раз в ${months} ${word}`;
   }
   return `на ${days} дней`;
 }
