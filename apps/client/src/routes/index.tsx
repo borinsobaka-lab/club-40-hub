@@ -257,7 +257,7 @@ function HomePage() {
             >
               <SquircleAvatar size={44}>
                 {avatarUrl && <SquircleAvatarImage src={avatarUrl} alt={fullName} />}
-                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                <SquircleAvatarFallback className="bg-muted text-foreground text-sm font-semibold">
                   {initials(fullName)}
                 </SquircleAvatarFallback>
               </SquircleAvatar>
