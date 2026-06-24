@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
+import { SectionDivider } from "@/components/section-divider";
 import { NewsDrawer } from "@/components/news-drawer";
 import { ServiceDrawer } from "@/components/service-drawer";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
@@ -359,7 +360,7 @@ function HomePage() {
         </div>
       }
     >
-      <div className="px-4 pt-6 pb-8 space-y-8">
+      <div className="px-4 pt-6 pb-8">
 
         {/* Тренировки */}
         <section className="-mx-4">
@@ -460,6 +461,8 @@ function HomePage() {
           )}
 
         </section>
+
+        <SectionDivider />
 
         {/* Услуги */}
         <section className="-mx-4">
