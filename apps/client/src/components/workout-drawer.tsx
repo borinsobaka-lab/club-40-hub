@@ -65,19 +65,27 @@ export function WorkoutDrawer({
 
   const calendarOptions = calendarEvent
     ? [
-        { label: "Google Календарь", onClick: () => openExternal(googleCalendarUrl(calendarEvent)) },
+        {
+          label: "Google Календарь",
+          icon: googleCalIcon.url,
+          onClick: () => openExternal(googleCalendarUrl(calendarEvent)),
+        },
         {
           label: "Apple Календарь",
+          icon: appleCalIcon.url,
           onClick: () => {
             downloadICS(calendarEvent);
             setCalendarPickerOpen(false);
           },
         },
-        { label: "Outlook", onClick: () => openExternal(outlookLiveUrl(calendarEvent)) },
-        { label: "Office 365", onClick: () => openExternal(office365Url(calendarEvent)) },
-        { label: "Yahoo Календарь", onClick: () => openExternal(yahooCalendarUrl(calendarEvent)) },
+        {
+          label: "Outlook",
+          icon: outlookIcon.url,
+          onClick: () => openExternal(outlookLiveUrl(calendarEvent)),
+        },
         {
           label: "Другой (.ics файл)",
+          icon: null,
           onClick: () => {
             downloadICS(calendarEvent);
             setCalendarPickerOpen(false);
@@ -85,6 +93,7 @@ export function WorkoutDrawer({
         },
       ]
     : [];
+
 
   return (
     <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
