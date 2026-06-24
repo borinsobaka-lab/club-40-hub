@@ -548,9 +548,66 @@ function MembershipsPage() {
           }}
           onPurchase={handlePurchase}
           purchasing={purchasing}
-          disabled={!!active}
+          hasActive={!!active}
         />
       )}
+
+      {active && (
+        <ActiveMembershipDrawer
+          active={active}
+          open={activeOpen}
+          onOpenChange={setActiveOpen}
+          onCancelAutorenew={() => setConfirmCancelRenewOpen(true)}
+        />
+      )}
+
+      <AlertDialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
+        <AlertDialogContent className="rounded-2xl mx-4">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Перейти на этот абонемент?</AlertDialogTitle>
+            <AlertDialogDescription>
+              У вас уже есть активный абонемент. При переходе текущий абонемент будет аннулирован,
+              а вместо него подключится выбранный.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={purchasing}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={purchasing}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePurchase();
+              }}
+            >
+              {purchasing ? "Переходим…" : "Перейти"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmCancelRenewOpen} onOpenChange={setConfirmCancelRenewOpen}>
+        <AlertDialogContent className="rounded-2xl mx-4">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Абонемент действует до конца оплаченного периода. После этой даты он закончится,
+              и вы не сможете посещать клуб, пока не оформите новый.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancellingRenew}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={cancellingRenew}
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelAutorenew();
+              }}
+            >
+              {cancellingRenew ? "Отключаем…" : "Отключить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }
