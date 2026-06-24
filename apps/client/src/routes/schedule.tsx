@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
+import { useClubSettings } from "@/hooks/use-club-settings";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
