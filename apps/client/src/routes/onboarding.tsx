@@ -184,6 +184,8 @@ function OnboardingPage() {
         return form.current_weekly_activity !== null;
       case 7:
         return form.health_flags.length > 0;
+      case 8:
+        return form.weight_kg.trim() !== "" && form.birth_year.trim() !== "" && !!form.gender;
       default:
         return true;
     }
