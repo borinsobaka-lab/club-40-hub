@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Calendar } from "@solar-icons/react";
+import { toast } from "sonner";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
+import { formatCancelDeadline } from "@/hooks/use-club-settings";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 import {
   googleCalendarUrl,
