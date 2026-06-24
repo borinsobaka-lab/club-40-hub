@@ -396,6 +396,8 @@ function SaleDialog({
   const [downPayment, setDownPayment] = useState<string>("");
   const [remainingCount, setRemainingCount] = useState<2 | 3>(2);
   const [comment, setComment] = useState<string>("");
+  const [paymentType, setPaymentType] = useState<PaymentType>("first");
+  const [promoCode, setPromoCode] = useState<string>("");
   const [adminName, setAdminName] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -408,6 +410,8 @@ function SaleDialog({
     setDownPayment("");
     setRemainingCount(2);
     setComment("");
+    setPaymentType("first");
+    setPromoCode("");
   }, [open]);
 
   useEffect(() => {
