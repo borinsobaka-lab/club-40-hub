@@ -22,6 +22,8 @@ type NewsItem = {
   banner_url: string | null;
   full_title: string | null;
   full_text: string | null;
+  button_text: string | null;
+  button_url: string | null;
 };
 
 function NewsDetailPage() {
