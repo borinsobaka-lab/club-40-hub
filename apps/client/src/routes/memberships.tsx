@@ -288,10 +288,10 @@ function MembershipsPage() {
           {!loading && user && active && (
             <Card className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0">
               <div className="flex items-stretch">
-                <div className="flex-1 p-3 border border-border rounded-l-xl">
+                <div className="flex-1 p-3 border border-border rounded-l-xl bg-white">
                   <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-[#22C55E]/15 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="h-5 w-5 text-[#22C55E]" />
+                    <div className="h-14 w-14 rounded-xl bg-[#22C55E]/15 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="h-8 w-8 text-[#22C55E]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[11px] text-muted-foreground leading-none mb-1">Активный абонемент</div>
@@ -310,7 +310,7 @@ function MembershipsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="w-6 flex items-center justify-center bg-white">
+                <div className="w-6 flex items-center justify-center bg-muted">
                   <ChevronRight className="h-5 w-5 text-[#66676D]" />
                 </div>
               </div>
