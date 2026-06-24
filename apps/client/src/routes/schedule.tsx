@@ -551,7 +551,13 @@ function SchedulePage() {
   );
 }
 
-type TrainerRow = { id: string; full_name: string | null; avatar_url: string | null; bio: string | null };
+type TrainerRow = {
+  id: string;
+  full_name: string | null;
+  photo_url: string | null;
+  bio: string | null;
+  specialization: string | null;
+};
 
 const PERSONAL_GOALS = [
   { value: "weight_loss", label: "Снижение веса" },
@@ -580,21 +586,34 @@ function PersonalRequestForm() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("user_roles")
-        .select("user_id, client:clients!inner(id, full_name, avatar_url, bio)")
-        .eq("role", "trainer");
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      let studioId: string | null = null;
+      if (uid) {
+        const { data: client } = await (supabase as any)
+          .from("clients")
+          .select("studio_id")
+          .eq("user_id", uid)
+          .maybeSingle();
+        studioId = (client?.studio_id as string | null) ?? null;
+      }
+
+      let query = (supabase as any)
+        .from("trainers")
+        .select("id, full_name, photo_url, bio, specialization, role, studio_id")
+        .eq("role", "trainer")
+        .order("full_name", { ascending: true });
+      if (studioId) query = query.eq("studio_id", studioId);
+
+      const { data } = await query;
       if (cancelled) return;
-      const rows = ((data ?? []) as { client: TrainerRow | null }[])
-        .map((r) => r.client)
-        .filter((c): c is TrainerRow => !!c)
-        .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "ru"));
-      setTrainers(rows);
+      setTrainers(((data ?? []) as TrainerRow[]));
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
 
   const canSubmit = !!goal && !!trainerId && !submitting;
 
@@ -642,8 +661,8 @@ function PersonalRequestForm() {
         ) : (
           <div className="space-y-2">
             {trainers.map((t) => {
-              const photo = t.avatar_url
-                ? supabase.storage.from("avatars").getPublicUrl(t.avatar_url).data.publicUrl
+              const photo = t.photo_url
+                ? supabase.storage.from("trainer-photos").getPublicUrl(t.photo_url).data.publicUrl
                 : null;
               const active = trainerId === t.id;
               return (
@@ -667,9 +686,9 @@ function PersonalRequestForm() {
                     <div className="text-sm font-semibold truncate">
                       {t.full_name ?? "Тренер"}
                     </div>
-                    {t.bio && (
+                    {(t.bio || t.specialization) && (
                       <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                        {t.bio}
+                        {t.bio ?? t.specialization}
                       </div>
                     )}
                   </div>
