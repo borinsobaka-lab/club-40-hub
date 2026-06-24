@@ -8,8 +8,6 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import {
   Refresh,
   ShieldCheck,
-  Lightning,
-  ClockCircle,
   Ticket,
   CheckCircle,
 } from "@solar-icons/react";
