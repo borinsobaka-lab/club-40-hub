@@ -299,7 +299,7 @@ function MembershipsPage() {
                       </div>
                       {active.ends_at && (
                         <div className="text-sm text-muted-foreground mt-0.5">
-                          Активный абонемент до{" "}
+                          Действует до{" "}
                           {new Date(active.ends_at).toLocaleDateString("ru-RU", {
                             day: "numeric",
                             month: "long",

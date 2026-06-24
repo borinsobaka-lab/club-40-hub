@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight } from "@solar-icons/react";
+import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Global } from "@solar-icons/react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -185,10 +185,10 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="pt-6 pb-8">
+      <div className="pt-2 pb-8">
         <div className="bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-b-[14px] px-4 py-5">
+        <section className="bg-background rounded-b-[14px] px-4 pt-3 pb-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
@@ -209,7 +209,7 @@ function ProfilePage() {
                   <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 </div>
               )}
-              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
+              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-white text-foreground flex items-center justify-center border-2 border-background">
                 <Camera className="h-4 w-4" />
               </span>
             </button>
@@ -262,6 +262,7 @@ function ProfilePage() {
               right={<MastercardBadge />}
             />
             <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
+            <ProfileLink icon={<Global className="h-5 w-5" weight="BoldDuotone" />} label="Язык" sublabel="Русский" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="О приложении" />
           </ul>
         </section>
@@ -509,8 +510,8 @@ function EditProfileSheet({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="relative group focus:outline-none focus:ring-2 focus:ring-primary"
-              style={{ width: 96, height: 96, clipPath: squircleClipPath(96), WebkitClipPath: squircleClipPath(96) }}
+              className="relative focus:outline-none disabled:opacity-70"
+              style={{ width: 96, height: 96 }}
               aria-label="Загрузить аватар"
             >
               <SquircleAvatar size={96}>
@@ -519,16 +520,17 @@ function EditProfileSheet({
                   {initials(displayName)}
                 </SquircleAvatarFallback>
               </SquircleAvatar>
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
-                {uploadingAvatar ? (
+              {uploadingAvatar && (
+                <div
+                  className="absolute inset-0 bg-black/30 flex items-center justify-center"
+                  style={{ clipPath: squircleClipPath(96), WebkitClipPath: squircleClipPath(96) }}
+                >
                   <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
-                ) : (
-                  <Camera className="h-6 w-6 text-white drop-shadow" />
-                )}
-              </div>
-              <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
+                </div>
+              )}
+              <span className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-white text-foreground flex items-center justify-center border-2 border-background">
                 <Camera className="h-3.5 w-3.5" />
-              </div>
+              </span>
             </button>
             <input
               ref={fileInputRef}
@@ -549,7 +551,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="last_name">Фамилия</Label>
-            <Input
+            <Input className="shadow-none"
               id="last_name"
               value={form.last_name}
               onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
@@ -560,7 +562,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="first_name">Имя</Label>
-            <Input
+            <Input className="shadow-none"
               id="first_name"
               value={form.first_name}
               onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
@@ -571,7 +573,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="phone">Телефон</Label>
-            <Input
+            <Input className="shadow-none"
               id="phone"
               type="tel"
               inputMode="tel"
@@ -585,7 +587,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input
+            <Input className="shadow-none"
               id="email"
               type="email"
               inputMode="email"
@@ -598,7 +600,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="birthday">Дата рождения</Label>
-            <Input
+            <Input className="shadow-none"
               id="birthday"
               type="date"
               value={form.birthday}
@@ -614,7 +616,7 @@ function EditProfileSheet({
                 setForm((f) => ({ ...f, gender: v === "unset" ? "" : v }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-12 shadow-none">
                 <SelectValue placeholder="Не указано" />
               </SelectTrigger>
               <SelectContent>
@@ -629,7 +631,7 @@ function EditProfileSheet({
         <SheetFooter className="flex-row gap-2">
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 shadow-none"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
