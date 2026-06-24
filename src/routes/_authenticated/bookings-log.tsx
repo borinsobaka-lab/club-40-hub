@@ -251,6 +251,10 @@ function BookingsLogPage() {
           booked_at: booking.created_at,
           cancelled_at: booking.cancelled_at,
           completed_at: null,
+          met_value: null,
+          weight_at_time: null,
+          duration_min: null,
+          calories: null,
         };
       })
       .filter((row): row is LogRow => Boolean(row));
