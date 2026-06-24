@@ -282,10 +282,13 @@ function SalesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Клиент</TableHead>
+                    <TableHead>Контакты</TableHead>
                     <TableHead>Дата</TableHead>
                     <TableHead>Источник</TableHead>
-                    <TableHead>Клиент</TableHead>
                     <TableHead>Абонемент</TableHead>
+                    <TableHead>Тип оплаты</TableHead>
+                    <TableHead>Промо-код</TableHead>
                     <TableHead>Сумма</TableHead>
                     <TableHead>Первый взнос</TableHead>
                     <TableHead>Рассрочка</TableHead>
@@ -297,13 +300,13 @@ function SalesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={13} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={13} className="py-8 text-center text-sm text-muted-foreground">
                         {sales.length === 0
                           ? "Продаж пока нет. Нажмите «Новая продажа»."
                           : "Ничего не найдено."}
@@ -312,22 +315,28 @@ function SalesPage() {
                   ) : (
                     pg.paged.map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell>{formatDate(s.sold_at)}</TableCell>
-                        <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
                         <TableCell>
                           {s.clients ? (
-                            <button
-                              type="button"
-                              onClick={() => openClientCard(s.client_id)}
-                              className="text-left underline-offset-2 hover:underline hover:text-primary"
-                            >
+                            <ClientNameLink clientId={s.client_id}>
                               {clientName(s.clients)}
-                            </button>
+                            </ClientNameLink>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div>{s.clients?.phone ?? "—"}</div>
+                          <div className="text-xs">{s.clients?.email ?? "—"}</div>
+                        </TableCell>
+                        <TableCell>{formatDate(s.sold_at)}</TableCell>
+                        <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
                         <TableCell>{s.memberships?.name ?? "—"}</TableCell>
+                        <TableCell className="text-sm">
+                          {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {s.promo_code ?? "—"}
+                        </TableCell>
                         <TableCell className="font-medium">{formatMoney(Number(s.total_amount))}</TableCell>
                         <TableCell>
                           {s.remaining_installments > 0
@@ -353,6 +362,7 @@ function SalesPage() {
                   )}
                 </TableBody>
               </Table>
+
               <DataPagination {...pg} />
             </div>
           </>
