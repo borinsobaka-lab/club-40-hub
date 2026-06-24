@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Refresh, Fire } from "@solar-icons/react";
+import { Refresh, Fire, CloseCircle } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -460,7 +460,15 @@ function SchedulePage() {
                                   {(() => {
                                     const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
                                     const left = remainingSpots(effectiveCapacity, c.booked_count);
-                                    if (left === null || left > 5 || left === 0) return null;
+                                    if (left === null || left > 5) return null;
+                                    if (left === 0) {
+                                      return (
+                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500">
+                                          <CloseCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
+                                          <span>Мест нет</span>
+                                        </div>
+                                      );
+                                    }
                                     return (
                                       <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
                                         <Fire className="h-3.5 w-3.5" weight="BoldDuotone" />
