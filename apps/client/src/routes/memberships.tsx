@@ -345,6 +345,7 @@ function MembershipsPage() {
       const { error: rpcErr } = await (supabase as any).rpc("cancel_membership_autorenew", {
         _client_membership_id: active.id,
         _source: "mobile",
+        _reason: "self",
       });
       if (rpcErr) throw rpcErr;
       await refreshActive();
