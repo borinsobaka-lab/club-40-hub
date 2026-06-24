@@ -160,6 +160,15 @@ type SaleRow = {
   admin_name: string | null;
   comment: string | null;
   memberships: { name: string } | { name: string }[] | null;
+  client_memberships:
+    | {
+        id: string;
+        status: string;
+        auto_renew: boolean | null;
+        ends_at: string | null;
+        cancelled_at: string | null;
+      }[]
+    | null;
 };
 
 type ActiveCM = {
@@ -168,6 +177,9 @@ type ActiveCM = {
   started_at: string;
   ends_at: string | null;
   visits_left: number | null;
+  auto_renew: boolean | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
   memberships: { name: string } | { name: string }[] | null;
 };
 
