@@ -33,7 +33,8 @@ export function PageShell({ header, children, scrollKey }: PageShellProps) {
     const resetScroll = () => {
       const scrollNode = scrollRef.current;
       if (!scrollNode) return;
-      scrollNode.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      scrollNode.scrollTop = 0;
+      scrollNode.scrollLeft = 0;
     };
 
     resetScroll();

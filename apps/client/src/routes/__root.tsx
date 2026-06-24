@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
 import { cn } from "@/lib/utils";
@@ -139,12 +139,37 @@ function RootComponent() {
   );
 }
 
+function resetPageScrollPosition() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((element) => {
+    element.scrollTop = 0;
+    element.scrollLeft = 0;
+  });
+}
+
+function useRouteScrollReset(scrollKey: string) {
+  useLayoutEffect(() => {
+    resetPageScrollPosition();
+    const frameId = window.requestAnimationFrame(resetPageScrollPosition);
+    const timeoutId = window.setTimeout(resetPageScrollPosition, 50);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [scrollKey]);
+}
+
 function AppShell() {
   const { session, user, loading } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAuthRoute = pathname === "/auth";
   const onOnboardingRoute = pathname === "/onboarding";
+
+  useRouteScrollReset(pathname);
 
   useEffect(() => {
     if (loading) return;
