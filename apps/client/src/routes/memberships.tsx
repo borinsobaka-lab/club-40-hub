@@ -562,7 +562,7 @@ function MembershipsPage() {
       )}
 
       <AlertDialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
-        <AlertDialogContent className="rounded-2xl mx-4">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Перейти на этот абонемент?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -586,7 +586,7 @@ function MembershipsPage() {
       </AlertDialog>
 
       <AlertDialog open={confirmCancelRenewOpen} onOpenChange={setConfirmCancelRenewOpen}>
-        <AlertDialogContent className="rounded-2xl mx-4">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -876,18 +876,18 @@ function ActiveMembershipDrawer({
 
             <div className="mt-6 flex items-center gap-3">
               <Button
-                onClick={onCancelAutorenew}
-                disabled={!autoOn}
-                variant="outline"
-                className="flex-1 h-14 rounded-full font-semibold text-base disabled:opacity-50"
-              >
-                Отменить автопродление
-              </Button>
-              <Button
                 onClick={() => onOpenChange(false)}
-                className="flex-1 h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition"
+                variant="secondary"
+                className="flex-1 h-14 rounded-full font-semibold text-base"
               >
                 Выйти
+              </Button>
+              <Button
+                onClick={onCancelAutorenew}
+                disabled={!autoOn}
+                className="flex-1 h-14 rounded-full bg-[#EF4444] text-white font-bold text-base hover:bg-[#EF4444]/90 active:scale-[0.99] transition disabled:opacity-50"
+              >
+                Отменить автопродление
               </Button>
             </div>
           </div>

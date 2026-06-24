@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Global } from "@solar-icons/react";
+import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Translation } from "@solar-icons/react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -188,7 +188,7 @@ function ProfilePage() {
       <div className="pt-2 pb-8">
         <div className="bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-b-[14px] px-4 pt-3 pb-5">
+        <section className="bg-background rounded-[14px] px-4 pt-3 pb-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
@@ -262,7 +262,7 @@ function ProfilePage() {
               right={<MastercardBadge />}
             />
             <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
-            <ProfileLink icon={<Global className="h-5 w-5" weight="BoldDuotone" />} label="Язык" sublabel="Русский" />
+            <ProfileLink icon={<Translation className="h-5 w-5" weight="BoldDuotone" />} label="Язык" sublabel="Русский" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="О приложении" />
           </ul>
         </section>

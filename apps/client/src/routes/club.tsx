@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Star } from "@solar-icons/react";
+import { UsersGroupRounded } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
@@ -26,8 +26,8 @@ function ClubPage() {
     >
       <div className="p-4">
         <Card className="flex flex-col items-center justify-center gap-3 p-10 text-center">
-          <Star className="h-10 w-10 text-muted-foreground" weight="BoldDuotone" />
-          <div className="text-base font-semibold">Скоро здесь будет жизнь клуба</div>
+          <UsersGroupRounded className="h-10 w-10 text-muted-foreground" weight="BoldDuotone" />
+          <div className="text-base font-semibold">Здесь скоро появится сообщество</div>
           <p className="text-sm text-muted-foreground">
             Челленджи, рейтинги и другие участники появятся в одном из ближайших обновлений.
           </p>
