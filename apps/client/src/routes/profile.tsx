@@ -185,9 +185,10 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="bg-muted">
+      <div className="pt-6 pb-8">
+        <div className="bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-[14px] px-4 py-5">
+        <section className="bg-background rounded-b-[14px] px-4 py-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
@@ -251,11 +252,17 @@ function ProfilePage() {
         <div className="h-3 bg-muted" />
 
         {/* Блок: ссылки */}
-        <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
+        <section className="bg-background rounded-[14px] py-1">
           <ul className="divide-y divide-border">
             <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="Приложения" />
-            <ProfileLink icon={<Shop className="h-5 w-5" weight="BoldDuotone" />} label="Франшиза" />
+            <ProfileLink
+              icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
+              label="Способы оплаты"
+              sublabel="Mastercard •••• 4242"
+              right={<MastercardBadge />}
+            />
+            <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
           </ul>
         </section>
 
@@ -268,6 +275,9 @@ function ProfilePage() {
             Выйти
           </Button>
         </section>
+        </div>
+      </div>
+
 
         {client && (
           <EditProfileSheet
