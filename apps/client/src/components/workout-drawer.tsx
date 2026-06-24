@@ -179,7 +179,7 @@ export function WorkoutDrawer({
                         onBook();
                       }}
                       disabled={isPending}
-                      className="flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                      className={`flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
                     >
                       {isPending ? "..." : "Отменить запись"}
                     </button>
