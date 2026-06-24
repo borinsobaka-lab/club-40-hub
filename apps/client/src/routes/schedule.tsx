@@ -96,6 +96,7 @@ function SchedulePage() {
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const gestureStartRef = useRef<{ x: number; y: number; idx: number } | null>(null);
+  const swipedRef = useRef(false);
   const wheelLockedRef = useRef(false);
   const wheelReleaseRef = useRef<number | null>(null);
 
@@ -338,6 +339,7 @@ function SchedulePage() {
               }}
               onPointerDown={(e) => {
                 if (e.pointerType === "mouse") return;
+                swipedRef.current = false;
                 gestureStartRef.current = { x: e.clientX, y: e.clientY, idx: activeIdx };
               }}
               onPointerUp={(e) => {
@@ -347,10 +349,19 @@ function SchedulePage() {
                 const dx = e.clientX - start.x;
                 const dy = e.clientY - start.y;
                 if (Math.abs(dx) < 48 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+                swipedRef.current = true;
                 selectDay(start.idx + (dx < 0 ? 1 : -1));
               }}
               onPointerCancel={() => {
                 gestureStartRef.current = null;
+              }}
+              onClickCapture={(e) => {
+                if (!swipedRef.current) return;
+                e.preventDefault();
+                e.stopPropagation();
+                window.setTimeout(() => {
+                  swipedRef.current = false;
+                }, 0);
               }}
               className="-mx-4 overflow-hidden touch-pan-y"
               style={{ touchAction: "pan-y" }}
