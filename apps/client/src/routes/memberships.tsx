@@ -100,6 +100,10 @@ function MembershipsPage() {
   const [selected, setSelected] = useState<Membership | null>(null);
   const [activeTab, setActiveTab] = useState<"unlimited" | "packages" | "couples">("unlimited");
   const [purchasing, setPurchasing] = useState(false);
+  const [activeOpen, setActiveOpen] = useState(false);
+  const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
+  const [confirmCancelRenewOpen, setConfirmCancelRenewOpen] = useState(false);
+  const [cancellingRenew, setCancellingRenew] = useState(false);
 
   const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
