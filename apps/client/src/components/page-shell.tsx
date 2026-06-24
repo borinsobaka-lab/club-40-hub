@@ -62,7 +62,7 @@ export function PageShell({ header, children }: PageShellProps) {
 
   return (
     <div className="relative h-full min-h-0 flex-1 overflow-hidden bg-[#2A2B2F]">
-      <div className="no-scrollbar relative z-10 h-full overflow-y-auto overscroll-contain">
+      <div data-page-scroll className="no-scrollbar relative z-10 h-full overflow-y-auto overscroll-contain">
         <div className="sticky top-0 z-0 text-white">
           <div className="relative">
             <div className="gradient-blobs" style={pseudoVars}>
