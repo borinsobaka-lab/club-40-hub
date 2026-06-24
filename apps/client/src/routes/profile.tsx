@@ -333,7 +333,7 @@ function ProfileLink({
         type="button"
         className="w-full flex items-center gap-3 px-4 py-4 text-left"
       >
-        <span className="text-foreground">{icon}</span>
+        <span className="text-muted-foreground">{icon}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-medium">{label}</span>
           {sublabel && (
