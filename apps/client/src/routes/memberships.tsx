@@ -346,38 +346,54 @@ function MembershipsPage() {
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-black italic uppercase">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
-          {!loading && user && active && (
-            <Card className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0">
-              <div className="flex items-stretch">
-                <div className="flex-1 p-4 border border-border rounded-l-xl bg-white">
-                  <div className="flex items-center gap-3">
-                    <div className="h-14 w-14 rounded-xl bg-[#22C55E]/15 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="h-8 w-8 text-[#22C55E]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-base font-semibold text-foreground truncate">
-                        {active.memberships?.name ?? "Абонемент"}
+          {!loading && user && active && (() => {
+            const autoOn = active.auto_renew !== false;
+            const accent = autoOn ? "#22C55E" : "#EF4444";
+            return (
+              <Card
+                onClick={() => setActiveOpen(true)}
+                className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0"
+              >
+                <div className="flex items-stretch">
+                  <div className="flex-1 p-4 border border-border rounded-l-xl bg-white">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `${accent}26` }}
+                      >
+                        {autoOn ? (
+                          <ShieldCheck className="h-8 w-8" style={{ color: accent }} />
+                        ) : (
+                          <CloseCircle className="h-8 w-8" style={{ color: accent }} weight="BoldDuotone" />
+                        )}
                       </div>
-                      {active.ends_at && (
-                        <div className="text-sm text-muted-foreground mt-0.5">
-                          Действует до{" "}
-                          {new Date(active.ends_at).toLocaleDateString("ru-RU", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          })}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base font-semibold text-foreground truncate">
+                          {active.memberships?.name ?? "Абонемент"}
                         </div>
-                      )}
-                      <div className="text-sm text-[#22C55E] mt-0.5">Автопродление включено</div>
+                        {active.ends_at && (
+                          <div className="text-sm text-muted-foreground mt-0.5">
+                            Действует до{" "}
+                            {new Date(active.ends_at).toLocaleDateString("ru-RU", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </div>
+                        )}
+                        <div className="text-sm mt-0.5" style={{ color: accent }}>
+                          {autoOn ? "Автопродление включено" : "Автопродление выключено"}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                  <div className="w-6 flex items-center justify-center bg-muted">
+                    <ChevronRight className="h-5 w-5 text-[#66676D]" />
+                  </div>
                 </div>
-                <div className="w-6 flex items-center justify-center bg-muted">
-                  <ChevronRight className="h-5 w-5 text-[#66676D]" />
-                </div>
-              </div>
-            </Card>
-          )}
+              </Card>
+            );
+          })()}
         </div>
       }
     >
