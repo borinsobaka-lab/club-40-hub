@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
 import { cn } from "@/lib/utils";
@@ -139,12 +139,74 @@ function RootComponent() {
   );
 }
 
+function resetPageScrollPosition() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((element) => {
+    element.scrollTop = 0;
+    element.scrollLeft = 0;
+  });
+}
+
+function useRouteScrollReset(scrollKey: string) {
+  useLayoutEffect(() => {
+    resetPageScrollPosition();
+    const frameId = window.requestAnimationFrame(resetPageScrollPosition);
+    const timeoutId = window.setTimeout(resetPageScrollPosition, 50);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [scrollKey]);
+}
+
+function useInternalNavigationScrollReset() {
+  useEffect(() => {
+    const handleNavigationStart = (event: MouseEvent | PointerEvent | TouchEvent) => {
+      if (
+        event.defaultPrevented ||
+        ("button" in event && event.button !== 0) ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target instanceof Element ? event.target : null;
+      const link = target?.closest<HTMLAnchorElement>("a[href]");
+      if (!link || link.target || link.hasAttribute("download")) return;
+
+      const url = new URL(link.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+
+      resetPageScrollPosition();
+    };
+
+    document.addEventListener("pointerdown", handleNavigationStart, true);
+    document.addEventListener("touchstart", handleNavigationStart, true);
+    document.addEventListener("click", handleNavigationStart, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleNavigationStart, true);
+      document.removeEventListener("touchstart", handleNavigationStart, true);
+      document.removeEventListener("click", handleNavigationStart, true);
+    };
+  }, []);
+}
+
 function AppShell() {
   const { session, user, loading } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAuthRoute = pathname === "/auth";
   const onOnboardingRoute = pathname === "/onboarding";
+
+  useRouteScrollReset(pathname);
+  useInternalNavigationScrollReset();
 
   useEffect(() => {
     if (loading) return;
@@ -207,7 +269,7 @@ function AppShell() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
       <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
-        <main className="flex-1 min-h-0 overflow-hidden relative">
+        <main key={pathname} className="flex-1 min-h-0 overflow-hidden relative">
           <Outlet />
           {loading && <LoadingOverlay />}
         </main>
