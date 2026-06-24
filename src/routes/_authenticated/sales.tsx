@@ -73,6 +73,8 @@ type MembershipRow = {
   installment_enabled: boolean;
 };
 
+type PaymentType = "first" | "recurring" | "other";
+
 type Sale = {
   id: string;
   studio_id: string;
@@ -85,10 +87,27 @@ type Sale = {
   down_payment_amount: number;
   remaining_installments: number;
   source: "admin" | "mobile";
+  payment_type: PaymentType | null;
+  promo_code: string | null;
   comment: string | null;
   created_at: string;
-  clients: { id: string; full_name: string; first_name: string | null; last_name: string | null } | null;
+  clients:
+    | {
+        id: string;
+        full_name: string;
+        first_name: string | null;
+        last_name: string | null;
+        phone: string | null;
+        email: string | null;
+      }
+    | null;
   memberships: { id: string; name: string } | null;
+};
+
+const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
+  first: "Первая оплата",
+  recurring: "Регулярная оплата",
+  other: "Другое",
 };
 
 function SourceBadge({ source }: { source: "admin" | "mobile" }) {
@@ -168,7 +187,7 @@ function SalesPage() {
     const { data, error } = await supabase
       .from("sales")
       .select(
-        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, comment, created_at, clients(id, full_name, first_name, last_name), memberships(id, name)",
+        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name)",
       )
       .eq("studio_id", studioId)
       .order("sold_at", { ascending: false });
