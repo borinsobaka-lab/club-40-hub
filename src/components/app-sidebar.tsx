@@ -17,7 +17,6 @@ import {
 const workspaceItems = [
   { title: "Дашборд", url: "/dashboard", icon: LayoutDashboard },
   { title: "Расписание", url: "/schedule", icon: Calendar },
-  { title: "История записей", url: "/bookings-log", icon: History },
   { title: "Клиенты", url: "/clients", icon: Users },
 ];
 
@@ -25,6 +24,10 @@ const studioItems = [
   { title: "Сотрудники", url: "/trainers", icon: Dumbbell },
   { title: "Тренировки", url: "/workouts", icon: Flame },
   { title: "Номенклатуры", url: "/memberships", icon: Tag },
+];
+
+const statsItems = [
+  { title: "История записей", url: "/bookings-log", icon: History },
 ];
 
 const feedbackItems = [
@@ -101,6 +104,11 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="text-white/50">Студия</SidebarGroupLabel>
           <SidebarGroupContent>{renderItems(studioItems)}</SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-white/50">Статистика</SidebarGroupLabel>
+          <SidebarGroupContent>{renderItems(statsItems)}</SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
