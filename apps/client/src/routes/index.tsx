@@ -360,7 +360,7 @@ function HomePage() {
         </div>
       }
     >
-      <div className="px-4 pt-6 pb-8 space-y-8">
+      <div className="px-4 pt-6 pb-8">
 
         {/* Тренировки */}
         <section className="-mx-4">
