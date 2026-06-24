@@ -21,6 +21,7 @@ import { useClubSettings } from "@/hooks/use-club-settings";
 
 import { NewsDrawer } from "@/components/news-drawer";
 import { ServiceDrawer } from "@/components/service-drawer";
+import { StatsSection } from "@/components/stats-section";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { toast } from "sonner";
@@ -478,11 +479,7 @@ function HomePage() {
         <div className="h-3 bg-muted" />
 
         {/* Статистика */}
-        <section className="bg-background rounded-t-[14px] rounded-b-[14px] pt-5 pb-5">
-          <h2 className="px-4 text-2xl font-bold italic uppercase">
-            Статистика
-          </h2>
-        </section>
+        <StatsSection />
 
         <div className="h-3 bg-muted" />
 
