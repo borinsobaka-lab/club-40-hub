@@ -550,3 +550,145 @@ function SchedulePage() {
     </PageShell>
   );
 }
+
+type TrainerRow = { id: string; full_name: string | null; photo_url: string | null };
+
+const PERSONAL_GOALS = [
+  { value: "weight_loss", label: "Снижение веса" },
+  { value: "muscle_gain", label: "Набор мышечной массы" },
+  { value: "tone", label: "Тонус и рельеф" },
+  { value: "strength", label: "Развитие силы" },
+  { value: "endurance", label: "Выносливость" },
+  { value: "rehab", label: "Восстановление и реабилитация" },
+  { value: "technique", label: "Постановка техники" },
+  { value: "other", label: "Другое" },
+];
+
+function trainerInitials(name: string | null) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+function PersonalRequestForm() {
+  const [trainers, setTrainers] = useState<TrainerRow[] | null>(null);
+  const [goal, setGoal] = useState<string>("");
+  const [trainerId, setTrainerId] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("trainers")
+        .select("id, full_name, photo_url")
+        .order("full_name", { ascending: true });
+      if (cancelled) return;
+      setTrainers((data as TrainerRow[] | null) ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const canSubmit = !!goal && !!trainerId && !submitting;
+
+  const onSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 600));
+    setSubmitting(false);
+    toast.success("Заявка отправлена! Мы свяжемся с вами в ближайшее время.");
+    setGoal("");
+    setTrainerId(null);
+    setComment("");
+  };
+
+  return (
+    <div className="p-4 space-y-5">
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Цель тренировок</Label>
+        <Select value={goal} onValueChange={setGoal}>
+          <SelectTrigger className="h-11">
+            <SelectValue placeholder="Зачем нужны персональные?" />
+          </SelectTrigger>
+          <SelectContent>
+            {PERSONAL_GOALS.map((g) => (
+              <SelectItem key={g.value} value={g.value}>
+                {g.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Тренер</Label>
+        {trainers === null ? (
+          <div className="grid grid-cols-3 gap-3">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-28 rounded-2xl bg-card animate-pulse" />
+            ))}
+          </div>
+        ) : trainers.length === 0 ? (
+          <Card className="p-4 text-sm text-muted-foreground text-center">
+            Список тренеров скоро появится
+          </Card>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            {trainers.map((t) => {
+              const photo = t.photo_url
+                ? supabase.storage.from("trainer-photos").getPublicUrl(t.photo_url).data.publicUrl
+                : null;
+              const active = trainerId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTrainerId(t.id)}
+                  className={`flex flex-col items-center gap-2 p-2 rounded-2xl border transition-all ${
+                    active
+                      ? "border-[#FFE500] bg-[#FFE500]/10 ring-2 ring-[#FFE500]"
+                      : "border-border bg-card active:scale-[0.97]"
+                  }`}
+                >
+                  <SquircleAvatar size={64}>
+                    {photo && <SquircleAvatarImage src={photo} alt={t.full_name ?? ""} />}
+                    <SquircleAvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                      {trainerInitials(t.full_name)}
+                    </SquircleAvatarFallback>
+                  </SquircleAvatar>
+                  <div className="text-xs font-medium leading-tight text-center line-clamp-2">
+                    {t.full_name ?? "Тренер"}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">
+          Комментарий <span className="text-muted-foreground font-normal">(необязательно)</span>
+        </Label>
+        <Textarea
+          rows={4}
+          placeholder="Расскажите подробнее о ваших пожеланиях, удобном времени и опыте"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+        />
+      </div>
+
+      <Button
+        type="button"
+        onClick={onSubmit}
+        disabled={!canSubmit}
+        className="w-full h-12 text-base font-bold"
+      >
+        {submitting ? "Отправляем…" : "Отправить заявку"}
+      </Button>
+    </div>
+  );
+}
