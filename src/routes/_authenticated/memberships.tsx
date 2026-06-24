@@ -388,6 +388,7 @@ function MembershipDialog({
     setPrice(membership?.price != null ? String(membership.price) : "");
     setIsActive(membership?.is_active ?? true);
     setCoverUrl(membership?.cover_url ?? null);
+    setForCouple(membership?.for_couple ?? false);
   }, [open, membership]);
 
   const uploadCover = async (file: File) => {
