@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Refresh } from "@solar-icons/react";
-import { toast } from "sonner";
+
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/auth")({
@@ -28,10 +28,6 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  useEffect(() => {
-    const t = setTimeout(() => toast.info("Тестовое уведомление"), 300);
-    return () => clearTimeout(t);
-  }, []);
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });

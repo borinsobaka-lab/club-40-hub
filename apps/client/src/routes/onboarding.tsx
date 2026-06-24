@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -183,6 +184,8 @@ function OnboardingPage() {
         return form.current_weekly_activity !== null;
       case 7:
         return form.health_flags.length > 0;
+      case 8:
+        return form.weight_kg.trim() !== "" && form.birth_year.trim() !== "" && !!form.gender;
       default:
         return true;
     }
@@ -203,7 +206,7 @@ function OnboardingPage() {
       <Shell>
         <div className="flex-1 flex flex-col justify-center px-6 text-center">
           <h1 className="text-3xl font-black italic uppercase leading-tight">
-            Пара вопросов — и мы настроим тренировки под вас
+            Пара вопросов — и мы подстроим тренировки под вас
           </h1>
           <p className="mt-4 text-base text-muted-foreground">
             Это займёт около 2 минут. Поможет тренеру подобрать правильную нагрузку с первого занятия.
@@ -226,7 +229,7 @@ function OnboardingPage() {
             <CheckCircle className="h-9 w-9 text-[#1B1C1F]" weight="BoldDuotone" />
           </div>
           <h1 className="text-2xl font-black italic uppercase leading-tight">
-            Готово. Настроим ваше первое занятие под вас.
+            Готово. Подготовим ваше первое занятие под вас.
           </h1>
           <p className="mt-3 text-base text-muted-foreground">До встречи в студии.</p>
         </div>
@@ -239,7 +242,7 @@ function OnboardingPage() {
             {saving ? (
               <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
             ) : (
-              "Записаться на первую тренировку"
+              "Начать"
             )}
           </Button>
         </div>
@@ -324,7 +327,6 @@ function OnboardingPage() {
         )}
         {step === 8 && (
           <StepBody
-            height={form.height_cm}
             weight={form.weight_kg}
             birthYear={form.birth_year}
             gender={form.gender}
@@ -535,7 +537,7 @@ function StepGroup({
 }) {
   return (
     <div>
-      <StepTitle title="Тренировались в групповом формате (HIIT, функциональные, кроссфит)?" />
+      <StepTitle title="Тренировались в групповом формате?" />
       <div className="space-y-2">
         <OptionButton active={value === true} onClick={() => onChange(true)}>
           Да, формат знаком
@@ -612,62 +614,58 @@ function StepHealth({
 }
 
 function StepBody({
-  height,
   weight,
   birthYear,
   gender,
   onChange,
 }: {
-  height: string;
   weight: string;
   birthYear: string;
   gender: Gender | null;
   onChange: (patch: Partial<FormData>) => void;
 }) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1939 }, (_, i) => currentYear - i);
   return (
     <div>
       <StepTitle
-        title="Базовые параметры — чтобы потом видеть ваш прогресс"
-        subtitle="Всё по желанию, можно пропустить."
+        title="Базовые параметры — чтобы правильно рассчитать статистику"
+        subtitle="Эти данные доступны только вам."
       />
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="height">Рост, см</Label>
-            <Input
-              id="height"
-              inputMode="numeric"
-              value={height}
-              onChange={(e) => onChange({ height_cm: e.target.value.replace(/[^\d]/g, "") })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="weight">Вес, кг</Label>
-            <Input
-              id="weight"
-              inputMode="decimal"
-              value={weight}
-              onChange={(e) => onChange({ weight_kg: e.target.value.replace(/[^\d.,]/g, "") })}
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="weight">Вес, кг</Label>
+          <Input
+            id="weight"
+            inputMode="decimal"
+            value={weight}
+            onChange={(e) => onChange({ weight_kg: e.target.value.replace(/[^\d.,]/g, "") })}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="byear">Год рождения</Label>
-          <Input
-            id="byear"
-            inputMode="numeric"
-            maxLength={4}
-            value={birthYear}
-            onChange={(e) => onChange({ birth_year: e.target.value.replace(/[^\d]/g, "").slice(0, 4) })}
-          />
+          <Select
+            value={birthYear || undefined}
+            onValueChange={(v) => onChange({ birth_year: v })}
+          >
+            <SelectTrigger id="byear">
+              <SelectValue placeholder="Выберите год" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {years.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label>Пол</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {([
               { v: "female", label: "Женский" },
               { v: "male", label: "Мужской" },
-              { v: "other", label: "Другое" },
             ] as { v: Gender; label: string }[]).map((g) => (
               <button
                 key={g.v}

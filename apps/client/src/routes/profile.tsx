@@ -209,7 +209,7 @@ function ProfilePage() {
             >
               <SquircleAvatar size={120}>
                 {client?.photo_url && <SquircleAvatarImage src={client.photo_url} alt={fullName} />}
-                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-3xl font-semibold">
+                <SquircleAvatarFallback className="bg-muted text-foreground text-3xl font-semibold">
                   {loading ? <Refresh className="h-6 w-6 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
                 </SquircleAvatarFallback>
               </SquircleAvatar>
@@ -529,7 +529,7 @@ function EditProfileSheet({
             >
               <SquircleAvatar size={96}>
                 {avatarUrl && <SquircleAvatarImage src={avatarUrl} alt={displayName} />}
-                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
+                <SquircleAvatarFallback className="bg-muted text-foreground text-2xl font-semibold">
                   {initials(displayName)}
                 </SquircleAvatarFallback>
               </SquircleAvatar>

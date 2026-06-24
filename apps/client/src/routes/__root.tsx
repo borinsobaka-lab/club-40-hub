@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
 import { cn } from "@/lib/utils";
@@ -204,6 +204,7 @@ function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAuthRoute = pathname === "/auth";
   const onOnboardingRoute = pathname === "/onboarding";
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
   useRouteScrollReset(pathname);
   useInternalNavigationScrollReset();
@@ -214,10 +215,19 @@ function AppShell() {
     if (session && onAuthRoute) navigate({ to: "/", replace: true });
   }, [loading, session, onAuthRoute, navigate]);
 
+  // Reset when user changes / signs out
+  useEffect(() => {
+    if (!user) setOnboardingChecked(false);
+  }, [user]);
+
   // Onboarding gate: if logged in and member_profiles.onboarding_completed_at IS NULL → /onboarding
   useEffect(() => {
     if (loading || !user) return;
-    if (onAuthRoute || onOnboardingRoute) return;
+    if (onAuthRoute) return;
+    if (onOnboardingRoute) {
+      setOnboardingChecked(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const { supabase: sb } = await import("@/integrations/supabase/client");
@@ -229,6 +239,8 @@ function AppShell() {
       if (cancelled) return;
       if (!data || !data.onboarding_completed_at) {
         navigate({ to: "/onboarding", replace: true });
+      } else {
+        setOnboardingChecked(true);
       }
     })();
     return () => {
@@ -266,15 +278,17 @@ function AppShell() {
     );
   }
 
+  const showAppLoading = loading || (!!session && !onboardingChecked);
+
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
       <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
         <main key={pathname} className="flex-1 min-h-0 overflow-hidden relative">
-          <Outlet />
-          {loading && <LoadingOverlay />}
+          {!showAppLoading && <Outlet />}
+          {showAppLoading && <LoadingOverlay />}
         </main>
 
-        <BottomNav />
+        {!showAppLoading && <BottomNav />}
       </div>
     </div>
   );
