@@ -7,12 +7,14 @@ import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/c
 import {
   googleCalendarUrl,
   outlookLiveUrl,
-  office365Url,
-  yahooCalendarUrl,
   downloadICS,
   type CalendarEvent,
 } from "@/lib/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import googleCalIcon from "@/assets/google-calendar.png.asset.json";
+import appleCalIcon from "@/assets/apple-calendar.png.asset.json";
+import outlookIcon from "@/assets/outlook.png.asset.json";
+
 
 export type WorkoutDrawerData = {
   id: string;
