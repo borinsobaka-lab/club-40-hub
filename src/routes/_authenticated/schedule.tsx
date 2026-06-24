@@ -61,7 +61,7 @@ type Entry = {
 
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
-const SLOT_PX_FULL = 60;
+const SLOT_PX_FULL = 88;
 const SLOT_PX_EMPTY = 28;
 const ALL_FILTER_VALUE = "all";
 
@@ -454,50 +454,54 @@ function SchedulePage() {
                                     ev.stopPropagation();
                                     openEdit(e);
                                   }}
-                                  className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 ${colorClasses}`}
+                                  className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 flex flex-col ${colorClasses}`}
                                 >
-                                  {(() => {
-                                    const cap = e.capacity ?? e.workout?.capacity ?? 0;
-                                    if (!cap) return null;
-                                    const left = Math.max(0, cap - e.booked_count);
-                                    const tone =
-                                      left === 0
-                                        ? "bg-red-500/90 text-white"
-                                        : left <= 5
-                                          ? "bg-amber-500/90 text-white"
-                                          : "bg-black/25 text-white";
-                                    return (
-                                      <div
-                                        className={`absolute right-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
-                                      >
-                                        {e.booked_count}/{cap}
-                                      </div>
-                                    );
-                                  })()}
-                                  <div className="opacity-80">
-                                    {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
+                                  <div className="flex items-start justify-between gap-1">
+                                    <span className="opacity-80">
+                                      {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
+                                    </span>
+                                    {(() => {
+                                      const cap = e.capacity ?? e.workout?.capacity ?? 0;
+                                      if (!cap) return null;
+                                      const left = Math.max(0, cap - e.booked_count);
+                                      const tone =
+                                        left === 0
+                                          ? "bg-red-500/90 text-white"
+                                          : left <= 5
+                                            ? "bg-amber-500/90 text-white"
+                                            : "bg-black/25 text-white";
+                                      return (
+                                        <span
+                                          className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
+                                        >
+                                          {e.booked_count}/{cap}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
-                                  <div className="truncate font-medium">
+                                  <div className="font-medium line-clamp-2">
                                     {e.workout?.name ?? "Занятие"}
                                   </div>
                                   {names && (
                                     <div className="truncate opacity-80">{names}</div>
                                   )}
-                                  <button
-                                    type="button"
-                                    aria-label="Копировать занятие"
-                                    title="Копировать занятие"
-                                    onClick={(ev) => {
-                                      ev.stopPropagation();
-                                      setCopySource(e);
-                                      toast.message(
-                                        "Выберите пустой слот, куда скопировать занятие",
-                                      );
-                                    }}
-                                    className="absolute bottom-1 right-1 rounded bg-black/25 p-1 text-white hover:bg-black/40"
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </button>
+                                  <div className="mt-auto flex justify-end">
+                                    <button
+                                      type="button"
+                                      aria-label="Копировать занятие"
+                                      title="Копировать занятие"
+                                      onClick={(ev) => {
+                                        ev.stopPropagation();
+                                        setCopySource(e);
+                                        toast.message(
+                                          "Выберите пустой слот, куда скопировать занятие",
+                                        );
+                                      }}
+                                      className="rounded bg-black/25 p-0.5 text-white hover:bg-black/40"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                  </div>
                                 </div>
                               );
                             })}
