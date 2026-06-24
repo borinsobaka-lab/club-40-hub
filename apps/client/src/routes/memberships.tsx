@@ -925,9 +925,9 @@ function ActiveMembershipDrawer({
               <button
                 onClick={onManage}
                 disabled={!autoOn}
-                className={`text-base font-medium transition-opacity ${
+                className={`text-sm font-normal transition-opacity ${
                   !autoOn
-                    ? "blur-[1px] opacity-40 pointer-events-none select-none"
+                    ? "text-foreground/40 pointer-events-none select-none"
                     : "text-foreground hover:opacity-80"
                 }`}
               >
