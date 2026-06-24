@@ -168,28 +168,50 @@ export const Route = createFileRoute("/api/chat")({
 
             // ====== ВЫДАННЫЕ КЛИЕНТАМ АБОНЕМЕНТЫ ======
             list_client_memberships: tool({
-              description: "Активные/прошлые абонементы клиентов (client_memberships).",
+              description:
+                "Выданные клиентам абонементы (client_memberships). Содержит client_id, membership_id, status, started_at, ends_at, visits_left. " +
+                "Для вопросов «у кого скоро заканчивается абонемент» используй status='active', expiring_within_days и order_by='ends_at_asc'. " +
+                "Для имени клиента ОБЯЗАТЕЛЬНО вызови list_clients по полученным client_id; для названия абонемента — list_memberships по membership_id. Никогда не выдумывай имена и названия.",
               inputSchema: z.object({
                 status: z.enum(["active", "replaced", "expired", "cancelled"]).optional(),
                 client_id: z.string().uuid().optional(),
+                expiring_within_days: z
+                  .number()
+                  .int()
+                  .min(1)
+                  .max(365)
+                  .optional()
+                  .describe("Вернуть только записи, у которых ends_at в пределах N дней от сегодня."),
+                order_by: z.enum(["created_desc", "ends_at_asc"]).default("created_desc"),
                 limit: z.number().int().min(1).max(500).default(200),
               }),
-              execute: async ({ status, client_id, limit }) => {
+              execute: async ({ status, client_id, expiring_within_days, order_by, limit }) => {
                 let q = supabase
                   .from("client_memberships")
                   .select(
                     "id, client_id, membership_id, sale_id, source, started_at, ends_at, visits_left, status, created_at",
                   )
                   .eq("studio_id", studioId)
-                  .order("created_at", { ascending: false })
                   .limit(limit);
+                if (order_by === "ends_at_asc") {
+                  q = q.order("ends_at", { ascending: true, nullsFirst: false });
+                } else {
+                  q = q.order("created_at", { ascending: false });
+                }
                 if (status) q = q.eq("status", status);
                 if (client_id) q = q.eq("client_id", client_id);
+                if (expiring_within_days) {
+                  const today = new Date();
+                  const to = new Date(today.getTime() + expiring_within_days * 86400000);
+                  const iso = (d: Date) => d.toISOString().slice(0, 10);
+                  q = q.gte("ends_at", iso(today)).lte("ends_at", iso(to));
+                }
                 const { data, error } = await q;
                 if (error) return { error: error.message };
                 return { count: data?.length ?? 0, rows: data ?? [] };
               },
             }),
+
 
             // ====== ПРОДАЖИ ======
             list_sales: tool({
