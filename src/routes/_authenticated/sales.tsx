@@ -691,6 +691,31 @@ function SaleDialog({
             </div>
           ) : null}
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Тип оплаты</Label>
+              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="first">Первая оплата</SelectItem>
+                  <SelectItem value="recurring">Регулярная оплата</SelectItem>
+                  <SelectItem value="other">Другое</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="s-promo">Промо-код</Label>
+              <Input
+                id="s-promo"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder="Необязательно"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="s-comment">Комментарий</Label>
             <Textarea
@@ -701,6 +726,7 @@ function SaleDialog({
               placeholder="Необязательно"
             />
           </div>
+
 
           {selectedClient && selectedMembership && (
             <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
