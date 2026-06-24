@@ -318,8 +318,7 @@ function ProfileLink({
     <li>
       <button
         type="button"
-        disabled
-        className="w-full flex items-center gap-3 px-4 py-4 text-left disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full flex items-center gap-3 px-4 py-4 text-left"
       >
         <span className="text-foreground">{icon}</span>
         <span className="flex-1 min-w-0">
