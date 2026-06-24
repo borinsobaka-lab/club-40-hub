@@ -891,7 +891,7 @@ function BookingsPanel({
                         size="sm"
                         onClick={() => setConfirmBooking(b)}
                       >
-                        Отклонить запись
+                        Отклонить
                       </Button>
                     </div>
                   )}
