@@ -403,10 +403,18 @@ function MembershipCard({
   membership,
   color,
   onSelect,
+  topMinHeight,
+  bottomMinHeight,
+  onTopRef,
+  onBottomRef,
 }: {
   membership: Membership;
   color: string;
   onSelect: () => void;
+  topMinHeight?: number;
+  bottomMinHeight?: number;
+  onTopRef?: (el: HTMLDivElement | null) => void;
+  onBottomRef?: (el: HTMLDivElement | null) => void;
 }) {
   const cover = coverPublicUrl(membership.cover_url);
   const features = [
