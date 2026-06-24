@@ -93,16 +93,6 @@ function MembershipsPage() {
   const [couplesTopHeight, setCouplesTopHeight] = useState(0);
   const [couplesBottomHeight, setCouplesBottomHeight] = useState(0);
 
-  const resetMembershipScroll = () => {
-    requestAnimationFrame(() => {
-      const scrollNode = document.querySelector<HTMLDivElement>("[data-page-scroll]");
-      const tabsNode = document.querySelector<HTMLDivElement>("[data-memberships-tabs]");
-      if (!scrollNode || !tabsNode) return;
-      scrollNode.scrollTop = Math.max(0, tabsNode.offsetTop - 8);
-      scrollNode.scrollLeft = 0;
-    });
-  };
-
   const unlimitedMemberships = useMemo(
     () => memberships.filter((m) => m.visits_count === null && !m.for_couple),
     [memberships]
@@ -289,6 +279,7 @@ function MembershipsPage() {
 
   return (
     <PageShell
+      scrollKey={activeTab}
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-black italic uppercase">Абонементы</h1>
@@ -346,7 +337,6 @@ function MembershipsPage() {
                     key={t.key}
                     onClick={() => {
                       setActiveTab(t.key as "unlimited" | "packages" | "couples");
-                      resetMembershipScroll();
                     }}
                     className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
                       active ? "text-foreground" : "text-[#66676D]"
