@@ -251,6 +251,8 @@ function ProfilePage() {
           </Button>
         </section>
 
+        <div className="h-3 bg-muted" />
+
         {/* Блок: ссылки */}
         <section className="bg-background rounded-[14px] py-1">
           <ul className="divide-y divide-border">
