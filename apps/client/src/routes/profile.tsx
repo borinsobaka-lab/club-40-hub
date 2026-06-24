@@ -91,6 +91,8 @@ function ProfilePage() {
   const [client, setClient] = useState<ClientRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -134,6 +136,46 @@ function ProfilePage() {
   const birthday = client?.birthday || "";
   const gender = client?.gender || "";
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Выберите изображение");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Файл больше 5 МБ");
+      return;
+    }
+    setUploadingAvatar(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+    if (upErr) {
+      setUploadingAvatar(false);
+      toast.error("Не удалось загрузить: " + upErr.message);
+      return;
+    }
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const publicUrl = pub.publicUrl;
+    const { data: updated, error: dbErr } = await supabase
+      .from("clients")
+      .update({ photo_url: publicUrl } as never)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+    setUploadingAvatar(false);
+    if (dbErr) {
+      toast.error("Не удалось сохранить: " + dbErr.message);
+      return;
+    }
+    if (updated) setClient(updated as ClientRow);
+    toast.success("Аватар обновлён");
+  };
+
   return (
     <PageShell
       header={
@@ -143,22 +185,47 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="pt-5">
-        <div className="px-4">
+      <div className="pt-5 space-y-3">
+        {/* Блок: данные пользователя */}
+        <section className="bg-background rounded-[14px] px-4 py-5">
           <div className="flex items-center gap-4">
-            <SquircleAvatar size={64}>
-              {client?.photo_url && <SquircleAvatarImage src={client.photo_url} alt={fullName} />}
-              <SquircleAvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                {loading ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
-              </SquircleAvatarFallback>
-            </SquircleAvatar>
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar || loading}
+              className="relative shrink-0 focus:outline-none disabled:opacity-70"
+              style={{ width: 72, height: 72, clipPath: squircleClipPath(72), WebkitClipPath: squircleClipPath(72) }}
+              aria-label="Заменить аватар"
+            >
+              <SquircleAvatar size={72}>
+                {client?.photo_url && <SquircleAvatarImage src={client.photo_url} alt={fullName} />}
+                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
+                  {loading ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
+                </SquircleAvatarFallback>
+              </SquircleAvatar>
+              {uploadingAvatar && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <Refresh className="h-5 w-5 text-white animate-spin" weight="BoldDuotone" />
+                </div>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
+                <Camera className="h-3 w-3" />
+              </span>
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-lg truncate">{fullName}</div>
               <div className="text-xs text-muted-foreground truncate">{email || "—"}</div>
             </div>
           </div>
 
-          <dl className="mt-5 divide-y divide-border">
+          <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
             <ProfileField label="Имя" value={client?.first_name} />
             <ProfileField label="Фамилия" value={client?.last_name} />
             <ProfileField label="Телефон" value={phone} />
@@ -182,26 +249,24 @@ function ProfilePage() {
             <Pen className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Редактировать профиль
           </Button>
-        </div>
+        </section>
 
-        <div className="h-3 bg-muted mt-6" />
-
-        <div className="bg-background rounded-t-[14px] -mt-[14px] relative pt-2">
+        {/* Блок: ссылки */}
+        <section className="bg-background rounded-[14px] py-1">
           <ul className="divide-y divide-border">
             <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="Приложения" />
             <ProfileLink icon={<Shop className="h-5 w-5" weight="BoldDuotone" />} label="Франшиза" />
           </ul>
-        </div>
+        </section>
 
-        <div className="h-3 bg-muted" />
-
-        <div className="bg-background rounded-t-[14px] -mt-[14px] relative pt-5 px-4">
+        {/* Блок: выход */}
+        <section className="bg-background rounded-[14px] px-4 py-5">
           <Button variant="outline" className="w-full" onClick={() => signOut()}>
             <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Выйти
           </Button>
-        </div>
+        </section>
 
         {client && (
           <EditProfileSheet
@@ -217,13 +282,12 @@ function ProfilePage() {
 }
 
 function ProfileField({ label, value }: { label: string; value?: string | null }) {
-  const display = value && value.length > 0 ? value : "—";
   const isEmpty = !value || value.length === 0;
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={`text-sm font-medium text-right break-words ${isEmpty ? "text-muted-foreground" : ""}`}>
-        {display}
+    <div className="min-w-0">
+      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className={`mt-0.5 text-sm font-medium break-words ${isEmpty ? "text-muted-foreground/60 italic" : ""}`}>
+        {isEmpty ? "не указано" : value}
       </dd>
     </div>
   );
