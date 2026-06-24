@@ -631,7 +631,7 @@ function EditProfileSheet({
         <SheetFooter className="flex-row gap-2">
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 shadow-none"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
