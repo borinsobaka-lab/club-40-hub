@@ -14,6 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -40,7 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
-import { ClientCardDialog } from "@/components/client-card-dialog";
+import { ClientNameLink } from "@/components/client-name-link";
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({ meta: [{ title: "Продажи — CLUB 40 Admin" }] }),
@@ -73,6 +80,8 @@ type MembershipRow = {
   installment_enabled: boolean;
 };
 
+type PaymentType = "first" | "recurring" | "other";
+
 type Sale = {
   id: string;
   studio_id: string;
@@ -85,10 +94,27 @@ type Sale = {
   down_payment_amount: number;
   remaining_installments: number;
   source: "admin" | "mobile";
+  payment_type: PaymentType | null;
+  promo_code: string | null;
   comment: string | null;
   created_at: string;
-  clients: { id: string; full_name: string; first_name: string | null; last_name: string | null } | null;
+  clients:
+    | {
+        id: string;
+        full_name: string;
+        first_name: string | null;
+        last_name: string | null;
+        phone: string | null;
+        email: string | null;
+      }
+    | null;
   memberships: { id: string; name: string } | null;
+};
+
+const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
+  first: "Первая оплата",
+  recurring: "Регулярная оплата",
+  other: "Другое",
 };
 
 function SourceBadge({ source }: { source: "admin" | "mobile" }) {
@@ -155,8 +181,6 @@ function SalesPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
-  const [cardClient, setCardClient] = useState<ClientRow | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
 
   const fetchSales = async () => {
@@ -168,7 +192,7 @@ function SalesPage() {
     const { data, error } = await supabase
       .from("sales")
       .select(
-        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, comment, created_at, clients(id, full_name, first_name, last_name), memberships(id, name)",
+        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name)",
       )
       .eq("studio_id", studioId)
       .order("sold_at", { ascending: false });
@@ -208,15 +232,7 @@ function SalesPage() {
     fetchSales();
   };
 
-  const openClientCard = (clientId: string) => {
-    const c = clients.find((x) => x.id === clientId);
-    if (!c) {
-      toast.error("Клиент не найден");
-      return;
-    }
-    setCardClient(c);
-    setCardOpen(true);
-  };
+
 
   const q = search.trim().toLowerCase();
   const filtered = q
@@ -262,10 +278,13 @@ function SalesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Клиент</TableHead>
+                    <TableHead>Контакты</TableHead>
                     <TableHead>Дата</TableHead>
                     <TableHead>Источник</TableHead>
-                    <TableHead>Клиент</TableHead>
                     <TableHead>Абонемент</TableHead>
+                    <TableHead>Тип оплаты</TableHead>
+                    <TableHead>Промо-код</TableHead>
                     <TableHead>Сумма</TableHead>
                     <TableHead>Первый взнос</TableHead>
                     <TableHead>Рассрочка</TableHead>
@@ -277,13 +296,13 @@ function SalesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={13} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={13} className="py-8 text-center text-sm text-muted-foreground">
                         {sales.length === 0
                           ? "Продаж пока нет. Нажмите «Новая продажа»."
                           : "Ничего не найдено."}
@@ -292,22 +311,28 @@ function SalesPage() {
                   ) : (
                     pg.paged.map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell>{formatDate(s.sold_at)}</TableCell>
-                        <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
                         <TableCell>
                           {s.clients ? (
-                            <button
-                              type="button"
-                              onClick={() => openClientCard(s.client_id)}
-                              className="text-left underline-offset-2 hover:underline hover:text-primary"
-                            >
+                            <ClientNameLink clientId={s.client_id}>
                               {clientName(s.clients)}
-                            </button>
+                            </ClientNameLink>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div>{s.clients?.phone ?? "—"}</div>
+                          <div className="text-xs">{s.clients?.email ?? "—"}</div>
+                        </TableCell>
+                        <TableCell>{formatDate(s.sold_at)}</TableCell>
+                        <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
                         <TableCell>{s.memberships?.name ?? "—"}</TableCell>
+                        <TableCell className="text-sm">
+                          {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {s.promo_code ?? "—"}
+                        </TableCell>
                         <TableCell className="font-medium">{formatMoney(Number(s.total_amount))}</TableCell>
                         <TableCell>
                           {s.remaining_installments > 0
@@ -333,6 +358,7 @@ function SalesPage() {
                   )}
                 </TableBody>
               </Table>
+
               <DataPagination {...pg} />
             </div>
           </>
@@ -348,8 +374,6 @@ function SalesPage() {
         clients={clients}
         onSaved={fetchSales}
       />
-
-      <ClientCardDialog open={cardOpen} onOpenChange={setCardOpen} client={cardClient} />
     </AdminShell>
   );
 }
@@ -379,6 +403,8 @@ function SaleDialog({
   const [downPayment, setDownPayment] = useState<string>("");
   const [remainingCount, setRemainingCount] = useState<2 | 3>(2);
   const [comment, setComment] = useState<string>("");
+  const [paymentType, setPaymentType] = useState<PaymentType>("first");
+  const [promoCode, setPromoCode] = useState<string>("");
   const [adminName, setAdminName] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -391,6 +417,8 @@ function SaleDialog({
     setDownPayment("");
     setRemainingCount(2);
     setComment("");
+    setPaymentType("first");
+    setPromoCode("");
   }, [open]);
 
   useEffect(() => {
@@ -514,6 +542,8 @@ function SaleDialog({
         down_payment_amount: down,
         remaining_installments: remaining,
         source: "admin",
+        payment_type: paymentType,
+        promo_code: promoCode.trim() || null,
         comment: comment.trim() || null,
       })
       .select("id")
@@ -661,6 +691,31 @@ function SaleDialog({
             </div>
           ) : null}
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Тип оплаты</Label>
+              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="first">Первая оплата</SelectItem>
+                  <SelectItem value="recurring">Регулярная оплата</SelectItem>
+                  <SelectItem value="other">Другое</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="s-promo">Промо-код</Label>
+              <Input
+                id="s-promo"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder="Необязательно"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="s-comment">Комментарий</Label>
             <Textarea
@@ -671,6 +726,7 @@ function SaleDialog({
               placeholder="Необязательно"
             />
           </div>
+
 
           {selectedClient && selectedMembership && (
             <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
