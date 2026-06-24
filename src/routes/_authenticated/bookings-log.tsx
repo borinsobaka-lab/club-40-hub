@@ -52,6 +52,10 @@ type LogRow = {
   booked_at: string;
   cancelled_at: string | null;
   completed_at: string | null;
+  met_value: number | null;
+  weight_at_time: number | null;
+  duration_min: number | null;
+  calories: number | null;
 };
 
 type BookingStatus = LogRow["status"];
