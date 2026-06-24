@@ -701,7 +701,7 @@ function MembershipDrawer({
   onOpenChange,
   onPurchase,
   purchasing,
-  disabled,
+  hasActive,
 }: {
   membership: Membership;
   color: string;
@@ -709,7 +709,7 @@ function MembershipDrawer({
   onOpenChange: (open: boolean) => void;
   onPurchase: () => void;
   purchasing: boolean;
-  disabled: boolean;
+  hasActive: boolean;
 }) {
   const features = [
     membership.visits_count === null
@@ -758,7 +758,9 @@ function MembershipDrawer({
             <div className="mt-5 flex items-center gap-2 rounded-xl bg-muted p-3 text-sm">
               <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-muted-foreground">
-                Абонемент активируется автоматически после оформления
+                {hasActive
+                  ? "Текущий абонемент будет аннулирован, новый подключится сразу"
+                  : "Абонемент активируется автоматически после оформления"}
               </span>
             </div>
 
@@ -773,15 +775,121 @@ function MembershipDrawer({
 
             <Button
               onClick={onPurchase}
-              disabled={purchasing || disabled}
+              disabled={purchasing}
               className="mt-4 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
             >
-              {disabled
-                ? "У вас уже есть активный абонемент"
-                : purchasing
-                  ? "Оформляем…"
+              {purchasing
+                ? hasActive
+                  ? "Переходим…"
+                  : "Оформляем…"
+                : hasActive
+                  ? "Перейти на этот абонемент"
                   : "Приобрести"}
             </Button>
+          </div>
+        </DrawerPrimitive.Content>
+      </DrawerPrimitive.Portal>
+    </DrawerPrimitive.Root>
+  );
+}
+
+function ActiveMembershipDrawer({
+  active,
+  open,
+  onOpenChange,
+  onCancelAutorenew,
+}: {
+  active: ActiveMembership;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCancelAutorenew: () => void;
+}) {
+  const m = active.memberships;
+  const autoOn = active.auto_renew !== false;
+  const features = [
+    m?.visits_count == null
+      ? "Безлимит посещений"
+      : `${m.visits_count} занятий`,
+    m?.duration_days ? `Срок действия ${m.duration_days} дней` : null,
+    ...((m?.benefits ?? []).filter(Boolean) as string[]),
+  ].filter(Boolean) as string[];
+
+  return (
+    <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
+      <DrawerPrimitive.Portal>
+        <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
+        <DrawerPrimitive.Content
+          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-2xl border-t border-border bg-background outline-none"
+          aria-describedby={undefined}
+        >
+          <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+24px)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
+                  {m?.name ?? "Ваш абонемент"}
+                </DrawerPrimitive.Title>
+                {m?.description && (
+                  <p className="text-sm text-muted-foreground mt-1">{m.description}</p>
+                )}
+              </div>
+              <div
+                className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: (autoOn ? "#22C55E" : "#EF4444") + "26" }}
+              >
+                {autoOn ? (
+                  <ShieldCheck className="h-7 w-7" style={{ color: "#22C55E" }} />
+                ) : (
+                  <CloseCircle className="h-7 w-7" style={{ color: "#EF4444" }} weight="BoldDuotone" />
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-2">
+              {features.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" weight="BoldDuotone" />
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              className="mt-5 flex items-center gap-2 rounded-xl p-3 text-sm"
+              style={{ backgroundColor: (autoOn ? "#22C55E" : "#EF4444") + "14" }}
+            >
+              {autoOn ? (
+                <ShieldCheck className="h-4 w-4 shrink-0" style={{ color: "#22C55E" }} />
+              ) : (
+                <CloseCircle className="h-4 w-4 shrink-0" style={{ color: "#EF4444" }} weight="BoldDuotone" />
+              )}
+              <span style={{ color: autoOn ? "#15803D" : "#B91C1C" }}>
+                {autoOn
+                  ? active.ends_at
+                    ? `Автопродление включено. Следующее списание ${new Date(active.ends_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`
+                    : "Автопродление включено"
+                  : active.ends_at
+                    ? `Автопродление выключено. Абонемент закончится ${new Date(active.ends_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`
+                    : "Автопродление выключено"}
+              </span>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
+              <Button
+                onClick={onCancelAutorenew}
+                disabled={!autoOn}
+                variant="outline"
+                className="flex-1 h-14 rounded-full font-semibold text-base disabled:opacity-50"
+              >
+                Отменить автопродление
+              </Button>
+              <Button
+                onClick={() => onOpenChange(false)}
+                className="flex-1 h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition"
+              >
+                Выйти
+              </Button>
+            </div>
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
