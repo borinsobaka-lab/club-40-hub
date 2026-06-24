@@ -639,6 +639,31 @@ function SchedulePage() {
         onSaved={fetchData}
         onDelete={editing ? () => handleDelete(editing) : undefined}
       />
+
+      <AlertDialog
+        open={duplicateWeekOpen}
+        onOpenChange={(v) => !duplicatingWeek && setDuplicateWeekOpen(v)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Дублировать неделю?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Все занятия с недели {weekLabel} ({entries.length}) будут скопированы
+              на следующую неделю ({fmtDate(addDays(weekStart, 7))} —{" "}
+              {fmtDate(addDays(weekStart, 13))}) в те же дни и время, с теми же
+              тренерами. Записи клиентов не копируются. Уже существующие на
+              следующей неделе занятия (тот же тип и время) пропускаются.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={duplicatingWeek}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={duplicateWeek} disabled={duplicatingWeek}>
+              {duplicatingWeek && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+              Дублировать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminShell>
   );
 }
