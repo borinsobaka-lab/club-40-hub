@@ -316,6 +316,20 @@ function ClientsPage() {
                     </Select>
                   </div>
 
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Статус</Label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-9 w-[160px]">
+                        <SelectValue placeholder="Все" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="chk">ЧК — Член клуба</SelectItem>
+                        <SelectItem value="pchk">ПЧК — Потенциальный</SelectItem>
+                        <SelectItem value="bchk">БЧК — Бывший</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <DateRangeFilter
                     label="Дата регистрации"
                     value={regRange}
