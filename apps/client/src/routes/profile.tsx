@@ -188,7 +188,7 @@ function ProfilePage() {
       <div className="pt-2 pb-8">
         <div className="bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-b-[14px] px-4 pt-3 pb-5">
+        <section className="bg-background rounded-[14px] px-4 pt-3 pb-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
