@@ -629,98 +629,101 @@ function PersonalRequestForm() {
   };
 
   return (
-    <div className="p-4 space-y-5">
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Цель тренировок</Label>
-        <Select value={goal} onValueChange={setGoal}>
-          <SelectTrigger className="h-11 text-base shadow-none">
-            <SelectValue placeholder="Ваш запрос к тренеру" />
-          </SelectTrigger>
-          <SelectContent>
-            {PERSONAL_GOALS.map((g) => (
-              <SelectItem key={g.value} value={g.value}>
-                {g.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="p-4 space-y-4">
+      <Card className="p-4 space-y-5">
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Цель тренировок</Label>
+          <Select value={goal} onValueChange={setGoal}>
+            <SelectTrigger className="h-11 text-base shadow-none bg-background rounded-md">
+              <SelectValue placeholder="Ваш запрос к тренеру" />
+            </SelectTrigger>
+            <SelectContent>
+              {PERSONAL_GOALS.map((g) => (
+                <SelectItem key={g.value} value={g.value}>
+                  {g.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">Выберите тренера</Label>
-        {trainers === null ? (
-          <div className="space-y-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-20 rounded-2xl bg-card animate-pulse" />
-            ))}
-          </div>
-        ) : trainers.length === 0 ? (
-          <Card className="p-4 text-sm text-muted-foreground text-center">
-            Список тренеров скоро появится
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {trainers.map((t) => {
-              const photo = t.photo_url
-                ? supabase.storage.from("trainer-photos").getPublicUrl(t.photo_url).data.publicUrl
-                : null;
-              const active = trainerId === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTrainerId(t.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
-                    active
-                      ? "border-[#FFE500] bg-[#FFE500]/10 ring-2 ring-[#FFE500]"
-                      : "border-border bg-card active:scale-[0.99]"
-                  }`}
-                >
-                  <SquircleAvatar size={56} className="shrink-0">
-                    {photo && <SquircleAvatarImage src={photo} alt={t.full_name ?? ""} />}
-                    <SquircleAvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                      {trainerInitials(t.full_name)}
-                    </SquircleAvatarFallback>
-                  </SquircleAvatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold truncate">
-                      {t.full_name ?? "Тренер"}
-                    </div>
-                    {(t.bio || t.specialization) && (
-                      <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                        {t.bio ?? t.specialization}
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Выберите тренера</Label>
+          {trainers === null ? (
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-20 rounded-md bg-background animate-pulse" />
+              ))}
+            </div>
+          ) : trainers.length === 0 ? (
+            <div className="p-4 rounded-md bg-background text-sm text-muted-foreground text-center">
+              Список тренеров скоро появится
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {trainers.map((t) => {
+                const photo = t.photo_url
+                  ? supabase.storage.from("trainer-photos").getPublicUrl(t.photo_url).data.publicUrl
+                  : null;
+                const active = trainerId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTrainerId(t.id)}
+                    className={`w-full flex items-start gap-3 p-3 rounded-md border text-left transition-all ${
+                      active
+                        ? "border-[#FFE500] bg-[#FFE500]/10 ring-2 ring-[#FFE500]"
+                        : "border-input bg-background active:scale-[0.99]"
+                    }`}
+                  >
+                    <SquircleAvatar size={56} className="shrink-0">
+                      {photo && <SquircleAvatarImage src={photo} alt={t.full_name ?? ""} />}
+                      <SquircleAvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                        {trainerInitials(t.full_name)}
+                      </SquircleAvatarFallback>
+                    </SquircleAvatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold">
+                        {t.full_name ?? "Тренер"}
                       </div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                      {(t.bio || t.specialization) && (
+                        <div className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">
+                          {t.bio ?? t.specialization}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-      <div className="space-y-2">
-        <Label className="text-sm font-semibold">
-          Комментарий <span className="text-muted-foreground font-normal">(необязательно)</span>
-        </Label>
-        <Textarea
-          rows={4}
-          placeholder="Расскажите подробнее о ваших пожеланиях, удобном времени и опыте"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          className="text-base shadow-none"
-        />
-      </div>
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">
+            Комментарий <span className="text-muted-foreground font-normal">(необязательно)</span>
+          </Label>
+          <Textarea
+            rows={4}
+            placeholder="Расскажите подробнее о ваших пожеланиях, удобном времени и опыте"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="text-base shadow-none bg-background rounded-md"
+          />
+        </div>
 
-      <Button
-        type="button"
-        onClick={onSubmit}
-        disabled={!canSubmit}
-        className="w-full text-sm font-bold"
-      >
-        {submitting ? "Отправляем…" : "Отправить заявку"}
-      </Button>
+        <Button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          className="w-full text-sm font-bold"
+        >
+          {submitting ? "Отправляем…" : "Отправить заявку"}
+        </Button>
+      </Card>
     </div>
   );
 }
+
 
