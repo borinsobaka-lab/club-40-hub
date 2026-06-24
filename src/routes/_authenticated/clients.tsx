@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import { Plus, Loader2, Pencil, Trash2, Search, ExternalLink, CalendarIcon } from "lucide-react";
+import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -405,6 +406,7 @@ function ClientsPage() {
                             >
                               {displayName(c)}
                             </button>
+                            {c.crm_link && <AmoCrmLinkIcon href={c.crm_link} />}
                           </div>
                         </TableCell>
                         <TableCell>
