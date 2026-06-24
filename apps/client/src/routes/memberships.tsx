@@ -308,27 +308,6 @@ function MembershipsPage() {
 
       await refreshActive();
 
-      // Ensure auto-renew is enabled on the freshly purchased membership
-      // (some backend triggers create the row with auto_renew = false/null)
-      try {
-        const { data: fresh } = await db
-          .from("client_memberships")
-          .select("id, auto_renew")
-          .eq("client_id", client.id)
-          .eq("status", "active")
-          .maybeSingle();
-        if (fresh && fresh.auto_renew !== true) {
-          await db
-            .from("client_memberships")
-            .update({ auto_renew: true })
-            .eq("id", fresh.id);
-          await refreshActive();
-        }
-      } catch {
-        // non-fatal: keep purchase success even if update fails
-      }
-
-
       toast.success(
         active
           ? `Вы перешли на «${selected.name}»`
