@@ -255,7 +255,6 @@ function ProfilePage() {
         <section className="bg-background rounded-[14px] py-1">
           <ul className="divide-y divide-border">
             <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
-            <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="Приложения" />
             <ProfileLink
               icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
               label="Способы оплаты"
@@ -263,6 +262,7 @@ function ProfilePage() {
               right={<MastercardBadge />}
             />
             <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
+            <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="О приложении" />
           </ul>
         </section>
 
