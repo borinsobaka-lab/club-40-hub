@@ -6,7 +6,7 @@ import {
   Bell,
   ChatSquare,
   Phone,
-  Star,
+  Like,
   ClipboardText,
   Ghost,
 } from "@solar-icons/react";
