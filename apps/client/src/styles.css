@@ -304,6 +304,9 @@ html body [data-sonner-toast][data-styled='true'] {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: blur(34px) saturate(140%);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24) !important;
+  max-width: 28rem !important;
+  width: calc(100% - 1.5rem) !important;
+  min-width: auto !important;
 }
 
 /* Animated yellow gradient blobs for dark header zone */
