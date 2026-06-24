@@ -586,7 +586,7 @@ function MembershipsPage() {
       </AlertDialog>
 
       <AlertDialog open={confirmCancelRenewOpen} onOpenChange={setConfirmCancelRenewOpen}>
-        <AlertDialogContent className="rounded-2xl mx-4">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
             <AlertDialogDescription>
