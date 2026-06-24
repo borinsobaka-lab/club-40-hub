@@ -9,6 +9,7 @@ import { useActiveStudioId } from "@/components/studio-switcher";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { ClientNameLink } from "@/components/client-name-link";
 import {
   Select,
   SelectContent,
