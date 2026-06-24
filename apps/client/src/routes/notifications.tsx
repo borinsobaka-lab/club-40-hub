@@ -102,12 +102,12 @@ function NotificationsPage() {
       }
     >
       <div className="p-4 space-y-3">
-        <div className="flex justify-end">
+        <div className="flex justify-end py-2">
           <button
             type="button"
             onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}
             disabled={unread === 0}
-            className="text-sm font-semibold text-[#1B1C1F] bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-1.5 transition-colors"
+            className="text-sm font-semibold text-[#1B1C1F] bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition-colors"
           >
             Прочитать все
           </button>

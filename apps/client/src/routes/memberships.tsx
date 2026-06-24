@@ -2,6 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
@@ -639,21 +647,27 @@ function MembershipsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Отключить автопродление?</DialogTitle>
+            <DialogDescription>
               Абонемент останется активным до конца оплаченного периода, но не будет продлён автоматически.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancellingRenew}>Закрыть</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
               disabled={cancellingRenew}
-              className="bg-[#EF4444] text-white hover:bg-[#EF4444]/90"
-              onClick={(e) => {
-                e.preventDefault();
+              className="font-bold"
+              onClick={() => setConfirmManageOpen(false)}
+            >
+              Закрыть
+            </Button>
+            <Button
+              disabled={cancellingRenew}
+              className="bg-[#EF4444] text-white hover:bg-[#EF4444]/90 font-bold"
+              onClick={() => {
                 handleCancelAutorenew().then(() => {
                   setConfirmManageOpen(false);
                   setActiveOpen(false);
@@ -661,10 +675,10 @@ function MembershipsPage() {
               }}
             >
               {cancellingRenew ? "Отключаем…" : "Отключить автопродление"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </PageShell>
   );
