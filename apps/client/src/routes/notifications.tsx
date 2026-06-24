@@ -144,7 +144,7 @@ function NotificationsPage() {
                       <p className="mt-1 text-sm text-foreground/80 whitespace-pre-line break-words">
                         {n.body}
                       </p>
-                      <div className="mt-2 flex items-end justify-between gap-3">
+                      <div className="mt-2 flex items-center justify-between gap-3">
                         <div className="text-xs text-muted-foreground">
                           {formatReceivedAt(n.receivedAt)}
                         </div>
