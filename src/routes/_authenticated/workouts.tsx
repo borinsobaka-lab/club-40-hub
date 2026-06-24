@@ -56,6 +56,7 @@ type Workout = {
   photo_url: string | null;
   capacity: number | null;
   type: DayType | null;
+  met_value: number | null;
 };
 
 const NONE_TYPE = "__none__" as const;
@@ -300,6 +301,7 @@ function WorkoutDialog({
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [capacity, setCapacity] = useState<string>("");
+  const [metValue, setMetValue] = useState<string>("");
   const [type, setType] = useState<DayType | typeof NONE_TYPE>(NONE_TYPE);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -311,6 +313,7 @@ function WorkoutDialog({
       setDescription(workout?.description ?? "");
       setPhotoUrl(workout?.photo_url ?? null);
       setCapacity(workout?.capacity != null ? String(workout.capacity) : "");
+      setMetValue(workout?.met_value != null ? String(workout.met_value) : "");
       setType((workout?.type as DayType | null) ?? NONE_TYPE);
     }
   }, [open, workout]);
@@ -345,6 +348,12 @@ function WorkoutDialog({
       toast.error("Вместимость должна быть неотрицательным числом");
       return;
     }
+    const metNum = metValue.trim() === "" ? null : Number(metValue);
+    if (metNum != null && (!Number.isFinite(metNum) || metNum <= 0)) {
+      setSaving(false);
+      toast.error("MET должен быть положительным числом");
+      return;
+    }
     const payload = {
       studio_id: studioId,
       name: name.trim(),
@@ -352,6 +361,7 @@ function WorkoutDialog({
       photo_url: photoUrl,
       capacity: capacityNum,
       type: type === NONE_TYPE ? null : type,
+      met_value: metNum,
     };
     const { error } = workout
       ? await supabase.from("workouts").update(payload).eq("id", workout.id)
@@ -476,6 +486,23 @@ function WorkoutDialog({
             />
             <p className="text-xs text-muted-foreground">
               Используется по умолчанию для всех занятий этой тренировки в расписании.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="met">MET — интенсивность</Label>
+            <Input
+              id="met"
+              type="number"
+              step="0.1"
+              min={0}
+              value={metValue}
+              onChange={(e) => setMetValue(e.target.value)}
+              placeholder="Кардио 8.5 · Силовая 7.0 · Гибрид 8.0 · Восстановление 2.8"
+            />
+            <p className="text-xs text-muted-foreground">
+              Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто — берётся
+              значение по умолчанию для типа тренировки.
             </p>
           </div>
         </div>
