@@ -310,7 +310,7 @@ function MembershipsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="w-6 flex items-center justify-center bg-white">
+                <div className="w-6 flex items-center justify-center bg-muted">
                   <ChevronRight className="h-5 w-5 text-[#66676D]" />
                 </div>
               </div>
