@@ -56,6 +56,7 @@ type Workout = {
   photo_url: string | null;
   capacity: number | null;
   type: DayType | null;
+  met_value: number | null;
 };
 
 const NONE_TYPE = "__none__" as const;
