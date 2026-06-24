@@ -164,10 +164,10 @@ function useRouteScrollReset(scrollKey: string) {
 
 function useInternalNavigationScrollReset() {
   useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
+    const handleNavigationStart = (event: MouseEvent | PointerEvent | TouchEvent) => {
       if (
         event.defaultPrevented ||
-        event.button !== 0 ||
+        ("button" in event && event.button !== 0) ||
         event.metaKey ||
         event.ctrlKey ||
         event.shiftKey ||
@@ -187,8 +187,14 @@ function useInternalNavigationScrollReset() {
       resetPageScrollPosition();
     };
 
-    document.addEventListener("click", handleClick, true);
-    return () => document.removeEventListener("click", handleClick, true);
+    document.addEventListener("pointerdown", handleNavigationStart, true);
+    document.addEventListener("touchstart", handleNavigationStart, true);
+    document.addEventListener("click", handleNavigationStart, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleNavigationStart, true);
+      document.removeEventListener("touchstart", handleNavigationStart, true);
+      document.removeEventListener("click", handleNavigationStart, true);
+    };
   }, []);
 }
 
