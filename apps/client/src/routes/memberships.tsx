@@ -463,7 +463,7 @@ function MembershipCard({
       </div>
 
       {/* Bottom: features */}
-      <div className="p-5 border-t border-card-border">
+      <div ref={onBottomRef} className="p-5 border-t border-card-border" style={{ minHeight: bottomMinHeight }}>
         <div className="text-xs font-bold tracking-wider text-muted-foreground mb-3">
           ПРЕИМУЩЕСТВА
         </div>
