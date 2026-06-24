@@ -458,6 +458,42 @@ function MembershipDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label>Обложка (для мобильного приложения)</Label>
+            <div className="flex items-center gap-3">
+              <CoverThumb value={coverUrl} alt="cover" />
+              <div className="flex flex-col gap-1">
+                <input
+                  ref={coverRef}
+                  type="file"
+                  accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadCover(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingCover || !studioId}
+                  onClick={() => coverRef.current?.click()}
+                >
+                  {uploadingCover ? (
+                    <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…</>
+                  ) : coverUrl ? "Заменить" : "Загрузить SVG/PNG"}
+                </Button>
+                {coverUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setCoverUrl(null)}>
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="m-desc">Описание</Label>
             <Textarea id="m-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
