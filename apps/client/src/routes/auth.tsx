@@ -29,6 +29,11 @@ function AuthPage() {
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
+    const t = setTimeout(() => toast.info("Тестовое уведомление"), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
   }, [loading, session, navigate]);
 
