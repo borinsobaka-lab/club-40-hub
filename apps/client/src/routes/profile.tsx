@@ -303,7 +303,17 @@ function ProfileField({ label, value }: { label: string; value?: string | null }
   );
 }
 
-function ProfileLink({ icon, label }: { icon: React.ReactNode; label: string }) {
+function ProfileLink({
+  icon,
+  label,
+  sublabel,
+  right,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sublabel?: string;
+  right?: React.ReactNode;
+}) {
   return (
     <li>
       <button
@@ -312,12 +322,37 @@ function ProfileLink({ icon, label }: { icon: React.ReactNode; label: string }) 
         className="w-full flex items-center gap-3 px-4 py-4 text-left disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <span className="text-foreground">{icon}</span>
-        <span className="flex-1 text-sm font-medium">{label}</span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-medium">{label}</span>
+          {sublabel && (
+            <span className="block text-xs text-muted-foreground mt-0.5">{sublabel}</span>
+          )}
+        </span>
+        {right}
         <AltArrowRight className="h-4 w-4 text-muted-foreground" weight="BoldDuotone" />
       </button>
     </li>
   );
 }
+
+function MastercardBadge() {
+  return (
+    <span
+      aria-label="Mastercard"
+      className="inline-flex items-center justify-center h-6 w-9 rounded-[4px] bg-[#1a1a1a]"
+    >
+      <svg viewBox="0 0 24 16" className="h-3.5 w-auto" aria-hidden="true">
+        <circle cx="9" cy="8" r="6" fill="#EB001B" />
+        <circle cx="15" cy="8" r="6" fill="#F79E1B" />
+        <path
+          d="M12 3.6a6 6 0 0 1 0 8.8 6 6 0 0 1 0-8.8z"
+          fill="#FF5F00"
+        />
+      </svg>
+    </span>
+  );
+}
+
 
 function EditProfileSheet({
   open,
