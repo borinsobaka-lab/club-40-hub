@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, User, MenuDots, Card, Star } from "@solar-icons/react";
+import { Home, DumbbellLarge, User, MenuDots, Card, Star } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {
