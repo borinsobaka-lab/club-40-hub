@@ -415,6 +415,36 @@ function MembershipsPage() {
                 )}
               </>
             )}
+
+            {activeTab === "couples" && (
+              <>
+                <p className="text-sm text-muted-foreground mb-3">Абонементы для совместных тренировок</p>
+                {couplesMemberships.length > 0 ? (
+                  <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
+                    {couplesMemberships.map((m, idx) => (
+                      <MembershipCard
+                        key={m.id}
+                        membership={m}
+                        color={COLORS[idx % COLORS.length]}
+                        onSelect={() => setSelected({ ...m })}
+                        topMinHeight={couplesTopHeight || undefined}
+                        bottomMinHeight={couplesBottomHeight || undefined}
+                        onTopRef={(el) => {
+                          if (el) couplesTopRefs.current.set(m.id, el);
+                          else couplesTopRefs.current.delete(m.id);
+                        }}
+                        onBottomRef={(el) => {
+                          if (el) couplesBottomRefs.current.set(m.id, el);
+                          else couplesBottomRefs.current.delete(m.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных абонементов для двоих.</Card>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
