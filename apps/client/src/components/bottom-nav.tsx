@@ -1,9 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, User, MenuDots, CupStar, Card } from "@solar-icons/react";
+import { Home, Dumbbell, User, MenuDots, UsersGroupTwoRounded, Card } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {
-  to: "/" | "/schedule" | "/profile";
+  to: "/" | "/schedule" | "/club";
   label: string;
   Icon: typeof Home;
   exact: boolean;
@@ -12,11 +12,11 @@ type NavItem = {
 const mainItems: NavItem[] = [
   { to: "/", label: "Главное", Icon: Home, exact: true },
   { to: "/schedule", label: "Бронь", Icon: Dumbbell, exact: false },
-  { to: "/profile", label: "Профиль", Icon: User, exact: false },
+  { to: "/club", label: "Клуб", Icon: UsersGroupTwoRounded, exact: false },
 ];
 
 const moreItems = [
-  { to: "/results" as const, label: "Результаты", Icon: CupStar },
+  { to: "/profile" as const, label: "Профиль", Icon: User },
   { to: "/memberships" as const, label: "Абонементы", Icon: Card },
 ];
 
