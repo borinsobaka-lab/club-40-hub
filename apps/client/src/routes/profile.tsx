@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Shop, AltArrowRight } from "@solar-icons/react";
+import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight } from "@solar-icons/react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -185,9 +185,10 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="bg-muted">
+      <div className="pt-6 pb-8">
+        <div className="bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-[14px] px-4 py-5">
+        <section className="bg-background rounded-b-[14px] px-4 py-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
@@ -251,11 +252,17 @@ function ProfilePage() {
         <div className="h-3 bg-muted" />
 
         {/* Блок: ссылки */}
-        <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
+        <section className="bg-background rounded-[14px] py-1">
           <ul className="divide-y divide-border">
             <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="Приложения" />
-            <ProfileLink icon={<Shop className="h-5 w-5" weight="BoldDuotone" />} label="Франшиза" />
+            <ProfileLink
+              icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
+              label="Способы оплаты"
+              sublabel="Mastercard •••• 4242"
+              right={<MastercardBadge />}
+            />
+            <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
           </ul>
         </section>
 
@@ -268,6 +275,7 @@ function ProfilePage() {
             Выйти
           </Button>
         </section>
+        </div>
 
         {client && (
           <EditProfileSheet
@@ -279,6 +287,7 @@ function ProfilePage() {
         )}
       </div>
     </PageShell>
+
   );
 }
 
@@ -294,7 +303,17 @@ function ProfileField({ label, value }: { label: string; value?: string | null }
   );
 }
 
-function ProfileLink({ icon, label }: { icon: React.ReactNode; label: string }) {
+function ProfileLink({
+  icon,
+  label,
+  sublabel,
+  right,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sublabel?: string;
+  right?: React.ReactNode;
+}) {
   return (
     <li>
       <button
@@ -303,12 +322,37 @@ function ProfileLink({ icon, label }: { icon: React.ReactNode; label: string }) 
         className="w-full flex items-center gap-3 px-4 py-4 text-left disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <span className="text-foreground">{icon}</span>
-        <span className="flex-1 text-sm font-medium">{label}</span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-medium">{label}</span>
+          {sublabel && (
+            <span className="block text-xs text-muted-foreground mt-0.5">{sublabel}</span>
+          )}
+        </span>
+        {right}
         <AltArrowRight className="h-4 w-4 text-muted-foreground" weight="BoldDuotone" />
       </button>
     </li>
   );
 }
+
+function MastercardBadge() {
+  return (
+    <span
+      aria-label="Mastercard"
+      className="inline-flex items-center justify-center h-6 w-9 rounded-[4px] bg-[#1a1a1a]"
+    >
+      <svg viewBox="0 0 24 16" className="h-3.5 w-auto" aria-hidden="true">
+        <circle cx="9" cy="8" r="6" fill="#EB001B" />
+        <circle cx="15" cy="8" r="6" fill="#F79E1B" />
+        <path
+          d="M12 3.6a6 6 0 0 1 0 8.8 6 6 0 0 1 0-8.8z"
+          fill="#FF5F00"
+        />
+      </svg>
+    </span>
+  );
+}
+
 
 function EditProfileSheet({
   open,
