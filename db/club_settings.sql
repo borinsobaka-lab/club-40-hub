@@ -1,11 +1,12 @@
 -- Club-level settings configurable from admin panel and consumed by mobile app.
 create table if not exists public.club_settings (
-  studio_id uuid primary key references public.studios(id) on delete cascade,
+  id boolean primary key default true,
   write_url text,
   call_url text,
   feedback_url text,
   cancel_booking_minutes integer not null default 180,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint club_settings_single_row check (id)
 );
 
 grant select, insert, update, delete on public.club_settings to authenticated;

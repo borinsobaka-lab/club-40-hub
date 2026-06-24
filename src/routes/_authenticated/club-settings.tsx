@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useActiveStudioId } from "@/components/studio-switcher";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/club-settings")({
 });
 
 type Settings = {
-  studio_id: string;
+  id: boolean;
   write_url: string | null;
   call_url: string | null;
   feedback_url: string | null;
@@ -25,7 +24,6 @@ type Settings = {
 };
 
 function ClubSettingsPage() {
-  const studioId = useActiveStudioId();
   const refreshSignal = useRefreshSignal();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,13 +33,12 @@ function ClubSettingsPage() {
   const [cancelMinutes, setCancelMinutes] = useState<string>("180");
 
   useEffect(() => {
-    if (!studioId) return;
     let cancelled = false;
     setLoading(true);
     supabase
       .from("club_settings")
       .select("*")
-      .eq("studio_id", studioId)
+      .eq("id", true)
       .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -58,10 +55,9 @@ function ClubSettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [studioId, refreshSignal]);
+  }, [refreshSignal]);
 
   const handleSave = async () => {
-    if (!studioId) return;
     const minutes = Number.parseInt(cancelMinutes, 10);
     if (Number.isNaN(minutes) || minutes < 0) {
       toast.error("Укажите корректное число минут");
@@ -70,14 +66,14 @@ function ClubSettingsPage() {
     setSaving(true);
     const { error } = await supabase.from("club_settings").upsert(
       {
-        studio_id: studioId,
+        id: true,
         write_url: writeUrl.trim() || null,
         call_url: callUrl.trim() || null,
         feedback_url: feedbackUrl.trim() || null,
         cancel_booking_minutes: minutes,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "studio_id" },
+      { onConflict: "id" },
     );
     setSaving(false);
     if (error) {
@@ -90,9 +86,9 @@ function ClubSettingsPage() {
   return (
     <AdminShell
       title="Настройки клуба"
-      description="Параметры мобильного приложения для текущего клуба"
+      description="Глобальные параметры мобильного приложения клуба"
       actions={
-        <Button onClick={handleSave} disabled={saving || loading || !studioId}>
+        <Button onClick={handleSave} disabled={saving || loading}>
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           Сохранить
         </Button>
