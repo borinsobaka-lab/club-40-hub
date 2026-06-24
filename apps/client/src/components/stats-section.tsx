@@ -164,7 +164,6 @@ function Card({
 function EmptyState() {
   return (
     <div className="mx-4 rounded-2xl bg-card border border-border/40 p-5 text-center">
-      <div className="text-base font-semibold mb-1">Запиши первую тренировку</div>
       <div className="text-sm text-muted-foreground">
         Чтобы увидеть прогресс, посети первый класс — статистика появится автоматически.
       </div>
