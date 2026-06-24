@@ -162,6 +162,36 @@ function useRouteScrollReset(scrollKey: string) {
   }, [scrollKey]);
 }
 
+function useInternalNavigationScrollReset() {
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target instanceof Element ? event.target : null;
+      const link = target?.closest<HTMLAnchorElement>("a[href]");
+      if (!link || link.target || link.hasAttribute("download")) return;
+
+      const url = new URL(link.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+
+      resetPageScrollPosition();
+    };
+
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
+  }, []);
+}
+
 function AppShell() {
   const { session, user, loading } = useAuth();
   const navigate = useNavigate();
@@ -170,6 +200,7 @@ function AppShell() {
   const onOnboardingRoute = pathname === "/onboarding";
 
   useRouteScrollReset(pathname);
+  useInternalNavigationScrollReset();
 
   useEffect(() => {
     if (loading) return;
