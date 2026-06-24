@@ -281,7 +281,7 @@ function MembershipsPage() {
     setActive((act as ActiveMembership) ?? null);
   };
 
-  const isSwitching = !!active && !!selected && selected.id !== (active as any).membership_id;
+  
 
   const handlePurchase = async () => {
     if (!selected || !client) return;
