@@ -93,6 +93,16 @@ function MembershipsPage() {
   const [couplesTopHeight, setCouplesTopHeight] = useState(0);
   const [couplesBottomHeight, setCouplesBottomHeight] = useState(0);
 
+  const resetMembershipScroll = () => {
+    requestAnimationFrame(() => {
+      const scrollNode = document.querySelector<HTMLDivElement>("[data-page-scroll]");
+      const tabsNode = document.querySelector<HTMLDivElement>("[data-memberships-tabs]");
+      if (!scrollNode || !tabsNode) return;
+      scrollNode.scrollTop = Math.max(0, tabsNode.offsetTop - 8);
+      scrollNode.scrollLeft = 0;
+    });
+  };
+
   const unlimitedMemberships = useMemo(
     () => memberships.filter((m) => m.visits_count === null && !m.for_couple),
     [memberships]
@@ -324,7 +334,7 @@ function MembershipsPage() {
 
         {!loading && user && !error && memberships.length > 0 && (
           <div className="w-full">
-            <div className="-mx-4 px-4 flex gap-6 overflow-x-auto no-scrollbar mb-4">
+            <div data-memberships-tabs className="-mx-4 px-4 flex gap-6 overflow-x-auto no-scrollbar mb-4">
               {[
                 { key: "unlimited", label: "Безлимитные" },
                 { key: "packages", label: "Пакеты тренировок" },
@@ -336,7 +346,7 @@ function MembershipsPage() {
                     key={t.key}
                     onClick={() => {
                       setActiveTab(t.key as "unlimited" | "packages" | "couples");
-                      document.querySelector<HTMLDivElement>("[data-page-scroll]")?.scrollTo({ top: 0, left: 0 });
+                      resetMembershipScroll();
                     }}
                     className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
                       active ? "text-foreground" : "text-[#66676D]"
