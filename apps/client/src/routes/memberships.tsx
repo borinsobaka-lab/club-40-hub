@@ -3,7 +3,7 @@ import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import {
   Refresh,
@@ -77,6 +77,66 @@ function MembershipsPage() {
   const [selected, setSelected] = useState<Membership | null>(null);
   const [activeTab, setActiveTab] = useState<"unlimited" | "packages">("unlimited");
   const [purchasing, setPurchasing] = useState(false);
+
+  const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const packagesTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const packagesBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const [unlimitedTopHeight, setUnlimitedTopHeight] = useState(0);
+  const [unlimitedBottomHeight, setUnlimitedBottomHeight] = useState(0);
+  const [packagesTopHeight, setPackagesTopHeight] = useState(0);
+  const [packagesBottomHeight, setPackagesBottomHeight] = useState(0);
+
+  const unlimitedMemberships = useMemo(
+    () => memberships.filter((m) => m.visits_count === null),
+    [memberships]
+  );
+  const packagesMemberships = useMemo(
+    () => memberships.filter((m) => m.visits_count !== null),
+    [memberships]
+  );
+
+  function measureGroup(
+    topRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
+    bottomRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
+    setTop: (h: number) => void,
+    setBottom: (h: number) => void
+  ) {
+    let maxTop = 0;
+    topRefs.current.forEach((el) => {
+      maxTop = Math.max(maxTop, el.getBoundingClientRect().height);
+    });
+    let maxBottom = 0;
+    bottomRefs.current.forEach((el) => {
+      maxBottom = Math.max(maxBottom, el.getBoundingClientRect().height);
+    });
+    setTop(maxTop);
+    setBottom(maxBottom);
+  }
+
+  useLayoutEffect(() => {
+    if (unlimitedMemberships.length > 0) {
+      measureGroup(
+        unlimitedTopRefs,
+        unlimitedBottomRefs,
+        setUnlimitedTopHeight,
+        setUnlimitedBottomHeight
+      );
+    }
+  }, [unlimitedMemberships]);
+
+  useLayoutEffect(() => {
+    if (packagesMemberships.length > 0) {
+      measureGroup(
+        packagesTopRefs,
+        packagesBottomRefs,
+        setPackagesTopHeight,
+        setPackagesBottomHeight
+      );
+    }
+  }, [packagesMemberships]);
+
 
   useEffect(() => {
     if (authLoading) return;
@@ -278,18 +338,26 @@ function MembershipsPage() {
             {activeTab === "unlimited" && (
               <>
                 <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается три и более раз в неделю</p>
-                {memberships.some((m) => m.visits_count === null) ? (
+                {unlimitedMemberships.length > 0 ? (
                   <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
-                    {memberships
-                      .filter((m) => m.visits_count === null)
-                      .map((m, idx) => (
-                        <MembershipCard
-                          key={m.id}
-                          membership={m}
-                          color={COLORS[idx % COLORS.length]}
-                          onSelect={() => setSelected({ ...m })}
-                        />
-                      ))}
+                    {unlimitedMemberships.map((m, idx) => (
+                      <MembershipCard
+                        key={m.id}
+                        membership={m}
+                        color={COLORS[idx % COLORS.length]}
+                        onSelect={() => setSelected({ ...m })}
+                        topMinHeight={unlimitedTopHeight || undefined}
+                        bottomMinHeight={unlimitedBottomHeight || undefined}
+                        onTopRef={(el) => {
+                          if (el) unlimitedTopRefs.current.set(m.id, el);
+                          else unlimitedTopRefs.current.delete(m.id);
+                        }}
+                        onBottomRef={(el) => {
+                          if (el) unlimitedBottomRefs.current.set(m.id, el);
+                          else unlimitedBottomRefs.current.delete(m.id);
+                        }}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных безлимитных абонементов.</Card>
@@ -300,18 +368,26 @@ function MembershipsPage() {
             {activeTab === "packages" && (
               <>
                 <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается один-два раза в неделю</p>
-                {memberships.some((m) => m.visits_count !== null) ? (
+                {packagesMemberships.length > 0 ? (
                   <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
-                    {memberships
-                      .filter((m) => m.visits_count !== null)
-                      .map((m, idx) => (
-                        <MembershipCard
-                          key={m.id}
-                          membership={m}
-                          color={COLORS[idx % COLORS.length]}
-                          onSelect={() => setSelected({ ...m })}
-                        />
-                      ))}
+                    {packagesMemberships.map((m, idx) => (
+                      <MembershipCard
+                        key={m.id}
+                        membership={m}
+                        color={COLORS[idx % COLORS.length]}
+                        onSelect={() => setSelected({ ...m })}
+                        topMinHeight={packagesTopHeight || undefined}
+                        bottomMinHeight={packagesBottomHeight || undefined}
+                        onTopRef={(el) => {
+                          if (el) packagesTopRefs.current.set(m.id, el);
+                          else packagesTopRefs.current.delete(m.id);
+                        }}
+                        onBottomRef={(el) => {
+                          if (el) packagesBottomRefs.current.set(m.id, el);
+                          else packagesBottomRefs.current.delete(m.id);
+                        }}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных пакетов тренировок.</Card>
@@ -343,10 +419,18 @@ function MembershipCard({
   membership,
   color,
   onSelect,
+  topMinHeight,
+  bottomMinHeight,
+  onTopRef,
+  onBottomRef,
 }: {
   membership: Membership;
   color: string;
   onSelect: () => void;
+  topMinHeight?: number;
+  bottomMinHeight?: number;
+  onTopRef?: (el: HTMLDivElement | null) => void;
+  onBottomRef?: (el: HTMLDivElement | null) => void;
 }) {
   const cover = coverPublicUrl(membership.cover_url);
   const features = [
@@ -361,6 +445,7 @@ function MembershipCard({
     <Card className="shrink-0 w-[85%] snap-start overflow-hidden rounded-xl p-0 flex flex-col">
       {/* Top: cover (image fills area; no overlay when image present) */}
       <div
+        ref={onTopRef}
         className="relative p-5 flex flex-col flex-1"
         style={
           cover
@@ -368,8 +453,9 @@ function MembershipCard({
                 backgroundImage: `url(${cover})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
+                minHeight: topMinHeight,
               }
-            : undefined
+            : { minHeight: topMinHeight }
         }
       >
         <div className="flex-1">
@@ -393,7 +479,7 @@ function MembershipCard({
       </div>
 
       {/* Bottom: features */}
-      <div className="p-5 border-t border-card-border">
+      <div ref={onBottomRef} className="p-5 border-t border-card-border" style={{ minHeight: bottomMinHeight }}>
         <div className="text-xs font-bold tracking-wider text-muted-foreground mb-3">
           ПРЕИМУЩЕСТВА
         </div>
