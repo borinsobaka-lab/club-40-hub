@@ -21,12 +21,6 @@ export const Route = createFileRoute("/schedule")({
   component: SchedulePage,
 });
 
-const TABS = [
-  { key: "class", label: "Классы" },
-  { key: "personal", label: "Персональные" },
-  { key: "diagnostics", label: "Диагностика" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
 
 type Trainer = { id: string; full_name: string | null; photo_url: string | null };
 type Workout = {
@@ -85,8 +79,8 @@ function SchedulePage() {
   const navigate = useNavigate();
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
-  const [activeTab, setActiveTab] = useState<TabKey>("class");
   const [activeIdx, setActiveIdx] = useState(3);
+
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +110,6 @@ function SchedulePage() {
   );
 
   useEffect(() => {
-    if (activeTab !== "class") return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -147,7 +140,7 @@ function SchedulePage() {
     return () => {
       cancelled = true;
     };
-  }, [today, activeTab]);
+  }, [today]);
 
   useEffect(() => {
     const container = daysContainerRef.current;
@@ -265,7 +258,7 @@ function SchedulePage() {
 
   return (
     <PageShell
-      scrollKey={activeTab}
+      scrollKey="schedule"
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-black italic uppercase">Бронь</h1>
@@ -273,39 +266,7 @@ function SchedulePage() {
         </div>
       }
     >
-      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pt-4 pb-0">
-        {TABS.map((t) => {
-          const active = activeTab === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
-                active ? "text-foreground" : "text-[#66676D]"
-              }`}
-            >
-              {t.label}
-              {active && (
-                <span className="absolute left-0 right-0 -bottom-px h-1 bg-[#FFE500] rounded-full" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {activeTab === "personal" ? (
-        <div className="p-4">
-          <Card className="p-8 text-center text-sm text-muted-foreground">
-            Совсем скоро мы начнем принимать заявки на персональные тренировки
-          </Card>
-        </div>
-      ) : activeTab !== "class" ? (
-        <div className="p-4">
-          <Card className="p-8 text-center text-sm text-muted-foreground">
-            Функционал скоро будет доступен
-          </Card>
-        </div>
-      ) : (
+      {(
         <div className="p-4 space-y-4">
           <div ref={daysContainerRef} className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
 
@@ -466,16 +427,16 @@ function SchedulePage() {
                                     if (left === null || left > 5) return null;
                                     if (left === 0) {
                                       return (
-                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500">
-                                          <CloseCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                          <span>Мест нет</span>
+                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500 leading-none">
+                                          <CloseCircle className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+                                          <span className="leading-none">Мест нет</span>
                                         </div>
                                       );
                                     }
                                     return (
-                                      <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500">
-                                        <Fire className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                        <span>Осталось {left} {pluralSeats(left)}</span>
+                                      <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500 leading-none">
+                                        <Fire className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+                                        <span className="leading-none">Осталось {left} {pluralSeats(left)}</span>
                                       </div>
                                     );
                                   })()}
