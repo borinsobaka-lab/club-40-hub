@@ -524,7 +524,7 @@ function MembershipCard({
         <div ref={onTopRef} style={{ minHeight: topMinHeight }}>
           <h3 className="text-xl font-bold leading-tight">{membership.name}</h3>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-4xl font-black tracking-tight">
+            <span className="text-4xl font-black italic tracking-tight">
               {Number(membership.price).toLocaleString("ru-RU")} ₾
             </span>
             <span className="text-sm text-muted-foreground">{formatPeriod(membership.duration_days)}</span>
