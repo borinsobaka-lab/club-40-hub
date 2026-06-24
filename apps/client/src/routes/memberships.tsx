@@ -358,31 +358,29 @@ function MembershipCard({
   ];
 
   return (
-    <Card className="shrink-0 w-[85%] snap-start overflow-hidden border-0 shadow-md rounded-2xl p-0 flex flex-col">
-      {/* Top: cover */}
+    <Card className="shrink-0 w-[85%] snap-start overflow-hidden rounded-xl p-0 flex flex-col">
+      {/* Top: cover (image fills area; no overlay when image present) */}
       <div
-        className="relative p-5 text-white"
+        className="relative p-5"
         style={
           cover
             ? {
-                backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.65) 100%), url(${cover})`,
+                backgroundImage: `url(${cover})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }
-            : {
-                backgroundImage: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`,
-              }
+            : undefined
         }
       >
-        <h3 className="text-xl font-bold leading-tight drop-shadow-sm">{membership.name}</h3>
+        <h3 className="text-xl font-bold leading-tight">{membership.name}</h3>
         <div className="mt-4 flex items-baseline gap-2">
           <span className="text-4xl font-black tracking-tight">
             {Number(membership.price).toLocaleString("ru-RU")} ₾
           </span>
-          <span className="text-sm text-white/80">{formatPeriod(membership.duration_days)}</span>
+          <span className="text-sm text-muted-foreground">{formatPeriod(membership.duration_days)}</span>
         </div>
         {membership.description && (
-          <p className="mt-3 text-sm text-white/85 line-clamp-2">{membership.description}</p>
+          <p className="mt-3 text-sm text-muted-foreground">{membership.description}</p>
         )}
         <Button
           onClick={onSelect}
@@ -393,7 +391,7 @@ function MembershipCard({
       </div>
 
       {/* Bottom: features */}
-      <div className="p-5 bg-card">
+      <div className="p-5 border-t border-card-border">
         <div className="text-xs font-bold tracking-wider text-muted-foreground mb-3">
           ПРЕИМУЩЕСТВА
         </div>
