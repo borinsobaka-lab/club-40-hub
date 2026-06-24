@@ -218,6 +218,7 @@ function WorkoutsPage() {
                     <TableHead className="w-[160px]">Тип</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead className="w-[120px]">Вместимость</TableHead>
+                    <TableHead className="w-[90px]">MET</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
