@@ -258,6 +258,7 @@ export function ClientCardDialog({
   if (!client) return null;
   const name = displayName(client);
   const photo = client.avatar_url || client.photo_url || "";
+  const clubStatus: ClubStatus = computeClubStatus(allMemberships);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -272,8 +273,11 @@ export function ClientCardDialog({
               {photo && <AvatarImage src={photo} alt={name} />}
               <AvatarFallback className="text-lg">{initials(name)}</AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <div className="text-xl font-semibold">{name}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-xl font-semibold">{name}</div>
+                <ClubStatusBadge status={clubStatus} withFull />
+              </div>
               <div className="text-sm text-muted-foreground">
                 {client.phone || "—"} {client.email ? `· ${client.email}` : ""}
               </div>
@@ -294,8 +298,10 @@ export function ClientCardDialog({
           <Tabs defaultValue="card" className="w-full">
             <TabsList>
               <TabsTrigger value="card">Карточка</TabsTrigger>
+              <TabsTrigger value="visits">Посещения</TabsTrigger>
               <TabsTrigger value="profile">Анкета</TabsTrigger>
             </TabsList>
+
 
             <TabsContent value="card" className="mt-4 space-y-5">
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
