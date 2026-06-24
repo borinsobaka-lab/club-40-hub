@@ -99,17 +99,23 @@ const statusLabel: Record<LogRow["status"], string> = {
 };
 
 function StatusBadge({ value }: { value: LogRow["status"] }) {
-  const variant =
-    value === "attended"
-      ? "default"
-      : value === "completed"
-        ? "default"
-        : value === "cancelled" || value === "rejected"
-          ? "destructive"
-          : value === "no_show"
-            ? "outline"
-            : "secondary";
-  return <Badge variant={variant}>{statusLabel[value]}</Badge>;
+  if (value === "attended" || value === "completed") {
+    return <Badge variant="default">{statusLabel[value]}</Badge>;
+  }
+  if (value === "cancelled") {
+    return <Badge variant="destructive">{statusLabel[value]}</Badge>;
+  }
+  if (value === "rejected") {
+    return (
+      <Badge variant="outline" className="text-orange-600 border-orange-600 dark:text-orange-400 dark:border-orange-400">
+        {statusLabel[value]}
+      </Badge>
+    );
+  }
+  if (value === "no_show") {
+    return <Badge variant="outline">{statusLabel[value]}</Badge>;
+  }
+  return <Badge variant="secondary">{statusLabel[value]}</Badge>;
 }
 
 function fmt(dt: string | null) {
