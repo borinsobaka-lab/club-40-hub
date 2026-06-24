@@ -304,6 +304,7 @@ export type Database = {
     Functions: {
       book_schedule_entry: { Args: { p_entry_id: string }; Returns: Json }
       cancel_schedule_booking: { Args: { p_entry_id: string }; Returns: Json }
+      get_my_stats: { Args: never; Returns: Json }
     }
     Enums: {
       booking_status: "booked" | "cancelled"
