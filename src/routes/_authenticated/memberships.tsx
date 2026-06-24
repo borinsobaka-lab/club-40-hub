@@ -51,6 +51,7 @@ type Membership = {
   price: number;
   is_active: boolean;
   cover_url: string | null;
+  for_couple: boolean;
 };
 
 const COVER_BUCKET = "memberships-media";
