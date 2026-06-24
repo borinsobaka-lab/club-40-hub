@@ -309,20 +309,22 @@ function SalesPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={14} className="py-8 text-center text-sm text-muted-foreground">
                         {sales.length === 0
                           ? "Продаж пока нет. Нажмите «Новая продажа»."
                           : "Ничего не найдено."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pg.paged.map((s) => (
+                    pg.paged.map((s) => {
+                      const cm = s.client_memberships?.[0] ?? null;
+                      return (
                       <TableRow key={s.id}>
                         <TableCell>
                           {s.clients ? (
@@ -340,6 +342,18 @@ function SalesPage() {
                         <TableCell>{formatDate(s.sold_at)}</TableCell>
                         <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
                         <TableCell>{s.memberships?.name ?? "—"}</TableCell>
+                        <TableCell>
+                          {cm ? (
+                            <div className="flex flex-col gap-1">
+                              <MembershipStatusBadge m={cm} />
+                              {effectiveStatus(cm) === "active" && (
+                                <AutoRenewBadge on={cm.auto_renew} />
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm">
                           {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
                         </TableCell>
