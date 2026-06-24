@@ -21,6 +21,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Translation } from "@solar-icons/react";
+import { Settings } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -261,7 +262,7 @@ function ProfilePage() {
               right={<MastercardBadge />}
             />
             <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
-            <ProfileLink icon={<Translation className="h-5 w-5" weight="BoldDuotone" />} label="Язык" sublabel="Русский" />
+            <ProfileLink icon={<Settings className="h-5 w-5" />} label="Язык" sublabel="Русский" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="О приложении" />
           </ul>
         </section>
