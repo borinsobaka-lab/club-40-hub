@@ -294,7 +294,11 @@ function SchedulePage() {
       </div>
 
       {activeTab === "personal" ? (
-        <PersonalRequestForm />
+        <div className="p-4">
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            Заявки на персональные тренировки начнём принимать позднее
+          </Card>
+        </div>
       ) : activeTab !== "class" ? (
         <div className="p-4">
           <Card className="p-8 text-center text-sm text-muted-foreground">
