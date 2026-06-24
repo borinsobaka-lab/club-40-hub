@@ -219,6 +219,98 @@ function SchedulePage() {
     fetchData();
   };
 
+  const duplicateWeek = async () => {
+    if (!studioId || duplicatingWeek) return;
+    if (entries.length === 0) {
+      toast.error("На текущей неделе нет занятий для копирования");
+      setDuplicateWeekOpen(false);
+      return;
+    }
+    setDuplicatingWeek(true);
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const nextWeekStart = addDays(weekStart, 7);
+    const nextWeekEnd = addDays(nextWeekStart, 7);
+    // Check existing entries on the target week to avoid duplicates
+    const { data: existing, error: exErr } = await supabase
+      .from("schedule_entries")
+      .select("workout_id, starts_at")
+      .eq("studio_id", studioId)
+      .gte("starts_at", nextWeekStart.toISOString())
+      .lt("starts_at", nextWeekEnd.toISOString());
+    if (exErr) {
+      setDuplicatingWeek(false);
+      toast.error("Ошибка проверки следующей недели: " + exErr.message);
+      return;
+    }
+    const existingKeys = new Set(
+      (existing ?? []).map((e) => `${e.workout_id}|${new Date(e.starts_at).toISOString()}`),
+    );
+
+    const rows = entries
+      .map((e) => {
+        const newStartMs = new Date(e.starts_at).getTime() + WEEK_MS;
+        const newEndMs = new Date(e.ends_at).getTime() + WEEK_MS;
+        const newStartIso = new Date(newStartMs).toISOString();
+        const key = `${e.workout_id}|${newStartIso}`;
+        if (existingKeys.has(key)) return null;
+        return {
+          studio_id: studioId,
+          workout_id: e.workout_id,
+          starts_at: newStartIso,
+          ends_at: new Date(newEndMs).toISOString(),
+          _trainer_ids: e.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [],
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+
+    if (rows.length === 0) {
+      setDuplicatingWeek(false);
+      setDuplicateWeekOpen(false);
+      toast.info("Все занятия уже скопированы на следующую неделю");
+      return;
+    }
+
+    const insertRows = rows.map(({ _trainer_ids, ...rest }) => rest);
+    const { data: inserted, error: insErr } = await supabase
+      .from("schedule_entries")
+      .insert(insertRows)
+      .select("id, workout_id, starts_at");
+    if (insErr || !inserted) {
+      setDuplicatingWeek(false);
+      toast.error("Ошибка копирования недели: " + (insErr?.message ?? ""));
+      return;
+    }
+
+    // Map inserted rows back to trainer ids
+    const trainerLinks: { entry_id: string; trainer_id: string }[] = [];
+    for (const ins of inserted) {
+      const key = `${ins.workout_id}|${new Date(ins.starts_at).toISOString()}`;
+      const src = rows.find(
+        (r) => `${r.workout_id}|${r.starts_at}` === key,
+      );
+      if (!src) continue;
+      for (const tid of src._trainer_ids) {
+        trainerLinks.push({ entry_id: ins.id, trainer_id: tid });
+      }
+    }
+    if (trainerLinks.length > 0) {
+      const { error: tErr } = await supabase
+        .from("schedule_entry_trainers")
+        .insert(trainerLinks);
+      if (tErr) {
+        setDuplicatingWeek(false);
+        setDuplicateWeekOpen(false);
+        toast.error("Занятия скопированы, но тренеры не привязаны: " + tErr.message);
+        setWeekStart(nextWeekStart);
+        return;
+      }
+    }
+    setDuplicatingWeek(false);
+    setDuplicateWeekOpen(false);
+    toast.success(`Скопировано занятий: ${inserted.length}`);
+    setWeekStart(nextWeekStart);
+  };
+
   const openAdd = () => {
     setEditing(null);
     setPresetStart(null);
