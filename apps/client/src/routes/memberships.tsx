@@ -233,7 +233,9 @@ function MembershipsPage() {
             .order("price", { ascending: true }),
           db
             .from("client_memberships")
-            .select("id, ends_at, visits_left, memberships(name)")
+            .select(
+              "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)"
+            )
             .eq("client_id", c.id)
             .eq("status", "active")
             .maybeSingle(),
