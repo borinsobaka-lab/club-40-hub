@@ -281,49 +281,17 @@ function MembershipsPage() {
               <>
                 <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается три и более раз в неделю</p>
                 {memberships.some((m) => m.visits_count === null) ? (
-                  <div className="space-y-3">
+                  <div className="-mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
                     {memberships
                       .filter((m) => m.visits_count === null)
-                      .map((m, idx) => {
-                        const color = COLORS[idx % COLORS.length];
-                        return (
-                          <button
-                            key={m.id}
-                            onClick={() => setSelected({ ...m })}
-                            className="w-full text-left"
-                          >
-                            <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
-                              <div
-                                className="absolute left-0 top-0 bottom-0 w-1"
-                                style={{ backgroundColor: color }}
-                              />
-                              <div className="flex items-start justify-between gap-3 pl-3">
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="text-lg font-bold">{m.name}</h3>
-                                  {m.description && (
-                                    <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
-                                  )}
-                                  <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                                    <span className="inline-flex items-center gap-1">
-                                      <Lightning className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                      Безлимит
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                      <ClockCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                      {m.duration_days} дней
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <div className="text-xl font-black">
-                                    {Number(m.price).toLocaleString("ru-RU")} ₾
-                                  </div>
-                                </div>
-                              </div>
-                            </Card>
-                          </button>
-                        );
-                      })}
+                      .map((m, idx) => (
+                        <MembershipCard
+                          key={m.id}
+                          membership={m}
+                          color={COLORS[idx % COLORS.length]}
+                          onSelect={() => setSelected({ ...m })}
+                        />
+                      ))}
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных безлимитных абонементов.</Card>
@@ -335,49 +303,17 @@ function MembershipsPage() {
               <>
                 <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается один-два раза в неделю</p>
                 {memberships.some((m) => m.visits_count !== null) ? (
-                  <div className="space-y-3">
+                  <div className="-mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
                     {memberships
                       .filter((m) => m.visits_count !== null)
-                      .map((m, idx) => {
-                        const color = COLORS[idx % COLORS.length];
-                        return (
-                          <button
-                            key={m.id}
-                            onClick={() => setSelected({ ...m })}
-                            className="w-full text-left"
-                          >
-                            <Card className="p-4 relative overflow-hidden border-0 shadow-md active:scale-[0.99] transition-transform">
-                              <div
-                                className="absolute left-0 top-0 bottom-0 w-1"
-                                style={{ backgroundColor: color }}
-                              />
-                              <div className="flex items-start justify-between gap-3 pl-3">
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="text-lg font-bold">{m.name}</h3>
-                                  {m.description && (
-                                    <p className="text-sm text-muted-foreground mt-0.5">{m.description}</p>
-                                  )}
-                                  <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-                                    <span className="inline-flex items-center gap-1">
-                                      <Lightning className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                      {m.visits_count} занятий
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                      <ClockCircle className="h-3.5 w-3.5" weight="BoldDuotone" />
-                                      {m.duration_days} дней
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <div className="text-xl font-black">
-                                    {Number(m.price).toLocaleString("ru-RU")} ₾
-                                  </div>
-                                </div>
-                              </div>
-                            </Card>
-                          </button>
-                        );
-                      })}
+                      .map((m, idx) => (
+                        <MembershipCard
+                          key={m.id}
+                          membership={m}
+                          color={COLORS[idx % COLORS.length]}
+                          onSelect={() => setSelected({ ...m })}
+                        />
+                      ))}
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных пакетов тренировок.</Card>
@@ -402,6 +338,80 @@ function MembershipsPage() {
         />
       )}
     </PageShell>
+  );
+}
+
+function MembershipCard({
+  membership,
+  color,
+  onSelect,
+}: {
+  membership: Membership;
+  color: string;
+  onSelect: () => void;
+}) {
+  const cover = coverPublicUrl(membership.cover_url);
+  const features = [
+    membership.visits_count === null
+      ? "Безлимит посещений"
+      : `${membership.visits_count} занятий`,
+    `Срок действия ${membership.duration_days} дней`,
+    ...((membership.benefits ?? []).filter(Boolean) as string[]),
+  ];
+
+  return (
+    <Card className="shrink-0 w-[85%] snap-start overflow-hidden border-0 shadow-md rounded-2xl p-0 flex flex-col">
+      {/* Top: cover */}
+      <div
+        className="relative p-5 text-white"
+        style={
+          cover
+            ? {
+                backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.65) 100%), url(${cover})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : {
+                backgroundImage: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`,
+              }
+        }
+      >
+        <h3 className="text-xl font-bold leading-tight drop-shadow-sm">{membership.name}</h3>
+        <div className="mt-4 flex items-baseline gap-2">
+          <span className="text-4xl font-black tracking-tight">
+            {Number(membership.price).toLocaleString("ru-RU")} ₾
+          </span>
+          <span className="text-sm text-white/80">{formatPeriod(membership.duration_days)}</span>
+        </div>
+        {membership.description && (
+          <p className="mt-3 text-sm text-white/85 line-clamp-2">{membership.description}</p>
+        )}
+        <Button
+          onClick={onSelect}
+          className="mt-5 w-full h-12 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition"
+        >
+          Выбрать
+        </Button>
+      </div>
+
+      {/* Bottom: features */}
+      <div className="p-5 bg-card">
+        <div className="text-xs font-bold tracking-wider text-muted-foreground mb-3">
+          ПРЕИМУЩЕСТВА
+        </div>
+        <div className="space-y-2">
+          {features.map((f, i) => (
+            <div key={i} className="flex items-start gap-2 text-sm">
+              <CheckCircle
+                className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5"
+                weight="BoldDuotone"
+              />
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
   );
 }
 
