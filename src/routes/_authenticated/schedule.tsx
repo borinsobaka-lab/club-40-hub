@@ -367,7 +367,7 @@ function SchedulePage() {
 
             <div className="overflow-x-auto rounded-lg border bg-background">
 
-              <div className="grid min-w-[900px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
+              <div className="grid min-w-[1200px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
                 <div className="border-b border-r bg-muted/30" />
                 {weekDays.map((d, i) => {
                   const today = d.toDateString() === new Date().toDateString();
@@ -457,7 +457,7 @@ function SchedulePage() {
                                   className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 flex flex-col ${colorClasses}`}
                                 >
                                   <div className="flex items-start justify-between gap-1">
-                                    <span className="opacity-80">
+                                    <span className="whitespace-nowrap opacity-80">
                                       {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
                                     </span>
                                     {(() => {
