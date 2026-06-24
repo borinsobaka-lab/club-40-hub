@@ -171,7 +171,7 @@ function BookingsLogPage() {
           ) : (
             <RefreshCw className="mr-1 h-4 w-4" />
           )}
-          Отметить проведённые
+          Отметить пропущенные
         </Button>
       }
     >
@@ -199,8 +199,11 @@ function BookingsLogPage() {
                 <SelectContent>
                   <SelectItem value={STATUS_ALL}>Все статусы</SelectItem>
                   <SelectItem value="booked">Забронировано</SelectItem>
-                  <SelectItem value="completed">Проведено</SelectItem>
+                  <SelectItem value="attended">Посещено</SelectItem>
+                  <SelectItem value="no_show">Пропущено</SelectItem>
                   <SelectItem value="cancelled">Отменено</SelectItem>
+                  <SelectItem value="rejected">Отклонена</SelectItem>
+                  <SelectItem value="completed">Проведено</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -247,7 +250,7 @@ function BookingsLogPage() {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             <div>{r.client_phone ?? "—"}</div>
-                            <div className="text-xs">{r.client_email ?? ""}</div>
+                            <div className="text-xs">{r.client_email ?? "—"}</div>
                           </TableCell>
                           <TableCell>
                             <div>{r.workout_name ?? "—"}</div>
