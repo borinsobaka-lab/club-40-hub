@@ -630,6 +630,31 @@ function MembershipsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Управление абонементом</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы можете отменить текущий абонемент. После отмены доступ к занятиям сохранится до конца оплаченного периода.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancellingMembership}>Закрыть</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={cancellingMembership}
+              className="bg-[#EF4444] text-white hover:bg-[#EF4444]/90"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelMembership();
+              }}
+            >
+              {cancellingMembership ? "Отменяем…" : "Отменить абонемент"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </PageShell>
   );
 }
