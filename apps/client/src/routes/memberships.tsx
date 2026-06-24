@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -307,6 +308,13 @@ function MembershipsPage() {
       if (insErr) throw insErr;
 
       await refreshActive();
+
+      // 🎉 Конфетти при успешной покупке
+      const fire = (opts: confetti.Options) =>
+        confetti({ particleCount: 80, spread: 70, startVelocity: 45, ...opts });
+      fire({ origin: { x: 0.2, y: 0.7 }, angle: 60 });
+      fire({ origin: { x: 0.8, y: 0.7 }, angle: 120 });
+      setTimeout(() => fire({ origin: { x: 0.5, y: 0.6 }, spread: 100 }), 200);
 
       toast.success(
         active
@@ -634,22 +642,25 @@ function MembershipsPage() {
       <AlertDialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Управление абонементом</AlertDialogTitle>
+            <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы можете отменить текущий абонемент. После отмены доступ к занятиям сохранится до конца оплаченного периода.
+              Абонемент останется активным до конца оплаченного периода, но не будет продлён автоматически.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancellingMembership}>Закрыть</AlertDialogCancel>
+            <AlertDialogCancel disabled={cancellingRenew}>Закрыть</AlertDialogCancel>
             <AlertDialogAction
-              disabled={cancellingMembership}
+              disabled={cancellingRenew}
               className="bg-[#EF4444] text-white hover:bg-[#EF4444]/90"
               onClick={(e) => {
                 e.preventDefault();
-                handleCancelMembership();
+                handleCancelAutorenew().then(() => {
+                  setConfirmManageOpen(false);
+                  setActiveOpen(false);
+                });
               }}
             >
-              {cancellingMembership ? "Отменяем…" : "Отменить абонемент"}
+              {cancellingRenew ? "Отключаем…" : "Отключить автопродление"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
