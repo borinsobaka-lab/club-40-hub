@@ -88,7 +88,7 @@ function MembershipsPage() {
 
   const [unlimitedTopHeight, setUnlimitedTopHeight] = useState(0);
   const [unlimitedBottomHeight, setUnlimitedBottomHeight] = useState(0);
-  const [packagesTopHeight, should be setPackagesTopHeight] = useState(0);
+  const [packagesTopHeight, setPackagesTopHeight] = useState(0);
   const [packagesBottomHeight, setPackagesBottomHeight] = useState(0);
   const [couplesTopHeight, setCouplesTopHeight] = useState(0);
   const [couplesBottomHeight, setCouplesBottomHeight] = useState(0);
