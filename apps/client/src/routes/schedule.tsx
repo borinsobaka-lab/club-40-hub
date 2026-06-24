@@ -320,7 +320,7 @@ function SchedulePage() {
                     : "bg-card text-card-foreground"
                 }`}
               >
-                <span className={`text-xs ${i === activeIdx ? "" : "opacity-70"}`}>
+                <span className={`text-xs font-medium ${i === activeIdx ? "" : "text-[#66676D]"}`}>
                   {DAY_NAMES[d.getDay()]}
                 </span>
                 <span className="text-lg font-bold italic">{d.getDate()}</span>
