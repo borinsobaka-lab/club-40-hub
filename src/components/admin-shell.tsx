@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cat, RefreshCw } from "lucide-react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
@@ -31,7 +31,6 @@ export function AdminShell({
         <AppSidebar />
         <div className="flex h-screen flex-1 flex-col overflow-hidden">
           <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
-            <SidebarTrigger />
             <div className="flex flex-1 items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <h1
