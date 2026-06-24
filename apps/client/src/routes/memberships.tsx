@@ -332,7 +332,7 @@ function MembershipsPage() {
 
         {!loading && user && !error && memberships.length > 0 && (
           <div className="w-full">
-            <div className="flex gap-6 overflow-x-auto no-scrollbar mb-4">
+            <div className="-mx-4 px-4 flex gap-6 overflow-x-auto no-scrollbar mb-4">
               {[
                 { key: "unlimited", label: "Безлимитные" },
                 { key: "packages", label: "Пакеты тренировок" },
