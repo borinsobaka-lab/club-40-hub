@@ -869,7 +869,7 @@ function BookingsPanel({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col">
                     {c ? (
-                      <ClientNameLink clientId={c.id} client={c as any} className="font-medium">
+                      <ClientNameLink clientId={c.id} className="font-medium">
                         {name}
                       </ClientNameLink>
                     ) : (
