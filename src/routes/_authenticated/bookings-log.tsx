@@ -53,6 +53,39 @@ type LogRow = {
   completed_at: string | null;
 };
 
+type BookingStatus = LogRow["status"];
+
+type ScheduleBookingRow = {
+  id: string;
+  entry_id: string;
+  user_id: string;
+  status: BookingStatus;
+  created_at: string;
+  cancelled_at: string | null;
+};
+
+type EntryRow = {
+  id: string;
+  workout_id: string | null;
+  starts_at: string;
+  ends_at: string;
+};
+
+type WorkoutRow = {
+  id: string;
+  name: string | null;
+  type: string | null;
+};
+
+type ClientSnapshotRow = {
+  user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
 const STATUS_ALL = "__all__";
 
 const statusLabel: Record<LogRow["status"], string> = {
@@ -105,18 +138,118 @@ function BookingsLogPage() {
     setLoading(true);
     // Авто-отметка пропущенных тренировок (прошедшие без отметки посещения)
     await supabase.rpc("mark_no_show_bookings");
-    const { data, error } = await supabase
+
+    const { data: logData, error: logError } = await supabase
       .from("bookings_log")
       .select("*")
       .eq("studio_id", studioId)
       .order("starts_at", { ascending: false })
       .limit(1000);
-    setLoading(false);
-    if (error) {
-      toast.error("Не удалось загрузить историю: " + error.message);
+
+    if (logError) {
+      setLoading(false);
+      toast.error("Не удалось загрузить историю: " + logError.message);
       return;
     }
-    setRows((data as LogRow[]) ?? []);
+
+    const logRows = (logData as LogRow[]) ?? [];
+    const { data: bookingData, error: bookingError } = await supabase
+      .from("schedule_bookings")
+      .select("id, entry_id, user_id, status, created_at, cancelled_at")
+      .eq("studio_id", studioId)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (bookingError) {
+      setLoading(false);
+      toast.error("Не удалось сверить записи: " + bookingError.message);
+      setRows(logRows);
+      return;
+    }
+
+    const bookingRows = (bookingData as ScheduleBookingRow[]) ?? [];
+    const loggedBookingIds = new Set(logRows.map((row) => row.booking_id).filter(Boolean));
+    const missingBookings = bookingRows.filter((booking) => !loggedBookingIds.has(booking.id));
+
+    if (missingBookings.length === 0) {
+      setRows(logRows);
+      setLoading(false);
+      return;
+    }
+
+    const entryIds = Array.from(new Set(missingBookings.map((booking) => booking.entry_id)));
+    const userIds = Array.from(new Set(missingBookings.map((booking) => booking.user_id)));
+
+    const { data: entryData } = await supabase
+      .from("schedule_entries")
+      .select("id, workout_id, starts_at, ends_at")
+      .in("id", entryIds);
+
+    const entryRows = (entryData as EntryRow[]) ?? [];
+    const entriesById = new Map(entryRows.map((entry) => [entry.id, entry]));
+    const workoutIds = Array.from(
+      new Set(entryRows.map((entry) => entry.workout_id).filter(Boolean) as string[]),
+    );
+
+    const { data: workoutData } = workoutIds.length
+      ? await supabase.from("workouts").select("id, name, type").in("id", workoutIds)
+      : { data: [] };
+    const workoutsById = new Map(
+      ((workoutData as WorkoutRow[]) ?? []).map((workout) => [workout.id, workout]),
+    );
+
+    const { data: clientData } = userIds.length
+      ? await supabase
+          .from("clients")
+          .select("user_id, first_name, last_name, full_name, phone, email")
+          .eq("studio_id", studioId)
+          .in("user_id", userIds)
+      : { data: [] };
+    const clientsByUserId = new Map(
+      ((clientData as ClientSnapshotRow[]) ?? [])
+        .filter((client) => client.user_id)
+        .map((client) => [client.user_id as string, client]),
+    );
+
+    const restoredRows = missingBookings
+      .map((booking): LogRow | null => {
+        const entry = entriesById.get(booking.entry_id);
+        if (!entry) return null;
+
+        const workout = entry.workout_id ? workoutsById.get(entry.workout_id) : undefined;
+        const client = clientsByUserId.get(booking.user_id);
+        const fallbackFullName = [client?.first_name, client?.last_name]
+          .filter(Boolean)
+          .join(" ");
+
+        return {
+          id: `schedule-booking-${booking.id}`,
+          booking_id: booking.id,
+          entry_id: booking.entry_id,
+          user_id: booking.user_id,
+          client_first_name: client?.first_name ?? null,
+          client_last_name: client?.last_name ?? null,
+          client_full_name: client?.full_name ?? fallbackFullName || null,
+          client_phone: client?.phone ?? null,
+          client_email: client?.email ?? null,
+          workout_name: workout?.name ?? null,
+          workout_type: workout?.type ?? null,
+          starts_at: entry.starts_at,
+          ends_at: entry.ends_at,
+          status: booking.status,
+          booked_at: booking.created_at,
+          cancelled_at: booking.cancelled_at,
+          completed_at: null,
+        };
+      })
+      .filter((row): row is LogRow => Boolean(row));
+
+    setRows(
+      [...logRows, ...restoredRows].sort(
+        (a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
+      ),
+    );
+    setLoading(false);
   };
 
 
