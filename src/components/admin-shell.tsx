@@ -13,11 +13,13 @@ import { KateChat } from "@/components/kate-chat";
 export function AdminShell({
   title,
   actions,
+  filters,
   children,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  filters?: ReactNode;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -25,10 +27,10 @@ export function AdminShell({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-muted/30">
+      <div className="flex h-screen w-full overflow-hidden bg-muted/30">
         <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+        <div className="flex h-screen flex-1 flex-col overflow-hidden">
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
             <SidebarTrigger />
             <div className="flex flex-1 items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -70,9 +72,15 @@ export function AdminShell({
               </div>
             </div>
           </header>
-          <main className="flex-1 p-6">{children}</main>
+          {filters ? (
+            <div className="shrink-0 border-b bg-background px-6 py-3">
+              {filters}
+            </div>
+          ) : null}
+          <main className="flex-1 overflow-auto p-6">{children}</main>
         </div>
       </div>
+
 
       <DialogPrimitive.Root open={kateOpen} onOpenChange={setKateOpen}>
         <DialogPrimitive.Portal>
