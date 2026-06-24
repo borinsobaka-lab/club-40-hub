@@ -239,13 +239,13 @@ function MembershipsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
                         {items.length === 0
                           ? "Пока нет абонементов. Нажмите «Добавить абонемент»."
                           : "Ничего не найдено."}
@@ -254,6 +254,7 @@ function MembershipsPage() {
                   ) : (
                     pg.paged.map((m) => (
                       <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
+                        <TableCell><CoverThumb value={m.cover_url} alt={m.name} /></TableCell>
                         <TableCell className="font-medium">{m.name}</TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
                           {m.description ?? "—"}
