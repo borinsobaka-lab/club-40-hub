@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AltArrowLeft, Refresh, CheckCircle } from "@solar-icons/react";
+import confetti from "canvas-confetti";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -178,6 +179,12 @@ function OnboardingPage() {
     const ok = await persist({ onboarding_completed_at: new Date().toISOString() });
     setSaving(false);
     if (ok) {
+      const fire = (opts: confetti.Options) =>
+        confetti({ particleCount: 80, spread: 70, startVelocity: 45, ...opts });
+      fire({ origin: { x: 0.2, y: 0.7 }, angle: 60 });
+      fire({ origin: { x: 0.8, y: 0.7 }, angle: 120 });
+      setTimeout(() => fire({ origin: { x: 0.5, y: 0.6 }, spread: 100 }), 200);
+
       toast.success("Анкета сохранена");
       navigate({ to: "/schedule", replace: true });
     }
