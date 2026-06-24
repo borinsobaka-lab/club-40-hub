@@ -616,7 +616,7 @@ function EditProfileSheet({
                 setForm((f) => ({ ...f, gender: v === "unset" ? "" : v }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-12 shadow-none">
                 <SelectValue placeholder="Не указано" />
               </SelectTrigger>
               <SelectContent>
