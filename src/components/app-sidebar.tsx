@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Newspaper, Receipt, Sparkles, History, Ticket, Bell, Zap } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Newspaper, Receipt, Sparkles, History, Ticket, Bell, Zap, Settings } from "lucide-react";
 
 import {
   Sidebar,
@@ -46,6 +46,7 @@ const mobileItems = [
   { title: "Услуги", url: "/services", icon: Sparkles },
   { title: "Пуш-уведомления", url: "/push", icon: Bell },
   { title: "Триггерные уведомления", url: "/push-triggers", icon: Zap },
+  { title: "Настройки клуба", url: "/club-settings", icon: Settings },
 ];
 
 
