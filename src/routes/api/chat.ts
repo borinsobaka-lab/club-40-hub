@@ -65,12 +65,13 @@ export const Route = createFileRoute("/api/chat")({
             // ====== КЛИЕНТЫ ======
             list_clients: tool({
               description:
-                "Клиенты студии со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото.",
+                "Клиенты студии со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото. Можно фильтровать по точным ID.",
               inputSchema: z.object({
+                ids: z.array(z.string().uuid()).optional().describe("Точные clients.id, если нужно подтянуть клиентов по связям из других таблиц"),
                 search: z.string().optional().describe("Поиск по имени/фамилии/телефону/email"),
                 limit: z.number().int().min(1).max(500).default(100),
               }),
-              execute: async ({ search, limit }) => {
+              execute: async ({ ids, search, limit }) => {
                 let q = supabase
                   .from("clients")
                   .select(
@@ -79,6 +80,7 @@ export const Route = createFileRoute("/api/chat")({
                   .eq("studio_id", studioId)
                   .order("created_at", { ascending: false })
                   .limit(limit);
+                if (ids?.length) q = q.in("id", ids);
                 if (search)
                   q = q.or(
                     `full_name.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`,
@@ -144,13 +146,14 @@ export const Route = createFileRoute("/api/chat")({
             // ====== АБОНЕМЕНТЫ (шаблоны) ======
             list_memberships: tool({
               description:
-                "Шаблоны абонементов студии: название, описание, бонусы, число посещений, срок, цена, активность, обложка, признак 'для двоих'.",
+                "Шаблоны абонементов студии: название, описание, бонусы, число посещений, срок, цена, активность, обложка, признак 'для двоих'. Можно фильтровать по точным ID.",
               inputSchema: z.object({
+                ids: z.array(z.string().uuid()).optional().describe("Точные memberships.id, если нужно подтянуть названия по связям из client_memberships или sales"),
                 only_active: z.boolean().default(false),
                 for_couple: z.boolean().optional(),
                 limit: z.number().int().min(1).max(500).default(200),
               }),
-              execute: async ({ only_active, for_couple, limit }) => {
+              execute: async ({ ids, only_active, for_couple, limit }) => {
                 let q = supabase
                   .from("memberships")
                   .select(
@@ -158,6 +161,7 @@ export const Route = createFileRoute("/api/chat")({
                   )
                   .eq("studio_id", studioId)
                   .limit(limit);
+                if (ids?.length) q = q.in("id", ids);
                 if (only_active) q = q.eq("is_active", true);
                 if (typeof for_couple === "boolean") q = q.eq("for_couple", for_couple);
                 const { data, error } = await q;
@@ -170,7 +174,7 @@ export const Route = createFileRoute("/api/chat")({
             list_client_memberships: tool({
               description:
                 "Выданные клиентам абонементы (client_memberships). Содержит client_id, membership_id, status, started_at, ends_at, visits_left. " +
-                "Для вопросов «у кого скоро заканчивается абонемент» используй status='active', expiring_within_days и order_by='ends_at_asc'. " +
+                "Для вопросов «у кого скоро заканчивается абонемент» лучше используй list_expiring_client_memberships. " +
                 "Для имени клиента ОБЯЗАТЕЛЬНО вызови list_clients по полученным client_id; для названия абонемента — list_memberships по membership_id. Никогда не выдумывай имена и названия.",
               inputSchema: z.object({
                 status: z.enum(["active", "replaced", "expired", "cancelled"]).optional(),
@@ -209,6 +213,75 @@ export const Route = createFileRoute("/api/chat")({
                 const { data, error } = await q;
                 if (error) return { error: error.message };
                 return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            list_expiring_client_memberships: tool({
+              description:
+                "ТОЛЬКО для вопросов «у кого ближе всего/скоро заканчивается/истекает абонемент». " +
+                "Возвращает реальные активные абонементы клиентов, отсортированные по ближайшей дате окончания, уже со связанными данными клиента и шаблона абонемента. " +
+                "Используй этот инструмент вместо ручного сопоставления, чтобы не выдумывать людей и названия.",
+              inputSchema: z.object({
+                within_days: z
+                  .number()
+                  .int()
+                  .min(1)
+                  .max(3650)
+                  .optional()
+                  .describe("Ограничить окончанием в пределах N дней. Если пользователь не указал период, не передавай параметр."),
+                limit: z.number().int().min(1).max(100).default(10),
+              }),
+              execute: async ({ within_days, limit }) => {
+                const today = new Date();
+                const iso = (d: Date) => d.toISOString().slice(0, 10);
+                let q = supabase
+                  .from("client_memberships")
+                  .select(
+                    "id, client_id, membership_id, sale_id, source, started_at, ends_at, visits_left, status, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name, visits_count, duration_days, price, is_active)",
+                  )
+                  .eq("studio_id", studioId)
+                  .eq("status", "active")
+                  .not("ends_at", "is", null)
+                  .gte("ends_at", iso(today))
+                  .order("ends_at", { ascending: true, nullsFirst: false })
+                  .limit(limit);
+                if (within_days) {
+                  const to = new Date(today.getTime() + within_days * 86400000);
+                  q = q.lte("ends_at", iso(to));
+                }
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+
+                const rows = (data ?? []).map((row: any) => {
+                  const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
+                  const membership = Array.isArray(row.memberships) ? row.memberships[0] : row.memberships;
+                  const clientName = [client?.last_name, client?.first_name].filter(Boolean).join(" ").trim() || client?.full_name || null;
+                  return {
+                    id: row.id,
+                    client_id: row.client_id,
+                    client_name: clientName,
+                    client_phone: client?.phone ?? null,
+                    client_email: client?.email ?? null,
+                    membership_id: row.membership_id,
+                    membership_name: membership?.name ?? null,
+                    membership_visits_count: membership?.visits_count ?? null,
+                    membership_duration_days: membership?.duration_days ?? null,
+                    membership_price: membership?.price ?? null,
+                    sale_id: row.sale_id,
+                    source: row.source,
+                    started_at: row.started_at,
+                    ends_at: row.ends_at,
+                    visits_left: row.visits_left,
+                    status: row.status,
+                  };
+                });
+
+                return {
+                  count: rows.length,
+                  rows,
+                  integrity_note:
+                    "client_name и membership_name взяты только из связанных строк clients/memberships. Если поле null — связь в базе отсутствует, его нельзя додумывать.",
+                };
               },
             }),
 
@@ -545,8 +618,9 @@ export const Route = createFileRoute("/api/chat")({
               ".\n\n" +
               "ЖЁСТКИЕ ПРАВИЛА (нарушение = серьёзная ошибка):\n" +
               "1. НИКОГДА не выдумывай данные: имена, телефоны, e-mail, названия абонементов, суммы, даты, id. " +
-              "Любая цифра/имя/название в ответе должны быть получены вызовом инструмента в этом же ответе. " +
-              "Если инструмент ничего не вернул — так и скажи: «нет данных», не подставляй примеры.\n" +
+              "Любая цифра/имя/название в ответе должны быть дословно взяты из результата инструмента в этом же ответе. " +
+              "Запрещено писать фразы вроде «были сопоставлены по ID», если ты реально не получила эти строки инструментом. " +
+              "Если инструмент ничего не вернул или связь отсутствует — так и скажи: «нет данных», не подставляй примеры.\n" +
               "2. Сущности связаны по id. Чтобы показать имя клиента и название абонемента в одном ответе, " +
               "сделай несколько вызовов и СВЯЖИ их сам: \n" +
               "   - клиент: clients.id ←→ client_memberships.client_id, sales.client_id\n" +
@@ -554,10 +628,11 @@ export const Route = createFileRoute("/api/chat")({
               "   - продажа: sales.id ←→ client_memberships.sale_id\n" +
               "   Сначала получи список (например, истекающих client_memberships), затем одним вызовом подтяни " +
               "соответствующих клиентов и шаблоны абонементов по их id. Не сопоставляй по «похожим» именам.\n" +
-              "3. Для вопросов «у кого скоро заканчивается/истекает абонемент» используй list_client_memberships с " +
-              "status='active', expiring_within_days (по умолчанию 14, если пользователь не указал) и " +
-              "order_by='ends_at_asc'. Затем подтяни имена через list_clients и названия через list_memberships.\n" +
-              "4. Если в ответе фигурируют клиенты или абонементы — указывай рядом их id из БД, чтобы данные можно было проверить.\n" +
+              "3. Для вопросов «у кого ближе всего/скоро заканчивается/истекает абонемент» ОБЯЗАТЕЛЬНО используй только list_expiring_client_memberships. " +
+              "Если пользователь не указал период, не ограничивай within_days — верни ближайшие активные окончания по ends_at. " +
+              "В ответ можно включать только поля, которые пришли в rows этого инструмента. Если count=0 — ответь, что активных абонементов с будущей датой окончания не найдено.\n" +
+              "4. Если в ответе фигурируют клиенты или абонементы — указывай рядом их id из БД, чтобы данные можно было проверить. " +
+              "Если client_name или membership_name = null, не придумывай название: напиши «связь не найдена».\n" +
               "5. Никогда не показывай примеры/иллюстративные данные. Лучше ответить «не нашла записей», чем придумать.\n\n" +
               "Доступные разделы через инструменты: клиенты, тренеры, тренировки, расписание, шаблоны абонементов, " +
               "выданные абонементы, продажи, касса, промокоды, новости, услуги, пуш-уведомления, обратная связь, NPS, " +
