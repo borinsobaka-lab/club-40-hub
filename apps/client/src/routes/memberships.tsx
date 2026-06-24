@@ -288,17 +288,18 @@ function MembershipsPage() {
           {!loading && user && active && (
             <Card className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0">
               <div className="flex items-stretch">
-                <div className="flex-1 p-3 border border-border rounded-l-xl bg-white">
+                <div className="flex-1 p-4 border border-border rounded-l-xl bg-white">
                   <div className="flex items-center gap-3">
                     <div className="h-14 w-14 rounded-xl bg-[#22C55E]/15 flex items-center justify-center shrink-0">
                       <ShieldCheck className="h-8 w-8 text-[#22C55E]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[11px] text-muted-foreground leading-none mb-1">Активный абонемент</div>
-                      <div className="font-bold text-sm truncate">{active.memberships?.name ?? "Абонемент"}</div>
+                      <div className="text-base font-semibold text-foreground truncate">
+                        {active.memberships?.name ?? "Абонемент"}
+                      </div>
                       {active.ends_at && (
-                        <div className="text-[11px] text-muted-foreground mt-1">
-                          Действует до:{" "}
+                        <div className="text-sm text-muted-foreground mt-0.5">
+                          Активный абонемент до{" "}
                           {new Date(active.ends_at).toLocaleDateString("ru-RU", {
                             day: "numeric",
                             month: "long",
@@ -306,7 +307,7 @@ function MembershipsPage() {
                           })}
                         </div>
                       )}
-                      <div className="text-[11px] text-[#22C55E] mt-1">Автопродление включено</div>
+                      <div className="text-sm text-[#22C55E] mt-0.5">Автопродление включено</div>
                     </div>
                   </div>
                 </div>
