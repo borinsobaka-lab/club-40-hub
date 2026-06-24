@@ -256,7 +256,12 @@ function MembershipsPage() {
                     pg.paged.map((m) => (
                       <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
                         <TableCell><CoverThumb value={m.cover_url} alt={m.name} /></TableCell>
-                        <TableCell className="font-medium">{m.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{m.name}</span>
+                            {m.for_couple && <Badge variant="outline">Для двоих</Badge>}
+                          </div>
+                        </TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
                           {m.description ?? "—"}
                         </TableCell>
