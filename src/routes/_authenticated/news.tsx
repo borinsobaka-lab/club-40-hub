@@ -567,6 +567,34 @@ function NewsDialog({
               placeholder="Текст новости"
             />
           </div>
+
+          <div className="rounded-md border p-3 space-y-3">
+            <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
+            <div className="text-xs text-muted-foreground">
+              Если оба поля заполнены — в мобильном приложении под новостью
+              появится кнопка-ссылка. Если пусто — кнопки не будет.
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="button_text">Текст на кнопке</Label>
+                <Input
+                  id="button_text"
+                  value={buttonText}
+                  onChange={(e) => setButtonText(e.target.value)}
+                  placeholder="Например: Подробнее"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="button_url">Ссылка</Label>
+                <Input
+                  id="button_url"
+                  value={buttonUrl}
+                  onChange={(e) => setButtonUrl(e.target.value)}
+                  placeholder="https://…"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <DialogFooter>
