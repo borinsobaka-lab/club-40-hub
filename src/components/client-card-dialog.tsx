@@ -214,7 +214,7 @@ export function ClientCardDialog({
     setLoadingSales(true);
     supabase
       .from("sales")
-      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name)")
+      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)")
       .eq("client_id", client.id)
       .order("sold_at", { ascending: false })
       .then(({ data, error }) => {
