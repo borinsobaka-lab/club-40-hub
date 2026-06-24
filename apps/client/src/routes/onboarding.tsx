@@ -327,7 +327,6 @@ function OnboardingPage() {
         )}
         {step === 8 && (
           <StepBody
-            height={form.height_cm}
             weight={form.weight_kg}
             birthYear={form.birth_year}
             gender={form.gender}
