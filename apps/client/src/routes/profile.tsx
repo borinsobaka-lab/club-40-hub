@@ -185,10 +185,9 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="pt-2 pb-8">
-        <div className="bg-muted">
+      <div className="pb-8">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-[14px] px-4 pt-3 pb-5">
+        <section className="bg-background rounded-t-[14px] px-4 pt-3 pb-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
@@ -252,7 +251,7 @@ function ProfilePage() {
         <div className="h-3 bg-muted" />
 
         {/* Блок: ссылки */}
-        <section className="bg-background rounded-[14px] py-1">
+        <section className="bg-background py-1">
           <ul className="divide-y divide-border">
             <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
             <ProfileLink
@@ -270,13 +269,12 @@ function ProfilePage() {
         <div className="h-3 bg-muted" />
 
         {/* Блок: выход */}
-        <section className="bg-background rounded-t-[14px] px-4 py-5">
+        <section className="bg-background px-4 py-5">
           <Button variant="outline" className="w-full shadow-none" onClick={() => signOut()}>
             <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Выйти
           </Button>
         </section>
-        </div>
 
         {client && (
           <EditProfileSheet

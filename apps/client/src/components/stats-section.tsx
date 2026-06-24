@@ -487,7 +487,7 @@ function CaloriesInfoLink() {
           Как считаются калории?
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto rounded-2xl mx-4">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle>Как мы считаем калории</DialogTitle>
         </DialogHeader>
