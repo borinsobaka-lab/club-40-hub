@@ -533,8 +533,4 @@ function CaloriesInfoLink() {
     </Dialog>
   );
 }
-        </>
-      )}
-    </section>
-  );
-}
+
