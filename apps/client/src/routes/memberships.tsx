@@ -429,6 +429,7 @@ function MembershipCard({
     <Card className="shrink-0 w-[85%] snap-start overflow-hidden rounded-xl p-0 flex flex-col">
       {/* Top: cover (image fills area; no overlay when image present) */}
       <div
+        ref={onTopRef}
         className="relative p-5 flex flex-col flex-1"
         style={
           cover
@@ -436,8 +437,9 @@ function MembershipCard({
                 backgroundImage: `url(${cover})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
+                minHeight: topMinHeight,
               }
-            : undefined
+            : { minHeight: topMinHeight }
         }
       >
         <div className="flex-1">
