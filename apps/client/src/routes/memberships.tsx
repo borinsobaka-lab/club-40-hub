@@ -303,6 +303,7 @@ function MembershipsPage() {
                       })}
                     </div>
                   )}
+                  <div className="text-[11px] text-[#22C55E] mt-1">Автопродление включено</div>
                 </div>
               </div>
             </Card>
