@@ -276,8 +276,6 @@ function ProfilePage() {
           </Button>
         </section>
         </div>
-      </div>
-
 
         {client && (
           <EditProfileSheet
@@ -289,6 +287,7 @@ function ProfilePage() {
         )}
       </div>
     </PageShell>
+
   );
 }
 
