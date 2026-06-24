@@ -36,6 +36,7 @@ type Membership = {
   installment_enabled: boolean | null;
   studio_id: string | null;
   cover_url: string | null;
+  for_couple?: boolean | null;
 };
 
 function formatPeriod(days: number): string {
@@ -75,25 +76,33 @@ function MembershipsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Membership | null>(null);
-  const [activeTab, setActiveTab] = useState<"unlimited" | "packages">("unlimited");
+  const [activeTab, setActiveTab] = useState<"unlimited" | "packages" | "couples">("unlimited");
   const [purchasing, setPurchasing] = useState(false);
 
   const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const packagesTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const packagesBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const couplesTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const couplesBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const [unlimitedTopHeight, setUnlimitedTopHeight] = useState(0);
   const [unlimitedBottomHeight, setUnlimitedBottomHeight] = useState(0);
   const [packagesTopHeight, setPackagesTopHeight] = useState(0);
   const [packagesBottomHeight, setPackagesBottomHeight] = useState(0);
+  const [couplesTopHeight, setCouplesTopHeight] = useState(0);
+  const [couplesBottomHeight, setCouplesBottomHeight] = useState(0);
 
   const unlimitedMemberships = useMemo(
-    () => memberships.filter((m) => m.visits_count === null),
+    () => memberships.filter((m) => m.visits_count === null && !m.for_couple),
     [memberships]
   );
   const packagesMemberships = useMemo(
-    () => memberships.filter((m) => m.visits_count !== null),
+    () => memberships.filter((m) => m.visits_count !== null && !m.for_couple),
+    [memberships]
+  );
+  const couplesMemberships = useMemo(
+    () => memberships.filter((m) => m.for_couple === true),
     [memberships]
   );
 
@@ -137,6 +146,17 @@ function MembershipsPage() {
     }
   }, [packagesMemberships]);
 
+  useLayoutEffect(() => {
+    if (couplesMemberships.length > 0) {
+      measureGroup(
+        couplesTopRefs,
+        couplesBottomRefs,
+        setCouplesTopHeight,
+        setCouplesBottomHeight
+      );
+    }
+  }, [couplesMemberships]);
+
 
   useEffect(() => {
     if (authLoading) return;
@@ -177,7 +197,7 @@ function MembershipsPage() {
         );
 
         const membershipSelect =
-          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url";
+          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple";
         const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
           db
             .from("memberships")
@@ -316,12 +336,13 @@ function MembershipsPage() {
               {[
                 { key: "unlimited", label: "Безлимитные" },
                 { key: "packages", label: "Пакеты тренировок" },
+                { key: "couples", label: "Для двоих" },
               ].map((t) => {
                 const active = activeTab === t.key;
                 return (
                   <button
                     key={t.key}
-                    onClick={() => setActiveTab(t.key as "unlimited" | "packages")}
+                    onClick={() => setActiveTab(t.key as "unlimited" | "packages" | "couples")}
                     className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
                       active ? "text-foreground" : "text-[#66676D]"
                     }`}
@@ -391,6 +412,36 @@ function MembershipsPage() {
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных пакетов тренировок.</Card>
+                )}
+              </>
+            )}
+
+            {activeTab === "couples" && (
+              <>
+                <p className="text-sm text-muted-foreground mb-3">Абонементы для совместных тренировок</p>
+                {couplesMemberships.length > 0 ? (
+                  <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
+                    {couplesMemberships.map((m, idx) => (
+                      <MembershipCard
+                        key={m.id}
+                        membership={m}
+                        color={COLORS[idx % COLORS.length]}
+                        onSelect={() => setSelected({ ...m })}
+                        topMinHeight={couplesTopHeight || undefined}
+                        bottomMinHeight={couplesBottomHeight || undefined}
+                        onTopRef={(el) => {
+                          if (el) couplesTopRefs.current.set(m.id, el);
+                          else couplesTopRefs.current.delete(m.id);
+                        }}
+                        onBottomRef={(el) => {
+                          if (el) couplesBottomRefs.current.set(m.id, el);
+                          else couplesBottomRefs.current.delete(m.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных абонементов для двоих.</Card>
                 )}
               </>
             )}
