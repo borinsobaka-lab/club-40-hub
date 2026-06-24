@@ -727,6 +727,7 @@ function BookingsPanel({
   const [memberships, setMemberships] = useState<Record<string, ActiveMembershipRow>>({});
   const [confirmBooking, setConfirmBooking] = useState<BookingRow | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [attendingId, setAttendingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -734,7 +735,7 @@ function BookingsPanel({
       .from("schedule_bookings")
       .select("id, user_id, status, created_at")
       .eq("entry_id", entry.id)
-      .eq("status", "booked")
+      .in("status", ["booked", "attended"])
       .order("created_at");
     if (bErr) {
       setLoading(false);
@@ -801,8 +802,28 @@ function BookingsPanel({
       toast.error("Не удалось отписать: " + (result?.reason ?? "неизвестно"));
       return;
     }
-    toast.success("Запись отменена");
+    toast.success("Запись отклонена");
     setConfirmBooking(null);
+    await load();
+    onChanged();
+  };
+
+  const handleAttend = async (b: BookingRow) => {
+    setAttendingId(b.id);
+    const { data, error } = await supabase.rpc("mark_booking_attended", {
+      p_booking_id: b.id,
+    });
+    setAttendingId(null);
+    if (error) {
+      toast.error("Ошибка: " + error.message);
+      return;
+    }
+    const result = data as { ok?: boolean; reason?: string } | null;
+    if (!result?.ok) {
+      toast.error("Не удалось отметить: " + (result?.reason ?? "неизвестно"));
+      return;
+    }
+    toast.success("Посещение зафиксировано");
     await load();
     onChanged();
   };
