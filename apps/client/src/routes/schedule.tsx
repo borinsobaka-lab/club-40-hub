@@ -79,8 +79,8 @@ function SchedulePage() {
   const navigate = useNavigate();
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
-  const [activeTab, setActiveTab] = useState<TabKey>("class");
   const [activeIdx, setActiveIdx] = useState(3);
+
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
