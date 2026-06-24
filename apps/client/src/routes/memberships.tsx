@@ -76,25 +76,33 @@ function MembershipsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Membership | null>(null);
-  const [activeTab, setActiveTab] = useState<"unlimited" | "packages">("unlimited");
+  const [activeTab, setActiveTab] = useState<"unlimited" | "packages" | "couples">("unlimited");
   const [purchasing, setPurchasing] = useState(false);
 
   const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const packagesTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const packagesBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const couplesTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const couplesBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const [unlimitedTopHeight, setUnlimitedTopHeight] = useState(0);
   const [unlimitedBottomHeight, setUnlimitedBottomHeight] = useState(0);
-  const [packagesTopHeight, setPackagesTopHeight] = useState(0);
+  const [packagesTopHeight, should be setPackagesTopHeight] = useState(0);
   const [packagesBottomHeight, setPackagesBottomHeight] = useState(0);
+  const [couplesTopHeight, setCouplesTopHeight] = useState(0);
+  const [couplesBottomHeight, setCouplesBottomHeight] = useState(0);
 
   const unlimitedMemberships = useMemo(
-    () => memberships.filter((m) => m.visits_count === null),
+    () => memberships.filter((m) => m.visits_count === null && !m.for_couple),
     [memberships]
   );
   const packagesMemberships = useMemo(
-    () => memberships.filter((m) => m.visits_count !== null),
+    () => memberships.filter((m) => m.visits_count !== null && !m.for_couple),
+    [memberships]
+  );
+  const couplesMemberships = useMemo(
+    () => memberships.filter((m) => m.for_couple === true),
     [memberships]
   );
 
