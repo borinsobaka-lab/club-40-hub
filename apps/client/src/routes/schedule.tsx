@@ -429,14 +429,14 @@ function SchedulePage() {
                                       return (
                                         <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500 leading-none">
                                           <CloseCircle className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-                                          <span className="leading-none">Мест нет</span>
+                                          <span className="leading-none mt-0.5">Мест нет</span>
                                         </div>
                                       );
                                     }
                                     return (
                                       <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500 leading-none">
                                         <Fire className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-                                        <span className="leading-none">Осталось {left} {pluralSeats(left)}</span>
+                                        <span className="leading-none mt-0.5">Осталось {left} {pluralSeats(left)}</span>
                                       </div>
                                     );
                                   })()}
