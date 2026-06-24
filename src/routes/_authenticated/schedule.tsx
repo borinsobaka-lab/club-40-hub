@@ -340,7 +340,33 @@ function SchedulePage() {
               </div>
             </div>
 
+            {copySource && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  {pasting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  <span>
+                    Копирование «{copySource.workout?.name ?? "Занятие"}» —
+                    кликните на свободный слот, чтобы вставить.
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7"
+                  onClick={() => setCopySource(null)}
+                  disabled={pasting}
+                >
+                  <X className="mr-1 h-3 w-3" /> Отмена
+                </Button>
+              </div>
+            )}
+
             <div className="overflow-x-auto rounded-lg border bg-background">
+
               <div className="grid min-w-[900px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
                 <div className="border-b border-r bg-muted/30" />
                 {weekDays.map((d, i) => {
