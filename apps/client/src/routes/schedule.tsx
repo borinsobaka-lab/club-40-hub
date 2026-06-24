@@ -258,7 +258,7 @@ function SchedulePage() {
 
   return (
     <PageShell
-      scrollKey={activeTab}
+      scrollKey="schedule"
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-black italic uppercase">Бронь</h1>
