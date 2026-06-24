@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Target } from "lucide-react";
+import { Star } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
