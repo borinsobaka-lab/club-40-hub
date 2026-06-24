@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X, CopyPlus } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -350,7 +350,7 @@ function SchedulePage() {
             onClick={() => setDuplicateWeekOpen(true)}
             disabled={!studioId || entries.length === 0 || loading}
           >
-            <CopyPlus className="mr-1 h-4 w-4" />
+            <Copy className="mr-1 h-4 w-4" />
             Дублировать неделю
           </Button>
           <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
