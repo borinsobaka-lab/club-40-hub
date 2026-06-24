@@ -144,14 +144,14 @@ function Card({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-card border border-border/40 p-4 flex flex-col gap-2 min-h-[112px]">
-      <div className="flex items-center justify-between gap-2">
+    <div className="rounded-2xl bg-card border border-border/40 p-4 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
         <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${accent ?? "bg-primary/10 text-primary"}`}>
           {icon}
         </div>
-        <div className="text-2xl font-bold leading-tight text-right">{value}</div>
+        <div className="text-2xl font-bold leading-tight">{value}</div>
       </div>
-      <div className="mt-auto">
+      <div>
         <div className="text-xs text-muted-foreground">{label}</div>
         {hint ? <div className="text-[11px] text-muted-foreground/80 mt-0.5">{hint}</div> : null}
       </div>
@@ -377,7 +377,7 @@ export function StatsSection() {
             <Card
               icon={<DumbbellLargeMinimalistic size={18} weight="Bold" />}
               value={`${agg.total}`}
-              label="всего тренировок за всё время"
+              label="тренировок за всё время"
               hint={`до ${nextMilestone(agg.total)} осталось ${nextMilestone(agg.total) - agg.total}`}
             />
 
@@ -461,7 +461,7 @@ export function StatsSection() {
           </div>
 
           <p className="px-4 mt-3 text-[11px] leading-relaxed text-muted-foreground/80">
-            Калории считаются по формуле MET × вес × длительность: для каждого типа тренировки используется свой коэффициент интенсивности (MET), умноженный на ваш вес из профиля и фактическую длительность занятия. Сравнение со средним по клубу анонимно и обновляется раз в сутки.
+            Калории — это оценка по типу и длительности тренировки с учётом вашего веса из профиля. У каждого типа занятия свой коэффициент интенсивности (MET — Metabolic Equivalent of Task). Расход фиксируется персонально в момент тренировки и навсегда сохраняется в истории — из неё и считается вся статистика. Сравнение со средним по клубу анонимно и обновляется раз в сутки.
           </p>
         </>
       )}
