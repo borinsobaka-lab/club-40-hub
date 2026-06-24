@@ -96,7 +96,6 @@ function BookingsLogPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
-  const [marking, setMarking] = useState(false);
 
   const fetchRows = async () => {
     if (!studioId) {
@@ -104,6 +103,8 @@ function BookingsLogPage() {
       return;
     }
     setLoading(true);
+    // Авто-отметка пропущенных тренировок (прошедшие без отметки посещения)
+    await supabase.rpc("mark_no_show_bookings");
     const { data, error } = await supabase
       .from("bookings_log")
       .select("*")
@@ -117,6 +118,7 @@ function BookingsLogPage() {
     }
     setRows((data as LogRow[]) ?? []);
   };
+
 
   useEffect(() => {
     fetchRows();
