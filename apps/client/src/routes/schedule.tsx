@@ -428,6 +428,7 @@ function SchedulePage() {
         }}
         isBooked={openEntry ? bookedIds.has(openEntry.id) : false}
         isPending={openEntry ? pendingId === openEntry.id : false}
+        cancelMinutes={clubSettings.cancel_booking_minutes}
         onBook={() => {
           if (openEntry) toggleBooking(openEntry.id);
         }}
