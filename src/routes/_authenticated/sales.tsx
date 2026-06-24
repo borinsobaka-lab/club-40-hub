@@ -201,7 +201,7 @@ function SalesPage() {
     const { data, error } = await supabase
       .from("sales")
       .select(
-        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name)",
+        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)",
       )
       .eq("studio_id", studioId)
       .order("sold_at", { ascending: false });
