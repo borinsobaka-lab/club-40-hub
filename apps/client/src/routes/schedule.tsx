@@ -292,7 +292,9 @@ function SchedulePage() {
         })}
       </div>
 
-      {activeTab !== "class" ? (
+      {activeTab === "personal" ? (
+        <PersonalRequestForm />
+      ) : activeTab !== "class" ? (
         <div className="p-4">
           <Card className="p-8 text-center text-sm text-muted-foreground">
             Функционал скоро будет доступен
