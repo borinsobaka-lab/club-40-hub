@@ -336,12 +336,13 @@ function MembershipsPage() {
               {[
                 { key: "unlimited", label: "Безлимитные" },
                 { key: "packages", label: "Пакеты тренировок" },
+                { key: "couples", label: "Для двоих" },
               ].map((t) => {
                 const active = activeTab === t.key;
                 return (
                   <button
                     key={t.key}
-                    onClick={() => setActiveTab(t.key as "unlimited" | "packages")}
+                    onClick={() => setActiveTab(t.key as "unlimited" | "packages" | "couples")}
                     className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
                       active ? "text-foreground" : "text-[#66676D]"
                     }`}
