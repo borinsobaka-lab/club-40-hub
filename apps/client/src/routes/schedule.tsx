@@ -96,7 +96,7 @@ function SchedulePage() {
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const gestureStartRef = useRef<{ x: number; y: number; idx: number } | null>(null);
-  const swipedRef = useRef(false);
+  const suppressedSwipeClickRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const wheelLockedRef = useRef(false);
   const wheelReleaseRef = useRef<number | null>(null);
 
@@ -204,6 +204,32 @@ function SchedulePage() {
     } else if (res?.reason) {
       toast.error(reasonMessages[res.reason] ?? `Не удалось выполнить действие: ${res.reason}`);
     }
+  }
+
+  function openWorkout(entry: Entry) {
+    const trainerList = (entry.trainers ?? [])
+      .map((t) => t.trainer)
+      .filter((t): t is Trainer => !!t);
+    const trainerName =
+      trainerList
+        .map((t) => t.full_name)
+        .filter((n): n is string => !!n)
+        .join(", ") || null;
+    const trainerPhoto = resolvePublicUrl(
+      "trainer-photos",
+      trainerList.find((t) => !!t.photo_url)?.photo_url,
+    );
+    setOpenEntry({
+      id: entry.id,
+      name: entry.workout?.name ?? "Занятие",
+      type: entry.workout?.type ?? null,
+      description: entry.workout?.description ?? null,
+      photo: resolvePublicUrl("workout-photos", entry.workout?.photo_url),
+      trainerName,
+      trainerPhoto,
+      startsAt: entry.starts_at,
+      endsAt: entry.ends_at,
+    });
   }
 
   const [activeType, setActiveType] = useState<string>("all");
@@ -339,7 +365,6 @@ function SchedulePage() {
               }}
               onPointerDown={(e) => {
                 if (e.pointerType === "mouse") return;
-                swipedRef.current = false;
                 gestureStartRef.current = { x: e.clientX, y: e.clientY, idx: activeIdx };
               }}
               onPointerUp={(e) => {
@@ -350,26 +375,30 @@ function SchedulePage() {
                 const dy = e.clientY - start.y;
                 const isSwipe = Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.2;
                 if (isSwipe) {
-                  swipedRef.current = true;
+                  const swipeClick = { x: e.clientX, y: e.clientY, time: performance.now() };
+                  suppressedSwipeClickRef.current = swipeClick;
                   selectDay(start.idx + (dx < 0 ? 1 : -1));
-                  // На тач-устройствах после движения > slop click может не прийти —
-                  // сбрасываем флаг сами, чтобы не блокировать следующий тап.
                   window.setTimeout(() => {
-                    swipedRef.current = false;
-                  }, 350);
-                } else {
-                  swipedRef.current = false;
+                    if (suppressedSwipeClickRef.current === swipeClick) {
+                      suppressedSwipeClickRef.current = null;
+                    }
+                  }, 120);
                 }
               }}
               onPointerCancel={() => {
                 gestureStartRef.current = null;
-                swipedRef.current = false;
+                suppressedSwipeClickRef.current = null;
               }}
               onClickCapture={(e) => {
-                if (!swipedRef.current) return;
-                e.preventDefault();
-                e.stopPropagation();
-                swipedRef.current = false;
+                const swipeClick = suppressedSwipeClickRef.current;
+                if (!swipeClick) return;
+                suppressedSwipeClickRef.current = null;
+                const age = performance.now() - swipeClick.time;
+                const distance = Math.hypot(e.clientX - swipeClick.x, e.clientY - swipeClick.y);
+                if (age <= 180 && distance <= 32) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
               }}
               className="-mx-4 overflow-hidden touch-pan-y"
               style={{ touchAction: "pan-y" }}
@@ -393,41 +422,17 @@ function SchedulePage() {
                         const isPast = new Date(c.starts_at) < new Date();
                         return (
                           <div key={c.id} className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const trainerList = (c.trainers ?? [])
-                                  .map((t) => t.trainer)
-                                  .filter((t): t is Trainer => !!t);
-                                const trainerName =
-                                  trainerList
-                                    .map((t) => t.full_name)
-                                    .filter((n): n is string => !!n)
-                                    .join(", ") || null;
-                                const trainerPhoto = resolvePublicUrl(
-                                  "trainer-photos",
-                                  trainerList.find((t) => !!t.photo_url)?.photo_url,
-                                );
-                                setOpenEntry({
-                                  id: c.id,
-                                  name: c.workout?.name ?? "Занятие",
-                                  type: c.workout?.type ?? null,
-                                  description: c.workout?.description ?? null,
-                                  photo: resolvePublicUrl("workout-photos", c.workout?.photo_url),
-                                  trainerName,
-                                  trainerPhoto,
-                                  startsAt: c.starts_at,
-                                  endsAt: c.ends_at,
-                                });
-                              }}
-                              className="w-full text-left active:opacity-80 transition-opacity"
+                            <Card
+                              className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
+                                isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
+                              }`}
                             >
-                              <Card
-                                className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
-                                  isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
-                                }`}
+                              <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
+                              <button
+                                type="button"
+                                onClick={() => openWorkout(c)}
+                                className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
                               >
-                                <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                                 <div className="flex flex-col items-center justify-center w-12 shrink-0">
                                   <div className="text-base font-black italic tabular-nums leading-tight text-center">
                                     {fmtTime(c.starts_at)}
@@ -460,50 +465,42 @@ function SchedulePage() {
                                     );
                                   })()}
                                 </div>
-                                {!isBooked && (
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-disabled={isPending}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!isPending) toggleBooking(c.id);
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (!isPending) toggleBooking(c.id);
-                                      }
-                                    }}
-                                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
-                                      isPending ? "opacity-60" : ""
-                                    }`}
-                                    aria-label="Записаться"
-                                  >
-                                    {isPending ? (
-                                      <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-                                    ) : (
-                                      <svg
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="text-[#1B1C1F]"
-                                      >
-                                        <path
-                                          d="M12 5V19M5 12H19"
-                                          stroke="currentColor"
-                                          strokeWidth="2.5"
-                                          strokeLinecap="round"
-                                        />
-                                      </svg>
-                                    )}
-                                  </span>
-                                )}
-                              </Card>
-                            </button>
+                              </button>
+                              {!isBooked && (
+                                <button
+                                  type="button"
+                                  disabled={isPending}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleBooking(c.id);
+                                  }}
+                                  className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
+                                    isPending ? "opacity-60" : ""
+                                  }`}
+                                  aria-label="Записаться"
+                                >
+                                  {isPending ? (
+                                    <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+                                  ) : (
+                                    <svg
+                                      width="20"
+                                      height="20"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="text-[#1B1C1F]"
+                                    >
+                                      <path
+                                        d="M12 5V19M5 12H19"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                  )}
+                                </button>
+                              )}
+                            </Card>
                           </div>
                         );
                       })}
