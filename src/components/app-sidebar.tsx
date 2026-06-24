@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Newspaper, Receipt, Sparkles, History, Ticket, Bell, Zap, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Newspaper, Receipt, Sparkles, History, Ticket, Bell, Zap, Settings, RefreshCwOff } from "lucide-react";
 
 import {
   Sidebar,
@@ -30,6 +30,7 @@ const studioItems = [
 const statsItems = [
   { title: "Продажи", url: "/sales", icon: Receipt },
   { title: "История записей", url: "/bookings-log", icon: History },
+  { title: "Отмены автопродления", url: "/autorenew-cancellations", icon: RefreshCwOff },
 ];
 
 const feedbackItems = [
