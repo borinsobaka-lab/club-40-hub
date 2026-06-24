@@ -369,7 +369,7 @@ export function StatsSection() {
               icon={<Fire size={18} weight="Bold" />}
               accent="bg-orange-500/15 text-orange-500"
               value={`${agg.streakWeeks} нед.`}
-              label={agg.streakWeeks > 0 ? "недель подряд 🔥" : "начни новую серию"}
+              label={agg.streakWeeks > 0 ? "недель подряд с тренировками 🔥" : "начни новую серию недель"}
               right={<Sparkline data={agg.sparkline} />}
             />
 
@@ -377,7 +377,7 @@ export function StatsSection() {
             <Card
               icon={<DumbbellLargeMinimalistic size={18} weight="Bold" />}
               value={`${agg.total}`}
-              label="всего тренировок"
+              label="всего тренировок за всё время"
               hint={`до ${nextMilestone(agg.total)} осталось ${nextMilestone(agg.total) - agg.total}`}
             />
 
@@ -386,11 +386,11 @@ export function StatsSection() {
               icon={<ChartSquare size={18} weight="Bold" />}
               accent="bg-blue-500/15 text-blue-500"
               value={`${agg.thisMonth}`}
-              label="за этот месяц"
+              label="тренировок в этом месяце"
               hint={
                 visitsPct !== null
-                  ? `чаще, чем ${visitsPct}% клиентов`
-                  : "сравнение появится позже"
+                  ? `активнее, чем ${visitsPct}% клиентов клуба`
+                  : "сравнение с клубом появится позже"
               }
             />
 
@@ -403,13 +403,13 @@ export function StatsSection() {
                   ? "—"
                   : `≈ ${formatNumber(agg.calories30d)}`
               }
-              label="ккал за 30 дней"
+              label="ккал сожжено за 30 дней"
               hint={
                 hasWeight === false
-                  ? "укажите вес в профиле"
+                  ? "укажите вес в профиле для расчёта"
                   : caloriesPct !== null
-                  ? `больше, чем у ${caloriesPct}% клиентов`
-                  : "оценка по типу и длительности"
+                  ? `больше, чем у ${caloriesPct}% клиентов клуба`
+                  : "оценка по типу и длительности тренировки"
               }
               footer={
                 hasWeight === false ? (
@@ -429,7 +429,7 @@ export function StatsSection() {
                 icon={<DonutIcon size={18} weight="Bold" />}
                 accent="bg-violet-500/15 text-violet-500"
                 value={`${agg.byType.length} тип${agg.byType.length === 1 ? "" : agg.byType.length < 5 ? "а" : "ов"}`}
-                label="баланс тренировок"
+                label="разных видов тренировок"
                 footer={
                   <div className="mt-2 flex flex-col gap-1.5">
                     <TypeBar parts={agg.byType} />
@@ -451,17 +451,17 @@ export function StatsSection() {
               icon={<Cup size={18} weight="Bold" />}
               accent="bg-emerald-500/15 text-emerald-500"
               value={`${agg.bestMonth}`}
-              label="лучший месяц"
+              label="тренировок в лучшем месяце"
               hint={
                 agg.thisMonth >= agg.bestMonth && agg.bestMonth > 0
-                  ? "это твой рекорд!"
-                  : `до рекорда: ${Math.max(0, agg.bestMonth - agg.thisMonth + 1)}`
+                  ? "это твой личный рекорд!"
+                  : `до рекорда осталось ${Math.max(0, agg.bestMonth - agg.thisMonth + 1)}`
               }
             />
           </div>
 
-          <p className="px-4 mt-3 text-[11px] text-muted-foreground/70">
-            Калории — оценка по типу и длительности. Сравнение со средним по клубу анонимно и обновляется раз в сутки.
+          <p className="px-4 mt-3 text-[11px] leading-relaxed text-muted-foreground/80">
+            Калории считаются по формуле MET × вес × длительность: для каждого типа тренировки используется свой коэффициент интенсивности (MET), умноженный на ваш вес из профиля и фактическую длительность занятия. Сравнение со средним по клубу анонимно и обновляется раз в сутки.
           </p>
         </>
       )}
