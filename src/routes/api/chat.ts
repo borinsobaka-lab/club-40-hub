@@ -168,28 +168,50 @@ export const Route = createFileRoute("/api/chat")({
 
             // ====== ВЫДАННЫЕ КЛИЕНТАМ АБОНЕМЕНТЫ ======
             list_client_memberships: tool({
-              description: "Активные/прошлые абонементы клиентов (client_memberships).",
+              description:
+                "Выданные клиентам абонементы (client_memberships). Содержит client_id, membership_id, status, started_at, ends_at, visits_left. " +
+                "Для вопросов «у кого скоро заканчивается абонемент» используй status='active', expiring_within_days и order_by='ends_at_asc'. " +
+                "Для имени клиента ОБЯЗАТЕЛЬНО вызови list_clients по полученным client_id; для названия абонемента — list_memberships по membership_id. Никогда не выдумывай имена и названия.",
               inputSchema: z.object({
                 status: z.enum(["active", "replaced", "expired", "cancelled"]).optional(),
                 client_id: z.string().uuid().optional(),
+                expiring_within_days: z
+                  .number()
+                  .int()
+                  .min(1)
+                  .max(365)
+                  .optional()
+                  .describe("Вернуть только записи, у которых ends_at в пределах N дней от сегодня."),
+                order_by: z.enum(["created_desc", "ends_at_asc"]).default("created_desc"),
                 limit: z.number().int().min(1).max(500).default(200),
               }),
-              execute: async ({ status, client_id, limit }) => {
+              execute: async ({ status, client_id, expiring_within_days, order_by, limit }) => {
                 let q = supabase
                   .from("client_memberships")
                   .select(
                     "id, client_id, membership_id, sale_id, source, started_at, ends_at, visits_left, status, created_at",
                   )
                   .eq("studio_id", studioId)
-                  .order("created_at", { ascending: false })
                   .limit(limit);
+                if (order_by === "ends_at_asc") {
+                  q = q.order("ends_at", { ascending: true, nullsFirst: false });
+                } else {
+                  q = q.order("created_at", { ascending: false });
+                }
                 if (status) q = q.eq("status", status);
                 if (client_id) q = q.eq("client_id", client_id);
+                if (expiring_within_days) {
+                  const today = new Date();
+                  const to = new Date(today.getTime() + expiring_within_days * 86400000);
+                  const iso = (d: Date) => d.toISOString().slice(0, 10);
+                  q = q.gte("ends_at", iso(today)).lte("ends_at", iso(to));
+                }
                 const { data, error } = await q;
                 if (error) return { error: error.message };
                 return { count: data?.length ?? 0, rows: data ?? [] };
               },
             }),
+
 
             // ====== ПРОДАЖИ ======
             list_sales: tool({
@@ -518,16 +540,29 @@ export const Route = createFileRoute("/api/chat")({
             model: gateway("google/gemini-3-flash-preview"),
             system:
               "Ты — Kate, AI-ассистент админ-панели фитнес-студии CLUB 40. " +
-              "Отвечай на русском, кратко и по делу, используя markdown. " +
-              "У тебя есть инструменты для запросов к БД ко ВСЕМ разделам портала: " +
-              "клиенты, тренеры, тренировки, расписание, шаблоны абонементов, выданные абонементы клиентам, " +
-              "продажи, касса, промокоды, новости, услуги, пуш-уведомления, обратная связь, NPS, " +
-              "история записей, активные брони, настройки клуба и сводка. " +
-              "Активно вызывай инструменты, чтобы получить точные данные. Никогда не выдумывай цифры. " +
-              "Если данных нет — честно скажи. " +
-              "Текущая дата: " +
+              "Отвечай на русском, кратко и по делу, используя markdown. Текущая дата: " +
               new Date().toISOString().slice(0, 10) +
-              ".",
+              ".\n\n" +
+              "ЖЁСТКИЕ ПРАВИЛА (нарушение = серьёзная ошибка):\n" +
+              "1. НИКОГДА не выдумывай данные: имена, телефоны, e-mail, названия абонементов, суммы, даты, id. " +
+              "Любая цифра/имя/название в ответе должны быть получены вызовом инструмента в этом же ответе. " +
+              "Если инструмент ничего не вернул — так и скажи: «нет данных», не подставляй примеры.\n" +
+              "2. Сущности связаны по id. Чтобы показать имя клиента и название абонемента в одном ответе, " +
+              "сделай несколько вызовов и СВЯЖИ их сам: \n" +
+              "   - клиент: clients.id ←→ client_memberships.client_id, sales.client_id\n" +
+              "   - шаблон абонемента: memberships.id ←→ client_memberships.membership_id, sales.membership_id\n" +
+              "   - продажа: sales.id ←→ client_memberships.sale_id\n" +
+              "   Сначала получи список (например, истекающих client_memberships), затем одним вызовом подтяни " +
+              "соответствующих клиентов и шаблоны абонементов по их id. Не сопоставляй по «похожим» именам.\n" +
+              "3. Для вопросов «у кого скоро заканчивается/истекает абонемент» используй list_client_memberships с " +
+              "status='active', expiring_within_days (по умолчанию 14, если пользователь не указал) и " +
+              "order_by='ends_at_asc'. Затем подтяни имена через list_clients и названия через list_memberships.\n" +
+              "4. Если в ответе фигурируют клиенты или абонементы — указывай рядом их id из БД, чтобы данные можно было проверить.\n" +
+              "5. Никогда не показывай примеры/иллюстративные данные. Лучше ответить «не нашла записей», чем придумать.\n\n" +
+              "Доступные разделы через инструменты: клиенты, тренеры, тренировки, расписание, шаблоны абонементов, " +
+              "выданные абонементы, продажи, касса, промокоды, новости, услуги, пуш-уведомления, обратная связь, NPS, " +
+              "история записей, активные брони, настройки клуба и сводка counts_overview.",
+
             messages: await convertToModelMessages(messages as UIMessage[]),
             tools,
             stopWhen: stepCountIs(50),
