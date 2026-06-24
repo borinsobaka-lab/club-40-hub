@@ -181,7 +181,7 @@ function SchedulePage() {
       full: "Свободных мест больше нет",
       not_booked: "Вы не были записаны на эту тренировку",
     };
-    const res = data as { ok: boolean; reason?: string } | null;
+    const res = data as { ok: boolean; reason?: string; booked_count?: number; capacity?: number | null } | null;
     if (res?.ok) {
       setBookedIds((prev) => {
         const next = new Set(prev);
@@ -189,9 +189,26 @@ function SchedulePage() {
         else next.add(entryId);
         return next;
       });
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === entryId
+            ? {
+                ...e,
+                booked_count:
+                  typeof res.booked_count === "number"
+                    ? res.booked_count
+                    : Math.max(0, e.booked_count + (isBooked ? -1 : 1)),
+              }
+            : e,
+        ),
+      );
       toast.success(isBooked ? "Запись отменена" : "Вы записаны на тренировку");
     } else if (res?.reason === "already_booked") {
       setBookedIds((prev) => new Set(prev).add(entryId));
+      if (typeof res.booked_count === "number") {
+        const newCount = res.booked_count;
+        setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, booked_count: newCount } : e)));
+      }
     } else if (res?.reason === "no_membership" || res?.reason === "no_visits_left") {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });
