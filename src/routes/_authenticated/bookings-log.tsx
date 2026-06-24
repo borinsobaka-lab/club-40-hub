@@ -229,7 +229,7 @@ function BookingsLogPage() {
           user_id: booking.user_id,
           client_first_name: client?.first_name ?? null,
           client_last_name: client?.last_name ?? null,
-          client_full_name: client?.full_name ?? fallbackFullName || null,
+          client_full_name: client?.full_name ?? (fallbackFullName || null),
           client_phone: client?.phone ?? null,
           client_email: client?.email ?? null,
           workout_name: workout?.name ?? null,
