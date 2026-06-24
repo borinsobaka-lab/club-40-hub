@@ -94,7 +94,7 @@ function NotificationsPage() {
     <PageShell
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black italic uppercase">Уведомления</h1>
+          <h1 className="text-3xl font-bold italic uppercase">Уведомления</h1>
           <p className="text-sm text-white/70">
             {unread > 0 ? `Непрочитанных: ${unread}` : "Все уведомления прочитаны"}
           </p>

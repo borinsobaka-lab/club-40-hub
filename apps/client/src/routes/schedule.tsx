@@ -261,7 +261,7 @@ function SchedulePage() {
       scrollKey="schedule"
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black italic uppercase">Бронь</h1>
+          <h1 className="text-3xl font-bold italic uppercase">Бронь</h1>
           <p className="text-sm text-white/70">Выберите день и забронируйте тренировку</p>
         </div>
       }
