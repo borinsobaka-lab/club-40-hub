@@ -143,38 +143,12 @@ function BookingsLogPage() {
 
   const pg = usePagination(filtered);
 
-  const handleMarkCompleted = async () => {
-    setMarking(true);
-    const { error } = await supabase.rpc("mark_no_show_bookings");
-    setMarking(false);
-    if (error) {
-      toast.error("Ошибка: " + error.message);
-      return;
-    }
-    toast.success("Прошедшие записи без отметки помечены как «Пропущено»");
-    fetchRows();
-  };
-
   return (
     <AdminShell
       title="История записей"
       description="Журнал бронирований: пользователь, тренировка, статус"
-      actions={
-        <Button
-          variant="outline"
-          size="default"
-          onClick={handleMarkCompleted}
-          disabled={marking || !studioId}
-        >
-          {marking ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-1 h-4 w-4" />
-          )}
-          Отметить пропущенные
-        </Button>
-      }
     >
+
       <div className="mx-auto max-w-6xl space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
