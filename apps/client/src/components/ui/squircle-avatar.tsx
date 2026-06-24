@@ -82,9 +82,7 @@ SquircleAvatarFallback.displayName = "SquircleAvatarFallback";
 
 export { SquircleAvatar, SquircleAvatarImage, SquircleAvatarFallback };
 
-/** Returns a CSS `clip-path: path(...)` value for a Clubhouse-style squircle. */
-export function squircleClipPath(size: number, cornerRadius?: number, cornerSmoothing = 0.8) {
-  const radius = cornerRadius ?? Math.round(size * 0.4);
-  const path = getSvgPath({ width: size, height: size, cornerRadius: radius, cornerSmoothing });
-  return `path('${path}')`;
+/** Returns a CSS `clip-path: path(...)` value for the Clubhouse avatar shape. */
+export function squircleClipPath(size: number, _cornerRadius?: number, _cornerSmoothing?: number) {
+  return `path('${scalePath(CLUBHOUSE_PATH, size / CLUBHOUSE_VIEWBOX)}')`;
 }
