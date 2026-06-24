@@ -526,6 +526,9 @@ function HomePage() {
             </div>
           )}
         </section>
+
+        <div className="h-3 bg-muted" />
+
         </div>
       </div>
 
