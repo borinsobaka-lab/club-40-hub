@@ -1,6 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, User, MenuDots, Card } from "@solar-icons/react";
-import { Target } from "lucide-react";
+import { Home, Dumbbell, User, MenuDots, Card, Star } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {
