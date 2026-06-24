@@ -166,9 +166,55 @@ function SchedulePage() {
   const openSlot = (day: Date, hour: number) => {
     const d = new Date(day);
     d.setHours(hour, 0, 0, 0);
+    if (copySource) {
+      pasteCopy(d);
+      return;
+    }
     setEditing(null);
     setPresetStart(d);
     setDialogOpen(true);
+  };
+
+  const pasteCopy = async (newStart: Date) => {
+    if (!copySource || !studioId || pasting) return;
+    const origStart = new Date(copySource.starts_at);
+    const origEnd = new Date(copySource.ends_at);
+    const durationMs = origEnd.getTime() - origStart.getTime();
+    const newEnd = new Date(newStart.getTime() + durationMs);
+    setPasting(true);
+    const { data, error } = await supabase
+      .from("schedule_entries")
+      .insert({
+        studio_id: studioId,
+        workout_id: copySource.workout_id,
+        starts_at: newStart.toISOString(),
+        ends_at: newEnd.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      setPasting(false);
+      toast.error("Ошибка копирования: " + (error?.message ?? ""));
+      return;
+    }
+    const trainerIds =
+      copySource.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
+    if (trainerIds.length > 0) {
+      const { error: tErr } = await supabase
+        .from("schedule_entry_trainers")
+        .insert(trainerIds.map((tid) => ({ entry_id: data.id, trainer_id: tid })));
+      if (tErr) {
+        setPasting(false);
+        toast.error("Занятие создано, но тренеры не привязаны: " + tErr.message);
+        setCopySource(null);
+        fetchData();
+        return;
+      }
+    }
+    setPasting(false);
+    setCopySource(null);
+    toast.success("Занятие скопировано");
+    fetchData();
   };
 
   const openAdd = () => {
