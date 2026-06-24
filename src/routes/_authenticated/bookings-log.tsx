@@ -289,6 +289,35 @@ function BookingsLogPage() {
     <AdminShell
       title="История записей"
       description="Журнал бронирований: пользователь, тренировка, статус"
+      filters={
+        studioId ? (
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Поиск: имя, телефон, почта, тренировка"
+                className="h-8 pl-8"
+              />
+            </div>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="h-8 w-full sm:w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={STATUS_ALL}>Все статусы</SelectItem>
+                <SelectItem value="booked">Забронировано</SelectItem>
+                <SelectItem value="attended">Посещено</SelectItem>
+                <SelectItem value="no_show">Пропущено</SelectItem>
+                <SelectItem value="cancelled">Отменено</SelectItem>
+                <SelectItem value="rejected">Отклонена</SelectItem>
+                <SelectItem value="completed">Проведено</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null
+      }
     >
 
       <div className="mx-auto max-w-6xl space-y-3">
@@ -298,31 +327,7 @@ function BookingsLogPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Поиск: имя, телефон, почта, тренировка"
-                  className="h-8 pl-8"
-                />
-              </div>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-8 w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={STATUS_ALL}>Все статусы</SelectItem>
-                  <SelectItem value="booked">Забронировано</SelectItem>
-                  <SelectItem value="attended">Посещено</SelectItem>
-                  <SelectItem value="no_show">Пропущено</SelectItem>
-                  <SelectItem value="cancelled">Отменено</SelectItem>
-                  <SelectItem value="rejected">Отклонена</SelectItem>
-                  <SelectItem value="completed">Проведено</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
 
             <div className="rounded-lg border bg-background">
               <Table>

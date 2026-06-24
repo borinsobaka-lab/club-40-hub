@@ -254,6 +254,19 @@ function SalesPage() {
           Новая продажа
         </Button>
       }
+      filters={
+        studioId ? (
+          <div className="relative w-full max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск по клиенту или абонементу"
+              className="h-8 pl-9"
+            />
+          </div>
+        ) : null
+      }
     >
       <div className="mx-auto max-w-6xl space-y-3">
         {!studioId ? (
@@ -262,17 +275,7 @@ function SalesPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-lg border bg-background px-3 py-2">
-              <div className="relative max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Поиск по клиенту или абонементу"
-                  className="h-8 pl-9"
-                />
-              </div>
-            </div>
+
 
             <div className="rounded-lg border bg-background">
               <Table>
