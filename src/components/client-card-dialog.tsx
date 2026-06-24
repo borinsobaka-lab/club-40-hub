@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
+import { MembershipStatusBadge, AutoRenewBadge, effectiveStatus } from "@/components/membership-status-badge";
 import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
 
 type MemberProfile = {
