@@ -45,7 +45,7 @@ const mobileItems = [
   { title: "Новости", url: "/news", icon: Newspaper },
   { title: "Услуги", url: "/services", icon: Sparkles },
   { title: "Пуш-уведомления", url: "/push", icon: Bell },
-  { title: "Триггерные уведомления", url: "/push-triggers", icon: Zap },
+  { title: "Триггерные пуши", url: "/push-triggers", icon: Zap },
   { title: "Настройки клуба", url: "/club-settings", icon: Settings },
 ];
 
@@ -85,7 +85,7 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar collapsible="none" className="border-r-0">
       <SidebarHeader className="px-3 py-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-icon font-bold text-sidebar-dark">
