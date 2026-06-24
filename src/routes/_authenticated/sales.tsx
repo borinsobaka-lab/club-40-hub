@@ -368,8 +368,6 @@ function SalesPage() {
         clients={clients}
         onSaved={fetchSales}
       />
-
-      <ClientCardDialog open={cardOpen} onOpenChange={setCardOpen} client={cardClient} />
     </AdminShell>
   );
 }
