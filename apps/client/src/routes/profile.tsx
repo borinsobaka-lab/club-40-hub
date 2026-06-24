@@ -262,6 +262,8 @@ function ProfilePage() {
           </ul>
         </section>
 
+        <div className="h-3 bg-muted" />
+
         {/* Блок: выход */}
         <section className="bg-background rounded-[14px] px-4 py-5">
           <Button variant="outline" className="w-full" onClick={() => signOut()}>
