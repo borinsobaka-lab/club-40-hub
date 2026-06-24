@@ -352,11 +352,18 @@ function BookingsLogPage() {
                       return (
                         <TableRow key={r.id}>
                           <TableCell className="font-medium">
-                            {r.client_full_name ||
-                              [r.client_first_name, r.client_last_name]
-                                .filter(Boolean)
-                                .join(" ") ||
-                              "—"}
+                            {(() => {
+                              const name =
+                                r.client_full_name ||
+                                [r.client_first_name, r.client_last_name]
+                                  .filter(Boolean)
+                                  .join(" ") ||
+                                "—";
+                              if (!r.user_id || name === "—") return name;
+                              return (
+                                <ClientNameLink userId={r.user_id}>{name}</ClientNameLink>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             <div>{r.client_phone ?? "—"}</div>
