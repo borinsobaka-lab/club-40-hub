@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X, CopyPlus } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -110,6 +110,8 @@ function SchedulePage() {
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
   const [copySource, setCopySource] = useState<Entry | null>(null);
   const [pasting, setPasting] = useState(false);
+  const [duplicateWeekOpen, setDuplicateWeekOpen] = useState(false);
+  const [duplicatingWeek, setDuplicatingWeek] = useState(false);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -217,6 +219,98 @@ function SchedulePage() {
     fetchData();
   };
 
+  const duplicateWeek = async () => {
+    if (!studioId || duplicatingWeek) return;
+    if (entries.length === 0) {
+      toast.error("На текущей неделе нет занятий для копирования");
+      setDuplicateWeekOpen(false);
+      return;
+    }
+    setDuplicatingWeek(true);
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const nextWeekStart = addDays(weekStart, 7);
+    const nextWeekEnd = addDays(nextWeekStart, 7);
+    // Check existing entries on the target week to avoid duplicates
+    const { data: existing, error: exErr } = await supabase
+      .from("schedule_entries")
+      .select("workout_id, starts_at")
+      .eq("studio_id", studioId)
+      .gte("starts_at", nextWeekStart.toISOString())
+      .lt("starts_at", nextWeekEnd.toISOString());
+    if (exErr) {
+      setDuplicatingWeek(false);
+      toast.error("Ошибка проверки следующей недели: " + exErr.message);
+      return;
+    }
+    const existingKeys = new Set(
+      (existing ?? []).map((e) => `${e.workout_id}|${new Date(e.starts_at).toISOString()}`),
+    );
+
+    const rows = entries
+      .map((e) => {
+        const newStartMs = new Date(e.starts_at).getTime() + WEEK_MS;
+        const newEndMs = new Date(e.ends_at).getTime() + WEEK_MS;
+        const newStartIso = new Date(newStartMs).toISOString();
+        const key = `${e.workout_id}|${newStartIso}`;
+        if (existingKeys.has(key)) return null;
+        return {
+          studio_id: studioId,
+          workout_id: e.workout_id,
+          starts_at: newStartIso,
+          ends_at: new Date(newEndMs).toISOString(),
+          _trainer_ids: e.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [],
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+
+    if (rows.length === 0) {
+      setDuplicatingWeek(false);
+      setDuplicateWeekOpen(false);
+      toast.info("Все занятия уже скопированы на следующую неделю");
+      return;
+    }
+
+    const insertRows = rows.map(({ _trainer_ids, ...rest }) => rest);
+    const { data: inserted, error: insErr } = await supabase
+      .from("schedule_entries")
+      .insert(insertRows)
+      .select("id, workout_id, starts_at");
+    if (insErr || !inserted) {
+      setDuplicatingWeek(false);
+      toast.error("Ошибка копирования недели: " + (insErr?.message ?? ""));
+      return;
+    }
+
+    // Map inserted rows back to trainer ids
+    const trainerLinks: { entry_id: string; trainer_id: string }[] = [];
+    for (const ins of inserted) {
+      const key = `${ins.workout_id}|${new Date(ins.starts_at).toISOString()}`;
+      const src = rows.find(
+        (r) => `${r.workout_id}|${r.starts_at}` === key,
+      );
+      if (!src) continue;
+      for (const tid of src._trainer_ids) {
+        trainerLinks.push({ entry_id: ins.id, trainer_id: tid });
+      }
+    }
+    if (trainerLinks.length > 0) {
+      const { error: tErr } = await supabase
+        .from("schedule_entry_trainers")
+        .insert(trainerLinks);
+      if (tErr) {
+        setDuplicatingWeek(false);
+        setDuplicateWeekOpen(false);
+        toast.error("Занятия скопированы, но тренеры не привязаны: " + tErr.message);
+        setWeekStart(nextWeekStart);
+        return;
+      }
+    }
+    setDuplicatingWeek(false);
+    setDuplicateWeekOpen(false);
+    toast.success(`Скопировано занятий: ${inserted.length}`);
+    setWeekStart(nextWeekStart);
+  };
+
   const openAdd = () => {
     setEditing(null);
     setPresetStart(null);
@@ -249,10 +343,21 @@ function SchedulePage() {
       title="Расписание"
       description="Недельное расписание занятий"
       actions={
-        <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
-          <Plus className="mr-1 h-4 w-4" />
-          Добавить занятие
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => setDuplicateWeekOpen(true)}
+            disabled={!studioId || entries.length === 0 || loading}
+          >
+            <CopyPlus className="mr-1 h-4 w-4" />
+            Дублировать неделю
+          </Button>
+          <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
+            <Plus className="mr-1 h-4 w-4" />
+            Добавить занятие
+          </Button>
+        </div>
       }
     >
       <div className="mx-auto max-w-7xl space-y-4">
@@ -534,6 +639,31 @@ function SchedulePage() {
         onSaved={fetchData}
         onDelete={editing ? () => handleDelete(editing) : undefined}
       />
+
+      <AlertDialog
+        open={duplicateWeekOpen}
+        onOpenChange={(v) => !duplicatingWeek && setDuplicateWeekOpen(v)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Дублировать неделю?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Все занятия с недели {weekLabel} ({entries.length}) будут скопированы
+              на следующую неделю ({fmtDate(addDays(weekStart, 7))} —{" "}
+              {fmtDate(addDays(weekStart, 13))}) в те же дни и время, с теми же
+              тренерами. Записи клиентов не копируются. Уже существующие на
+              следующей неделе занятия (тот же тип и время) пропускаются.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={duplicatingWeek}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={duplicateWeek} disabled={duplicatingWeek}>
+              {duplicatingWeek && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+              Дублировать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminShell>
   );
 }
