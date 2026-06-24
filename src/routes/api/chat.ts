@@ -57,116 +57,481 @@ export const Route = createFileRoute("/api/chat")({
 
           const { supabase, studioId } = ctx;
 
-        const tools = {
-          list_clients: tool({
-            description: "Список клиентов студии (профили). Опциональный поиск по имени/email.",
-            inputSchema: z.object({
-              search: z.string().optional(),
-              limit: z.number().int().min(1).max(200).default(50),
+          // Универсальный селектор по студии
+          const studioTable = (table: string, select: string, limit = 100) =>
+            supabase.from(table).select(select).eq("studio_id", studioId).limit(limit);
+
+          const tools = {
+            // ====== КЛИЕНТЫ ======
+            list_clients: tool({
+              description:
+                "Клиенты студии со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото.",
+              inputSchema: z.object({
+                search: z.string().optional().describe("Поиск по имени/фамилии/телефону/email"),
+                limit: z.number().int().min(1).max(500).default(100),
+              }),
+              execute: async ({ search, limit }) => {
+                let q = supabase
+                  .from("clients")
+                  .select(
+                    "id, full_name, first_name, last_name, phone, email, birthday, gender, notes, registration_date, last_visit_date, crm_link, photo_url, avatar_url, created_at",
+                  )
+                  .eq("studio_id", studioId)
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (search)
+                  q = q.or(
+                    `full_name.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`,
+                  );
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
             }),
-            execute: async ({ search, limit }) => {
-              let q = supabase
-                .from("profiles")
-                .select("id, full_name, email, phone, created_at")
-                .eq("studio_id", studioId)
-                .limit(limit);
-              if (search) q = q.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
-              const { data, error } = await q;
-              if (error) return { error: error.message };
-              return { count: data?.length ?? 0, rows: data ?? [] };
-            },
-          }),
-          list_trainers: tool({
-            description: "Список тренеров и сотрудников студии.",
-            inputSchema: z.object({ limit: z.number().int().min(1).max(200).default(100) }),
-            execute: async ({ limit }) => {
-              const { data, error } = await supabase
-                .from("employees")
-                .select("id, full_name, email, role_title, active, hourly_rate_cents")
-                .eq("studio_id", studioId)
-                .limit(limit);
-              if (error) return { error: error.message };
-              return { count: data?.length ?? 0, rows: data ?? [] };
-            },
-          }),
-          list_schedule: tool({
-            description: "Расписание занятий за период. Даты в ISO формате (YYYY-MM-DD).",
-            inputSchema: z.object({
-              from: z.string().describe("Начало периода, ISO дата"),
-              to: z.string().describe("Конец периода, ISO дата"),
+
+            // ====== ТРЕНЕРЫ / СОТРУДНИКИ ======
+            list_trainers: tool({
+              description: "Тренеры и админы студии: ФИО, фото, пол, специализация, био, соцсети, роль.",
+              inputSchema: z.object({ limit: z.number().int().min(1).max(200).default(100) }),
+              execute: async ({ limit }) => {
+                const { data, error } = await studioTable(
+                  "trainers",
+                  "id, full_name, photo_url, gender, specialization, bio, telegram, whatsapp, instagram, facebook, tiktok, role, created_at",
+                  limit,
+                );
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
             }),
-            execute: async ({ from, to }) => {
-              const { data, error } = await supabase
-                .from("class_sessions")
-                .select("id, starts_at, ends_at, capacity, booked_count, class_type_id, instructor_id")
-                .eq("studio_id", studioId)
-                .gte("starts_at", from)
-                .lte("starts_at", to)
-                .order("starts_at", { ascending: true })
-                .limit(500);
-              if (error) return { error: error.message };
-              return { count: data?.length ?? 0, rows: data ?? [] };
-            },
-          }),
-          list_memberships: tool({
-            description: "Абонементы клиентов (опциональный фильтр по статусу).",
-            inputSchema: z.object({
-              status: z.enum(["active", "paused", "cancelled", "expired"]).optional(),
-              limit: z.number().int().min(1).max(500).default(100),
+
+            // ====== ТРЕНИРОВКИ (шаблоны) ======
+            list_workouts: tool({
+              description: "Шаблоны тренировок студии (название, описание, тип, фото).",
+              inputSchema: z.object({ limit: z.number().int().min(1).max(200).default(100) }),
+              execute: async ({ limit }) => {
+                const { data, error } = await studioTable(
+                  "workouts",
+                  "id, name, description, type, photo_url, created_at",
+                  limit,
+                );
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
             }),
-            execute: async ({ status, limit }) => {
-              let q = supabase
-                .from("memberships")
-                .select("id, user_id, plan_name, status, started_at, ends_at, price_cents")
-                .eq("studio_id", studioId)
-                .limit(limit);
-              if (status) q = q.eq("status", status);
-              const { data, error } = await q;
-              if (error) return { error: error.message };
-              return { count: data?.length ?? 0, rows: data ?? [] };
-            },
-          }),
-          counts_overview: tool({
-            description: "Сводка: общее число клиентов, тренеров, активных абонементов, ближайших занятий.",
-            inputSchema: z.object({}),
-            execute: async () => {
-              const [clients, employees, mem, sessions] = await Promise.all([
-                supabase.from("profiles").select("id", { count: "exact", head: true }).eq("studio_id", studioId),
-                supabase.from("employees").select("id", { count: "exact", head: true }).eq("studio_id", studioId),
-                supabase
+
+            // ====== РАСПИСАНИЕ ======
+            list_schedule: tool({
+              description: "Расписание занятий за период. Даты в ISO (YYYY-MM-DD).",
+              inputSchema: z.object({
+                from: z.string(),
+                to: z.string(),
+                limit: z.number().int().min(1).max(1000).default(500),
+              }),
+              execute: async ({ from, to, limit }) => {
+                const { data, error } = await supabase
+                  .from("schedule_entries")
+                  .select("id, starts_at, ends_at, workout_id, capacity, booked_count")
+                  .eq("studio_id", studioId)
+                  .gte("starts_at", from)
+                  .lte("starts_at", to)
+                  .order("starts_at", { ascending: true })
+                  .limit(limit);
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== АБОНЕМЕНТЫ (шаблоны) ======
+            list_memberships: tool({
+              description:
+                "Шаблоны абонементов студии: название, описание, бонусы, число посещений, срок, цена, активность, обложка, признак 'для двоих'.",
+              inputSchema: z.object({
+                only_active: z.boolean().default(false),
+                for_couple: z.boolean().optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ only_active, for_couple, limit }) => {
+                let q = supabase
                   .from("memberships")
-                  .select("id", { count: "exact", head: true })
+                  .select(
+                    "id, name, description, benefits, visits_count, duration_days, auto_renew, installment_enabled, price, is_active, cover_url, for_couple, created_at",
+                  )
                   .eq("studio_id", studioId)
-                  .eq("status", "active"),
-                supabase
-                  .from("class_sessions")
-                  .select("id", { count: "exact", head: true })
+                  .limit(limit);
+                if (only_active) q = q.eq("is_active", true);
+                if (typeof for_couple === "boolean") q = q.eq("for_couple", for_couple);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== ВЫДАННЫЕ КЛИЕНТАМ АБОНЕМЕНТЫ ======
+            list_client_memberships: tool({
+              description: "Активные/прошлые абонементы клиентов (client_memberships).",
+              inputSchema: z.object({
+                status: z.enum(["active", "replaced", "expired", "cancelled"]).optional(),
+                client_id: z.string().uuid().optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ status, client_id, limit }) => {
+                let q = supabase
+                  .from("client_memberships")
+                  .select(
+                    "id, client_id, membership_id, sale_id, source, started_at, ends_at, visits_left, status, created_at",
+                  )
                   .eq("studio_id", studioId)
-                  .gte("starts_at", new Date().toISOString()),
-              ]);
-              return {
-                clients: clients.count ?? 0,
-                trainers: employees.count ?? 0,
-                active_memberships: mem.count ?? 0,
-                upcoming_sessions: sessions.count ?? 0,
-              };
-            },
-          }),
-        };
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (status) q = q.eq("status", status);
+                if (client_id) q = q.eq("client_id", client_id);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== ПРОДАЖИ ======
+            list_sales: tool({
+              description:
+                "Продажи абонементов: дата, сумма, первый взнос, рассрочка, клиент, абонемент, админ, комментарий. Фильтр по периоду (sold_at).",
+              inputSchema: z.object({
+                from: z.string().optional(),
+                to: z.string().optional(),
+                client_id: z.string().uuid().optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ from, to, client_id, limit }) => {
+                let q = supabase
+                  .from("sales")
+                  .select(
+                    "id, sold_at, client_id, membership_id, admin_id, admin_name, total_amount, down_payment_amount, remaining_installments, comment, created_at",
+                  )
+                  .eq("studio_id", studioId)
+                  .order("sold_at", { ascending: false })
+                  .limit(limit);
+                if (from) q = q.gte("sold_at", from);
+                if (to) q = q.lte("sold_at", to);
+                if (client_id) q = q.eq("client_id", client_id);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                const total = (data ?? []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
+                return { count: data?.length ?? 0, total_amount: total, rows: data ?? [] };
+              },
+            }),
+
+            // ====== КАССА ======
+            list_cash_operations: tool({
+              description: "Операции по кассе: приход/расход, категория, сумма, комментарий, дата.",
+              inputSchema: z.object({
+                kind: z.enum(["income", "expense"]).optional(),
+                from: z.string().optional(),
+                to: z.string().optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ kind, from, to, limit }) => {
+                let q = supabase
+                  .from("cash_operations")
+                  .select("id, kind, category, amount, comment, occurred_at, user_id, created_at")
+                  .eq("studio_id", studioId)
+                  .order("occurred_at", { ascending: false })
+                  .limit(limit);
+                if (kind) q = q.eq("kind", kind);
+                if (from) q = q.gte("occurred_at", from);
+                if (to) q = q.lte("occurred_at", to);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                const income = (data ?? [])
+                  .filter((r: any) => r.kind === "income")
+                  .reduce((s, r: any) => s + Number(r.amount || 0), 0);
+                const expense = (data ?? [])
+                  .filter((r: any) => r.kind === "expense")
+                  .reduce((s, r: any) => s + Number(r.amount || 0), 0);
+                return {
+                  count: data?.length ?? 0,
+                  total_income: income,
+                  total_expense: expense,
+                  balance: income - expense,
+                  rows: data ?? [],
+                };
+              },
+            }),
+
+            // ====== ПРОМОКОДЫ ======
+            list_promo_codes: tool({
+              description: "Промокоды студии: имя, код, скидка, лимит, использования, срок, активность.",
+              inputSchema: z.object({
+                only_active: z.boolean().default(false),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ only_active, limit }) => {
+                let q = supabase
+                  .from("promo_codes")
+                  .select(
+                    "id, name, code, expires_at, discount_type, discount_value, usage_limit, usage_count, description, is_active, created_at",
+                  )
+                  .eq("studio_id", studioId)
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (only_active) q = q.eq("is_active", true);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== НОВОСТИ ======
+            list_news: tool({
+              description: "Новости для мобильного приложения: заголовок, описание, кнопка, картинки.",
+              inputSchema: z.object({ limit: z.number().int().min(1).max(200).default(100) }),
+              execute: async ({ limit }) => {
+                const { data, error } = await studioTable(
+                  "news",
+                  "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, created_at, updated_at",
+                  limit,
+                );
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== УСЛУГИ ======
+            list_services: tool({
+              description: "Услуги мобильного приложения (карточки услуг).",
+              inputSchema: z.object({ limit: z.number().int().min(1).max(200).default(100) }),
+              execute: async ({ limit }) => {
+                const { data, error } = await studioTable(
+                  "services",
+                  "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, created_at",
+                  limit,
+                );
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== ПУШ-УВЕДОМЛЕНИЯ ======
+            list_push_notifications: tool({
+              description:
+                "Пуш-уведомления: заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
+              inputSchema: z.object({
+                status: z.enum(["draft", "scheduled", "sent"]).optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ status, limit }) => {
+                let q = supabase
+                  .from("push_notifications")
+                  .select(
+                    "id, title, message, action_url, segments, status, scheduled_at, sent_at, sent_count, delivered_count, read_count, created_at, updated_at",
+                  )
+                  .eq("studio_id", studioId)
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (status) q = q.eq("status", status);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== ОБРАТНАЯ СВЯЗЬ ======
+            list_feedback: tool({
+              description:
+                "Обратная связь от клиентов: тема, сообщение, настроение, контакт, статус (pending/resolved).",
+              inputSchema: z.object({
+                status: z.enum(["pending", "resolved"]).optional(),
+                topic: z
+                  .enum(["training", "staff", "cleanliness", "app", "idea", "thanks", "other"])
+                  .optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ status, topic, limit }) => {
+                let q = supabase
+                  .from("feedback")
+                  .select(
+                    "id, topic, message, mood, client_name, client_contact, status, resolved_by_name, resolved_at, resolution_comment, created_at",
+                  )
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (status) q = q.eq("status", status);
+                if (topic) q = q.eq("topic", topic);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== NPS ======
+            list_nps: tool({
+              description: "NPS-ответы: оценка (0-10), тип опроса, комментарий, обработан ли.",
+              inputSchema: z.object({
+                survey_type: z
+                  .enum(["first_lessons", "first_month", "before_renewal", "after_return", "general"])
+                  .optional(),
+                handled: z.boolean().optional(),
+                from: z.string().optional(),
+                to: z.string().optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ survey_type, handled, from, to, limit }) => {
+                let q = supabase
+                  .from("nps_responses")
+                  .select("id, score, client_name, comment, language, survey_type, handled, created_at")
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (survey_type) q = q.eq("survey_type", survey_type);
+                if (typeof handled === "boolean") q = q.eq("handled", handled);
+                if (from) q = q.gte("created_at", from);
+                if (to) q = q.lte("created_at", to);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                const rows = data ?? [];
+                const promoters = rows.filter((r: any) => r.score >= 9).length;
+                const detractors = rows.filter((r: any) => r.score <= 6).length;
+                const nps = rows.length
+                  ? Math.round(((promoters - detractors) / rows.length) * 100)
+                  : null;
+                return { count: rows.length, nps_score: nps, promoters, detractors, rows };
+              },
+            }),
+
+            // ====== ИСТОРИЯ ЗАПИСЕЙ ======
+            list_bookings_log: tool({
+              description:
+                "История записей клиентов на тренировки: имя клиента, тренировка, тип, время, статус.",
+              inputSchema: z.object({
+                from: z.string().optional(),
+                to: z.string().optional(),
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ from, to, limit }) => {
+                let q = supabase
+                  .from("bookings_log")
+                  .select("*")
+                  .eq("studio_id", studioId)
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (from) q = q.gte("created_at", from);
+                if (to) q = q.lte("created_at", to);
+                const { data, error } = await q;
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== АКТИВНЫЕ БРОНИ ======
+            list_schedule_bookings: tool({
+              description: "Брони в расписании (schedule_bookings).",
+              inputSchema: z.object({
+                limit: z.number().int().min(1).max(500).default(200),
+              }),
+              execute: async ({ limit }) => {
+                const { data, error } = await supabase
+                  .from("schedule_bookings")
+                  .select("id, entry_id, user_id, status, created_at, cancelled_at")
+                  .eq("studio_id", studioId)
+                  .order("created_at", { ascending: false })
+                  .limit(limit);
+                if (error) return { error: error.message };
+                return { count: data?.length ?? 0, rows: data ?? [] };
+              },
+            }),
+
+            // ====== НАСТРОЙКИ КЛУБА ======
+            get_club_settings: tool({
+              description: "Глобальные настройки клуба (ссылки, минуты для отмены брони).",
+              inputSchema: z.object({}),
+              execute: async () => {
+                const { data, error } = await supabase.from("club_settings").select("*").maybeSingle();
+                if (error) return { error: error.message };
+                return data ?? {};
+              },
+            }),
+
+            // ====== СВОДКА ======
+            counts_overview: tool({
+              description:
+                "Сводка по студии: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, новостей, услуг, пушей, фидбэка, ответов NPS.",
+              inputSchema: z.object({}),
+              execute: async () => {
+                const head = { count: "exact" as const, head: true };
+                const since30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+                const [
+                  clients,
+                  trainers,
+                  memberships,
+                  activeCM,
+                  sales30,
+                  cash,
+                  news,
+                  services,
+                  pushSent,
+                  feedbackPending,
+                  nps,
+                  workouts,
+                ] = await Promise.all([
+                  supabase.from("clients").select("id", head).eq("studio_id", studioId),
+                  supabase.from("trainers").select("id", head).eq("studio_id", studioId),
+                  supabase.from("memberships").select("id", head).eq("studio_id", studioId),
+                  supabase
+                    .from("client_memberships")
+                    .select("id", head)
+                    .eq("studio_id", studioId)
+                    .eq("status", "active"),
+                  supabase
+                    .from("sales")
+                    .select("id", head)
+                    .eq("studio_id", studioId)
+                    .gte("sold_at", since30),
+                  supabase.from("cash_operations").select("id", head).eq("studio_id", studioId),
+                  supabase.from("news").select("id", head).eq("studio_id", studioId),
+                  supabase.from("services").select("id", head).eq("studio_id", studioId),
+                  supabase
+                    .from("push_notifications")
+                    .select("id", head)
+                    .eq("studio_id", studioId)
+                    .eq("status", "sent"),
+                  supabase.from("feedback").select("id", head).eq("status", "pending"),
+                  supabase.from("nps_responses").select("id", head),
+                  supabase.from("workouts").select("id", head).eq("studio_id", studioId),
+                ]);
+                return {
+                  clients: clients.count ?? 0,
+                  trainers: trainers.count ?? 0,
+                  workouts: workouts.count ?? 0,
+                  membership_plans: memberships.count ?? 0,
+                  active_client_memberships: activeCM.count ?? 0,
+                  sales_last_30d: sales30.count ?? 0,
+                  cash_operations: cash.count ?? 0,
+                  news: news.count ?? 0,
+                  services: services.count ?? 0,
+                  push_sent: pushSent.count ?? 0,
+                  feedback_pending: feedbackPending.count ?? 0,
+                  nps_responses: nps.count ?? 0,
+                };
+              },
+            }),
+          };
 
           const gateway = createLovableAiGatewayProvider(key);
           const result = streamText({
-          model: gateway("google/gemini-3-flash-preview"),
-          system:
-            "Ты — Kate, AI-ассистент админ-панели фитнес-студии CLUB 40. " +
-            "Отвечай на русском, кратко и по делу. У тебя есть инструменты для запросов к БД: " +
-            "клиенты, тренеры, расписание, абонементы, сводка. Используй их когда нужно. " +
-            "Если данных нет — честно скажи. Никогда не выдумывай цифры. " +
-            "Текущая дата: " + new Date().toISOString().slice(0, 10) + ".",
-          messages: await convertToModelMessages(messages as UIMessage[]),
-          tools,
-          stopWhen: stepCountIs(50),
-          onError: ({ error }) => console.error("[api/chat] AI stream error", error),
+            model: gateway("google/gemini-3-flash-preview"),
+            system:
+              "Ты — Kate, AI-ассистент админ-панели фитнес-студии CLUB 40. " +
+              "Отвечай на русском, кратко и по делу, используя markdown. " +
+              "У тебя есть инструменты для запросов к БД ко ВСЕМ разделам портала: " +
+              "клиенты, тренеры, тренировки, расписание, шаблоны абонементов, выданные абонементы клиентам, " +
+              "продажи, касса, промокоды, новости, услуги, пуш-уведомления, обратная связь, NPS, " +
+              "история записей, активные брони, настройки клуба и сводка. " +
+              "Активно вызывай инструменты, чтобы получить точные данные. Никогда не выдумывай цифры. " +
+              "Если данных нет — честно скажи. " +
+              "Текущая дата: " +
+              new Date().toISOString().slice(0, 10) +
+              ".",
+            messages: await convertToModelMessages(messages as UIMessage[]),
+            tools,
+            stopWhen: stepCountIs(50),
+            onError: ({ error }) => console.error("[api/chat] AI stream error", error),
           });
 
           return result.toUIMessageStreamResponse({
