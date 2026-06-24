@@ -95,6 +95,9 @@ function SchedulePage() {
   const clubSettings = useClubSettings();
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [slideWidth, setSlideWidth] = useState(0);
+  const programmaticScrollRef = useRef(false);
 
   useEffect(() => {
     if (activeTab !== "class") return;
