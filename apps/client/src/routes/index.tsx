@@ -449,7 +449,7 @@ function HomePage() {
                           <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]">
                             <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                             <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                              <div className="text-base font-bold italic tabular-nums leading-tight text-center">
+                              <div className="text-base font-black italic tabular-nums leading-tight text-center">
                                 {timeLabel}
                               </div>
                             </div>
