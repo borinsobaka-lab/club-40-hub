@@ -276,6 +276,7 @@ function ProfilePage() {
             Выйти
           </Button>
         </section>
+        </div>
 
         {client && (
           <EditProfileSheet
