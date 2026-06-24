@@ -364,7 +364,7 @@ function HomePage() {
         <div className="bg-muted">
 
         {/* Тренировки */}
-        <section className="bg-background rounded-b-[28px] pb-5">
+        <section className="bg-background rounded-b-[20px] pb-5">
           <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
             Тренировки
           </h2>
