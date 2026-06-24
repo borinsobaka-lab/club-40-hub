@@ -551,7 +551,7 @@ function SchedulePage() {
   );
 }
 
-type TrainerRow = { id: string; full_name: string | null; photo_url: string | null };
+type TrainerRow = { id: string; full_name: string | null; avatar_url: string | null; bio: string | null };
 
 const PERSONAL_GOALS = [
   { value: "weight_loss", label: "Снижение веса" },
@@ -581,11 +581,15 @@ function PersonalRequestForm() {
     let cancelled = false;
     (async () => {
       const { data } = await (supabase as any)
-        .from("trainers")
-        .select("id, full_name, photo_url")
-        .order("full_name", { ascending: true });
+        .from("user_roles")
+        .select("user_id, client:clients!inner(id, full_name, avatar_url, bio)")
+        .eq("role", "trainer");
       if (cancelled) return;
-      setTrainers((data as TrainerRow[] | null) ?? []);
+      const rows = ((data ?? []) as { client: TrainerRow | null }[])
+        .map((r) => r.client)
+        .filter((c): c is TrainerRow => !!c)
+        .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "ru"));
+      setTrainers(rows);
     })();
     return () => {
       cancelled = true;
@@ -610,8 +614,8 @@ function PersonalRequestForm() {
       <div className="space-y-2">
         <Label className="text-sm font-semibold">Цель тренировок</Label>
         <Select value={goal} onValueChange={setGoal}>
-          <SelectTrigger className="h-11">
-            <SelectValue placeholder="Зачем нужны персональные?" />
+          <SelectTrigger className="h-11 text-base shadow-none">
+            <SelectValue placeholder="Ваш запрос к тренеру" />
           </SelectTrigger>
           <SelectContent>
             {PERSONAL_GOALS.map((g) => (
@@ -624,11 +628,11 @@ function PersonalRequestForm() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm font-semibold">Тренер</Label>
+        <Label className="text-sm font-semibold">Выберите тренера</Label>
         {trainers === null ? (
-          <div className="grid grid-cols-3 gap-3">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-28 rounded-2xl bg-card animate-pulse" />
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-20 rounded-2xl bg-card animate-pulse" />
             ))}
           </div>
         ) : trainers.length === 0 ? (
@@ -636,10 +640,10 @@ function PersonalRequestForm() {
             Список тренеров скоро появится
           </Card>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-2">
             {trainers.map((t) => {
-              const photo = t.photo_url
-                ? supabase.storage.from("trainer-photos").getPublicUrl(t.photo_url).data.publicUrl
+              const photo = t.avatar_url
+                ? supabase.storage.from("avatars").getPublicUrl(t.avatar_url).data.publicUrl
                 : null;
               const active = trainerId === t.id;
               return (
@@ -647,20 +651,27 @@ function PersonalRequestForm() {
                   key={t.id}
                   type="button"
                   onClick={() => setTrainerId(t.id)}
-                  className={`flex flex-col items-center gap-2 p-2 rounded-2xl border transition-all ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
                     active
                       ? "border-[#FFE500] bg-[#FFE500]/10 ring-2 ring-[#FFE500]"
-                      : "border-border bg-card active:scale-[0.97]"
+                      : "border-border bg-card active:scale-[0.99]"
                   }`}
                 >
-                  <SquircleAvatar size={64}>
+                  <SquircleAvatar size={56} className="shrink-0">
                     {photo && <SquircleAvatarImage src={photo} alt={t.full_name ?? ""} />}
                     <SquircleAvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                       {trainerInitials(t.full_name)}
                     </SquircleAvatarFallback>
                   </SquircleAvatar>
-                  <div className="text-xs font-medium leading-tight text-center line-clamp-2">
-                    {t.full_name ?? "Тренер"}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold truncate">
+                      {t.full_name ?? "Тренер"}
+                    </div>
+                    {t.bio && (
+                      <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                        {t.bio}
+                      </div>
+                    )}
                   </div>
                 </button>
               );
@@ -678,6 +689,7 @@ function PersonalRequestForm() {
           placeholder="Расскажите подробнее о ваших пожеланиях, удобном времени и опыте"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
+          className="text-base shadow-none"
         />
       </div>
 
@@ -685,10 +697,11 @@ function PersonalRequestForm() {
         type="button"
         onClick={onSubmit}
         disabled={!canSubmit}
-        className="w-full h-12 text-base font-bold"
+        className="w-full text-sm font-bold"
       >
         {submitting ? "Отправляем…" : "Отправить заявку"}
       </Button>
     </div>
   );
 }
+
