@@ -665,7 +665,7 @@ function StepBody({
             value={birthYear || undefined}
             onValueChange={(v) => onChange({ birth_year: v })}
           >
-            <SelectTrigger id="byear">
+            <SelectTrigger id="byear" className="h-12">
               <SelectValue placeholder="Выберите год" />
             </SelectTrigger>
             <SelectContent className="max-h-72">
