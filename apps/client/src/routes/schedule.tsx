@@ -208,7 +208,6 @@ function SchedulePage() {
     }
   }
 
-  const activeDay = days[activeIdx];
   const [activeType, setActiveType] = useState<string>("all");
 
   const availableTypes = useMemo(() => {
@@ -220,12 +219,19 @@ function SchedulePage() {
     return TYPE_ORDER.filter((t) => set.has(t));
   }, [entries]);
 
-  const dayEntries = entries.filter((e) => {
-    const d = startOfDay(new Date(e.starts_at));
-    if (d.getTime() !== activeDay.getTime()) return false;
-    if (activeType === "all") return true;
-    return (e.workout?.type?.toLowerCase().trim() ?? "") === activeType;
-  });
+  const entriesByDay = useMemo(
+    () =>
+      days.map((day) =>
+        entries.filter((e) => {
+          const d = startOfDay(new Date(e.starts_at));
+          if (d.getTime() !== day.getTime()) return false;
+          if (activeType === "all") return true;
+          return (e.workout?.type?.toLowerCase().trim() ?? "") === activeType;
+        }),
+      ),
+    [days, entries, activeType],
+  );
+
 
   const typeFilters = [
     { key: "all", label: "Все" },
