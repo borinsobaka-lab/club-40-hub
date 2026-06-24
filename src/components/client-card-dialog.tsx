@@ -191,6 +191,7 @@ export function ClientCardDialog({
   const [loadingSales, setLoadingSales] = useState(false);
   const [active, setActive] = useState<ActiveCM | null>(null);
   const [loadingActive, setLoadingActive] = useState(false);
+  const [allMemberships, setAllMemberships] = useState<MembershipLite[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
