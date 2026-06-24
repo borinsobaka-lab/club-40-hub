@@ -105,6 +105,7 @@ function HomePage() {
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const clubSettings = useClubSettings();
 
   useEffect(() => {
     if (!user) {
