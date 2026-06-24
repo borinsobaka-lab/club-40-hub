@@ -113,6 +113,7 @@ export const Phone = adapt(Solar.Phone, "Phone");
 export const Plus = adapt(Solar.AddCircle, "Plus");
 export const Receipt = adapt(Solar.Bill, "Receipt");
 export const RefreshCw = adapt(Solar.Refresh, "RefreshCw");
+export const RefreshCwOff = adapt(Solar.RefreshCircle ?? Solar.Refresh, "RefreshCwOff");
 export const Save = adapt(Solar.Diskette, "Save");
 export const Search = adapt(Solar.Magnifer, "Search");
 export const Send = adapt(Solar.Plain, "Send");
