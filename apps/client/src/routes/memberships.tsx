@@ -609,9 +609,10 @@ function MembershipsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={purchasing}>Отмена</AlertDialogCancel>
+            <AlertDialogCancel disabled={purchasing} className="font-bold">Отмена</AlertDialogCancel>
             <AlertDialogAction
               disabled={purchasing}
+              className="font-bold"
               onClick={(e) => {
                 e.preventDefault();
                 handlePurchase();
