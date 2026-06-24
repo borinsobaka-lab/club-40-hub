@@ -78,6 +78,7 @@ export const ArrowLeft = adapt(Solar.ArrowLeft, "ArrowLeft");
 export const ArrowRight = adapt(Solar.ArrowRight, "ArrowRight");
 export const ArrowUp = adapt(Solar.ArrowUp, "ArrowUp");
 export const ArrowDown = adapt(Solar.ArrowDown, "ArrowDown");
+export const BarChart3 = adapt(Solar.ChartSquare, "BarChart3");
 export const Bell = adapt(Solar.Bell, "Bell");
 export const Calendar = adapt(Solar.Calendar, "Calendar");
 export const CalendarIcon = Calendar;
