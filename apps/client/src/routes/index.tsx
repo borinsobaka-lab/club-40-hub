@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
+import { useClubSettings } from "@/hooks/use-club-settings";
 
 import { NewsDrawer } from "@/components/news-drawer";
 import { ServiceDrawer } from "@/components/service-drawer";
