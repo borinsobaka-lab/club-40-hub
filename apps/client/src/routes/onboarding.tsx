@@ -203,7 +203,7 @@ function OnboardingPage() {
       <Shell>
         <div className="flex-1 flex flex-col justify-center px-6 text-center">
           <h1 className="text-3xl font-black italic uppercase leading-tight">
-            Пара вопросов — и мы настроим тренировки под вас
+            Пара вопросов — и мы подстроим тренировки под вас
           </h1>
           <p className="mt-4 text-base text-muted-foreground">
             Это займёт около 2 минут. Поможет тренеру подобрать правильную нагрузку с первого занятия.
@@ -226,7 +226,7 @@ function OnboardingPage() {
             <CheckCircle className="h-9 w-9 text-[#1B1C1F]" weight="BoldDuotone" />
           </div>
           <h1 className="text-2xl font-black italic uppercase leading-tight">
-            Готово. Настроим ваше первое занятие под вас.
+            Готово. Подготовим ваше первое занятие под вас.
           </h1>
           <p className="mt-3 text-base text-muted-foreground">До встречи в студии.</p>
         </div>
@@ -239,7 +239,7 @@ function OnboardingPage() {
             {saving ? (
               <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
             ) : (
-              "Записаться на первую тренировку"
+              "Начать"
             )}
           </Button>
         </div>
@@ -535,7 +535,7 @@ function StepGroup({
 }) {
   return (
     <div>
-      <StepTitle title="Тренировались в групповом формате (HIIT, функциональные, кроссфит)?" />
+      <StepTitle title="Тренировались в групповом формате?" />
       <div className="space-y-2">
         <OptionButton active={value === true} onClick={() => onChange(true)}>
           Да, формат знаком
