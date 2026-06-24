@@ -467,7 +467,7 @@ export function StatsSection() {
             />
           </div>
 
-          <p className="px-4 mt-3 text-[11px] text-muted-foreground/80">
+          <p className="px-4 mt-3 text-center text-[11px] text-muted-foreground/80">
             <CaloriesInfoLink />
           </p>
         </>
