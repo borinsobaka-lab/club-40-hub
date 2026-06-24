@@ -128,6 +128,8 @@ export type Database = {
       news: {
         Row: {
           banner_url: string | null
+          button_text: string | null
+          button_url: string | null
           created_at: string
           description: string | null
           full_text: string | null
@@ -141,6 +143,8 @@ export type Database = {
         }
         Insert: {
           banner_url?: string | null
+          button_text?: string | null
+          button_url?: string | null
           created_at?: string
           description?: string | null
           full_text?: string | null
@@ -154,6 +158,8 @@ export type Database = {
         }
         Update: {
           banner_url?: string | null
+          button_text?: string | null
+          button_url?: string | null
           created_at?: string
           description?: string | null
           full_text?: string | null
