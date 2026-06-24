@@ -204,7 +204,7 @@ export function ClientCardDialog({
 }) {
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [loadingSales, setLoadingSales] = useState(false);
-  const [active, setActive] = useState<ActiveCM | null>(null);
+  const [active, setActive] = useState<ActiveCMWithStatus | null>(null);
   const [loadingActive, setLoadingActive] = useState(false);
   const [allMemberships, setAllMemberships] = useState<MembershipLite[]>([]);
   const [editOpen, setEditOpen] = useState(false);
