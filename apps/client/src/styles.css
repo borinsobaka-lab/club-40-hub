@@ -293,6 +293,17 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
 }
 
+[data-sonner-toaster][data-sonner-theme='dark'] {
+  --normal-bg: rgba(27, 28, 31, 0.42);
+  --normal-border: rgba(255, 255, 255, 0.08);
+  --normal-text: #ffffff;
+}
+
+[data-sonner-toast][data-styled='true'] {
+  backdrop-filter: blur(34px) saturate(140%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24) !important;
+}
+
 /* Animated yellow gradient blobs for dark header zone */
 .gradient-blobs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; opacity: 0.65; }
 .gradient-blobs > span:nth-child(1) {
