@@ -421,7 +421,7 @@ function SchedulePage() {
                               >
                                 <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                                 <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                                  <div className="text-base font-bold italic tabular-nums leading-tight text-center">
+                                  <div className="text-base font-black italic tabular-nums leading-tight text-center">
                                     {fmtTime(c.starts_at)}
                                   </div>
                                 </div>
