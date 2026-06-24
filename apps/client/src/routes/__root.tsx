@@ -269,7 +269,7 @@ function AppShell() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
       <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
-        <main className="flex-1 min-h-0 overflow-hidden relative">
+        <main key={pathname} className="flex-1 min-h-0 overflow-hidden relative">
           <Outlet />
           {loading && <LoadingOverlay />}
         </main>
