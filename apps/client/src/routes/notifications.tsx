@@ -19,6 +19,7 @@ type Notification = {
   body: string;
   receivedAt: string; // ISO
   read: boolean;
+  link?: string;
 };
 
 const MOCK: Notification[] = [
@@ -37,11 +38,27 @@ const MOCK: Notification[] = [
     read: false,
   },
   {
+    id: "5",
+    title: "🎁 Партнёрская акция",
+    body: "Скидка 20% на спортивное питание для участников CLUB 40.\nПодробности и промокод — на сайте партнёра.",
+    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
+    read: false,
+    link: "https://example.com/promo",
+  },
+  {
     id: "3",
     title: "💳 Абонемент скоро закончится",
     body: "Осталось 3 занятия по текущему абонементу.\nПродли его в разделе «Абонементы», чтобы не прерывать тренировки.",
     receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
     read: true,
+  },
+  {
+    id: "6",
+    title: "📺 Новое видео на YouTube",
+    body: "Разбор техники приседаний от тренера клуба.\nСмотрите по ссылке ниже.",
+    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
+    read: true,
+    link: "https://youtube.com",
   },
   {
     id: "4",
