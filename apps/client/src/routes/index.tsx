@@ -462,6 +462,8 @@ function HomePage() {
 
         </section>
 
+        <SectionDivider />
+
         {/* Услуги */}
         <section className="-mx-4">
           <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
