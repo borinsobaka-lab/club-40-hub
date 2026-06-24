@@ -510,8 +510,8 @@ function EditProfileSheet({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="relative group focus:outline-none focus:ring-2 focus:ring-primary"
-              style={{ width: 96, height: 96, clipPath: squircleClipPath(96), WebkitClipPath: squircleClipPath(96) }}
+              className="relative focus:outline-none disabled:opacity-70"
+              style={{ width: 96, height: 96 }}
               aria-label="Загрузить аватар"
             >
               <SquircleAvatar size={96}>
@@ -520,16 +520,17 @@ function EditProfileSheet({
                   {initials(displayName)}
                 </SquircleAvatarFallback>
               </SquircleAvatar>
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity group-hover:bg-black/50">
-                {uploadingAvatar ? (
+              {uploadingAvatar && (
+                <div
+                  className="absolute inset-0 bg-black/30 flex items-center justify-center"
+                  style={{ clipPath: squircleClipPath(96), WebkitClipPath: squircleClipPath(96) }}
+                >
                   <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
-                ) : (
-                  <Camera className="h-6 w-6 text-white drop-shadow" />
-                )}
-              </div>
-              <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
+                </div>
+              )}
+              <span className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-white text-foreground flex items-center justify-center border-2 border-background">
                 <Camera className="h-3.5 w-3.5" />
-              </div>
+              </span>
             </button>
             <input
               ref={fileInputRef}
