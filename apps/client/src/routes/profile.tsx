@@ -631,13 +631,13 @@ function EditProfileSheet({
         <SheetFooter className="flex-row gap-2">
           <Button
             variant="outline"
-            className="flex-1 shadow-none"
+            className="flex-1 shadow-none font-bold"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
             Отмена
           </Button>
-          <Button className="flex-1" onClick={handleSave} disabled={saving}>
+          <Button className="flex-1 font-bold" onClick={handleSave} disabled={saving}>
             {saving && <Refresh className="h-4 w-4 mr-2 animate-spin" weight="BoldDuotone" />}
             Сохранить
           </Button>
