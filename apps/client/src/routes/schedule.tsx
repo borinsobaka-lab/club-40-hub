@@ -138,8 +138,35 @@ function SchedulePage() {
     const btn = dayBtnRefs.current[activeIdx];
     if (!container || !btn) return;
     const padLeft = parseFloat(getComputedStyle(container).paddingLeft) || 0;
-    container.scrollLeft = Math.max(0, btn.offsetLeft - padLeft);
-  }, []);
+    container.scrollTo({
+      left: Math.max(0, btn.offsetLeft - padLeft),
+      behavior: "smooth",
+    });
+  }, [activeIdx]);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const update = () => setSlideWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activeTab]);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || !slideWidth) return;
+    const target = activeIdx * slideWidth;
+    if (Math.abs(el.scrollLeft - target) > 2) {
+      programmaticScrollRef.current = true;
+      el.scrollTo({ left: target, behavior: "smooth" });
+      window.setTimeout(() => {
+        programmaticScrollRef.current = false;
+      }, 400);
+    }
+  }, [activeIdx, slideWidth]);
+
 
   async function toggleBooking(entryId: string) {
     if (pendingId) return;
