@@ -262,6 +262,7 @@ function ProfilePage() {
               right={<MastercardBadge />}
             />
             <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
+            <ProfileLink icon={<Global className="h-5 w-5" weight="BoldDuotone" />} label="Язык" sublabel="Русский" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="О приложении" />
           </ul>
         </section>
