@@ -437,6 +437,7 @@ function MembershipDialog({
       price: price ? Number(price) : 0,
       is_active: isActive,
       cover_url: coverUrl,
+      for_couple: forCouple,
     };
     const { error } = isEditing
       ? await supabase.from("memberships").update(payload).eq("id", membership!.id)
