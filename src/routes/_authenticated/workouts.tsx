@@ -218,19 +218,20 @@ function WorkoutsPage() {
                     <TableHead className="w-[160px]">Тип</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead className="w-[120px]">Вместимость</TableHead>
+                    <TableHead className="w-[90px]">MET</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         {workouts.length === 0
                           ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
                           : "Ничего не найдено по выбранным фильтрам."}
@@ -251,6 +252,9 @@ function WorkoutsPage() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {w.capacity ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-sm tabular-nums text-muted-foreground">
+                          {w.met_value != null ? Number(w.met_value).toFixed(1) : "—"}
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">

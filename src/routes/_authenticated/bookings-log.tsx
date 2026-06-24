@@ -52,6 +52,10 @@ type LogRow = {
   booked_at: string;
   cancelled_at: string | null;
   completed_at: string | null;
+  met_value: number | null;
+  weight_at_time: number | null;
+  duration_min: number | null;
+  calories: number | null;
 };
 
 type BookingStatus = LogRow["status"];
@@ -247,6 +251,10 @@ function BookingsLogPage() {
           booked_at: booking.created_at,
           cancelled_at: booking.cancelled_at,
           completed_at: null,
+          met_value: null,
+          weight_at_time: null,
+          duration_min: null,
+          calories: null,
         };
       })
       .filter((row): row is LogRow => Boolean(row));
@@ -338,20 +346,24 @@ function BookingsLogPage() {
                     <TableHead>Тренировка</TableHead>
                     <TableHead className="w-[160px]">Дата и время</TableHead>
                     <TableHead className="w-[140px]">Статус</TableHead>
+                    <TableHead className="w-[70px] text-right">MET</TableHead>
+                    <TableHead className="w-[80px] text-right">Вес, кг</TableHead>
+                    <TableHead className="w-[80px] text-right">Длит., мин</TableHead>
+                    <TableHead className="w-[90px] text-right">Ккал</TableHead>
                     <TableHead className="w-[160px]">Отменена</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center">
+                      <TableCell colSpan={10} className="py-8 text-center">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={10}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         Записей не найдено.
@@ -396,6 +408,18 @@ function BookingsLogPage() {
                           </TableCell>
                           <TableCell>
                             <StatusBadge value={r.status} />
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.met_value != null ? Number(r.met_value).toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.weight_at_time != null ? Number(r.weight_at_time).toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.duration_min ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.calories ?? "—"}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {fmt(r.cancelled_at)}
