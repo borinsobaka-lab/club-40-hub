@@ -467,7 +467,7 @@ export function StatsSection() {
             />
           </div>
 
-          <p className="px-4 mt-3 text-[11px] text-muted-foreground/80">
+          <p className="px-4 mt-3 text-center text-[11px] text-muted-foreground/80">
             <CaloriesInfoLink />
           </p>
         </>
@@ -482,7 +482,7 @@ function CaloriesInfoLink() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="underline underline-offset-2 hover:text-foreground transition-colors"
+          className="hover:text-foreground transition-colors"
         >
           Как считаются калории?
         </button>
