@@ -45,6 +45,7 @@ type PushNotification = {
   studio_id: string;
   title: string;
   message: string | null;
+  action_url: string | null;
   segments: Segment[];
   scheduled_at: string | null;
   sent_at: string | null;
