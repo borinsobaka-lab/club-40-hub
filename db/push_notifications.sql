@@ -5,6 +5,8 @@ create table if not exists public.push_notifications (
   studio_id uuid not null references public.studios(id) on delete cascade,
   title text not null,
   message text,
+  -- Если указана, в мобильном приложении показывается кнопка «Перейти»
+  action_url text,
   -- Segments: any subset of {'chk','bchk','pchk'} or {'all'}
   segments text[] not null default '{all}',
   scheduled_at timestamptz,
@@ -16,6 +18,8 @@ create table if not exists public.push_notifications (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.push_notifications add column if not exists action_url text;
 
 create index if not exists push_notifications_studio_created_idx
   on public.push_notifications(studio_id, created_at desc);
