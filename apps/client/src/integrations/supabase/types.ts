@@ -17,6 +17,7 @@ export type Database = {
       clients: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           birthday: string | null
           created_at: string
           email: string | null
@@ -31,6 +32,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           birthday?: string | null
           created_at?: string
           email?: string | null
@@ -45,6 +47,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           birthday?: string | null
           created_at?: string
           email?: string | null
@@ -273,6 +276,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       workouts: {
         Row: {
           capacity: number | null
@@ -305,8 +329,16 @@ export type Database = {
       book_schedule_entry: { Args: { p_entry_id: string }; Returns: Json }
       cancel_schedule_booking: { Args: { p_entry_id: string }; Returns: Json }
       get_my_stats: { Args: never; Returns: Json }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "trainer" | "member"
       booking_status: "booked" | "cancelled"
     }
     CompositeTypes: {
@@ -435,6 +467,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "trainer", "member"],
       booking_status: ["booked", "cancelled"],
     },
   },
