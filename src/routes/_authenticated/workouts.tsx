@@ -301,6 +301,7 @@ function WorkoutDialog({
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [capacity, setCapacity] = useState<string>("");
+  const [metValue, setMetValue] = useState<string>("");
   const [type, setType] = useState<DayType | typeof NONE_TYPE>(NONE_TYPE);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
