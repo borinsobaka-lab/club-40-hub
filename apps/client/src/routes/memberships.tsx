@@ -310,8 +310,8 @@ function MembershipsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="w-6 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
-                  <ChevronRight className="h-5 w-5 text-white drop-shadow-md" />
+                <div className="w-6 flex items-center justify-center bg-[#F4F4F5]">
+                  <ChevronRight className="h-5 w-5 text-[#66676D]" />
                 </div>
               </div>
             </Card>
