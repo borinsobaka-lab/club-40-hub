@@ -110,7 +110,6 @@ function SchedulePage() {
   );
 
   useEffect(() => {
-    if (activeTab !== "class") return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -141,7 +140,7 @@ function SchedulePage() {
     return () => {
       cancelled = true;
     };
-  }, [today, activeTab]);
+  }, [today]);
 
   useEffect(() => {
     const container = daysContainerRef.current;
