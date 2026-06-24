@@ -551,7 +551,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="last_name">Фамилия</Label>
-            <Input
+            <Input className="shadow-none"
               id="last_name"
               value={form.last_name}
               onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
@@ -562,7 +562,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="first_name">Имя</Label>
-            <Input
+            <Input className="shadow-none"
               id="first_name"
               value={form.first_name}
               onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
@@ -573,7 +573,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="phone">Телефон</Label>
-            <Input
+            <Input className="shadow-none"
               id="phone"
               type="tel"
               inputMode="tel"
@@ -587,7 +587,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input
+            <Input className="shadow-none"
               id="email"
               type="email"
               inputMode="email"
@@ -600,7 +600,7 @@ function EditProfileSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="birthday">Дата рождения</Label>
-            <Input
+            <Input className="shadow-none"
               id="birthday"
               type="date"
               value={form.birthday}
