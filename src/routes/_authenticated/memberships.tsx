@@ -223,6 +223,7 @@ function MembershipsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                  <TableHead className="w-[80px]">Обложка</TableHead>
                   <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Преимущества</TableHead>
