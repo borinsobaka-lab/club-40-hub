@@ -661,8 +661,8 @@ function PersonalRequestForm() {
         ) : (
           <div className="space-y-2">
             {trainers.map((t) => {
-              const photo = t.avatar_url
-                ? supabase.storage.from("avatars").getPublicUrl(t.avatar_url).data.publicUrl
+              const photo = t.photo_url
+                ? supabase.storage.from("trainer-photos").getPublicUrl(t.photo_url).data.publicUrl
                 : null;
               const active = trainerId === t.id;
               return (
