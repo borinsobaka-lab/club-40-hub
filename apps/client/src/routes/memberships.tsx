@@ -332,7 +332,7 @@ function MembershipsPage() {
 
         {!loading && user && !error && memberships.length > 0 && (
           <div className="w-full">
-            <div className="flex gap-6 overflow-x-auto no-scrollbar mb-4">
+            <div className="-mx-4 px-4 flex gap-6 overflow-x-auto no-scrollbar mb-4">
               {[
                 { key: "unlimited", label: "Безлимитные" },
                 { key: "packages", label: "Пакеты тренировок" },
@@ -496,20 +496,18 @@ function MembershipCard({
     <Card className="shrink-0 w-[85%] snap-start overflow-hidden rounded-xl p-0 flex flex-col">
       {/* Top: cover (image fills area; no overlay when image present) */}
       <div
-        ref={onTopRef}
-        className="relative p-5 flex flex-col flex-1"
+        className="relative p-5 flex flex-col"
         style={
           cover
             ? {
                 backgroundImage: `url(${cover})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
-                minHeight: topMinHeight,
               }
-            : { minHeight: topMinHeight }
+            : undefined
         }
       >
-        <div className="flex-1">
+        <div ref={onTopRef} style={{ minHeight: topMinHeight }}>
           <h3 className="text-xl font-bold leading-tight">{membership.name}</h3>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-4xl font-black tracking-tight">
