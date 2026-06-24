@@ -409,6 +409,18 @@ function BookingsLogPage() {
                           <TableCell>
                             <StatusBadge value={r.status} />
                           </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.met_value != null ? Number(r.met_value).toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.weight_at_time != null ? Number(r.weight_at_time).toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.duration_min ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                            {r.calories ?? "—"}
+                          </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {fmt(r.cancelled_at)}
                           </TableCell>
