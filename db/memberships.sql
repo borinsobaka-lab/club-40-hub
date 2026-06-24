@@ -12,6 +12,7 @@ create table if not exists public.memberships (
   installment_enabled boolean not null default false,
   price numeric(12,2) not null default 0,
   is_active boolean not null default true,
+  cover_url text,
   created_at timestamptz not null default now()
 );
 
@@ -28,7 +29,29 @@ alter table public.memberships
   add column if not exists installment_enabled boolean not null default false,
   add column if not exists price numeric(12,2) not null default 0,
   add column if not exists is_active boolean not null default true,
+  add column if not exists cover_url text,
   add column if not exists created_at timestamptz not null default now();
+
+-- Storage bucket for membership cover images (SVG/PNG/JPG)
+insert into storage.buckets (id, name, public)
+values ('memberships-media', 'memberships-media', true)
+on conflict (id) do nothing;
+
+drop policy if exists "memberships-media public read" on storage.objects;
+create policy "memberships-media public read" on storage.objects
+  for select using (bucket_id = 'memberships-media');
+
+drop policy if exists "memberships-media auth insert" on storage.objects;
+create policy "memberships-media auth insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'memberships-media');
+
+drop policy if exists "memberships-media auth update" on storage.objects;
+create policy "memberships-media auth update" on storage.objects
+  for update to authenticated using (bucket_id = 'memberships-media');
+
+drop policy if exists "memberships-media auth delete" on storage.objects;
+create policy "memberships-media auth delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'memberships-media');
 
 -- Remove legacy membership-assignment fields if they exist (older schema versions
 -- had user_id and plan_name as NOT NULL, which breaks saving the current form).

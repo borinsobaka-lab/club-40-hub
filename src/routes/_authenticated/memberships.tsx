@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
-import { useEffect, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, X, Search, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Loader2, Pencil, Trash2, X, Search, Copy, Image as ImageIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
@@ -50,7 +50,48 @@ type Membership = {
   installment_enabled: boolean;
   price: number;
   is_active: boolean;
+  cover_url: string | null;
 };
+
+const COVER_BUCKET = "memberships-media";
+
+function isHttpUrl(v: string | null | undefined) {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+async function resolveCoverSrc(value: string | null): Promise<string | null> {
+  if (!value) return null;
+  if (isHttpUrl(value)) return value;
+  const { data } = supabase.storage.from(COVER_BUCKET).getPublicUrl(value);
+  return data?.publicUrl ?? null;
+}
+
+function CoverThumb({ value, alt }: { value: string | null; alt: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    resolveCoverSrc(value).then((s) => {
+      if (!cancelled) setSrc(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+  if (!src) {
+    return (
+      <div className="flex h-12 w-16 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <ImageIcon className="h-4 w-4" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-12 w-16 rounded-md border bg-background object-contain"
+    />
+  );
+}
 
 function formatPrice(v: number) {
   return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "GEL", maximumFractionDigits: 0 }).format(v);
@@ -182,6 +223,7 @@ function MembershipsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                  <TableHead className="w-[80px]">Обложка</TableHead>
                   <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Преимущества</TableHead>
@@ -197,13 +239,13 @@ function MembershipsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
                         {items.length === 0
                           ? "Пока нет абонементов. Нажмите «Добавить абонемент»."
                           : "Ничего не найдено."}
@@ -212,6 +254,7 @@ function MembershipsPage() {
                   ) : (
                     pg.paged.map((m) => (
                       <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
+                        <TableCell><CoverThumb value={m.cover_url} alt={m.name} /></TableCell>
                         <TableCell className="font-medium">{m.name}</TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
                           {m.description ?? "—"}
@@ -317,6 +360,9 @@ function MembershipDialog({
   const [installmentEnabled, setInstallmentEnabled] = useState(false);
   const [price, setPrice] = useState<string>("");
   const [isActive, setIsActive] = useState(true);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
 
   const isEditing = !!membership?.id;
@@ -334,7 +380,24 @@ function MembershipDialog({
     setInstallmentEnabled(membership?.installment_enabled ?? false);
     setPrice(membership?.price != null ? String(membership.price) : "");
     setIsActive(membership?.is_active ?? true);
+    setCoverUrl(membership?.cover_url ?? null);
   }, [open, membership]);
+
+  const uploadCover = async (file: File) => {
+    if (!studioId) return;
+    setUploadingCover(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `${studioId}/cover/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from(COVER_BUCKET)
+      .upload(path, file, { upsert: false, contentType: file.type || (ext === "svg" ? "image/svg+xml" : undefined) });
+    setUploadingCover(false);
+    if (error) {
+      toast.error("Ошибка загрузки: " + error.message);
+      return;
+    }
+    setCoverUrl(path);
+  };
 
   const addBenefit = () => {
     const v = benefitDraft.trim();
@@ -365,6 +428,7 @@ function MembershipDialog({
       installment_enabled: installmentEnabled,
       price: price ? Number(price) : 0,
       is_active: isActive,
+      cover_url: coverUrl,
     };
     const { error } = isEditing
       ? await supabase.from("memberships").update(payload).eq("id", membership!.id)
@@ -391,6 +455,42 @@ function MembershipDialog({
           <div className="space-y-1.5">
             <Label htmlFor="m-name">Название</Label>
             <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Например: Безлимит на месяц" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Обложка (для мобильного приложения)</Label>
+            <div className="flex items-center gap-3">
+              <CoverThumb value={coverUrl} alt="cover" />
+              <div className="flex flex-col gap-1">
+                <input
+                  ref={coverRef}
+                  type="file"
+                  accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadCover(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingCover || !studioId}
+                  onClick={() => coverRef.current?.click()}
+                >
+                  {uploadingCover ? (
+                    <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…</>
+                  ) : coverUrl ? "Заменить" : "Загрузить SVG/PNG"}
+                </Button>
+                {coverUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setCoverUrl(null)}>
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-1.5">
