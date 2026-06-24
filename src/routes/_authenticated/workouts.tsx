@@ -253,6 +253,9 @@ function WorkoutsPage() {
                         <TableCell className="text-sm text-muted-foreground">
                           {w.capacity ?? "—"}
                         </TableCell>
+                        <TableCell className="text-sm tabular-nums text-muted-foreground">
+                          {w.met_value != null ? Number(w.met_value).toFixed(1) : "—"}
+                        </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
