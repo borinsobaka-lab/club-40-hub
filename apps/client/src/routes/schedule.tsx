@@ -348,20 +348,28 @@ function SchedulePage() {
                 if (!start) return;
                 const dx = e.clientX - start.x;
                 const dy = e.clientY - start.y;
-                if (Math.abs(dx) < 48 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
-                swipedRef.current = true;
-                selectDay(start.idx + (dx < 0 ? 1 : -1));
+                const isSwipe = Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.2;
+                if (isSwipe) {
+                  swipedRef.current = true;
+                  selectDay(start.idx + (dx < 0 ? 1 : -1));
+                  // На тач-устройствах после движения > slop click может не прийти —
+                  // сбрасываем флаг сами, чтобы не блокировать следующий тап.
+                  window.setTimeout(() => {
+                    swipedRef.current = false;
+                  }, 350);
+                } else {
+                  swipedRef.current = false;
+                }
               }}
               onPointerCancel={() => {
                 gestureStartRef.current = null;
+                swipedRef.current = false;
               }}
               onClickCapture={(e) => {
                 if (!swipedRef.current) return;
                 e.preventDefault();
                 e.stopPropagation();
-                window.setTimeout(() => {
-                  swipedRef.current = false;
-                }, 0);
+                swipedRef.current = false;
               }}
               className="-mx-4 overflow-hidden touch-pan-y"
               style={{ touchAction: "pan-y" }}
