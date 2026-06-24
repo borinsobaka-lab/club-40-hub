@@ -338,18 +338,26 @@ function MembershipsPage() {
             {activeTab === "unlimited" && (
               <>
                 <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается три и более раз в неделю</p>
-                {memberships.some((m) => m.visits_count === null) ? (
+                {unlimitedMemberships.length > 0 ? (
                   <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
-                    {memberships
-                      .filter((m) => m.visits_count === null)
-                      .map((m, idx) => (
-                        <MembershipCard
-                          key={m.id}
-                          membership={m}
-                          color={COLORS[idx % COLORS.length]}
-                          onSelect={() => setSelected({ ...m })}
-                        />
-                      ))}
+                    {unlimitedMemberships.map((m, idx) => (
+                      <MembershipCard
+                        key={m.id}
+                        membership={m}
+                        color={COLORS[idx % COLORS.length]}
+                        onSelect={() => setSelected({ ...m })}
+                        topMinHeight={unlimitedTopHeight || undefined}
+                        bottomMinHeight={unlimitedBottomHeight || undefined}
+                        onTopRef={(el) => {
+                          if (el) unlimitedTopRefs.current.set(m.id, el);
+                          else unlimitedTopRefs.current.delete(m.id);
+                        }}
+                        onBottomRef={(el) => {
+                          if (el) unlimitedBottomRefs.current.set(m.id, el);
+                          else unlimitedBottomRefs.current.delete(m.id);
+                        }}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных безлимитных абонементов.</Card>
