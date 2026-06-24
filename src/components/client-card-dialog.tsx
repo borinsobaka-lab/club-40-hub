@@ -183,6 +183,8 @@ type ActiveCM = {
   memberships: { name: string } | { name: string }[] | null;
 };
 
+type ActiveCMWithStatus = ActiveCM & { status: string };
+
 function membershipName(m: ActiveCM["memberships"] | SaleRow["memberships"]) {
   if (!m) return "—";
   if (Array.isArray(m)) return m[0]?.name ?? "—";
