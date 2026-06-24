@@ -384,6 +384,20 @@ function PushDialog({
           </div>
 
           <div className="space-y-2">
+            <Label>Ссылка перехода (необязательно)</Label>
+            <Input
+              value={actionUrl}
+              onChange={(e) => setActionUrl(e.target.value)}
+              placeholder="https://… или внутренний раздел"
+            />
+            <p className="text-xs text-muted-foreground">
+              Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
+            </p>
+          </div>
+
+
+
+          <div className="space-y-2">
             <Label>Статус клиентов</Label>
             <div className="space-y-2 rounded-md border p-3">
               <label className="flex items-center gap-2 text-sm">
