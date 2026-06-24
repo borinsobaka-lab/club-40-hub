@@ -24,6 +24,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -47,7 +48,12 @@ function AuthPage() {
         setBusy(false);
         return;
       }
-      const { error } = await signUp(email.trim(), password, firstName.trim(), lastName.trim());
+      if (phone.trim().length < 5) {
+        setError("Укажите номер телефона");
+        setBusy(false);
+        return;
+      }
+      const { error } = await signUp(email.trim(), password, firstName.trim(), lastName.trim(), phone.trim());
       if (error) setError(error);
       else setInfo("Аккаунт создан. Если включено подтверждение почты — проверьте ящик.");
     }
@@ -92,6 +98,18 @@ function AuthPage() {
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="Иван"
                     autoComplete="given-name"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="phone">Телефон</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+7 999 123-45-67"
+                    autoComplete="tel"
                     required
                   />
                 </div>
