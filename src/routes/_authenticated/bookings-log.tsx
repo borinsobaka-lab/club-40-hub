@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search, RefreshCw } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -96,7 +96,6 @@ function BookingsLogPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
-  const [marking, setMarking] = useState(false);
 
   const fetchRows = async () => {
     if (!studioId) {
@@ -104,6 +103,8 @@ function BookingsLogPage() {
       return;
     }
     setLoading(true);
+    // Авто-отметка пропущенных тренировок (прошедшие без отметки посещения)
+    await supabase.rpc("mark_no_show_bookings");
     const { data, error } = await supabase
       .from("bookings_log")
       .select("*")
@@ -117,6 +118,7 @@ function BookingsLogPage() {
     }
     setRows((data as LogRow[]) ?? []);
   };
+
 
   useEffect(() => {
     fetchRows();
@@ -143,38 +145,12 @@ function BookingsLogPage() {
 
   const pg = usePagination(filtered);
 
-  const handleMarkCompleted = async () => {
-    setMarking(true);
-    const { error } = await supabase.rpc("mark_no_show_bookings");
-    setMarking(false);
-    if (error) {
-      toast.error("Ошибка: " + error.message);
-      return;
-    }
-    toast.success("Прошедшие записи без отметки помечены как «Пропущено»");
-    fetchRows();
-  };
-
   return (
     <AdminShell
       title="История записей"
       description="Журнал бронирований: пользователь, тренировка, статус"
-      actions={
-        <Button
-          variant="outline"
-          size="default"
-          onClick={handleMarkCompleted}
-          disabled={marking || !studioId}
-        >
-          {marking ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-1 h-4 w-4" />
-          )}
-          Отметить пропущенные
-        </Button>
-      }
     >
+
       <div className="mx-auto max-w-6xl space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
