@@ -399,44 +399,48 @@ function SchedulePage() {
                               <button
                                 type="button"
                                 onClick={() => openWorkout(c)}
-                                className="flex flex-1 min-w-0 flex-col gap-1 text-left active:opacity-80 transition-opacity self-center"
+                                className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
                               >
-                                <div className="text-3xl font-black italic tabular-nums leading-none">
-                                  {fmtTime(c.starts_at)}
+                                <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                                  <div className="text-base font-black italic tabular-nums leading-tight text-center">
+                                    {fmtTime(c.starts_at)}
+                                  </div>
                                 </div>
-                                <div className="font-medium break-words leading-snug">
-                                  {c.workout?.name ?? "Занятие"}
-                                </div>
-                                {(() => {
-                                  const names = (c.trainers ?? [])
-                                    .map((t) => t.trainer?.full_name)
-                                    .filter((n): n is string => !!n);
-                                  if (names.length === 0) return null;
-                                  return (
-                                    <div className={`text-xs truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
-                                      {names.join(", ")}
-                                    </div>
-                                  );
-                                })()}
-                                {(() => {
-                                  const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
-                                  const left = remainingSpots(effectiveCapacity, c.booked_count);
-                                  if (left === null || left > 5) return null;
-                                  if (left === 0) {
+                                <div className="flex-1 min-w-0 ml-1">
+                                  <div className="font-medium break-words leading-snug">
+                                    {c.workout?.name ?? "Занятие"}
+                                  </div>
+                                  {(() => {
+                                    const names = (c.trainers ?? [])
+                                      .map((t) => t.trainer?.full_name)
+                                      .filter((n): n is string => !!n);
+                                    if (names.length === 0) return null;
                                     return (
-                                      <div className="flex items-center gap-1 text-xs text-red-500 leading-none">
-                                        <CloseCircle className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-                                        <span className="leading-none mt-0.5">Мест нет</span>
+                                      <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
+                                        {names.join(", ")}
                                       </div>
                                     );
-                                  }
-                                  return (
-                                    <div className="flex items-center gap-1 text-xs text-orange-500 leading-none">
-                                      <Fire className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-                                      <span className="leading-none mt-0.5">Осталось {left} {pluralSeats(left)}</span>
-                                    </div>
-                                  );
-                                })()}
+                                  })()}
+                                  {(() => {
+                                    const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
+                                    const left = remainingSpots(effectiveCapacity, c.booked_count);
+                                    if (left === null || left > 5) return null;
+                                    if (left === 0) {
+                                      return (
+                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500 leading-none">
+                                          <CloseCircle className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+                                          <span className="leading-none mt-0.5">Мест нет</span>
+                                        </div>
+                                      );
+                                    }
+                                    return (
+                                      <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500 leading-none">
+                                        <Fire className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+                                        <span className="leading-none mt-0.5">Осталось {left} {pluralSeats(left)}</span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
                               </button>
                               {!isBooked && (
                                 <button
