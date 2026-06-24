@@ -175,8 +175,6 @@ function SalesPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
-  const [cardClient, setCardClient] = useState<ClientRow | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
 
   const fetchSales = async () => {
@@ -228,15 +226,7 @@ function SalesPage() {
     fetchSales();
   };
 
-  const openClientCard = (clientId: string) => {
-    const c = clients.find((x) => x.id === clientId);
-    if (!c) {
-      toast.error("Клиент не найден");
-      return;
-    }
-    setCardClient(c);
-    setCardOpen(true);
-  };
+
 
   const q = search.trim().toLowerCase();
   const filtered = q
