@@ -1,6 +1,7 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import { ExternalLink, Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
+import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -297,15 +298,9 @@ export function ClientCardDialog({
                 {client.phone || "—"} {client.email ? `· ${client.email}` : ""}
               </div>
               {client.crm_link && (
-                <a
-                  href={client.crm_link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Открыть в CRM
-                </a>
+                <div className="mt-2">
+                  <AmoCrmLinkIcon href={client.crm_link} size={22} />
+                </div>
               )}
             </div>
           </div>
