@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Refresh, Fire } from "@solar-icons/react";
 import { toast } from "sonner";
@@ -95,9 +95,23 @@ function SchedulePage() {
   const clubSettings = useClubSettings();
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const listRef = useRef<HTMLDivElement>(null);
-  const [slideWidth, setSlideWidth] = useState(0);
-  const programmaticScrollRef = useRef(false);
+  const gestureStartRef = useRef<{ x: number; y: number; idx: number } | null>(null);
+  const wheelLockedRef = useRef(false);
+  const wheelReleaseRef = useRef<number | null>(null);
+
+  const selectDay = useCallback(
+    (idx: number) => {
+      setActiveIdx(Math.max(0, Math.min(days.length - 1, idx)));
+    },
+    [days.length],
+  );
+
+  const shiftDay = useCallback(
+    (delta: -1 | 1) => {
+      setActiveIdx((idx) => Math.max(0, Math.min(days.length - 1, idx + delta)));
+    },
+    [days.length],
+  );
 
   useEffect(() => {
     if (activeTab !== "class") return;
@@ -145,27 +159,10 @@ function SchedulePage() {
   }, [activeIdx]);
 
   useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    const update = () => setSlideWidth(el.clientWidth);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [activeTab]);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (!el || !slideWidth) return;
-    const target = activeIdx * slideWidth;
-    if (Math.abs(el.scrollLeft - target) > 2) {
-      programmaticScrollRef.current = true;
-      el.scrollTo({ left: target, behavior: "smooth" });
-      window.setTimeout(() => {
-        programmaticScrollRef.current = false;
-      }, 400);
-    }
-  }, [activeIdx, slideWidth]);
+    return () => {
+      if (wheelReleaseRef.current !== null) window.clearTimeout(wheelReleaseRef.current);
+    };
+  }, []);
 
 
   async function toggleBooking(entryId: string) {
@@ -282,7 +279,7 @@ function SchedulePage() {
                 <button
                   key={d.toISOString()}
                   ref={(el) => { dayBtnRefs.current[i] = el; }}
-                  onClick={() => setActiveIdx(i)}
+                  onClick={() => selectDay(i)}
                 className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
                   i === activeIdx
                     ? "bg-[#1B1C1F] text-[#FFE500]"
@@ -328,24 +325,42 @@ function SchedulePage() {
             <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
           ) : (
             <div
-              ref={listRef}
-              onScroll={() => {
-                const el = listRef.current;
-                if (!el || !slideWidth || programmaticScrollRef.current) return;
-                const idx = Math.round(el.scrollLeft / slideWidth);
-                if (idx !== activeIdx && idx >= 0 && idx < days.length) {
-                  setActiveIdx(idx);
-                }
+              onWheel={(e) => {
+                if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+                e.preventDefault();
+                if (wheelLockedRef.current) return;
+                wheelLockedRef.current = true;
+                shiftDay(e.deltaX > 0 ? 1 : -1);
+                if (wheelReleaseRef.current !== null) window.clearTimeout(wheelReleaseRef.current);
+                wheelReleaseRef.current = window.setTimeout(() => {
+                  wheelLockedRef.current = false;
+                }, 520);
               }}
-              className="-mx-4 flex overflow-x-auto no-scrollbar snap-x snap-mandatory overscroll-x-contain"
-              style={{ scrollbarWidth: "none" }}
+              onPointerDown={(e) => {
+                if (e.pointerType === "mouse") return;
+                gestureStartRef.current = { x: e.clientX, y: e.clientY, idx: activeIdx };
+              }}
+              onPointerUp={(e) => {
+                const start = gestureStartRef.current;
+                gestureStartRef.current = null;
+                if (!start) return;
+                const dx = e.clientX - start.x;
+                const dy = e.clientY - start.y;
+                if (Math.abs(dx) < 48 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+                selectDay(start.idx + (dx < 0 ? 1 : -1));
+              }}
+              onPointerCancel={() => {
+                gestureStartRef.current = null;
+              }}
+              className="-mx-4 overflow-hidden touch-pan-y"
+              style={{ touchAction: "pan-y" }}
             >
-              {entriesByDay.map((dayList, dayIdx) => (
-                <div
-                  key={days[dayIdx].toISOString()}
-                  className="shrink-0 snap-start px-4"
-                  style={{ width: slideWidth || "100%" }}
-                >
+              <div
+                className="flex transition-transform duration-300 ease-out"
+                style={{ transform: `translate3d(-${activeIdx * 100}%, 0, 0)` }}
+              >
+                {entriesByDay.map((dayList, dayIdx) => (
+                  <div key={days[dayIdx].toISOString()} className="w-full shrink-0 px-4">
                   {dayList.length === 0 ? (
                     <Card className="p-6 text-center text-sm text-muted-foreground">
                       На этот день тренировок пока нет
@@ -475,8 +490,9 @@ function SchedulePage() {
                       })}
                     </div>
                   )}
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

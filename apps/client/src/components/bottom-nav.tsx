@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, User, MenuDots, UsersGroupTwoRounded, Card } from "@solar-icons/react";
+import { Home, Dumbbell, User, MenuDots, Ranking, Card } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {
@@ -12,7 +12,7 @@ type NavItem = {
 const mainItems: NavItem[] = [
   { to: "/", label: "Главное", Icon: Home, exact: true },
   { to: "/schedule", label: "Бронь", Icon: Dumbbell, exact: false },
-  { to: "/club", label: "Клуб", Icon: UsersGroupTwoRounded, exact: false },
+  { to: "/club", label: "Клуб", Icon: Ranking, exact: false },
 ];
 
 const moreItems = [
