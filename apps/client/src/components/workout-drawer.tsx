@@ -7,12 +7,14 @@ import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/c
 import {
   googleCalendarUrl,
   outlookLiveUrl,
-  office365Url,
-  yahooCalendarUrl,
   downloadICS,
   type CalendarEvent,
 } from "@/lib/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import googleCalIcon from "@/assets/google-calendar.png.asset.json";
+import appleCalIcon from "@/assets/apple-calendar.png.asset.json";
+import outlookIcon from "@/assets/outlook.png.asset.json";
+
 
 export type WorkoutDrawerData = {
   id: string;
@@ -63,19 +65,27 @@ export function WorkoutDrawer({
 
   const calendarOptions = calendarEvent
     ? [
-        { label: "Google Календарь", onClick: () => openExternal(googleCalendarUrl(calendarEvent)) },
+        {
+          label: "Google Календарь",
+          icon: googleCalIcon.url,
+          onClick: () => openExternal(googleCalendarUrl(calendarEvent)),
+        },
         {
           label: "Apple Календарь",
+          icon: appleCalIcon.url,
           onClick: () => {
             downloadICS(calendarEvent);
             setCalendarPickerOpen(false);
           },
         },
-        { label: "Outlook", onClick: () => openExternal(outlookLiveUrl(calendarEvent)) },
-        { label: "Office 365", onClick: () => openExternal(office365Url(calendarEvent)) },
-        { label: "Yahoo Календарь", onClick: () => openExternal(yahooCalendarUrl(calendarEvent)) },
+        {
+          label: "Outlook",
+          icon: outlookIcon.url,
+          onClick: () => openExternal(outlookLiveUrl(calendarEvent)),
+        },
         {
           label: "Другой (.ics файл)",
+          icon: null,
           onClick: () => {
             downloadICS(calendarEvent);
             setCalendarPickerOpen(false);
@@ -83,6 +93,7 @@ export function WorkoutDrawer({
         },
       ]
     : [];
+
 
   return (
     <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
@@ -191,11 +202,13 @@ export function WorkoutDrawer({
                 key={opt.label}
                 type="button"
                 onClick={opt.onClick}
-                className="w-full h-12 rounded-full bg-muted text-foreground font-semibold text-sm active:scale-[0.99] transition"
+                className="w-full h-12 rounded-full bg-muted text-foreground font-semibold text-sm active:scale-[0.99] transition inline-flex items-center justify-center gap-2 px-4"
               >
+                {opt.icon && <img src={opt.icon} alt="" className="h-6 w-6 shrink-0" />}
                 {opt.label}
               </button>
             ))}
+
           </div>
         </DialogContent>
       </Dialog>
