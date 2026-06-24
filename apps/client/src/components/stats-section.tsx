@@ -487,13 +487,13 @@ function CaloriesInfoLink() {
           Как считаются калории?
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto rounded-2xl mx-4">
         <DialogHeader>
           <DialogTitle>Как мы считаем калории</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
           <p>
-            Калории в приложении — это <strong className="text-foreground">оценка</strong>.
+            Калории в приложении — это оценка.
             Точную цифру может дать только пульсометр или умные часы, но даже без них можно
             посчитать расход достаточно близко по проверенной методике, которую используют
             большинство фитнес-приложений.
