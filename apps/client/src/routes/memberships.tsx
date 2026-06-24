@@ -197,7 +197,7 @@ function MembershipsPage() {
         );
 
         const membershipSelect =
-          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url";
+          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple";
         const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
           db
             .from("memberships")
