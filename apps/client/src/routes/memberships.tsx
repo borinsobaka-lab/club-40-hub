@@ -284,22 +284,14 @@ function MembershipsPage() {
           <h1 className="text-3xl font-black italic uppercase">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
           {!loading && user && active && (
-            <Card className="mt-4 p-4 border-emerald-500/30 bg-emerald-500/5">
-              <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="h-5 w-5 text-emerald-500" />
+            <Card className="mt-4 p-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-[#FFE500]/15 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-5 w-5 text-[#FFE500]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-muted-foreground">Активный абонемент</div>
-                  <div className="font-bold">{active.memberships?.name ?? "Абонемент"}</div>
-                  <div className="text-xs text-muted-foreground mt-1.5">
-                    {active.visits_left === null
-                      ? "Безлимит посещений"
-                      : `Осталось посещений: ${active.visits_left}`}
-                    {active.ends_at
-                      ? ` · до ${new Date(active.ends_at).toLocaleDateString("ru-RU")}`
-                      : ""}
-                  </div>
+                  <div className="text-[11px] text-muted-foreground leading-none mb-1">Активный абонемент</div>
+                  <div className="font-bold text-sm truncate">{active.memberships?.name ?? "Абонемент"}</div>
                 </div>
               </div>
             </Card>
