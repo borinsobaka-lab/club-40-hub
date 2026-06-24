@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -108,6 +108,8 @@ function SchedulePage() {
   const [presetStart, setPresetStart] = useState<Date | null>(null);
   const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
+  const [copySource, setCopySource] = useState<Entry | null>(null);
+  const [pasting, setPasting] = useState(false);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -164,9 +166,55 @@ function SchedulePage() {
   const openSlot = (day: Date, hour: number) => {
     const d = new Date(day);
     d.setHours(hour, 0, 0, 0);
+    if (copySource) {
+      pasteCopy(d);
+      return;
+    }
     setEditing(null);
     setPresetStart(d);
     setDialogOpen(true);
+  };
+
+  const pasteCopy = async (newStart: Date) => {
+    if (!copySource || !studioId || pasting) return;
+    const origStart = new Date(copySource.starts_at);
+    const origEnd = new Date(copySource.ends_at);
+    const durationMs = origEnd.getTime() - origStart.getTime();
+    const newEnd = new Date(newStart.getTime() + durationMs);
+    setPasting(true);
+    const { data, error } = await supabase
+      .from("schedule_entries")
+      .insert({
+        studio_id: studioId,
+        workout_id: copySource.workout_id,
+        starts_at: newStart.toISOString(),
+        ends_at: newEnd.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      setPasting(false);
+      toast.error("Ошибка копирования: " + (error?.message ?? ""));
+      return;
+    }
+    const trainerIds =
+      copySource.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
+    if (trainerIds.length > 0) {
+      const { error: tErr } = await supabase
+        .from("schedule_entry_trainers")
+        .insert(trainerIds.map((tid) => ({ entry_id: data.id, trainer_id: tid })));
+      if (tErr) {
+        setPasting(false);
+        toast.error("Занятие создано, но тренеры не привязаны: " + tErr.message);
+        setCopySource(null);
+        fetchData();
+        return;
+      }
+    }
+    setPasting(false);
+    setCopySource(null);
+    toast.success("Занятие скопировано");
+    fetchData();
   };
 
   const openAdd = () => {
@@ -292,7 +340,33 @@ function SchedulePage() {
               </div>
             </div>
 
+            {copySource && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  {pasting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  <span>
+                    Копирование «{copySource.workout?.name ?? "Занятие"}» —
+                    кликните на свободный слот, чтобы вставить.
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7"
+                  onClick={() => setCopySource(null)}
+                  disabled={pasting}
+                >
+                  <X className="mr-1 h-3 w-3" /> Отмена
+                </Button>
+              </div>
+            )}
+
             <div className="overflow-x-auto rounded-lg border bg-background">
+
               <div className="grid min-w-[900px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
                 <div className="border-b border-r bg-muted/30" />
                 {weekDays.map((d, i) => {
@@ -409,6 +483,21 @@ function SchedulePage() {
                                   {names && (
                                     <div className="truncate opacity-80">{names}</div>
                                   )}
+                                  <button
+                                    type="button"
+                                    aria-label="Копировать занятие"
+                                    title="Копировать занятие"
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      setCopySource(e);
+                                      toast.message(
+                                        "Выберите пустой слот, куда скопировать занятие",
+                                      );
+                                    }}
+                                    className="absolute bottom-1 right-1 rounded bg-black/25 p-1 text-white hover:bg-black/40"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
                                 </div>
                               );
                             })}
