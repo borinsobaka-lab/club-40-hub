@@ -261,14 +261,14 @@ function SchedulePage() {
       scrollKey="schedule"
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-bold italic uppercase">Бронь</h1>
+          <h1 className="text-3xl font-black italic uppercase">Бронь</h1>
           <p className="text-sm text-white/70">Выберите день и забронируйте тренировку</p>
         </div>
       }
     >
       {(
         <div className="p-4 space-y-4">
-          <div ref={daysContainerRef} className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
+          <div ref={daysContainerRef} className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2 mt-1">
 
             {days.map((d, i) => (
                 <button
