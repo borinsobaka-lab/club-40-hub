@@ -612,7 +612,6 @@ function StepHealth({
 }
 
 function StepBody({
-  height,
   weight,
   birthYear,
   gender,
@@ -624,50 +623,48 @@ function StepBody({
   gender: Gender | null;
   onChange: (patch: Partial<FormData>) => void;
 }) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1939 }, (_, i) => currentYear - i);
   return (
     <div>
       <StepTitle
-        title="Базовые параметры — чтобы потом видеть ваш прогресс"
-        subtitle="Всё по желанию, можно пропустить."
+        title="Базовые параметры — чтобы правильно рассчитать статистику"
+        subtitle="Эти данные доступны только вам."
       />
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="height">Рост, см</Label>
-            <Input
-              id="height"
-              inputMode="numeric"
-              value={height}
-              onChange={(e) => onChange({ height_cm: e.target.value.replace(/[^\d]/g, "") })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="weight">Вес, кг</Label>
-            <Input
-              id="weight"
-              inputMode="decimal"
-              value={weight}
-              onChange={(e) => onChange({ weight_kg: e.target.value.replace(/[^\d.,]/g, "") })}
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="weight">Вес, кг</Label>
+          <Input
+            id="weight"
+            inputMode="decimal"
+            value={weight}
+            onChange={(e) => onChange({ weight_kg: e.target.value.replace(/[^\d.,]/g, "") })}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="byear">Год рождения</Label>
-          <Input
-            id="byear"
-            inputMode="numeric"
-            maxLength={4}
-            value={birthYear}
-            onChange={(e) => onChange({ birth_year: e.target.value.replace(/[^\d]/g, "").slice(0, 4) })}
-          />
+          <Select
+            value={birthYear || undefined}
+            onValueChange={(v) => onChange({ birth_year: v })}
+          >
+            <SelectTrigger id="byear">
+              <SelectValue placeholder="Выберите год" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {years.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label>Пол</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {([
               { v: "female", label: "Женский" },
               { v: "male", label: "Мужской" },
-              { v: "other", label: "Другое" },
             ] as { v: Gender; label: string }[]).map((g) => (
               <button
                 key={g.v}
