@@ -392,11 +392,19 @@ export function ClientCardDialog({
                   </div>
                 ) : (
                   <ul className="divide-y rounded-lg border bg-background">
-                    {sales.map((s) => (
+                    {sales.map((s) => {
+                      const cm = s.client_memberships?.[0] ?? null;
+                      return (
                       <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                         <div className="min-w-0">
-                          <div className="font-medium truncate">
-                            {membershipName(s.memberships)}
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium truncate">
+                              {membershipName(s.memberships)}
+                            </div>
+                            {cm && <MembershipStatusBadge m={cm} />}
+                            {cm && effectiveStatus(cm) === "active" && (
+                              <AutoRenewBadge on={cm.auto_renew} />
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {formatDate(s.sold_at)}
@@ -409,7 +417,8 @@ export function ClientCardDialog({
                         </div>
                         <div className="shrink-0 font-medium">{formatMoney(Number(s.total_amount))}</div>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
               </div>
