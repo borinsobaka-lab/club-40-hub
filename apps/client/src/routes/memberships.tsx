@@ -12,7 +12,7 @@ import {
   CheckCircle,
   CloseCircle,
 } from "@solar-icons/react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,6 +104,8 @@ function MembershipsPage() {
   const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
   const [confirmCancelRenewOpen, setConfirmCancelRenewOpen] = useState(false);
   const [cancellingRenew, setCancellingRenew] = useState(false);
+  const [confirmManageOpen, setConfirmManageOpen] = useState(false);
+  const [cancellingMembership, setCancellingMembership] = useState(false);
 
   const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -336,6 +338,26 @@ function MembershipsPage() {
       toast.error(e?.message ?? "Не удалось отключить автопродление");
     } finally {
       setCancellingRenew(false);
+    }
+  };
+
+  const handleCancelMembership = async () => {
+    if (!active) return;
+    setCancellingMembership(true);
+    try {
+      const { error: rpcErr } = await (supabase as any).rpc("cancel_membership", {
+        _client_membership_id: active.id,
+        _source: "mobile",
+      });
+      if (rpcErr) throw rpcErr;
+      await refreshActive();
+      toast.success("Абонемент отменён");
+      setConfirmManageOpen(false);
+      setActiveOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Не удалось отменить абонемент");
+    } finally {
+      setCancellingMembership(false);
     }
   };
 
