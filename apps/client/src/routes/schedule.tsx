@@ -401,7 +401,7 @@ function SchedulePage() {
                                 onClick={() => openWorkout(c)}
                                 className="flex flex-1 min-w-0 flex-col gap-1 text-left active:opacity-80 transition-opacity self-center"
                               >
-                                <div className="text-xl font-black italic tabular-nums leading-none">
+                                <div className="text-3xl font-black italic tabular-nums leading-none">
                                   {fmtTime(c.starts_at)}
                                 </div>
                                 <div className="font-medium break-words leading-snug">
