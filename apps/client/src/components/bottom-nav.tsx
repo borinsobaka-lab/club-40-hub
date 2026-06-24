@@ -11,8 +11,8 @@ type NavItem = {
 
 const mainItems: NavItem[] = [
   { to: "/", label: "Главное", Icon: Home, exact: true },
-  { to: "/schedule", label: "Бронь", Icon: DumbbellLarge, exact: false },
-  { to: "/club", label: "Клуб", Icon: Star, exact: false },
+  { to: "/schedule", label: "Бронь", Icon: DumbbellLargeMinimalistic, exact: false },
+  { to: "/club", label: "Клуб", Icon: UsersGroupRounded, exact: false },
 ];
 
 const moreItems = [
