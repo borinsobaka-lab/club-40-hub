@@ -45,6 +45,7 @@ type PushNotification = {
   studio_id: string;
   title: string;
   message: string | null;
+  action_url: string | null;
   segments: Segment[];
   scheduled_at: string | null;
   sent_at: string | null;
@@ -259,6 +260,7 @@ function PushDialog({
 }) {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [actionUrl, setActionUrl] = useState("");
   const [allSelected, setAllSelected] = useState(true);
   const [segments, setSegments] = useState<ClubStatus[]>([]);
   const [sendMode, setSendMode] = useState<"now" | "schedule">("now");
@@ -269,6 +271,7 @@ function PushDialog({
     if (!open) return;
     setTitle(item?.title ?? "");
     setMessage(item?.message ?? "");
+    setActionUrl(item?.action_url ?? "");
     const segs = item?.segments ?? ["all"];
     if (segs.includes("all")) {
       setAllSelected(true);
@@ -329,6 +332,7 @@ function PushDialog({
       title: title.trim(),
       message: message.trim() || null,
       segments: finalSegments,
+      action_url: actionUrl.trim() || null,
       scheduled_at: scheduled,
       sent_at: sentAt,
       status,
@@ -378,6 +382,20 @@ function PushDialog({
               rows={4}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label>Ссылка перехода (необязательно)</Label>
+            <Input
+              value={actionUrl}
+              onChange={(e) => setActionUrl(e.target.value)}
+              placeholder="https://… или внутренний раздел"
+            />
+            <p className="text-xs text-muted-foreground">
+              Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
+            </p>
+          </div>
+
+
 
           <div className="space-y-2">
             <Label>Статус клиентов</Label>
