@@ -188,28 +188,28 @@ function ProfilePage() {
       <div className="pt-3 bg-muted">
         {/* Блок: данные пользователя */}
         <section className="bg-background rounded-b-[14px] px-4 py-5">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-3">
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}
               disabled={uploadingAvatar || loading}
               className="relative shrink-0 focus:outline-none disabled:opacity-70"
-              style={{ width: 72, height: 72, clipPath: squircleClipPath(72), WebkitClipPath: squircleClipPath(72) }}
+              style={{ width: 120, height: 120 }}
               aria-label="Заменить аватар"
             >
-              <SquircleAvatar size={72}>
+              <SquircleAvatar size={120}>
                 {client?.photo_url && <SquircleAvatarImage src={client.photo_url} alt={fullName} />}
-                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
-                  {loading ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
+                <SquircleAvatarFallback className="bg-primary text-primary-foreground text-3xl font-semibold">
+                  {loading ? <Refresh className="h-6 w-6 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
                 </SquircleAvatarFallback>
               </SquircleAvatar>
               {uploadingAvatar && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Refresh className="h-5 w-5 text-white animate-spin" weight="BoldDuotone" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center" style={{ clipPath: squircleClipPath(120), WebkitClipPath: squircleClipPath(120) }}>
+                  <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 </div>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
-                <Camera className="h-3 w-3" />
+              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background shadow">
+                <Camera className="h-4 w-4" />
               </span>
             </button>
             <input
@@ -219,15 +219,12 @@ function ProfilePage() {
               className="hidden"
               onChange={handleAvatarUpload}
             />
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-lg truncate">{fullName}</div>
-              <div className="text-xs text-muted-foreground truncate">{email || "—"}</div>
+            <div className="text-center">
+              <div className="font-semibold text-lg">{fullName}</div>
             </div>
           </div>
 
           <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
-            <ProfileField label="Имя" value={client?.first_name} />
-            <ProfileField label="Фамилия" value={client?.last_name} />
             <ProfileField label="Телефон" value={phone} />
             <ProfileField label="Email" value={email} />
             <ProfileField
