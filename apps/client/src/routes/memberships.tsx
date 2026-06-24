@@ -430,7 +430,6 @@ function MembershipsPage() {
 
             {activeTab === "couples" && (
               <>
-                <p className="text-sm text-muted-foreground mb-3">Абонементы для совместных тренировок</p>
                 {couplesMemberships.length > 0 ? (
                   <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
                     {couplesMemberships.map((m, idx) => (
