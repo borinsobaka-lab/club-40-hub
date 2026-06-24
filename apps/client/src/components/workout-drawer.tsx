@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Calendar } from "@solar-icons/react";
+import { toast } from "sonner";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
+import { formatCancelDeadline } from "@/hooks/use-club-settings";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 import {
   googleCalendarUrl,
@@ -35,6 +37,7 @@ export function WorkoutDrawer({
   onBook,
   isBooked,
   isPending,
+  cancelMinutes,
 }: {
   data: WorkoutDrawerData | null;
   open: boolean;
@@ -42,10 +45,17 @@ export function WorkoutDrawer({
   onBook: () => void;
   isBooked: boolean;
   isPending: boolean;
+  cancelMinutes?: number;
 }) {
   const typeMeta = data ? workoutTypeMeta(data.type) : null;
   const TypeIcon = typeMeta?.icon ?? null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
+
+  const cancelLocked =
+    isBooked &&
+    typeof cancelMinutes === "number" &&
+    !!data?.startsAt &&
+    new Date(data.startsAt).getTime() - Date.now() < cancelMinutes * 60_000;
 
   const calendarEvent: CalendarEvent | null =
     data && data.startsAt && data.endsAt
@@ -159,9 +169,17 @@ export function WorkoutDrawer({
                   <div className="mt-6 flex gap-2">
                     <button
                       type="button"
-                      onClick={onBook}
+                      onClick={() => {
+                        if (cancelLocked) {
+                          toast.error(
+                            `Тренировку можно отменить не позже чем за ${formatCancelDeadline(cancelMinutes!)} до начала`,
+                          );
+                          return;
+                        }
+                        onBook();
+                      }}
                       disabled={isPending}
-                      className="flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                      className={`flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
                     >
                       {isPending ? "..." : "Отменить запись"}
                     </button>

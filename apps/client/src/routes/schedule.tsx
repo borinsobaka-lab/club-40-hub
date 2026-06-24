@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
+import { useClubSettings } from "@/hooks/use-club-settings";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
@@ -91,6 +92,7 @@ function SchedulePage() {
   const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
+  const clubSettings = useClubSettings();
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -426,6 +428,7 @@ function SchedulePage() {
         }}
         isBooked={openEntry ? bookedIds.has(openEntry.id) : false}
         isPending={openEntry ? pendingId === openEntry.id : false}
+        cancelMinutes={clubSettings.cancel_booking_minutes}
         onBook={() => {
           if (openEntry) toggleBooking(openEntry.id);
         }}
