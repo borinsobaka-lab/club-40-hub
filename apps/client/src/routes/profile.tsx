@@ -512,9 +512,6 @@ function EditProfileSheet({
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
         <SheetHeader className="text-left">
           <SheetTitle>Редактировать профиль</SheetTitle>
-          <SheetDescription>
-            Изменения сохранятся и в приложении, и на портале.
-          </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 py-4">
