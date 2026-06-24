@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Star } from "@solar-icons/react";
+import { UsersGroupRounded } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
