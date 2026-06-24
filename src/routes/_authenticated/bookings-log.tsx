@@ -47,7 +47,7 @@ type LogRow = {
   workout_type: string | null;
   starts_at: string;
   ends_at: string;
-  status: "booked" | "completed" | "cancelled";
+  status: "booked" | "completed" | "cancelled" | "attended" | "no_show" | "rejected";
   booked_at: string;
   cancelled_at: string | null;
   completed_at: string | null;
@@ -57,17 +57,24 @@ const STATUS_ALL = "__all__";
 
 const statusLabel: Record<LogRow["status"], string> = {
   booked: "Забронировано",
-  completed: "Проведено",
+  attended: "Посещено",
+  no_show: "Пропущено",
   cancelled: "Отменено",
+  rejected: "Отклонена",
+  completed: "Проведено",
 };
 
 function StatusBadge({ value }: { value: LogRow["status"] }) {
   const variant =
-    value === "completed"
+    value === "attended"
       ? "default"
-      : value === "cancelled"
-        ? "destructive"
-        : "secondary";
+      : value === "completed"
+        ? "default"
+        : value === "cancelled" || value === "rejected"
+          ? "destructive"
+          : value === "no_show"
+            ? "outline"
+            : "secondary";
   return <Badge variant={variant}>{statusLabel[value]}</Badge>;
 }
 
@@ -138,13 +145,13 @@ function BookingsLogPage() {
 
   const handleMarkCompleted = async () => {
     setMarking(true);
-    const { error } = await supabase.rpc("mark_completed_bookings");
+    const { error } = await supabase.rpc("mark_no_show_bookings");
     setMarking(false);
     if (error) {
       toast.error("Ошибка: " + error.message);
       return;
     }
-    toast.success("Прошедшие записи отмечены как проведённые");
+    toast.success("Прошедшие записи без отметки помечены как «Пропущено»");
     fetchRows();
   };
 
