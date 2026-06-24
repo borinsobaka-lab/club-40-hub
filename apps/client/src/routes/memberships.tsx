@@ -286,9 +286,9 @@ function MembershipsPage() {
           <h1 className="text-3xl font-black italic uppercase">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
           {!loading && user && active && (
-            <Card className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80">
+            <Card className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0">
               <div className="flex items-stretch">
-                <div className="flex-1 p-3">
+                <div className="flex-1 p-3 border border-border rounded-l-xl">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-[#22C55E]/15 flex items-center justify-center shrink-0">
                       <ShieldCheck className="h-5 w-5 text-[#22C55E]" />
@@ -310,7 +310,7 @@ function MembershipsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="w-12 flex items-center justify-center bg-black/20 backdrop-blur-[2px] border-l border-black/5">
+                <div className="w-6 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
                   <ChevronRight className="h-5 w-5 text-white drop-shadow-md" />
                 </div>
               </div>
