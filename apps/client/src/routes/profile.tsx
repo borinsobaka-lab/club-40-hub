@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Card } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage, squircleClipPath } from "@/components/ui/squircle-avatar";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Refresh, Pen, Logout, Camera } from "@solar-icons/react";
+import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Shop, AltArrowRight } from "@solar-icons/react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -143,8 +143,8 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="p-4 space-y-5">
-        <Card className="p-5">
+      <div className="pt-5">
+        <div className="px-4">
           <div className="flex items-center gap-4">
             <SquircleAvatar size={64}>
               {client?.photo_url && <SquircleAvatarImage src={client.photo_url} alt={fullName} />}
@@ -154,25 +154,24 @@ function ProfilePage() {
             </SquircleAvatar>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-lg truncate">{fullName}</div>
-              <div className="text-xs text-muted-foreground truncate">{email}</div>
-              {phone && <div className="text-xs text-muted-foreground truncate">{phone}</div>}
+              <div className="text-xs text-muted-foreground truncate">{email || "—"}</div>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <div className="text-xs text-muted-foreground">Дата рождения</div>
-              <div className="font-medium">
-                {birthday ? new Date(birthday).toLocaleDateString("ru-RU") : "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Пол</div>
-              <div className="font-medium">
-                {gender === "male" ? "Мужской" : gender === "female" ? "Женский" : "—"}
-              </div>
-            </div>
-          </div>
+          <dl className="mt-5 divide-y divide-border">
+            <ProfileField label="Имя" value={client?.first_name} />
+            <ProfileField label="Фамилия" value={client?.last_name} />
+            <ProfileField label="Телефон" value={phone} />
+            <ProfileField label="Email" value={email} />
+            <ProfileField
+              label="Дата рождения"
+              value={birthday ? new Date(birthday).toLocaleDateString("ru-RU") : ""}
+            />
+            <ProfileField
+              label="Пол"
+              value={gender === "male" ? "Мужской" : gender === "female" ? "Женский" : ""}
+            />
+          </dl>
 
           <Button
             variant="outline"
@@ -183,12 +182,26 @@ function ProfilePage() {
             <Pen className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Редактировать профиль
           </Button>
-        </Card>
+        </div>
 
-        <Button variant="outline" className="w-full" onClick={() => signOut()}>
-          <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
-          Выйти
-        </Button>
+        <div className="h-3 bg-muted mt-6" />
+
+        <div className="bg-background rounded-t-[14px] -mt-[14px] relative pt-2">
+          <ul className="divide-y divide-border">
+            <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
+            <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="Приложения" />
+            <ProfileLink icon={<Shop className="h-5 w-5" weight="BoldDuotone" />} label="Франшиза" />
+          </ul>
+        </div>
+
+        <div className="h-3 bg-muted" />
+
+        <div className="bg-background rounded-t-[14px] -mt-[14px] relative pt-5 px-4">
+          <Button variant="outline" className="w-full" onClick={() => signOut()}>
+            <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
+            Выйти
+          </Button>
+        </div>
 
         {client && (
           <EditProfileSheet
@@ -200,6 +213,35 @@ function ProfilePage() {
         )}
       </div>
     </PageShell>
+  );
+}
+
+function ProfileField({ label, value }: { label: string; value?: string | null }) {
+  const display = value && value.length > 0 ? value : "—";
+  const isEmpty = !value || value.length === 0;
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className={`text-sm font-medium text-right break-words ${isEmpty ? "text-muted-foreground" : ""}`}>
+        {display}
+      </dd>
+    </div>
+  );
+}
+
+function ProfileLink({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <li>
+      <button
+        type="button"
+        disabled
+        className="w-full flex items-center gap-3 px-4 py-4 text-left disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        <span className="text-foreground">{icon}</span>
+        <span className="flex-1 text-sm font-medium">{label}</span>
+        <AltArrowRight className="h-4 w-4 text-muted-foreground" weight="BoldDuotone" />
+      </button>
+    </li>
   );
 }
 
