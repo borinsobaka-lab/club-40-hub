@@ -123,7 +123,7 @@ export function BottomNav() {
                       active ? "text-[#FFE500]" : "text-white/90"
                     }`}
                   >
-                    <Icon className="h-5 w-5" weight="BoldDuotone" />
+                    <Icon className="h-6 w-6" weight="BoldDuotone" />
                     <span>{label}</span>
                   </Link>
                 );
