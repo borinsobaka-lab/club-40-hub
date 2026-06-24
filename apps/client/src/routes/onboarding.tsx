@@ -153,6 +153,16 @@ function OnboardingPage() {
       toast.error(`Не удалось сохранить: ${error.message}`);
       return false;
     }
+
+    // Sync gender and birthday (year) into the clients row so they appear in the profile.
+    const clientPatch: Record<string, string | null> = {};
+    if (form.gender) clientPatch.gender = form.gender;
+    const yr = Number(form.birth_year);
+    if (Number.isFinite(yr) && yr > 1900) clientPatch.birthday = `${yr}-01-01`;
+    if (Object.keys(clientPatch).length > 0) {
+      await (supabase as any).from("clients").update(clientPatch).eq("user_id", user.id);
+    }
+
     return true;
   }
 
