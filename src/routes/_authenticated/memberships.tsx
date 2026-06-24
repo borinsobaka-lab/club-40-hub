@@ -491,6 +491,9 @@ function MembershipDialog({
                 )}
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Рекомендуемые размеры: соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px
+            </p>
           </div>
 
           <div className="space-y-1.5">
