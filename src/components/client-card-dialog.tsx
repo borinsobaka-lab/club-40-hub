@@ -390,7 +390,12 @@ export function ClientCardDialog({
               </div>
             </TabsContent>
 
+            <TabsContent value="visits" className="mt-4">
+              <VisitsTab open={open} userId={client.user_id ?? null} />
+            </TabsContent>
+
             <TabsContent value="profile" className="mt-4">
+
               <ProfileTab
                 profile={profile}
                 loading={loadingProfile}
