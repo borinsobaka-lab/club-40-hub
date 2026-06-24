@@ -37,7 +37,25 @@ type Membership = {
   price: number;
   installment_enabled: boolean | null;
   studio_id: string | null;
+  cover_url: string | null;
 };
+
+function formatPeriod(days: number): string {
+  if (days === 30) return "в месяц";
+  if (days === 365 || days === 360) return "в год";
+  if (days > 0 && days % 30 === 0) {
+    const months = days / 30;
+    const word = months === 1 ? "месяц" : months >= 2 && months <= 4 ? "месяца" : "месяцев";
+    return `за ${months} ${word}`;
+  }
+  return `на ${days} дней`;
+}
+
+function coverPublicUrl(path: string | null): string | null {
+  if (!path) return null;
+  const { data } = supabase.storage.from("memberships-media").getPublicUrl(path);
+  return data?.publicUrl ?? null;
+}
 
 type ActiveMembership = {
   id: string;
