@@ -607,6 +607,11 @@ function ClientDialog({
             </div>
           </div>
 
+          <div className="grid gap-1.5">
+            <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
+            <Input id="cl-crm" type="url" value={crmLink} onChange={(e) => setCrmLink(e.target.value)} placeholder="https://your-account.amocrm.ru/contacts/detail/..." />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="cl-phone">Телефон</Label>
@@ -644,15 +649,9 @@ function ClientDialog({
               <Input id="cl-last" type="date" value={lastVisitDate} onChange={(e) => setLastVisitDate(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-crm">Ссылка на CRM</Label>
-              <Input id="cl-crm" type="url" value={crmLink} onChange={(e) => setCrmLink(e.target.value)} placeholder="https://..." />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-photo">Фото (URL)</Label>
-              <Input id="cl-photo" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." />
-            </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cl-photo">Фото (URL)</Label>
+            <Input id="cl-photo" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="cl-notes">Заметки</Label>
