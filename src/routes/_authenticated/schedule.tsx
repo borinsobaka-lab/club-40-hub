@@ -457,6 +457,21 @@ function SchedulePage() {
                                   {names && (
                                     <div className="truncate opacity-80">{names}</div>
                                   )}
+                                  <button
+                                    type="button"
+                                    aria-label="Копировать занятие"
+                                    title="Копировать занятие"
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      setCopySource(e);
+                                      toast.message(
+                                        "Выберите пустой слот, куда скопировать занятие",
+                                      );
+                                    }}
+                                    className="absolute bottom-1 right-1 rounded bg-black/25 p-1 text-white hover:bg-black/40"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
                                 </div>
                               );
                             })}
