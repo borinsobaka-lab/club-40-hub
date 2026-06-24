@@ -294,6 +294,9 @@ function NewsPage() {
                       <TableCell className="max-w-[360px] truncate text-muted-foreground">
                         {n.description ?? "—"}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {n.button_text && n.button_url ? n.button_text : "—"}
+                      </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(n)}>
