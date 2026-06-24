@@ -542,6 +542,8 @@ function SaleDialog({
         down_payment_amount: down,
         remaining_installments: remaining,
         source: "admin",
+        payment_type: paymentType,
+        promo_code: promoCode.trim() || null,
         comment: comment.trim() || null,
       })
       .select("id")
