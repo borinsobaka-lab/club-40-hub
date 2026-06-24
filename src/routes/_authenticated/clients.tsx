@@ -181,6 +181,7 @@ function ClientsPage() {
   const fetchClients = async () => {
     if (!studioId) {
       setClients([]);
+      setStatusByClient({});
       return;
     }
     setLoading(true);
@@ -194,7 +195,27 @@ function ClientsPage() {
       toast.error("Не удалось загрузить клиентов: " + error.message);
       return;
     }
-    setClients((data as Client[]) ?? []);
+    const list = (data as Client[]) ?? [];
+    setClients(list);
+
+    // Подтягиваем абонементы для статусов ЧК / ПЧК / БЧК
+    const { data: cmData } = await supabase
+      .from("client_memberships")
+      .select("client_id, status, ends_at")
+      .eq("studio_id", studioId);
+    const memberships = (cmData as MembershipLite[]) ?? [];
+    const byClient = new Map<string, MembershipLite[]>();
+    for (const m of memberships) {
+      if (!m.client_id) continue;
+      const arr = byClient.get(m.client_id) ?? [];
+      arr.push(m);
+      byClient.set(m.client_id, arr);
+    }
+    const next: Record<string, ClubStatus> = {};
+    for (const c of list) {
+      next[c.id] = computeClubStatus(byClient.get(c.id));
+    }
+    setStatusByClient(next);
   };
 
   const refreshSignal = useRefreshSignal();
@@ -227,6 +248,7 @@ function ClientsPage() {
 
   const resetFilters = () => {
     setGenderFilter("");
+    setStatusFilter("");
     setRegRange(undefined);
     setVisitRange(undefined);
   };
@@ -240,6 +262,7 @@ function ClientsPage() {
       (c.email ?? "").toLowerCase().includes(q)
     )) return false;
     if (genderFilter && c.gender !== genderFilter) return false;
+    if (statusFilter && statusByClient[c.id] !== statusFilter) return false;
     if (!inDateRange(c.registration_date, regRange)) return false;
     if (!inDateRange(c.last_visit_date, visitRange)) return false;
     return true;
