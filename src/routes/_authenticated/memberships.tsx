@@ -360,6 +360,9 @@ function MembershipDialog({
   const [installmentEnabled, setInstallmentEnabled] = useState(false);
   const [price, setPrice] = useState<string>("");
   const [isActive, setIsActive] = useState(true);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
 
   const isEditing = !!membership?.id;
@@ -377,7 +380,24 @@ function MembershipDialog({
     setInstallmentEnabled(membership?.installment_enabled ?? false);
     setPrice(membership?.price != null ? String(membership.price) : "");
     setIsActive(membership?.is_active ?? true);
+    setCoverUrl(membership?.cover_url ?? null);
   }, [open, membership]);
+
+  const uploadCover = async (file: File) => {
+    if (!studioId) return;
+    setUploadingCover(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `${studioId}/cover/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from(COVER_BUCKET)
+      .upload(path, file, { upsert: false, contentType: file.type || (ext === "svg" ? "image/svg+xml" : undefined) });
+    setUploadingCover(false);
+    if (error) {
+      toast.error("Ошибка загрузки: " + error.message);
+      return;
+    }
+    setCoverUrl(path);
+  };
 
   const addBenefit = () => {
     const v = benefitDraft.trim();
@@ -408,6 +428,7 @@ function MembershipDialog({
       installment_enabled: installmentEnabled,
       price: price ? Number(price) : 0,
       is_active: isActive,
+      cover_url: coverUrl,
     };
     const { error } = isEditing
       ? await supabase.from("memberships").update(payload).eq("id", membership!.id)
