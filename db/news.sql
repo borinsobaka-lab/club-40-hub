@@ -10,9 +10,14 @@ create table if not exists public.news (
   description text,
   full_title text,
   full_text text,
+  button_text text,
+  button_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.news add column if not exists button_text text;
+alter table public.news add column if not exists button_url text;
 
 create index if not exists news_studio_position_idx
   on public.news(studio_id, position asc);
