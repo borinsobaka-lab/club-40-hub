@@ -83,6 +83,7 @@ function NewsDetailPage() {
 
   const hero = mediaUrl(item.banner_url) || mediaUrl(item.image_url);
   const title = item.full_title || item.title;
+  const hasCta = !!item.button_text && !!item.button_url;
 
   return (
     <div className="flex flex-col flex-1">
@@ -127,6 +128,15 @@ function NewsDetailPage() {
           )}
         </div>
       </div>
+      {hasCta && (
+        <div className="shrink-0 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button asChild className="w-full h-12 text-base font-bold">
+            <a href={item.button_url!} target="_blank" rel="noreferrer noopener">
+              {item.button_text}
+            </a>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
