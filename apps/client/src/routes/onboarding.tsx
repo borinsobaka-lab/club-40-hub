@@ -619,7 +619,6 @@ function StepBody({
   gender,
   onChange,
 }: {
-  height: string;
   weight: string;
   birthYear: string;
   gender: Gender | null;
