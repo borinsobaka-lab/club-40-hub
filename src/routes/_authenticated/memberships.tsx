@@ -369,6 +369,7 @@ function MembershipDialog({
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverRef = useRef<HTMLInputElement>(null);
+  const [forCouple, setForCouple] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const isEditing = !!membership?.id;
