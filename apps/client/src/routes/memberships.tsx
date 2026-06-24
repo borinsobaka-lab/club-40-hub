@@ -36,6 +36,7 @@ type Membership = {
   installment_enabled: boolean | null;
   studio_id: string | null;
   cover_url: string | null;
+  for_couple?: boolean | null;
 };
 
 function formatPeriod(days: number): string {
