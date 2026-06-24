@@ -39,7 +39,7 @@ function NewsDetailPage() {
     setImgLoaded(false);
     supabase
       .from("news")
-      .select("id,title,description,image_url,banner_url,full_title,full_text")
+      .select("id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url")
       .eq("id", newsId)
       .maybeSingle()
       .then(({ data }) => {
