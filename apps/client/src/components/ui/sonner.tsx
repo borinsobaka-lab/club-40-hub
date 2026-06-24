@@ -6,6 +6,7 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
+      theme="dark"
       position="top-center"
       className="toaster group"
       icons={{
@@ -17,8 +18,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         unstyled: false,
         classNames: {
-          toast:
-            "group toast glass-dark !rounded-2xl !text-white !border !border-white/10 !shadow-[0_8px_32px_rgba(0,0,0,0.24)]",
+          toast: "group toast !rounded-2xl",
           title: "!text-white !font-medium",
           description: "!text-white/70",
           icon: "!mr-2",
