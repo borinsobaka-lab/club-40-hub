@@ -2,16 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 import { Refresh, Fire, CloseCircle } from "@solar-icons/react";
 import { toast } from "sonner";
 
@@ -304,7 +294,11 @@ function SchedulePage() {
       </div>
 
       {activeTab === "personal" ? (
-        <PersonalRequestForm />
+        <div className="p-4">
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            Заявки на персональные тренировки начнём принимать позднее
+          </Card>
+        </div>
       ) : activeTab !== "class" ? (
         <div className="p-4">
           <Card className="p-8 text-center text-sm text-muted-foreground">
@@ -551,179 +545,5 @@ function SchedulePage() {
   );
 }
 
-type TrainerRow = {
-  id: string;
-  full_name: string | null;
-  photo_url: string | null;
-  bio: string | null;
-  specialization: string | null;
-};
-
-const PERSONAL_GOALS = [
-  { value: "weight_loss", label: "Снижение веса" },
-  { value: "muscle_gain", label: "Набор мышечной массы" },
-  { value: "tone", label: "Тонус и рельеф" },
-  { value: "strength", label: "Развитие силы" },
-  { value: "endurance", label: "Выносливость" },
-  { value: "rehab", label: "Восстановление и реабилитация" },
-  { value: "technique", label: "Постановка техники" },
-  { value: "other", label: "Другое" },
-];
-
-function trainerInitials(name: string | null) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
-}
-
-function PersonalRequestForm() {
-  const [trainers, setTrainers] = useState<TrainerRow[] | null>(null);
-  const [goal, setGoal] = useState<string>("");
-  const [trainerId, setTrainerId] = useState<string | null>(null);
-  const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
-      let studioId: string | null = null;
-      if (uid) {
-        const { data: client } = await (supabase as any)
-          .from("clients")
-          .select("studio_id")
-          .eq("user_id", uid)
-          .maybeSingle();
-        studioId = (client?.studio_id as string | null) ?? null;
-      }
-
-      let query = (supabase as any)
-        .from("trainers")
-        .select("id, full_name, photo_url, bio, specialization, role, studio_id")
-        .eq("role", "trainer")
-        .order("full_name", { ascending: true });
-      if (studioId) query = query.eq("studio_id", studioId);
-
-      const { data } = await query;
-      if (cancelled) return;
-      setTrainers(((data ?? []) as TrainerRow[]));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-
-  const canSubmit = !!goal && !!trainerId && !submitting;
-
-  const onSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    toast.success("Заявка отправлена! Мы свяжемся с вами в ближайшее время.");
-    setGoal("");
-    setTrainerId(null);
-    setComment("");
-  };
-
-  return (
-    <div className="p-4 space-y-4">
-      <Card className="p-4 space-y-5">
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Цель тренировок</Label>
-          <Select value={goal} onValueChange={setGoal}>
-            <SelectTrigger className="h-11 text-base shadow-none bg-background rounded-md">
-              <SelectValue placeholder="Ваш запрос к тренеру" />
-            </SelectTrigger>
-            <SelectContent>
-              {PERSONAL_GOALS.map((g) => (
-                <SelectItem key={g.value} value={g.value}>
-                  {g.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Выберите тренера</Label>
-          {trainers === null ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-20 rounded-md bg-background animate-pulse" />
-              ))}
-            </div>
-          ) : trainers.length === 0 ? (
-            <div className="p-4 rounded-md bg-background text-sm text-muted-foreground text-center">
-              Список тренеров скоро появится
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {trainers.map((t) => {
-                const photo = t.photo_url
-                  ? supabase.storage.from("trainer-photos").getPublicUrl(t.photo_url).data.publicUrl
-                  : null;
-                const active = trainerId === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTrainerId(t.id)}
-                    className={`w-full flex items-start gap-3 p-3 rounded-md border text-left transition-all ${
-                      active
-                        ? "border-[#FFE500] bg-[#FFE500]/10 ring-2 ring-[#FFE500]"
-                        : "border-input bg-background active:scale-[0.99]"
-                    }`}
-                  >
-                    <SquircleAvatar size={56} className="shrink-0">
-                      {photo && <SquircleAvatarImage src={photo} alt={t.full_name ?? ""} />}
-                      <SquircleAvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                        {trainerInitials(t.full_name)}
-                      </SquircleAvatarFallback>
-                    </SquircleAvatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold">
-                        {t.full_name ?? "Тренер"}
-                      </div>
-                      {(t.bio || t.specialization) && (
-                        <div className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">
-                          {t.bio ?? t.specialization}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">
-            Комментарий <span className="text-muted-foreground font-normal">(необязательно)</span>
-          </Label>
-          <Textarea
-            rows={4}
-            placeholder="Расскажите подробнее о ваших пожеланиях, удобном времени и опыте"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="text-base shadow-none bg-background rounded-md"
-          />
-        </div>
-
-        <Button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className="w-full text-sm font-bold"
-        >
-          {submitting ? "Отправляем…" : "Отправить заявку"}
-        </Button>
-      </Card>
-    </div>
-  );
-}
 
 
