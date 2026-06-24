@@ -10,6 +10,13 @@ import {
 } from "@solar-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // ---- Types ----
 
@@ -460,11 +467,70 @@ export function StatsSection() {
             />
           </div>
 
-          <p className="px-4 mt-3 text-[11px] leading-relaxed text-muted-foreground/80">
-            Калории — это оценка по типу и длительности тренировки с учётом вашего веса из профиля. У каждого типа занятия свой коэффициент интенсивности (MET — Metabolic Equivalent of Task). Расход фиксируется персонально в момент тренировки и навсегда сохраняется в истории — из неё и считается вся статистика. Сравнение со средним по клубу анонимно и обновляется раз в сутки.
+          <p className="px-4 mt-3 text-[11px] text-muted-foreground/80">
+            <CaloriesInfoLink />
           </p>
         </>
       )}
     </section>
   );
 }
+
+function CaloriesInfoLink() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="underline underline-offset-2 hover:text-foreground transition-colors"
+        >
+          Как считаются калории?
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Как мы считаем калории</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+          <p>
+            Калории в приложении — это <strong className="text-foreground">оценка</strong>.
+            Точную цифру может дать только пульсометр или умные часы, но даже без них можно
+            посчитать расход достаточно близко по проверенной методике, которую используют
+            большинство фитнес-приложений.
+          </p>
+          <p>
+            Мы опираемся на три параметра:{" "}
+            <strong className="text-foreground">тип тренировки</strong>, её{" "}
+            <strong className="text-foreground">длительность</strong> и ваш{" "}
+            <strong className="text-foreground">вес из профиля</strong>. У каждого типа занятия
+            (кардио, силовая, гибрид, восстановление) своя интенсивность — коэффициент{" "}
+            <strong className="text-foreground">MET</strong> (Metabolic Equivalent of Task),
+            который показывает, во сколько раз активнее работает организм по сравнению с
+            состоянием покоя. Чем выше интенсивность и дольше занятие — тем больше расход.
+          </p>
+          <p>
+            Важно, что калории фиксируются{" "}
+            <strong className="text-foreground">персонально для вас</strong> в момент каждой
+            тренировки и{" "}
+            <strong className="text-foreground">навсегда сохраняются в истории</strong>. То есть
+            если вы измените вес в профиле, прошлые тренировки не пересчитаются — каждая запись
+            хранит ваш реальный показатель на тот день. Именно из этой истории и складывается
+            вся ваша статистика.
+          </p>
+          <p>
+            Сравнение со средним по клубу полностью{" "}
+            <strong className="text-foreground">анонимно</strong> — мы показываем только
+            обобщённые цифры, без чьих-либо имён, и обновляем их раз в сутки.
+          </p>
+          <p>
+            Помните: это <strong className="text-foreground">ориентир</strong>, а не точное
+            измерение. Реальный расход зависит ещё и от вашего пульса, состава тела и того,
+            насколько вы выкладываетесь. Но для отслеживания динамики и сравнения с собой
+            прошлым этой оценки более чем достаточно.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
