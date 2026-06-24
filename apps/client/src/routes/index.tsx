@@ -343,22 +343,32 @@ function HomePage() {
           </section>
 
           {/* Быстрые действия */}
-          <section className="px-4 my-3">
-            <div className="rounded-2xl bg-white/10 backdrop-blur-md p-1.5">
-              <div className="flex items-stretch justify-between gap-2">
-                {[
-                  { icon: ChatSquare, label: "Написать" },
-                  { icon: Phone, label: "Позвонить" },
-                  { icon: Star, label: "Фидбэк" },
-                ].map((item) => (
-                  <div key={item.label} className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1">
-                    <item.icon className="h-5 w-5 text-white" />
-                    <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
-                  </div>
-                ))}
+          {(clubSettings.write_url || clubSettings.call_url || clubSettings.feedback_url) && (
+            <section className="px-4 my-3">
+              <div className="rounded-2xl bg-white/10 backdrop-blur-md p-1.5">
+                <div className="flex items-stretch justify-between gap-2">
+                  {[
+                    { icon: ChatSquare, label: "Написать", href: clubSettings.write_url },
+                    { icon: Phone, label: "Позвонить", href: clubSettings.call_url },
+                    { icon: Star, label: "Фидбэк", href: clubSettings.feedback_url },
+                  ]
+                    .filter((item) => !!item.href)
+                    .map((item) => (
+                      <a
+                        key={item.label}
+                        href={item.href!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1 active:scale-[0.97] transition"
+                      >
+                        <item.icon className="h-5 w-5 text-white" />
+                        <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
+                      </a>
+                    ))}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
       }
     >
