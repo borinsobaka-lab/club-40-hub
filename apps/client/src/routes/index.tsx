@@ -350,7 +350,7 @@ function HomePage() {
                   {[
                     { icon: ChatSquare, label: "Написать", href: clubSettings.write_url },
                     { icon: Phone, label: "Позвонить", href: clubSettings.call_url },
-                    { icon: Like, label: "Фидбэк", href: clubSettings.feedback_url },
+                    { icon: Star, label: "Фидбэк", href: clubSettings.feedback_url },
                   ]
                     .filter((item) => !!item.href)
                     .map((item) => (
