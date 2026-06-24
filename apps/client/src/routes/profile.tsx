@@ -185,9 +185,9 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="pt-3 bg-muted">
+      <div className="bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-b-[14px] px-4 py-5">
+        <section className="bg-background rounded-[14px] px-4 py-5">
           <div className="flex flex-col items-center gap-3">
             <button
               type="button"
@@ -239,7 +239,7 @@ function ProfilePage() {
 
           <Button
             variant="outline"
-            className="w-full mt-5"
+            className="w-full mt-5 shadow-none"
             onClick={() => setEditOpen(true)}
             disabled={loading || !client}
           >
@@ -263,7 +263,7 @@ function ProfilePage() {
 
         {/* Блок: выход */}
         <section className="bg-background rounded-t-[14px] px-4 py-5">
-          <Button variant="outline" className="w-full" onClick={() => signOut()}>
+          <Button variant="outline" className="w-full shadow-none" onClick={() => signOut()}>
             <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Выйти
           </Button>
