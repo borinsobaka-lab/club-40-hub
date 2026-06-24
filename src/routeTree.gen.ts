@@ -28,6 +28,7 @@ import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedClubSettingsRouteImport } from './routes/_authenticated/club-settings'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/cash'
 import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
@@ -129,6 +130,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClubSettingsRoute =
+  AuthenticatedClubSettingsRouteImport.update({
+    id: '/club-settings',
+    path: '/club-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -158,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
   '/clients': typeof AuthenticatedClientsRoute
+  '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
@@ -181,6 +189,7 @@ export interface FileRoutesByTo {
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
   '/clients': typeof AuthenticatedClientsRoute
+  '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
@@ -207,6 +216,7 @@ export interface FileRoutesById {
   '/_authenticated/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/_authenticated/cash': typeof AuthenticatedCashRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
+  '/_authenticated/club-settings': typeof AuthenticatedClubSettingsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/bookings-log'
     | '/cash'
     | '/clients'
+    | '/club-settings'
     | '/dashboard'
     | '/employees'
     | '/feedback'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/bookings-log'
     | '/cash'
     | '/clients'
+    | '/club-settings'
     | '/dashboard'
     | '/employees'
     | '/feedback'
@@ -282,6 +294,7 @@ export interface FileRouteTypes {
     | '/_authenticated/bookings-log'
     | '/_authenticated/cash'
     | '/_authenticated/clients'
+    | '/_authenticated/club-settings'
     | '/_authenticated/dashboard'
     | '/_authenticated/employees'
     | '/_authenticated/feedback'
@@ -443,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/club-settings': {
+      id: '/_authenticated/club-settings'
+      path: '/club-settings'
+      fullPath: '/club-settings'
+      preLoaderRoute: typeof AuthenticatedClubSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients': {
       id: '/_authenticated/clients'
       path: '/clients'
@@ -479,6 +499,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBookingsLogRoute: typeof AuthenticatedBookingsLogRoute
   AuthenticatedCashRoute: typeof AuthenticatedCashRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
+  AuthenticatedClubSettingsRoute: typeof AuthenticatedClubSettingsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
@@ -501,6 +522,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBookingsLogRoute: AuthenticatedBookingsLogRoute,
   AuthenticatedCashRoute: AuthenticatedCashRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
+  AuthenticatedClubSettingsRoute: AuthenticatedClubSettingsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
