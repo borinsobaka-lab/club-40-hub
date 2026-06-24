@@ -211,13 +211,21 @@ export function ClientCardDialog({
     setLoadingActive(true);
     supabase
       .from("client_memberships")
-      .select("id, source, started_at, ends_at, visits_left, memberships(name)")
+      .select("id, status, source, started_at, ends_at, visits_left, memberships(name)")
       .eq("client_id", client.id)
-      .eq("status", "active")
-      .maybeSingle()
+      .order("started_at", { ascending: false })
       .then(({ data }) => {
         setLoadingActive(false);
-        setActive((data as unknown as ActiveCM | null) ?? null);
+        const rows = (data as unknown as (ActiveCM & { status: string })[]) ?? [];
+        setAllMemberships(
+          rows.map((r) => ({ client_id: client.id, status: r.status, ends_at: r.ends_at })),
+        );
+        const today = new Date().toISOString().slice(0, 10);
+        const a =
+          rows.find(
+            (r) => r.status === "active" && (!r.ends_at || r.ends_at >= today),
+          ) ?? null;
+        setActive(a);
       });
     if (client.user_id) {
       setLoadingProfile(true);
@@ -239,6 +247,7 @@ export function ClientCardDialog({
     if (!open || !client?.id) {
       setSales([]);
       setActive(null);
+      setAllMemberships([]);
       setProfile(null);
       return;
     }
