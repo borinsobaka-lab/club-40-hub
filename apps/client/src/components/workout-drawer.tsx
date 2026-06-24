@@ -37,6 +37,7 @@ export function WorkoutDrawer({
   onBook,
   isBooked,
   isPending,
+  cancelMinutes,
 }: {
   data: WorkoutDrawerData | null;
   open: boolean;
@@ -44,10 +45,17 @@ export function WorkoutDrawer({
   onBook: () => void;
   isBooked: boolean;
   isPending: boolean;
+  cancelMinutes?: number;
 }) {
   const typeMeta = data ? workoutTypeMeta(data.type) : null;
   const TypeIcon = typeMeta?.icon ?? null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
+
+  const cancelLocked =
+    isBooked &&
+    typeof cancelMinutes === "number" &&
+    !!data?.startsAt &&
+    new Date(data.startsAt).getTime() - Date.now() < cancelMinutes * 60_000;
 
   const calendarEvent: CalendarEvent | null =
     data && data.startsAt && data.endsAt
