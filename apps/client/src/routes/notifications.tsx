@@ -19,6 +19,7 @@ type Notification = {
   body: string;
   receivedAt: string; // ISO
   read: boolean;
+  link?: string;
 };
 
 const MOCK: Notification[] = [
@@ -37,11 +38,27 @@ const MOCK: Notification[] = [
     read: false,
   },
   {
+    id: "5",
+    title: "🎁 Партнёрская акция",
+    body: "Скидка 20% на спортивное питание для участников CLUB 40.\nПодробности и промокод — на сайте партнёра.",
+    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
+    read: false,
+    link: "https://example.com/promo",
+  },
+  {
     id: "3",
     title: "💳 Абонемент скоро закончится",
     body: "Осталось 3 занятия по текущему абонементу.\nПродли его в разделе «Абонементы», чтобы не прерывать тренировки.",
     receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
     read: true,
+  },
+  {
+    id: "6",
+    title: "📺 Новое видео на YouTube",
+    body: "Разбор техники приседаний от тренера клуба.\nСмотрите по ссылке ниже.",
+    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
+    read: true,
+    link: "https://youtube.com",
   },
   {
     id: "4",
@@ -90,7 +107,7 @@ function NotificationsPage() {
             type="button"
             onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}
             disabled={unread === 0}
-            className="text-sm font-semibold text-[#1B1C1F] disabled:text-muted-foreground disabled:cursor-not-allowed active:opacity-70 transition-opacity"
+            className="text-sm font-semibold text-[#1B1C1F] bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-1.5 transition-colors"
           >
             Прочитать все
           </button>
@@ -105,8 +122,15 @@ function NotificationsPage() {
             {items.map((n) => (
               <li key={n.id}>
                 <Card
+                  onClick={() => {
+                    if (!n.read) {
+                      setItems((prev) =>
+                        prev.map((it) => (it.id === n.id ? { ...it, read: true } : it)),
+                      );
+                    }
+                  }}
                   className={`p-4 transition-colors ${
-                    n.read ? "" : "border-[#FFE500] bg-[#FFE500]/5"
+                    n.read ? "" : "border-[#FFE500] bg-[#FFE500]/5 cursor-pointer active:opacity-80"
                   }`}
                 >
                   <div className="flex items-start gap-2">
@@ -120,8 +144,30 @@ function NotificationsPage() {
                       <p className="mt-1 text-sm text-foreground/80 whitespace-pre-line break-words">
                         {n.body}
                       </p>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {formatReceivedAt(n.receivedAt)}
+                      <div className="mt-2 flex items-end justify-between gap-3">
+                        <div className="text-xs text-muted-foreground">
+                          {formatReceivedAt(n.receivedAt)}
+                        </div>
+                        {n.link && (
+                          <a
+                            href={n.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!n.read) {
+                                setItems((prev) =>
+                                  prev.map((it) =>
+                                    it.id === n.id ? { ...it, read: true } : it,
+                                  ),
+                                );
+                              }
+                            }}
+                            className="shrink-0 text-xs font-bold text-[#1B1C1F] bg-[#FFE500] hover:bg-[#FFE500]/90 active:bg-[#FFE500]/80 rounded-full px-3 py-1.5 transition-colors"
+                          >
+                            Перейти
+                          </a>
+                        )}
                       </div>
                     </div>
                   </div>

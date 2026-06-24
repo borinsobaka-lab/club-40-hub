@@ -479,9 +479,10 @@ function HomePage() {
 
         {/* Услуги */}
         <section className="bg-background rounded-t-[14px] rounded-b-[14px] pt-5 pb-5">
-          <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
+          <h2 className="px-4 text-2xl font-bold italic uppercase">
             Услуги
           </h2>
+          <p className="px-4 text-sm text-muted-foreground mb-3">Дополнительные возможности для участников клуба</p>
           {services === null ? (
             <div className="flex gap-3 overflow-hidden pb-2">
               <div className="w-1 shrink-0" aria-hidden="true" />

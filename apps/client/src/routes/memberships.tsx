@@ -287,12 +287,22 @@ function MembershipsPage() {
           {!loading && user && active && (
             <Card className="mt-4 p-3">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-[#FFE500]/15 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="h-5 w-5 text-[#FFE500]" />
+                <div className="h-9 w-9 rounded-xl bg-[#22C55E]/15 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-5 w-5 text-[#22C55E]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[11px] text-muted-foreground leading-none mb-1">Активный абонемент</div>
                   <div className="font-bold text-sm truncate">{active.memberships?.name ?? "Абонемент"}</div>
+                  {active.ends_at && (
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      Действует до:{" "}
+                      {new Date(active.ends_at).toLocaleDateString("ru-RU", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
