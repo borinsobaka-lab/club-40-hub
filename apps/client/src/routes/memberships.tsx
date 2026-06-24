@@ -579,7 +579,7 @@ function MembershipsPage() {
           active={active}
           open={activeOpen}
           onOpenChange={setActiveOpen}
-          onCancelAutorenew={() => setConfirmCancelRenewOpen(true)}
+          onManage={() => setConfirmManageOpen(true)}
         />
       )}
 
@@ -819,12 +819,12 @@ function ActiveMembershipDrawer({
   active,
   open,
   onOpenChange,
-  onCancelAutorenew,
+  onManage,
 }: {
   active: ActiveMembership;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCancelAutorenew: () => void;
+  onManage: () => void;
 }) {
   const m = active.memberships;
   const autoOn = active.auto_renew !== false;
@@ -898,18 +898,20 @@ function ActiveMembershipDrawer({
 
             <div className="mt-6 flex items-center gap-3">
               <Button
-                onClick={onCancelAutorenew}
-                disabled={!autoOn}
-                className="flex-1 h-14 rounded-full bg-[#EF4444] text-white font-bold text-base hover:bg-[#EF4444]/90 active:scale-[0.99] transition disabled:opacity-50"
-              >
-                Отменить автопродление
-              </Button>
-              <Button
-                onClick={() => onOpenChange(false)}
                 variant="secondary"
+                onClick={onManage}
+                disabled={!autoOn}
                 className="flex-1 h-14 rounded-full font-semibold text-base"
               >
+                Управление
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => onOpenChange(false)}
+                className="flex-1 h-14 rounded-full font-semibold text-base gap-2"
+              >
                 Выйти
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
