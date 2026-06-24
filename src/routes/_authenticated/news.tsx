@@ -361,6 +361,8 @@ function NewsDialog({
       setDescription(item?.description ?? "");
       setFullTitle(item?.full_title ?? "");
       setFullText(item?.full_text ?? "");
+      setButtonText(item?.button_text ?? "");
+      setButtonUrl(item?.button_url ?? "");
       setImageUrl(item?.image_url ?? null);
       setBannerUrl(item?.banner_url ?? null);
     }
