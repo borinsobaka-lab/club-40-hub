@@ -367,7 +367,7 @@ function SchedulePage() {
 
             <div className="overflow-x-auto rounded-lg border bg-background">
 
-              <div className="grid min-w-[900px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
+              <div className="grid min-w-[1200px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
                 <div className="border-b border-r bg-muted/30" />
                 {weekDays.map((d, i) => {
                   const today = d.toDateString() === new Date().toDateString();
