@@ -235,19 +235,20 @@ function NewsPage() {
                   <TableHead className="w-[140px]">Баннер</TableHead>
                   <TableHead>Заголовок</TableHead>
                   <TableHead>Описание</TableHead>
+                  <TableHead className="w-[140px]">Кнопка</TableHead>
                   <TableHead className="w-[110px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                       <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                       Пока нет новостей. Нажмите «Добавить новость».
                     </TableCell>
                   </TableRow>
@@ -292,6 +293,9 @@ function NewsPage() {
                       <TableCell className="font-medium">{n.title}</TableCell>
                       <TableCell className="max-w-[360px] truncate text-muted-foreground">
                         {n.description ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {n.button_text && n.button_url ? n.button_text : "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
