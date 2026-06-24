@@ -597,6 +597,20 @@ function MembershipDialog({
             Рассрочка доступна
           </label>
 
+          <label className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <Checkbox
+              checked={forCouple}
+              onCheckedChange={(v) => setForCouple(!!v)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <div className="font-medium">Абонемент для двоих</div>
+              <div className="text-xs text-muted-foreground">
+                Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении.
+              </div>
+            </div>
+          </label>
+
           <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
             <div className="space-y-0.5">
               <div className="text-sm font-medium">Показывать в мобильном приложении</div>
