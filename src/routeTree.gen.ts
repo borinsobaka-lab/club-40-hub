@@ -19,6 +19,7 @@ import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
+import { Route as AuthenticatedPromocodesRouteImport } from './routes/_authenticated/promocodes'
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
@@ -77,6 +78,11 @@ const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
 const AuthenticatedSalesRoute = AuthenticatedSalesRouteImport.update({
   id: '/sales',
   path: '/sales',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPromocodesRoute = AuthenticatedPromocodesRouteImport.update({
+  id: '/promocodes',
+  path: '/promocodes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedNpsRoute = AuthenticatedNpsRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
+  '/promocodes': typeof AuthenticatedPromocodesRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/services': typeof AuthenticatedServicesRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
+  '/promocodes': typeof AuthenticatedPromocodesRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/services': typeof AuthenticatedServicesRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
+  '/_authenticated/promocodes': typeof AuthenticatedPromocodesRoute
   '/_authenticated/sales': typeof AuthenticatedSalesRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/memberships'
     | '/news'
     | '/nps'
+    | '/promocodes'
     | '/sales'
     | '/schedule'
     | '/services'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/memberships'
     | '/news'
     | '/nps'
+    | '/promocodes'
     | '/sales'
     | '/schedule'
     | '/services'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/_authenticated/memberships'
     | '/_authenticated/news'
     | '/_authenticated/nps'
+    | '/_authenticated/promocodes'
     | '/_authenticated/sales'
     | '/_authenticated/schedule'
     | '/_authenticated/services'
@@ -343,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSalesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/promocodes': {
+      id: '/_authenticated/promocodes'
+      path: '/promocodes'
+      fullPath: '/promocodes'
+      preLoaderRoute: typeof AuthenticatedPromocodesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/nps': {
       id: '/_authenticated/nps'
       path: '/nps'
@@ -427,6 +446,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
+  AuthenticatedPromocodesRoute: typeof AuthenticatedPromocodesRoute
   AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
@@ -446,6 +466,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,
+  AuthenticatedPromocodesRoute: AuthenticatedPromocodesRoute,
   AuthenticatedSalesRoute: AuthenticatedSalesRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
