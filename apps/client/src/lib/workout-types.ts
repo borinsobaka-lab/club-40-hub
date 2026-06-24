@@ -6,6 +6,7 @@ import {
   Pulse,
 } from "@solar-icons/react";
 import Shuffle from "@solar-icons/react/icons/video/Shuffle";
+import { Dumbbell, SlidersHorizontal } from "lucide-react";
 
 export const TYPE_META: Record<
   string,
