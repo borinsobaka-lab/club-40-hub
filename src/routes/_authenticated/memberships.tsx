@@ -479,7 +479,6 @@ function MembershipDialog({
                   size="sm"
                   disabled={uploadingCover || !studioId}
                   onClick={() => coverRef.current?.click()}
-                            }
                 >
                   {uploadingCover ? (
                     <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…</>
