@@ -313,6 +313,7 @@ function WorkoutDialog({
       setDescription(workout?.description ?? "");
       setPhotoUrl(workout?.photo_url ?? null);
       setCapacity(workout?.capacity != null ? String(workout.capacity) : "");
+      setMetValue(workout?.met_value != null ? String(workout.met_value) : "");
       setType((workout?.type as DayType | null) ?? NONE_TYPE);
     }
   }, [open, workout]);
