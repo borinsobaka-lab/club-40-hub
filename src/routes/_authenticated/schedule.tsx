@@ -350,7 +350,7 @@ function SchedulePage() {
             onClick={() => setDuplicateWeekOpen(true)}
             disabled={!studioId || entries.length === 0 || loading}
           >
-            <CopyPlus className="mr-1 h-4 w-4" />
+            <Copy className="mr-1 h-4 w-4" />
             Дублировать неделю
           </Button>
           <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
