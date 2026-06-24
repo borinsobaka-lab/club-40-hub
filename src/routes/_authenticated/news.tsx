@@ -53,6 +53,8 @@ type NewsItem = {
   description: string | null;
   full_title: string | null;
   full_text: string | null;
+  button_text: string | null;
+  button_url: string | null;
   created_at: string;
 };
 
@@ -343,6 +345,8 @@ function NewsDialog({
   const [description, setDescription] = useState("");
   const [fullTitle, setFullTitle] = useState("");
   const [fullText, setFullText] = useState("");
+  const [buttonText, setButtonText] = useState("");
+  const [buttonUrl, setButtonUrl] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -357,6 +361,8 @@ function NewsDialog({
       setDescription(item?.description ?? "");
       setFullTitle(item?.full_title ?? "");
       setFullText(item?.full_text ?? "");
+      setButtonText(item?.button_text ?? "");
+      setButtonUrl(item?.button_url ?? "");
       setImageUrl(item?.image_url ?? null);
       setBannerUrl(item?.banner_url ?? null);
     }
@@ -396,6 +402,8 @@ function NewsDialog({
       description: description.trim() || null,
       full_title: fullTitle.trim() || null,
       full_text: fullText.trim() || null,
+      button_text: buttonText.trim() || null,
+      button_url: buttonUrl.trim() || null,
       image_url: imageUrl,
       banner_url: bannerUrl,
       updated_at: new Date().toISOString(),
@@ -558,6 +566,34 @@ function NewsDialog({
               onChange={(e) => setFullText(e.target.value)}
               placeholder="Текст новости"
             />
+          </div>
+
+          <div className="rounded-md border p-3 space-y-3">
+            <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
+            <div className="text-xs text-muted-foreground">
+              Если оба поля заполнены — в мобильном приложении под новостью
+              появится кнопка-ссылка. Если пусто — кнопки не будет.
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="button_text">Текст на кнопке</Label>
+                <Input
+                  id="button_text"
+                  value={buttonText}
+                  onChange={(e) => setButtonText(e.target.value)}
+                  placeholder="Например: Подробнее"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="button_url">Ссылка</Label>
+                <Input
+                  id="button_url"
+                  value={buttonUrl}
+                  onChange={(e) => setButtonUrl(e.target.value)}
+                  placeholder="https://…"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
