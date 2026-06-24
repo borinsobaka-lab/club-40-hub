@@ -378,7 +378,7 @@ function HomePage() {
 
         {/* Тренировки */}
         <section className="bg-background rounded-b-[14px] pb-5">
-          <h2 className="px-4 text-xl font-black italic uppercase mb-3">
+          <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
             Тренировки
           </h2>
           {myBookings === null ? (
@@ -485,7 +485,7 @@ function HomePage() {
 
         {/* Услуги */}
         <section className="bg-background rounded-t-[14px] pt-5 pb-0">
-          <h2 className="px-4 text-xl font-black italic uppercase">
+          <h2 className="px-4 text-2xl font-bold italic uppercase">
             Услуги
           </h2>
           <p className="px-4 text-sm text-muted-foreground mb-3">Дополнительные возможности для участников клуба</p>
