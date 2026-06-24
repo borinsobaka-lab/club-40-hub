@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
-import { SectionDivider } from "@/components/section-divider";
+
 import { NewsDrawer } from "@/components/news-drawer";
 import { ServiceDrawer } from "@/components/service-drawer";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
