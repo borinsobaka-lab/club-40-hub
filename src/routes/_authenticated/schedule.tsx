@@ -343,10 +343,21 @@ function SchedulePage() {
       title="Расписание"
       description="Недельное расписание занятий"
       actions={
-        <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
-          <Plus className="mr-1 h-4 w-4" />
-          Добавить занятие
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => setDuplicateWeekOpen(true)}
+            disabled={!studioId || entries.length === 0 || loading}
+          >
+            <CopyPlus className="mr-1 h-4 w-4" />
+            Дублировать неделю
+          </Button>
+          <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
+            <Plus className="mr-1 h-4 w-4" />
+            Добавить занятие
+          </Button>
+        </div>
       }
     >
       <div className="mx-auto max-w-7xl space-y-4">
