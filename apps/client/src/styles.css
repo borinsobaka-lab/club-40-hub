@@ -9,6 +9,9 @@
   font-weight: 100;
   font-display: swap;
   src: url("/__l5e/assets-v1/551c9606-bf58-4b89-af36-85b9428d4e0f/HelveticaNeueUltraLight.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -16,6 +19,9 @@
   font-weight: 100;
   font-display: swap;
   src: url("/__l5e/assets-v1/8e3fe514-995a-40b2-95ca-e11b304c1226/HelveticaNeueUltraLightItalic.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -23,6 +29,9 @@
   font-weight: 200;
   font-display: swap;
   src: url("/__l5e/assets-v1/250965a1-c1e1-4d21-b541-5a380c97b462/HelveticaNeueThin.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -30,6 +39,9 @@
   font-weight: 200;
   font-display: swap;
   src: url("/__l5e/assets-v1/98b83796-7142-454a-b3c5-6f969b13ec0d/HelveticaNeueThinItalic.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -37,6 +49,9 @@
   font-weight: 300;
   font-display: swap;
   src: url("/__l5e/assets-v1/7979dabe-ae8e-477c-a822-4ce63409efe1/HelveticaNeueLight.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -44,6 +59,9 @@
   font-weight: 300;
   font-display: swap;
   src: url("/__l5e/assets-v1/2beddcad-dbf7-47fa-b540-9d5045a69aab/HelveticaNeueLightItalic.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -51,6 +69,9 @@
   font-weight: 400;
   font-display: swap;
   src: url("/__l5e/assets-v1/eaafaf47-e237-4180-9c21-90cb63f144b6/HelveticaNeueRoman.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -58,6 +79,9 @@
   font-weight: 400;
   font-display: swap;
   src: url("/__l5e/assets-v1/96e26afa-1c18-4ef0-bbb0-8f0c93c8febc/HelveticaNeueItalic.ttf") format("truetype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -65,6 +89,9 @@
   font-weight: 500;
   font-display: swap;
   src: url("/__l5e/assets-v1/f6b8675f-7040-423a-86a6-16d46e742a4c/HelveticaNeueMedium.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -72,6 +99,9 @@
   font-weight: 500;
   font-display: swap;
   src: url("/__l5e/assets-v1/9f86fad0-6c3f-4bff-8134-c61f42297061/HelveticaNeueMediumItalic.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -79,6 +109,9 @@
   font-weight: 700;
   font-display: swap;
   src: url("/__l5e/assets-v1/21348d07-c3aa-4452-a216-95cb0c995b6a/HelveticaNeueBold.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -86,6 +119,9 @@
   font-weight: 700;
   font-display: swap;
   src: url("/__l5e/assets-v1/11455503-5abb-486a-a84e-785499b2c53d/HelveticaNeueBoldItalic.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -93,6 +129,9 @@
   font-weight: 800;
   font-display: swap;
   src: url("/__l5e/assets-v1/564b51c7-994f-44f3-9da6-79ea87a1473e/HelveticaNeueHeavy.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -100,6 +139,9 @@
   font-weight: 800;
   font-display: swap;
   src: url("/__l5e/assets-v1/7cc123a0-2de4-41e2-9435-ea731bb6e258/HelveticaNeueHeavyItalic.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -107,6 +149,9 @@
   font-weight: 900;
   font-display: swap;
   src: url("/__l5e/assets-v1/64fcbafb-d71c-4ac2-99c9-4dbb17f81e0e/HelveticaNeueBlack.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 @font-face {
   font-family: "Helvetica Neue";
@@ -114,6 +159,9 @@
   font-weight: 900;
   font-display: swap;
   src: url("/__l5e/assets-v1/5bec6aab-86bf-49bf-b342-36495c9d12da/HelveticaNeueBlackItalic.otf") format("opentype");
+  ascent-override: 75%;
+  descent-override: 25%;
+  line-gap-override: 0%;
 }
 
 @theme {
