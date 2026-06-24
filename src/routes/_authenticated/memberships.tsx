@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
-import { useEffect, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, X, Search, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Loader2, Pencil, Trash2, X, Search, Copy, Image as ImageIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
@@ -50,7 +50,48 @@ type Membership = {
   installment_enabled: boolean;
   price: number;
   is_active: boolean;
+  cover_url: string | null;
 };
+
+const COVER_BUCKET = "memberships-media";
+
+function isHttpUrl(v: string | null | undefined) {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+async function resolveCoverSrc(value: string | null): Promise<string | null> {
+  if (!value) return null;
+  if (isHttpUrl(value)) return value;
+  const { data } = supabase.storage.from(COVER_BUCKET).getPublicUrl(value);
+  return data?.publicUrl ?? null;
+}
+
+function CoverThumb({ value, alt }: { value: string | null; alt: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    resolveCoverSrc(value).then((s) => {
+      if (!cancelled) setSrc(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+  if (!src) {
+    return (
+      <div className="flex h-12 w-16 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <ImageIcon className="h-4 w-4" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-12 w-16 rounded-md border bg-background object-contain"
+    />
+  );
+}
 
 function formatPrice(v: number) {
   return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "GEL", maximumFractionDigits: 0 }).format(v);
