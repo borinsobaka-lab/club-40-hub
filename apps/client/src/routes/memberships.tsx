@@ -279,7 +279,7 @@ function MembershipsPage() {
               <>
                 <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается три и более раз в неделю</p>
                 {memberships.some((m) => m.visits_count === null) ? (
-                  <div className="-mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
+                  <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
                     {memberships
                       .filter((m) => m.visits_count === null)
                       .map((m, idx) => (
@@ -301,7 +301,7 @@ function MembershipsPage() {
               <>
                 <p className="text-sm text-muted-foreground mb-3">Оптимально для тех, кто занимается один-два раза в неделю</p>
                 {memberships.some((m) => m.visits_count !== null) ? (
-                  <div className="-mx-4 px-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
+                  <div className="-mx-4 px-4 scroll-pl-4 scroll-pr-4 flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2">
                     {memberships
                       .filter((m) => m.visits_count !== null)
                       .map((m, idx) => (
