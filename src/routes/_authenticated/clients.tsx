@@ -407,6 +407,9 @@ function ClientsPage() {
                             </button>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          <ClubStatusBadge status={statusByClient[c.id] ?? "pchk"} />
+                        </TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>
