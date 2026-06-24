@@ -185,9 +185,9 @@ function ProfilePage() {
         </div>
       }
     >
-      <div className="pt-3">
+      <div className="pt-3 bg-muted">
         {/* Блок: данные пользователя */}
-        <section className="bg-background rounded-[14px] px-4 py-5">
+        <section className="bg-background rounded-b-[14px] px-4 py-5">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -254,7 +254,7 @@ function ProfilePage() {
         <div className="h-3 bg-muted" />
 
         {/* Блок: ссылки */}
-        <section className="bg-background rounded-[14px] py-1">
+        <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
           <ul className="divide-y divide-border">
             <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
             <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="Приложения" />
@@ -265,7 +265,7 @@ function ProfilePage() {
         <div className="h-3 bg-muted" />
 
         {/* Блок: выход */}
-        <section className="bg-background rounded-[14px] px-4 py-5">
+        <section className="bg-background rounded-t-[14px] px-4 py-5">
           <Button variant="outline" className="w-full" onClick={() => signOut()}>
             <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Выйти
