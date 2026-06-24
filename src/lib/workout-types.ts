@@ -12,18 +12,18 @@ export const DAY_TYPE_COLORS: Record<
   { dot: string; bg: string; text: string; border: string; hex: string }
 > = {
   strength: {
-    dot: "bg-rose-500",
-    bg: "bg-rose-500",
+    dot: "bg-blue-500",
+    bg: "bg-blue-500",
     text: "text-white",
-    border: "border-rose-600",
-    hex: "#f43f5e",
+    border: "border-blue-600",
+    hex: "#3b82f6",
   },
   cardio: {
-    dot: "bg-sky-500",
-    bg: "bg-sky-500",
+    dot: "bg-red-500",
+    bg: "bg-red-500",
     text: "text-white",
-    border: "border-sky-600",
-    hex: "#0ea5e9",
+    border: "border-red-600",
+    hex: "#ef4444",
   },
   hybrid: {
     dot: "bg-violet-500",
