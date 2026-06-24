@@ -145,17 +145,17 @@ function Card({
 }) {
   return (
     <div className="rounded-2xl bg-card border border-border/40 p-4 flex flex-col gap-2 min-h-[112px]">
-      <div className="flex items-center justify-between">
-        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${accent ?? "bg-primary/10 text-primary"}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${accent ?? "bg-primary/10 text-primary"}`}>
           {icon}
         </div>
-        {right}
+        <div className="text-2xl font-bold leading-tight text-right">{value}</div>
       </div>
       <div className="mt-auto">
-        <div className="text-2xl font-bold leading-tight">{value}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
-        {hint ? <div className="text-[11px] text-muted-foreground/80 mt-1">{hint}</div> : null}
+        <div className="text-xs text-muted-foreground">{label}</div>
+        {hint ? <div className="text-[11px] text-muted-foreground/80 mt-0.5">{hint}</div> : null}
       </div>
+      {right}
       {footer}
     </div>
   );
