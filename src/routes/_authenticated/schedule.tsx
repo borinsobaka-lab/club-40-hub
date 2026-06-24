@@ -473,16 +473,14 @@ function SchedulePage() {
             <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border bg-background">
 
               <div className="grid min-w-[1200px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
-                <div className="sticky top-0 z-20 border-b border-r bg-muted" />
+                <div className="sticky top-0 z-20 border-b border-r bg-background" />
                 {weekDays.map((d, i) => {
                   const today = d.toDateString() === new Date().toDateString();
                   return (
                     <div
                       key={i}
-                      className={`sticky top-0 z-20 border-r p-2 text-center text-xs ${
-                        today
-                          ? "border-b-4 border-b-yellow-400 bg-primary/10 font-semibold"
-                          : "border-b bg-muted"
+                      className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
+                        today ? "border-b-4 border-b-yellow-400 font-semibold text-primary" : "border-b"
                       }`}
                     >
                       <div className="uppercase tracking-wide text-muted-foreground">
