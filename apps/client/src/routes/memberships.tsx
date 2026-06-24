@@ -12,7 +12,7 @@ import {
   CheckCircle,
   CloseCircle,
 } from "@solar-icons/react";
-import { ChevronRight, LogOut } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -921,23 +921,18 @@ function ActiveMembershipDrawer({
               </span>
             </div>
 
-            <div className="mt-6 flex items-center gap-3">
-              <Button
-                variant="secondary"
+            <div className="mt-6 flex justify-center">
+              <button
                 onClick={onManage}
                 disabled={!autoOn}
-                className="flex-1 h-14 rounded-full font-semibold text-base"
+                className={`text-base font-medium transition-opacity ${
+                  !autoOn
+                    ? "blur-[1px] opacity-40 pointer-events-none select-none"
+                    : "text-foreground hover:opacity-80"
+                }`}
               >
                 Управление
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => onOpenChange(false)}
-                className="flex-1 h-14 rounded-full font-semibold text-base gap-2"
-              >
-                Выйти
-                <LogOut className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
           </div>
         </DrawerPrimitive.Content>
