@@ -345,6 +345,8 @@ function NewsDialog({
   const [description, setDescription] = useState("");
   const [fullTitle, setFullTitle] = useState("");
   const [fullText, setFullText] = useState("");
+  const [buttonText, setButtonText] = useState("");
+  const [buttonUrl, setButtonUrl] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
