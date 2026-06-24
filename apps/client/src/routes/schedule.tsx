@@ -21,12 +21,6 @@ export const Route = createFileRoute("/schedule")({
   component: SchedulePage,
 });
 
-const TABS = [
-  { key: "class", label: "Классы" },
-  { key: "personal", label: "Персональные" },
-  { key: "diagnostics", label: "Диагностика" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
 
 type Trainer = { id: string; full_name: string | null; photo_url: string | null };
 type Workout = {
