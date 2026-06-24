@@ -12,7 +12,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
+import { ClubStatusBadge } from "@/components/club-status-badge";
+import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
 
 type MemberProfile = {
   user_id: string;
@@ -188,6 +191,7 @@ export function ClientCardDialog({
   const [loadingSales, setLoadingSales] = useState(false);
   const [active, setActive] = useState<ActiveCM | null>(null);
   const [loadingActive, setLoadingActive] = useState(false);
+  const [allMemberships, setAllMemberships] = useState<MembershipLite[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -207,13 +211,21 @@ export function ClientCardDialog({
     setLoadingActive(true);
     supabase
       .from("client_memberships")
-      .select("id, source, started_at, ends_at, visits_left, memberships(name)")
+      .select("id, status, source, started_at, ends_at, visits_left, memberships(name)")
       .eq("client_id", client.id)
-      .eq("status", "active")
-      .maybeSingle()
+      .order("started_at", { ascending: false })
       .then(({ data }) => {
         setLoadingActive(false);
-        setActive((data as unknown as ActiveCM | null) ?? null);
+        const rows = (data as unknown as (ActiveCM & { status: string })[]) ?? [];
+        setAllMemberships(
+          rows.map((r) => ({ client_id: client.id, status: r.status, ends_at: r.ends_at })),
+        );
+        const today = new Date().toISOString().slice(0, 10);
+        const a =
+          rows.find(
+            (r) => r.status === "active" && (!r.ends_at || r.ends_at >= today),
+          ) ?? null;
+        setActive(a);
       });
     if (client.user_id) {
       setLoadingProfile(true);
@@ -235,6 +247,7 @@ export function ClientCardDialog({
     if (!open || !client?.id) {
       setSales([]);
       setActive(null);
+      setAllMemberships([]);
       setProfile(null);
       return;
     }
@@ -245,6 +258,7 @@ export function ClientCardDialog({
   if (!client) return null;
   const name = displayName(client);
   const photo = client.avatar_url || client.photo_url || "";
+  const clubStatus: ClubStatus = computeClubStatus(allMemberships);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -259,8 +273,11 @@ export function ClientCardDialog({
               {photo && <AvatarImage src={photo} alt={name} />}
               <AvatarFallback className="text-lg">{initials(name)}</AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <div className="text-xl font-semibold">{name}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-xl font-semibold">{name}</div>
+                <ClubStatusBadge status={clubStatus} withFull />
+              </div>
               <div className="text-sm text-muted-foreground">
                 {client.phone || "—"} {client.email ? `· ${client.email}` : ""}
               </div>
@@ -281,8 +298,10 @@ export function ClientCardDialog({
           <Tabs defaultValue="card" className="w-full">
             <TabsList>
               <TabsTrigger value="card">Карточка</TabsTrigger>
+              <TabsTrigger value="visits">Посещения</TabsTrigger>
               <TabsTrigger value="profile">Анкета</TabsTrigger>
             </TabsList>
+
 
             <TabsContent value="card" className="mt-4 space-y-5">
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
@@ -371,7 +390,12 @@ export function ClientCardDialog({
               </div>
             </TabsContent>
 
+            <TabsContent value="visits" className="mt-4">
+              <VisitsTab open={open} userId={client.user_id ?? null} />
+            </TabsContent>
+
             <TabsContent value="profile" className="mt-4">
+
               <ProfileTab
                 profile={profile}
                 loading={loadingProfile}
@@ -517,6 +541,122 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="rounded-lg border bg-background p-3">
       <div className="mb-1 text-xs font-medium uppercase text-muted-foreground">{title}</div>
       <div className="divide-y">{children}</div>
+    </div>
+  );
+}
+
+type VisitRow = {
+  id: string;
+  workout_name: string | null;
+  starts_at: string;
+  status: "booked" | "completed" | "cancelled" | "attended" | "no_show" | "rejected";
+  cancelled_at: string | null;
+};
+
+const VISIT_STATUS_LABEL: Record<VisitRow["status"], string> = {
+  booked: "Забронировано",
+  attended: "Посещено",
+  no_show: "Пропущено",
+  cancelled: "Отменено",
+  rejected: "Отклонена",
+  completed: "Проведено",
+};
+
+function visitStatusBadge(v: VisitRow["status"]) {
+  if (v === "attended" || v === "completed") return <Badge variant="default">{VISIT_STATUS_LABEL[v]}</Badge>;
+  if (v === "cancelled") return <Badge variant="destructive">{VISIT_STATUS_LABEL[v]}</Badge>;
+  if (v === "rejected")
+    return (
+      <Badge
+        variant="outline"
+        className="text-orange-600 border-orange-600 dark:text-orange-400 dark:border-orange-400"
+      >
+        {VISIT_STATUS_LABEL[v]}
+      </Badge>
+    );
+  if (v === "no_show") return <Badge variant="outline">{VISIT_STATUS_LABEL[v]}</Badge>;
+  return <Badge variant="secondary">{VISIT_STATUS_LABEL[v]}</Badge>;
+}
+
+function fmtDateTime(v: string | null | undefined) {
+  if (!v) return "—";
+  return new Date(v).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function VisitsTab({ open, userId }: { open: boolean; userId: string | null }) {
+  const [rows, setRows] = useState<VisitRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !userId) {
+      setRows([]);
+      return;
+    }
+    setLoading(true);
+    supabase
+      .from("bookings_log")
+      .select("id, workout_name, starts_at, status, cancelled_at")
+      .eq("user_id", userId)
+      .order("starts_at", { ascending: false })
+      .limit(500)
+      .then(({ data }) => {
+        setLoading(false);
+        setRows((data as unknown as VisitRow[]) ?? []);
+      });
+  }, [open, userId]);
+
+  if (!userId) {
+    return (
+      <div className="rounded-lg border bg-background p-6 text-center text-sm text-muted-foreground">
+        Клиент ещё не зарегистрирован в мобильном приложении — посещений нет.
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border bg-background p-6 text-center text-sm text-muted-foreground">
+        Посещений пока нет.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border bg-background">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">Тренировка</th>
+            <th className="px-3 py-2 text-left font-medium">Дата и время</th>
+            <th className="px-3 py-2 text-left font-medium">Статус</th>
+            <th className="px-3 py-2 text-left font-medium">Отменена</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td className="px-3 py-2">{r.workout_name ?? "—"}</td>
+              <td className="px-3 py-2">{fmtDateTime(r.starts_at)}</td>
+              <td className="px-3 py-2">{visitStatusBadge(r.status)}</td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">
+                {fmtDateTime(r.cancelled_at)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

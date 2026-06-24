@@ -44,6 +44,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientCardDialog } from "@/components/client-card-dialog";
+import { ClubStatusBadge } from "@/components/club-status-badge";
+import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
@@ -162,12 +164,14 @@ function ClientsPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [regRange, setRegRange] = useState<DateRange | undefined>();
   const [visitRange, setVisitRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardClient, setCardClient] = useState<Client | null>(null);
+  const [statusByClient, setStatusByClient] = useState<Record<string, ClubStatus>>({});
 
   const openCard = (c: Client) => {
     setCardClient(c);
@@ -177,6 +181,7 @@ function ClientsPage() {
   const fetchClients = async () => {
     if (!studioId) {
       setClients([]);
+      setStatusByClient({});
       return;
     }
     setLoading(true);
@@ -190,7 +195,27 @@ function ClientsPage() {
       toast.error("Не удалось загрузить клиентов: " + error.message);
       return;
     }
-    setClients((data as Client[]) ?? []);
+    const list = (data as Client[]) ?? [];
+    setClients(list);
+
+    // Подтягиваем абонементы для статусов ЧК / ПЧК / БЧК
+    const { data: cmData } = await supabase
+      .from("client_memberships")
+      .select("client_id, status, ends_at")
+      .eq("studio_id", studioId);
+    const memberships = (cmData as MembershipLite[]) ?? [];
+    const byClient = new Map<string, MembershipLite[]>();
+    for (const m of memberships) {
+      if (!m.client_id) continue;
+      const arr = byClient.get(m.client_id) ?? [];
+      arr.push(m);
+      byClient.set(m.client_id, arr);
+    }
+    const next: Record<string, ClubStatus> = {};
+    for (const c of list) {
+      next[c.id] = computeClubStatus(byClient.get(c.id));
+    }
+    setStatusByClient(next);
   };
 
   const refreshSignal = useRefreshSignal();
@@ -223,6 +248,7 @@ function ClientsPage() {
 
   const resetFilters = () => {
     setGenderFilter("");
+    setStatusFilter("");
     setRegRange(undefined);
     setVisitRange(undefined);
   };
@@ -236,6 +262,7 @@ function ClientsPage() {
       (c.email ?? "").toLowerCase().includes(q)
     )) return false;
     if (genderFilter && c.gender !== genderFilter) return false;
+    if (statusFilter && statusByClient[c.id] !== statusFilter) return false;
     if (!inDateRange(c.registration_date, regRange)) return false;
     if (!inDateRange(c.last_visit_date, visitRange)) return false;
     return true;
@@ -289,6 +316,20 @@ function ClientsPage() {
                     </Select>
                   </div>
 
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Статус</Label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-9 w-[160px]">
+                        <SelectValue placeholder="Все" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="chk">ЧК — Член клуба</SelectItem>
+                        <SelectItem value="pchk">ПЧК — Потенциальный</SelectItem>
+                        <SelectItem value="bchk">БЧК — Бывший</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <DateRangeFilter
                     label="Дата регистрации"
                     value={regRange}
@@ -314,6 +355,7 @@ function ClientsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ФИО</TableHead>
+                    <TableHead className="w-[80px]">Статус</TableHead>
                     <TableHead>Телефон</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Пол</TableHead>
@@ -328,13 +370,13 @@ function ClientsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
                         {clients.length === 0
                           ? "Пока нет клиентов. Нажмите «Добавить клиента»."
                           : "Ничего не найдено."}
@@ -364,6 +406,9 @@ function ClientsPage() {
                               {displayName(c)}
                             </button>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <ClubStatusBadge status={statusByClient[c.id] ?? "pchk"} />
                         </TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
