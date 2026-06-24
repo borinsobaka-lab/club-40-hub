@@ -921,7 +921,7 @@ function BookingsPanel({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Отклонить запись?</AlertDialogTitle>
+            <AlertDialogTitle>Отклонить?</AlertDialogTitle>
             <AlertDialogDescription>
               Бронирование будет отменено со статусом «Отклонена».
               Пользователь сможет записаться снова, если останутся места.
