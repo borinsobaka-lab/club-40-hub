@@ -348,6 +348,12 @@ function WorkoutDialog({
       toast.error("Вместимость должна быть неотрицательным числом");
       return;
     }
+    const metNum = metValue.trim() === "" ? null : Number(metValue);
+    if (metNum != null && (!Number.isFinite(metNum) || metNum <= 0)) {
+      setSaving(false);
+      toast.error("MET должен быть положительным числом");
+      return;
+    }
     const payload = {
       studio_id: studioId,
       name: name.trim(),
@@ -355,6 +361,7 @@ function WorkoutDialog({
       photo_url: photoUrl,
       capacity: capacityNum,
       type: type === NONE_TYPE ? null : type,
+      met_value: metNum,
     };
     const { error } = workout
       ? await supabase.from("workouts").update(payload).eq("id", workout.id)
