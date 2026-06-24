@@ -402,6 +402,8 @@ function NewsDialog({
       description: description.trim() || null,
       full_title: fullTitle.trim() || null,
       full_text: fullText.trim() || null,
+      button_text: buttonText.trim() || null,
+      button_url: buttonUrl.trim() || null,
       image_url: imageUrl,
       banner_url: bannerUrl,
       updated_at: new Date().toISOString(),
