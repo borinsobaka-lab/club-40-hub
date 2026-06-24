@@ -14,8 +14,8 @@ export const TYPE_META: Record<
   string,
   { label: string; icon: ComponentType<{ className?: string }>; color: string; bg: string; stripe: string }
 > = {
-  cardio: { label: "Кардио", icon: HeartPulse, color: "text-blue-600", bg: "bg-blue-500/10", stripe: "bg-blue-500" },
-  strength: { label: "Силовая", icon: DumbbellIcon, color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
+  cardio: { label: "Кардио", icon: HeartPulse, color: "text-red-600", bg: "bg-red-500/10", stripe: "bg-red-500" },
+  strength: { label: "Силовая", icon: DumbbellIcon, color: "text-blue-600", bg: "bg-blue-500/10", stripe: "bg-blue-500" },
   hybrid: { label: "Гибрид", icon: FiltersIcon, color: "text-violet-600", bg: "bg-violet-500/10", stripe: "bg-violet-500" },
   recovery: { label: "Восстановление", icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-500/10", stripe: "bg-emerald-500" },
 };

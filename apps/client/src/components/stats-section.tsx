@@ -50,8 +50,8 @@ const TYPE_LABEL: Record<WorkoutType, string> = {
 };
 
 const TYPE_COLOR: Record<WorkoutType, string> = {
-  cardio: "bg-blue-500",
-  strength: "bg-red-500",
+  cardio: "bg-red-500",
+  strength: "bg-blue-500",
   hybrid: "bg-violet-500",
   recovery: "bg-emerald-500",
   unknown: "bg-muted-foreground",
