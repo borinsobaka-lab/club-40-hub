@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { toast } from "sonner";
 import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
+import { ClientNameLink } from "@/components/client-name-link";
 
 export const Route = createFileRoute("/_authenticated/bookings-log")({
   head: () => ({ meta: [{ title: "История записей — CLUB 40 Admin" }] }),
@@ -351,11 +352,18 @@ function BookingsLogPage() {
                       return (
                         <TableRow key={r.id}>
                           <TableCell className="font-medium">
-                            {r.client_full_name ||
-                              [r.client_first_name, r.client_last_name]
-                                .filter(Boolean)
-                                .join(" ") ||
-                              "—"}
+                            {(() => {
+                              const name =
+                                r.client_full_name ||
+                                [r.client_first_name, r.client_last_name]
+                                  .filter(Boolean)
+                                  .join(" ") ||
+                                "—";
+                              if (!r.user_id || name === "—") return name;
+                              return (
+                                <ClientNameLink userId={r.user_id}>{name}</ClientNameLink>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             <div>{r.client_phone ?? "—"}</div>

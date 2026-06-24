@@ -9,6 +9,7 @@ import { useActiveStudioId } from "@/components/studio-switcher";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { ClientNameLink } from "@/components/client-name-link";
 import {
   Select,
   SelectContent,
@@ -867,7 +868,13 @@ function BookingsPanel({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col">
-                    <span className="font-medium">{name}</span>
+                    {c ? (
+                      <ClientNameLink clientId={c.id} className="font-medium">
+                        {name}
+                      </ClientNameLink>
+                    ) : (
+                      <span className="font-medium">{name}</span>
+                    )}
                     {b.status === "attended" && (
                       <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
                         Посещение зафиксировано
