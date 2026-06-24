@@ -109,6 +109,15 @@ type Sale = {
       }
     | null;
   memberships: { id: string; name: string } | null;
+  client_memberships:
+    | {
+        id: string;
+        status: string;
+        auto_renew: boolean | null;
+        ends_at: string | null;
+        cancelled_at: string | null;
+      }[]
+    | null;
 };
 
 const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
