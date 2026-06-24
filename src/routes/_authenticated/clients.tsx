@@ -44,6 +44,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientCardDialog } from "@/components/client-card-dialog";
+import { ClubStatusBadge } from "@/components/club-status-badge";
+import { CLUB_STATUS_LABEL, computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
@@ -162,12 +164,14 @@ function ClientsPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [regRange, setRegRange] = useState<DateRange | undefined>();
   const [visitRange, setVisitRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardClient, setCardClient] = useState<Client | null>(null);
+  const [statusByClient, setStatusByClient] = useState<Record<string, ClubStatus>>({});
 
   const openCard = (c: Client) => {
     setCardClient(c);
