@@ -13,6 +13,7 @@ create table if not exists public.memberships (
   price numeric(12,2) not null default 0,
   is_active boolean not null default true,
   cover_url text,
+  for_couple boolean not null default false,
   created_at timestamptz not null default now()
 );
 
