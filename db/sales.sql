@@ -93,3 +93,18 @@ create policy "sale_installments via sale" on public.sale_installments
         and public.is_trainer(auth.uid(), s.studio_id)
     )
   );
+
+-- Payment type and promo code (added later).
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'sale_payment_type') then
+    create type public.sale_payment_type as enum ('first', 'recurring', 'other');
+  end if;
+end
+$$;
+
+alter table public.sales
+  add column if not exists payment_type public.sale_payment_type not null default 'other',
+  add column if not exists promo_code text;
+
+notify pgrst, 'reload schema';

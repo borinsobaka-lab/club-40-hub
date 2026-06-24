@@ -27,6 +27,7 @@ const studioItems = [
 ];
 
 const statsItems = [
+  { title: "Продажи", url: "/sales", icon: Receipt },
   { title: "История записей", url: "/bookings-log", icon: History },
 ];
 
@@ -36,7 +37,6 @@ const feedbackItems = [
 ];
 
 const financeItems = [
-  { title: "Продажи", url: "/sales", icon: Receipt },
   { title: "Касса", url: "/cash", icon: Wallet },
 ];
 
