@@ -146,6 +146,17 @@ function MembershipsPage() {
     }
   }, [packagesMemberships]);
 
+  useLayoutEffect(() => {
+    if (couplesMemberships.length > 0) {
+      measureGroup(
+        couplesTopRefs,
+        couplesBottomRefs,
+        setCouplesTopHeight,
+        setCouplesBottomHeight
+      );
+    }
+  }, [couplesMemberships]);
+
 
   useEffect(() => {
     if (authLoading) return;
