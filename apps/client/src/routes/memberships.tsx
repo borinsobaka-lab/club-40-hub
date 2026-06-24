@@ -634,22 +634,25 @@ function MembershipsPage() {
       <AlertDialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Управление абонементом</AlertDialogTitle>
+            <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы можете отменить текущий абонемент. После отмены доступ к занятиям сохранится до конца оплаченного периода.
+              Абонемент останется активным до конца оплаченного периода, но не будет продлён автоматически.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancellingMembership}>Закрыть</AlertDialogCancel>
+            <AlertDialogCancel disabled={cancellingRenew}>Закрыть</AlertDialogCancel>
             <AlertDialogAction
-              disabled={cancellingMembership}
+              disabled={cancellingRenew}
               className="bg-[#EF4444] text-white hover:bg-[#EF4444]/90"
               onClick={(e) => {
                 e.preventDefault();
-                handleCancelMembership();
+                handleCancelAutorenew().then(() => {
+                  setConfirmManageOpen(false);
+                  setActiveOpen(false);
+                });
               }}
             >
-              {cancellingMembership ? "Отменяем…" : "Отменить абонемент"}
+              {cancellingRenew ? "Отключаем…" : "Отключить автопродление"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
