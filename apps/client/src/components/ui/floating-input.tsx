@@ -21,7 +21,7 @@ const FloatingLabelInput = React.forwardRef<
         ref={ref}
         value={value}
         className={cn(
-          "flex h-14 w-full rounded-xl border border-input bg-[#F9FAFB] px-3 text-base shadow-none transition-colors",
+          "flex h-14 w-full rounded-xl border-2 border-input bg-muted px-3 text-base shadow-none transition-colors",
           "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
           "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           "disabled:cursor-not-allowed disabled:opacity-50",
@@ -151,7 +151,7 @@ const SelectRootWrapper = React.forwardRef<
         <SelectTrigger
           ref={ref}
           className={cn(
-            "flex h-14 w-full items-center justify-between whitespace-nowrap rounded-xl border border-input bg-[#F9FAFB] px-3 shadow-none ring-offset-background cursor-pointer",
+            "flex h-14 w-full items-center justify-between whitespace-nowrap rounded-xl border-2 border-input bg-muted px-3 shadow-none ring-offset-background cursor-pointer",
             "data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring",
             "disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
             active ? "pt-5 pb-1" : "py-1",
