@@ -329,17 +329,19 @@ function SchedulePage() {
         <div className="p-4 space-y-4">
           <div ref={daysContainerRef} className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
 
-            {days.map((d, i) => (
+            {days.map((d, i) => {
+              const isPastDay = d.getTime() < today.getTime();
+              return (
                 <button
                   key={d.toISOString()}
                   ref={(el) => { dayBtnRefs.current[i] = el; }}
                   onClick={() => selectDay(i)}
-                className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
-                  i === activeIdx
-                    ? "bg-[#1B1C1F] text-[#FFE500]"
-                    : "bg-card text-card-foreground"
-                }`}
-              >
+                  className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
+                    i === activeIdx
+                      ? "bg-[#1B1C1F] text-[#FFE500]"
+                      : "bg-card text-card-foreground"
+                  } ${isPastDay ? "opacity-20" : ""}`}
+                >
                 <span className={`text-xs font-medium ${i === activeIdx ? "" : "text-[#66676D]"}`}>
                   {DAY_NAMES[d.getDay()]}
                 </span>
