@@ -293,7 +293,39 @@ function SchedulePage() {
         </div>
       }
     >
-      {(
+      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pt-4 pb-0">
+        {TABS.map((t) => {
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
+                active ? "text-foreground" : "text-[#66676D]"
+              }`}
+            >
+              {t.label}
+              {active && (
+                <span className="absolute left-0 right-0 -bottom-px h-1 bg-[#FFE500] rounded-full" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === "personal" ? (
+        <div className="p-4">
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            Совсем скоро мы начнем принимать заявки на персональные тренировки
+          </Card>
+        </div>
+      ) : activeTab !== "class" ? (
+        <div className="p-4">
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            Функционал скоро будет доступен
+          </Card>
+        </div>
+      ) : (
         <div className="p-4 space-y-4">
           <div ref={daysContainerRef} className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2 mt-1">
 
