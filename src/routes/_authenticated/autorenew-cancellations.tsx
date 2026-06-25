@@ -178,7 +178,7 @@ function AutorenewCancellationsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Клиент</TableHead>
+                  <TableHead className="min-w-[220px]">Клиент</TableHead>
                   <TableHead>Контакты</TableHead>
                   <TableHead>Абонемент</TableHead>
                   <TableHead className="w-[140px]">Действует до</TableHead>
