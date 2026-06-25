@@ -347,7 +347,7 @@ function SchedulePage() {
                 </span>
                 <span className="text-lg font-bold italic">{d.getDate()}</span>
               </button>
-            ))}
+            )})}
           </div>
 
           <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
