@@ -3,15 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage, squircleClipPath } from "@/components/ui/squircle-avatar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectItem } from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -19,7 +11,8 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Translation, Settings, MedalStar } from "@solar-icons/react";
+import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Settings, MedalStar } from "@solar-icons/react";
+import { FloatingLabelInput, FloatingLabelSelect } from "@/components/ui/floating-input";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
@@ -558,83 +551,76 @@ function EditProfileSheet({
             </button>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="last_name">Фамилия</Label>
-            <Input className="shadow-none"
-              id="last_name"
-              value={form.last_name}
-              onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
-              maxLength={60}
-              autoComplete="family-name"
-            />
-          </div>
+          <FloatingLabelInput
+            label="Фамилия"
+            id="last_name"
+            value={form.last_name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setForm((f) => ({ ...f, last_name: e.target.value }))
+            }
+            maxLength={60}
+            autoComplete="family-name"
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="first_name">Имя</Label>
-            <Input className="shadow-none"
-              id="first_name"
-              value={form.first_name}
-              onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
-              maxLength={60}
-              autoComplete="given-name"
-            />
-          </div>
+          <FloatingLabelInput
+            label="Имя"
+            id="first_name"
+            value={form.first_name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setForm((f) => ({ ...f, first_name: e.target.value }))
+            }
+            maxLength={60}
+            autoComplete="given-name"
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="phone">Телефон</Label>
-            <Input className="shadow-none"
-              id="phone"
-              type="tel"
-              inputMode="tel"
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              maxLength={32}
-              autoComplete="tel"
-              placeholder="+7 ___ ___ __ __"
-            />
-          </div>
+          <FloatingLabelInput
+            label="Телефон"
+            id="phone"
+            type="tel"
+            inputMode="tel"
+            value={form.phone}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setForm((f) => ({ ...f, phone: e.target.value }))
+            }
+            maxLength={32}
+            autoComplete="tel"
+            placeholder="+7 ___ ___ __ __"
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input className="shadow-none"
-              id="email"
-              type="email"
-              inputMode="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              maxLength={255}
-              autoComplete="email"
-            />
-          </div>
+          <FloatingLabelInput
+            label="Email"
+            id="email"
+            type="email"
+            inputMode="email"
+            value={form.email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setForm((f) => ({ ...f, email: e.target.value }))
+            }
+            maxLength={255}
+            autoComplete="email"
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="birthday">Дата рождения</Label>
-            <Input className="shadow-none"
-              id="birthday"
-              type="date"
-              value={form.birthday}
-              onChange={(e) => setForm((f) => ({ ...f, birthday: e.target.value }))}
-            />
-          </div>
+          <FloatingLabelInput
+            label="Дата рождения"
+            id="birthday"
+            type="date"
+            value={form.birthday}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setForm((f) => ({ ...f, birthday: e.target.value }))
+            }
+          />
 
-          <div className="space-y-1.5">
-            <Label>Пол</Label>
-            <Select
-              value={form.gender || "unset"}
-              onValueChange={(v) =>
-                setForm((f) => ({ ...f, gender: v === "unset" ? "" : v }))
-              }
-            >
-              <SelectTrigger className="h-12 shadow-none">
-                <SelectValue placeholder="Не указано" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unset">Не указано</SelectItem>
-                <SelectItem value="male">Мужской</SelectItem>
-                <SelectItem value="female">Женский</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FloatingLabelSelect
+            label="Пол"
+            value={form.gender || "unset"}
+            onValueChange={(v: string) =>
+              setForm((f) => ({ ...f, gender: v === "unset" ? "" : v }))
+            }
+          >
+            <SelectItem value="unset">Не указано</SelectItem>
+            <SelectItem value="male">Мужской</SelectItem>
+            <SelectItem value="female">Женский</SelectItem>
+          </FloatingLabelSelect>
         </div>
 
         <SheetFooter className="flex-row gap-2">
