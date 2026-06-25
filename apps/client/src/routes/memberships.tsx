@@ -578,9 +578,8 @@ function MembershipsPage() {
       </div>
 
       {selected && (
-        <MembershipDrawer
+        <CheckoutSheet
           membership={selected}
-          color={COLORS[memberships.findIndex((x) => x.id === selected.id) % COLORS.length] || COLORS[0]}
           open={!!selected}
           onOpenChange={(open) => {
             if (!open) setSelected(null);
