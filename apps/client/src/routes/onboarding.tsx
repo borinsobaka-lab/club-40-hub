@@ -7,10 +7,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RulerPicker } from "@/components/ui/ruler-picker";
+import { Mars, Venus } from "lucide-react";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -297,7 +297,7 @@ function OnboardingPage() {
       </div>
 
       {/* Step content */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col justify-center [&>*]:w-full">
         {step === 1 && (
           <StepGoal
             value={form.primary_goal}
@@ -642,61 +642,64 @@ function StepBody({
   onChange: (patch: Partial<FormData>) => void;
 }) {
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1939 }, (_, i) => currentYear - i);
+  const weightNum = weight ? Number(weight.replace(",", ".")) : null;
+  const yearNum = birthYear ? Number(birthYear) : null;
   return (
     <div>
       <StepTitle
         title="Базовые параметры — чтобы правильно рассчитать статистику"
         subtitle="Эти данные доступны только вам."
       />
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="weight">Вес, кг</Label>
-          <Input
-            id="weight"
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => onChange({ weight_kg: e.target.value.replace(/[^\d.,]/g, "") })}
+      <div className="space-y-7">
+        <div>
+          <Label className="text-sm block text-center mb-3">Вес</Label>
+          <RulerPicker
+            min={30}
+            max={200}
+            value={weightNum}
+            onChange={(v) => onChange({ weight_kg: String(v) })}
+            unit="кг"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="byear">Год рождения</Label>
-          <Select
-            value={birthYear || undefined}
-            onValueChange={(v) => onChange({ birth_year: v })}
-          >
-            <SelectTrigger id="byear" className="h-12">
-              <SelectValue placeholder="Выберите год" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {years.map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div>
+          <Label className="text-sm block text-center mb-3">Год рождения</Label>
+          <RulerPicker
+            min={1940}
+            max={currentYear - 5}
+            value={yearNum}
+            onChange={(v) => onChange({ birth_year: String(v) })}
+            tickWidth={14}
+            majorEvery={5}
+          />
         </div>
-        <div className="space-y-2">
-          <Label>Пол</Label>
-          <div className="grid grid-cols-2 gap-2">
+
+        <div>
+          <Label className="text-sm block text-center mb-3">Пол</Label>
+          <div className="grid grid-cols-2 gap-3 max-w-[320px] mx-auto">
             {([
-              { v: "female", label: "Женский" },
-              { v: "male", label: "Мужской" },
-            ] as { v: Gender; label: string }[]).map((g) => (
-              <button
-                key={g.v}
-                type="button"
-                onClick={() => onChange({ gender: g.v })}
-                className={`px-3 py-3 rounded-xl border text-sm transition-colors ${
-                  gender === g.v
-                    ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500] font-semibold"
-                    : "bg-card border-border hover:border-foreground/30"
-                }`}
-              >
-                {g.label}
-              </button>
-            ))}
+              { v: "female" as Gender, label: "Женский", Icon: Venus },
+              { v: "male" as Gender, label: "Мужской", Icon: Mars },
+            ]).map(({ v, label, Icon }) => {
+              const active = gender === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => onChange({ gender: v })}
+                  className={`aspect-square flex flex-col items-center justify-center gap-3 rounded-xl border transition-colors ${
+                    active
+                      ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]"
+                      : "bg-card border-border hover:border-foreground/30"
+                  }`}
+                >
+                  <Icon className="h-10 w-10" strokeWidth={2} />
+                  <span className={`text-base ${active ? "font-bold" : "font-medium"}`}>
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -277,7 +277,6 @@ function ProfilePage() {
         {/* Блок: выход */}
         <section className="bg-background rounded-t-[14px] px-4 py-5">
           <Button variant="outline" className="w-full shadow-none" onClick={() => signOut()}>
-            <Logout className="h-4 w-4 mr-2" weight="BoldDuotone" />
             Выйти
           </Button>
         </section>
