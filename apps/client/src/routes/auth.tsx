@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [{ title: "Вход — CLUB 40" }],
+    meta: [{ title: "Регистрация — CLUB 40" }],
   }),
   component: AuthPage,
 });
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { signIn, signUp, session, loading } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -82,10 +82,10 @@ function AuthPage() {
         {/* Heading */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black italic uppercase leading-tight">
-            {isSignup ? "Привет!" : "С возвращением"}
+            გამარჯობა
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {isSignup ? "Создайте аккаунт, чтобы начать" : "Войдите в личный кабинет"}
+            Зарегистрируйтесь для старта
           </p>
         </div>
 
@@ -171,7 +171,7 @@ function AuthPage() {
         {/* Divider */}
         <div className="max-w-sm w-full mx-auto my-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
-          <span className="text-xs text-muted-foreground">или войти через</span>
+          <span className="text-xs text-muted-foreground">или через</span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
