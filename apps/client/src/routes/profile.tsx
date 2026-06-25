@@ -19,7 +19,8 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Translation, Settings, MedalStar } from "@solar-icons/react";
+import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Settings, MedalStar } from "@solar-icons/react";
+import { FloatingLabelInput, FloatingLabelSelect } from "@/components/ui/floating-input";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
