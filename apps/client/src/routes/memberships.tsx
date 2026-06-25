@@ -16,7 +16,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import {
   Refresh,
   ShieldCheck,
-  Ticket,
+  
   CheckCircle,
   CloseCircle,
 } from "@solar-icons/react";
