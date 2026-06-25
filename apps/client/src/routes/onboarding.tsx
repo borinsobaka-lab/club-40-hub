@@ -297,7 +297,7 @@ function OnboardingPage() {
       </div>
 
       {/* Step content */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col justify-center [&>*]:w-full">
         {step === 1 && (
           <StepGoal
             value={form.primary_goal}
