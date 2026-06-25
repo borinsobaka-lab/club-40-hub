@@ -341,7 +341,7 @@ function BookingsLogPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Клиент</TableHead>
+                    <TableHead className="min-w-[220px]">Клиент</TableHead>
                     <TableHead>Контакты</TableHead>
                     <TableHead>Тренировка</TableHead>
                     <TableHead className="w-[160px]">Дата и время</TableHead>

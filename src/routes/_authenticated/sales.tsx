@@ -291,7 +291,7 @@ function SalesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Клиент</TableHead>
+                    <TableHead className="min-w-[220px]">Клиент</TableHead>
                     <TableHead>Контакты</TableHead>
                     <TableHead>Дата</TableHead>
                     <TableHead>Источник</TableHead>

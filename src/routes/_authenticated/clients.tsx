@@ -355,7 +355,7 @@ function ClientsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ФИО</TableHead>
+                    <TableHead className="min-w-[240px]">ФИО</TableHead>
                     <TableHead className="w-[80px]">Статус</TableHead>
                     <TableHead>Телефон</TableHead>
                     <TableHead>Email</TableHead>
@@ -402,7 +402,7 @@ function ClientsPage() {
                             <button
                               type="button"
                               onClick={() => openCard(c)}
-                              className="cursor-pointer text-left text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                              className="cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                             >
                               {displayName(c)}
                             </button>

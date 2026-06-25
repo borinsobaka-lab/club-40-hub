@@ -152,13 +152,13 @@ export function ClientNameLink({
 
   return (
     <>
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
         <button
           type="button"
           onClick={handleClick}
           disabled={loading}
           className={cn(
-            "cursor-pointer text-left text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 disabled:opacity-60 dark:text-blue-400 dark:hover:text-blue-300",
+            "cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 disabled:opacity-60 dark:text-blue-400 dark:hover:text-blue-300",
             className,
           )}
         >
