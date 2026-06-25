@@ -151,7 +151,7 @@ const SelectRootWrapper = React.forwardRef<
         <SelectTrigger
           ref={ref}
           className={cn(
-            "flex h-14 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 shadow-none ring-offset-background cursor-pointer",
+            "flex h-14 w-full items-center justify-between whitespace-nowrap rounded-xl border-2 border-input bg-muted px-3 shadow-none ring-offset-background cursor-pointer",
             "data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring",
             "disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
             active ? "pt-5 pb-1" : "py-1",
