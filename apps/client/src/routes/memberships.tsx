@@ -767,9 +767,8 @@ function MembershipCard({
   );
 }
 
-function MembershipDrawer({
+function CheckoutSheet({
   membership,
-  color,
   open,
   onOpenChange,
   onPurchase,
@@ -777,20 +776,61 @@ function MembershipDrawer({
   hasActive,
 }: {
   membership: Membership;
-  color: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPurchase: () => void;
   purchasing: boolean;
   hasActive: boolean;
 }) {
-  const features = [
-    membership.visits_count === null
-      ? "Безлимит посещений"
-      : `${membership.visits_count} занятий`,
-    `Срок действия ${membership.duration_days} дней`,
-    ...((membership.benefits ?? []).filter(Boolean) as string[]),
-  ];
+  const isSubscription = membership.visits_count === null;
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvc, setCvc] = useState("");
+  const [holder, setHolder] = useState("");
+  const [promo, setPromo] = useState("");
+  const [promoApplied, setPromoApplied] = useState<null | { code: string; discount: number }>(null);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeRecurring, setAgreeRecurring] = useState(!isSubscription);
+
+  const digits = cardNumber.replace(/\D/g, "");
+  const cardValid = digits.length >= 13 && digits.length <= 19;
+  const expiryValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry);
+  const cvcValid = /^\d{3,4}$/.test(cvc);
+  const holderValid = holder.trim().length >= 2;
+  const canPay =
+    cardValid &&
+    expiryValid &&
+    cvcValid &&
+    holderValid &&
+    agreeTerms &&
+    agreeRecurring &&
+    !purchasing;
+
+  const formatCard = (v: string) =>
+    v.replace(/\D/g, "").slice(0, 19).replace(/(\d{4})(?=\d)/g, "$1 ");
+  const formatExpiry = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 4);
+    if (d.length < 3) return d;
+    return d.slice(0, 2) + "/" + d.slice(2);
+  };
+
+  const total = Math.max(
+    0,
+    Number(membership.price) - (promoApplied?.discount ?? 0)
+  );
+
+  const applyPromo = () => {
+    const code = promo.trim().toUpperCase();
+    if (!code) return;
+    // Mock: WELCOME10 → 10% off
+    if (code === "WELCOME10") {
+      setPromoApplied({ code, discount: Math.round(Number(membership.price) * 0.1) });
+      toast.success("Промокод применён");
+    } else {
+      setPromoApplied(null);
+      toast.error("Промокод не найден");
+    }
+  };
 
   return (
     <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
@@ -802,63 +842,132 @@ function MembershipDrawer({
         >
           <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+24px)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
-                  {membership.name}
-                </DrawerPrimitive.Title>
-                {membership.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{membership.description}</p>
-                )}
+            <DrawerPrimitive.Title className="text-xl font-bold leading-tight">
+              Оформление
+            </DrawerPrimitive.Title>
+
+            {/* Summary */}
+            <div className="mt-3 rounded-xl bg-muted p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold truncate">{membership.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {formatPeriod(membership.duration_days)}
+                  {isSubscription ? " · подписка с автопродлением" : ""}
+                </div>
               </div>
-              <div
-                className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: color + "20" }}
+              <div className="text-lg font-black italic shrink-0">
+                {Number(membership.price).toLocaleString("ru-RU")} ₾
+              </div>
+            </div>
+
+            {/* Card */}
+            <div className="mt-4">
+              <div className="text-xs font-bold tracking-wider text-muted-foreground mb-2">
+                БАНКОВСКАЯ КАРТА
+              </div>
+              <input
+                inputMode="numeric"
+                placeholder="0000 0000 0000 0000"
+                value={cardNumber}
+                onChange={(e) => setCardNumber(formatCard(e.target.value))}
+                className="w-full h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
+              />
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <input
+                  inputMode="numeric"
+                  placeholder="MM/ГГ"
+                  value={expiry}
+                  onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                  className="h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
+                />
+                <input
+                  inputMode="numeric"
+                  placeholder="CVC"
+                  value={cvc}
+                  onChange={(e) => setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  className="h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
+                />
+              </div>
+              <input
+                placeholder="Имя на карте"
+                value={holder}
+                onChange={(e) => setHolder(e.target.value.toUpperCase())}
+                className="mt-2 w-full h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
+              />
+            </div>
+
+            {/* Promo */}
+            <div className="mt-4 flex gap-2">
+              <input
+                placeholder="Промокод"
+                value={promo}
+                onChange={(e) => setPromo(e.target.value)}
+                className="flex-1 h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={applyPromo}
+                className="h-11 px-4 font-bold"
               >
-                <Ticket className="h-7 w-7" style={{ color }} />
+                Применить
+              </Button>
+            </div>
+            {promoApplied && (
+              <div className="mt-1 text-xs text-emerald-600">
+                Скидка −{promoApplied.discount.toLocaleString("ru-RU")} ₾
               </div>
-            </div>
+            )}
 
-            <div className="mt-5 space-y-2">
-              {features.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" weight="BoldDuotone" />
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
+            {/* Consents */}
+            <label className="mt-4 flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => setAgreeTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[#FFE500]"
+              />
+              <span>Согласен с условиями оферты и политикой конфиденциальности</span>
+            </label>
+            {isSubscription && (
+              <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreeRecurring}
+                  onChange={(e) => setAgreeRecurring(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#FFE500]"
+                />
+                <span>
+                  Согласен с регулярными списаниями каждые {membership.duration_days} дн.
+                  Отменить можно в любой момент.
+                </span>
+              </label>
+            )}
 
-            <div className="mt-5 flex items-center gap-2 rounded-xl bg-muted p-3 text-sm">
-              <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground">
-                {hasActive
-                  ? "Текущий абонемент будет аннулирован, новый подключится сразу"
-                  : "Абонемент активируется автоматически после оформления"}
-              </span>
-            </div>
-
-            <div className="mt-6 flex items-center justify-between">
-              <div>
-                <div className="text-xs text-muted-foreground">Стоимость</div>
-                <div className="text-2xl font-black italic">
-                  {Number(membership.price).toLocaleString("ru-RU")} ₾
-                </div>
+            {/* Total + Pay */}
+            <div className="mt-5 flex items-end justify-between">
+              <div className="text-xs text-muted-foreground">К оплате</div>
+              <div className="text-2xl font-black italic">
+                {total.toLocaleString("ru-RU")} ₾
               </div>
             </div>
 
             <Button
               onClick={onPurchase}
-              disabled={purchasing}
-              className="mt-4 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
+              disabled={!canPay}
+              className="mt-3 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
             >
               {purchasing
-                ? hasActive
-                  ? "Переходим…"
-                  : "Оформляем…"
+                ? "Оплачиваем…"
                 : hasActive
-                  ? "Перейти на этот абонемент"
-                  : "Приобрести"}
+                  ? `Оплатить и перейти · ${total.toLocaleString("ru-RU")} ₾`
+                  : `Оплатить · ${total.toLocaleString("ru-RU")} ₾`}
             </Button>
+
+            <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Защищённый платёж</span>
+            </div>
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
