@@ -110,14 +110,14 @@ function AuthPage() {
       <div className="relative flex flex-col min-h-[100dvh] px-6 pt-16 pb-8">
         {/* Brand */}
         <div className="flex flex-col items-center mb-10">
-          <div className="text-2xl font-black italic tracking-widest">
+          <div className="text-2xl font-black tracking-widest">
             CLUB <span className="text-[#FFE500]">40</span>
           </div>
         </div>
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black italic uppercase leading-tight">
+          <h1 className="text-3xl font-black uppercase leading-tight">
             Добро пожаловать
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">

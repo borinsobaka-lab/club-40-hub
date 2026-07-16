@@ -383,7 +383,7 @@ function MembershipsPage() {
       scrollKey={activeTab}
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black italic uppercase">Абонементы</h1>
+          <h1 className="text-3xl font-black uppercase">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
           {!loading && user && active && (() => {
             const autoOn = active.auto_renew !== false;
@@ -729,7 +729,7 @@ function MembershipCard({
         <div ref={onTopRef} style={{ minHeight: topMinHeight }}>
           <h3 className="text-xl font-bold leading-tight">{membership.name}</h3>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-4xl font-black italic tracking-tight">
+            <span className="text-4xl font-black tracking-tight">
               {Number(membership.price).toLocaleString("ru-RU")} ₾
             </span>
             <span className="text-sm text-muted-foreground">{formatPeriod(membership.duration_days)}</span>
@@ -855,7 +855,7 @@ function CheckoutSheet({
                   {isSubscription ? " · подписка с автопродлением" : ""}
                 </div>
               </div>
-              <div className="text-lg font-black italic shrink-0">
+              <div className="text-lg font-black shrink-0">
                 {Number(membership.price).toLocaleString("ru-RU")} ₾
               </div>
             </div>
@@ -947,7 +947,7 @@ function CheckoutSheet({
             {/* Total + Pay */}
             <div className="mt-5 flex items-end justify-between">
               <div className="text-xs text-muted-foreground">К оплате</div>
-              <div className="text-2xl font-black italic">
+              <div className="text-2xl font-black">
                 {total.toLocaleString("ru-RU")} ₾
               </div>
             </div>
