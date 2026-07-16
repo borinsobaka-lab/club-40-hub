@@ -288,7 +288,7 @@ function SchedulePage() {
       scrollKey="schedule"
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black italic uppercase">Бронь</h1>
+          <h1 className="text-3xl font-black uppercase">Бронь</h1>
           <p className="text-sm text-white/70">Выберите день и забронируйте тренировку</p>
         </div>
       }
@@ -345,7 +345,7 @@ function SchedulePage() {
                 <span className={`text-xs font-medium ${i === activeIdx ? "" : "text-[#66676D]"}`}>
                   {DAY_NAMES[d.getDay()]}
                 </span>
-                <span className="text-lg font-bold italic">{d.getDate()}</span>
+                <span className="text-lg font-bold">{d.getDate()}</span>
               </button>
             )})}
           </div>
@@ -463,7 +463,7 @@ function SchedulePage() {
                                 className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
                               >
                                 <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                                  <div className="text-base font-black italic tabular-nums leading-tight text-center">
+                                  <div className="text-base font-black tabular-nums leading-tight text-center">
                                     {fmtTime(c.starts_at)}
                                   </div>
                                 </div>

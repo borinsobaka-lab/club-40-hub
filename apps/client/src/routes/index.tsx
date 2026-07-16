@@ -378,7 +378,7 @@ function HomePage() {
 
         {/* Тренировки */}
         <section className="bg-background rounded-b-[14px] pb-5">
-          <h2 className="px-4 text-2xl font-bold italic uppercase mb-3">
+          <h2 className="px-4 text-2xl font-bold uppercase mb-3">
             Тренировки
           </h2>
           {myBookings === null ? (
@@ -450,7 +450,7 @@ function HomePage() {
                           <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]">
                             <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
                             <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                              <div className="text-base font-black italic tabular-nums leading-tight text-center">
+                              <div className="text-base font-black tabular-nums leading-tight text-center">
                                 {timeLabel}
                               </div>
                             </div>
@@ -485,7 +485,7 @@ function HomePage() {
 
         {/* Услуги */}
         <section className="bg-background rounded-t-[14px] pt-5 pb-0">
-          <h2 className="px-4 text-2xl font-bold italic uppercase">
+          <h2 className="px-4 text-2xl font-bold uppercase">
             Услуги
           </h2>
           <p className="px-4 text-sm text-muted-foreground mb-3">Дополнительные возможности для участников клуба</p>
