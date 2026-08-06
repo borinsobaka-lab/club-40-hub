@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -24,7 +24,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { DataPagination, usePagination } from "@/components/data-pagination";
+import { DataPagination, useServerPagination } from "@/components/data-pagination";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { toast } from "sonner";
 import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
 import { ClientNameLink } from "@/components/client-name-link";
@@ -56,39 +57,6 @@ type LogRow = {
   weight_at_time: number | null;
   duration_min: number | null;
   calories: number | null;
-};
-
-type BookingStatus = LogRow["status"];
-
-type ScheduleBookingRow = {
-  id: string;
-  entry_id: string;
-  user_id: string;
-  status: BookingStatus;
-  created_at: string;
-  cancelled_at: string | null;
-};
-
-type EntryRow = {
-  id: string;
-  workout_id: string | null;
-  starts_at: string;
-  ends_at: string;
-};
-
-type WorkoutRow = {
-  id: string;
-  name: string | null;
-  type: string | null;
-};
-
-type ClientSnapshotRow = {
-  user_id: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  full_name: string | null;
-  phone: string | null;
-  email: string | null;
 };
 
 const STATUS_ALL = "__all__";
@@ -141,157 +109,53 @@ function BookingsLogPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
 
-  const fetchRows = async () => {
+  const debouncedSearch = useDebouncedValue(search);
+  const pg = useServerPagination();
+  const { from, to, setTotal, setPage } = pg;
+
+  useEffect(() => {
+    setPage(1);
+  }, [studioId, debouncedSearch, status, setPage]);
+
+  const fetchRows = useCallback(async () => {
     if (!studioId) {
       setRows([]);
+      setTotal(0);
       return;
     }
     setLoading(true);
     // Авто-отметка пропущенных тренировок (прошедшие без отметки посещения)
     await supabase.rpc("mark_no_show_bookings");
 
-    const { data: logData, error: logError } = await supabase
-      .from("bookings_log")
-      .select("*")
-      .eq("studio_id", studioId)
+    // Вью bookings_log_full уже объединяет журнал с записями, которые в него
+    // ещё не попали (см. db/performance_indexes.sql), поэтому сшивать
+    // источники в браузере больше не нужно.
+    let query = supabase
+      .from("bookings_log_full")
+      .select("*", { count: "exact" })
+      .eq("studio_id", studioId);
+
+    if (status !== STATUS_ALL) query = query.eq("status", status);
+
+    const term = debouncedSearch.trim();
+    if (term) query = query.ilike("search_text", `%${term}%`);
+
+    const { data, error, count } = await query
       .order("starts_at", { ascending: false })
-      .limit(1000);
+      .range(from, to);
 
-    if (logError) {
-      setLoading(false);
-      toast.error("Не удалось загрузить историю: " + logError.message);
-      return;
-    }
-
-    const logRows = (logData as LogRow[]) ?? [];
-    const { data: bookingData, error: bookingError } = await supabase
-      .from("schedule_bookings")
-      .select("id, entry_id, user_id, status, created_at, cancelled_at")
-      .eq("studio_id", studioId)
-      .order("created_at", { ascending: false })
-      .limit(1000);
-
-    if (bookingError) {
-      setLoading(false);
-      toast.error("Не удалось сверить записи: " + bookingError.message);
-      setRows(logRows);
-      return;
-    }
-
-    const bookingRows = (bookingData as ScheduleBookingRow[]) ?? [];
-    const loggedBookingIds = new Set(logRows.map((row) => row.booking_id).filter(Boolean));
-    const missingBookings = bookingRows.filter((booking) => !loggedBookingIds.has(booking.id));
-
-    if (missingBookings.length === 0) {
-      setRows(logRows);
-      setLoading(false);
-      return;
-    }
-
-    const entryIds = Array.from(new Set(missingBookings.map((booking) => booking.entry_id)));
-    const userIds = Array.from(new Set(missingBookings.map((booking) => booking.user_id)));
-
-    const { data: entryData } = await supabase
-      .from("schedule_entries")
-      .select("id, workout_id, starts_at, ends_at")
-      .in("id", entryIds);
-
-    const entryRows = (entryData as EntryRow[]) ?? [];
-    const entriesById = new Map(entryRows.map((entry) => [entry.id, entry]));
-    const workoutIds = Array.from(
-      new Set(entryRows.map((entry) => entry.workout_id).filter(Boolean) as string[]),
-    );
-
-    const { data: workoutData } = workoutIds.length
-      ? await supabase.from("workouts").select("id, name, type").in("id", workoutIds)
-      : { data: [] };
-    const workoutsById = new Map(
-      ((workoutData as WorkoutRow[]) ?? []).map((workout) => [workout.id, workout]),
-    );
-
-    const { data: clientData } = userIds.length
-      ? await supabase
-          .from("clients")
-          .select("user_id, first_name, last_name, full_name, phone, email")
-          .eq("studio_id", studioId)
-          .in("user_id", userIds)
-      : { data: [] };
-    const clientsByUserId = new Map(
-      ((clientData as ClientSnapshotRow[]) ?? [])
-        .filter((client) => client.user_id)
-        .map((client) => [client.user_id as string, client]),
-    );
-
-    const restoredRows = missingBookings
-      .map((booking): LogRow | null => {
-        const entry = entriesById.get(booking.entry_id);
-        if (!entry) return null;
-
-        const workout = entry.workout_id ? workoutsById.get(entry.workout_id) : undefined;
-        const client = clientsByUserId.get(booking.user_id);
-        const fallbackFullName = [client?.first_name, client?.last_name]
-          .filter(Boolean)
-          .join(" ");
-
-        return {
-          id: `schedule-booking-${booking.id}`,
-          booking_id: booking.id,
-          entry_id: booking.entry_id,
-          user_id: booking.user_id,
-          client_first_name: client?.first_name ?? null,
-          client_last_name: client?.last_name ?? null,
-          client_full_name: client?.full_name ?? (fallbackFullName || null),
-          client_phone: client?.phone ?? null,
-          client_email: client?.email ?? null,
-          workout_name: workout?.name ?? null,
-          workout_type: workout?.type ?? null,
-          starts_at: entry.starts_at,
-          ends_at: entry.ends_at,
-          status: booking.status,
-          booked_at: booking.created_at,
-          cancelled_at: booking.cancelled_at,
-          completed_at: null,
-          met_value: null,
-          weight_at_time: null,
-          duration_min: null,
-          calories: null,
-        };
-      })
-      .filter((row): row is LogRow => Boolean(row));
-
-    setRows(
-      [...logRows, ...restoredRows].sort(
-        (a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
-      ),
-    );
     setLoading(false);
-  };
-
+    if (error) {
+      toast.error("Не удалось загрузить историю: " + error.message);
+      return;
+    }
+    setRows((data as unknown as LogRow[]) ?? []);
+    setTotal(count ?? 0);
+  }, [studioId, status, debouncedSearch, from, to, setTotal]);
 
   useEffect(() => {
     fetchRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, refreshSignal]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (status !== STATUS_ALL && r.status !== status) return false;
-      if (!q) return true;
-      return [
-        r.client_full_name,
-        r.client_first_name,
-        r.client_last_name,
-        r.client_phone,
-        r.client_email,
-        r.workout_name,
-      ]
-        .filter(Boolean)
-        .some((v) => (v as string).toLowerCase().includes(q));
-    });
-  }, [rows, search, status]);
-
-  const pg = usePagination(filtered);
+  }, [fetchRows, refreshSignal]);
 
   return (
     <AdminShell
@@ -360,7 +224,7 @@ function BookingsLogPage() {
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ) : filtered.length === 0 ? (
+                  ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={10}
@@ -370,7 +234,7 @@ function BookingsLogPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pg.paged.map((r) => {
+                    rows.map((r) => {
                       const color = dayTypeColor(r.workout_type as DayType | null);
                       return (
                         <TableRow key={r.id}>

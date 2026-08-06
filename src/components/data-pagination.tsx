@@ -36,6 +36,45 @@ export function usePagination<T>(items: T[], defaultPageSize: number = DEFAULT_P
   };
 }
 
+/**
+ * Серверная пагинация: страница данных приходит из БД, а не нарезается из уже
+ * загруженного массива. Форма возвращаемого объекта совпадает с usePagination
+ * (кроме `paged`), поэтому <DataPagination {...pg} /> работает так же.
+ *
+ * `total` заполняет страница после запроса — Supabase отдаёт его в `count`
+ * при select(..., { count: "exact" }).
+ */
+export function useServerPagination(defaultPageSize: number = DEFAULT_PAGE_SIZE) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSizeState] = useState(defaultPageSize);
+  const [total, setTotal] = useState(0);
+
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  // Границы для supabase .range(from, to) — обе включительно.
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  return {
+    page,
+    setPage,
+    pageSize,
+    setPageSize: (s: number) => {
+      setPageSizeState(s);
+      setPage(1);
+    },
+    pageCount,
+    total,
+    setTotal,
+    from,
+    to,
+  };
+}
+
 type Props = {
   page: number;
   pageCount: number;

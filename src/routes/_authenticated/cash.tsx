@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { DataPagination, usePagination } from "@/components/data-pagination";
+import { DataPagination, useServerPagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/cash")({
   head: () => ({ meta: [{ title: "Касса — CLUB 40 Admin" }] }),
@@ -89,7 +89,10 @@ function CashPage() {
   const studioId = useActiveStudioId();
   const { user } = useAuth();
   const [ops, setOps] = useState<CashOp[]>([]);
+  const [totals, setTotals] = useState({ income: 0, expense: 0 });
   const [operators, setOperators] = useState<Operator[]>([]);
+  const pg = useServerPagination();
+  const { from, to, setTotal } = pg;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -104,27 +107,45 @@ function CashPage() {
     if (user?.id && !operatorId) setOperatorId(user.id);
   }, [user?.id, operatorId]);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     if (!studioId) {
       setOps([]);
       setOperators([]);
+      setTotals({ income: 0, expense: 0 });
+      setTotal(0);
       return;
     }
     setLoading(true);
-    const [{ data: opsData, error: opsErr }, { data: roles, error: rolesErr }] = await Promise.all([
+    const [
+      { data: opsData, error: opsErr, count },
+      { data: roles, error: rolesErr },
+      { data: totalsRow },
+    ] = await Promise.all([
       supabase
         .from("cash_operations")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("studio_id", studioId)
-        .order("occurred_at", { ascending: false }),
+        .order("occurred_at", { ascending: false })
+        .range(from, to),
       supabase
         .from("user_roles")
         .select("user_id")
         .eq("studio_id", studioId)
         .in("role", ["owner", "admin", "trainer"]),
+      // Итоги считает БД по всем операциям студии, а не по текущей странице.
+      supabase
+        .from("cash_totals")
+        .select("income, expense")
+        .eq("studio_id", studioId)
+        .maybeSingle(),
     ]);
     if (opsErr) toast.error("Не удалось загрузить операции: " + opsErr.message);
     setOps((opsData as CashOp[]) ?? []);
+    setTotal(count ?? 0);
+    setTotals({
+      income: Number(totalsRow?.income ?? 0),
+      expense: Number(totalsRow?.expense ?? 0),
+    });
 
     if (!rolesErr && roles) {
       const ids = Array.from(new Set((roles as any[]).map((r) => r.user_id as string)));
@@ -139,13 +160,12 @@ function CashPage() {
       }
     }
     setLoading(false);
-  };
+  }, [studioId, from, to, setTotal]);
 
   const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, refreshSignal]);
+  }, [fetchAll, refreshSignal]);
 
 
   // Reset category when kind changes
@@ -155,24 +175,7 @@ function CashPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind]);
 
-  const balance = useMemo(
-    () =>
-      ops.reduce(
-        (acc, o) => acc + (o.kind === "income" ? Number(o.amount) : -Number(o.amount)),
-        0,
-      ),
-    [ops],
-  );
-
-  const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    for (const o of ops) {
-      if (o.kind === "income") income += Number(o.amount);
-      else expense += Number(o.amount);
-    }
-    return { income, expense };
-  }, [ops]);
+  const balance = totals.income - totals.expense;
 
   const operatorName = (id: string | null) => {
     if (!id) return "—";
@@ -225,7 +228,6 @@ function CashPage() {
 
   const categories = kind === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
-  const pg = usePagination(ops);
 
   return (
     <AdminShell title="Касса">
@@ -378,7 +380,7 @@ function CashPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pg.paged.map((o) => (
+                    ops.map((o) => (
                       <TableRow key={o.id}>
                         <TableCell className="whitespace-nowrap text-sm">
                           {new Date(o.occurred_at).toLocaleString("ru-RU", {

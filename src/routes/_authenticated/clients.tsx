@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
@@ -43,10 +43,11 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { DataPagination, usePagination } from "@/components/data-pagination";
+import { DataPagination, useServerPagination } from "@/components/data-pagination";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
-import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
+import { type ClubStatus } from "@/lib/client-status";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
@@ -70,7 +71,21 @@ type Client = {
   photo_url: string | null;
   avatar_url: string | null;
   created_at: string;
+  // Приходит из вью clients_with_status (см. db/performance_indexes.sql).
+  club_status: ClubStatus;
 };
+
+// Колонки запрашиваем поимённо: во вью есть ещё search_name, который нужен
+// только для фильтрации на сервере и незачем гонять по сети.
+const CLIENT_COLUMNS =
+  "id, studio_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
+  "notes, registration_date, last_visit_date, crm_link, photo_url, avatar_url, created_at, club_status";
+
+// В синтаксисе .or() PostgREST запятая разделяет условия, а скобки группируют,
+// поэтому из поискового запроса их нужно убрать — иначе фильтр развалится.
+function sanitizeSearch(value: string) {
+  return value.trim().replace(/[,()]/g, " ").replace(/\s+/g, " ").trim();
+}
 
 function initials(name: string) {
   return name
@@ -98,16 +113,6 @@ function genderLabel(v: string | null) {
 
 function toISODate(d: Date) {
   return format(d, "yyyy-MM-dd");
-}
-
-function inDateRange(value: string | null, range: DateRange | undefined) {
-  if (!range || (!range.from && !range.to)) return true;
-  if (!value) return false;
-  const from = range.from ? toISODate(range.from) : null;
-  const to = range.to ? toISODate(range.to) : null;
-  if (from && value < from) return false;
-  if (to && value > to) return false;
-  return true;
 }
 
 function DateRangeFilter({
@@ -172,58 +177,75 @@ function ClientsPage() {
   const [editing, setEditing] = useState<Client | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardClient, setCardClient] = useState<Client | null>(null);
-  const [statusByClient, setStatusByClient] = useState<Record<string, ClubStatus>>({});
 
   const openCard = (c: Client) => {
     setCardClient(c);
     setCardOpen(true);
   };
 
-  const fetchClients = async () => {
+  const debouncedSearch = useDebouncedValue(search);
+  const pg = useServerPagination();
+  const { from, to, setTotal, setPage } = pg;
+
+  // DateRange — новый объект на каждый выбор, поэтому в зависимостях эффектов
+  // используем строковые ключи, а не сами объекты.
+  const regKey = `${regRange?.from?.toISOString() ?? ""}|${regRange?.to?.toISOString() ?? ""}`;
+  const visitKey = `${visitRange?.from?.toISOString() ?? ""}|${visitRange?.to?.toISOString() ?? ""}`;
+  const hasFilters = Boolean(
+    debouncedSearch.trim() || genderFilter || statusFilter || regKey !== "|" || visitKey !== "|",
+  );
+
+  // Смена фильтров возвращает на первую страницу: иначе можно остаться,
+  // например, на пятой странице результата, где всего одна.
+  useEffect(() => {
+    setPage(1);
+  }, [studioId, debouncedSearch, genderFilter, statusFilter, regKey, visitKey, setPage]);
+
+  const fetchClients = useCallback(async () => {
     if (!studioId) {
       setClients([]);
-      setStatusByClient({});
+      setTotal(0);
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("studio_id", studioId)
-      .order("created_at", { ascending: false });
+
+    let query = supabase
+      .from("clients_with_status")
+      .select(CLIENT_COLUMNS, { count: "exact" })
+      .eq("studio_id", studioId);
+
+    const term = sanitizeSearch(debouncedSearch);
+    if (term) {
+      query = query.or(
+        `search_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`,
+      );
+    }
+    if (genderFilter) query = query.eq("gender", genderFilter);
+    if (statusFilter) query = query.eq("club_status", statusFilter);
+    if (regRange?.from) query = query.gte("registration_date", toISODate(regRange.from));
+    if (regRange?.to) query = query.lte("registration_date", toISODate(regRange.to));
+    if (visitRange?.from) query = query.gte("last_visit_date", toISODate(visitRange.from));
+    if (visitRange?.to) query = query.lte("last_visit_date", toISODate(visitRange.to));
+
+    const { data, error, count } = await query
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
     setLoading(false);
     if (error) {
       toast.error("Не удалось загрузить клиентов: " + error.message);
       return;
     }
-    const list = (data as Client[]) ?? [];
-    setClients(list);
-
-    // Подтягиваем абонементы для статусов ЧК / ПЧК / БЧК
-    const { data: cmData } = await supabase
-      .from("client_memberships")
-      .select("client_id, status, ends_at")
-      .eq("studio_id", studioId);
-    const memberships = (cmData as MembershipLite[]) ?? [];
-    const byClient = new Map<string, MembershipLite[]>();
-    for (const m of memberships) {
-      if (!m.client_id) continue;
-      const arr = byClient.get(m.client_id) ?? [];
-      arr.push(m);
-      byClient.set(m.client_id, arr);
-    }
-    const next: Record<string, ClubStatus> = {};
-    for (const c of list) {
-      next[c.id] = computeClubStatus(byClient.get(c.id));
-    }
-    setStatusByClient(next);
-  };
+    setClients((data as unknown as Client[]) ?? []);
+    setTotal(count ?? 0);
+    // regRange/visitRange намеренно заменены на regKey/visitKey — см. выше.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioId, debouncedSearch, genderFilter, statusFilter, regKey, visitKey, from, to, setTotal]);
 
   const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchClients();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, refreshSignal]);
+  }, [fetchClients, refreshSignal]);
 
 
   const handleDelete = async (c: Client) => {
@@ -253,23 +275,6 @@ function ClientsPage() {
     setRegRange(undefined);
     setVisitRange(undefined);
   };
-
-  const q = search.trim().toLowerCase();
-  const filtered = clients.filter((c) => {
-    const name = displayName(c).toLowerCase();
-    if (q && !(
-      name.includes(q) ||
-      (c.phone ?? "").toLowerCase().includes(q) ||
-      (c.email ?? "").toLowerCase().includes(q)
-    )) return false;
-    if (genderFilter && c.gender !== genderFilter) return false;
-    if (statusFilter && statusByClient[c.id] !== statusFilter) return false;
-    if (!inDateRange(c.registration_date, regRange)) return false;
-    if (!inDateRange(c.last_visit_date, visitRange)) return false;
-    return true;
-  });
-
-  const pg = usePagination(filtered);
 
   return (
 
@@ -375,16 +380,16 @@ function ClientsPage() {
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ) : filtered.length === 0 ? (
+                  ) : clients.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
-                        {clients.length === 0
-                          ? "Пока нет клиентов. Нажмите «Добавить клиента»."
-                          : "Ничего не найдено."}
+                        {hasFilters
+                          ? "Ничего не найдено."
+                          : "Пока нет клиентов. Нажмите «Добавить клиента»."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pg.paged.map((c) => (
+                    clients.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2.5">
@@ -410,7 +415,7 @@ function ClientsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <ClubStatusBadge status={statusByClient[c.id] ?? "pchk"} />
+                          <ClubStatusBadge status={c.club_status ?? "pchk"} />
                         </TableCell>
                         <TableCell>{c.phone ?? "—"}</TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>

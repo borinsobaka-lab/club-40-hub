@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Loader2, Trash2, Search, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +46,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { DataPagination, usePagination } from "@/components/data-pagination";
+import { DataPagination, useServerPagination } from "@/components/data-pagination";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientNameLink } from "@/components/client-name-link";
 import { MembershipStatusBadge, AutoRenewBadge, effectiveStatus } from "@/components/membership-status-badge";
 
@@ -55,6 +56,15 @@ export const Route = createFileRoute("/_authenticated/sales")({
   component: SalesPage,
 });
 
+// Колонки вью sales_list. search_text не запрашиваем — он нужен только для
+// фильтра на сервере. Связанные объекты (clients / memberships /
+// client_memberships) вью отдаёт в той же форме, что раньше вложенный select.
+const SALE_COLUMNS =
+  "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, " +
+  "down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, " +
+  "created_at, clients, memberships, client_memberships";
+
+// Диалогу новой продажи нужны только имя и контакты для выпадающего списка.
 type ClientRow = {
   id: string;
   full_name: string;
@@ -62,14 +72,6 @@ type ClientRow = {
   last_name: string | null;
   phone: string | null;
   email: string | null;
-  birthday: string | null;
-  gender: string | null;
-  notes: string | null;
-  registration_date: string | null;
-  last_visit_date: string | null;
-  crm_link: string | null;
-  photo_url: string | null;
-  avatar_url: string | null;
 };
 
 type MembershipRow = {
@@ -193,43 +195,63 @@ function SalesPage() {
   const [open, setOpen] = useState(false);
   const [clients, setClients] = useState<ClientRow[]>([]);
 
-  const fetchSales = async () => {
+  const debouncedSearch = useDebouncedValue(search);
+  const pg = useServerPagination();
+  const { from, to, setTotal, setPage } = pg;
+
+  useEffect(() => {
+    setPage(1);
+  }, [studioId, debouncedSearch, setPage]);
+
+  const fetchSales = useCallback(async () => {
     if (!studioId) {
       setSales([]);
+      setTotal(0);
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from("sales")
-      .select(
-        "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, created_at, clients(id, full_name, first_name, last_name, phone, email), memberships(id, name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)",
-      )
-      .eq("studio_id", studioId)
-      .order("sold_at", { ascending: false });
+
+    let query = supabase
+      .from("sales_list")
+      .select(SALE_COLUMNS, { count: "exact" })
+      .eq("studio_id", studioId);
+
+    const term = debouncedSearch.trim();
+    if (term) query = query.ilike("search_text", `%${term}%`);
+
+    const { data, error, count } = await query
+      .order("sold_at", { ascending: false })
+      .range(from, to);
+
     setLoading(false);
     if (error) {
       toast.error("Не удалось загрузить продажи: " + error.message);
       return;
     }
     setSales((data as unknown as Sale[]) ?? []);
-  };
+    setTotal(count ?? 0);
+  }, [studioId, debouncedSearch, from, to, setTotal]);
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     if (!studioId) return;
+    // Диалогу продажи нужны только имя и контакты — тянуть всю карточку
+    // клиента (заметки, фото, CRM-ссылку) на каждую загрузку страницы незачем.
     const { data } = await supabase
       .from("clients")
-      .select("*")
+      .select("id, full_name, first_name, last_name, phone, email")
       .eq("studio_id", studioId)
       .order("created_at", { ascending: false });
     setClients((data as ClientRow[]) ?? []);
-  };
+  }, [studioId]);
 
   const refreshSignal = useRefreshSignal();
   useEffect(() => {
     fetchSales();
+  }, [fetchSales, refreshSignal]);
+
+  useEffect(() => {
     fetchClients();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, refreshSignal]);
+  }, [fetchClients, refreshSignal]);
 
   const handleDelete = async (s: Sale) => {
     if (!confirm("Удалить эту продажу?")) return;
@@ -243,17 +265,6 @@ function SalesPage() {
   };
 
 
-
-  const q = search.trim().toLowerCase();
-  const filtered = q
-    ? sales.filter((s) => {
-        const name = s.clients ? clientName(s.clients).toLowerCase() : "";
-        const m = (s.memberships?.name ?? "").toLowerCase();
-        return name.includes(q) || m.includes(q);
-      })
-    : sales;
-
-  const pg = usePagination(filtered);
 
   return (
     <AdminShell
@@ -314,16 +325,16 @@ function SalesPage() {
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ) : filtered.length === 0 ? (
+                  ) : sales.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={14} className="py-8 text-center text-sm text-muted-foreground">
-                        {sales.length === 0
-                          ? "Продаж пока нет. Нажмите «Новая продажа»."
-                          : "Ничего не найдено."}
+                        {debouncedSearch.trim()
+                          ? "Ничего не найдено."
+                          : "Продаж пока нет. Нажмите «Новая продажа»."}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pg.paged.map((s) => {
+                    sales.map((s) => {
                       const cm = s.client_memberships?.[0] ?? null;
                       return (
                       <TableRow key={s.id}>
