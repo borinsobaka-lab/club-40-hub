@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiAuthEmailRouteImport } from './routes/api/auth-email'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
 import { Route as AuthenticatedTrainersRouteImport } from './routes/_authenticated/trainers'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
@@ -57,6 +58,11 @@ const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthEmailRoute = ApiAuthEmailRouteImport.update({
+  id: '/api/auth-email',
+  path: '/api/auth-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWorkoutsRoute = AuthenticatedWorkoutsRouteImport.update({
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/services': typeof AuthenticatedServicesRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
+  '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
 }
@@ -213,6 +220,7 @@ export interface FileRoutesByTo {
   '/services': typeof AuthenticatedServicesRoute
   '/trainers': typeof AuthenticatedTrainersRoute
   '/workouts': typeof AuthenticatedWorkoutsRoute
+  '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/': typeof AuthenticatedIndexRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/trainers': typeof AuthenticatedTrainersRoute
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
+  '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -270,6 +279,7 @@ export interface FileRouteTypes {
     | '/services'
     | '/trainers'
     | '/workouts'
+    | '/api/auth-email'
     | '/api/chat'
     | '/api/transcribe'
   fileRoutesByTo: FileRoutesByTo
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/services'
     | '/trainers'
     | '/workouts'
+    | '/api/auth-email'
     | '/api/chat'
     | '/api/transcribe'
     | '/'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/_authenticated/services'
     | '/_authenticated/trainers'
     | '/_authenticated/workouts'
+    | '/api/auth-email'
     | '/api/chat'
     | '/api/transcribe'
     | '/_authenticated/'
@@ -330,6 +342,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiAuthEmailRoute: typeof ApiAuthEmailRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
 }
@@ -369,6 +382,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth-email': {
+      id: '/api/auth-email'
+      path: '/api/auth-email'
+      fullPath: '/api/auth-email'
+      preLoaderRoute: typeof ApiAuthEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/workouts': {
@@ -569,6 +589,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiAuthEmailRoute: ApiAuthEmailRoute,
   ApiChatRoute: ApiChatRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
 }

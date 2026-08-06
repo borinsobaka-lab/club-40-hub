@@ -40,6 +40,14 @@ merge в main = выкладка. Env-переменные: `VITE_SUPABASE_URL`,
 `AI_CHAT_MODEL`, `AI_TRANSCRIBE_MODEL`) не заданы — ассистент и диктовка
 намеренно отвечают 503 до выбора провайдера.
 
+## Auth-письма
+
+Send Email Hook: Supabase дёргает /api/auth-email (src/routes/api/auth-email.ts),
+мы шлём через Resend с noreply@base40.fit. Сотрудник (owner/admin/trainer в
+user_roles) получает ссылку авто-входа, клиент — 4-значный код. Env:
+SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY (runtime, Coolify). Настройка —
+AUTH_SETUP.md в club40-client-hub.
+
 ## База данных
 
 - **Источник правды схемы — `db/*.sql` в этом репозитории.** Файлы выполняются
