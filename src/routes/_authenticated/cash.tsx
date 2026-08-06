@@ -235,7 +235,7 @@ function CashPage() {
 
   return (
     <AdminShell title="Касса">
-      <div className="mx-auto max-w-6xl space-y-4">
+      <div className="mx-auto max-w-6xl space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.
@@ -410,11 +410,11 @@ function CashPage() {
                         </TableCell>
                         <TableCell>
                           {o.kind === "income" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                               <TrendingUp className="h-3 w-3" /> Приход
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
                               <TrendingDown className="h-3 w-3" /> Расход
                             </span>
                           )}

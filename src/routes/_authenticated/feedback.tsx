@@ -402,10 +402,7 @@ function FeedbackPage() {
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className="py-12 text-center text-sm text-muted-foreground"
-                  >
+                  <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                     <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
                     Обращений нет.
                   </TableCell>
