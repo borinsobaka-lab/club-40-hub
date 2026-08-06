@@ -15,7 +15,6 @@ import { BottomNav } from "@/components/bottom-nav";
 import { cn } from "@/lib/utils";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -44,9 +43,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -93,8 +89,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "CLUB 40" },
       { name: "twitter:description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/83058599-cd2d-4522-bec0-9597ea49b89d/id-preview-c3cf9aaf--934cc671-e34f-443f-9c31-e2ba8d266073.lovable.app-1782032103103.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/83058599-cd2d-4522-bec0-9597ea49b89d/id-preview-c3cf9aaf--934cc671-e34f-443f-9c31-e2ba8d266073.lovable.app-1782032103103.png" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
