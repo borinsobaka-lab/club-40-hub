@@ -52,11 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const firstName = opts?.firstName?.trim() ?? "";
       const lastName = opts?.lastName?.trim() ?? "";
       const fullName = [lastName, firstName].filter(Boolean).join(" ").trim();
+      // emailRedirectTo задаём явно, хотя вход идёт по коду: по хосту в нём
+      // обработчик писем (admin: /api/auth-email) отличает клиентское
+      // приложение от админки и шлёт код, а не ссылку авто-входа. Без этого
+      // Supabase подставит Site URL (= админка), и клиенту уйдёт письмо
+      // админки.
+      const emailRedirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: signup
           ? {
               shouldCreateUser: true,
+              emailRedirectTo,
               data: {
                 first_name: firstName,
                 last_name: lastName,
@@ -64,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 phone: opts?.phone?.trim() ?? "",
               },
             }
-          : { shouldCreateUser: false },
+          : { shouldCreateUser: false, emailRedirectTo },
       });
       return { error: error?.message ?? null };
     },
