@@ -34,6 +34,14 @@ Coolify на Hetzner, https://app.base40.fit (инструкция агенту 
 публичные `VITE_SUPABASE_*` переменные (build-time); секретов у этого
 приложения нет и быть не должно.
 
+## Авторизация
+
+Вход по email-коду (4 цифры): `requestOtp`/`verifyOtp` в
+`src/hooks/use-auth.tsx` (signInWithOtp / verifyOtp type=email). Регистрация
+передаёт метаданные (first_name, last_name, full_name, phone) — их читает
+триггер handle_new_user. Паролей у клиентов НЕТ; настройка писем и длины кода
+в Supabase — см. AUTH_SETUP.md. Письма уходят с noreply@base40.fit (Resend).
+
 ## Данные и мультистудийность
 
 - Студия клиента: `useClientStudioId()` (`src/hooks/use-client-studio.ts`) —

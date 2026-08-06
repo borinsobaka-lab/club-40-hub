@@ -6,6 +6,26 @@ import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
 
+function humanizeAuthError(message: string, isSignup: boolean): string {
+  const m = message.toLowerCase();
+  if (m.includes("signups not allowed") || m.includes("otp_disabled")) {
+    return "Аккаунт с этой почтой не найден. Зарегистрируйтесь.";
+  }
+  if (m.includes("already registered") || m.includes("already exists")) {
+    return "Эта почта уже зарегистрирована. Войдите по коду.";
+  }
+  if (m.includes("expired") || m.includes("invalid")) {
+    return "Неверный или устаревший код. Запросите новый.";
+  }
+  if (m.includes("rate limit") || m.includes("after ")) {
+    return "Слишком часто. Подождите минуту и попробуйте ещё раз.";
+  }
+  if (m.includes("invalid format") || m.includes("valid email")) {
+    return "Проверьте формат email.";
+  }
+  return isSignup ? "Не удалось отправить код: " + message : message;
+}
+
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [{ title: "Регистрация — CLUB 40" }],
@@ -13,11 +33,8 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-// Deterministic placeholder password — OTP code is the real (mock) factor in the UI.
-const derivedPassword = (email: string) => `club40::${email.trim().toLowerCase()}`;
-
 function AuthPage() {
-  const { signIn, signUp, session, loading } = useAuth();
+  const { requestOtp, verifyOtp, session, loading } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   const [step, setStep] = useState<"form" | "otp">("form");
@@ -53,9 +70,36 @@ function AuthPage() {
       setError("Укажите email");
       return;
     }
+    setBusy(true);
+    const { error: sendError } = await requestOtp(email.trim(), {
+      signup: isSignup,
+      firstName,
+      lastName,
+      phone,
+    });
+    setBusy(false);
+    if (sendError) {
+      setError(humanizeAuthError(sendError, isSignup));
+      return;
+    }
     setOtp(["", "", "", ""]);
     setStep("otp");
     setTimeout(() => otpRefs.current[0]?.focus(), 50);
+  };
+
+  const resendCode = async () => {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    const { error: sendError } = await requestOtp(email.trim(), {
+      signup: isSignup,
+      firstName,
+      lastName,
+      phone,
+    });
+    setBusy(false);
+    if (sendError) setError(humanizeAuthError(sendError, isSignup));
+    else setOtp(["", "", "", ""]);
   };
 
   const submitOtp = async () => {
@@ -65,23 +109,9 @@ function AuthPage() {
     }
     setError(null);
     setBusy(true);
-    const pwd = derivedPassword(email);
-    if (isSignup) {
-      const { error: e1 } = await signUp(
-        email.trim(),
-        pwd,
-        firstName.trim(),
-        lastName.trim(),
-        phone.trim(),
-      );
-      if (e1 && !/registered|exists/i.test(e1)) {
-        setError(e1);
-        setBusy(false);
-        return;
-      }
-    }
-    const { error: e2 } = await signIn(email.trim(), pwd);
-    if (e2) setError(e2);
+    // Успешная проверка создаёт сессию — редирект сработает через useEffect выше.
+    const { error: verifyError } = await verifyOtp(email.trim(), otp.join(""));
+    if (verifyError) setError(humanizeAuthError(verifyError, isSignup));
     setBusy(false);
   };
 
@@ -166,8 +196,16 @@ function AuthPage() {
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-            <Button type="submit" className="w-full h-14 rounded-full text-base font-bold mt-2">
-              Получить код
+            <Button
+              type="submit"
+              disabled={busy}
+              className="w-full h-14 rounded-full text-base font-bold mt-2"
+            >
+              {busy ? (
+                <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+              ) : (
+                "Получить код"
+              )}
             </Button>
           </form>
         ) : (
@@ -207,6 +245,15 @@ function AuthPage() {
                 "Подтвердить"
               )}
             </Button>
+
+            <button
+              type="button"
+              onClick={resendCode}
+              disabled={busy}
+              className="w-full text-center text-sm font-medium text-foreground disabled:opacity-50"
+            >
+              Отправить код ещё раз
+            </button>
 
             <button
               type="button"

@@ -6,14 +6,23 @@ type AuthCtx = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (
+  /**
+   * Отправляет код входа на почту (письмо уходит с noreply@base40.fit через
+   * SMTP, настроенный в Supabase). При signup=true создаёт пользователя с
+   * метаданными — их читает триггер handle_new_user (db/auth_trigger.sql
+   * в репозитории админки).
+   */
+  requestOtp: (
     email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    phone: string,
+    opts?: {
+      signup?: boolean;
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+    },
   ) => Promise<{ error: string | null }>;
+  /** Проверяет код из письма. Успех = сессия появляется через onAuthStateChange. */
+  verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -38,20 +47,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     user: session?.user ?? null,
     loading,
-    signIn: async (email, password) => {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+    requestOtp: async (email, opts) => {
+      const signup = opts?.signup ?? false;
+      const firstName = opts?.firstName?.trim() ?? "";
+      const lastName = opts?.lastName?.trim() ?? "";
+      const fullName = [lastName, firstName].filter(Boolean).join(" ").trim();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: signup
+          ? {
+              shouldCreateUser: true,
+              data: {
+                first_name: firstName,
+                last_name: lastName,
+                full_name: fullName,
+                phone: opts?.phone?.trim() ?? "",
+              },
+            }
+          : { shouldCreateUser: false },
+      });
       return { error: error?.message ?? null };
     },
-    signUp: async (email, password, firstName, lastName, phone) => {
-      const fullName = [lastName, firstName].filter(Boolean).join(" ").trim();
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { first_name: firstName, last_name: lastName, full_name: fullName, phone },
-        },
-      });
+    verifyOtp: async (email, token) => {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
       return { error: error?.message ?? null };
     },
     signOut: async () => {
