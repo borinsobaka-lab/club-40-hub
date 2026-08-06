@@ -1,12 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { getAiGatewayConfig } from "@/lib/ai-gateway.server";
+
 export const Route = createFileRoute("/api/transcribe")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          const key = process.env.LOVABLE_API_KEY;
-          if (!key) return new Response("AI распознавание не настроено", { status: 500 });
+          const config = getAiGatewayConfig();
+          const model = process.env.AI_TRANSCRIBE_MODEL;
+          if (!config || !model) {
+            return new Response(
+              "Распознавание речи временно недоступно: после переезда новый AI-провайдер ещё не подключён.",
+              { status: 503 },
+            );
+          }
 
           const contentType = request.headers.get("content-type") ?? "";
           if (!contentType.includes("multipart/form-data") && !contentType.includes("application/x-www-form-urlencoded")) {
@@ -20,15 +28,15 @@ export const Route = createFileRoute("/api/transcribe")({
           }
 
           const upstream = new FormData();
-          upstream.append("model", "openai/gpt-4o-mini-transcribe");
+          upstream.append("model", model);
           const type = file.type.split(";")[0];
           const ext =
             ({ "audio/webm": "webm", "audio/mp4": "mp4", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/ogg": "ogg" } as Record<string, string>)[type] ?? "webm";
           upstream.append("file", file, `recording.${ext}`);
 
-          const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+          const res = await fetch(`${config.baseURL}/audio/transcriptions`, {
             method: "POST",
-            headers: { "Lovable-API-Key": key },
+            headers: { Authorization: `Bearer ${config.apiKey}` },
             body: upstream,
           });
 

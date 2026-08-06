@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, tool, stepCountIs, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { createAiProvider } from "@/lib/ai-gateway.server";
 
 type Body = { messages?: unknown };
 
@@ -52,8 +52,14 @@ export const Route = createFileRoute("/api/chat")({
             return new Response("Messages are required", { status: 400 });
           }
 
-          const key = process.env.LOVABLE_API_KEY;
-          if (!key) return new Response("AI ассистент не настроен", { status: 500 });
+          const provider = createAiProvider();
+          const chatModel = process.env.AI_CHAT_MODEL;
+          if (!provider || !chatModel) {
+            return new Response(
+              "AI-ассистент временно недоступен: после переезда новый AI-провайдер ещё не подключён.",
+              { status: 503 },
+            );
+          }
 
           const { supabase, studioId } = ctx;
 
@@ -608,9 +614,8 @@ export const Route = createFileRoute("/api/chat")({
             }),
           };
 
-          const gateway = createLovableAiGatewayProvider(key);
           const result = streamText({
-            model: gateway("google/gemini-3-flash-preview"),
+            model: provider(chatModel),
             system:
               "Ты — Kate, AI-ассистент админ-панели фитнес-студии CLUB 40. " +
               "Отвечай на русском, кратко и по делу, используя markdown. Текущая дата: " +

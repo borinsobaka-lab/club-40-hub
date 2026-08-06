@@ -7,10 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { SolarProvider } from "@solar-icons/react";
 
@@ -39,9 +38,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -79,18 +75,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Club 40 Hub is a React-based admin panel for managing club activities." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Club 40 Hub is a React-based admin panel for managing club activities." },
+      { title: "CLUB 40 — Админ-панель" },
+      { name: "description", content: "Админ-панель фитнес-студии CLUB 40." },
+      { property: "og:title", content: "CLUB 40 — Админ-панель" },
+      { property: "og:description", content: "Админ-панель фитнес-студии CLUB 40." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Club 40 Hub is a React-based admin panel for managing club activities." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/40c57963-363c-4600-b8ca-f1cecd3c10a0/id-preview-cafd9708--e368635a-4cc0-4faa-814d-d2780e40b89a.lovable.app-1781980570142.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/40c57963-363c-4600-b8ca-f1cecd3c10a0/id-preview-cafd9708--e368635a-4cc0-4faa-814d-d2780e40b89a.lovable.app-1781980570142.png" },
     ],
     links: [
       {
