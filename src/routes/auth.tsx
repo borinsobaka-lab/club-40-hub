@@ -46,13 +46,33 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     // Step 1: validate password
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) {
       setLoading(false);
       toast.error(error.message);
       return;
     }
-    // Password correct — drop the session and require a magic link as 2FA
+
+    // Step 2: убедиться, что это сотрудник. Клиенты живут в том же проекте
+    // Supabase, и часть старых клиентских аккаунтов имеет пароль — без этой
+    // проверки клиент получил бы письмо со ссылкой в админку.
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", signInData.user?.id ?? "")
+      .in("role", ["owner", "admin", "trainer"])
+      .limit(1);
+    if (!roles?.length) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast.error("Эта учётная запись не имеет доступа к админ-панели");
+      return;
+    }
+
+    // Пароль верный и это сотрудник — сбрасываем сессию и требуем ссылку как 2FA
     await supabase.auth.signOut();
     try {
       await sendMagicLink(email);

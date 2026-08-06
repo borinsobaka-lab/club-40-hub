@@ -13,6 +13,8 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
 - `bun run dev` — дев-сервер на :8080
 - `bun run build` — прод-сборка (Nitro node-server → `.output/server/index.mjs`)
 - `bunx tsc --noEmit` — типы; должен быть чистым перед коммитом
+- `bun test` — тесты (сейчас: логика auth-писем). Файлы `*.test.ts` исключены
+  из tsc: глобальные типы Bun конфликтуют с DOM-типами приложения.
 - `bun run lint` — форматный долг снят (prettier прогнан целиком); остались
   содержательные замечания (no-explicit-any, exhaustive-deps) — чинить по ходу
   задач. Форматирование и содержательные правки — разными коммитами.
@@ -43,10 +45,19 @@ merge в main = выкладка. Env-переменные: `VITE_SUPABASE_URL`,
 ## Auth-письма
 
 Send Email Hook: Supabase дёргает /api/auth-email (src/routes/api/auth-email.ts),
-мы шлём через Resend с noreply@base40.fit. Сотрудник (owner/admin/trainer в
-user_roles) получает ссылку авто-входа, клиент — 4-значный код. Env:
-SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY (runtime, Coolify). Настройка —
-AUTH_SETUP.md в club40-client-hub.
+логика писем — src/lib/auth-email.ts (+ тест auth-email.test.ts), отправка
+через Resend с noreply@base40.fit.
+
+**Разделение по ПРИЛОЖЕНИЮ, а не по человеку**: админка и клиентское
+приложение — разные сущности, один человек может быть и админом, и клиентом.
+Признак — хост в redirect_to (оба приложения задают emailRedirectTo явно):
+admin.base40.fit -> ссылка авто-входа, всё остальное (включая нераспознанный
+redirect) -> 4-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
+опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
+в club40-client-hub.
+
+В админку пускаем только сотрудников: проверка user_roles есть и в guard
+(\_authenticated/route.tsx), и на форме входа до отправки письма.
 
 ## База данных
 
