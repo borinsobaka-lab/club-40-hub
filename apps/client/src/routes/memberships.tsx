@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -379,7 +380,7 @@ function MembershipsPage() {
                   className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0"
                 >
                   <div className="flex items-stretch">
-                    <div className="flex-1 p-4 border border-border rounded-l-xl bg-white">
+                    <div className="flex-1 p-4 border border-border rounded-l-xl bg-background">
                       <div className="flex items-center gap-3">
                         <div
                           className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0"
@@ -416,7 +417,7 @@ function MembershipsPage() {
                       </div>
                     </div>
                     <div className="w-6 flex items-center justify-center bg-muted">
-                      <ChevronRight className="h-5 w-5 text-[#66676D]" />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </div>
                   </div>
                 </Card>
@@ -463,12 +464,12 @@ function MembershipsPage() {
                       setActiveTab(t.key as "unlimited" | "packages" | "couples");
                     }}
                     className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
-                      active ? "text-foreground" : "text-[#66676D]"
+                      active ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
                     {t.label}
                     {active && (
-                      <span className="absolute left-0 right-0 -bottom-px h-1 bg-[#FFE500] rounded-full" />
+                      <span className="absolute left-0 right-0 -bottom-px h-1 bg-primary rounded-full" />
                     )}
                   </button>
                 );
@@ -664,7 +665,8 @@ function MembershipsPage() {
             </Button>
             <Button
               disabled={cancellingRenew}
-              className="bg-[#EF4444] text-white hover:bg-[#EF4444]/90 font-bold"
+              variant="destructive"
+              className="font-bold"
               onClick={() => {
                 handleCancelAutorenew().then(() => {
                   setConfirmManageOpen(false);
@@ -736,7 +738,7 @@ function MembershipCard({
         </div>
         <Button
           onClick={onSelect}
-          className="mt-5 w-full h-12 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition"
+          className="mt-5 w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition"
         >
           Выбрать
         </Button>
@@ -865,50 +867,47 @@ function CheckoutSheet({
               <div className="text-xs font-bold tracking-wider text-muted-foreground mb-2">
                 БАНКОВСКАЯ КАРТА
               </div>
-              <input
+              <Input
                 inputMode="numeric"
                 placeholder="0000 0000 0000 0000"
                 value={cardNumber}
                 onChange={(e) => setCardNumber(formatCard(e.target.value))}
-                className="w-full h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
               />
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <input
+                <Input
                   inputMode="numeric"
                   placeholder="MM/ГГ"
                   value={expiry}
                   onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                  className="h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
                 />
-                <input
+                <Input
                   inputMode="numeric"
                   placeholder="CVC"
                   value={cvc}
                   onChange={(e) => setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  className="h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
                 />
               </div>
-              <input
+              <Input
                 placeholder="Имя на карте"
                 value={holder}
                 onChange={(e) => setHolder(e.target.value.toUpperCase())}
-                className="mt-2 w-full h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
+                className="mt-2"
               />
             </div>
 
             {/* Promo */}
             <div className="mt-4 flex gap-2">
-              <input
+              <Input
                 placeholder="Промокод"
                 value={promo}
                 onChange={(e) => setPromo(e.target.value)}
-                className="flex-1 h-11 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-foreground/40"
+                className="flex-1"
               />
               <Button
                 type="button"
                 variant="outline"
                 onClick={applyPromo}
-                className="h-11 px-4 font-bold"
+                className="px-4 font-bold"
               >
                 Применить
               </Button>
@@ -925,7 +924,7 @@ function CheckoutSheet({
                 type="checkbox"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[#FFE500]"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
               />
               <span>Согласен с условиями оферты и политикой конфиденциальности</span>
             </label>
@@ -935,7 +934,7 @@ function CheckoutSheet({
                   type="checkbox"
                   checked={agreeRecurring}
                   onChange={(e) => setAgreeRecurring(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#FFE500]"
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
                 />
                 <span>
                   Согласен с регулярными списаниями каждые {membership.duration_days} дн. Отменить
@@ -953,7 +952,7 @@ function CheckoutSheet({
             <Button
               onClick={onPurchase}
               disabled={!canPay}
-              className="mt-3 w-full h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base hover:bg-[#FFE500]/90 active:scale-[0.99] transition disabled:opacity-60"
+              className="mt-3 w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-60"
             >
               {purchasing
                 ? "Оплачиваем…"

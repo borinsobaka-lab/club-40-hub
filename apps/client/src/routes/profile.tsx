@@ -559,8 +559,8 @@ function EditProfileSheet({
                   <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
                 </div>
               )}
-              <span className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-white text-foreground flex items-center justify-center border-2 border-background">
-                <Camera className="h-3.5 w-3.5" />
+              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center border-2 border-background">
+                <Camera className="h-4 w-4" />
               </span>
             </button>
             <input

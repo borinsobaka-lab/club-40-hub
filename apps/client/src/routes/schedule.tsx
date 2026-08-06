@@ -314,12 +314,12 @@ function SchedulePage() {
               key={t.key}
               onClick={() => setActiveTab(t.key)}
               className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
-                active ? "text-foreground" : "text-[#66676D]"
+                active ? "text-foreground" : "text-muted-foreground"
               }`}
             >
               {t.label}
               {active && (
-                <span className="absolute left-0 right-0 -bottom-px h-1 bg-[#FFE500] rounded-full" />
+                <span className="absolute left-0 right-0 -bottom-px h-1 bg-primary rounded-full" />
               )}
             </button>
           );
@@ -354,11 +354,13 @@ function SchedulePage() {
                   }}
                   onClick={() => selectDay(i)}
                   className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
-                    i === activeIdx ? "bg-[#1B1C1F] text-[#FFE500]" : "bg-card text-card-foreground"
+                    i === activeIdx
+                      ? "bg-primary-foreground text-primary"
+                      : "bg-card text-card-foreground"
                   } ${isPastDay ? "opacity-20" : ""}`}
                 >
                   <span
-                    className={`text-xs font-medium ${i === activeIdx ? "" : "text-[#66676D]"}`}
+                    className={`text-xs font-medium ${i === activeIdx ? "" : "text-muted-foreground"}`}
                   >
                     {DAY_NAMES[d.getDay()]}
                   </span>
@@ -379,8 +381,8 @@ function SchedulePage() {
                   onClick={() => setActiveType(t.key)}
                   className={`shrink-0 inline-flex items-center gap-1.5 px-3 h-7 rounded-full border text-xs font-medium transition-colors ${
                     active
-                      ? "bg-[#1B1C1F] text-white border-[#1B1C1F]"
-                      : "bg-transparent text-[#66676D] border-border"
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-transparent text-muted-foreground border-border"
                   }`}
                 >
                   {Icon && <Icon className={`h-3.5 w-3.5 ${meta!.color}`} />}
@@ -473,7 +475,9 @@ function SchedulePage() {
                             >
                               <Card
                                 className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
-                                  isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
+                                  isBooked
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : ""
                                 }`}
                               >
                                 <span
@@ -500,7 +504,7 @@ function SchedulePage() {
                                       if (names.length === 0) return null;
                                       return (
                                         <div
-                                          className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}
+                                          className={`text-xs mt-0.5 truncate ${isBooked ? "text-primary-foreground/70" : "text-muted-foreground"}`}
                                         >
                                           {names.join(", ")}
                                         </div>
@@ -547,7 +551,7 @@ function SchedulePage() {
                                       e.stopPropagation();
                                       toggleBooking(c.id);
                                     }}
-                                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
+                                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-primary text-primary-foreground ${
                                       isPending ? "opacity-60" : ""
                                     }`}
                                     aria-label="Записаться"
@@ -564,7 +568,7 @@ function SchedulePage() {
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         xmlns="http://www.w3.org/2000/svg"
-                                        className="text-[#1B1C1F]"
+                                        className="text-primary-foreground"
                                       >
                                         <path
                                           d="M12 5V19M5 12H19"

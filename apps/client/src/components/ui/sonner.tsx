@@ -10,10 +10,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-center"
       className="toaster group"
       icons={{
-        info: <InfoCircle weight="Bold" className="h-5 w-5 text-[#FFE500]" />,
+        info: <InfoCircle weight="Bold" className="h-5 w-5 text-primary" />,
         success: <CheckCircle weight="Bold" className="h-5 w-5 text-[#22C55E]" />,
         error: <CloseCircle weight="Bold" className="h-5 w-5 text-[#EF4444]" />,
-        warning: <DangerTriangle weight="Bold" className="h-5 w-5 text-[#FFE500]" />,
+        warning: <DangerTriangle weight="Bold" className="h-5 w-5 text-primary" />,
       }}
       toastOptions={{
         unstyled: false,
@@ -22,7 +22,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           title: "!text-white !font-medium",
           description: "!text-white/70",
           icon: "!mr-2",
-          actionButton: "group-[.toast]:!bg-[#FFE500] group-[.toast]:!text-black",
+          actionButton: "group-[.toast]:!bg-primary group-[.toast]:!text-black",
           cancelButton: "group-[.toast]:!bg-white/10 group-[.toast]:!text-white",
         },
       }}

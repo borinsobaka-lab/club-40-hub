@@ -84,7 +84,7 @@ export function BottomNav() {
                     activeOptions={{ exact }}
                     onPointerDown={resetPageScrollPosition}
                     onClick={resetPageScrollPosition}
-                    activeProps={{ className: "text-[#FFE500]" }}
+                    activeProps={{ className: "text-primary" }}
                     inactiveProps={{ className: "text-white/70" }}
                     className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5"
                   >
@@ -101,7 +101,7 @@ export function BottomNav() {
                   aria-expanded={moreOpen}
                   aria-haspopup="menu"
                   className={`flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5 ${
-                    moreActive || moreOpen ? "text-[#FFE500]" : "text-white/70"
+                    moreActive || moreOpen ? "text-primary" : "text-white/70"
                   }`}
                 >
                   <MenuDots className="h-6 w-6" weight="BoldDuotone" />
@@ -127,7 +127,7 @@ export function BottomNav() {
                     onPointerDown={resetPageScrollPosition}
                     onClick={resetPageScrollPosition}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors active:bg-white/10 ${
-                      active ? "text-[#FFE500]" : "text-white/90"
+                      active ? "text-primary" : "text-white/90"
                     }`}
                   >
                     <Icon className="h-6 w-6" weight="BoldDuotone" />

@@ -360,7 +360,7 @@ function HomePage() {
                         {n.title}
                       </div>
                       {n.description && (
-                        <div className="text-white/80 text-[10px] leading-tight mt-0.5">
+                        <div className="text-white/80 text-[11px] leading-tight mt-0.5">
                           {n.description}
                         </div>
                       )}
@@ -407,7 +407,7 @@ function HomePage() {
         <div className="bg-muted">
           {/* Тренировки */}
           <section className="bg-background rounded-b-[14px] pb-5">
-            <h2 className="px-4 text-2xl font-bold uppercase mb-3">Тренировки</h2>
+            <h2 className="px-4 text-2xl font-black uppercase mb-3">Тренировки</h2>
             {myBookings === null ? (
               <div className="flex gap-3 overflow-hidden pb-2 px-4">
                 {[0, 1].map((i) => (
@@ -480,7 +480,7 @@ function HomePage() {
                             }}
                             className="w-full text-left active:opacity-80 transition-opacity"
                           >
-                            <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]">
+                            <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-primary text-primary-foreground border-primary">
                               <span
                                 className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`}
                               />
@@ -494,7 +494,7 @@ function HomePage() {
                                   {e.workout?.name ?? "Занятие"}
                                 </div>
                                 {trainerNames.length > 0 && (
-                                  <div className="text-xs mt-0.5 truncate text-[#1B1C1F]/70">
+                                  <div className="text-xs mt-0.5 truncate text-primary-foreground/70">
                                     {trainerNames.join(", ")}
                                   </div>
                                 )}
@@ -519,7 +519,7 @@ function HomePage() {
 
           {/* Услуги */}
           <section className="bg-background rounded-t-[14px] pt-5 pb-0">
-            <h2 className="px-4 text-2xl font-bold uppercase">Услуги</h2>
+            <h2 className="px-4 text-2xl font-black uppercase">Услуги</h2>
             <p className="px-4 text-sm text-muted-foreground mb-3">
               Дополнительные возможности для участников клуба
             </p>

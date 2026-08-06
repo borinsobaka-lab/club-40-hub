@@ -254,8 +254,8 @@ function OnboardingPage() {
     return (
       <Shell>
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="h-16 w-16 rounded-full bg-[#FFE500] flex items-center justify-center mb-6">
-            <CheckCircle className="h-9 w-9 text-[#1B1C1F]" weight="BoldDuotone" />
+          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center mb-6">
+            <CheckCircle className="h-9 w-9 text-primary-foreground" weight="BoldDuotone" />
           </div>
           <h1 className="text-2xl font-black uppercase leading-tight">
             Готово. Подготовим ваше первое занятие под вас.
@@ -293,7 +293,7 @@ function OnboardingPage() {
           <div className="flex-1">
             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#FFE500] transition-all duration-300"
+                className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -412,7 +412,7 @@ function OptionButton({
       onClick={onClick}
       className={`w-full text-left px-4 py-4 rounded-xl border transition-colors ${
         active
-          ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500] font-semibold"
+          ? "bg-primary text-primary-foreground border-primary font-semibold"
           : "bg-card text-card-foreground border-border hover:border-foreground/30"
       }`}
     >
@@ -693,7 +693,7 @@ function StepBody({
                   onClick={() => onChange({ gender: v })}
                   className={`aspect-square flex flex-col items-center justify-center gap-3 rounded-xl border transition-colors ${
                     active
-                      ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]"
+                      ? "bg-primary text-primary-foreground border-primary"
                       : "bg-card border-border hover:border-foreground/30"
                   }`}
                 >
@@ -743,7 +743,7 @@ function StepLogistics({
               onClick={() => onFreqChange(n)}
               className={`h-12 rounded-xl border font-semibold transition-colors ${
                 frequency === n
-                  ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]"
+                  ? "bg-primary text-primary-foreground border-primary"
                   : "bg-card border-border hover:border-foreground/30"
               }`}
             >
@@ -762,7 +762,7 @@ function StepLogistics({
               onClick={() => toggleTime(t.v)}
               className={`h-12 rounded-xl border font-semibold transition-colors ${
                 times.includes(t.v)
-                  ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]"
+                  ? "bg-primary text-primary-foreground border-primary"
                   : "bg-card border-border hover:border-foreground/30"
               }`}
             >

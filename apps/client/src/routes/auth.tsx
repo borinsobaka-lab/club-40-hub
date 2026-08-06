@@ -111,7 +111,7 @@ function AuthPage() {
         {/* Brand */}
         <div className="flex flex-col items-center mb-10">
           <div className="text-2xl font-black tracking-widest">
-            CLUB <span className="text-[#FFE500]">40</span>
+            CLUB <span className="text-primary">40</span>
           </div>
         </div>
 

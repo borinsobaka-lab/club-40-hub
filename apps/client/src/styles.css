@@ -77,8 +77,10 @@
   --card-border: oklch(0.9376 0.0027 285.6876);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
+  /* Фирменный жёлтый CLUB 40 (#FFE500) — раньше был захардкожен по коду,
+     а в --primary лежал шаблонный цвет shadcn. Токен = бренд. */
+  --primary: oklch(0.915 0.191 101);
+  --primary-foreground: oklch(0.227 0.006 271); /* #1B1C1F */
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: #f4f5f7;
@@ -113,8 +115,8 @@
   --card-border: oklch(0.9376 0.0027 285.6876);
   --popover: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
+  --primary: oklch(0.915 0.191 101);
+  --primary-foreground: oklch(0.227 0.006 271);
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);

@@ -445,7 +445,7 @@ export function StatsSection() {
                 footer={
                   <div className="mt-2 flex flex-col gap-1.5">
                     <TypeBar parts={agg.byType} />
-                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
                       {agg.byType.map((p) => (
                         <span key={p.type} className="inline-flex items-center gap-1">
                           <span
@@ -474,7 +474,7 @@ export function StatsSection() {
             />
           </div>
 
-          <p className="px-4 mt-3 text-center text-[13px] text-muted-foreground/80">
+          <p className="px-4 mt-3 text-center text-xs text-muted-foreground/80">
             <CaloriesInfoLink />
           </p>
         </>

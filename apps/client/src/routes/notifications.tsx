@@ -107,7 +107,7 @@ function NotificationsPage() {
             type="button"
             onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}
             disabled={unread === 0}
-            className="text-xs font-semibold text-[#1B1C1F] bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition-colors"
+            className="text-xs font-semibold text-primary-foreground bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition-colors"
           >
             Прочитать все
           </button>
@@ -130,12 +130,12 @@ function NotificationsPage() {
                     }
                   }}
                   className={`p-4 transition-colors ${
-                    n.read ? "" : "border-[#FFE500] bg-[#FFE500]/5 cursor-pointer active:opacity-80"
+                    n.read ? "" : "border-primary bg-primary/5 cursor-pointer active:opacity-80"
                   }`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.read && (
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#FFE500]" />
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold leading-snug break-words">{n.title}</div>
@@ -159,7 +159,7 @@ function NotificationsPage() {
                                 );
                               }
                             }}
-                            className="shrink-0 text-xs font-bold text-[#1B1C1F] bg-[#FFE500] hover:bg-[#FFE500]/90 active:bg-[#FFE500]/80 rounded-full px-3 py-1.5 transition-colors"
+                            className="shrink-0 text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/80 rounded-full px-3 py-1.5 transition-colors"
                           >
                             Перейти
                           </a>
