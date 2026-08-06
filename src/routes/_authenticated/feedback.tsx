@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
+import { useActiveStudioId } from "@/components/studio-switcher";
 
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, MessageSquare, X, Loader2 } from "lucide-react";
@@ -83,6 +84,7 @@ const TOPICS: Record<string, string> = {
 const MOOD: Record<string, string> = { negative: "😞", neutral: "😐", positive: "😊" };
 
 function FeedbackPage() {
+  const studioId = useActiveStudioId();
   const [items, setItems] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -104,9 +106,12 @@ function FeedbackPage() {
   });
 
   const fetchItems = async () => {
-    const { data, error } = await supabase
-      .from("feedback")
-      .select("*")
+    let q = supabase.from("feedback").select("*");
+    // Отзывы своей студии + строки без привязки (созданные до миграции
+    // db/feedback_nps_studio.sql при нескольких студиях) — чтобы ни один
+    // отзыв не пропал из виду.
+    if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+    const { data, error } = await q
       .order("status", { ascending: true })
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
@@ -117,7 +122,8 @@ function FeedbackPage() {
   const refreshSignal = useRefreshSignal();
   useEffect(() => {
     void fetchItems();
-  }, [refreshSignal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal, studioId]);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -147,6 +153,7 @@ function FeedbackPage() {
     if (!form.message.trim()) return toast.error("Введите сообщение");
     setSaving(true);
     const { error } = await supabase.from("feedback").insert({
+      studio_id: studioId ?? null,
       topic: form.topic,
       message: form.message.trim(),
       mood: form.mood || null,

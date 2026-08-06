@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
+import { useActiveStudioId } from "@/components/studio-switcher";
 
 import { useEffect, useMemo, useState } from "react";
 import { Trash2, CheckCircle2, AlertTriangle, Plus, Loader2 } from "lucide-react";
@@ -123,6 +124,7 @@ const tooltipStyle = {
 };
 
 function NpsPage() {
+  const studioId = useActiveStudioId();
   const [responses, setResponses] = useState<NpsResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"surveys" | "stats">("surveys");
@@ -140,10 +142,10 @@ function NpsPage() {
   });
 
   const fetchData = async () => {
-    const { data, error } = await supabase
-      .from("nps_responses")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let q = supabase.from("nps_responses").select("*");
+    // Ответы своей студии + строки без привязки (см. db/feedback_nps_studio.sql).
+    if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+    const { data, error } = await q.order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     else setResponses((data ?? []) as NpsResponse[]);
     setLoading(false);
@@ -153,11 +155,12 @@ function NpsPage() {
   useEffect(() => {
     void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshSignal]);
+  }, [refreshSignal, studioId]);
 
   const submitNew = async () => {
     setSaving(true);
     const { error } = await supabase.from("nps_responses").insert({
+      studio_id: studioId ?? null,
       score: form.score,
       client_name: form.client_name.trim() || null,
       comment: form.comment.trim() || null,
