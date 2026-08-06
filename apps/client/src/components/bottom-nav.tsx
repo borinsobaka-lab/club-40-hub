@@ -1,5 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, DumbbellLargeMinimalistic, User, MenuDots, Card, UsersGroupRounded } from "@solar-icons/react";
+import {
+  Home,
+  DumbbellLargeMinimalistic,
+  User,
+  MenuDots,
+  Card,
+  UsersGroupRounded,
+} from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 type NavItem = {

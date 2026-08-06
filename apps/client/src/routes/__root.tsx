@@ -81,14 +81,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
       { title: "CLUB 40" },
-      { name: "description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
+      {
+        name: "description",
+        content:
+          "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок.",
+      },
       { name: "theme-color", content: "#0a0a0a" },
       { property: "og:title", content: "CLUB 40" },
-      { property: "og:description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
+      {
+        property: "og:description",
+        content:
+          "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "CLUB 40" },
-      { name: "twitter:description", content: "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок." },
+      {
+        name: "twitter:description",
+        content:
+          "Клиентское приложение CLUB 40 — расписание, бронирование и результаты тренировок.",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -122,7 +134,6 @@ function RootShell({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -182,7 +193,8 @@ function useInternalNavigationScrollReset() {
 
       const url = new URL(link.href);
       if (url.origin !== window.location.origin) return;
-      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search)
+        return;
 
       resetPageScrollPosition();
     };
@@ -293,4 +305,3 @@ function AppShell() {
     </div>
   );
 }
-

@@ -5,18 +5,16 @@ import { toast } from "sonner";
 import logoSrc from "@/assets/frame-13.svg";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { formatCancelDeadline } from "@/hooks/use-club-settings";
-import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
 import {
-  googleCalendarUrl,
-  outlookLiveUrl,
-  downloadICS,
-  type CalendarEvent,
-} from "@/lib/calendar";
+  SquircleAvatar,
+  SquircleAvatarFallback,
+  SquircleAvatarImage,
+} from "@/components/ui/squircle-avatar";
+import { googleCalendarUrl, outlookLiveUrl, downloadICS, type CalendarEvent } from "@/lib/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import googleCalIcon from "@/assets/google-calendar.png.asset.json";
 import appleCalIcon from "@/assets/apple-calendar.png.asset.json";
 import outlookIcon from "@/assets/outlook.png.asset.json";
-
 
 export type WorkoutDrawerData = {
   id: string;
@@ -104,7 +102,6 @@ export function WorkoutDrawer({
       ]
     : [];
 
-
   return (
     <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
       <DrawerPrimitive.Portal>
@@ -124,7 +121,9 @@ export function WorkoutDrawer({
                     </DrawerPrimitive.Title>
 
                     {typeMeta && (
-                      <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${typeMeta.bg} ${typeMeta.color}`}>
+                      <div
+                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${typeMeta.bg} ${typeMeta.color}`}
+                      >
                         {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
                         {typeMeta.label}
                       </div>
@@ -189,8 +188,7 @@ export function WorkoutDrawer({
                       disabled={!calendarEvent}
                       className="flex-1 h-14 rounded-full bg-[#FFE500] text-[#1B1C1F] font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
                     >
-                      <Calendar className="h-5 w-5" weight="BoldDuotone" />
-                      В календарь
+                      <Calendar className="h-5 w-5" weight="BoldDuotone" />В календарь
                     </button>
                   </div>
                 ) : (

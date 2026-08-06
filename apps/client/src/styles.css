@@ -3,11 +3,12 @@
 @import "tw-animate-css";
 
 @theme {
-  --font-sans: "Google Sans", "Product Sans", "Google Sans Text", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans:
+    "Google Sans", "Product Sans", "Google Sans Text", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 @custom-variant dark (&:is(.dark *));
-
 
 /*
  * Design system definition.
@@ -80,7 +81,7 @@
   --primary-foreground: oklch(0.984 0.003 247.858);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: #F4F5F7;
+  --muted: #f4f5f7;
   --muted-foreground: oklch(0.554 0.046 257.417);
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
@@ -145,7 +146,8 @@
     border-color: var(--color-border);
   }
 
-  html, body {
+  html,
+  body {
     font-family: var(--font-sans);
   }
 
@@ -154,7 +156,6 @@
     color: var(--color-foreground);
   }
 }
-
 
 .no-scrollbar {
   -ms-overflow-style: none;
@@ -179,15 +180,15 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
 }
 
-html body [data-sonner-toaster][data-sonner-theme='dark'] {
+html body [data-sonner-toaster][data-sonner-theme="dark"] {
   --normal-bg: rgba(27, 28, 31, 0.42);
   --normal-border: rgba(255, 255, 255, 0.08);
   --normal-text: #ffffff;
 }
 
-html body [data-sonner-toast][data-styled='true'] {
+html body [data-sonner-toast][data-styled="true"] {
   background: rgba(27, 28, 31, 0.62) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   backdrop-filter: blur(34px) saturate(140%);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24) !important;
   max-width: 28rem !important;
@@ -195,23 +196,30 @@ html body [data-sonner-toast][data-styled='true'] {
   min-width: auto !important;
 }
 
-html body [data-sonner-toast][data-type='success'] {
+html body [data-sonner-toast][data-type="success"] {
   background: rgba(34, 197, 94, 0.55) !important;
   border: 1px solid rgba(34, 197, 94, 0.45) !important;
 }
 
-html body [data-sonner-toast][data-type='error'] {
+html body [data-sonner-toast][data-type="error"] {
   background: rgba(239, 68, 68, 0.55) !important;
   border: 1px solid rgba(239, 68, 68, 0.45) !important;
 }
 
-html body [data-sonner-toast][data-type='warning'] {
+html body [data-sonner-toast][data-type="warning"] {
   background: rgba(234, 179, 8, 0.55) !important;
   border: 1px solid rgba(234, 179, 8, 0.45) !important;
 }
 
 /* Animated yellow gradient blobs for dark header zone */
-.gradient-blobs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; opacity: 0.65; }
+.gradient-blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.65;
+}
 .gradient-blobs > span:nth-child(1) {
   position: absolute;
   width: 31.2%;
@@ -314,52 +322,100 @@ html body [data-sonner-toast][data-type='warning'] {
 }
 
 @keyframes blob-drift-a {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(40%, 30%) scale(1.12); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(40%, 30%) scale(1.12);
+  }
 }
 @keyframes blob-drift-b {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-35%, -25%) scale(1.18); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-35%, -25%) scale(1.18);
+  }
 }
 @keyframes blob-drift-c {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-30%, 40%) scale(0.95); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-30%, 40%) scale(0.95);
+  }
 }
 @keyframes blob-drift-d {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(25%, -35%) scale(1.08); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(25%, -35%) scale(1.08);
+  }
 }
 @keyframes blob-drift-e {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-20%, 30%) scale(0.9); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-20%, 30%) scale(0.9);
+  }
 }
 @keyframes blob-drift-f {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(12%, -25%) scale(1.12); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(12%, -25%) scale(1.12);
+  }
 }
 @keyframes blob-drift-g {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-25%, -20%) scale(0.95); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-25%, -20%) scale(0.95);
+  }
 }
 @keyframes blob-drift-h {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-22%, 28%) scale(1.1); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-22%, 28%) scale(1.1);
+  }
 }
 @keyframes blob-drift-i {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(18%, -22%) scale(0.92); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(18%, -22%) scale(0.92);
+  }
 }
 @keyframes blob-drift-j {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-28%, 15%) scale(1.08); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-28%, 15%) scale(1.08);
+  }
 }
 @keyframes blob-drift-k {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(12%, 32%) scale(0.9); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(12%, 32%) scale(0.9);
+  }
 }
 @keyframes blob-drift-l {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-15%, -25%) scale(1.15); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-15%, -25%) scale(1.15);
+  }
 }
 .gradient-blobs > span:nth-child(11) {
   position: absolute;
@@ -443,36 +499,68 @@ html body [data-sonner-toast][data-type='warning'] {
 }
 
 @keyframes blob-drift-m {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(30%, -20%) scale(1.1); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(30%, -20%) scale(1.1);
+  }
 }
 @keyframes blob-drift-n {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-18%, 25%) scale(0.95); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-18%, 25%) scale(0.95);
+  }
 }
 @keyframes blob-drift-o {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-22%, -18%) scale(1.12); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-22%, -18%) scale(1.12);
+  }
 }
 @keyframes blob-drift-p {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(15%, 20%) scale(0.92); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(15%, 20%) scale(0.92);
+  }
 }
 @keyframes blob-drift-q {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-28%, 10%) scale(1.08); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-28%, 10%) scale(1.08);
+  }
 }
 @keyframes blob-drift-r {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(20%, -15%) scale(1.05); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(20%, -15%) scale(1.05);
+  }
 }
 @keyframes blob-drift-s {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(-10%, 30%) scale(0.9); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(-10%, 30%) scale(0.9);
+  }
 }
 @keyframes blob-drift-t {
-  0%   { transform: translate(0%, 0%) scale(1); }
-  100% { transform: translate(25%, -12%) scale(1.15); }
+  0% {
+    transform: translate(0%, 0%) scale(1);
+  }
+  100% {
+    transform: translate(25%, -12%) scale(1.15);
+  }
 }
 
 /* Floating yellow glow for AI assistant button — single bright orb */
@@ -491,17 +579,36 @@ html body [data-sonner-toast][data-type='warning'] {
   filter: blur(5px);
   pointer-events: none;
   will-change: transform;
-  background: radial-gradient(circle, rgba(255, 230, 40, 1), rgba(255, 200, 0, 0.6) 45%, rgba(255, 180, 0, 0) 75%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 230, 40, 1),
+    rgba(255, 200, 0, 0.6) 45%,
+    rgba(255, 180, 0, 0) 75%
+  );
   animation: assistant-orb 7.6s cubic-bezier(0.45, 0, 0.15, 1) infinite;
 }
 @keyframes assistant-orb {
-  0%   { transform: translate(-13px, -9px) scale(1); }
-  16%  { transform: translate(11px, 8px) scale(1.18); }
-  31%  { transform: translate(4px, -14px) scale(0.92); }
-  47%  { transform: translate(-15px, 7px) scale(1.12); }
-  63%  { transform: translate(15px, -4px) scale(0.98); }
-  82%  { transform: translate(-6px, 14px) scale(1.2); }
-  100% { transform: translate(-13px, -9px) scale(1); }
+  0% {
+    transform: translate(-13px, -9px) scale(1);
+  }
+  16% {
+    transform: translate(11px, 8px) scale(1.18);
+  }
+  31% {
+    transform: translate(4px, -14px) scale(0.92);
+  }
+  47% {
+    transform: translate(-15px, 7px) scale(1.12);
+  }
+  63% {
+    transform: translate(15px, -4px) scale(0.98);
+  }
+  82% {
+    transform: translate(-6px, 14px) scale(1.2);
+  }
+  100% {
+    transform: translate(-13px, -9px) scale(1);
+  }
 }
 
 @utility ghost-nudge {
@@ -509,9 +616,21 @@ html body [data-sonner-toast][data-type='warning'] {
 }
 
 @keyframes ghost-nudge {
-  0%, 90% { transform: rotate(0deg) translateY(0); }
-  92% { transform: rotate(-10deg) translateY(-3px); }
-  94% { transform: rotate(10deg) translateY(-3px); }
-  96% { transform: rotate(-5deg) translateY(0); }
-  98%, 100% { transform: rotate(0deg) translateY(0); }
+  0%,
+  90% {
+    transform: rotate(0deg) translateY(0);
+  }
+  92% {
+    transform: rotate(-10deg) translateY(-3px);
+  }
+  94% {
+    transform: rotate(10deg) translateY(-3px);
+  }
+  96% {
+    transform: rotate(-5deg) translateY(0);
+  }
+  98%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
 }

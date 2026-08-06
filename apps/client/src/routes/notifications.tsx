@@ -138,9 +138,7 @@ function NotificationsPage() {
                       <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#FFE500]" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold leading-snug break-words">
-                        {n.title}
-                      </div>
+                      <div className="font-semibold leading-snug break-words">{n.title}</div>
                       <p className="mt-1 text-sm text-foreground/80 whitespace-pre-line break-words">
                         {n.body}
                       </p>
@@ -157,9 +155,7 @@ function NotificationsPage() {
                               e.stopPropagation();
                               if (!n.read) {
                                 setItems((prev) =>
-                                  prev.map((it) =>
-                                    it.id === n.id ? { ...it, read: true } : it,
-                                  ),
+                                  prev.map((it) => (it.id === n.id ? { ...it, read: true } : it)),
                                 );
                               }
                             }}

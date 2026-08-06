@@ -73,7 +73,7 @@ function startOfWeek(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   const day = x.getDay(); // 0=Sun
-  const diff = (day === 0 ? -6 : 1 - day);
+  const diff = day === 0 ? -6 : 1 - day;
   x.setDate(x.getDate() + diff);
   return x;
 }
@@ -153,7 +153,9 @@ function Card({
   return (
     <div className="rounded-2xl bg-card border border-border/40 p-4 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${accent ?? "bg-primary/10 text-primary"}`}>
+        <div
+          className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full ${accent ?? "bg-primary/10 text-primary"}`}
+        >
           {icon}
         </div>
         <div className="text-2xl font-bold leading-tight">{value}</div>
@@ -301,16 +303,14 @@ export function StatsSection() {
           .limit(2000),
         (supabase as unknown as { from: (t: string) => any })
           .from("client_stats_30d_mv")
-          .select("studio_id,user_id,visits_30d,calories_30d,visits_percentile,calories_percentile,cohort_size")
+          .select(
+            "studio_id,user_id,visits_30d,calories_30d,visits_percentile,calories_percentile,cohort_size",
+          )
           .eq("user_id", user.id)
           .order("visits_30d", { ascending: false })
           .limit(1)
           .maybeSingle(),
-        supabase
-          .from("member_profiles")
-          .select("weight_kg")
-          .eq("user_id", user.id)
-          .maybeSingle(),
+        supabase.from("member_profiles").select("weight_kg").eq("user_id", user.id).maybeSingle(),
       ]);
 
       if (cancelled) return;
@@ -363,7 +363,10 @@ export function StatsSection() {
       {loading ? (
         <div className="grid grid-cols-2 gap-3 px-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="rounded-2xl bg-card border border-border/40 h-[112px] animate-pulse" />
+            <div
+              key={i}
+              className="rounded-2xl bg-card border border-border/40 h-[112px] animate-pulse"
+            />
           ))}
         </div>
       ) : !agg || agg.total === 0 ? (
@@ -376,7 +379,9 @@ export function StatsSection() {
               icon={<Fire size={18} weight="Bold" />}
               accent="bg-orange-500/15 text-orange-500"
               value={`${agg.streakWeeks} нед.`}
-              label={agg.streakWeeks > 0 ? "недель подряд с тренировками 🔥" : "начни новую серию недель"}
+              label={
+                agg.streakWeeks > 0 ? "недель подряд с тренировками 🔥" : "начни новую серию недель"
+              }
               right={<Sparkline data={agg.sparkline} />}
             />
 
@@ -415,8 +420,8 @@ export function StatsSection() {
                 hasWeight === false
                   ? "укажите вес в профиле для расчёта"
                   : caloriesPct !== null
-                  ? `больше, чем у ${caloriesPct}% клиентов клуба`
-                  : "оценка по типу и длительности тренировки"
+                    ? `больше, чем у ${caloriesPct}% клиентов клуба`
+                    : "оценка по типу и длительности тренировки"
               }
               footer={
                 hasWeight === false ? (
@@ -443,7 +448,9 @@ export function StatsSection() {
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
                       {agg.byType.map((p) => (
                         <span key={p.type} className="inline-flex items-center gap-1">
-                          <span className={`inline-block w-1.5 h-1.5 rounded-full ${TYPE_COLOR[p.type]}`} />
+                          <span
+                            className={`inline-block w-1.5 h-1.5 rounded-full ${TYPE_COLOR[p.type]}`}
+                          />
                           {TYPE_LABEL[p.type]} {p.count}
                         </span>
                       ))}
@@ -480,10 +487,7 @@ function CaloriesInfoLink() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button
-          type="button"
-          className="hover:text-foreground transition-colors"
-        >
+        <button type="button" className="hover:text-foreground transition-colors">
           Как считаются калории?
         </button>
       </DialogTrigger>
@@ -493,44 +497,35 @@ function CaloriesInfoLink() {
         </DialogHeader>
         <div className="space-y-3 text-foreground text-[15px] leading-relaxed">
           <p>
-            Калории в приложении — это оценка.
-            Точную цифру может дать только пульсометр или умные часы, но даже без них можно
-            посчитать расход достаточно близко по проверенной методике, которую используют
-            большинство фитнес-приложений.
+            Калории в приложении — это оценка. Точную цифру может дать только пульсометр или умные
+            часы, но даже без них можно посчитать расход достаточно близко по проверенной методике,
+            которую используют большинство фитнес-приложений.
           </p>
           <p>
-            Мы опираемся на три параметра:{" "}
-            <strong>тип тренировки</strong>, её{" "}
-            <strong>длительность</strong> и ваш{" "}
-            <strong>вес из профиля</strong>. У каждого типа занятия
-            (кардио, силовая, гибрид, восстановление) своя интенсивность — коэффициент{" "}
-            <strong>MET</strong> (Metabolic Equivalent of Task),
-            который показывает, во сколько раз активнее работает организм по сравнению с
-            состоянием покоя. Чем выше интенсивность и дольше занятие — тем больше расход.
+            Мы опираемся на три параметра: <strong>тип тренировки</strong>, её{" "}
+            <strong>длительность</strong> и ваш <strong>вес из профиля</strong>. У каждого типа
+            занятия (кардио, силовая, гибрид, восстановление) своя интенсивность — коэффициент{" "}
+            <strong>MET</strong> (Metabolic Equivalent of Task), который показывает, во сколько раз
+            активнее работает организм по сравнению с состоянием покоя. Чем выше интенсивность и
+            дольше занятие — тем больше расход.
           </p>
           <p>
-            Важно, что калории фиксируются{" "}
-            <strong>персонально для вас</strong> в момент каждой
-            тренировки и{" "}
-            <strong>навсегда сохраняются в истории</strong>. То есть
-            если вы измените вес в профиле, прошлые тренировки не пересчитаются — каждая запись
-            хранит ваш реальный показатель на тот день. Именно из этой истории и складывается
-            вся ваша статистика.
+            Важно, что калории фиксируются <strong>персонально для вас</strong> в момент каждой
+            тренировки и <strong>навсегда сохраняются в истории</strong>. То есть если вы измените
+            вес в профиле, прошлые тренировки не пересчитаются — каждая запись хранит ваш реальный
+            показатель на тот день. Именно из этой истории и складывается вся ваша статистика.
           </p>
           <p>
-            Сравнение со средним по клубу полностью{" "}
-            <strong>анонимно</strong> — мы показываем только
+            Сравнение со средним по клубу полностью <strong>анонимно</strong> — мы показываем только
             обобщённые цифры, без чьих-либо имён, и обновляем их раз в сутки.
           </p>
           <p>
-            Помните: это <strong>ориентир</strong>, а не точное
-            измерение. Реальный расход зависит ещё и от вашего пульса, состава тела и того,
-            насколько вы выкладываетесь. Но для отслеживания динамики и сравнения с собой
-            прошлым этой оценки более чем достаточно.
+            Помните: это <strong>ориентир</strong>, а не точное измерение. Реальный расход зависит
+            ещё и от вашего пульса, состава тела и того, насколько вы выкладываетесь. Но для
+            отслеживания динамики и сравнения с собой прошлым этой оценки более чем достаточно.
           </p>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-

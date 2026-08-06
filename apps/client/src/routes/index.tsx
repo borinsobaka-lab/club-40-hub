@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage } from "@/components/ui/squircle-avatar";
+import {
+  SquircleAvatar,
+  SquircleAvatarFallback,
+  SquircleAvatarImage,
+} from "@/components/ui/squircle-avatar";
 import {
   AltArrowRight,
   Bell,
@@ -31,7 +35,10 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Главное — CLUB 40" },
-      { name: "description", content: "Главная страница CLUB 40: новости, акции и быстрый доступ к профилю." },
+      {
+        name: "description",
+        content: "Главная страница CLUB 40: новости, акции и быстрый доступ к профилю.",
+      },
     ],
   }),
   component: HomePage,
@@ -43,7 +50,15 @@ function resolvePublicUrl(bucket: string, path: string | null | undefined): stri
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
-const DAY_NAMES_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+const DAY_NAMES_FULL = [
+  "Воскресенье",
+  "Понедельник",
+  "Вторник",
+  "Среда",
+  "Четверг",
+  "Пятница",
+  "Суббота",
+];
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -59,7 +74,6 @@ function initials(name: string) {
 function firstNameOnly(value: string | null | undefined) {
   return value?.trim().split(/\s+/)[0] || "";
 }
-
 
 type News = {
   id: string;
@@ -122,13 +136,17 @@ function HomePage() {
       // бы как его собственные.
       const { data } = await (supabase as any)
         .from("schedule_bookings")
-        .select("entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))")
+        .select(
+          "entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))",
+        )
         .eq("user_id", user.id)
         .eq("status", "booked");
       if (cancelled) return;
       const rows = ((data as MyBooking[] | null) ?? [])
         .filter((r) => r.entry && new Date(r.entry.starts_at).getTime() >= Date.now())
-        .sort((a, b) => new Date(a.entry!.starts_at).getTime() - new Date(b.entry!.starts_at).getTime());
+        .sort(
+          (a, b) => new Date(a.entry!.starts_at).getTime() - new Date(b.entry!.starts_at).getTime(),
+        );
       setMyBookings(rows);
     };
     load();
@@ -155,7 +173,9 @@ function HomePage() {
   async function cancelBooking(entryId: string) {
     if (pendingId) return;
     setPendingId(entryId);
-    const { data, error } = await (supabase as any).rpc("cancel_schedule_booking", { p_entry_id: entryId });
+    const { data, error } = await (supabase as any).rpc("cancel_schedule_booking", {
+      p_entry_id: entryId,
+    });
     setPendingId(null);
     if (error) {
       toast.error(`Не удалось отменить запись: ${error.message}`);
@@ -171,9 +191,6 @@ function HomePage() {
     }
   }
 
-
-
-
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -184,7 +201,12 @@ function HomePage() {
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        const row = data as { full_name?: string | null; first_name?: string | null; last_name?: string | null; photo_url?: string | null } | null;
+        const row = data as {
+          full_name?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          photo_url?: string | null;
+        } | null;
         const name =
           row?.first_name?.trim() ||
           firstNameOnly(row?.full_name) ||
@@ -216,11 +238,7 @@ function HomePage() {
     load();
     const channel = supabase
       .channel("news-feed")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "news" },
-        () => load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "news" }, () => load())
       .subscribe();
     return () => {
       cancelled = true;
@@ -247,11 +265,7 @@ function HomePage() {
     load();
     const channel = supabase
       .channel("services-feed")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "services" },
-        () => load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => load())
       .subscribe();
     return () => {
       cancelled = true;
@@ -340,7 +354,7 @@ function HomePage() {
                       );
                     })()}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    
+
                     <div className="absolute inset-0 flex flex-col justify-end p-2.5">
                       <div className="text-white text-xs font-semibold leading-tight">
                         {n.title}
@@ -377,7 +391,9 @@ function HomePage() {
                         className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1 active:scale-[0.97] transition"
                       >
                         <item.icon className="h-5 w-5 text-white" />
-                        <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
+                        <span className="text-[11px] font-semibold text-white/80">
+                          {item.label}
+                        </span>
                       </a>
                     ))}
                 </div>
@@ -389,177 +405,177 @@ function HomePage() {
     >
       <div className="pt-6 pb-8">
         <div className="bg-muted">
-
-        {/* Тренировки */}
-        <section className="bg-background rounded-b-[14px] pb-5">
-          <h2 className="px-4 text-2xl font-bold uppercase mb-3">
-            Тренировки
-          </h2>
-          {myBookings === null ? (
-            <div className="flex gap-3 overflow-hidden pb-2 px-4">
-              {[0, 1].map((i) => (
-                <div key={i} className="shrink-0 w-56 h-24 rounded-2xl bg-card animate-pulse" />
-              ))}
-            </div>
-          ) : myBookings.length === 0 ? (
-            <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
-              <Ghost className="h-14 w-14 text-muted-foreground ghost-nudge" />
-              <div className="text-sm text-muted-foreground">У вас нет запланированных тренировок</div>
-              <Button asChild className="text-sm font-bold">
-                <Link to="/schedule">Забронировать</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="px-4 space-y-5">
-              {groupedBookings!.map((group) => {
-                const d = new Date(group.ts);
-                const weekday = DAY_NAMES_FULL[d.getDay()];
-                const dateLabel = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
-                return (
-                  <div key={group.ts} className="space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {weekday}, {dateLabel}
-                    </div>
-                    {group.items.map((b) => {
-                      const e = b.entry!;
-                      const meta = workoutTypeMeta(e.workout?.type);
-                      void pendingId;
-                      const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      const trainerNames = (e.trainers ?? [])
-                        .map((t) => t.trainer?.full_name)
-                        .filter((n): n is string => !!n);
-                      return (
-                        <button
-                          key={b.entry_id}
-                          type="button"
-                          onClick={() => {
-                            const trainerList = (e.trainers ?? [])
-                              .map((t) => t.trainer)
-                              .filter((t): t is Trainer => !!t);
-                            const trainerName = trainerList
-                              .map((t) => t.full_name)
-                              .filter((n): n is string => !!n)
-                              .join(", ") || null;
-                            const trainerPhoto = resolvePublicUrl(
-                              "trainer-photos",
-                              trainerList.find((t) => !!t.photo_url)?.photo_url,
-                            );
-                            setOpenEntry({
-                              id: e.id,
-                              name: e.workout?.name ?? "Занятие",
-                              type: e.workout?.type ?? null,
-                              description: e.workout?.description ?? null,
-                              photo: resolvePublicUrl("workout-photos", e.workout?.photo_url),
-                              trainerName,
-                              trainerPhoto,
-                              startsAt: e.starts_at,
-                              endsAt: e.ends_at,
-                            });
-                          }}
-                          className="w-full text-left active:opacity-80 transition-opacity"
-                        >
-                          <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]">
-                            <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
-                            <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                              <div className="text-base font-black tabular-nums leading-tight text-center">
-                                {timeLabel}
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0 ml-1">
-                              <div className="font-medium break-words leading-snug">
-                                {e.workout?.name ?? "Занятие"}
-                              </div>
-                              {trainerNames.length > 0 && (
-                                <div className="text-xs mt-0.5 truncate text-[#1B1C1F]/70">
-                                  {trainerNames.join(", ")}
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-        </section>
-
-        <div className="h-3 bg-muted" />
-
-        {/* Статистика */}
-        <StatsSection />
-
-        <div className="h-3 bg-muted" />
-
-        {/* Услуги */}
-        <section className="bg-background rounded-t-[14px] pt-5 pb-0">
-          <h2 className="px-4 text-2xl font-bold uppercase">
-            Услуги
-          </h2>
-          <p className="px-4 text-sm text-muted-foreground mb-3">Дополнительные возможности для участников клуба</p>
-          {services === null ? (
-            <div className="flex gap-3 overflow-hidden pb-2">
-              <div className="w-1 shrink-0" aria-hidden="true" />
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="shrink-0 w-56 h-32 rounded-2xl bg-muted animate-pulse"
-                />
-              ))}
-              <div className="w-1 shrink-0" aria-hidden="true" />
-            </div>
-          ) : services.length === 0 ? (
-            <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
-              <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
-              <span className="text-sm">Пока нет услуг</span>
-            </div>
-          ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
-              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
-              {services.map((s) => {
-                const url = mediaUrl(s.image_url, "services-media");
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setOpenServiceId(s.id)}
-                    className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
-                  >
-                    {url ? (
-                      <img
-                        src={url}
-                        alt={s.title}
-                        className="absolute inset-0 h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    <div className="absolute inset-0 flex flex-col justify-end p-3">
-                      <div className="text-white text-sm font-semibold leading-tight">
-                        {s.title}
+          {/* Тренировки */}
+          <section className="bg-background rounded-b-[14px] pb-5">
+            <h2 className="px-4 text-2xl font-bold uppercase mb-3">Тренировки</h2>
+            {myBookings === null ? (
+              <div className="flex gap-3 overflow-hidden pb-2 px-4">
+                {[0, 1].map((i) => (
+                  <div key={i} className="shrink-0 w-56 h-24 rounded-2xl bg-card animate-pulse" />
+                ))}
+              </div>
+            ) : myBookings.length === 0 ? (
+              <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
+                <Ghost className="h-14 w-14 text-muted-foreground ghost-nudge" />
+                <div className="text-sm text-muted-foreground">
+                  У вас нет запланированных тренировок
+                </div>
+                <Button asChild className="text-sm font-bold">
+                  <Link to="/schedule">Забронировать</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="px-4 space-y-5">
+                {groupedBookings!.map((group) => {
+                  const d = new Date(group.ts);
+                  const weekday = DAY_NAMES_FULL[d.getDay()];
+                  const dateLabel = d.toLocaleDateString("ru-RU", {
+                    day: "2-digit",
+                    month: "long",
+                  });
+                  return (
+                    <div key={group.ts} className="space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {weekday}, {dateLabel}
                       </div>
-                      {s.description && (
-                        <div className="text-white/80 text-[11px] leading-tight mt-0.5 line-clamp-1">
-                          {s.description}
-                        </div>
-                      )}
+                      {group.items.map((b) => {
+                        const e = b.entry!;
+                        const meta = workoutTypeMeta(e.workout?.type);
+                        void pendingId;
+                        const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                        const trainerNames = (e.trainers ?? [])
+                          .map((t) => t.trainer?.full_name)
+                          .filter((n): n is string => !!n);
+                        return (
+                          <button
+                            key={b.entry_id}
+                            type="button"
+                            onClick={() => {
+                              const trainerList = (e.trainers ?? [])
+                                .map((t) => t.trainer)
+                                .filter((t): t is Trainer => !!t);
+                              const trainerName =
+                                trainerList
+                                  .map((t) => t.full_name)
+                                  .filter((n): n is string => !!n)
+                                  .join(", ") || null;
+                              const trainerPhoto = resolvePublicUrl(
+                                "trainer-photos",
+                                trainerList.find((t) => !!t.photo_url)?.photo_url,
+                              );
+                              setOpenEntry({
+                                id: e.id,
+                                name: e.workout?.name ?? "Занятие",
+                                type: e.workout?.type ?? null,
+                                description: e.workout?.description ?? null,
+                                photo: resolvePublicUrl("workout-photos", e.workout?.photo_url),
+                                trainerName,
+                                trainerPhoto,
+                                startsAt: e.starts_at,
+                                endsAt: e.ends_at,
+                              });
+                            }}
+                            className="w-full text-left active:opacity-80 transition-opacity"
+                          >
+                            <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]">
+                              <span
+                                className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`}
+                              />
+                              <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                                <div className="text-base font-black tabular-nums leading-tight text-center">
+                                  {timeLabel}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0 ml-1">
+                                <div className="font-medium break-words leading-snug">
+                                  {e.workout?.name ?? "Занятие"}
+                                </div>
+                                {trainerNames.length > 0 && (
+                                  <div className="text-xs mt-0.5 truncate text-[#1B1C1F]/70">
+                                    {trainerNames.join(", ")}
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </button>
-                );
-              })}
-              <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
-            </div>
-          )}
-        </section>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
+          <div className="h-3 bg-muted" />
+
+          {/* Статистика */}
+          <StatsSection />
+
+          <div className="h-3 bg-muted" />
+
+          {/* Услуги */}
+          <section className="bg-background rounded-t-[14px] pt-5 pb-0">
+            <h2 className="px-4 text-2xl font-bold uppercase">Услуги</h2>
+            <p className="px-4 text-sm text-muted-foreground mb-3">
+              Дополнительные возможности для участников клуба
+            </p>
+            {services === null ? (
+              <div className="flex gap-3 overflow-hidden pb-2">
+                <div className="w-1 shrink-0" aria-hidden="true" />
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="shrink-0 w-56 h-32 rounded-2xl bg-muted animate-pulse" />
+                ))}
+                <div className="w-1 shrink-0" aria-hidden="true" />
+              </div>
+            ) : services.length === 0 ? (
+              <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
+                <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
+                <span className="text-sm">Пока нет услуг</span>
+              </div>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
+                <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
+                {services.map((s) => {
+                  const url = mediaUrl(s.image_url, "services-media");
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setOpenServiceId(s.id)}
+                      className="relative shrink-0 snap-start w-56 h-32 rounded-2xl overflow-hidden text-left bg-muted active:scale-[0.98] transition-transform"
+                    >
+                      {url ? (
+                        <img
+                          src={url}
+                          alt={s.title}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      <div className="absolute inset-0 flex flex-col justify-end p-3">
+                        <div className="text-white text-sm font-semibold leading-tight">
+                          {s.title}
+                        </div>
+                        {s.description && (
+                          <div className="text-white/80 text-[11px] leading-tight mt-0.5 line-clamp-1">
+                            {s.description}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+                <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
+              </div>
+            )}
+          </section>
         </div>
       </div>
 

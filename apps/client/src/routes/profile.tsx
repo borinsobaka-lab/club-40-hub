@@ -2,16 +2,27 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { SquircleAvatar, SquircleAvatarFallback, SquircleAvatarImage, squircleClipPath } from "@/components/ui/squircle-avatar";
-import { SelectItem } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
-import { Refresh, Pen, Logout, Camera, DocumentText, Smartphone, Card2, ChatRound, AltArrowRight, Settings, MedalStar } from "@solar-icons/react";
+  SquircleAvatar,
+  SquircleAvatarFallback,
+  SquircleAvatarImage,
+  squircleClipPath,
+} from "@/components/ui/squircle-avatar";
+import { SelectItem } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import {
+  Refresh,
+  Pen,
+  Logout,
+  Camera,
+  DocumentText,
+  Smartphone,
+  Card2,
+  ChatRound,
+  AltArrowRight,
+  Settings,
+  MedalStar,
+} from "@solar-icons/react";
 import { FloatingLabelInput, FloatingLabelSelect } from "@/components/ui/floating-input";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -65,7 +76,9 @@ const profileSchema = z.object({
   gender: z.string().optional().or(z.literal("")),
 });
 
-function composeFullName(c: Pick<ClientRow, "full_name" | "first_name" | "last_name"> | null | undefined) {
+function composeFullName(
+  c: Pick<ClientRow, "full_name" | "first_name" | "last_name"> | null | undefined,
+) {
   if (!c) return "";
   const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
   return composed || (c.full_name ?? "");
@@ -120,9 +133,7 @@ function ProfilePage() {
   }, [user]);
 
   const fullName =
-    composeFullName(client) ||
-    (user?.user_metadata?.full_name as string) ||
-    "Участник";
+    composeFullName(client) || (user?.user_metadata?.full_name as string) || "Участник";
   const email = client?.email || user?.email || "";
   const phone = client?.phone || "";
   const birthday = client?.birthday || "";
@@ -190,96 +201,121 @@ function ProfilePage() {
             >
               <Pen className="h-4 w-4" weight="BoldDuotone" />
             </button>
-          <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar || loading}
+                className="relative shrink-0 focus:outline-none disabled:opacity-70"
+                style={{ width: 120, height: 120 }}
+                aria-label="Заменить аватар"
+              >
+                <SquircleAvatar size={120}>
+                  {client?.photo_url && (
+                    <SquircleAvatarImage src={client.photo_url} alt={fullName} />
+                  )}
+                  <SquircleAvatarFallback className="bg-muted text-foreground text-3xl font-semibold">
+                    {loading ? (
+                      <Refresh className="h-6 w-6 animate-spin" weight="BoldDuotone" />
+                    ) : (
+                      initials(fullName)
+                    )}
+                  </SquircleAvatarFallback>
+                </SquircleAvatar>
+                {uploadingAvatar && (
+                  <div
+                    className="absolute inset-0 bg-black/40 flex items-center justify-center"
+                    style={{
+                      clipPath: squircleClipPath(120),
+                      WebkitClipPath: squircleClipPath(120),
+                    }}
+                  >
+                    <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center border-2 border-background">
+                  <Camera className="h-4 w-4" />
+                </span>
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+              <div className="text-center">
+                <div className="font-semibold text-lg">{fullName}</div>
+              </div>
+            </div>
+
+            <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
+              <ProfileField label="Телефон" value={phone} />
+              <ProfileField label="Email" value={email} />
+              <ProfileField
+                label="Дата рождения"
+                value={birthday ? new Date(birthday).toLocaleDateString("ru-RU") : ""}
+              />
+              <ProfileField
+                label="Пол"
+                value={gender === "male" ? "Мужской" : gender === "female" ? "Женский" : ""}
+              />
+            </dl>
+
             <button
               type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={uploadingAvatar || loading}
-              className="relative shrink-0 focus:outline-none disabled:opacity-70"
-              style={{ width: 120, height: 120 }}
-              aria-label="Заменить аватар"
+              className="w-full mt-5 rounded-[14px] bg-muted px-4 py-3 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <SquircleAvatar size={120}>
-                {client?.photo_url && <SquircleAvatarImage src={client.photo_url} alt={fullName} />}
-                <SquircleAvatarFallback className="bg-muted text-foreground text-3xl font-semibold">
-                  {loading ? <Refresh className="h-6 w-6 animate-spin" weight="BoldDuotone" /> : initials(fullName)}
-                </SquircleAvatarFallback>
-              </SquircleAvatar>
-              {uploadingAvatar && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center" style={{ clipPath: squircleClipPath(120), WebkitClipPath: squircleClipPath(120) }}>
-                  <Refresh className="h-6 w-6 text-white animate-spin" weight="BoldDuotone" />
-                </div>
-              )}
-              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center border-2 border-background">
-                <Camera className="h-4 w-4" />
-              </span>
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm">Бонусы</span>
+                <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <MedalStar className="h-6 w-6 text-yellow-500" weight="BoldDuotone" />
+                  <span className="font-semibold text-foreground text-base">1 250</span>
+                </span>
+              </div>
+              <AltArrowRight className="h-5 w-5 text-muted-foreground" weight="LineDuotone" />
             </button>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarUpload}
-            />
-            <div className="text-center">
-              <div className="font-semibold text-lg">{fullName}</div>
-            </div>
-          </div>
+          </section>
 
-          <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
-            <ProfileField label="Телефон" value={phone} />
-            <ProfileField label="Email" value={email} />
-            <ProfileField
-              label="Дата рождения"
-              value={birthday ? new Date(birthday).toLocaleDateString("ru-RU") : ""}
-            />
-            <ProfileField
-              label="Пол"
-              value={gender === "male" ? "Мужской" : gender === "female" ? "Женский" : ""}
-            />
-          </dl>
+          <div className="h-3 bg-muted" />
 
-          <button
-            type="button"
-            className="w-full mt-5 rounded-[14px] bg-muted px-4 py-3 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm">Бонусы</span>
-              <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <MedalStar className="h-6 w-6 text-yellow-500" weight="BoldDuotone" />
-                <span className="font-semibold text-foreground text-base">1 250</span>
-              </span>
-            </div>
-            <AltArrowRight className="h-5 w-5 text-muted-foreground" weight="LineDuotone" />
-          </button>
-        </section>
+          {/* Блок: ссылки */}
+          <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
+            <ul className="divide-y divide-border">
+              <ProfileLink
+                icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
+                label="Правовые документы"
+              />
+              <ProfileLink
+                icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
+                label="Способы оплаты"
+                sublabel="Mastercard •••• 4242"
+                right={<MastercardBadge />}
+              />
+              <ProfileLink
+                icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />}
+                label="Поддержка"
+              />
+              <ProfileLink
+                icon={<Settings className="h-5 w-5" weight="BoldDuotone" />}
+                label="Язык"
+                sublabel="Русский"
+              />
+              <ProfileLink
+                icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />}
+                label="О приложении"
+              />
+            </ul>
+          </section>
 
-        <div className="h-3 bg-muted" />
+          <div className="h-3 bg-muted" />
 
-        {/* Блок: ссылки */}
-        <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
-          <ul className="divide-y divide-border">
-            <ProfileLink icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />} label="Правовые документы" />
-            <ProfileLink
-              icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
-              label="Способы оплаты"
-              sublabel="Mastercard •••• 4242"
-              right={<MastercardBadge />}
-            />
-            <ProfileLink icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />} label="Поддержка" />
-            <ProfileLink icon={<Settings className="h-5 w-5" weight="BoldDuotone" />} label="Язык" sublabel="Русский" />
-            <ProfileLink icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />} label="О приложении" />
-          </ul>
-        </section>
-
-        <div className="h-3 bg-muted" />
-
-        {/* Блок: выход */}
-        <section className="bg-background rounded-t-[14px] px-4 py-5">
-          <Button variant="outline" className="w-full shadow-none" onClick={() => signOut()}>
-            Выйти
-          </Button>
-        </section>
+          {/* Блок: выход */}
+          <section className="bg-background rounded-t-[14px] px-4 py-5">
+            <Button variant="outline" className="w-full shadow-none" onClick={() => signOut()}>
+              Выйти
+            </Button>
+          </section>
         </div>
 
         {client && (
@@ -292,7 +328,6 @@ function ProfilePage() {
         )}
       </div>
     </PageShell>
-
   );
 }
 
@@ -301,7 +336,9 @@ function ProfileField({ label, value }: { label: string; value?: string | null }
   return (
     <div className="min-w-0">
       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className={`mt-0.5 text-sm font-medium break-words ${isEmpty ? "text-muted-foreground/60 italic" : ""}`}>
+      <dd
+        className={`mt-0.5 text-sm font-medium break-words ${isEmpty ? "text-muted-foreground/60 italic" : ""}`}
+      >
         {isEmpty ? "не указано" : value}
       </dd>
     </div>
@@ -321,10 +358,7 @@ function ProfileLink({
 }) {
   return (
     <li>
-      <button
-        type="button"
-        className="w-full flex items-center gap-3 px-4 py-4 text-left"
-      >
+      <button type="button" className="w-full flex items-center gap-3 px-4 py-4 text-left">
         <span className="text-muted-foreground">{icon}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-medium">{label}</span>
@@ -348,15 +382,11 @@ function MastercardBadge() {
       <svg viewBox="0 0 24 16" className="h-3.5 w-auto" aria-hidden="true">
         <circle cx="9" cy="8" r="6" fill="#EB001B" />
         <circle cx="15" cy="8" r="6" fill="#F79E1B" />
-        <path
-          d="M12 3.6a6 6 0 0 1 0 8.8 6 6 0 0 1 0-8.8z"
-          fill="#FF5F00"
-        />
+        <path d="M12 3.6a6 6 0 0 1 0 8.8 6 6 0 0 1 0-8.8z" fill="#FF5F00" />
       </svg>
     </span>
   );
 }
-
 
 function EditProfileSheet({
   open,

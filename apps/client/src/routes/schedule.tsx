@@ -30,9 +30,6 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-
-
-
 type Trainer = { id: string; full_name: string | null; photo_url: string | null };
 type Workout = {
   name: string;
@@ -83,8 +80,6 @@ function pluralSeats(n: number) {
   if (r >= 2 && r <= 4) return "места";
   return "мест";
 }
-
-
 
 function SchedulePage() {
   const navigate = useNavigate();
@@ -182,7 +177,6 @@ function SchedulePage() {
     };
   }, []);
 
-
   async function toggleBooking(entryId: string) {
     if (pendingId) return;
     setPendingId(entryId);
@@ -204,7 +198,12 @@ function SchedulePage() {
       full: "Свободных мест больше нет",
       not_booked: "Вы не были записаны на эту тренировку",
     };
-    const res = data as { ok: boolean; reason?: string; booked_count?: number; capacity?: number | null } | null;
+    const res = data as {
+      ok: boolean;
+      reason?: string;
+      booked_count?: number;
+      capacity?: number | null;
+    } | null;
     if (res?.ok) {
       setBookedIds((prev) => {
         const next = new Set(prev);
@@ -230,7 +229,9 @@ function SchedulePage() {
       setBookedIds((prev) => new Set(prev).add(entryId));
       if (typeof res.booked_count === "number") {
         const newCount = res.booked_count;
-        setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, booked_count: newCount } : e)));
+        setEntries((prev) =>
+          prev.map((e) => (e.id === entryId ? { ...e, booked_count: newCount } : e)),
+        );
       }
     } else if (res?.reason === "no_membership" || res?.reason === "no_visits_left") {
       toast.info(reasonMessages[res.reason]);
@@ -290,7 +291,6 @@ function SchedulePage() {
     [days, entries, activeType],
   );
 
-
   const typeFilters = [
     { key: "all", label: "Все" },
     ...availableTypes.map((t) => ({ key: t, label: workoutTypeMeta(t).label })),
@@ -340,27 +340,32 @@ function SchedulePage() {
         </div>
       ) : (
         <div className="p-4 space-y-4">
-          <div ref={daysContainerRef} className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2">
-
+          <div
+            ref={daysContainerRef}
+            className="sticky top-0 z-20 bg-background flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pt-2 pb-2"
+          >
             {days.map((d, i) => {
               const isPastDay = d.getTime() < today.getTime();
               return (
                 <button
                   key={d.toISOString()}
-                  ref={(el) => { dayBtnRefs.current[i] = el; }}
+                  ref={(el) => {
+                    dayBtnRefs.current[i] = el;
+                  }}
                   onClick={() => selectDay(i)}
                   className={`flex flex-col items-center justify-center min-w-14 h-16 rounded-xl transition-colors ${
-                    i === activeIdx
-                      ? "bg-[#1B1C1F] text-[#FFE500]"
-                      : "bg-card text-card-foreground"
+                    i === activeIdx ? "bg-[#1B1C1F] text-[#FFE500]" : "bg-card text-card-foreground"
                   } ${isPastDay ? "opacity-20" : ""}`}
                 >
-                <span className={`text-xs font-medium ${i === activeIdx ? "" : "text-[#66676D]"}`}>
-                  {DAY_NAMES[d.getDay()]}
-                </span>
-                <span className="text-lg font-bold">{d.getDate()}</span>
-              </button>
-            )})}
+                  <span
+                    className={`text-xs font-medium ${i === activeIdx ? "" : "text-[#66676D]"}`}
+                  >
+                    {DAY_NAMES[d.getDay()]}
+                  </span>
+                  <span className="text-lg font-bold">{d.getDate()}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
@@ -384,7 +389,6 @@ function SchedulePage() {
               );
             })}
           </div>
-
 
           {loading ? (
             <div className="flex justify-center py-10 text-muted-foreground">
@@ -451,111 +455,133 @@ function SchedulePage() {
               >
                 {entriesByDay.map((dayList, dayIdx) => (
                   <div key={days[dayIdx].toISOString()} className="w-full shrink-0 px-4">
-                  {dayList.length === 0 ? (
-                    <Card className="p-6 text-center text-sm text-muted-foreground">
-                      На этот день тренировок пока нет
-                    </Card>
-                  ) : (
-                    <div className="relative">
-                      {dayList.map((c) => {
-                        const meta = workoutTypeMeta(c.workout?.type);
-                        const isBooked = bookedIds.has(c.id);
-                        const isPending = pendingId === c.id;
-                        const isPast = new Date(c.starts_at) < new Date();
-                        return (
-                          <div key={c.id} className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}>
-                            <Card
-                              className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
-                                isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
-                              }`}
+                    {dayList.length === 0 ? (
+                      <Card className="p-6 text-center text-sm text-muted-foreground">
+                        На этот день тренировок пока нет
+                      </Card>
+                    ) : (
+                      <div className="relative">
+                        {dayList.map((c) => {
+                          const meta = workoutTypeMeta(c.workout?.type);
+                          const isBooked = bookedIds.has(c.id);
+                          const isPending = pendingId === c.id;
+                          const isPast = new Date(c.starts_at) < new Date();
+                          return (
+                            <div
+                              key={c.id}
+                              className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}
                             >
-                              <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`} />
-                              <button
-                                type="button"
-                                onClick={() => openWorkout(c)}
-                                className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
+                              <Card
+                                className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
+                                  isBooked ? "bg-[#FFE500] text-[#1B1C1F] border-[#FFE500]" : ""
+                                }`}
                               >
-                                <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                                  <div className="text-base font-black tabular-nums leading-tight text-center">
-                                    {fmtTime(c.starts_at)}
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0 ml-1">
-                                  <div className="font-medium break-words leading-snug">
-                                    {c.workout?.name ?? "Занятие"}
-                                  </div>
-                                  {(() => {
-                                    const names = (c.trainers ?? [])
-                                      .map((t) => t.trainer?.full_name)
-                                      .filter((n): n is string => !!n);
-                                    if (names.length === 0) return null;
-                                    return (
-                                      <div className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}>
-                                        {names.join(", ")}
-                                      </div>
-                                    );
-                                  })()}
-                                  {(() => {
-                                    const effectiveCapacity = c.capacity ?? c.workout?.capacity ?? null;
-                                    const left = remainingSpots(effectiveCapacity, c.booked_count);
-                                    if (left === null || left > 5) return null;
-                                    if (left === 0) {
-                                      return (
-                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500 leading-none">
-                                          <CloseCircle className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-                                          <span className="leading-none mt-0.5">Мест нет</span>
-                                        </div>
-                                      );
-                                    }
-                                    return (
-                                      <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500 leading-none">
-                                        <Fire className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-                                        <span className="leading-none mt-0.5">Осталось {left} {pluralSeats(left)}</span>
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              </button>
-                              {!isBooked && (
+                                <span
+                                  className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`}
+                                />
                                 <button
                                   type="button"
-                                  disabled={isPending}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleBooking(c.id);
-                                  }}
-                                  className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
-                                    isPending ? "opacity-60" : ""
-                                  }`}
-                                  aria-label="Записаться"
+                                  onClick={() => openWorkout(c)}
+                                  className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
                                 >
-                                  {isPending ? (
-                                    <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-                                  ) : (
-                                    <svg
-                                      width="20"
-                                      height="20"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="text-[#1B1C1F]"
-                                    >
-                                      <path
-                                        d="M12 5V19M5 12H19"
-                                        stroke="currentColor"
-                                        strokeWidth="2.5"
-                                        strokeLinecap="round"
-                                      />
-                                    </svg>
-                                  )}
+                                  <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                                    <div className="text-base font-black tabular-nums leading-tight text-center">
+                                      {fmtTime(c.starts_at)}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0 ml-1">
+                                    <div className="font-medium break-words leading-snug">
+                                      {c.workout?.name ?? "Занятие"}
+                                    </div>
+                                    {(() => {
+                                      const names = (c.trainers ?? [])
+                                        .map((t) => t.trainer?.full_name)
+                                        .filter((n): n is string => !!n);
+                                      if (names.length === 0) return null;
+                                      return (
+                                        <div
+                                          className={`text-xs mt-0.5 truncate ${isBooked ? "text-[#1B1C1F]/70" : "text-muted-foreground"}`}
+                                        >
+                                          {names.join(", ")}
+                                        </div>
+                                      );
+                                    })()}
+                                    {(() => {
+                                      const effectiveCapacity =
+                                        c.capacity ?? c.workout?.capacity ?? null;
+                                      const left = remainingSpots(
+                                        effectiveCapacity,
+                                        c.booked_count,
+                                      );
+                                      if (left === null || left > 5) return null;
+                                      if (left === 0) {
+                                        return (
+                                          <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500 leading-none">
+                                            <CloseCircle
+                                              className="h-3.5 w-3.5 shrink-0"
+                                              weight="BoldDuotone"
+                                            />
+                                            <span className="leading-none mt-0.5">Мест нет</span>
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500 leading-none">
+                                          <Fire
+                                            className="h-3.5 w-3.5 shrink-0"
+                                            weight="BoldDuotone"
+                                          />
+                                          <span className="leading-none mt-0.5">
+                                            Осталось {left} {pluralSeats(left)}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
                                 </button>
-                              )}
-                            </Card>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                                {!isBooked && (
+                                  <button
+                                    type="button"
+                                    disabled={isPending}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleBooking(c.id);
+                                    }}
+                                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-[#FFE500] text-[#1B1C1F] ${
+                                      isPending ? "opacity-60" : ""
+                                    }`}
+                                    aria-label="Записаться"
+                                  >
+                                    {isPending ? (
+                                      <Refresh
+                                        className="h-5 w-5 animate-spin"
+                                        weight="BoldDuotone"
+                                      />
+                                    ) : (
+                                      <svg
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="text-[#1B1C1F]"
+                                      >
+                                        <path
+                                          d="M12 5V19M5 12H19"
+                                          stroke="currentColor"
+                                          strokeWidth="2.5"
+                                          strokeLinecap="round"
+                                        />
+                                      </svg>
+                                    )}
+                                  </button>
+                                )}
+                              </Card>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -579,6 +605,3 @@ function SchedulePage() {
     </PageShell>
   );
 }
-
-
-

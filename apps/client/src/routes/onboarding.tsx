@@ -23,10 +23,22 @@ export const Route = createFileRoute("/onboarding")({
 });
 
 type Gender = "female" | "male" | "other";
-type Goal = "weight_loss" | "muscle_strength" | "endurance" | "energy_wellbeing" | "stress_habit" | "event_prep";
+type Goal =
+  | "weight_loss"
+  | "muscle_strength"
+  | "endurance"
+  | "energy_wellbeing"
+  | "stress_habit"
+  | "event_prep";
 type Timeframe = "no_rush" | "few_months" | "event_date";
 type Experience = "beginner" | "occasional" | "regular" | "advanced";
-type HealthFlag = "back_joints" | "cardio_pressure" | "recent_injury" | "pregnancy" | "chronic" | "none";
+type HealthFlag =
+  | "back_joints"
+  | "cardio_pressure"
+  | "recent_injury"
+  | "pregnancy"
+  | "chronic"
+  | "none";
 type PrefTime = "morning" | "day" | "evening";
 type Referral = "instagram" | "referral" | "walk_by" | "search" | "other";
 
@@ -192,7 +204,6 @@ function OnboardingPage() {
     }
   }
 
-
   const stepValid = useMemo(() => {
     switch (step) {
       case 1:
@@ -210,8 +221,6 @@ function OnboardingPage() {
     }
   }, [step, form]);
 
-  
-
   if (authLoading || (!bootstrapped && user)) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center">
@@ -228,7 +237,8 @@ function OnboardingPage() {
             Пара вопросов — и мы подстроим тренировки под вас
           </h1>
           <p className="mt-4 text-base text-muted-foreground">
-            Это займёт около 2 минут. Поможет тренеру подобрать правильную нагрузку с первого занятия.
+            Это займёт около 2 минут. Поможет тренеру подобрать правильную нагрузку с первого
+            занятия.
           </p>
         </div>
         <div className="px-6 pb-8 pt-4">
@@ -258,11 +268,7 @@ function OnboardingPage() {
             onClick={finish}
             disabled={saving}
           >
-            {saving ? (
-              <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-            ) : (
-              "Начать"
-            )}
+            {saving ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : "Начать"}
           </Button>
         </div>
       </Shell>
@@ -301,10 +307,7 @@ function OnboardingPage() {
       {/* Step content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col justify-center [&>*]:w-full">
         {step === 1 && (
-          <StepGoal
-            value={form.primary_goal}
-            onChange={(v) => update("primary_goal", v)}
-          />
+          <StepGoal value={form.primary_goal} onChange={(v) => update("primary_goal", v)} />
         )}
         {step === 2 && (
           <StepMotivation
@@ -455,7 +458,10 @@ function StepGoal({ value, onChange }: { value: Goal | null; onChange: (v: Goal)
 function StepMotivation({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <StepTitle title="Что вас к этому подтолкнуло?" subtitle="Можно в двух словах — это поможет нам лучше понять вас." />
+      <StepTitle
+        title="Что вас к этому подтолкнуло?"
+        subtitle="Можно в двух словах — это поможет нам лучше понять вас."
+      />
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -547,13 +553,7 @@ function StepActivity({
   );
 }
 
-function StepGroup({
-  value,
-  onChange,
-}: {
-  value: boolean | null;
-  onChange: (v: boolean) => void;
-}) {
+function StepGroup({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
   return (
     <div>
       <StepTitle title="Тренировались в групповом формате?" />
@@ -593,7 +593,9 @@ function StepHealth({
       onFlagsChange(["none"]);
       return;
     }
-    const next = flags.includes(f) ? flags.filter((x) => x !== f) : [...flags.filter((x) => x !== "none"), f];
+    const next = flags.includes(f)
+      ? flags.filter((x) => x !== f)
+      : [...flags.filter((x) => x !== "none"), f];
     onFlagsChange(next);
   };
 
@@ -679,10 +681,10 @@ function StepBody({
         <div>
           <Label className="text-sm block text-center mb-3">Пол</Label>
           <div className="grid grid-cols-2 gap-3 max-w-[320px] mx-auto">
-            {([
+            {[
               { v: "female" as Gender, label: "Женский", Icon: Venus },
               { v: "male" as Gender, label: "Мужской", Icon: Mars },
-            ]).map(({ v, label, Icon }) => {
+            ].map(({ v, label, Icon }) => {
               const active = gender === v;
               return (
                 <button

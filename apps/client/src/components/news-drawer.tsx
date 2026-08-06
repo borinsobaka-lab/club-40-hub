@@ -39,7 +39,9 @@ export function NewsDrawer({
     setImgLoaded(false);
     supabase
       .from("news")
-      .select("id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url")
+      .select(
+        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url",
+      )
       .eq("id", newsId)
       .maybeSingle()
       .then(({ data }) => {

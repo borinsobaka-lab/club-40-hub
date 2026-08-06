@@ -7,10 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/news/$newsId")({
   head: () => ({
-    meta: [
-      { title: "Новость — CLUB 40" },
-      { name: "description", content: "Новость CLUB 40." },
-    ],
+    meta: [{ title: "Новость — CLUB 40" }, { name: "description", content: "Новость CLUB 40." }],
   }),
   component: NewsDetailPage,
 });
@@ -39,7 +36,9 @@ function NewsDetailPage() {
     setImgLoaded(false);
     supabase
       .from("news")
-      .select("id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url")
+      .select(
+        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url",
+      )
       .eq("id", newsId)
       .maybeSingle()
       .then(({ data }) => {

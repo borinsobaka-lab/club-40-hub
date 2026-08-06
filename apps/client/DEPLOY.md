@@ -34,10 +34,10 @@ GitHub App **club40-github** (App ID 4507927) сейчас, скорее все�
 Все три — публичные, и все три нужны **на этапе сборки**: отметь у каждой галочку
 **Build Variable** (Runtime можно оставить включённым тоже).
 
-| Имя | Значение |
-|---|---|
-| `VITE_SUPABASE_PROJECT_ID` | `lyvarbqquvgxufmqgyix` |
-| `VITE_SUPABASE_URL` | `https://lyvarbqquvgxufmqgyix.supabase.co` |
+| Имя                             | Значение                                                                      |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `VITE_SUPABASE_PROJECT_ID`      | `lyvarbqquvgxufmqgyix`                                                        |
+| `VITE_SUPABASE_URL`             | `https://lyvarbqquvgxufmqgyix.supabase.co`                                    |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | значение из файла `.env` в корне репозитория (начинается с `sb_publishable_`) |
 
 Секретных ключей (`service_role`) этому приложению НЕ нужно — не добавляй их.

@@ -13,13 +13,7 @@ import {
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
-import {
-  Refresh,
-  ShieldCheck,
-  
-  CheckCircle,
-  CloseCircle,
-} from "@solar-icons/react";
+import { Refresh, ShieldCheck, CheckCircle, CloseCircle } from "@solar-icons/react";
 import { ChevronRight } from "lucide-react";
 import {
   AlertDialog,
@@ -82,16 +76,14 @@ type ActiveMembership = {
   ends_at: string | null;
   visits_left: number | null;
   auto_renew: boolean | null;
-  memberships:
-    | {
-        name: string;
-        description: string | null;
-        benefits: string[] | null;
-        visits_count: number | null;
-        duration_days: number | null;
-        price: number | null;
-      }
-    | null;
+  memberships: {
+    name: string;
+    description: string | null;
+    benefits: string[] | null;
+    visits_count: number | null;
+    duration_days: number | null;
+    price: number | null;
+  } | null;
 };
 
 const COLORS = ["#0ea5e9", "#8b5cf6", "#f43f5e", "#10b981", "#f59e0b", "#ec4899"];
@@ -132,22 +124,22 @@ function MembershipsPage() {
 
   const unlimitedMemberships = useMemo(
     () => memberships.filter((m) => m.visits_count === null && !m.for_couple),
-    [memberships]
+    [memberships],
   );
   const packagesMemberships = useMemo(
     () => memberships.filter((m) => m.visits_count !== null && !m.for_couple),
-    [memberships]
+    [memberships],
   );
   const couplesMemberships = useMemo(
     () => memberships.filter((m) => m.for_couple === true),
-    [memberships]
+    [memberships],
   );
 
   function measureGroup(
     topRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
     bottomRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
     setTop: (h: number) => void,
-    setBottom: (h: number) => void
+    setBottom: (h: number) => void,
   ) {
     let maxTop = 0;
     topRefs.current.forEach((el) => {
@@ -167,7 +159,7 @@ function MembershipsPage() {
         unlimitedTopRefs,
         unlimitedBottomRefs,
         setUnlimitedTopHeight,
-        setUnlimitedBottomHeight
+        setUnlimitedBottomHeight,
       );
     }
   }, [unlimitedMemberships]);
@@ -178,22 +170,16 @@ function MembershipsPage() {
         packagesTopRefs,
         packagesBottomRefs,
         setPackagesTopHeight,
-        setPackagesBottomHeight
+        setPackagesBottomHeight,
       );
     }
   }, [packagesMemberships]);
 
   useLayoutEffect(() => {
     if (couplesMemberships.length > 0) {
-      measureGroup(
-        couplesTopRefs,
-        couplesBottomRefs,
-        setCouplesTopHeight,
-        setCouplesBottomHeight
-      );
+      measureGroup(couplesTopRefs, couplesBottomRefs, setCouplesTopHeight, setCouplesBottomHeight);
     }
   }, [couplesMemberships]);
-
 
   useEffect(() => {
     if (authLoading) return;
@@ -245,7 +231,7 @@ function MembershipsPage() {
           db
             .from("client_memberships")
             .select(
-              "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)"
+              "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)",
             )
             .eq("client_id", c.id)
             .eq("status", "active")
@@ -284,15 +270,13 @@ function MembershipsPage() {
     const { data: act } = await db
       .from("client_memberships")
       .select(
-        "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)"
+        "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)",
       )
       .eq("client_id", client.id)
       .eq("status", "active")
       .maybeSingle();
     setActive((act as ActiveMembership) ?? null);
   };
-
-  
 
   const handlePurchase = async () => {
     if (!selected || !client) return;
@@ -325,9 +309,7 @@ function MembershipsPage() {
       setTimeout(() => fire({ origin: { x: 0.5, y: 0.6 }, spread: 100 }), 200);
 
       toast.success(
-        active
-          ? `Вы перешли на «${selected.name}»`
-          : `Абонемент «${selected.name}» оформлен!`
+        active ? `Вы перешли на «${selected.name}»` : `Абонемент «${selected.name}» оформлен!`,
       );
       setSelected(null);
       setConfirmSwitchOpen(false);
@@ -385,54 +367,61 @@ function MembershipsPage() {
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-black uppercase">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
-          {!loading && user && active && (() => {
-            const autoOn = active.auto_renew !== false;
-            const accent = autoOn ? "#22C55E" : "#EF4444";
-            return (
-              <Card
-                onClick={() => setActiveOpen(true)}
-                className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0"
-              >
-                <div className="flex items-stretch">
-                  <div className="flex-1 p-4 border border-border rounded-l-xl bg-white">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${accent}26` }}
-                      >
-                        {autoOn ? (
-                          <ShieldCheck className="h-8 w-8" style={{ color: accent }} />
-                        ) : (
-                          <CloseCircle className="h-8 w-8" style={{ color: accent }} weight="BoldDuotone" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-base font-semibold text-foreground truncate">
-                          {active.memberships?.name ?? "Абонемент"}
+          {!loading &&
+            user &&
+            active &&
+            (() => {
+              const autoOn = active.auto_renew !== false;
+              const accent = autoOn ? "#22C55E" : "#EF4444";
+              return (
+                <Card
+                  onClick={() => setActiveOpen(true)}
+                  className="mt-4 p-0 overflow-hidden cursor-pointer transition-colors hover:bg-card/90 active:bg-card/80 border-0"
+                >
+                  <div className="flex items-stretch">
+                    <div className="flex-1 p-4 border border-border rounded-l-xl bg-white">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: `${accent}26` }}
+                        >
+                          {autoOn ? (
+                            <ShieldCheck className="h-8 w-8" style={{ color: accent }} />
+                          ) : (
+                            <CloseCircle
+                              className="h-8 w-8"
+                              style={{ color: accent }}
+                              weight="BoldDuotone"
+                            />
+                          )}
                         </div>
-                        {active.ends_at && (
-                          <div className="text-sm text-muted-foreground mt-0.5">
-                            Действует до{" "}
-                            {new Date(active.ends_at).toLocaleDateString("ru-RU", {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            })}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-base font-semibold text-foreground truncate">
+                            {active.memberships?.name ?? "Абонемент"}
                           </div>
-                        )}
-                        <div className="text-sm mt-0.5" style={{ color: accent }}>
-                          {autoOn ? "Автопродление включено" : "Автопродление выключено"}
+                          {active.ends_at && (
+                            <div className="text-sm text-muted-foreground mt-0.5">
+                              Действует до{" "}
+                              {new Date(active.ends_at).toLocaleDateString("ru-RU", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              })}
+                            </div>
+                          )}
+                          <div className="text-sm mt-0.5" style={{ color: accent }}>
+                            {autoOn ? "Автопродление включено" : "Автопродление выключено"}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    <div className="w-6 flex items-center justify-center bg-muted">
+                      <ChevronRight className="h-5 w-5 text-[#66676D]" />
+                    </div>
                   </div>
-                  <div className="w-6 flex items-center justify-center bg-muted">
-                    <ChevronRight className="h-5 w-5 text-[#66676D]" />
-                  </div>
-                </div>
-              </Card>
-            );
-          })()}
+                </Card>
+              );
+            })()}
         </div>
       }
     >
@@ -449,19 +438,18 @@ function MembershipsPage() {
           </div>
         )}
 
-        {error && !loading && (
-          <Card className="p-4 text-sm text-destructive">{error}</Card>
-        )}
+        {error && !loading && <Card className="p-4 text-sm text-destructive">{error}</Card>}
 
         {!loading && user && !error && memberships.length === 0 && !active && (
-          <Card className="p-4 text-sm text-muted-foreground">
-            Пока нет доступных абонементов.
-          </Card>
+          <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных абонементов.</Card>
         )}
 
         {!loading && user && !error && memberships.length > 0 && (
           <div className="w-full">
-            <div data-memberships-tabs className="-mx-4 px-4 flex gap-6 overflow-x-auto no-scrollbar mb-4">
+            <div
+              data-memberships-tabs
+              className="-mx-4 px-4 flex gap-6 overflow-x-auto no-scrollbar mb-4"
+            >
               {[
                 { key: "unlimited", label: "Безлимитные" },
                 { key: "packages", label: "Пакеты тренировок" },
@@ -511,7 +499,9 @@ function MembershipsPage() {
                     ))}
                   </div>
                 ) : (
-                  <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных безлимитных абонементов.</Card>
+                  <Card className="p-4 text-sm text-muted-foreground">
+                    Пока нет доступных безлимитных абонементов.
+                  </Card>
                 )}
               </>
             )}
@@ -540,7 +530,9 @@ function MembershipsPage() {
                     ))}
                   </div>
                 ) : (
-                  <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных пакетов тренировок.</Card>
+                  <Card className="p-4 text-sm text-muted-foreground">
+                    Пока нет доступных пакетов тренировок.
+                  </Card>
                 )}
               </>
             )}
@@ -569,7 +561,9 @@ function MembershipsPage() {
                     ))}
                   </div>
                 ) : (
-                  <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных абонементов для двоих.</Card>
+                  <Card className="p-4 text-sm text-muted-foreground">
+                    Пока нет доступных абонементов для двоих.
+                  </Card>
                 )}
               </>
             )}
@@ -604,12 +598,14 @@ function MembershipsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Перейти на этот абонемент?</AlertDialogTitle>
             <AlertDialogDescription>
-              У вас уже есть активный абонемент. При переходе текущий абонемент будет аннулирован,
-              а вместо него подключится выбранный.
+              У вас уже есть активный абонемент. При переходе текущий абонемент будет аннулирован, а
+              вместо него подключится выбранный.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={purchasing} className="font-bold">Отмена</AlertDialogCancel>
+            <AlertDialogCancel disabled={purchasing} className="font-bold">
+              Отмена
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={purchasing}
               className="font-bold"
@@ -629,8 +625,8 @@ function MembershipsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
             <AlertDialogDescription>
-              Абонемент действует до конца оплаченного периода. После этой даты он закончится,
-              и вы не сможете посещать клуб, пока не оформите новый.
+              Абонемент действует до конца оплаченного периода. После этой даты он закончится, и вы
+              не сможете посещать клуб, пока не оформите новый.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -653,7 +649,8 @@ function MembershipsPage() {
           <DialogHeader>
             <DialogTitle>Отключить автопродление?</DialogTitle>
             <DialogDescription>
-              Абонемент останется активным до конца оплаченного периода, но не будет продлён автоматически.
+              Абонемент останется активным до конца оплаченного периода, но не будет продлён
+              автоматически.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
@@ -680,7 +677,6 @@ function MembershipsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </PageShell>
   );
 }
@@ -704,9 +700,7 @@ function MembershipCard({
 }) {
   const cover = coverPublicUrl(membership.cover_url);
   const features = [
-    membership.visits_count === null
-      ? "Безлимит посещений"
-      : `${membership.visits_count} занятий`,
+    membership.visits_count === null ? "Безлимит посещений" : `${membership.visits_count} занятий`,
     `Срок действия ${membership.duration_days} дней`,
     ...((membership.benefits ?? []).filter(Boolean) as string[]),
   ];
@@ -732,7 +726,9 @@ function MembershipCard({
             <span className="text-4xl font-black tracking-tight">
               {Number(membership.price).toLocaleString("ru-RU")} ₾
             </span>
-            <span className="text-sm text-muted-foreground">{formatPeriod(membership.duration_days)}</span>
+            <span className="text-sm text-muted-foreground">
+              {formatPeriod(membership.duration_days)}
+            </span>
           </div>
           {membership.description && (
             <p className="mt-3 text-sm text-muted-foreground">{membership.description}</p>
@@ -747,7 +743,11 @@ function MembershipCard({
       </div>
 
       {/* Bottom: features */}
-      <div ref={onBottomRef} className="p-5 border-t border-card-border" style={{ minHeight: bottomMinHeight }}>
+      <div
+        ref={onBottomRef}
+        className="p-5 border-t border-card-border"
+        style={{ minHeight: bottomMinHeight }}
+      >
         <div className="text-xs font-bold tracking-wider text-muted-foreground mb-3">
           ПРЕИМУЩЕСТВА
         </div>
@@ -807,17 +807,17 @@ function CheckoutSheet({
     !purchasing;
 
   const formatCard = (v: string) =>
-    v.replace(/\D/g, "").slice(0, 19).replace(/(\d{4})(?=\d)/g, "$1 ");
+    v
+      .replace(/\D/g, "")
+      .slice(0, 19)
+      .replace(/(\d{4})(?=\d)/g, "$1 ");
   const formatExpiry = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 4);
     if (d.length < 3) return d;
     return d.slice(0, 2) + "/" + d.slice(2);
   };
 
-  const total = Math.max(
-    0,
-    Number(membership.price) - (promoApplied?.discount ?? 0)
-  );
+  const total = Math.max(0, Number(membership.price) - (promoApplied?.discount ?? 0));
 
   const applyPromo = () => {
     const code = promo.trim().toUpperCase();
@@ -938,8 +938,8 @@ function CheckoutSheet({
                   className="mt-0.5 h-4 w-4 shrink-0 accent-[#FFE500]"
                 />
                 <span>
-                  Согласен с регулярными списаниями каждые {membership.duration_days} дн.
-                  Отменить можно в любой момент.
+                  Согласен с регулярными списаниями каждые {membership.duration_days} дн. Отменить
+                  можно в любой момент.
                 </span>
               </label>
             )}
@@ -947,9 +947,7 @@ function CheckoutSheet({
             {/* Total + Pay */}
             <div className="mt-5 flex items-end justify-between">
               <div className="text-xs text-muted-foreground">К оплате</div>
-              <div className="text-2xl font-black">
-                {total.toLocaleString("ru-RU")} ₾
-              </div>
+              <div className="text-2xl font-black">{total.toLocaleString("ru-RU")} ₾</div>
             </div>
 
             <Button
@@ -989,9 +987,7 @@ function ActiveMembershipDrawer({
   const m = active.memberships;
   const autoOn = active.auto_renew !== false;
   const features = [
-    m?.visits_count == null
-      ? "Безлимит посещений"
-      : `${m.visits_count} занятий`,
+    m?.visits_count == null ? "Безлимит посещений" : `${m.visits_count} занятий`,
     m?.duration_days ? `Срок действия ${m.duration_days} дней` : null,
     ...((m?.benefits ?? []).filter(Boolean) as string[]),
   ].filter(Boolean) as string[];
@@ -1022,7 +1018,11 @@ function ActiveMembershipDrawer({
                 {autoOn ? (
                   <ShieldCheck className="h-7 w-7" style={{ color: "#22C55E" }} />
                 ) : (
-                  <CloseCircle className="h-7 w-7" style={{ color: "#EF4444" }} weight="BoldDuotone" />
+                  <CloseCircle
+                    className="h-7 w-7"
+                    style={{ color: "#EF4444" }}
+                    weight="BoldDuotone"
+                  />
                 )}
               </div>
             </div>
@@ -1043,7 +1043,11 @@ function ActiveMembershipDrawer({
               {autoOn ? (
                 <ShieldCheck className="h-4 w-4 shrink-0" style={{ color: "#22C55E" }} />
               ) : (
-                <CloseCircle className="h-4 w-4 shrink-0" style={{ color: "#EF4444" }} weight="BoldDuotone" />
+                <CloseCircle
+                  className="h-4 w-4 shrink-0"
+                  style={{ color: "#EF4444" }}
+                  weight="BoldDuotone"
+                />
               )}
               <span style={{ color: autoOn ? "#15803D" : "#B91C1C" }}>
                 {autoOn

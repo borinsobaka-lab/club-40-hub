@@ -117,9 +117,7 @@ function AuthPage() {
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black uppercase leading-tight">
-            Добро пожаловать
-          </h1>
+          <h1 className="text-3xl font-black uppercase leading-tight">Добро пожаловать</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {step === "otp"
               ? `Введите код, отправленный на ${email}`
@@ -168,10 +166,7 @@ function AuthPage() {
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-            <Button
-              type="submit"
-              className="w-full h-14 rounded-full text-base font-bold mt-2"
-            >
+            <Button type="submit" className="w-full h-14 rounded-full text-base font-bold mt-2">
               Получить код
             </Button>
           </form>

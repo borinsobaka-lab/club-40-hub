@@ -55,8 +55,7 @@ export function ServiceDrawer({
   }, [open, serviceId]);
 
   const hero =
-    mediaUrl(item?.banner_url, "services-media") ||
-    mediaUrl(item?.image_url, "services-media");
+    mediaUrl(item?.banner_url, "services-media") || mediaUrl(item?.image_url, "services-media");
   const title = item?.full_title || item?.title || "";
   const hasCta = !!item?.button_text && !!item?.button_url;
 
