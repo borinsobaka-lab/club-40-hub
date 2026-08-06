@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, useServerPagination } from "@/components/data-pagination";
+import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientNameLink } from "@/components/client-name-link";
 import {
@@ -275,27 +276,22 @@ function SalesPage() {
           Новая продажа
         </Button>
       }
-      filters={
-        studioId ? (
-          <div className="relative w-full max-w-sm">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск по клиенту или абонементу"
-              className="h-8 pl-8"
-            />
-          </div>
-        ) : null
-      }
     >
-      <div className="mx-auto max-w-6xl space-y-3">
+      <div className="space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.
           </div>
         ) : (
           <>
+            <TableToolbar>
+              <ToolbarSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Поиск по клиенту или абонементу"
+              />
+            </TableToolbar>
+
             <div className="rounded-lg border bg-background">
               <Table>
                 <TableHeader>

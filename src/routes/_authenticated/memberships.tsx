@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — CLUB 40 Admin" }] }),
@@ -195,24 +196,20 @@ function MembershipsPage() {
         </Button>
       }
     >
-      <div className="mx-auto max-w-6xl space-y-3">
+      <div className="space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.
           </div>
         ) : (
           <>
-            <div className="rounded-lg border bg-background px-3 py-2">
-              <div className="relative max-w-sm">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Поиск по названию или описанию"
-                  className="h-8 pl-8"
-                />
-              </div>
-            </div>
+            <TableToolbar>
+              <ToolbarSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Поиск по названию или описанию"
+              />
+            </TableToolbar>
 
             <div className="rounded-lg border bg-background">
               <Table>

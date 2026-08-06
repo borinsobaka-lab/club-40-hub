@@ -306,7 +306,7 @@ function FeedbackPage() {
         </Dialog>
       }
     >
-      <div className="mx-auto max-w-6xl space-y-3">
+      <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">В этом месяце</p>

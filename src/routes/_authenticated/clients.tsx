@@ -44,6 +44,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { DataPagination, useServerPagination } from "@/components/data-pagination";
+import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
@@ -124,34 +125,39 @@ function DateRangeFilter({
   value: DateRange | undefined;
   onChange: (v: DateRange | undefined) => void;
 }) {
+  // Компактный формат дат, чтобы плашка фильтров оставалась одной строкой.
   const text = value?.from
     ? value.to
-      ? `${format(value.from, "dd.MM.yyyy", { locale: ru })} — ${format(value.to, "dd.MM.yyyy", { locale: ru })}`
-      : `от ${format(value.from, "dd.MM.yyyy", { locale: ru })}`
+      ? `${format(value.from, "dd.MM.yy", { locale: ru })}–${format(value.to, "dd.MM.yy", { locale: ru })}`
+      : `от ${format(value.from, "dd.MM.yy", { locale: ru })}`
     : label;
 
   return (
-    <div className="grid gap-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="h-9 w-[260px] justify-start text-left font-normal">
-            <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className={cn("truncate", !value?.from && "text-muted-foreground")}>{text}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="range"
-            selected={value}
-            onSelect={onChange}
-            numberOfMonths={2}
-            locale={ru}
-            className="pointer-events-auto"
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            "h-8 justify-start px-2.5 text-left font-normal",
+            !value?.from && "text-muted-foreground",
+          )}
+        >
+          <CalendarIcon className="mr-1.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{text}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="range"
+          selected={value}
+          onSelect={onChange}
+          numberOfMonths={2}
+          locale={ru}
+          className="pointer-events-auto"
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -284,73 +290,47 @@ function ClientsPage() {
         </Button>
       }
     >
-      <div className="mx-auto max-w-6xl space-y-3">
+      <div className="space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.
           </div>
         ) : (
           <>
-            <div className="rounded-lg border bg-background p-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                  <div className="relative flex-1 min-w-[240px]">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Поиск по имени, телефону, email"
-                      className="h-9 pl-9"
-                    />
-                  </div>
-
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Пол</Label>
-                    <Select value={genderFilter} onValueChange={setGenderFilter}>
-                      <SelectTrigger className="h-9 w-[140px]">
-                        <SelectValue placeholder="Все" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g.value} value={g.value}>
-                            {g.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Статус</Label>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="h-9 w-[160px]">
-                        <SelectValue placeholder="Все" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="chk">ЧК — Член клуба</SelectItem>
-                        <SelectItem value="pchk">ПЧК — Потенциальный</SelectItem>
-                        <SelectItem value="bchk">БЧК — Бывший</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <DateRangeFilter
-                    label="Дата регистрации"
-                    value={regRange}
-                    onChange={setRegRange}
-                  />
-                  <DateRangeFilter
-                    label="Последний визит"
-                    value={visitRange}
-                    onChange={setVisitRange}
-                  />
-
-                  <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9">
-                    Сбросить
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <TableToolbar>
+              <ToolbarSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Поиск по имени, телефону, email"
+              />
+              <Select value={genderFilter} onValueChange={setGenderFilter}>
+                <SelectTrigger className="h-8 w-[110px]">
+                  <SelectValue placeholder="Пол" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GENDERS.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>
+                      {g.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-8 w-[150px]">
+                  <SelectValue placeholder="Статус" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="chk">ЧК — Член клуба</SelectItem>
+                  <SelectItem value="pchk">ПЧК — Потенциальный</SelectItem>
+                  <SelectItem value="bchk">БЧК — Бывший</SelectItem>
+                </SelectContent>
+              </Select>
+              <DateRangeFilter label="Регистрация" value={regRange} onChange={setRegRange} />
+              <DateRangeFilter label="Визит" value={visitRange} onChange={setVisitRange} />
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 shrink-0">
+                Сбросить
+              </Button>
+            </TableToolbar>
 
             <div className="rounded-lg border bg-background">
               <Table>

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import {
   Select,
   SelectContent,
@@ -179,24 +180,20 @@ function WorkoutsPage() {
         </Button>
       }
     >
-      <div className="mx-auto max-w-6xl space-y-3">
+      <div className="space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Поиск по названию или описанию"
-                  className="h-8 pl-8"
-                />
-              </div>
-            </div>
+            <TableToolbar>
+              <ToolbarSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Поиск по названию или описанию"
+              />
+            </TableToolbar>
             <div className="rounded-lg border bg-background">
               <Table>
                 <TableHeader>

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Trash2, UserPlus, Loader2 } from "lucide-react";
 
 import { getEmployeesContext, createEmployee, deleteEmployee } from "@/lib/employees.functions";
+import { AdminShell } from "@/components/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,17 +99,10 @@ function EmployeesPage() {
   const pg = usePagination(data?.employees ?? []);
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Сотрудники</h1>
-          <p className="text-sm text-muted-foreground">
-            {isOwner
-              ? "Управление пользователями студии"
-              : "Список пользователей студии (только просмотр)"}
-          </p>
-        </div>
-        {isOwner && (
+    <AdminShell
+      title="Сотрудники"
+      actions={
+        isOwner ? (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -182,60 +176,62 @@ function EmployeesPage() {
               </form>
             </DialogContent>
           </Dialog>
+        ) : null
+      }
+    >
+      <div className="space-y-3">
+        {isLoading && <div className="text-sm text-muted-foreground">Загрузка…</div>}
+        {error && <div className="text-sm text-destructive">{(error as Error).message}</div>}
+
+        {data && (
+          <div className="rounded-lg border bg-background">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Имя</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Роль</TableHead>
+                  <TableHead className="w-16" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pg.paged.map((e) => (
+                  <TableRow key={e.user_id}>
+                    <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
+                    <TableCell>{e.email ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{ROLE_LABEL[e.role] ?? e.role}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isOwner && e.user_id !== data.currentUserId && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            if (confirm(`Удалить ${e.full_name ?? e.email}?`))
+                              deleteMut.mutate(e.user_id);
+                          }}
+                          disabled={deleteMut.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {data.employees.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                      Сотрудники не добавлены
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <DataPagination {...pg} />
+          </div>
         )}
       </div>
-
-      {isLoading && <div className="text-sm text-muted-foreground">Загрузка…</div>}
-      {error && <div className="text-sm text-destructive">{(error as Error).message}</div>}
-
-      {data && (
-        <div className="rounded-lg border bg-background">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Имя</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Роль</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pg.paged.map((e) => (
-                <TableRow key={e.user_id}>
-                  <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
-                  <TableCell>{e.email ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{ROLE_LABEL[e.role] ?? e.role}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {isOwner && e.user_id !== data.currentUserId && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          if (confirm(`Удалить ${e.full_name ?? e.email}?`))
-                            deleteMut.mutate(e.user_id);
-                        }}
-                        disabled={deleteMut.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {data.employees.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
-                    Сотрудники не добавлены
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <DataPagination {...pg} />
-        </div>
-      )}
-    </div>
+    </AdminShell>
   );
 }

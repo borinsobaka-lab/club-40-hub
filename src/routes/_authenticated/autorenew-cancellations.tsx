@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { toast } from "sonner";
 import { ClientNameLink } from "@/components/client-name-link";
 
@@ -142,33 +143,8 @@ function AutorenewCancellationsPage() {
     <AdminShell
       title="Отмены автопродления"
       description="Абонементы, у которых отключено автопродление"
-      filters={
-        studioId ? (
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск: имя, телефон, почта, абонемент"
-                className="h-8 pl-8"
-              />
-            </div>
-            <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger className="h-8 w-full sm:w-[220px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={REASON_ALL}>Все причины</SelectItem>
-                <SelectItem value="self">Самостоятельная</SelectItem>
-                <SelectItem value="auto">Автоматическая</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        ) : null
-      }
     >
-      <div className="mx-auto max-w-6xl space-y-3">
+      <div className="space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.

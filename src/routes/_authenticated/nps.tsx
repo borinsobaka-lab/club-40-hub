@@ -335,7 +335,7 @@ function NpsPage() {
         </Dialog>
       }
     >
-      <div className="mx-auto max-w-6xl space-y-3">
+      <div className="space-y-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "surveys" | "stats")}>
           <TabsList>
             <TabsTrigger value="surveys">Опросы</TabsTrigger>

@@ -13,13 +13,11 @@ import { KateChat } from "@/components/kate-chat";
 export function AdminShell({
   title,
   actions,
-  filters,
   children,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
-  filters?: ReactNode;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -71,9 +69,6 @@ export function AdminShell({
               </div>
             </div>
           </header>
-          {filters ? (
-            <div className="shrink-0 border-b bg-background px-6 py-3">{filters}</div>
-          ) : null}
           <main className="flex-1 overflow-auto p-6">{children}</main>
         </div>
       </div>
