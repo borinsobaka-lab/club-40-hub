@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
+import { useClientStudioId } from "@/hooks/use-client-studio";
 
 import { NewsDrawer } from "@/components/news-drawer";
 import { ServiceDrawer } from "@/components/service-drawer";
@@ -107,6 +108,7 @@ function HomePage() {
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const clubSettings = useClubSettings();
+  const { studioId, studioReady } = useClientStudioId();
 
   useEffect(() => {
     if (!user) {
@@ -115,9 +117,13 @@ function HomePage() {
     }
     let cancelled = false;
     const load = async () => {
+      // Явный фильтр по user_id: RLS позволяет тренеру видеть все брони студии,
+      // и без него у сотрудника в клиентском приложении чужие записи выглядели
+      // бы как его собственные.
       const { data } = await (supabase as any)
         .from("schedule_bookings")
         .select("entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))")
+        .eq("user_id", user.id)
         .eq("status", "booked");
       if (cancelled) return;
       const rows = ((data as MyBooking[] | null) ?? [])
@@ -194,16 +200,19 @@ function HomePage() {
   }, [user]);
 
   useEffect(() => {
+    if (!studioReady) return;
     let cancelled = false;
-    const load = () =>
-      supabase
-        .from("news")
-        .select("id,title,description,image_url,position")
+    const load = () => {
+      let q = supabase.from("news").select("id,title,description,image_url,position");
+      // Новости студии клиента; для гостя (studioId=null) — как раньше, все.
+      if (studioId) q = q.eq("studio_id", studioId);
+      return q
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
         .then(({ data }) => {
           if (!cancelled) setNews((data as News[] | null) ?? []);
         });
+    };
     load();
     const channel = supabase
       .channel("news-feed")
@@ -217,19 +226,24 @@ function HomePage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [studioReady, studioId]);
 
   useEffect(() => {
+    if (!studioReady) return;
     let cancelled = false;
-    const load = () =>
-      (supabase as any)
+    const load = () => {
+      let q = (supabase as any)
         .from("services")
-        .select("id,title,description,image_url,button_text,button_url,position")
+        .select("id,title,description,image_url,button_text,button_url,position");
+      // Услуги студии клиента; для гостя (studioId=null) — как раньше, все.
+      if (studioId) q = q.eq("studio_id", studioId);
+      return q
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
         .then(({ data }: { data: Service[] | null }) => {
           if (!cancelled) setServices((data as Service[] | null) ?? []);
         });
+    };
     load();
     const channel = supabase
       .channel("services-feed")
@@ -243,7 +257,7 @@ function HomePage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [studioReady, studioId]);
 
   return (
     <PageShell

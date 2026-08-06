@@ -18,12 +18,15 @@ const DEFAULTS: ClubSettings = {
 let cached: ClubSettings | null = null;
 let inflight: Promise<ClubSettings> | null = null;
 
+// club_settings — глобальная таблица без studio_id (одна строка на весь клуб):
+// фильтровать по студии здесь нечего. Если настройки станут пер-студийными,
+// сначала меняется схема (db/club_settings.sql в репозитории админки).
 async function fetchSettings(): Promise<ClubSettings> {
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from("club_settings")
     .select("write_url, call_url, feedback_url, cancel_booking_minutes")
     .maybeSingle();
-  return data ? { ...DEFAULTS, ...(data as ClubSettings) } : DEFAULTS;
+  return data ? { ...DEFAULTS, ...data } : DEFAULTS;
 }
 
 export function useClubSettings(): ClubSettings {

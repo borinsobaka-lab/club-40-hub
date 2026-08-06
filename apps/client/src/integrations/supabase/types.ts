@@ -1,3 +1,8 @@
+// ВНИМАНИЕ: файл сгенерирован из старого проекта Supabase и отстаёт от живой
+// схемы (источник правды — db/*.sql в репозитории club-40-hub). Колонки с
+// пометкой /* patched */ добавлены вручную и проверены запросом к живой БД.
+// TODO: перегенерировать целиком через `supabase gen types typescript`
+// (нужен access token владельца).
 export type Json =
   | string
   | number
@@ -26,6 +31,7 @@ export type Database = {
           id: string
           last_name: string | null
           phone: string | null
+          studio_id: string /* patched */
           updated_at: string
           user_id: string
         }
@@ -40,6 +46,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           phone?: string | null
+          studio_id?: string /* patched */
           updated_at?: string
           user_id: string
         }
@@ -54,6 +61,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           phone?: string | null
+          studio_id?: string /* patched */
           updated_at?: string
           user_id?: string
         }
@@ -164,6 +172,7 @@ export type Database = {
           id: string
           image_url: string | null
           position: number
+          studio_id: string /* patched */
           published: boolean
           title: string
           updated_at: string
@@ -179,6 +188,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           position?: number
+          studio_id?: string /* patched */
           published?: boolean
           title: string
           updated_at?: string
@@ -194,6 +204,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           position?: number
+          studio_id?: string /* patched */
           published?: boolean
           title?: string
           updated_at?: string
@@ -243,6 +254,7 @@ export type Database = {
           ends_at: string
           id: string
           starts_at: string
+          studio_id: string /* patched */
           workout_id: string | null
         }
         Insert: {
@@ -261,6 +273,7 @@ export type Database = {
           ends_at?: string
           id?: string
           starts_at?: string
+          studio_id?: string /* patched */
           workout_id?: string | null
         }
         Relationships: [

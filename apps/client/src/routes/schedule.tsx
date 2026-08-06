@@ -10,6 +10,8 @@ import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
 import { useClubSettings } from "@/hooks/use-club-settings";
+import { useClientStudioId } from "@/hooks/use-client-studio";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
@@ -98,6 +100,8 @@ function SchedulePage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const clubSettings = useClubSettings();
+  const { user } = useAuth();
+  const { studioId, studioReady } = useClientStudioId();
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const gestureStartRef = useRef<{ x: number; y: number; idx: number } | null>(null);
@@ -120,37 +124,46 @@ function SchedulePage() {
   );
 
   useEffect(() => {
+    // Ждём, пока определится студия клиента, чтобы не делать двойной запрос
+    // (нефильтрованный + повторный с фильтром).
+    if (!studioReady) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       setError(null);
       const from = addDays(today, -3).toISOString();
       const to = addDays(today, 7).toISOString();
-      const { data, error } = await supabase
+      let query = supabase
         .from("schedule_entries")
         .select(
           "id, starts_at, ends_at, capacity, booked_count, workout:workouts(name, type, description, photo_url, capacity), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
         )
         .gte("starts_at", from)
-        .lt("starts_at", to)
-        .order("starts_at");
+        .lt("starts_at", to);
+      if (studioId) query = query.eq("studio_id", studioId);
+      const { data, error } = await query.order("starts_at");
       if (cancelled) return;
       if (error) setError(error.message);
       else setEntries((data as unknown as Entry[]) ?? []);
       setLoading(false);
 
-      const { data: b } = await (supabase as any)
+      // Явный фильтр по user_id: RLS позволяет тренеру видеть все брони студии,
+      // и без фильтра у сотрудника, зашедшего в клиентское приложение, чужие
+      // записи выглядели бы как его собственные.
+      if (!user) return;
+      const { data: b } = await supabase
         .from("schedule_bookings")
         .select("entry_id")
+        .eq("user_id", user.id)
         .eq("status", "booked");
       if (!cancelled && b) {
-        setBookedIds(new Set((b as { entry_id: string }[]).map((r) => r.entry_id)));
+        setBookedIds(new Set(b.map((r) => r.entry_id)));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [today]);
+  }, [today, studioReady, studioId, user]);
 
   useEffect(() => {
     const container = daysContainerRef.current;
@@ -174,8 +187,8 @@ function SchedulePage() {
     if (pendingId) return;
     setPendingId(entryId);
     const isBooked = bookedIds.has(entryId);
-    const fn = isBooked ? "cancel_schedule_booking" : "book_schedule_entry";
-    const { data, error } = await (supabase as any).rpc(fn, { p_entry_id: entryId });
+    const fn = isBooked ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
+    const { data, error } = await supabase.rpc(fn, { p_entry_id: entryId });
     setPendingId(null);
     if (error) {
       toast.error(`Не удалось ${isBooked ? "отменить запись" : "записаться"}: ${error.message}`);

@@ -105,7 +105,7 @@ function OnboardingPage() {
     if (authLoading || !user) return;
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("member_profiles")
         .select("*")
         .eq("user_id", user.id)
@@ -116,22 +116,24 @@ function OnboardingPage() {
           navigate({ to: "/", replace: true });
           return;
         }
+        // В БД поля анкеты хранятся как text; локальные юнионы (Goal и т.д.) —
+        // клиентское сужение, поэтому на границе нужен явный каст.
         setForm({
-          primary_goal: data.primary_goal ?? null,
+          primary_goal: (data.primary_goal as Goal | null) ?? null,
           goal_motivation: data.goal_motivation ?? "",
-          target_timeframe: data.target_timeframe ?? null,
-          experience_level: data.experience_level ?? null,
+          target_timeframe: (data.target_timeframe as Timeframe | null) ?? null,
+          experience_level: (data.experience_level as Experience | null) ?? null,
           current_weekly_activity: data.current_weekly_activity ?? null,
           tried_group_hiit: data.tried_group_hiit ?? null,
-          health_flags: data.health_flags ?? [],
+          health_flags: (data.health_flags as HealthFlag[] | null) ?? [],
           health_notes: data.health_notes ?? "",
           height_cm: data.height_cm != null ? String(data.height_cm) : "",
           weight_kg: data.weight_kg != null ? String(data.weight_kg) : "",
           birth_year: data.birth_year != null ? String(data.birth_year) : "",
-          gender: data.gender ?? null,
+          gender: (data.gender as Gender | null) ?? null,
           desired_frequency: data.desired_frequency ?? null,
-          preferred_times: data.preferred_times ?? [],
-          referral_source: data.referral_source ?? null,
+          preferred_times: (data.preferred_times as PrefTime[] | null) ?? [],
+          referral_source: (data.referral_source as Referral | null) ?? null,
         });
       }
       setBootstrapped(true);
@@ -147,7 +149,7 @@ function OnboardingPage() {
   async function persist(extra?: Partial<{ onboarding_completed_at: string | null }>) {
     if (!user) return false;
     const payload = { user_id: user.id, ...buildPayload(form), ...extra };
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("member_profiles")
       .upsert(payload, { onConflict: "user_id" });
     if (error) {
@@ -156,12 +158,12 @@ function OnboardingPage() {
     }
 
     // Sync gender and birthday (year) into the clients row so they appear in the profile.
-    const clientPatch: Record<string, string | null> = {};
+    const clientPatch: { gender?: string; birthday?: string } = {};
     if (form.gender) clientPatch.gender = form.gender;
     const yr = Number(form.birth_year);
     if (Number.isFinite(yr) && yr > 1900) clientPatch.birthday = `${yr}-01-01`;
     if (Object.keys(clientPatch).length > 0) {
-      await (supabase as any).from("clients").update(clientPatch).eq("user_id", user.id);
+      await supabase.from("clients").update(clientPatch).eq("user_id", user.id);
     }
 
     return true;
