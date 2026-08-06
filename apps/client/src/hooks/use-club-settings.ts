@@ -18,9 +18,10 @@ const DEFAULTS: ClubSettings = {
 let cached: ClubSettings | null = null;
 let inflight: Promise<ClubSettings> | null = null;
 
-// club_settings — глобальная таблица без studio_id (одна строка на весь клуб):
-// фильтровать по студии здесь нечего. Если настройки станут пер-студийными,
-// сначала меняется схема (db/club_settings.sql в репозитории админки).
+// club_settings — глобальный синглтон (одна строка, id = true), обе стороны
+// читают/пишут его без привязки к студии. В живой БД колонка studio_id уже
+// существует (в db/club_settings.sql её нет — дрейф схемы), но пока настройки
+// не станут пер-студийными осознанно, фильтровать здесь нечего.
 async function fetchSettings(): Promise<ClubSettings> {
   const { data } = await supabase
     .from("club_settings")
