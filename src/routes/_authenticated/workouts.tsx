@@ -36,12 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DAY_TYPES,
-  type DayType,
-  dayTypeColor,
-  dayTypeLabel,
-} from "@/lib/workout-types";
+import { DAY_TYPES, type DayType, dayTypeColor, dayTypeLabel } from "@/lib/workout-types";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — CLUB 40 Admin" }] }),
@@ -104,13 +99,7 @@ function WorkoutPhoto({ value, name }: { value: string | null; name: string }) {
       </div>
     );
   }
-  return (
-    <img
-      src={src}
-      alt={name}
-      className="h-12 w-16 rounded-md object-cover"
-    />
-  );
+  return <img src={src} alt={name} className="h-12 w-16 rounded-md object-cover" />;
 }
 
 function WorkoutsPage() {
@@ -157,7 +146,6 @@ function WorkoutsPage() {
     fetchWorkouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioId, refreshSignal]);
-
 
   const handleDelete = async (w: Workout) => {
     if (!confirm(`Удалить тренировку «${w.name}»?`)) return;
@@ -231,7 +219,10 @@ function WorkoutsPage() {
                     </TableRow>
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell
+                        colSpan={7}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
                         {workouts.length === 0
                           ? "Пока нет тренировок. Нажмите «Добавить тренировку»."
                           : "Ничего не найдено по выбранным фильтрам."}
@@ -420,12 +411,7 @@ function WorkoutDialog({
                 )}
               </Button>
               {photoUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPhotoUrl(null)}
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => setPhotoUrl(null)}>
                   Удалить
                 </Button>
               )}
@@ -505,8 +491,8 @@ function WorkoutDialog({
               placeholder="Кардио 8.5 · Силовая 7.0 · Гибрид 8.0 · Восстановление 2.8"
             />
             <p className="text-xs text-muted-foreground">
-              Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто — берётся
-              значение по умолчанию для типа тренировки.
+              Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто —
+              берётся значение по умолчанию для типа тренировки.
             </p>
           </div>
         </div>

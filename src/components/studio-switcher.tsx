@@ -41,10 +41,7 @@ function loadStudios(): Promise<Studio[]> {
   if (studiosCache) return Promise.resolve(studiosCache);
   if (studiosPromise) return studiosPromise;
   studiosPromise = (async () => {
-    const { data, error } = await supabase
-      .from("studios")
-      .select("id, name")
-      .order("name");
+    const { data, error } = await supabase.from("studios").select("id, name").order("name");
     if (error || !data) {
       studiosPromise = null;
       return [];
@@ -89,10 +86,16 @@ export function StudioSwitcher() {
 
   return (
     <div className="flex items-center gap-2">
-      <Select value={active ?? undefined} onValueChange={onChange} disabled={loading || studios.length === 0}>
+      <Select
+        value={active ?? undefined}
+        onValueChange={onChange}
+        disabled={loading || studios.length === 0}
+      >
         <SelectTrigger className="h-9 w-[170px] text-sm">
           <SelectValue
-            placeholder={loading ? "Загрузка…" : studios.length === 0 ? "Нет студий" : "Выберите студию"}
+            placeholder={
+              loading ? "Загрузка…" : studios.length === 0 ? "Нет студий" : "Выберите студию"
+            }
           />
         </SelectTrigger>
         <SelectContent>

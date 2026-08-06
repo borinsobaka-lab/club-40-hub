@@ -45,7 +45,9 @@ export const Route = createFileRoute("/api/chat")({
         try {
           const ctx = await getUserContext(request);
           if (!ctx || !ctx.studioId) {
-            return new Response("Сессия истекла. Войдите заново и повторите запрос.", { status: 401 });
+            return new Response("Сессия истекла. Войдите заново и повторите запрос.", {
+              status: 401,
+            });
           }
           const { messages } = (await request.json()) as Body;
           if (!Array.isArray(messages)) {
@@ -73,7 +75,12 @@ export const Route = createFileRoute("/api/chat")({
               description:
                 "Клиенты студии со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото. Можно фильтровать по точным ID.",
               inputSchema: z.object({
-                ids: z.array(z.string().uuid()).optional().describe("Точные clients.id, если нужно подтянуть клиентов по связям из других таблиц"),
+                ids: z
+                  .array(z.string().uuid())
+                  .optional()
+                  .describe(
+                    "Точные clients.id, если нужно подтянуть клиентов по связям из других таблиц",
+                  ),
                 search: z.string().optional().describe("Поиск по имени/фамилии/телефону/email"),
                 limit: z.number().int().min(1).max(500).default(100),
               }),
@@ -99,7 +106,8 @@ export const Route = createFileRoute("/api/chat")({
 
             // ====== ТРЕНЕРЫ / СОТРУДНИКИ ======
             list_trainers: tool({
-              description: "Тренеры и админы студии: ФИО, фото, пол, специализация, био, соцсети, роль.",
+              description:
+                "Тренеры и админы студии: ФИО, фото, пол, специализация, био, соцсети, роль.",
               inputSchema: z.object({ limit: z.number().int().min(1).max(200).default(100) }),
               execute: async ({ limit }) => {
                 const { data, error } = await studioTable(
@@ -154,7 +162,12 @@ export const Route = createFileRoute("/api/chat")({
               description:
                 "Шаблоны абонементов студии: название, описание, бонусы, число посещений, срок, цена, активность, обложка, признак 'для двоих'. Можно фильтровать по точным ID.",
               inputSchema: z.object({
-                ids: z.array(z.string().uuid()).optional().describe("Точные memberships.id, если нужно подтянуть названия по связям из client_memberships или sales"),
+                ids: z
+                  .array(z.string().uuid())
+                  .optional()
+                  .describe(
+                    "Точные memberships.id, если нужно подтянуть названия по связям из client_memberships или sales",
+                  ),
                 only_active: z.boolean().default(false),
                 for_couple: z.boolean().optional(),
                 limit: z.number().int().min(1).max(500).default(200),
@@ -191,7 +204,9 @@ export const Route = createFileRoute("/api/chat")({
                   .min(1)
                   .max(365)
                   .optional()
-                  .describe("Вернуть только записи, у которых ends_at в пределах N дней от сегодня."),
+                  .describe(
+                    "Вернуть только записи, у которых ends_at в пределах N дней от сегодня.",
+                  ),
                 order_by: z.enum(["created_desc", "ends_at_asc"]).default("created_desc"),
                 limit: z.number().int().min(1).max(500).default(200),
               }),
@@ -234,7 +249,9 @@ export const Route = createFileRoute("/api/chat")({
                   .min(1)
                   .max(3650)
                   .optional()
-                  .describe("Ограничить окончанием в пределах N дней. Если пользователь не указал период, не передавай параметр."),
+                  .describe(
+                    "Ограничить окончанием в пределах N дней. Если пользователь не указал период, не передавай параметр.",
+                  ),
                 limit: z.number().int().min(1).max(100).default(10),
               }),
               execute: async ({ within_days, limit }) => {
@@ -260,8 +277,13 @@ export const Route = createFileRoute("/api/chat")({
 
                 const rows = (data ?? []).map((row: any) => {
                   const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
-                  const membership = Array.isArray(row.memberships) ? row.memberships[0] : row.memberships;
-                  const clientName = [client?.last_name, client?.first_name].filter(Boolean).join(" ").trim() || client?.full_name || null;
+                  const membership = Array.isArray(row.memberships)
+                    ? row.memberships[0]
+                    : row.memberships;
+                  const clientName =
+                    [client?.last_name, client?.first_name].filter(Boolean).join(" ").trim() ||
+                    client?.full_name ||
+                    null;
                   return {
                     id: row.id,
                     client_id: row.client_id,
@@ -291,7 +313,6 @@ export const Route = createFileRoute("/api/chat")({
               },
             }),
 
-
             // ====== ПРОДАЖИ ======
             list_sales: tool({
               description:
@@ -316,7 +337,10 @@ export const Route = createFileRoute("/api/chat")({
                 if (client_id) q = q.eq("client_id", client_id);
                 const { data, error } = await q;
                 if (error) return { error: error.message };
-                const total = (data ?? []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
+                const total = (data ?? []).reduce(
+                  (s, r: any) => s + Number(r.total_amount || 0),
+                  0,
+                );
                 return { count: data?.length ?? 0, total_amount: total, rows: data ?? [] };
               },
             }),
@@ -360,7 +384,8 @@ export const Route = createFileRoute("/api/chat")({
 
             // ====== ПРОМОКОДЫ ======
             list_promo_codes: tool({
-              description: "Промокоды студии: имя, код, скидка, лимит, использования, срок, активность.",
+              description:
+                "Промокоды студии: имя, код, скидка, лимит, использования, срок, активность.",
               inputSchema: z.object({
                 only_active: z.boolean().default(false),
                 limit: z.number().int().min(1).max(500).default(200),
@@ -383,7 +408,8 @@ export const Route = createFileRoute("/api/chat")({
 
             // ====== НОВОСТИ ======
             list_news: tool({
-              description: "Новости для мобильного приложения: заголовок, описание, кнопка, картинки.",
+              description:
+                "Новости для мобильного приложения: заголовок, описание, кнопка, картинки.",
               inputSchema: z.object({ limit: z.number().int().min(1).max(200).default(100) }),
               execute: async ({ limit }) => {
                 const { data, error } = await studioTable(
@@ -467,7 +493,13 @@ export const Route = createFileRoute("/api/chat")({
               description: "NPS-ответы: оценка (0-10), тип опроса, комментарий, обработан ли.",
               inputSchema: z.object({
                 survey_type: z
-                  .enum(["first_lessons", "first_month", "before_renewal", "after_return", "general"])
+                  .enum([
+                    "first_lessons",
+                    "first_month",
+                    "before_renewal",
+                    "after_return",
+                    "general",
+                  ])
                   .optional(),
                 handled: z.boolean().optional(),
                 from: z.string().optional(),
@@ -477,7 +509,9 @@ export const Route = createFileRoute("/api/chat")({
               execute: async ({ survey_type, handled, from, to, limit }) => {
                 let q = supabase
                   .from("nps_responses")
-                  .select("id, score, client_name, comment, language, survey_type, handled, created_at")
+                  .select(
+                    "id, score, client_name, comment, language, survey_type, handled, created_at",
+                  )
                   .order("created_at", { ascending: false })
                   .limit(limit);
                 if (survey_type) q = q.eq("survey_type", survey_type);
@@ -543,7 +577,10 @@ export const Route = createFileRoute("/api/chat")({
               description: "Глобальные настройки клуба (ссылки, минуты для отмены брони).",
               inputSchema: z.object({}),
               execute: async () => {
-                const { data, error } = await supabase.from("club_settings").select("*").maybeSingle();
+                const { data, error } = await supabase
+                  .from("club_settings")
+                  .select("*")
+                  .maybeSingle();
                 if (error) return { error: error.message };
                 return data ?? {};
               },
@@ -658,7 +695,9 @@ export const Route = createFileRoute("/api/chat")({
           });
         } catch (error) {
           console.error("[api/chat] request failed", error);
-          return new Response("Не удалось запустить ассистента. Попробуйте ещё раз.", { status: 500 });
+          return new Response("Не удалось запустить ассистента. Попробуйте ещё раз.", {
+            status: 500,
+          });
         }
       },
     },

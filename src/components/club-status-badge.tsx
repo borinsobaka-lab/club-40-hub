@@ -26,7 +26,9 @@ export function ClubStatusBadge({
       )}
     >
       {CLUB_STATUS_LABEL[status]}
-      {withFull && <span className="ml-1 font-normal opacity-80">· {CLUB_STATUS_FULL[status]}</span>}
+      {withFull && (
+        <span className="ml-1 font-normal opacity-80">· {CLUB_STATUS_FULL[status]}</span>
+      )}
     </span>
   );
 }

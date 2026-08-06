@@ -2,15 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  Plus,
-  Loader2,
-  Pencil,
-  Trash2,
-  ImageIcon,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, ImageIcon, ArrowUp, ArrowDown } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -99,9 +91,7 @@ function MediaThumb({
       </div>
     );
   }
-  return (
-    <img src={src} alt={alt} className={`rounded-md object-cover ${aspect}`} />
-  );
+  return <img src={src} alt={alt} className={`rounded-md object-cover ${aspect}`} />;
 }
 
 function ServicesPage() {
@@ -152,23 +142,14 @@ function ServicesPage() {
   const swap = async (a: ServiceItem, b: ServiceItem) => {
     setBusyId(a.id);
     const tmp = -1 - Math.floor(Math.random() * 1000);
-    const r1 = await supabase
-      .from("services")
-      .update({ position: tmp })
-      .eq("id", a.id);
+    const r1 = await supabase.from("services").update({ position: tmp }).eq("id", a.id);
     if (r1.error) {
       setBusyId(null);
       toast.error("Ошибка: " + r1.error.message);
       return;
     }
-    const r2 = await supabase
-      .from("services")
-      .update({ position: a.position })
-      .eq("id", b.id);
-    const r3 = await supabase
-      .from("services")
-      .update({ position: b.position })
-      .eq("id", a.id);
+    const r2 = await supabase.from("services").update({ position: a.position }).eq("id", b.id);
+    const r3 = await supabase.from("services").update({ position: b.position }).eq("id", a.id);
     setBusyId(null);
     if (r2.error || r3.error) {
       toast.error("Ошибка изменения порядка");
@@ -246,7 +227,10 @@ function ServicesPage() {
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={7}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
                       Пока нет услуг. Нажмите «Добавить услугу».
                     </TableCell>
                   </TableRow>
@@ -431,9 +415,7 @@ function ServiceDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{item ? "Редактировать услугу" : "Новая услуга"}</DialogTitle>
-          <DialogDescription>
-            Услуга отображается в мобильном приложении.
-          </DialogDescription>
+          <DialogDescription>Услуга отображается в мобильном приложении.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -576,8 +558,8 @@ function ServiceDialog({
           <div className="rounded-md border p-3 space-y-3">
             <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
             <div className="text-xs text-muted-foreground">
-              Если оба поля заполнены — в мобильном приложении под услугой
-              появится кнопка-ссылка. Если пусто — кнопки не будет.
+              Если оба поля заполнены — в мобильном приложении под услугой появится кнопка-ссылка.
+              Если пусто — кнопки не будет.
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">

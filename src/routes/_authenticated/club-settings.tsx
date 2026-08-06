@@ -89,7 +89,11 @@ function ClubSettingsPage() {
       description="Глобальные параметры мобильного приложения клуба"
       actions={
         <Button onClick={handleSave} disabled={saving || loading}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {saving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
           Сохранить
         </Button>
       }
@@ -115,7 +119,9 @@ function ClubSettingsPage() {
                 value={writeUrl}
                 onChange={(e) => setWriteUrl(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Например, ссылка на WhatsApp-чат клуба.</p>
+              <p className="text-xs text-muted-foreground">
+                Например, ссылка на WhatsApp-чат клуба.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="call">Ссылка для кнопки «Позвонить»</Label>
@@ -142,8 +148,8 @@ function ClubSettingsPage() {
             <div>
               <h2 className="text-lg font-semibold">Отмена бронирования тренировок</h2>
               <p className="text-sm text-muted-foreground">
-                За сколько минут до начала тренировки пользователь ещё может её отменить. После этого
-                времени в приложении кнопка отмены недоступна.
+                За сколько минут до начала тренировки пользователь ещё может её отменить. После
+                этого времени в приложении кнопка отмены недоступна.
               </p>
             </div>
             <div className="space-y-2">

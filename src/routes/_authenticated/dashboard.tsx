@@ -69,67 +69,56 @@ const ZERO: Metrics = {
   debtTotal: 0,
 };
 
-async function loadMetrics(
-  studioId: string,
-  from: string,
-  to: string,
-): Promise<Metrics> {
+async function loadMetrics(studioId: string, from: string, to: string): Promise<Metrics> {
   // Запускаем все запросы параллельно.
-  const [
-    salesRes,
-    signupsRes,
-    activeRes,
-    expiringRes,
-    visitsRes,
-    debtPeriodRes,
-    debtTotalRes,
-  ] = await Promise.all([
-    supabase
-      .from("sales")
-      .select("total_amount, sold_at")
-      .eq("studio_id", studioId)
-      .gte("sold_at", from)
-      .lte("sold_at", to),
-    supabase
-      .from("clients")
-      .select("id", { count: "exact", head: true })
-      .eq("studio_id", studioId)
-      .gte("registration_date", from)
-      .lte("registration_date", to),
-    supabase
-      .from("client_memberships")
-      .select("client_id, ends_at, status")
-      .eq("studio_id", studioId)
-      .eq("status", "active"),
-    supabase
-      .from("client_memberships")
-      .select("id", { count: "exact", head: true })
-      .eq("studio_id", studioId)
-      .eq("status", "active")
-      .gte("ends_at", from)
-      .lte("ends_at", to),
-    supabase
-      .from("bookings_log")
-      .select("id", { count: "exact", head: true })
-      .eq("studio_id", studioId)
-      .eq("status", "attended")
-      .gte("starts_at", `${from}T00:00:00`)
-      .lte("starts_at", `${to}T23:59:59`),
-    // Задолженность за период — неоплаченные взносы со сроком в диапазоне
-    supabase
-      .from("sale_installments")
-      .select("amount, sales!inner(studio_id)")
-      .eq("paid", false)
-      .eq("sales.studio_id", studioId)
-      .gte("due_date", from)
-      .lte("due_date", to),
-    // Общая задолженность — все неоплаченные взносы по студии
-    supabase
-      .from("sale_installments")
-      .select("amount, sales!inner(studio_id)")
-      .eq("paid", false)
-      .eq("sales.studio_id", studioId),
-  ]);
+  const [salesRes, signupsRes, activeRes, expiringRes, visitsRes, debtPeriodRes, debtTotalRes] =
+    await Promise.all([
+      supabase
+        .from("sales")
+        .select("total_amount, sold_at")
+        .eq("studio_id", studioId)
+        .gte("sold_at", from)
+        .lte("sold_at", to),
+      supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studioId)
+        .gte("registration_date", from)
+        .lte("registration_date", to),
+      supabase
+        .from("client_memberships")
+        .select("client_id, ends_at, status")
+        .eq("studio_id", studioId)
+        .eq("status", "active"),
+      supabase
+        .from("client_memberships")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studioId)
+        .eq("status", "active")
+        .gte("ends_at", from)
+        .lte("ends_at", to),
+      supabase
+        .from("bookings_log")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studioId)
+        .eq("status", "attended")
+        .gte("starts_at", `${from}T00:00:00`)
+        .lte("starts_at", `${to}T23:59:59`),
+      // Задолженность за период — неоплаченные взносы со сроком в диапазоне
+      supabase
+        .from("sale_installments")
+        .select("amount, sales!inner(studio_id)")
+        .eq("paid", false)
+        .eq("sales.studio_id", studioId)
+        .gte("due_date", from)
+        .lte("due_date", to),
+      // Общая задолженность — все неоплаченные взносы по студии
+      supabase
+        .from("sale_installments")
+        .select("amount, sales!inner(studio_id)")
+        .eq("paid", false)
+        .eq("sales.studio_id", studioId),
+    ]);
 
   const sales = (salesRes.data ?? []) as { total_amount: number }[];
   const revenue = sales.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
@@ -138,9 +127,7 @@ async function loadMetrics(
   const active = (activeRes.data ?? []) as { client_id: string; ends_at: string | null }[];
   const today = toISO(new Date());
   const activeClients = new Set(
-    active
-      .filter((m) => !m.ends_at || m.ends_at >= today)
-      .map((m) => m.client_id),
+    active.filter((m) => !m.ends_at || m.ends_at >= today).map((m) => m.client_id),
   ).size;
 
   const debtPeriodRows = (debtPeriodRes.data ?? []) as { amount: number }[];
@@ -172,16 +159,86 @@ type StatDef = {
 };
 
 const STATS: StatDef[] = [
-  { key: "revenue", label: "Выручка", hint: "за период", format: "money", compare: true, goodWhenUp: true },
-  { key: "signups", label: "Новые регистрации", hint: "за период", format: "number", compare: true, goodWhenUp: true },
-  { key: "activeClients", label: "Активные клиенты", hint: "сейчас", format: "number", compare: false, goodWhenUp: true },
-  { key: "expiring", label: "Заканчивается абонементов", hint: "в этом периоде", format: "number", compare: true, goodWhenUp: false },
-  { key: "visits", label: "Посещений", hint: "за период", format: "number", compare: true, goodWhenUp: true },
-  { key: "avgMembership", label: "Средний чек за абонементы", hint: "за период", format: "money", compare: true, goodWhenUp: true },
-  { key: "avgServices", label: "Средний чек за услуги", hint: "пока 0", format: "money", compare: false, goodWhenUp: true },
-  { key: "avgTotal", label: "Средний чек общий", hint: "за период", format: "money", compare: true, goodWhenUp: true },
-  { key: "debtPeriod", label: "Задолженность за период", hint: "неоплаченные взносы", format: "money", compare: true, goodWhenUp: false },
-  { key: "debtTotal", label: "Общая задолженность", hint: "всего", format: "money", compare: false, goodWhenUp: false },
+  {
+    key: "revenue",
+    label: "Выручка",
+    hint: "за период",
+    format: "money",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "signups",
+    label: "Новые регистрации",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "activeClients",
+    label: "Активные клиенты",
+    hint: "сейчас",
+    format: "number",
+    compare: false,
+    goodWhenUp: true,
+  },
+  {
+    key: "expiring",
+    label: "Заканчивается абонементов",
+    hint: "в этом периоде",
+    format: "number",
+    compare: true,
+    goodWhenUp: false,
+  },
+  {
+    key: "visits",
+    label: "Посещений",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "avgMembership",
+    label: "Средний чек за абонементы",
+    hint: "за период",
+    format: "money",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "avgServices",
+    label: "Средний чек за услуги",
+    hint: "пока 0",
+    format: "money",
+    compare: false,
+    goodWhenUp: true,
+  },
+  {
+    key: "avgTotal",
+    label: "Средний чек общий",
+    hint: "за период",
+    format: "money",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "debtPeriod",
+    label: "Задолженность за период",
+    hint: "неоплаченные взносы",
+    format: "money",
+    compare: true,
+    goodWhenUp: false,
+  },
+  {
+    key: "debtTotal",
+    label: "Общая задолженность",
+    hint: "всего",
+    format: "money",
+    compare: false,
+    goodWhenUp: false,
+  },
 ];
 
 function Delta({
@@ -317,8 +374,7 @@ function DashboardPage() {
             {STATS.map((stat) => {
               const v = current[stat.key];
               const p = previous[stat.key];
-              const value =
-                stat.format === "money" ? formatMoney(v) : formatNumber(v);
+              const value = stat.format === "money" ? formatMoney(v) : formatNumber(v);
               return (
                 <Card key={stat.key}>
                   <CardHeader className="pb-2">

@@ -36,7 +36,7 @@ merge в main = выкладка. Env-переменные: `VITE_SUPABASE_URL`,
   для новых колонок нужен явный `alter table ... add column if not exists`
   (на этом уже ловили расхождение: clients.avatar_url был в файле, но не в БД).
 - Перед выкаткой миграцию можно прогнать на локальном Postgres 16 (есть в
-  системе): заглушки auth/storage + прогон db/*.sql, см. историю сессий.
+  системе): заглушки auth/storage + прогон db/\*.sql, см. историю сессий.
 - Серверная пагинация админки опирается на вью `clients_with_status`,
   `sales_list`, `cash_totals`, `bookings_log_full` (db/performance_indexes.sql),
   все с `security_invoker = true` — RLS действует.

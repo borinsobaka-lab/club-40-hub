@@ -16,7 +16,11 @@ async function loadAdmin() {
 }
 
 async function getStudioId(supabase: any, userId: string): Promise<string> {
-  const { data, error } = await supabase.from("profiles").select("studio_id").eq("id", userId).maybeSingle();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("studio_id")
+    .eq("id", userId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data?.studio_id) throw new Error("Студия не найдена для пользователя");
   return data.studio_id as string;
@@ -56,7 +60,9 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
         .select("id, email, full_name")
         .in("id", userIds);
       if (profErr) throw new Error(profErr.message);
-      profiles = Object.fromEntries((profs ?? []).map((p: any) => [p.id, { email: p.email, full_name: p.full_name }]));
+      profiles = Object.fromEntries(
+        (profs ?? []).map((p: any) => [p.id, { email: p.email, full_name: p.full_name }]),
+      );
     }
 
     // Pick highest-priority role per user
@@ -105,7 +111,8 @@ export const createEmployee = createServerFn({ method: "POST" })
       email_confirm: true,
       user_metadata: { full_name: data.full_name },
     });
-    if (error || !created.user) throw new Error(error?.message ?? "Не удалось создать пользователя");
+    if (error || !created.user)
+      throw new Error(error?.message ?? "Не удалось создать пользователя");
     const newId = created.user.id;
     const { error: profErr } = await admin.from("profiles").upsert({
       id: newId,

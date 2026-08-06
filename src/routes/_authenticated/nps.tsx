@@ -6,8 +6,16 @@ import { Trash2, CheckCircle2, AlertTriangle, Plus, Loader2 } from "lucide-react
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
 } from "recharts";
 import { toast } from "sonner";
 
@@ -19,18 +27,38 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-  DialogFooter, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
@@ -65,9 +93,26 @@ const TYPE_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 function category(score: number) {
-  if (score >= 9) return { label: "Промоутер", dot: "bg-emerald-500", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400", type: "promoter" };
-  if (score >= 7) return { label: "Пассивный", dot: "bg-amber-500", cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400", type: "passive" };
-  return { label: "Критик", dot: "bg-destructive", cls: "bg-destructive/10 text-destructive", type: "detractor" };
+  if (score >= 9)
+    return {
+      label: "Промоутер",
+      dot: "bg-emerald-500",
+      cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+      type: "promoter",
+    };
+  if (score >= 7)
+    return {
+      label: "Пассивный",
+      dot: "bg-amber-500",
+      cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+      type: "passive",
+    };
+  return {
+    label: "Критик",
+    dot: "bg-destructive",
+    cls: "bg-destructive/10 text-destructive",
+    type: "detractor",
+  };
 }
 
 const tooltipStyle = {
@@ -110,7 +155,6 @@ function NpsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSignal]);
 
-
   const submitNew = async () => {
     setSaving(true);
     const { error } = await supabase.from("nps_responses").insert({
@@ -129,7 +173,10 @@ function NpsPage() {
   };
 
   const toggleHandled = async (id: string, current: boolean) => {
-    const { error } = await supabase.from("nps_responses").update({ handled: !current }).eq("id", id);
+    const { error } = await supabase
+      .from("nps_responses")
+      .update({ handled: !current })
+      .eq("id", id);
     if (error) return toast.error(error.message);
     setResponses((p) => p.map((r) => (r.id === id ? { ...r, handled: !current } : r)));
   };
@@ -154,13 +201,20 @@ function NpsPage() {
   };
 
   const monthly = useMemo(() => {
-    const f = typeFilter === "all" ? responses : responses.filter((r) => r.survey_type === typeFilter);
+    const f =
+      typeFilter === "all" ? responses : responses.filter((r) => r.survey_type === typeFilter);
     const months = Array.from({ length: 6 }, (_, i) => {
       const d = subMonths(new Date(), 5 - i);
-      return { label: format(d, "LLL yy", { locale: ru }), start: startOfMonth(d), end: endOfMonth(d) };
+      return {
+        label: format(d, "LLL yy", { locale: ru }),
+        start: startOfMonth(d),
+        end: endOfMonth(d),
+      };
     });
     return months.map((m) => {
-      const inM = f.filter((r) => isWithinInterval(parseISO(r.created_at), { start: m.start, end: m.end }));
+      const inM = f.filter((r) =>
+        isWithinInterval(parseISO(r.created_at), { start: m.start, end: m.end }),
+      );
       const t = inM.length;
       const p = inM.filter((r) => r.score >= 9).length;
       const d = inM.filter((r) => r.score <= 6).length;
@@ -207,7 +261,9 @@ function NpsPage() {
       actions={
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="default"><Plus className="mr-1 h-4 w-4" /> Добавить ответ</Button>
+            <Button size="default">
+              <Plus className="mr-1 h-4 w-4" /> Добавить ответ
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -217,29 +273,57 @@ function NpsPage() {
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="survey-type">Тип опроса</Label>
-                <Select value={form.survey_type} onValueChange={(v) => setForm({ ...form, survey_type: v as SurveyType })}>
-                  <SelectTrigger id="survey-type"><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.survey_type}
+                  onValueChange={(v) => setForm({ ...form, survey_type: v as SurveyType })}
+                >
+                  <SelectTrigger id="survey-type">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {SURVEY_TYPES.map((s) => <SelectItem key={s.type} value={s.type}>{s.label}</SelectItem>)}
+                    {SURVEY_TYPES.map((s) => (
+                      <SelectItem key={s.type} value={s.type}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="score">Оценка (0–10)</Label>
-                <Input id="score" type="number" min={0} max={10} value={form.score}
-                  onChange={(e) => setForm({ ...form, score: Math.max(0, Math.min(10, Number(e.target.value))) })} />
+                <Input
+                  id="score"
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={form.score}
+                  onChange={(e) =>
+                    setForm({ ...form, score: Math.max(0, Math.min(10, Number(e.target.value))) })
+                  }
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="client-name">Имя клиента</Label>
-                <Input id="client-name" value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
+                <Input
+                  id="client-name"
+                  value={form.client_name}
+                  onChange={(e) => setForm({ ...form, client_name: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="comment">Комментарий</Label>
-                <Textarea id="comment" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} rows={3} />
+                <Textarea
+                  id="comment"
+                  value={form.comment}
+                  onChange={(e) => setForm({ ...form, comment: e.target.value })}
+                  rows={3}
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setAddOpen(false)}>Отмена</Button>
+              <Button variant="ghost" onClick={() => setAddOpen(false)}>
+                Отмена
+              </Button>
               <Button onClick={submitNew} disabled={saving}>
                 {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
               </Button>
@@ -282,14 +366,22 @@ function NpsPage() {
           <div className="space-y-3">
             <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="h-8 sm:w-[200px]"><SelectValue placeholder="Все опросы" /></SelectTrigger>
+                <SelectTrigger className="h-8 sm:w-[200px]">
+                  <SelectValue placeholder="Все опросы" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все опросы</SelectItem>
-                  {SURVEY_TYPES.map((s) => <SelectItem key={s.type} value={s.type}>{s.label}</SelectItem>)}
+                  {SURVEY_TYPES.map((s) => (
+                    <SelectItem key={s.type} value={s.type}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={clientFilter} onValueChange={setClientFilter}>
-                <SelectTrigger className="h-8 sm:w-[180px]"><SelectValue placeholder="Все категории" /></SelectTrigger>
+                <SelectTrigger className="h-8 sm:w-[180px]">
+                  <SelectValue placeholder="Все категории" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все категории</SelectItem>
                   <SelectItem value="promoter">Промоутеры</SelectItem>
@@ -316,7 +408,14 @@ function NpsPage() {
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis domain={[-100, 100]} tick={{ fontSize: 11 }} />
                     <Tooltip contentStyle={tooltipStyle} />
-                    <Line type="monotone" dataKey="NPS" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                    <Line
+                      type="monotone"
+                      dataKey="NPS"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      connectNulls
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -329,7 +428,9 @@ function NpsPage() {
                     <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11 }} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Bar dataKey="count" radius={[0, 6, 6, 0]}>
-                      {distribution.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      {distribution.map((e, i) => (
+                        <Cell key={i} fill={e.color} />
+                      ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -344,19 +445,30 @@ function NpsPage() {
                 </div>
                 <div className="space-y-2">
                   {unhandled.map((r) => (
-                    <div key={r.id} className="flex items-start gap-3 rounded-md border bg-muted/30 p-3">
+                    <div
+                      key={r.id}
+                      className="flex items-start gap-3 rounded-md border bg-muted/30 p-3"
+                    >
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex flex-wrap items-center gap-2">
                           <span className="text-sm font-semibold">{r.client_name || "—"}</span>
-                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">{r.score}</span>
-                          <span className="text-xs text-muted-foreground">{TYPE_LABEL[r.survey_type]}</span>
+                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                            {r.score}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {TYPE_LABEL[r.survey_type]}
+                          </span>
                         </div>
                         <p className="truncate text-sm text-muted-foreground">{r.comment || "—"}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {format(parseISO(r.created_at), "d MMM yyyy, HH:mm", { locale: ru })}
                         </p>
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => toggleHandled(r.id, r.handled)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleHandled(r.id, r.handled)}
+                      >
                         <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Обработан
                       </Button>
                     </div>
@@ -381,7 +493,10 @@ function NpsPage() {
                 <TableBody>
                   {pg.total === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell
+                        colSpan={7}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
                         Нет ответов.
                       </TableCell>
                     </TableRow>
@@ -396,12 +511,18 @@ function NpsPage() {
                           <TableCell className="font-medium">{r.client_name || "—"}</TableCell>
                           <TableCell className="text-center font-bold">{r.score}</TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c.cls}`}>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c.cls}`}
+                            >
                               {c.label}
                             </span>
                           </TableCell>
-                          <TableCell className="max-w-[320px] truncate text-muted-foreground">{r.comment || "—"}</TableCell>
-                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{TYPE_LABEL[r.survey_type]}</TableCell>
+                          <TableCell className="max-w-[320px] truncate text-muted-foreground">
+                            {r.comment || "—"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                            {TYPE_LABEL[r.survey_type]}
+                          </TableCell>
                           <TableCell>
                             <div className="flex justify-end">
                               <Button variant="ghost" size="icon" onClick={() => setDeleteId(r.id)}>

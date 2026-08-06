@@ -137,8 +137,16 @@ function SchedulePage() {
         .gte("starts_at", weekStart.toISOString())
         .lt("starts_at", weekEnd.toISOString())
         .order("starts_at"),
-      supabase.from("workouts").select("id, name, type, capacity").eq("studio_id", studioId).order("name"),
-      supabase.from("trainers").select("id, full_name").eq("studio_id", studioId).order("full_name"),
+      supabase
+        .from("workouts")
+        .select("id, name, type, capacity")
+        .eq("studio_id", studioId)
+        .order("name"),
+      supabase
+        .from("trainers")
+        .select("id, full_name")
+        .eq("studio_id", studioId)
+        .order("full_name"),
     ]);
     setLoading(false);
     if (eRes.error) {
@@ -163,7 +171,6 @@ function SchedulePage() {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioId, weekStart, refreshSignal]);
-
 
   const openSlot = (day: Date, hour: number) => {
     const d = new Date(day);
@@ -199,8 +206,7 @@ function SchedulePage() {
       toast.error("Ошибка копирования: " + (error?.message ?? ""));
       return;
     }
-    const trainerIds =
-      copySource.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
+    const trainerIds = copySource.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
     if (trainerIds.length > 0) {
       const { error: tErr } = await supabase
         .from("schedule_entry_trainers")
@@ -285,18 +291,14 @@ function SchedulePage() {
     const trainerLinks: { entry_id: string; trainer_id: string }[] = [];
     for (const ins of inserted) {
       const key = `${ins.workout_id}|${new Date(ins.starts_at).toISOString()}`;
-      const src = rows.find(
-        (r) => `${r.workout_id}|${r.starts_at}` === key,
-      );
+      const src = rows.find((r) => `${r.workout_id}|${r.starts_at}` === key);
       if (!src) continue;
       for (const tid of src._trainer_ids) {
         trainerLinks.push({ entry_id: ins.id, trainer_id: tid });
       }
     }
     if (trainerLinks.length > 0) {
-      const { error: tErr } = await supabase
-        .from("schedule_entry_trainers")
-        .insert(trainerLinks);
+      const { error: tErr } = await supabase.from("schedule_entry_trainers").insert(trainerLinks);
       if (tErr) {
         setDuplicatingWeek(false);
         setDuplicateWeekOpen(false);
@@ -335,8 +337,7 @@ function SchedulePage() {
   };
 
   const weekLabel = `${fmtDate(weekStart)} — ${fmtDate(addDays(weekStart, 6))}`;
-  const isCurrentWeek =
-    startOfWeek(new Date()).toDateString() === weekStart.toDateString();
+  const isCurrentWeek = startOfWeek(new Date()).toDateString() === weekStart.toDateString();
 
   return (
     <AdminShell
@@ -392,9 +393,7 @@ function SchedulePage() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <span className="ml-1 text-sm font-medium">{weekLabel}</span>
-                {loading && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                )}
+                {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
 
               <div className="ml-auto flex flex-wrap items-center gap-3">
@@ -454,8 +453,8 @@ function SchedulePage() {
                     <Copy className="h-4 w-4" />
                   )}
                   <span>
-                    Копирование «{copySource.workout?.name ?? "Занятие"}» —
-                    кликните на свободный слот, чтобы вставить.
+                    Копирование «{copySource.workout?.name ?? "Занятие"}» — кликните на свободный
+                    слот, чтобы вставить.
                   </span>
                 </div>
                 <Button
@@ -471,8 +470,10 @@ function SchedulePage() {
             )}
 
             <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border bg-background">
-
-              <div className="grid min-w-[1200px]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
+              <div
+                className="grid min-w-[1200px]"
+                style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
+              >
                 <div className="sticky top-0 z-20 border-b border-r bg-background" />
                 {weekDays.map((d, i) => {
                   const today = d.toDateString() === new Date().toDateString();
@@ -480,13 +481,17 @@ function SchedulePage() {
                     <div
                       key={i}
                       className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
-                        today ? "border-b-4 border-b-yellow-400 font-semibold text-primary" : "border-b"
+                        today
+                          ? "border-b-4 border-b-yellow-400 font-semibold text-primary"
+                          : "border-b"
                       }`}
                     >
                       <div className="uppercase tracking-wide text-muted-foreground">
                         {DAY_NAMES[i]}
                       </div>
-                      <div>{d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
+                      <div>
+                        {d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
+                      </div>
                     </div>
                   );
                 })}
@@ -496,10 +501,10 @@ function SchedulePage() {
                     entries.some((e) => {
                       const s = new Date(e.starts_at);
                       const matchesDayHour =
-                        s.toDateString() === day.toDateString() &&
-                        s.getHours() === hour;
+                        s.toDateString() === day.toDateString() && s.getHours() === hour;
                       if (!matchesDayHour) return false;
-                      if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) return false;
+                      if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType)
+                        return false;
                       if (filterTrainerId !== ALL_FILTER_VALUE) {
                         const hasTrainer = e.schedule_entry_trainers?.some(
                           (x) => x.trainer_id === filterTrainerId,
@@ -522,10 +527,10 @@ function SchedulePage() {
                         const slotEntries = entries.filter((e) => {
                           const s = new Date(e.starts_at);
                           const matchesDayHour =
-                            s.toDateString() === day.toDateString() &&
-                            s.getHours() === hour;
+                            s.toDateString() === day.toDateString() && s.getHours() === hour;
                           if (!matchesDayHour) return false;
-                          if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) return false;
+                          if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType)
+                            return false;
                           if (filterTrainerId !== ALL_FILTER_VALUE) {
                             const hasTrainer = e.schedule_entry_trainers?.some(
                               (x) => x.trainer_id === filterTrainerId,
@@ -587,9 +592,7 @@ function SchedulePage() {
                                   <div className="font-medium line-clamp-2">
                                     {e.workout?.name ?? "Занятие"}
                                   </div>
-                                  {names && (
-                                    <div className="truncate opacity-80">{names}</div>
-                                  )}
+                                  {names && <div className="truncate opacity-80">{names}</div>}
                                   <div className="mt-auto flex justify-end">
                                     <button
                                       type="button"
@@ -648,10 +651,9 @@ function SchedulePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Дублировать неделю?</AlertDialogTitle>
             <AlertDialogDescription>
-              Все занятия с недели {weekLabel} ({entries.length}) будут скопированы
-              на следующую неделю ({fmtDate(addDays(weekStart, 7))} —{" "}
-              {fmtDate(addDays(weekStart, 13))}) в те же дни и время, с теми же
-              тренерами. Записи клиентов не копируются. Уже существующие на
+              Все занятия с недели {weekLabel} ({entries.length}) будут скопированы на следующую
+              неделю ({fmtDate(addDays(weekStart, 7))} — {fmtDate(addDays(weekStart, 13))}) в те же
+              дни и время, с теми же тренерами. Записи клиентов не копируются. Уже существующие на
               следующей неделе занятия (тот же тип и время) пропускаются.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -701,17 +703,17 @@ function EntryDialog({
       setWorkoutId(entry.workout_id);
       setStartsAt(toLocalISO(new Date(entry.starts_at)).slice(0, 16));
       setEndsAt(toLocalISO(new Date(entry.ends_at)).slice(0, 16));
-      setTrainerIds(
-        entry.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [],
-      );
+      setTrainerIds(entry.schedule_entry_trainers?.map((x) => x.trainer_id) ?? []);
     } else {
       setWorkoutId(workouts[0]?.id ?? "");
-      const start = presetStart ?? (() => {
-        const d = new Date();
-        d.setMinutes(0, 0, 0);
-        d.setHours(d.getHours() + 1);
-        return d;
-      })();
+      const start =
+        presetStart ??
+        (() => {
+          const d = new Date();
+          d.setMinutes(0, 0, 0);
+          d.setHours(d.getHours() + 1);
+          return d;
+        })();
       const end = new Date(start);
       end.setHours(end.getHours() + 1);
       setStartsAt(toLocalISO(start).slice(0, 16));
@@ -721,9 +723,7 @@ function EntryDialog({
   }, [open, entry, presetStart, workouts]);
 
   const toggleTrainer = (id: string) => {
-    setTrainerIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setTrainerIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const handleSave = async () => {
@@ -747,10 +747,7 @@ function EntryDialog({
     };
     let entryId = entry?.id;
     if (entry) {
-      const { error } = await supabase
-        .from("schedule_entries")
-        .update(payload)
-        .eq("id", entry.id);
+      const { error } = await supabase.from("schedule_entries").update(payload).eq("id", entry.id);
       if (error) {
         setSaving(false);
         toast.error("Ошибка сохранения: " + error.message);
@@ -859,14 +856,8 @@ function EntryDialog({
                   {trainers.map((t) => {
                     const checked = trainerIds.includes(t.id);
                     return (
-                      <label
-                        key={t.id}
-                        className="flex cursor-pointer items-center gap-2 text-sm"
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={() => toggleTrainer(t.id)}
-                        />
+                      <label key={t.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <Checkbox checked={checked} onCheckedChange={() => toggleTrainer(t.id)} />
                         <span>{t.full_name}</span>
                       </label>
                     );
@@ -876,9 +867,7 @@ function EntryDialog({
             </div>
           </div>
 
-          {entry && (
-            <BookingsPanel entry={entry} open={open} onChanged={onSaved} />
-          )}
+          {entry && <BookingsPanel entry={entry} open={open} onChanged={onSaved} />}
         </div>
 
         <DialogFooter className="flex sm:justify-between">
@@ -1053,8 +1042,7 @@ function BookingsPanel({
   };
 
   const fmtMembershipDates = (m: ActiveMembershipRow) => {
-    const fmt = (d: string | null) =>
-      d ? new Date(d).toLocaleDateString("ru-RU") : "—";
+    const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("ru-RU") : "—");
     return `${fmt(m.started_at)} – ${m.ends_at ? fmt(m.ends_at) : "∞"}`;
   };
 
@@ -1085,10 +1073,7 @@ function BookingsPanel({
               ? [c.last_name, c.first_name].filter(Boolean).join(" ") || c.full_name
               : "Пользователь без анкеты";
             return (
-              <div
-                key={b.id}
-                className="rounded-md border p-3 text-sm space-y-1"
-              >
+              <div key={b.id} className="rounded-md border p-3 text-sm space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col">
                     {c ? (
@@ -1111,16 +1096,10 @@ function BookingsPanel({
                         onClick={() => handleAttend(b)}
                         disabled={attendingId === b.id}
                       >
-                        {attendingId === b.id && (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        )}
+                        {attendingId === b.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                         Посетил
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setConfirmBooking(b)}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => setConfirmBooking(b)}>
                         Отклонить
                       </Button>
                     </div>
@@ -1145,16 +1124,13 @@ function BookingsPanel({
         </div>
       )}
 
-      <AlertDialog
-        open={!!confirmBooking}
-        onOpenChange={(v) => !v && setConfirmBooking(null)}
-      >
+      <AlertDialog open={!!confirmBooking} onOpenChange={(v) => !v && setConfirmBooking(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Отклонить?</AlertDialogTitle>
             <AlertDialogDescription>
-              Бронирование будет отменено со статусом «Отклонена».
-              Пользователь сможет записаться снова, если останутся места.
+              Бронирование будет отменено со статусом «Отклонена». Пользователь сможет записаться
+              снова, если останутся места.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

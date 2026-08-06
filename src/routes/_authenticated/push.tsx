@@ -122,10 +122,7 @@ function PushPage() {
 
   const handleDelete = async (p: PushNotification) => {
     if (!confirm(`Удалить уведомление «${p.title}»?`)) return;
-    const { error } = await supabase
-      .from("push_notifications")
-      .delete()
-      .eq("id", p.id);
+    const { error } = await supabase.from("push_notifications").delete().eq("id", p.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
       return;
@@ -140,7 +137,13 @@ function PushPage() {
     <AdminShell
       title="Пуш-уведомления"
       actions={
-        <Button onClick={() => { setEditing(null); setOpen(true); }} disabled={!studioId}>
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setOpen(true);
+          }}
+          disabled={!studioId}
+        >
           <Plus className="mr-1 h-4 w-4" />
           Добавить уведомление
         </Button>
@@ -175,7 +178,10 @@ function PushPage() {
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={8}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
                       Пока нет уведомлений. Нажмите «Добавить уведомление».
                     </TableCell>
                   </TableRow>
@@ -193,8 +199,8 @@ function PushPage() {
                         {p.status === "sent"
                           ? fmtDateTime(p.sent_at)
                           : p.status === "scheduled"
-                          ? fmtDateTime(p.scheduled_at)
-                          : "—"}
+                            ? fmtDateTime(p.scheduled_at)
+                            : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -202,8 +208,8 @@ function PushPage() {
                             p.status === "sent"
                               ? "default"
                               : p.status === "scheduled"
-                              ? "secondary"
-                              : "outline"
+                                ? "secondary"
+                                : "outline"
                           }
                         >
                           {STATUS_LABEL[p.status]}
@@ -214,7 +220,14 @@ function PushPage() {
                       <TableCell className="tabular-nums">{p.read_count}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true); }}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditing(p);
+                              setOpen(true);
+                            }}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
@@ -350,8 +363,8 @@ function PushDialog({
       status === "sent"
         ? "Уведомление отправлено"
         : status === "scheduled"
-        ? "Уведомление запланировано"
-        : "Уведомление сохранено",
+          ? "Уведомление запланировано"
+          : "Уведомление сохранено",
     );
     onOpenChange(false);
     onSaved();
@@ -370,7 +383,11 @@ function PushDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Заголовок</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например: Скидка 20% на абонементы" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Например: Скидка 20% на абонементы"
+            />
           </div>
 
           <div className="space-y-2">
@@ -394,8 +411,6 @@ function PushDialog({
               Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
             </p>
           </div>
-
-
 
           <div className="space-y-2">
             <Label>Статус клиентов</Label>
@@ -457,7 +472,11 @@ function PushDialog({
             Отмена
           </Button>
           <Button onClick={() => handleSave(false)} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
+            {saving ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-1 h-4 w-4" />
+            )}
             {sendMode === "now" ? "Отправить" : "Запланировать"}
           </Button>
         </DialogFooter>

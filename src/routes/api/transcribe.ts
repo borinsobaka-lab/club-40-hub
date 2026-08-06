@@ -17,7 +17,10 @@ export const Route = createFileRoute("/api/transcribe")({
           }
 
           const contentType = request.headers.get("content-type") ?? "";
-          if (!contentType.includes("multipart/form-data") && !contentType.includes("application/x-www-form-urlencoded")) {
+          if (
+            !contentType.includes("multipart/form-data") &&
+            !contentType.includes("application/x-www-form-urlencoded")
+          ) {
             return new Response("Нужен аудиофайл", { status: 400 });
           }
 
@@ -31,7 +34,15 @@ export const Route = createFileRoute("/api/transcribe")({
           upstream.append("model", model);
           const type = file.type.split(";")[0];
           const ext =
-            ({ "audio/webm": "webm", "audio/mp4": "mp4", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/ogg": "ogg" } as Record<string, string>)[type] ?? "webm";
+            (
+              {
+                "audio/webm": "webm",
+                "audio/mp4": "mp4",
+                "audio/mpeg": "mp3",
+                "audio/wav": "wav",
+                "audio/ogg": "ogg",
+              } as Record<string, string>
+            )[type] ?? "webm";
           upstream.append("file", file, `recording.${ext}`);
 
           const res = await fetch(`${config.baseURL}/audio/transcriptions`, {

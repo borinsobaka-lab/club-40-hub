@@ -118,12 +118,48 @@ function TrainerPhoto({ value, name }: { value: string | null; name: string }) {
 }
 
 function SocialLinks({ trainer }: { trainer: Trainer }) {
-  const items: { key: keyof Trainer; label: string; icon: React.ReactNode; color: string; prefix?: string }[] = [
-    { key: "telegram", label: "Telegram", icon: <MessageCircle className="h-3.5 w-3.5" />, color: "#0088cc", prefix: "https://t.me/" },
-    { key: "whatsapp", label: "WhatsApp", icon: <Phone className="h-3.5 w-3.5" />, color: "#25D366", prefix: "https://wa.me/" },
-    { key: "instagram", label: "Instagram", icon: <span className="text-[10px] font-bold leading-none">IG</span>, color: "#E1306C", prefix: "https://instagram.com/" },
-    { key: "facebook", label: "Facebook", icon: <span className="text-[10px] font-bold leading-none">FB</span>, color: "#1877F2", prefix: "https://facebook.com/" },
-    { key: "tiktok", label: "TikTok", icon: <span className="text-[10px] font-bold leading-none">TT</span>, color: "#000000", prefix: "https://tiktok.com/@" },
+  const items: {
+    key: keyof Trainer;
+    label: string;
+    icon: React.ReactNode;
+    color: string;
+    prefix?: string;
+  }[] = [
+    {
+      key: "telegram",
+      label: "Telegram",
+      icon: <MessageCircle className="h-3.5 w-3.5" />,
+      color: "#0088cc",
+      prefix: "https://t.me/",
+    },
+    {
+      key: "whatsapp",
+      label: "WhatsApp",
+      icon: <Phone className="h-3.5 w-3.5" />,
+      color: "#25D366",
+      prefix: "https://wa.me/",
+    },
+    {
+      key: "instagram",
+      label: "Instagram",
+      icon: <span className="text-[10px] font-bold leading-none">IG</span>,
+      color: "#E1306C",
+      prefix: "https://instagram.com/",
+    },
+    {
+      key: "facebook",
+      label: "Facebook",
+      icon: <span className="text-[10px] font-bold leading-none">FB</span>,
+      color: "#1877F2",
+      prefix: "https://facebook.com/",
+    },
+    {
+      key: "tiktok",
+      label: "TikTok",
+      icon: <span className="text-[10px] font-bold leading-none">TT</span>,
+      color: "#000000",
+      prefix: "https://tiktok.com/@",
+    },
   ];
   const hasAny = items.some((i) => !!trainer[i.key]);
   if (!hasAny) return <span className="text-muted-foreground text-sm">—</span>;
@@ -132,7 +168,8 @@ function SocialLinks({ trainer }: { trainer: Trainer }) {
       {items.map((item) => {
         const value = trainer[item.key];
         if (!value) return null;
-        const href = item.prefix && !isHttpUrl(value) ? `${item.prefix}${value.replace(/^@/, "")}` : value;
+        const href =
+          item.prefix && !isHttpUrl(value) ? `${item.prefix}${value.replace(/^@/, "")}` : value;
         return (
           <a
             key={item.key}
@@ -184,8 +221,6 @@ function TrainersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioId, refreshSignal]);
 
-
-
   const handleDelete = async (t: Trainer) => {
     if (!confirm(`Удалить тренера «${t.full_name}»?`)) return;
     const { error } = await supabase.from("trainers").delete().eq("id", t.id);
@@ -216,7 +251,12 @@ function TrainersPage() {
       description="Тренеры и админы студии"
       actions={
         <div className="flex gap-2">
-          <Button size="default" variant="outline" onClick={() => openCreate("admin")} disabled={!studioId}>
+          <Button
+            size="default"
+            variant="outline"
+            onClick={() => openCreate("admin")}
+            disabled={!studioId}
+          >
             <Plus className="mr-1 h-4 w-4" />
             Добавить админа
           </Button>
@@ -256,7 +296,10 @@ function TrainersPage() {
                   </TableRow>
                 ) : trainers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={8}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
                       Пока нет сотрудников. Нажмите «Добавить тренера» или «Добавить админа».
                     </TableCell>
                   </TableRow>
@@ -324,7 +367,6 @@ function TrainersPage() {
   );
 }
 
-
 function TrainerDialog({
   open,
   onOpenChange,
@@ -371,7 +413,6 @@ function TrainerDialog({
     }
   }, [open, trainer, defaultRole]);
 
-
   const handleUpload = async (file: File) => {
     if (!studioId) return;
     setUploading(true);
@@ -391,7 +432,6 @@ function TrainerDialog({
     setUploading(false);
   };
 
-
   const handleSave = async () => {
     if (!studioId) return;
     if (!fullName.trim()) {
@@ -404,15 +444,15 @@ function TrainerDialog({
       studio_id: studioId,
       role,
       full_name: fullName.trim(),
-      gender: isAdmin ? null : (gender || null),
-      specialization: isAdmin ? null : (specialization.trim() || null),
+      gender: isAdmin ? null : gender || null,
+      specialization: isAdmin ? null : specialization.trim() || null,
       bio: bio.trim() || null,
       photo_url: photoUrl,
-      telegram: isAdmin ? null : (telegram.trim() || null),
-      whatsapp: isAdmin ? null : (whatsapp.trim() || null),
-      instagram: isAdmin ? null : (instagram.trim() || null),
-      facebook: isAdmin ? null : (facebook.trim() || null),
-      tiktok: isAdmin ? null : (tiktok.trim() || null),
+      telegram: isAdmin ? null : telegram.trim() || null,
+      whatsapp: isAdmin ? null : whatsapp.trim() || null,
+      instagram: isAdmin ? null : instagram.trim() || null,
+      facebook: isAdmin ? null : facebook.trim() || null,
+      tiktok: isAdmin ? null : tiktok.trim() || null,
     };
     const { error } = trainer
       ? await supabase.from("trainers").update(payload).eq("id", trainer.id)
@@ -493,12 +533,7 @@ function TrainerDialog({
                 )}
               </Button>
               {photoUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPhotoUrl(null)}
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => setPhotoUrl(null)}>
                   Удалить
                 </Button>
               )}
@@ -522,7 +557,11 @@ function TrainerDialog({
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={3}
-              placeholder={role === "admin" ? "Должность, обязанности, контакты" : "Опыт, достижения, подход к работе"}
+              placeholder={
+                role === "admin"
+                  ? "Должность, обязанности, контакты"
+                  : "Опыт, достижения, подход к работе"
+              }
             />
           </div>
 
@@ -553,7 +592,6 @@ function TrainerDialog({
                   placeholder="Силовой тренинг, кроссфит"
                 />
               </div>
-
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

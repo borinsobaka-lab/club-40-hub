@@ -16,7 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
-import { MembershipStatusBadge, AutoRenewBadge, effectiveStatus } from "@/components/membership-status-badge";
+import {
+  MembershipStatusBadge,
+  AutoRenewBadge,
+  effectiveStatus,
+} from "@/components/membership-status-badge";
 import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
 
 type MemberProfile = {
@@ -216,7 +220,9 @@ export function ClientCardDialog({
     setLoadingSales(true);
     supabase
       .from("sales")
-      .select("id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)")
+      .select(
+        "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)",
+      )
       .eq("client_id", client.id)
       .order("sold_at", { ascending: false })
       .then(({ data, error }) => {
@@ -226,7 +232,9 @@ export function ClientCardDialog({
     setLoadingActive(true);
     supabase
       .from("client_memberships")
-      .select("id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, memberships(name)")
+      .select(
+        "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, memberships(name)",
+      )
       .eq("client_id", client.id)
       .order("started_at", { ascending: false })
       .then(({ data }) => {
@@ -237,9 +245,7 @@ export function ClientCardDialog({
         );
         const today = new Date().toISOString().slice(0, 10);
         const a =
-          rows.find(
-            (r) => r.status === "active" && (!r.ends_at || r.ends_at >= today),
-          ) ?? null;
+          rows.find((r) => r.status === "active" && (!r.ends_at || r.ends_at >= today)) ?? null;
         setActive(a);
       });
     if (client.user_id) {
@@ -311,7 +317,6 @@ export function ClientCardDialog({
               <TabsTrigger value="profile">Анкета</TabsTrigger>
             </TabsList>
 
-
             <TabsContent value="card" className="mt-4 space-y-5">
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
                 <Field label="Пол" value={genderLabel(client.gender)} />
@@ -347,9 +352,12 @@ export function ClientCardDialog({
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {formatDate(active.started_at)} → {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                      {formatDate(active.started_at)} →{" "}
+                      {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
                       {" · "}
-                      {active.visits_left == null ? "посещения: безлимит" : `осталось посещений: ${active.visits_left}`}
+                      {active.visits_left == null
+                        ? "посещения: безлимит"
+                        : `осталось посещений: ${active.visits_left}`}
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <MembershipStatusBadge m={active} />
@@ -389,28 +397,34 @@ export function ClientCardDialog({
                     {sales.map((s) => {
                       const cm = s.client_memberships?.[0] ?? null;
                       return (
-                      <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium truncate">
-                              {membershipName(s.memberships)}
+                        <li
+                          key={s.id}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium truncate">
+                                {membershipName(s.memberships)}
+                              </div>
+                              {cm && <MembershipStatusBadge m={cm} />}
+                              {cm && effectiveStatus(cm) === "active" && (
+                                <AutoRenewBadge on={cm.auto_renew} />
+                              )}
                             </div>
-                            {cm && <MembershipStatusBadge m={cm} />}
-                            {cm && effectiveStatus(cm) === "active" && (
-                              <AutoRenewBadge on={cm.auto_renew} />
-                            )}
+                            <div className="text-xs text-muted-foreground">
+                              {formatDate(s.sold_at)}
+                              {" · "}
+                              {sourceLabel(s.source)}
+                              {s.admin_name ? ` · ${s.admin_name}` : ""}
+                              {s.remaining_installments > 0
+                                ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
+                                : ""}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDate(s.sold_at)}
-                            {" · "}{sourceLabel(s.source)}
-                            {s.admin_name ? ` · ${s.admin_name}` : ""}
-                            {s.remaining_installments > 0
-                              ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
-                              : ""}
+                          <div className="shrink-0 font-medium">
+                            {formatMoney(Number(s.total_amount))}
                           </div>
-                        </div>
-                        <div className="shrink-0 font-medium">{formatMoney(Number(s.total_amount))}</div>
-                      </li>
+                        </li>
                       );
                     })}
                   </ul>
@@ -423,16 +437,10 @@ export function ClientCardDialog({
             </TabsContent>
 
             <TabsContent value="profile" className="mt-4">
-
-              <ProfileTab
-                profile={profile}
-                loading={loadingProfile}
-                hasUser={!!client.user_id}
-              />
+              <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!client.user_id} />
             </TabsContent>
           </Tabs>
         </div>
-
 
         <DialogFooter>
           {onEdit && (
@@ -447,7 +455,11 @@ export function ClientCardDialog({
         <EditActiveMembershipDialog
           open={editOpen}
           onOpenChange={setEditOpen}
-          membership={active ? { id: active.id, ends_at: active.ends_at, visits_left: active.visits_left } : null}
+          membership={
+            active
+              ? { id: active.id, ends_at: active.ends_at, visits_left: active.visits_left }
+              : null
+          }
           onSaved={load}
         />
       </DialogContent>
@@ -485,7 +497,8 @@ function ProfileTab({
   if (!hasUser) {
     return (
       <div className="rounded-lg border bg-background p-6 text-center text-sm text-muted-foreground">
-        Клиент ещё не зарегистрирован в мобильном приложении — анкета появится после регистрации и прохождения онбординга.
+        Клиент ещё не зарегистрирован в мобильном приложении — анкета появится после регистрации и
+        прохождения онбординга.
       </div>
     );
   }
@@ -504,15 +517,32 @@ function ProfileTab({
     );
   }
 
-  const goal = profile.primary_goal ? GOAL_LABELS[profile.primary_goal] ?? profile.primary_goal : null;
-  const exp = profile.experience_level ? EXPERIENCE_LABELS[profile.experience_level] ?? profile.experience_level : null;
-  const tf = profile.target_timeframe ? TIMEFRAME_LABELS[profile.target_timeframe] ?? profile.target_timeframe : null;
-  const act = profile.current_weekly_activity != null ? ACTIVITY_LABELS[profile.current_weekly_activity] ?? String(profile.current_weekly_activity) : null;
-  const hiit = profile.tried_group_hiit == null ? null : profile.tried_group_hiit ? "Да, формат знаком" : "Нет, будет впервые";
+  const goal = profile.primary_goal
+    ? (GOAL_LABELS[profile.primary_goal] ?? profile.primary_goal)
+    : null;
+  const exp = profile.experience_level
+    ? (EXPERIENCE_LABELS[profile.experience_level] ?? profile.experience_level)
+    : null;
+  const tf = profile.target_timeframe
+    ? (TIMEFRAME_LABELS[profile.target_timeframe] ?? profile.target_timeframe)
+    : null;
+  const act =
+    profile.current_weekly_activity != null
+      ? (ACTIVITY_LABELS[profile.current_weekly_activity] ??
+        String(profile.current_weekly_activity))
+      : null;
+  const hiit =
+    profile.tried_group_hiit == null
+      ? null
+      : profile.tried_group_hiit
+        ? "Да, формат знаком"
+        : "Нет, будет впервые";
   const flags = (profile.health_flags ?? []).map((f) => HEALTH_LABELS[f] ?? f).join(", ") || null;
   const times = (profile.preferred_times ?? []).map((t) => TIME_LABELS[t] ?? t).join(", ") || null;
-  const gender = profile.gender ? PROFILE_GENDER[profile.gender] ?? profile.gender : null;
-  const ref = profile.referral_source ? REFERRAL_LABELS[profile.referral_source] ?? profile.referral_source : null;
+  const gender = profile.gender ? (PROFILE_GENDER[profile.gender] ?? profile.gender) : null;
+  const ref = profile.referral_source
+    ? (REFERRAL_LABELS[profile.referral_source] ?? profile.referral_source)
+    : null;
   const freq = profile.desired_frequency
     ? profile.desired_frequency >= 4
       ? "4+ раз в неделю"
@@ -591,7 +621,8 @@ const VISIT_STATUS_LABEL: Record<VisitRow["status"], string> = {
 };
 
 function visitStatusBadge(v: VisitRow["status"]) {
-  if (v === "attended" || v === "completed") return <Badge variant="default">{VISIT_STATUS_LABEL[v]}</Badge>;
+  if (v === "attended" || v === "completed")
+    return <Badge variant="default">{VISIT_STATUS_LABEL[v]}</Badge>;
   if (v === "cancelled") return <Badge variant="destructive">{VISIT_STATUS_LABEL[v]}</Badge>;
   if (v === "rejected")
     return (

@@ -2,15 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  Plus,
-  Loader2,
-  Pencil,
-  Trash2,
-  ImageIcon,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, ImageIcon, ArrowUp, ArrowDown } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -99,9 +91,7 @@ function MediaThumb({
       </div>
     );
   }
-  return (
-    <img src={src} alt={alt} className={`rounded-md object-cover ${aspect}`} />
-  );
+  return <img src={src} alt={alt} className={`rounded-md object-cover ${aspect}`} />;
 }
 
 function NewsPage() {
@@ -138,7 +128,6 @@ function NewsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioId, refreshSignal]);
 
-
   const handleDelete = async (n: NewsItem) => {
     if (!confirm(`Удалить новость «${n.title}»?`)) return;
     const { error } = await supabase.from("news").delete().eq("id", n.id);
@@ -154,23 +143,14 @@ function NewsPage() {
     setBusyId(a.id);
     // two-step swap to satisfy any future unique constraint
     const tmp = -1 - Math.floor(Math.random() * 1000);
-    const r1 = await supabase
-      .from("news")
-      .update({ position: tmp })
-      .eq("id", a.id);
+    const r1 = await supabase.from("news").update({ position: tmp }).eq("id", a.id);
     if (r1.error) {
       setBusyId(null);
       toast.error("Ошибка: " + r1.error.message);
       return;
     }
-    const r2 = await supabase
-      .from("news")
-      .update({ position: a.position })
-      .eq("id", b.id);
-    const r3 = await supabase
-      .from("news")
-      .update({ position: b.position })
-      .eq("id", a.id);
+    const r2 = await supabase.from("news").update({ position: a.position }).eq("id", b.id);
+    const r3 = await supabase.from("news").update({ position: b.position }).eq("id", a.id);
     setBusyId(null);
     if (r2.error || r3.error) {
       toast.error("Ошибка изменения порядка");
@@ -248,7 +228,10 @@ function NewsPage() {
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={7}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
                       Пока нет новостей. Нажмите «Добавить новость».
                     </TableCell>
                   </TableRow>
@@ -256,58 +239,58 @@ function NewsPage() {
                   pg.paged.map((n) => {
                     const idx = items.indexOf(n);
                     return (
-                    <TableRow key={n.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            disabled={idx === 0 || busyId !== null}
-                            onClick={() => moveUp(idx)}
-                            aria-label="Выше"
-                          >
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            disabled={idx === items.length - 1 || busyId !== null}
-                            onClick={() => moveDown(idx)}
-                            aria-label="Ниже"
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                          <span className="ml-1 w-5 text-xs text-muted-foreground">
-                            {idx + 1}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <MediaThumb value={n.image_url} alt={n.title} />
-                      </TableCell>
-                      <TableCell>
-                        <MediaThumb value={n.banner_url} alt={n.title} aspect="h-10 w-28" />
-                      </TableCell>
-                      <TableCell className="font-medium">{n.title}</TableCell>
-                      <TableCell className="max-w-[360px] truncate text-muted-foreground">
-                        {n.description ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {n.button_text && n.button_url ? n.button_text : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(n)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(n)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                      <TableRow key={n.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={idx === 0 || busyId !== null}
+                              onClick={() => moveUp(idx)}
+                              aria-label="Выше"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={idx === items.length - 1 || busyId !== null}
+                              onClick={() => moveDown(idx)}
+                              aria-label="Ниже"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                            <span className="ml-1 w-5 text-xs text-muted-foreground">
+                              {idx + 1}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <MediaThumb value={n.image_url} alt={n.title} />
+                        </TableCell>
+                        <TableCell>
+                          <MediaThumb value={n.banner_url} alt={n.title} aspect="h-10 w-28" />
+                        </TableCell>
+                        <TableCell className="font-medium">{n.title}</TableCell>
+                        <TableCell className="max-w-[360px] truncate text-muted-foreground">
+                          {n.description ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {n.button_text && n.button_url ? n.button_text : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(n)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(n)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     );
                   })
                 )}
@@ -372,10 +355,7 @@ function NewsDialog({
     }
   }, [open, item]);
 
-  const upload = async (
-    file: File,
-    kind: "image" | "banner",
-  ) => {
+  const upload = async (file: File, kind: "image" | "banner") => {
     if (!studioId) return;
     const setU = kind === "image" ? setUploadingImage : setUploadingBanner;
     setU(true);
@@ -430,9 +410,7 @@ function NewsDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{item ? "Редактировать новость" : "Новая новость"}</DialogTitle>
-          <DialogDescription>
-            Новость отображается в мобильном приложении.
-          </DialogDescription>
+          <DialogDescription>Новость отображается в мобильном приложении.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -575,8 +553,8 @@ function NewsDialog({
           <div className="rounded-md border p-3 space-y-3">
             <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
             <div className="text-xs text-muted-foreground">
-              Если оба поля заполнены — в мобильном приложении под новостью
-              появится кнопка-ссылка. Если пусто — кнопки не будет.
+              Если оба поля заполнены — в мобильном приложении под новостью появится кнопка-ссылка.
+              Если пусто — кнопки не будет.
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">

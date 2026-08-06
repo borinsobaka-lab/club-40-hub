@@ -11,9 +11,30 @@ import { getEmployeesContext, createEmployee, deleteEmployee } from "@/lib/emplo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
@@ -45,9 +66,13 @@ function EmployeesPage() {
     if (refreshSignal > 0) qc.invalidateQueries({ queryKey: ["employees"] });
   }, [refreshSignal, qc]);
 
-
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", role: "trainer" as "owner" | "admin" | "trainer" });
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    role: "trainer" as "owner" | "admin" | "trainer",
+  });
 
   const createMut = useMutation({
     mutationFn: (input: typeof form) => createFn({ data: input }),
@@ -78,18 +103,25 @@ function EmployeesPage() {
         <div>
           <h1 className="text-xl font-semibold">Сотрудники</h1>
           <p className="text-sm text-muted-foreground">
-            {isOwner ? "Управление пользователями студии" : "Список пользователей студии (только просмотр)"}
+            {isOwner
+              ? "Управление пользователями студии"
+              : "Список пользователей студии (только просмотр)"}
           </p>
         </div>
         {isOwner && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button><UserPlus className="mr-2 h-4 w-4" />Добавить сотрудника</Button>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Добавить сотрудника
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Новый сотрудник</DialogTitle>
-                <DialogDescription>Создайте учётную запись для нового пользователя</DialogDescription>
+                <DialogDescription>
+                  Создайте учётную запись для нового пользователя
+                </DialogDescription>
               </DialogHeader>
               <form
                 className="space-y-3"
@@ -100,20 +132,40 @@ function EmployeesPage() {
               >
                 <div className="space-y-1">
                   <Label>Полное имя</Label>
-                  <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
+                  <Input
+                    value={form.full_name}
+                    onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                  <Input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>Пароль</Label>
-                  <Input type="text" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+                  <Input
+                    type="text"
+                    minLength={6}
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>Роль</Label>
-                  <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as typeof form.role })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={form.role}
+                    onValueChange={(v) => setForm({ ...form, role: v as typeof form.role })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="owner">Владелец</SelectItem>
                       <SelectItem value="admin">Администратор</SelectItem>
@@ -152,14 +204,17 @@ function EmployeesPage() {
                 <TableRow key={e.user_id}>
                   <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
                   <TableCell>{e.email ?? "—"}</TableCell>
-                  <TableCell><Badge variant="secondary">{ROLE_LABEL[e.role] ?? e.role}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{ROLE_LABEL[e.role] ?? e.role}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     {isOwner && e.user_id !== data.currentUserId && (
                       <Button
                         size="icon"
                         variant="ghost"
                         onClick={() => {
-                          if (confirm(`Удалить ${e.full_name ?? e.email}?`)) deleteMut.mutate(e.user_id);
+                          if (confirm(`Удалить ${e.full_name ?? e.email}?`))
+                            deleteMut.mutate(e.user_id);
                         }}
                         disabled={deleteMut.isPending}
                       >

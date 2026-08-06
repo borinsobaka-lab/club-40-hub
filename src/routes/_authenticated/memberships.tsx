@@ -86,16 +86,16 @@ function CoverThumb({ value, alt }: { value: string | null; alt: string }) {
     );
   }
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="h-12 w-16 rounded-md border bg-background object-contain"
-    />
+    <img src={src} alt={alt} className="h-12 w-16 rounded-md border bg-background object-contain" />
   );
 }
 
 function formatPrice(v: number) {
-  return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "GEL", maximumFractionDigits: 0 }).format(v);
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "GEL",
+    maximumFractionDigits: 0,
+  }).format(v);
 }
 
 function formatDuration(days: number | null) {
@@ -138,7 +138,6 @@ function MembershipsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioId, refreshSignal]);
 
-
   const handleDelete = async (m: Membership) => {
     if (!confirm(`Удалить «${m.name}»?`)) return;
     const { error } = await supabase.from("memberships").delete().eq("id", m.id);
@@ -151,10 +150,7 @@ function MembershipsPage() {
   };
 
   const handleToggleActive = async (m: Membership, next: boolean) => {
-    const { error } = await supabase
-      .from("memberships")
-      .update({ is_active: next })
-      .eq("id", m.id);
+    const { error } = await supabase.from("memberships").update({ is_active: next }).eq("id", m.id);
     if (error) {
       toast.error("Не удалось изменить статус: " + error.message);
       return;
@@ -176,9 +172,7 @@ function MembershipsPage() {
   const q = search.trim().toLowerCase();
   const filtered = q
     ? items.filter(
-        (m) =>
-          m.name.toLowerCase().includes(q) ||
-          (m.description ?? "").toLowerCase().includes(q),
+        (m) => m.name.toLowerCase().includes(q) || (m.description ?? "").toLowerCase().includes(q),
       )
     : items;
 
@@ -224,8 +218,8 @@ function MembershipsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                  <TableHead className="w-[80px]">Обложка</TableHead>
-                  <TableHead>Название</TableHead>
+                    <TableHead className="w-[80px]">Обложка</TableHead>
+                    <TableHead>Название</TableHead>
                     <TableHead>Описание</TableHead>
                     <TableHead>Преимущества</TableHead>
                     <TableHead>Посещения</TableHead>
@@ -246,7 +240,10 @@ function MembershipsPage() {
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell
+                        colSpan={11}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
                         {items.length === 0
                           ? "Пока нет абонементов. Нажмите «Добавить абонемент»."
                           : "Ничего не найдено."}
@@ -255,7 +252,9 @@ function MembershipsPage() {
                   ) : (
                     pg.paged.map((m) => (
                       <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
-                        <TableCell><CoverThumb value={m.cover_url} alt={m.name} /></TableCell>
+                        <TableCell>
+                          <CoverThumb value={m.cover_url} alt={m.name} />
+                        </TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <span>{m.name}</span>
@@ -276,11 +275,15 @@ function MembershipsPage() {
                             "—"
                           )}
                         </TableCell>
-                        <TableCell>{m.visits_count == null ? "Безлимит" : m.visits_count}</TableCell>
+                        <TableCell>
+                          {m.visits_count == null ? "Безлимит" : m.visits_count}
+                        </TableCell>
                         <TableCell>{formatDuration(m.duration_days)}</TableCell>
                         <TableCell>{m.auto_renew ? "Да" : "Нет"}</TableCell>
                         <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
-                        <TableCell className="font-medium">{formatPrice(Number(m.price))}</TableCell>
+                        <TableCell className="font-medium">
+                          {formatPrice(Number(m.price))}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Switch
@@ -315,7 +318,12 @@ function MembershipsPage() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Удалить" onClick={() => handleDelete(m)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Удалить"
+                              onClick={() => handleDelete(m)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -396,9 +404,10 @@ function MembershipDialog({
     setUploadingCover(true);
     const ext = file.name.split(".").pop()?.toLowerCase() || "png";
     const path = `${studioId}/cover/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage
-      .from(COVER_BUCKET)
-      .upload(path, file, { upsert: false, contentType: file.type || (ext === "svg" ? "image/svg+xml" : undefined) });
+    const { error } = await supabase.storage.from(COVER_BUCKET).upload(path, file, {
+      upsert: false,
+      contentType: file.type || (ext === "svg" ? "image/svg+xml" : undefined),
+    });
     setUploadingCover(false);
     if (error) {
       toast.error("Ошибка загрузки: " + error.message);
@@ -463,7 +472,12 @@ function MembershipDialog({
         <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
           <div className="space-y-1.5">
             <Label htmlFor="m-name">Название</Label>
-            <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Например: Безлимит на месяц" />
+            <Input
+              id="m-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Например: Безлимит на месяц"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -490,8 +504,14 @@ function MembershipDialog({
                   onClick={() => coverRef.current?.click()}
                 >
                   {uploadingCover ? (
-                    <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…</>
-                  ) : coverUrl ? "Заменить" : "Загрузить SVG/PNG"}
+                    <>
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
+                    </>
+                  ) : coverUrl ? (
+                    "Заменить"
+                  ) : (
+                    "Загрузить SVG/PNG"
+                  )}
                 </Button>
                 {coverUrl && (
                   <Button type="button" variant="ghost" size="sm" onClick={() => setCoverUrl(null)}>
@@ -507,7 +527,12 @@ function MembershipDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="m-desc">Описание</Label>
-            <Textarea id="m-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Textarea
+              id="m-desc"
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -531,9 +556,18 @@ function MembershipDialog({
             {benefits.length > 0 && (
               <ul className="space-y-1 pt-1">
                 {benefits.map((b, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1 text-sm">
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1 text-sm"
+                  >
                     <span className="truncate">{b}</span>
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeBenefit(i)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => removeBenefit(i)}
+                    >
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </li>
@@ -593,7 +627,10 @@ function MembershipDialog({
           </label>
 
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={installmentEnabled} onCheckedChange={(v) => setInstallmentEnabled(!!v)} />
+            <Checkbox
+              checked={installmentEnabled}
+              onCheckedChange={(v) => setInstallmentEnabled(!!v)}
+            />
             Рассрочка доступна
           </label>
 
@@ -623,9 +660,9 @@ function MembershipDialog({
 
           {isEditing && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-              Изменения цены и условий применятся ко всем будущим продажам этого абонемента.
-              Если у вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию,
-              а старую запись скройте переключателем выше.
+              Изменения цены и условий применятся ко всем будущим продажам этого абонемента. Если у
+              вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию, а старую
+              запись скройте переключателем выше.
             </div>
           )}
         </div>

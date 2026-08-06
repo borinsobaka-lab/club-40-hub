@@ -26,8 +26,12 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
           if (response.ok) return response;
 
           const contentType = response.headers.get("content-type") ?? "";
-          const body = await response.clone().text().catch(() => "");
-          const isHtmlError = contentType.includes("text/html") || body.trimStart().startsWith("<!doctype");
+          const body = await response
+            .clone()
+            .text()
+            .catch(() => "");
+          const isHtmlError =
+            contentType.includes("text/html") || body.trimStart().startsWith("<!doctype");
           return new Response(
             isHtmlError ? "Сервис ассистента временно недоступен. Попробуйте ещё раз." : body,
             { status: response.status, headers: { "Content-Type": "text/plain; charset=utf-8" } },
@@ -65,7 +69,9 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
   };
 
   return (
-    <div className={`relative isolate mx-auto ${heightClass} w-full max-w-3xl rounded-lg ${isLoading ? "ai-thinking-glow" : ""}`}>
+    <div
+      className={`relative isolate mx-auto ${heightClass} w-full max-w-3xl rounded-lg ${isLoading ? "ai-thinking-glow" : ""}`}
+    >
       <div className="relative z-10 flex h-full flex-col overflow-hidden rounded-lg border bg-background">
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6">
           {messages.length === 0 && (
@@ -158,24 +164,18 @@ function formatAssistantError(error: Error) {
 
 function MessageBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
-  const text = message.parts
-    .map((p) => (p.type === "text" ? p.text : ""))
-    .join("");
+  const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
   const toolParts = message.parts.filter((p) => p.type?.startsWith("tool-"));
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[85%] rounded-lg px-4 py-2 text-sm ${
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground"
+          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
         }`}
       >
         {!isUser && toolParts.length > 0 && (
-          <div className="mb-2 text-xs text-muted-foreground">
-            🔧 запрос к данным…
-          </div>
+          <div className="mb-2 text-xs text-muted-foreground">🔧 запрос к данным…</div>
         )}
         {isUser ? (
           <div className="whitespace-pre-wrap">{text}</div>
@@ -211,8 +211,8 @@ function VoiceInputButton({
       toast.error("Нужен доступ к микрофону");
       return;
     }
-    const mimeType = ["audio/webm", "audio/mp4"].find((t) =>
-      typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
+    const mimeType = ["audio/webm", "audio/mp4"].find(
+      (t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
     );
     if (!mimeType) {
       stream.getTracks().forEach((t) => t.stop());

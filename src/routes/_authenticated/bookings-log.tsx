@@ -79,7 +79,10 @@ function StatusBadge({ value }: { value: LogRow["status"] }) {
   }
   if (value === "rejected") {
     return (
-      <Badge variant="outline" className="text-orange-600 border-orange-600 dark:text-orange-400 dark:border-orange-400">
+      <Badge
+        variant="outline"
+        className="text-orange-600 border-orange-600 dark:text-orange-400 dark:border-orange-400"
+      >
         {statusLabel[value]}
       </Badge>
     );
@@ -191,7 +194,6 @@ function BookingsLogPage() {
         ) : null
       }
     >
-
       <div className="mx-auto max-w-6xl space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
@@ -199,8 +201,6 @@ function BookingsLogPage() {
           </div>
         ) : (
           <>
-
-
             <div className="rounded-lg border bg-background">
               <Table>
                 <TableHeader>
@@ -247,9 +247,7 @@ function BookingsLogPage() {
                                   .join(" ") ||
                                 "—";
                               if (!r.user_id || name === "—") return name;
-                              return (
-                                <ClientNameLink userId={r.user_id}>{name}</ClientNameLink>
-                              );
+                              return <ClientNameLink userId={r.user_id}>{name}</ClientNameLink>;
                             })()}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
@@ -267,9 +265,7 @@ function BookingsLogPage() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm">
-                            {fmt(r.starts_at)}
-                          </TableCell>
+                          <TableCell className="text-sm">{fmt(r.starts_at)}</TableCell>
                           <TableCell>
                             <StatusBadge value={r.status} />
                           </TableCell>

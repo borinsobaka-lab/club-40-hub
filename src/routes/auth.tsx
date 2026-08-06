@@ -91,11 +91,23 @@ function AuthPage() {
             <form onSubmit={signIn} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="si-email">Электронная почта</Label>
-                <Input id="si-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input
+                  id="si-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="si-password">Пароль</Label>
-                <Input id="si-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input
+                  id="si-password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -108,7 +120,8 @@ function AuthPage() {
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Мы отправили письмо на <span className="font-medium text-foreground">{email}</span>. Перейдите по ссылке из письма, чтобы завершить вход.
+                Мы отправили письмо на <span className="font-medium text-foreground">{email}</span>.
+                Перейдите по ссылке из письма, чтобы завершить вход.
               </p>
               <div className="flex items-center justify-between text-xs">
                 <button

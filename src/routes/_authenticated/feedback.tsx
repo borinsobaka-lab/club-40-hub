@@ -14,21 +14,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-  DialogFooter, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
@@ -99,9 +117,7 @@ function FeedbackPage() {
   const refreshSignal = useRefreshSignal();
   useEffect(() => {
     void fetchItems();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSignal]);
-
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -201,7 +217,9 @@ function FeedbackPage() {
       actions={
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="default"><Plus className="mr-1 h-4 w-4" /> Добавить</Button>
+            <Button size="default">
+              <Plus className="mr-1 h-4 w-4" /> Добавить
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -212,20 +230,36 @@ function FeedbackPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="topic">Тема</Label>
                 <Select value={form.topic} onValueChange={(v) => setForm({ ...form, topic: v })}>
-                  <SelectTrigger id="topic"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="topic">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(TOPICS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    {Object.entries(TOPICS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="message">Сообщение</Label>
-                <Textarea id="message" rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+                <Textarea
+                  id="message"
+                  rows={4}
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="mood">Оценка</Label>
-                <Select value={form.mood || "none"} onValueChange={(v) => setForm({ ...form, mood: v === "none" ? "" : v })}>
-                  <SelectTrigger id="mood"><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.mood || "none"}
+                  onValueChange={(v) => setForm({ ...form, mood: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger id="mood">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Без оценки</SelectItem>
                     <SelectItem value="negative">😞 Плохо</SelectItem>
@@ -237,16 +271,26 @@ function FeedbackPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="cname">Имя</Label>
-                  <Input id="cname" value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
+                  <Input
+                    id="cname"
+                    value={form.client_name}
+                    onChange={(e) => setForm({ ...form, client_name: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ccontact">Контакт</Label>
-                  <Input id="ccontact" value={form.client_contact} onChange={(e) => setForm({ ...form, client_contact: e.target.value })} />
+                  <Input
+                    id="ccontact"
+                    value={form.client_contact}
+                    onChange={(e) => setForm({ ...form, client_contact: e.target.value })}
+                  />
                 </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setAddOpen(false)}>Отмена</Button>
+              <Button variant="ghost" onClick={() => setAddOpen(false)}>
+                Отмена
+              </Button>
               <Button onClick={submitNew} disabled={saving}>
                 {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
               </Button>
@@ -261,9 +305,13 @@ function FeedbackPage() {
             <p className="text-xs text-muted-foreground">В этом месяце</p>
             <p className="mt-1 text-2xl font-bold">{thisMonth.length}</p>
           </div>
-          <div className={`rounded-lg border bg-background p-4 ${pendingCount > 0 ? "border-destructive/30 bg-destructive/5" : ""}`}>
+          <div
+            className={`rounded-lg border bg-background p-4 ${pendingCount > 0 ? "border-destructive/30 bg-destructive/5" : ""}`}
+          >
             <p className="text-xs text-muted-foreground">Не отработано</p>
-            <p className={`mt-1 text-2xl font-bold ${pendingCount > 0 ? "text-destructive" : ""}`}>{pendingCount}</p>
+            <p className={`mt-1 text-2xl font-bold ${pendingCount > 0 ? "text-destructive" : ""}`}>
+              {pendingCount}
+            </p>
           </div>
           <div className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">Отработано в этом месяце</p>
@@ -273,14 +321,22 @@ function FeedbackPage() {
 
         <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
           <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger className="h-8 sm:w-[180px]"><SelectValue placeholder="Все темы" /></SelectTrigger>
+            <SelectTrigger className="h-8 sm:w-[180px]">
+              <SelectValue placeholder="Все темы" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все темы</SelectItem>
-              {Object.entries(TOPICS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              {Object.entries(TOPICS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>
+                  {v}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 sm:w-[160px]"><SelectValue placeholder="Все статусы" /></SelectTrigger>
+            <SelectTrigger className="h-8 sm:w-[160px]">
+              <SelectValue placeholder="Все статусы" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
               <SelectItem value="pending">Не отработано</SelectItem>
@@ -288,7 +344,9 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           <Select value={moodFilter} onValueChange={setMoodFilter}>
-            <SelectTrigger className="h-8 sm:w-[160px]"><SelectValue placeholder="Все оценки" /></SelectTrigger>
+            <SelectTrigger className="h-8 sm:w-[160px]">
+              <SelectValue placeholder="Все оценки" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все оценки</SelectItem>
               <SelectItem value="negative">😞 Плохо</SelectItem>
@@ -298,7 +356,16 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           {hasFilters && (
-            <Button variant="ghost" size="sm" className="h-8" onClick={() => { setTopicFilter("all"); setStatusFilter("all"); setMoodFilter("all"); }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                setTopicFilter("all");
+                setStatusFilter("all");
+                setMoodFilter("all");
+              }}
+            >
               <X className="mr-1 h-3.5 w-3.5" /> Сбросить
             </Button>
           )}
@@ -328,7 +395,10 @@ function FeedbackPage() {
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={9}
+                    className="py-12 text-center text-sm text-muted-foreground"
+                  >
                     <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
                     Обращений нет.
                   </TableCell>
@@ -337,17 +407,26 @@ function FeedbackPage() {
                 pg.paged.map((i) => (
                   <TableRow
                     key={i.id}
-                    onClick={() => { setSelectedId(i.id); setResolutionComment(i.resolution_comment || ""); }}
+                    onClick={() => {
+                      setSelectedId(i.id);
+                      setResolutionComment(i.resolution_comment || "");
+                    }}
                     className="cursor-pointer"
                   >
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{TOPICS[i.topic] || i.topic}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {TOPICS[i.topic] || i.topic}
+                    </TableCell>
                     <TableCell className="max-w-[280px] truncate">{i.message}</TableCell>
-                    <TableCell className="text-center text-lg">{i.mood ? MOOD[i.mood] : "—"}</TableCell>
+                    <TableCell className="text-center text-lg">
+                      {i.mood ? MOOD[i.mood] : "—"}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap">{i.client_name || "—"}</TableCell>
-                    <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">{i.client_contact || "—"}</TableCell>
+                    <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">
+                      {i.client_contact || "—"}
+                    </TableCell>
                     <TableCell>
                       {i.status === "pending" ? (
                         <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
@@ -363,16 +442,23 @@ function FeedbackPage() {
                       {i.resolved_by_name ? (
                         <>
                           {i.resolved_by_name}
-                          {i.resolved_at && <div>{format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}</div>}
+                          {i.resolved_at && (
+                            <div>{format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}</div>
+                          )}
                         </>
-                      ) : "—"}
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={(e) => { e.stopPropagation(); setDeleteId(i.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteId(i.id);
+                          }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -396,7 +482,9 @@ function FeedbackPage() {
             <div className="mt-6 space-y-4">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Дата</p>
-                <p className="text-sm">{format(new Date(selected.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}</p>
+                <p className="text-sm">
+                  {format(new Date(selected.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
+                </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Сообщение</p>
@@ -411,7 +499,10 @@ function FeedbackPage() {
               {(selected.client_name || selected.client_contact) && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Клиент</p>
-                  <p className="text-sm">{selected.client_name || "—"}{selected.client_contact ? ` · ${selected.client_contact}` : ""}</p>
+                  <p className="text-sm">
+                    {selected.client_name || "—"}
+                    {selected.client_contact ? ` · ${selected.client_contact}` : ""}
+                  </p>
                 </div>
               )}
               <div className="space-y-1.5">
@@ -426,20 +517,27 @@ function FeedbackPage() {
                 />
               </div>
               {selected.status === "pending" ? (
-                <Button className="w-full" onClick={handleResolve}>Отметить отработанным</Button>
+                <Button className="w-full" onClick={handleResolve}>
+                  Отметить отработанным
+                </Button>
               ) : (
                 <>
                   <div className="rounded-lg border bg-muted/30 p-3">
                     <p className="text-xs text-muted-foreground">Обработано</p>
                     <p className="text-sm">
                       {selected.resolved_by_name || "—"}
-                      {selected.resolved_at && ` · ${format(new Date(selected.resolved_at), "d MMM yyyy", { locale: ru })}`}
+                      {selected.resolved_at &&
+                        ` · ${format(new Date(selected.resolved_at), "d MMM yyyy", { locale: ru })}`}
                     </p>
                     {selected.resolution_comment && (
-                      <p className="mt-2 whitespace-pre-wrap text-sm">{selected.resolution_comment}</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm">
+                        {selected.resolution_comment}
+                      </p>
                     )}
                   </div>
-                  <Button variant="outline" className="w-full" onClick={handleReopen}>Вернуть в работу</Button>
+                  <Button variant="outline" className="w-full" onClick={handleReopen}>
+                    Вернуть в работу
+                  </Button>
                 </>
               )}
             </div>

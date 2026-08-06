@@ -49,7 +49,11 @@ import { toast } from "sonner";
 import { DataPagination, useServerPagination } from "@/components/data-pagination";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientNameLink } from "@/components/client-name-link";
-import { MembershipStatusBadge, AutoRenewBadge, effectiveStatus } from "@/components/membership-status-badge";
+import {
+  MembershipStatusBadge,
+  AutoRenewBadge,
+  effectiveStatus,
+} from "@/components/membership-status-badge";
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({ meta: [{ title: "Продажи — CLUB 40 Admin" }] }),
@@ -101,16 +105,14 @@ type Sale = {
   promo_code: string | null;
   comment: string | null;
   created_at: string;
-  clients:
-    | {
-        id: string;
-        full_name: string;
-        first_name: string | null;
-        last_name: string | null;
-        phone: string | null;
-        email: string | null;
-      }
-    | null;
+  clients: {
+    id: string;
+    full_name: string;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+    email: string | null;
+  } | null;
   memberships: { id: string; name: string } | null;
   client_memberships:
     | {
@@ -264,8 +266,6 @@ function SalesPage() {
     fetchSales();
   };
 
-
-
   return (
     <AdminShell
       title="Продажи"
@@ -296,8 +296,6 @@ function SalesPage() {
           </div>
         ) : (
           <>
-
-
             <div className="rounded-lg border bg-background">
               <Table>
                 <TableHeader>
@@ -327,7 +325,10 @@ function SalesPage() {
                     </TableRow>
                   ) : sales.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={14} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell
+                        colSpan={14}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
                         {debouncedSearch.trim()
                           ? "Ничего не найдено."
                           : "Продаж пока нет. Нажмите «Новая продажа»."}
@@ -337,62 +338,66 @@ function SalesPage() {
                     sales.map((s) => {
                       const cm = s.client_memberships?.[0] ?? null;
                       return (
-                      <TableRow key={s.id}>
-                        <TableCell>
-                          {s.clients ? (
-                            <ClientNameLink clientId={s.client_id}>
-                              {clientName(s.clients)}
-                            </ClientNameLink>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          <div>{s.clients?.phone ?? "—"}</div>
-                          <div className="text-xs">{s.clients?.email ?? "—"}</div>
-                        </TableCell>
-                        <TableCell>{formatDate(s.sold_at)}</TableCell>
-                        <TableCell><SourceBadge source={s.source ?? "admin"} /></TableCell>
-                        <TableCell>{s.memberships?.name ?? "—"}</TableCell>
-                        <TableCell>
-                          {cm ? (
-                            <div className="flex flex-col gap-1">
-                              <MembershipStatusBadge m={cm} />
-                              {effectiveStatus(cm) === "active" && (
-                                <AutoRenewBadge on={cm.auto_renew} />
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {s.promo_code ?? "—"}
-                        </TableCell>
-                        <TableCell className="font-medium">{formatMoney(Number(s.total_amount))}</TableCell>
-                        <TableCell>
-                          {s.remaining_installments > 0
-                            ? formatMoney(Number(s.down_payment_amount))
-                            : "—"}
-                        </TableCell>
-                        <TableCell>
-                          {s.remaining_installments > 0
-                            ? `1 + ${s.remaining_installments}`
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{s.admin_name ?? "—"}</TableCell>
-                        <TableCell className="max-w-[220px] truncate text-muted-foreground">
-                          {s.comment ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                        <TableRow key={s.id}>
+                          <TableCell>
+                            {s.clients ? (
+                              <ClientNameLink clientId={s.client_id}>
+                                {clientName(s.clients)}
+                              </ClientNameLink>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            <div>{s.clients?.phone ?? "—"}</div>
+                            <div className="text-xs">{s.clients?.email ?? "—"}</div>
+                          </TableCell>
+                          <TableCell>{formatDate(s.sold_at)}</TableCell>
+                          <TableCell>
+                            <SourceBadge source={s.source ?? "admin"} />
+                          </TableCell>
+                          <TableCell>{s.memberships?.name ?? "—"}</TableCell>
+                          <TableCell>
+                            {cm ? (
+                              <div className="flex flex-col gap-1">
+                                <MembershipStatusBadge m={cm} />
+                                {effectiveStatus(cm) === "active" && (
+                                  <AutoRenewBadge on={cm.auto_renew} />
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {s.promo_code ?? "—"}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {formatMoney(Number(s.total_amount))}
+                          </TableCell>
+                          <TableCell>
+                            {s.remaining_installments > 0
+                              ? formatMoney(Number(s.down_payment_amount))
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {s.remaining_installments > 0 ? `1 + ${s.remaining_installments}` : "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {s.admin_name ?? "—"}
+                          </TableCell>
+                          <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                            {s.comment ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
@@ -480,7 +485,8 @@ function SaleDialog({
       .eq("id", adminId)
       .maybeSingle()
       .then(({ data }) => {
-        const name = (data?.full_name as string | null) || (data?.email as string | null) || adminEmail || "";
+        const name =
+          (data?.full_name as string | null) || (data?.email as string | null) || adminEmail || "";
         setAdminName(name);
       });
   }, [open, adminId, adminEmail]);
@@ -561,9 +567,15 @@ function SaleDialog({
       .eq("status", "active")
       .maybeSingle();
     if (existing) {
-      const m = (existing as unknown as { memberships: { name: string } | { name: string }[] | null }).memberships;
+      const m = (
+        existing as unknown as { memberships: { name: string } | { name: string }[] | null }
+      ).memberships;
       const name = Array.isArray(m) ? (m[0]?.name ?? "—") : (m?.name ?? "—");
-      if (!confirm(`У клиента уже есть активный абонемент «${name}». Новая продажа заменит его. Продолжить?`)) {
+      if (
+        !confirm(
+          `У клиента уже есть активный абонемент «${name}». Новая продажа заменит его. Продолжить?`,
+        )
+      ) {
         return;
       }
     }
@@ -642,7 +654,12 @@ function SaleDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="s-date">Дата продажи</Label>
-              <Input id="s-date" type="date" value={soldAt} onChange={(e) => setSoldAt(e.target.value)} />
+              <Input
+                id="s-date"
+                type="date"
+                value={soldAt}
+                onChange={(e) => setSoldAt(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Администратор</Label>
@@ -717,7 +734,8 @@ function SaleDialog({
                   {schedule.map((p, i) => (
                     <li key={i} className="flex items-center justify-between px-3 py-1.5">
                       <span className="text-muted-foreground">
-                        {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} — {formatDate(p.date)}
+                        {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
+                        {formatDate(p.date)}
                       </span>
                       <span className="font-medium">{formatMoney(p.amount)}</span>
                     </li>
@@ -766,7 +784,6 @@ function SaleDialog({
               placeholder="Необязательно"
             />
           </div>
-
 
           {selectedClient && selectedMembership && (
             <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">

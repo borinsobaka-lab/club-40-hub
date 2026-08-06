@@ -44,6 +44,7 @@
      ```
 
    - **Name**: `club40-coolify`.
+
 4. Создай сервер, дождись статуса Running и запиши его **IPv4-адрес** — он нужен всюду
    дальше (далее обозначен как `<IP>`).
 5. Подожди 5–10 минут (идёт установка Coolify) и проверь, что открывается
@@ -58,13 +59,14 @@
    включи.
 2. В DNS-панели регистратора создай A-записи (TTL по умолчанию), все — на `<IP>`:
 
-   | Тип | Имя | Значение |
-   |-----|-----|----------|
-   | A | `coolify` | `<IP>` |
-   | A | `admin` | `<IP>` |
-   | A | `app` | `<IP>` |
+   | Тип | Имя       | Значение |
+   | --- | --------- | -------- |
+   | A   | `coolify` | `<IP>`   |
+   | A   | `admin`   | `<IP>`   |
+   | A   | `app`     | `<IP>`   |
 
    (`app` — задел под клиентское приложение, вторая итерация.)
+
 3. Проверь распространение DNS на https://dnschecker.org: `coolify.<домен>` и
    `admin.<домен>` должны отдавать `<IP>`. Обычно это минуты, максимум пара часов.
 
@@ -104,14 +106,15 @@
    - **Domain**: `https://admin.<домен>`.
 3. **Environment Variables** — добавь три переменные:
 
-   | Имя | Значение | Особенность |
-   |-----|----------|-------------|
-   | `VITE_SUPABASE_URL` | `https://lyvarbqquvgxufmqgyix.supabase.co` | отметь галочку **Build Variable** |
-   | `VITE_SUPABASE_PUBLISHABLE_KEY` | значение из файла `.env` в репозитории (начинается с `sb_publishable_`) | отметь галочку **Build Variable** |
-   | `APP_SUPABASE_SERVICE_KEY` | из Supabase Dashboard → Project Settings → API keys → `service_role` (secret) | runtime-секрет, галочку Build НЕ ставить |
+   | Имя                             | Значение                                                                      | Особенность                              |
+   | ------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------- |
+   | `VITE_SUPABASE_URL`             | `https://lyvarbqquvgxufmqgyix.supabase.co`                                    | отметь галочку **Build Variable**        |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` | значение из файла `.env` в репозитории (начинается с `sb_publishable_`)       | отметь галочку **Build Variable**        |
+   | `APP_SUPABASE_SERVICE_KEY`      | из Supabase Dashboard → Project Settings → API keys → `service_role` (secret) | runtime-секрет, галочку Build НЕ ставить |
 
    Переменные AI (`AI_GATEWAY_*`, `AI_CHAT_MODEL`, `AI_TRANSCRIBE_MODEL`) сейчас
    задавать НЕ нужно: ассистент и диктовка сознательно отключены до выбора провайдера.
+
 4. Нажми **Deploy** и дождись успешной сборки (первая занимает несколько минут).
    Включи автодеплой по push в `main` (Auto Deploy), если не включён по умолчанию.
 5. Проверь, что `https://admin.<домен>` открывается и показывает страницу входа.

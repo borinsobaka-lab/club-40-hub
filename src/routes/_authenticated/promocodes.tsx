@@ -123,9 +123,7 @@ function PromoCodesPage() {
       toast.error("Ошибка: " + error.message);
       return;
     }
-    setItems((prev) =>
-      prev.map((x) => (x.id === p.id ? { ...x, is_active: next } : x)),
-    );
+    setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_active: next } : x)));
   };
 
   const openCreate = () => {
@@ -178,7 +176,10 @@ function PromoCodesPage() {
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={8}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
                       Пока нет промокодов. Нажмите «Добавить промокод».
                     </TableCell>
                   </TableRow>
@@ -203,10 +204,7 @@ function PromoCodesPage() {
                         {p.description ?? "—"}
                       </TableCell>
                       <TableCell>
-                        <Switch
-                          checked={p.is_active}
-                          onCheckedChange={(v) => toggleActive(p, v)}
-                        />
+                        <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} />
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -336,15 +334,17 @@ function PromoCodeDialog({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{item ? "Редактировать промокод" : "Новый промокод"}</DialogTitle>
-          <DialogDescription>
-            Промокод можно применить при покупке для скидки.
-          </DialogDescription>
+          <DialogDescription>Промокод можно применить при покупке для скидки.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Название</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Летняя акция" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Летняя акция"
+            />
           </div>
 
           <div className="space-y-2">
@@ -360,7 +360,10 @@ function PromoCodeDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Тип скидки</Label>
-              <Select value={discountType} onValueChange={(v) => setDiscountType(v as DiscountType)}>
+              <Select
+                value={discountType}
+                onValueChange={(v) => setDiscountType(v as DiscountType)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

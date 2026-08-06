@@ -206,9 +206,7 @@ function AutorenewCancellationsPage() {
                   pg.paged.map((r) => {
                     const name =
                       r.client?.full_name ||
-                      [r.client?.first_name, r.client?.last_name]
-                        .filter(Boolean)
-                        .join(" ") ||
+                      [r.client?.first_name, r.client?.last_name].filter(Boolean).join(" ") ||
                       "—";
                     return (
                       <TableRow key={r.id}>

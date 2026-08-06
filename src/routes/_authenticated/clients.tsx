@@ -87,19 +87,20 @@ function sanitizeSearch(value: string) {
 }
 
 function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase() ?? "")
-    .join("") || "?";
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => s[0]?.toUpperCase() ?? "")
+      .join("") || "?"
+  );
 }
 
 function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
   const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
   return composed || c.full_name || "—";
 }
-
 
 const GENDERS = [
   { value: "male", label: "Мужской" },
@@ -215,9 +216,7 @@ function ClientsPage() {
 
     const term = sanitizeSearch(debouncedSearch);
     if (term) {
-      query = query.or(
-        `search_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`,
-      );
+      query = query.or(`search_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`);
     }
     if (genderFilter) query = query.eq("gender", genderFilter);
     if (statusFilter) query = query.eq("club_status", statusFilter);
@@ -245,7 +244,6 @@ function ClientsPage() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients, refreshSignal]);
-
 
   const handleDelete = async (c: Client) => {
     if (!confirm(`Удалить клиента «${displayName(c)}»?`)) return;
@@ -276,7 +274,6 @@ function ClientsPage() {
   };
 
   return (
-
     <AdminShell
       title="Клиенты"
       description="База клиентов студии"
@@ -315,7 +312,9 @@ function ClientsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {GENDERS.map((g) => (
-                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                          <SelectItem key={g.value} value={g.value}>
+                            {g.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -353,8 +352,6 @@ function ClientsPage() {
               </div>
             </div>
 
-
-
             <div className="rounded-lg border bg-background">
               <Table>
                 <TableHeader>
@@ -381,7 +378,10 @@ function ClientsPage() {
                     </TableRow>
                   ) : clients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell
+                        colSpan={11}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
                         {hasFilters
                           ? "Ничего не найдено."
                           : "Пока нет клиентов. Нажмите «Добавить клиента»."}
@@ -394,10 +394,7 @@ function ClientsPage() {
                           <div className="flex items-center gap-2.5">
                             <Avatar className="h-8 w-8">
                               {c.photo_url && (
-                                <AvatarImage
-                                  src={c.photo_url || ""}
-                                  alt={displayName(c)}
-                                />
+                                <AvatarImage src={c.photo_url || ""} alt={displayName(c)} />
                               )}
                               <AvatarFallback className="text-xs">
                                 {initials(displayName(c))}
@@ -571,15 +568,12 @@ function ClientDialog({
     onSaved();
   };
 
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
-          <DialogDescription>
-            Контактные данные и заметки по клиенту.
-          </DialogDescription>
+          <DialogDescription>Контактные данные и заметки по клиенту.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 py-2">
           <div className="flex items-center gap-4">
@@ -602,18 +596,32 @@ function ClientDialog({
             <div className="grid flex-1 grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="cl-last-name">Фамилия</Label>
-                <Input id="cl-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                <Input
+                  id="cl-last-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="cl-first-name">Имя *</Label>
-                <Input id="cl-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                <Input
+                  id="cl-first-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
             </div>
           </div>
 
           <div className="grid gap-1.5">
             <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
-            <Input id="cl-crm" type="url" value={crmLink} onChange={(e) => setCrmLink(e.target.value)} placeholder="https://your-account.amocrm.ru/contacts/detail/..." />
+            <Input
+              id="cl-crm"
+              type="url"
+              value={crmLink}
+              onChange={(e) => setCrmLink(e.target.value)}
+              placeholder="https://your-account.amocrm.ru/contacts/detail/..."
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -623,21 +631,35 @@ function ClientDialog({
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="cl-email">Email</Label>
-              <Input id="cl-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="cl-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="cl-bday">Дата рождения</Label>
-              <Input id="cl-bday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+              <Input
+                id="cl-bday"
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>Пол</Label>
               <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
                 <SelectContent>
                   {GENDERS.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                    <SelectItem key={g.value} value={g.value}>
+                      {g.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -646,24 +668,47 @@ function ClientDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="cl-reg">Дата регистрации</Label>
-              <Input id="cl-reg" type="date" value={registrationDate} onChange={(e) => setRegistrationDate(e.target.value)} />
+              <Input
+                id="cl-reg"
+                type="date"
+                value={registrationDate}
+                onChange={(e) => setRegistrationDate(e.target.value)}
+              />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="cl-last">Последний визит</Label>
-              <Input id="cl-last" type="date" value={lastVisitDate} onChange={(e) => setLastVisitDate(e.target.value)} />
+              <Input
+                id="cl-last"
+                type="date"
+                value={lastVisitDate}
+                onChange={(e) => setLastVisitDate(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="cl-photo">Фото (URL)</Label>
-            <Input id="cl-photo" type="url" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://..." />
+            <Input
+              id="cl-photo"
+              type="url"
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value)}
+              placeholder="https://..."
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="cl-notes">Заметки</Label>
-            <Textarea id="cl-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Textarea
+              id="cl-notes"
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Отмена</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
             Сохранить

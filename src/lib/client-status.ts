@@ -34,9 +34,7 @@ export function computeClubStatus(memberships: MembershipLite[] | null | undefin
   const list = memberships ?? [];
   if (list.length === 0) return "pchk";
   const today = todayISO();
-  const hasActive = list.some(
-    (m) => m.status === "active" && (!m.ends_at || m.ends_at >= today),
-  );
+  const hasActive = list.some((m) => m.status === "active" && (!m.ends_at || m.ends_at >= today));
   if (hasActive) return "chk";
   return "bchk";
 }

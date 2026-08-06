@@ -154,7 +154,13 @@ function CashPage() {
           .from("profiles")
           .select("id, full_name, email")
           .in("id", ids);
-        setOperators(((profs as any[]) ?? []).map((p) => ({ id: p.id, full_name: p.full_name, email: p.email })));
+        setOperators(
+          ((profs as any[]) ?? []).map((p) => ({
+            id: p.id,
+            full_name: p.full_name,
+            email: p.email,
+          })),
+        );
       } else {
         setOperators([]);
       }
@@ -166,7 +172,6 @@ function CashPage() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll, refreshSignal]);
-
 
   // Reset category when kind changes
   useEffect(() => {
@@ -228,7 +233,6 @@ function CashPage() {
 
   const categories = kind === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
-
   return (
     <AdminShell title="Касса">
       <div className="mx-auto max-w-6xl space-y-4">
@@ -276,7 +280,9 @@ function CashPage() {
                 <div className="space-y-1.5">
                   <Label>Тип</Label>
                   <Select value={kind} onValueChange={(v) => setKind(v as "income" | "expense")}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="income">Приход</SelectItem>
                       <SelectItem value="expense">Расход</SelectItem>
@@ -286,10 +292,14 @@ function CashPage() {
                 <div className="space-y-1.5">
                   <Label>Категория</Label>
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -309,7 +319,9 @@ function CashPage() {
                 <div className="space-y-1.5">
                   <Label>Кто проводит</Label>
                   <Select value={operatorId} onValueChange={setOperatorId}>
-                    <SelectTrigger><SelectValue placeholder="Сотрудник" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Сотрудник" />
+                    </SelectTrigger>
                     <SelectContent>
                       {operators.map((o) => (
                         <SelectItem key={o.id} value={o.id}>
@@ -330,7 +342,9 @@ function CashPage() {
                   />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2 lg:col-span-6">
-                  <Label htmlFor="comment">Комментарий <span className="text-rose-600">*</span></Label>
+                  <Label htmlFor="comment">
+                    Комментарий <span className="text-rose-600">*</span>
+                  </Label>
                   <Textarea
                     id="comment"
                     rows={2}
@@ -375,7 +389,10 @@ function CashPage() {
                     </TableRow>
                   ) : ops.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell
+                        colSpan={6}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
                         Пока нет операций.
                       </TableCell>
                     </TableRow>

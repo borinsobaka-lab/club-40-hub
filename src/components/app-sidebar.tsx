@@ -1,5 +1,25 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Calendar, Users, Dumbbell, Flame, Tag, MessageSquare, BarChart3, UserCog, Wallet, Newspaper, Receipt, Sparkles, History, Ticket, Bell, Zap, Settings, RefreshCwOff } from "lucide-react";
+import {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  Dumbbell,
+  Flame,
+  Tag,
+  MessageSquare,
+  BarChart3,
+  UserCog,
+  Wallet,
+  Newspaper,
+  Receipt,
+  Sparkles,
+  History,
+  Ticket,
+  Bell,
+  Zap,
+  Settings,
+  RefreshCwOff,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -38,9 +58,7 @@ const feedbackItems = [
   { title: "NPS-опросы", url: "/nps", icon: BarChart3 },
 ];
 
-const financeItems = [
-  { title: "Касса", url: "/cash", icon: Wallet },
-];
+const financeItems = [{ title: "Касса", url: "/cash", icon: Wallet }];
 
 const mobileItems = [
   { title: "Новости", url: "/news", icon: Newspaper },
@@ -50,11 +68,7 @@ const mobileItems = [
   { title: "Настройки клуба", url: "/club-settings", icon: Settings },
 ];
 
-
-
-const accessItems = [
-  { title: "Доступы", url: "/employees", icon: UserCog },
-];
+const accessItems = [{ title: "Доступы", url: "/employees", icon: UserCog }];
 
 export function AppSidebar() {
   const { state } = useSidebar();

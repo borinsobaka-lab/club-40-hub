@@ -6,9 +6,7 @@ const url =
   process.env.SUPABASE_URL ??
   "";
 const serviceKey =
-  process.env.APP_SUPABASE_SERVICE_KEY ??
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  "";
+  process.env.APP_SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 if (!url || !serviceKey) {
   // eslint-disable-next-line no-console
