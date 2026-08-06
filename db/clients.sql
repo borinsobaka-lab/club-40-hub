@@ -17,7 +17,9 @@ create table if not exists public.clients (
   last_visit_date date,
   crm_link text,
   photo_url text,
-  avatar_url text,
+  -- avatar_url здесь раньше объявлялся, но в живой базе колонки нет: таблица
+  -- была создана до этого файла, а create table if not exists колонок не
+  -- добавляет. Код нигде её не пишет, поэтому колонка убрана и из кода.
   created_at timestamptz not null default now()
 );
 create index if not exists clients_studio_idx on public.clients(studio_id);

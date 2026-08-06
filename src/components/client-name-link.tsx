@@ -21,7 +21,6 @@ type ClientLike = {
   last_visit_date: string | null;
   crm_link: string | null;
   photo_url: string | null;
-  avatar_url: string | null;
 };
 
 // Простой in-memory кэш crm_link, чтобы не дергать БД по разу на строку списка.

@@ -106,7 +106,6 @@ type ClientLike = {
   last_visit_date: string | null;
   crm_link: string | null;
   photo_url: string | null;
-  avatar_url: string | null;
 };
 
 function initials(name: string) {
@@ -273,7 +272,7 @@ export function ClientCardDialog({
 
   if (!client) return null;
   const name = displayName(client);
-  const photo = client.avatar_url || client.photo_url || "";
+  const photo = client.photo_url || "";
   const clubStatus: ClubStatus = computeClubStatus(allMemberships);
 
   return (

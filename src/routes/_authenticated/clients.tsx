@@ -69,7 +69,6 @@ type Client = {
   last_visit_date: string | null;
   crm_link: string | null;
   photo_url: string | null;
-  avatar_url: string | null;
   created_at: string;
   // Приходит из вью clients_with_status (см. db/performance_indexes.sql).
   club_status: ClubStatus;
@@ -79,7 +78,7 @@ type Client = {
 // только для фильтрации на сервере и незачем гонять по сети.
 const CLIENT_COLUMNS =
   "id, studio_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
-  "notes, registration_date, last_visit_date, crm_link, photo_url, avatar_url, created_at, club_status";
+  "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status";
 
 // В синтаксисе .or() PostgREST запятая разделяет условия, а скобки группируют,
 // поэтому из поискового запроса их нужно убрать — иначе фильтр развалится.
@@ -394,9 +393,9 @@ function ClientsPage() {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2.5">
                             <Avatar className="h-8 w-8">
-                              {(c.avatar_url || c.photo_url) && (
+                              {c.photo_url && (
                                 <AvatarImage
-                                  src={c.avatar_url || c.photo_url || ""}
+                                  src={c.photo_url || ""}
                                   alt={displayName(c)}
                                 />
                               )}

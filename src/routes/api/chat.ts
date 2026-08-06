@@ -81,7 +81,7 @@ export const Route = createFileRoute("/api/chat")({
                 let q = supabase
                   .from("clients")
                   .select(
-                    "id, full_name, first_name, last_name, phone, email, birthday, gender, notes, registration_date, last_visit_date, crm_link, photo_url, avatar_url, created_at",
+                    "id, full_name, first_name, last_name, phone, email, birthday, gender, notes, registration_date, last_visit_date, crm_link, photo_url, created_at",
                   )
                   .eq("studio_id", studioId)
                   .order("created_at", { ascending: false })
