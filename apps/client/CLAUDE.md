@@ -24,7 +24,7 @@ TanStack Start (SSR) + React 19 + Tailwind 4 + shadcn/radix. Пакетный
 - **Сейчас проект на тестировании: Claude мержит в `main` сам** (решение
   владельца от 2026-08-06, временные поломки допустимы). После боевого
   запуска режим меняется: в `main` мержит владелец после проверки.
-- Если изменение кода требует миграции БД (файлы db/*.sql в club-40-hub), в
+- Если изменение кода требует миграции БД (файлы db/\*.sql в club-40-hub), в
   отчёте явно писать: «сначала выполнить SQL, потом мержить».
 
 ## Деплой
@@ -36,7 +36,8 @@ Coolify на Hetzner, https://app.base40.fit (инструкция агенту 
 
 ## Авторизация
 
-Вход по email-коду (4 цифры): `requestOtp`/`verifyOtp` в
+Вход по email-коду (6 цифр — Supabase не даёт менять длину; константа
+OTP_LENGTH в src/routes/auth.tsx): `requestOtp`/`verifyOtp` в
 `src/hooks/use-auth.tsx` (signInWithOtp / verifyOtp type=email). Регистрация
 передаёт метаданные (first_name, last_name, full_name, phone) — их читает
 триггер handle_new_user. Паролей у клиентов НЕТ; настройка писем и длины кода

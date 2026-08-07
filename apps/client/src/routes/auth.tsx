@@ -26,6 +26,11 @@ function humanizeAuthError(message: string, isSignup: boolean): string {
   return isSignup ? "Не удалось отправить код: " + message : message;
 }
 
+// Длина кода из письма. Supabase не даёт настраивать Email OTP Length —
+// всегда 6 цифр, поэтому значение зашито здесь одной константой.
+const OTP_LENGTH = 6;
+const emptyOtp = () => Array<string>(OTP_LENGTH).fill("");
+
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [{ title: "Регистрация — CLUB 40" }],
@@ -42,7 +47,7 @@ function AuthPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(emptyOtp);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -82,7 +87,7 @@ function AuthPage() {
       setError(humanizeAuthError(sendError, isSignup));
       return;
     }
-    setOtp(["", "", "", ""]);
+    setOtp(emptyOtp());
     setStep("otp");
     setTimeout(() => otpRefs.current[0]?.focus(), 50);
   };
@@ -99,12 +104,12 @@ function AuthPage() {
     });
     setBusy(false);
     if (sendError) setError(humanizeAuthError(sendError, isSignup));
-    else setOtp(["", "", "", ""]);
+    else setOtp(emptyOtp());
   };
 
   const submitOtp = async () => {
     if (otp.some((d) => d === "")) {
-      setError("Введите 4-значный код");
+      setError(`Введите ${OTP_LENGTH}-значный код`);
       return;
     }
     setError(null);
@@ -116,13 +121,32 @@ function AuthPage() {
   };
 
   const setOtpDigit = (i: number, val: string) => {
-    const d = val.replace(/\D/g, "").slice(-1);
+    const digits = val.replace(/\D/g, "");
+    // Вставка кода целиком (из письма) или автоподстановка из SMS/почты:
+    // раскладываем цифры по ячейкам, начиная с текущей.
+    if (digits.length > 1) {
+      fillOtpFrom(i, digits);
+      return;
+    }
+    const d = digits.slice(-1);
     setOtp((prev) => {
       const next = [...prev];
       next[i] = d;
       return next;
     });
-    if (d && i < 3) otpRefs.current[i + 1]?.focus();
+    if (d && i < OTP_LENGTH - 1) otpRefs.current[i + 1]?.focus();
+  };
+
+  const fillOtpFrom = (start: number, digits: string) => {
+    setOtp((prev) => {
+      const next = [...prev];
+      for (let k = 0; k < digits.length && start + k < OTP_LENGTH; k++) {
+        next[start + k] = digits[k];
+      }
+      return next;
+    });
+    const last = Math.min(start + digits.length, OTP_LENGTH) - 1;
+    otpRefs.current[last]?.focus();
   };
 
   return (
@@ -210,7 +234,7 @@ function AuthPage() {
           </form>
         ) : (
           <div className="space-y-4 max-w-sm w-full mx-auto">
-            <div className="flex justify-center gap-3">
+            <div className="flex justify-center gap-2">
               {otp.map((d, i) => (
                 <input
                   key={i}
@@ -218,15 +242,22 @@ function AuthPage() {
                     otpRefs.current[i] = el;
                   }}
                   inputMode="numeric"
+                  autoComplete={i === 0 ? "one-time-code" : "off"}
                   maxLength={1}
                   value={d}
                   onChange={(e) => setOtpDigit(i, e.target.value)}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
+                    if (!pasted) return;
+                    e.preventDefault();
+                    fillOtpFrom(i, pasted);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Backspace" && !otp[i] && i > 0) {
                       otpRefs.current[i - 1]?.focus();
                     }
                   }}
-                  className="h-16 w-14 text-center text-2xl font-bold rounded-2xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="h-14 w-11 text-center text-xl font-bold rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               ))}
             </div>
