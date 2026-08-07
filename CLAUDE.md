@@ -82,8 +82,11 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KE
   любой студии — для пулов без studio_id: feedback/nps). Правки доступа собраны
   в `db/security_hardening.sql` (аудит 2026-08-07): ужесточён select у
   `clients`/`client_memberships`, закрыт IDOR в `cancel_membership*`,
-  `feedback`/`nps` — чтение/правка только сотрудник. **Прогнать в SQL Editor
-  (см. AGENT_TASKS.md, Задача 0).**
+  `feedback`/`nps` — чтение/правка только сотрудник. Storage: запись/удаление в
+  маркетинговых бакетах (news/services/memberships/trainer/workout-media) —
+  только сотрудник (`db/storage_hardening.sql`); бакет `avatars` пишется в свою
+  папку `{uid}/`. **Прогнать оба файла в SQL Editor (см. AGENT_TASKS.md,
+  Задача 0).**
 - SECURITY DEFINER-функции, выданные `authenticated`, обходят RLS — обязаны
   сами проверять вызывающего (`auth.uid()` — владелец записи или `is_trainer`).
   Серверные роуты админки с service-ключом (chat/transcribe/employees) —
