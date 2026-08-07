@@ -117,12 +117,18 @@ function OnboardingPage() {
     if (authLoading || !user) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("member_profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
+      // Та же причина, что и в гейте: при ошибке нельзя показывать пустую
+      // анкету — сохранение затрёт реальные ответы.
+      if (error) {
+        toast.error("Не удалось загрузить анкету. Обновите страницу.");
+        return;
+      }
       if (data) {
         if (data.onboarding_completed_at) {
           navigate({ to: "/", replace: true });

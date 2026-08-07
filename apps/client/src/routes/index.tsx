@@ -170,11 +170,14 @@ function HomePage() {
       .map(([ts, items]) => ({ ts, items }));
   }, [myBookings]);
 
-  async function cancelBooking(entryId: string) {
+  async function cancelBooking(entryId: string, reason?: string) {
     if (pendingId) return;
     setPendingId(entryId);
     const { data, error } = await (supabase as any).rpc("cancel_schedule_booking", {
       p_entry_id: entryId,
+      // Причину шторка передаёт и здесь: раньше параметр терялся, и отмена с
+      // главной сохранялась без причины, а из расписания — с причиной.
+      p_reason: reason ?? null,
     });
     setPendingId(null);
     if (error) {
@@ -604,8 +607,8 @@ function HomePage() {
         isBooked={true}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
-        onBook={() => {
-          if (openEntry) cancelBooking(openEntry.id);
+        onBook={(reason) => {
+          if (openEntry) cancelBooking(openEntry.id, reason);
         }}
       />
     </PageShell>

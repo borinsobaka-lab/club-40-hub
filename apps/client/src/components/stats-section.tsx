@@ -301,14 +301,10 @@ export function StatsSection() {
           .eq("status", "attended")
           .order("starts_at", { ascending: false })
           .limit(2000),
-        (supabase as unknown as { from: (t: string) => any })
-          .from("client_stats_30d_mv")
-          .select(
-            "studio_id,user_id,visits_30d,calories_30d,visits_percentile,calories_percentile,cohort_size",
-          )
-          .eq("user_id", user.id)
-          .order("visits_30d", { ascending: false })
-          .limit(1)
+        // Матвью закрыта для клиентов (RLS на материализованных вью не
+        // работает, а select был выдан всем вошедшим). Свою строку получаем
+        // через SECURITY DEFINER-функцию my_stats_30d.
+        (supabase as unknown as { rpc: (fn: string) => any }).rpc("my_stats_30d")
           .maybeSingle(),
         supabase.from("member_profiles").select("weight_kg").eq("user_id", user.id).maybeSingle(),
       ]);

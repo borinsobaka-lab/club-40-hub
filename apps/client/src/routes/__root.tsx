@@ -238,12 +238,19 @@ function AppShell() {
     let cancelled = false;
     (async () => {
       const { supabase: sb } = await import("@/integrations/supabase/client");
-      const { data } = await (sb as any)
+      const { data, error } = await (sb as any)
         .from("member_profiles")
         .select("onboarding_completed_at")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
+      // Ошибку запроса нельзя трактовать как «анкета не заполнена»: иначе
+      // разовый сбой сети уводит уже прошедшего онбординг клиента в опросник,
+      // а его завершение перезаписывает анкету пустыми ответами.
+      if (error) {
+        setOnboardingChecked(true);
+        return;
+      }
       if (!data || !data.onboarding_completed_at) {
         navigate({ to: "/onboarding", replace: true });
       } else {

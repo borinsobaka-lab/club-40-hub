@@ -20,7 +20,11 @@ type State = { studioId: string | null; studioReady: boolean };
 
 let cacheUserId: string | null = null;
 let cacheStudioId: string | null = null;
-let inflight: Promise<string | null> | null = null;
+// Запрос в полёте храним вместе с пользователем, для которого он начат:
+// раньше промис был общий на модуль, и при смене сессии (выход/вход или
+// обновление токена) второй вызов переиспользовал чужой запрос — новый клиент
+// получал студию предыдущего и до конца сессии смотрел его расписание.
+let inflight: { userId: string; promise: Promise<string | null> } | null = null;
 
 async function fetchStudioId(userId: string): Promise<string | null> {
   const { data } = await supabase
@@ -49,14 +53,26 @@ export function useClientStudioId(): State {
       setState({ studioId: cacheStudioId, studioReady: true });
       return;
     }
+    const userId = user.id;
     let cancelled = false;
-    if (!inflight) inflight = fetchStudioId(user.id);
-    inflight.then((sid) => {
-      cacheUserId = user.id;
-      cacheStudioId = sid;
-      inflight = null;
-      if (!cancelled) setState({ studioId: sid, studioReady: true });
-    });
+    if (!inflight || inflight.userId !== userId) {
+      inflight = { userId, promise: fetchStudioId(userId) };
+    }
+    const current = inflight;
+    current.promise
+      .then((sid) => {
+        cacheUserId = userId;
+        cacheStudioId = sid;
+        if (!cancelled) setState({ studioId: sid, studioReady: true });
+      })
+      .catch(() => {
+        // Не оставляем приложение в вечном скелетоне: без карточки клиента
+        // страницы просто не фильтруют по студии — как для гостя.
+        if (!cancelled) setState({ studioId: null, studioReady: true });
+      })
+      .finally(() => {
+        if (inflight === current) inflight = null;
+      });
     return () => {
       cancelled = true;
     };

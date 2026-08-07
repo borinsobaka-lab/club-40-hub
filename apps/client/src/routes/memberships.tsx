@@ -105,6 +105,7 @@ function MembershipsPage() {
   const [selected, setSelected] = useState<Membership | null>(null);
   const [activeTab, setActiveTab] = useState<"unlimited" | "packages" | "couples">("unlimited");
   const [purchasing, setPurchasing] = useState(false);
+  const [lastPaidTotal, setLastPaidTotal] = useState<number | null>(null);
   const [activeOpen, setActiveOpen] = useState(false);
   const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
   const [confirmCancelRenewOpen, setConfirmCancelRenewOpen] = useState(false);
@@ -213,15 +214,10 @@ function MembershipsPage() {
         if (cancelled) return;
         setClient({ id: c.id, studio_id: c.studio_id });
 
-        await db.from("profiles").upsert(
-          {
-            id: user.id,
-            studio_id: c.studio_id,
-            full_name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? "",
-            email: user.email ?? null,
-          },
-          { onConflict: "id" },
-        );
+        // profiles приложение больше не переписывает: этот upsert затирал имя,
+        // исправленное администратором, и позволял подменить себе studio_id
+        // (от него зависит RLS расписания и каталога). Синхронизацию студии
+        // держит триггер на clients (db/client_app_fixes.sql).
 
         const membershipSelect =
           "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple, freeze_days_allowed";
@@ -238,7 +234,7 @@ function MembershipsPage() {
               "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
             )
             .eq("client_id", c.id)
-            .eq("status", "active")
+            .in("status", ["active", "frozen"])
             .maybeSingle(),
         ]);
         if (mErr) throw mErr;
@@ -277,13 +273,17 @@ function MembershipsPage() {
         "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
       )
       .eq("client_id", client.id)
-      .eq("status", "active")
+      .in("status", ["active", "frozen"])
       .maybeSingle();
     setActive((act as ActiveMembership) ?? null);
   };
 
-  const handlePurchase = async () => {
+  // Сумма к оплате приходит из чека: там применяется промокод. Без неё в
+  // продажу писалась цена по каталогу, хотя клиенту показывали цену со скидкой.
+  const handlePurchase = async (paid?: number) => {
     if (!selected || !client) return;
+    const paidTotal = Math.max(0, paid ?? Number(selected.price ?? 0));
+    setLastPaidTotal(paidTotal);
     // If user has active membership and is picking a different one → require confirmation first
     if (active && !confirmSwitchOpen) {
       setConfirmSwitchOpen(true);
@@ -291,13 +291,19 @@ function MembershipsPage() {
     }
     setPurchasing(true);
     try {
+      // В чеке показывали цену со скидкой, а в продажу писали полную —
+      // касса расходилась с тем, что видел клиент.
+      const listPrice = Number(selected.price ?? 0);
+      const discount = Math.max(0, listPrice - paidTotal);
       const { error: insErr } = await db.from("sales").insert({
         studio_id: selected.studio_id ?? client.studio_id,
         client_id: client.id,
         membership_id: selected.id,
         sold_at: new Date().toISOString().slice(0, 10),
-        total_amount: selected.price,
-        down_payment_amount: selected.price,
+        total_amount: paidTotal,
+        down_payment_amount: paidTotal,
+        list_price: listPrice,
+        discount_amount: discount,
         remaining_installments: 0,
         source: "mobile",
       });
@@ -611,7 +617,7 @@ function MembershipsPage() {
               className="font-bold"
               onClick={(e) => {
                 e.preventDefault();
-                handlePurchase();
+                handlePurchase(lastPaidTotal ?? undefined);
               }}
             >
               {purchasing ? "Переходим…" : "Перейти"}
@@ -782,7 +788,7 @@ function CheckoutSheet({
   membership: Membership;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPurchase: () => void;
+  onPurchase: (paid: number) => void;
   purchasing: boolean;
   hasActive: boolean;
 }) {
@@ -952,7 +958,7 @@ function CheckoutSheet({
             </div>
 
             <Button
-              onClick={onPurchase}
+              onClick={() => onPurchase(total)}
               disabled={!canPay}
               className="mt-3 w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-60"
             >
@@ -988,7 +994,9 @@ function ActiveMembershipDrawer({
   const m = active.memberships;
   const autoOn = active.auto_renew !== false;
   const features = [
-    m?.visits_count == null ? "Безлимит посещений" : `${m.visits_count} занятий`,
+    m?.visits_count == null
+      ? "Безлимит посещений"
+      : `Осталось ${active.visits_left ?? m.visits_count} из ${m.visits_count} занятий`,
     m?.duration_days ? `Срок действия ${m.duration_days} дней` : null,
     m?.freeze_days_allowed ? `Заморозка до ${m.freeze_days_allowed} дней` : null,
     ...((m?.benefits ?? []).filter(Boolean) as string[]),
