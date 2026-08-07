@@ -40,7 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/employees")({
-  head: () => ({ meta: [{ title: "Сотрудники — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
   component: EmployeesPage,
 });
 

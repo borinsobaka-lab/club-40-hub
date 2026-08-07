@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { ClientNameLink } from "@/components/client-name-link";
 
 export const Route = createFileRoute("/_authenticated/autorenew-cancellations")({
-  head: () => ({ meta: [{ title: "Отмены автопродления — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Отмены автопродления — Base40 Admin" }] }),
   component: AutorenewCancellationsPage,
 });
 

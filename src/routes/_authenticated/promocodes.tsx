@@ -39,7 +39,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/promocodes")({
-  head: () => ({ meta: [{ title: "Промокоды — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Промокоды — Base40 Admin" }] }),
   component: PromoCodesPage,
 });
 

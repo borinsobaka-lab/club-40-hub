@@ -35,7 +35,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 
 export const Route = createFileRoute("/_authenticated/memberships")({
-  head: () => ({ meta: [{ title: "Номенклатуры — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
   component: MembershipsPage,
 });
 

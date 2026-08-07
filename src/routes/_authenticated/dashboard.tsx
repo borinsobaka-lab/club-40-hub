@@ -16,7 +16,7 @@ import { useActiveStudioId } from "@/components/studio-switcher";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Дашборд — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Дашборд — Base40 Admin" }] }),
   component: DashboardPage,
 });
 

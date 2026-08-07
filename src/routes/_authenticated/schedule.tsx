@@ -41,7 +41,7 @@ import { toast } from "sonner";
 import { workoutTypeColor } from "@/lib/workout-types";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
-  head: () => ({ meta: [{ title: "Расписание — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Расписание — Base40 Admin" }] }),
   component: SchedulePage,
 });
 

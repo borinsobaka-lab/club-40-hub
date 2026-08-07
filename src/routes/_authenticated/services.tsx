@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/services")({
-  head: () => ({ meta: [{ title: "Услуги — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Услуги — Base40 Admin" }] }),
   component: ServicesPage,
 });
 

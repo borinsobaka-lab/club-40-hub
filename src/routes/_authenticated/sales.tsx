@@ -57,7 +57,7 @@ import {
 } from "@/components/membership-status-badge";
 
 export const Route = createFileRoute("/_authenticated/sales")({
-  head: () => ({ meta: [{ title: "Продажи — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Продажи — Base40 Admin" }] }),
   component: SalesPage,
 });
 

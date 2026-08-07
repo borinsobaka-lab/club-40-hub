@@ -40,7 +40,7 @@ import {
 import { DAY_TYPES, type DayType, dayTypeColor, dayTypeLabel } from "@/lib/workout-types";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
-  head: () => ({ meta: [{ title: "Тренировки — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Тренировки — Base40 Admin" }] }),
   component: WorkoutsPage,
 });
 

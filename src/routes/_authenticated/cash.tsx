@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { DataPagination, useServerPagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/cash")({
-  head: () => ({ meta: [{ title: "Касса — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Касса — Base40 Admin" }] }),
   component: CashPage,
 });
 

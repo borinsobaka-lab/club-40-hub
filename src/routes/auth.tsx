@@ -99,7 +99,7 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">CLUB 40</CardTitle>
+          <CardTitle className="text-2xl">Base40</CardTitle>
           <CardDescription>
             {step === "credentials"
               ? "Вход для сотрудников клуба"

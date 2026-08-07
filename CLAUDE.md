@@ -1,6 +1,6 @@
-# CLUB 40 — админка (club-40-hub)
+# Base40 — админка (club-40-hub)
 
-Админ-панель фитнес-студии CLUB 40. TanStack Start (SSR) + React 19 +
+Админ-панель фитнес-студии Base40. TanStack Start (SSR) + React 19 +
 Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
 
 Связанный репозиторий: `borinsobaka-lab/club40-client-hub` — клиентское
@@ -52,7 +52,7 @@ Send Email Hook: Supabase дёргает /api/auth-email (src/routes/api/auth-em
 приложение — разные сущности, один человек может быть и админом, и клиентом.
 Признак — хост в redirect_to (оба приложения задают emailRedirectTo явно):
 admin.base40.fit -> ссылка авто-входа, всё остальное (включая нераспознанный
-redirect) -> 4-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
+redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
 опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
 в club40-client-hub.
 

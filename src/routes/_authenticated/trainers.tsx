@@ -40,7 +40,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/trainers")({
-  head: () => ({ meta: [{ title: "Сотрудники — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
   component: TrainersPage,
 });
 

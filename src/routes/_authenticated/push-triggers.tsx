@@ -3,7 +3,7 @@ import { Zap } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/_authenticated/push-triggers")({
-  head: () => ({ meta: [{ title: "Триггерные уведомления — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Триггерные уведомления — Base40 Admin" }] }),
   component: PushTriggersPage,
 });
 

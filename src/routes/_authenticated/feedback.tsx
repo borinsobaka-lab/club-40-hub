@@ -52,7 +52,7 @@ import {
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/feedback")({
-  head: () => ({ meta: [{ title: "Обратная связь — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Обратная связь — Base40 Admin" }] }),
   component: FeedbackPage,
 });
 

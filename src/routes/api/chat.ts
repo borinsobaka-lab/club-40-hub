@@ -654,7 +654,7 @@ export const Route = createFileRoute("/api/chat")({
           const result = streamText({
             model: provider(chatModel),
             system:
-              "Ты — Kate, AI-ассистент админ-панели фитнес-студии CLUB 40. " +
+              "Ты — Kate, AI-ассистент админ-панели фитнес-студии Base40. " +
               "Отвечай на русском, кратко и по делу, используя markdown. Текущая дата: " +
               new Date().toISOString().slice(0, 10) +
               ".\n\n" +

@@ -64,7 +64,7 @@ import {
 import { DataPagination, usePagination } from "@/components/data-pagination";
 
 export const Route = createFileRoute("/_authenticated/nps")({
-  head: () => ({ meta: [{ title: "NPS-опросы — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "NPS-опросы — Base40 Admin" }] }),
   component: NpsPage,
 });
 

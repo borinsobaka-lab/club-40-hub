@@ -41,7 +41,7 @@ const wrap = (inner: string) => `
 <div style="margin:0;padding:32px 16px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:440px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;border:1px solid #e4e4e7">
     <div style="font-size:20px;font-weight:900;font-style:italic;letter-spacing:0.04em">
-      CLUB <span style="color:#d4be00">40</span>
+      Base<span style="color:#d4be00">40</span>
     </div>
     <div style="margin-top:24px">${inner}</div>
     <p style="margin-top:28px;color:#a1a1aa;font-size:12px;line-height:1.5">
@@ -90,13 +90,13 @@ export function buildEmail(
       // Саморегистрация есть только в клиентском приложении: в админке
       // shouldCreateUser: false, сотрудников заводит владелец.
       return {
-        subject: "Код подтверждения — CLUB 40",
-        html: codeEmail("Добро пожаловать в CLUB 40!", "Ваш код подтверждения:", token),
+        subject: "Код подтверждения — Base40",
+        html: codeEmail("Добро пожаловать в Base40!", "Ваш код подтверждения:", token),
       };
     case "magiclink":
       return fromAdminApp
         ? {
-            subject: "Вход в админ-панель CLUB 40",
+            subject: "Вход в админ-панель Base40",
             html: linkEmail(
               "Вход в админ-панель",
               "Нажмите кнопку, чтобы войти. Никому не пересылайте это письмо.",
@@ -105,15 +105,15 @@ export function buildEmail(
             ),
           }
         : {
-            subject: "Код для входа — CLUB 40",
-            html: codeEmail("Вход в CLUB 40", "Ваш код для входа в приложение:", token),
+            subject: "Код для входа — Base40",
+            html: codeEmail("Вход в Base40", "Ваш код для входа в приложение:", token),
           };
     // Восстановление пароля существует только в админке — у клиентов паролей
     // нет, вход только по коду. Ссылка здесь обязательна: новый пароль
     // задаётся на странице.
     case "recovery":
       return {
-        subject: "Восстановление доступа — CLUB 40",
+        subject: "Восстановление доступа — Base40",
         html: linkEmail(
           "Восстановление доступа",
           "Нажмите кнопку, чтобы задать новый пароль.",
@@ -123,9 +123,9 @@ export function buildEmail(
       };
     case "invite":
       return {
-        subject: "Приглашение в CLUB 40",
+        subject: "Приглашение в Base40",
         html: linkEmail(
-          "Вас пригласили в CLUB 40",
+          "Вас пригласили в Base40",
           "Нажмите кнопку, чтобы принять приглашение и создать аккаунт.",
           verifyUrl,
           "Принять приглашение",
@@ -133,13 +133,13 @@ export function buildEmail(
       };
     case "email_change":
       return {
-        subject: "Подтверждение смены почты — CLUB 40",
+        subject: "Подтверждение смены почты — Base40",
         html: codeEmail("Смена почты", "Код для подтверждения новой почты:", token),
       };
     default:
       // reauthentication и будущие типы: код — универсальный запасной вариант.
       return {
-        subject: "Код подтверждения — CLUB 40",
+        subject: "Код подтверждения — Base40",
         html: codeEmail("Подтверждение действия", "Ваш код подтверждения:", token),
       };
   }

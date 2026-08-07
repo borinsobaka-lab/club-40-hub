@@ -33,7 +33,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
 
 export const Route = createFileRoute("/_authenticated/push")({
-  head: () => ({ meta: [{ title: "Пуш-уведомления — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Пуш-уведомления — Base40 Admin" }] }),
   component: PushPage,
 });
 

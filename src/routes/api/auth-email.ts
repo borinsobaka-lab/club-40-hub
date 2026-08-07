@@ -84,7 +84,7 @@ export const Route = createFileRoute("/api/auth-email")({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "CLUB 40 <noreply@base40.fit>",
+            from: "Base40 <noreply@base40.fit>",
             to: payload.user.email,
             subject,
             html,

@@ -51,7 +51,7 @@ import { ClubStatusBadge } from "@/components/club-status-badge";
 import { type ClubStatus } from "@/lib/client-status";
 
 export const Route = createFileRoute("/_authenticated/clients")({
-  head: () => ({ meta: [{ title: "Клиенты — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Клиенты — Base40 Admin" }] }),
   component: ClientsPage,
 });
 

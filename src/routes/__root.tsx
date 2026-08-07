@@ -75,10 +75,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CLUB 40 — Админ-панель" },
-      { name: "description", content: "Админ-панель фитнес-студии CLUB 40." },
-      { property: "og:title", content: "CLUB 40 — Админ-панель" },
-      { property: "og:description", content: "Админ-панель фитнес-студии CLUB 40." },
+      { title: "Base40 — Админ-панель" },
+      { name: "description", content: "Админ-панель фитнес-студии Base40." },
+      { property: "og:title", content: "Base40 — Админ-панель" },
+      { property: "og:description", content: "Админ-панель фитнес-студии Base40." },
       { property: "og:type", content: "website" },
       // Цвет плашки иконки — им же браузеры красят интерфейс на мобильных.
       { name: "theme-color", content: "#1B1C1F" },

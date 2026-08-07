@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/club-settings")({
-  head: () => ({ meta: [{ title: "Настройки клуба — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Настройки клуба — Base40 Admin" }] }),
   component: ClubSettingsPage,
 });
 

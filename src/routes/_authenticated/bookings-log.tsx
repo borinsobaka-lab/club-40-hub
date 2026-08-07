@@ -32,7 +32,7 @@ import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
 import { ClientNameLink } from "@/components/client-name-link";
 
 export const Route = createFileRoute("/_authenticated/bookings-log")({
-  head: () => ({ meta: [{ title: "История записей — CLUB 40 Admin" }] }),
+  head: () => ({ meta: [{ title: "История записей — Base40 Admin" }] }),
   component: BookingsLogPage,
 });
 

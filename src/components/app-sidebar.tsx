@@ -108,7 +108,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-wide text-white">CLUB 40</span>
+              <span className="text-sm font-semibold tracking-wide text-white">Base40</span>
               <span className="text-xs text-white/60">Админ-панель</span>
             </div>
           )}
