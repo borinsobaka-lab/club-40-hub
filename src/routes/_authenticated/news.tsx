@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({ meta: [{ title: "Новости — Base40 Admin" }] }),
@@ -96,6 +97,7 @@ function MediaThumb({
 }
 
 function NewsPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -130,7 +132,8 @@ function NewsPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (n: NewsItem) => {
-    if (!confirm(`Удалить новость «${n.title}»?`)) return;
+    if (!(await confirm({ title: "Удалить новость?", description: `«${n.title}» пропадёт из приложения клиентов.` })))
+      return;
     const { error } = await supabase.from("news").delete().eq("id", n.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -306,6 +309,7 @@ function NewsPage() {
         nextPosition={items.length > 0 ? Math.max(...items.map((i) => i.position)) + 1 : 0}
         onSaved={fetchAll}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }

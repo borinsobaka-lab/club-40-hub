@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatDate } from "@/lib/format";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/promocodes")({
   head: () => ({ meta: [{ title: "Промокоды — Base40 Admin" }] }),
@@ -69,6 +70,7 @@ function formatDiscount(type: DiscountType, value: number) {
 
 
 function PromoCodesPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [items, setItems] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(false);
@@ -101,7 +103,8 @@ function PromoCodesPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (p: PromoCode) => {
-    if (!confirm(`Удалить промокод «${p.name}»?`)) return;
+    if (!(await confirm({ title: "Удалить промокод?", description: `«${p.name}» перестанет действовать.` })))
+      return;
     const { error } = await supabase.from("promo_codes").delete().eq("id", p.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -226,6 +229,7 @@ function PromoCodesPage() {
         item={editing}
         onSaved={fetchAll}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }

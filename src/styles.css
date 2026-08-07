@@ -3,6 +3,19 @@
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
+/* Roboto — корпоративный шрифт Base40. Самохостится из node_modules
+   (@fontsource/roboto), без обращений к Google Fonts: работает офлайн и не
+   утекает на сторонние домены. Подсеты (латиница/кириллица) браузер тянет по
+   unicode-range, лишнего не грузит.
+   400 — текст, 500 — подписи и кнопки, 600/700 — акценты и заголовки,
+   900 italic — фирменный заголовок страницы в шапке. */
+@import "@fontsource/roboto/400.css";
+@import "@fontsource/roboto/500.css";
+@import "@fontsource/roboto/600.css";
+@import "@fontsource/roboto/700.css";
+@import "@fontsource/roboto/900.css";
+@import "@fontsource/roboto/900-italic.css";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -20,6 +33,32 @@
  */
 
 @theme inline {
+  /* Шрифт: Roboto везде, системные — только фолбэк на время загрузки. */
+  --font-sans:
+    Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+  /* Типографическая шкала: база 14px (плотный рабочий инструмент),
+     коэффициент ~1.25 → 14 · 18 · 22 · 28 · 34 · 44.
+     xs/sm/base (12/14/16) не трогаем: на них держатся таблицы и чипы, а 11px
+     для статусов уже плохо читается. Меняется верх шкалы, где раньше была
+     каша 18/20/24 — теперь ступени различимы.
+     Крупный текст поджимаем по трекингу: чем больше кегль, тем теснее. */
+  --text-xl: 1.375rem; /* 22 (было 20) */
+  --text-xl--line-height: 1.3;
+  --text-xl--letter-spacing: -0.01em;
+
+  --text-2xl: 1.75rem; /* 28 (было 24) */
+  --text-2xl--line-height: 1.25;
+  --text-2xl--letter-spacing: -0.015em;
+
+  --text-3xl: 2.125rem; /* 34 (было 30) */
+  --text-3xl--line-height: 1.2;
+  --text-3xl--letter-spacing: -0.02em;
+
+  --text-4xl: 2.75rem; /* 44 (было 36) */
+  --text-4xl--line-height: 1.15;
+  --text-4xl--letter-spacing: -0.025em;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -154,6 +193,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
   }
 
   /* Заголовки переносим сбалансированно, текст — без «висячих» слов. */

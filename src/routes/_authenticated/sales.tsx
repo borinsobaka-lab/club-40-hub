@@ -44,6 +44,7 @@ import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatMoney, formatDate } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   MembershipStatusBadge,
   AutoRenewBadge,
@@ -177,6 +178,7 @@ function splitAmount(total: number, parts: number) {
 }
 
 function SalesPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const { user } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
@@ -245,7 +247,8 @@ function SalesPage() {
   }, [fetchClients, refreshSignal]);
 
   const handleDelete = async (s: Sale) => {
-    if (!confirm("Удалить эту продажу?")) return;
+    if (!(await confirm({ title: "Удалить продажу?", description: "Продажа будет удалена. Выданный по ней абонемент останется у клиента." })))
+      return;
     const { error } = await supabase.from("sales").delete().eq("id", s.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -417,6 +420,7 @@ function SalesPage() {
         adminName={user?.email ?? null}
         onSaved={fetchSales}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }
@@ -438,6 +442,7 @@ function SaleDialog({
   clients: ClientRow[];
   onSaved: () => void;
 }) {
+  const { confirm, confirmDialog } = useConfirm();
   const [memberships, setMemberships] = useState<MembershipRow[]>([]);
   const [clientId, setClientId] = useState<string>("");
   const [membershipId, setMembershipId] = useState<string>("");
@@ -573,13 +578,13 @@ function SaleDialog({
         existing as unknown as { memberships: { name: string } | { name: string }[] | null }
       ).memberships;
       const name = Array.isArray(m) ? (m[0]?.name ?? "—") : (m?.name ?? "—");
-      if (
-        !confirm(
-          `У клиента уже есть активный абонемент «${name}». Новая продажа заменит его. Продолжить?`,
-        )
-      ) {
-        return;
-      }
+      const ok = await confirm({
+        title: "Заменить активный абонемент?",
+        description: `У клиента уже есть активный абонемент «${name}». Новая продажа заменит его.`,
+        confirmLabel: "Заменить",
+        destructive: false,
+      });
+      if (!ok) return;
     }
 
     setSaving(true);
@@ -832,6 +837,7 @@ function SaleDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {confirmDialog}
     </Dialog>
   );
 }

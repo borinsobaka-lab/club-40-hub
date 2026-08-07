@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { DAY_TYPES, type DayType, dayTypeColor, dayTypeLabel } from "@/lib/workout-types";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — Base40 Admin" }] }),
@@ -105,6 +106,7 @@ function WorkoutPhoto({ value, name }: { value: string | null; name: string }) {
 }
 
 function WorkoutsPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(false);
@@ -150,7 +152,8 @@ function WorkoutsPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (w: Workout) => {
-    if (!confirm(`Удалить тренировку «${w.name}»?`)) return;
+    if (!(await confirm({ title: "Удалить тренировку?", description: `«${w.name}» будет удалена. Занятия в расписании, использующие её, тоже пропадут.` })))
+      return;
     const { error } = await supabase.from("workouts").delete().eq("id", w.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -269,6 +272,7 @@ function WorkoutsPage() {
         workout={editing}
         onSaved={fetchWorkouts}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }

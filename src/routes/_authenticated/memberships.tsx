@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
@@ -109,6 +110,7 @@ function formatDuration(days: number | null) {
 }
 
 function MembershipsPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [items, setItems] = useState<Membership[]>([]);
   const [loading, setLoading] = useState(false);
@@ -142,7 +144,8 @@ function MembershipsPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (m: Membership) => {
-    if (!confirm(`Удалить «${m.name}»?`)) return;
+    if (!(await confirm({ title: "Удалить абонемент?", description: `«${m.name}» пропадёт из каталога. Уже проданные абонементы клиентов останутся.` })))
+      return;
     const { error } = await supabase.from("memberships").delete().eq("id", m.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -341,6 +344,7 @@ function MembershipsPage() {
         membership={editing}
         onSaved={fetchItems}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }

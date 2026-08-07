@@ -39,6 +39,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
@@ -53,6 +54,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 function EmployeesPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const getCtx = useServerFn(getEmployeesContext);
   const createFn = useServerFn(createEmployee);
   const deleteFn = useServerFn(deleteEmployee);
@@ -224,9 +226,12 @@ function EmployeesPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => {
-                            if (confirm(`Удалить ${e.full_name ?? e.email}?`))
-                              deleteMut.mutate(e.user_id);
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Удалить сотрудника?",
+                              description: `${e.full_name ?? e.email} потеряет доступ к админке.`,
+                            });
+                            if (ok) deleteMut.mutate(e.user_id);
                           }}
                           disabled={deleteMut.isPending}
                         >
@@ -249,6 +254,7 @@ function EmployeesPage() {
           </div>
         )}
       </div>
+      {confirmDialog}
     </AdminShell>
   );
 }

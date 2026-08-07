@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/trainers")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
@@ -190,6 +191,7 @@ function SocialLinks({ trainer }: { trainer: Trainer }) {
 }
 
 function TrainersPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -223,7 +225,8 @@ function TrainersPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (t: Trainer) => {
-    if (!confirm(`Удалить тренера «${t.full_name}»?`)) return;
+    if (!(await confirm({ title: "Удалить сотрудника?", description: `«${t.full_name}» будет удалён без возможности восстановления.` })))
+      return;
     const { error } = await supabase.from("trainers").delete().eq("id", t.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -360,6 +363,7 @@ function TrainersPage() {
         defaultRole={creatingRole}
         onSaved={fetchTrainers}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }

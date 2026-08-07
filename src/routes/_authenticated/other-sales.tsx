@@ -42,6 +42,7 @@ import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatMoneyPrecise as formatMoney, formatDate } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/other-sales")({
   head: () => ({ meta: [{ title: "Прочие продажи — Base40 Admin" }] }),
@@ -213,6 +214,7 @@ function SalesTab({
   me: { id: string; name: string } | null;
   refreshSignal: number;
 }) {
+  const { confirm, confirmDialog } = useConfirm();
   const [rows, setRows] = useState<OtherSale[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -239,7 +241,8 @@ function SalesTab({
   }, [fetchSales, refreshSignal]);
 
   const handleDelete = async (s: OtherSale) => {
-    if (!confirm(`Удалить продажу «${s.item_name}»?`)) return;
+    if (!(await confirm({ title: "Удалить продажу?", description: `Продажа «${s.item_name}» будет удалена.` })))
+      return;
     const { error } = await supabase.from("other_sales").delete().eq("id", s.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -341,6 +344,7 @@ function SalesTab({
         me={me}
         onSaved={fetchSales}
       />
+      {confirmDialog}
     </>
   );
 }
@@ -583,11 +587,13 @@ function CatalogTab({
   items: SaleItem[];
   onChanged: () => void;
 }) {
+  const { confirm, confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SaleItem | null>(null);
 
   const handleDelete = async (i: SaleItem) => {
-    if (!confirm(`Удалить позицию «${i.name}»?`)) return;
+    if (!(await confirm({ title: "Удалить позицию?", description: `«${i.name}» пропадёт из каталога. Прошлые продажи сохранятся.` })))
+      return;
     const { error } = await supabase.from("sale_items").delete().eq("id", i.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -686,6 +692,7 @@ function CatalogTab({
         item={editing}
         onSaved={onChanged}
       />
+      {confirmDialog}
     </>
   );
 }

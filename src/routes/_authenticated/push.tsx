@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/push")({
   head: () => ({ meta: [{ title: "Пуш-уведомления — Base40 Admin" }] }),
@@ -90,6 +91,7 @@ function renderSegments(segments: Segment[]) {
 }
 
 function PushPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [items, setItems] = useState<PushNotification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -122,7 +124,8 @@ function PushPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (p: PushNotification) => {
-    if (!confirm(`Удалить уведомление «${p.title}»?`)) return;
+    if (!(await confirm({ title: "Удалить уведомление?", description: `«${p.title}» будет удалено без возможности восстановления.` })))
+      return;
     const { error } = await supabase.from("push_notifications").delete().eq("id", p.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -249,6 +252,7 @@ function PushPage() {
         item={editing}
         onSaved={fetchAll}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }

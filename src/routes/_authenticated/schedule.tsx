@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { workoutTypeColor } from "@/lib/workout-types";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
   head: () => ({ meta: [{ title: "Расписание — Base40 Admin" }] }),
@@ -105,6 +106,7 @@ function toLocalISO(d: Date) {
 }
 
 function SchedulePage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -334,7 +336,8 @@ function SchedulePage() {
   };
 
   const handleDelete = async (e: Entry) => {
-    if (!confirm("Удалить занятие из расписания?")) return;
+    if (!(await confirm({ title: "Удалить занятие?", description: "Занятие пропадёт из расписания, записи на него будут отменены." })))
+      return;
     const { error } = await supabase.from("schedule_entries").delete().eq("id", e.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -685,6 +688,7 @@ function SchedulePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    {confirmDialog}
     </AdminShell>
   );
 }

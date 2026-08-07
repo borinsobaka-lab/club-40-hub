@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/services")({
   head: () => ({ meta: [{ title: "Услуги — Base40 Admin" }] }),
@@ -96,6 +97,7 @@ function MediaThumb({
 }
 
 function ServicesPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [items, setItems] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -130,7 +132,8 @@ function ServicesPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (n: ServiceItem) => {
-    if (!confirm(`Удалить услугу «${n.title}»?`)) return;
+    if (!(await confirm({ title: "Удалить услугу?", description: `«${n.title}» пропадёт из приложения клиентов.` })))
+      return;
     const { error } = await supabase.from("services").delete().eq("id", n.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -305,6 +308,7 @@ function ServicesPage() {
         nextPosition={items.length > 0 ? Math.max(...items.map((i) => i.position)) + 1 : 0}
         onSaved={fetchAll}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }

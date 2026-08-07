@@ -50,6 +50,7 @@ import { ClubStatusBadge } from "@/components/club-status-badge";
 import { type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatDate } from "@/lib/format";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — Base40 Admin" }] }),
@@ -153,6 +154,7 @@ function DateRangeFilter({
 
 
 function ClientsPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
@@ -234,7 +236,8 @@ function ClientsPage() {
   }, [fetchClients, refreshSignal]);
 
   const handleDelete = async (c: Client) => {
-    if (!confirm(`Удалить клиента «${displayName(c)}»?`)) return;
+    if (!(await confirm({ title: "Удалить клиента?", description: `«${displayName(c)}» будет удалён вместе с историей. Действие необратимо.` })))
+      return;
     const { error } = await supabase.from("clients").delete().eq("id", c.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
@@ -410,6 +413,7 @@ function ClientsPage() {
           setOpen(true);
         }}
       />
+    {confirmDialog}
     </AdminShell>
   );
 }
