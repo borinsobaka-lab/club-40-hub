@@ -972,7 +972,7 @@ function BookingsPanel({
       .from("schedule_bookings")
       .select("id, user_id, status, created_at")
       .eq("entry_id", entry.id)
-      .in("status", ["booked", "attended"])
+      .in("status", ["booked", "attended", "waitlist"])
       .order("created_at");
     if (bErr) {
       setLoading(false);
@@ -1067,6 +1067,11 @@ function BookingsPanel({
     onChanged();
   };
 
+  // Лист ожидания держим отдельно от записанных: он не занимает мест и не
+  // должен путаться со счётчиком заполненности.
+  const booked = bookings.filter((b) => b.status !== "waitlist");
+  const waitlisted = bookings.filter((b) => b.status === "waitlist");
+
   const fmtMembershipDates = (m: ActiveMembershipRow) => {
     const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("ru-RU") : "—");
     return `${fmt(m.started_at)} – ${m.ends_at ? fmt(m.ends_at) : "∞"}`;
@@ -1077,8 +1082,11 @@ function BookingsPanel({
       <div className="flex items-center justify-between">
         <Label>Записанные участники</Label>
         <span className="text-xs text-muted-foreground">
-          {bookings.length}
+          {booked.length}
           {entry.capacity != null ? ` / ${entry.capacity}` : ""}
+          {waitlisted.length > 0 && (
+            <span className="ml-2 text-blue-600">+{waitlisted.length} в очереди</span>
+          )}
         </span>
       </div>
 
@@ -1086,13 +1094,13 @@ function BookingsPanel({
         <div className="flex h-32 items-center justify-center rounded-md border">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         </div>
-      ) : bookings.length === 0 ? (
+      ) : booked.length === 0 ? (
         <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
           Пока никто не записан.
         </div>
       ) : (
         <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
-          {bookings.map((b) => {
+          {booked.map((b) => {
             const c = clients[b.user_id];
             const m = c ? memberships[c.id] : undefined;
             const name = c
@@ -1149,6 +1157,53 @@ function BookingsPanel({
           })}
         </div>
       )}
+
+      {waitlisted.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-blue-700">Лист ожидания</Label>
+            <span
+              className="text-xs text-muted-foreground"
+              title="Записались, когда свободных мест уже не было"
+            >
+              {waitlisted.length} ждут места
+            </span>
+          </div>
+          <div className="space-y-2">
+            {waitlisted.map((b) => {
+              const c = clients[b.user_id];
+              const name = c
+                ? [c.last_name, c.first_name].filter(Boolean).join(" ") || c.full_name
+                : "Пользователь без анкеты";
+              return (
+                <div
+                  key={b.id}
+                  className="rounded-md border border-blue-200 bg-blue-50/60 p-3 text-sm"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col">
+                      {c ? (
+                        <ClientNameLink clientId={c.id} className="font-medium">
+                          {name}
+                        </ClientNameLink>
+                      ) : (
+                        <span className="font-medium">{name}</span>
+                      )}
+                      <span className="mt-0.5 text-xs text-muted-foreground">
+                        {c?.phone ?? c?.email ?? "—"}
+                      </span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setConfirmBooking(b)}>
+                      Убрать
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       <AlertDialog open={!!confirmBooking} onOpenChange={(v) => !v && setConfirmBooking(null)}>
         <AlertDialogContent>

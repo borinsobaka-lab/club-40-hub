@@ -313,6 +313,26 @@ begin
      and (p_studio_id is null or studio_id = p_studio_id);
 
   get diagnostics v_count = row_count;
+
+  -- Очередь на уже прошедшие занятия закрываем: иначе строки висят вечно,
+  -- а счётчик waitlist_count навсегда остаётся ненулевым и бейдж «+N» в
+  -- расписании показывает спрос, которого давно нет.
+  update public.schedule_bookings sb
+     set status = 'cancelled',
+         cancelled_at = coalesce(sb.cancelled_at, now()),
+         cancel_reason = coalesce(sb.cancel_reason, 'Занятие прошло')
+    from public.schedule_entries se
+   where se.id = sb.entry_id
+     and sb.status = 'waitlist'
+     and se.ends_at < now()
+     and (p_studio_id is null or sb.studio_id = p_studio_id);
+
+  update public.schedule_entries se
+     set waitlist_count = 0
+   where se.ends_at < now()
+     and se.waitlist_count <> 0
+     and (p_studio_id is null or se.studio_id = p_studio_id);
+
   return v_count;
 end;
 $$;
