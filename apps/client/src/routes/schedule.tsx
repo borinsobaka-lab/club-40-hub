@@ -12,6 +12,7 @@ import { workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useClientStudioId } from "@/hooks/use-client-studio";
 import { useAuth } from "@/hooks/use-auth";
+import { ScheduleListSkeleton } from "@/components/content-skeletons";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
@@ -434,8 +435,8 @@ function SchedulePage() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-10 text-muted-foreground">
-              <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+            <div className="px-4">
+              <ScheduleListSkeleton />
             </div>
           ) : error ? (
             <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>

@@ -14,7 +14,7 @@ import {
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { Refresh, ShieldCheck, CheckCircle, CloseCircle } from "@solar-icons/react";
+import { ShieldCheck, CheckCircle, CloseCircle } from "@solar-icons/react";
 import { ChevronRight } from "lucide-react";
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { MembershipCardsSkeleton } from "@/components/content-skeletons";
 
 export const Route = createFileRoute("/memberships")({
   head: () => ({
@@ -435,11 +436,7 @@ function MembershipsPage() {
           </Card>
         )}
 
-        {(loading || authLoading) && user && (
-          <div className="flex items-center justify-center py-12">
-            <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
-          </div>
-        )}
+        {(loading || authLoading) && user && <MembershipCardsSkeleton />}
 
         {error && !loading && <Card className="p-4 text-sm text-destructive">{error}</Card>}
 
