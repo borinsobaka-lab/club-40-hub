@@ -12,7 +12,13 @@ export default defineConfig(({ command }) => ({
   // CSS in both keeps the dev preview identical to the built output.
   css: { transformer: "lightningcss" },
   resolve: {
-    alias: [{ find: "@", replacement: path.resolve(__dirname, "src") }],
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "src") },
+      // Набор иконок — Hugeicons, но имена в коде остались от lucide: у
+      // Hugeicons своя номенклатура, а менять её пришлось бы и в вендоренных
+      // components/ui/*. Шим отдаёт иконки Hugeicons под именами lucide.
+      { find: /^lucide-react$/, replacement: path.resolve(__dirname, "src/lib/icons.tsx") },
+    ],
     dedupe: [
       "react",
       "react-dom",

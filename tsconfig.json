@@ -22,7 +22,11 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      /* Тот же подмен, что alias в vite.config: без него tsc проверял бы имена
+         по настоящему lucide-react, а собиралось бы из шима — иконка, которой
+         в шиме нет, прошла бы типы и упала бы в рантайме. */
+      "lucide-react": ["./src/lib/icons.tsx"]
     }
   }
 }

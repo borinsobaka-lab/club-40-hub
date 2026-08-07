@@ -122,9 +122,12 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KE
 
 - Клиент Supabase в браузере НЕтипизированный (без `<Database>`); свежие типы
   генерировать пока нечем — нужен access token владельца.
-- Стиль: русские тексты UI, `@/` алиасы, иконки — `lucide-react` напрямую
-  (подмену на Solar через alias в vite.config сняли 2026-08-07 по решению
-  владельца, шим `src/lib/icons.tsx` удалён).
+- Стиль: русские тексты UI, `@/` алиасы. Иконки — **Hugeicons** под именами
+  lucide: alias в `vite.config` + `paths` в `tsconfig` подменяют
+  `lucide-react` на шим `src/lib/icons.tsx` (сам пакет `lucide-react` из
+  зависимостей убран). Шим генерируется — `bun run scripts/gen-icons.ts`
+  пересобирает его по фактическим импортам; ручные соответствия имён лежат
+  в `MANUAL` там же.
 - Пагинация таблиц: `useServerPagination` + `DataPagination`
   (`src/components/data-pagination.tsx`), поиск через `useDebouncedValue`.
 - Файлы страниц в `src/routes/_authenticated/` — самодостаточные (запросы,
