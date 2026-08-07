@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cat, RefreshCw } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,11 @@ export function AdminShell({
       <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
         <div className="flex flex-1 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
+            {/*
+              На узком экране боковое меню уходит в шторку и кнопка сворачивания
+              внутри него недоступна — открыть меню больше нечем.
+            */}
+            <SidebarTrigger className="md:hidden" />
             {/*
               Заголовок раздела: font-semibold — тот же вес, что у заголовков
               диалогов и карточек, и он же прописан в дизайн-системе как вес

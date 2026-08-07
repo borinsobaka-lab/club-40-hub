@@ -39,9 +39,18 @@ export const Route = createFileRoute("/_authenticated")({
  * В layout-роуте она монтируется один раз, а меняется только содержимое
  * Outlet — AdminShell рисует шапку с заголовком и тело страницы.
  */
+/**
+ * shadcn пишет состояние панели в cookie при переключении, но обратно её нигде
+ * не читает: без этого меню разворачивалось бы заново на каждой перезагрузке.
+ */
+function sidebarOpenFromCookie() {
+  if (typeof document === "undefined") return true;
+  return !/(?:^|;\s*)sidebar_state=false(?:;|$)/.test(document.cookie);
+}
+
 function AuthenticatedLayout() {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={sidebarOpenFromCookie()}>
       <div className="flex h-screen w-full overflow-hidden bg-muted/30">
         <AppSidebar />
         <div className="flex h-screen flex-1 flex-col overflow-hidden">
