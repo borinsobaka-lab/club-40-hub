@@ -211,7 +211,6 @@ function EmployeesPage() {
                   <TableHead>Имя</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Роль</TableHead>
-                  <TableHead className="w-16" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -224,6 +223,7 @@ function EmployeesPage() {
                               label: "Удалить",
                               icon: Trash2,
                               destructive: true,
+                              disabled: deleteMut.isPending,
                               onSelect: async () => {
                                 const ok = await confirm({
                                   title: "Удалить сотрудника?",
@@ -236,36 +236,18 @@ function EmployeesPage() {
                         : []),
                     ]}
                   >
-  <TableRow key={e.user_id}>
+                    <TableRow key={e.user_id}>
                       <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
                       <TableCell>{e.email ?? "—"}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{ROLE_LABEL[e.role] ?? e.role}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {isOwner && e.user_id !== data.currentUserId && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={async () => {
-                              const ok = await confirm({
-                                title: "Удалить сотрудника?",
-                                description: `${e.full_name ?? e.email} потеряет доступ к админке.`,
-                              });
-                              if (ok) deleteMut.mutate(e.user_id);
-                            }}
-                            disabled={deleteMut.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
                       </TableCell>
                     </TableRow>
                   </RowContextMenu>
                 ))}
                 {data.employees.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
                       Сотрудники не добавлены
                     </TableCell>
                   </TableRow>

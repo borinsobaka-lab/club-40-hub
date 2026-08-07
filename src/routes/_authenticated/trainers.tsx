@@ -289,16 +289,15 @@ function TrainersPage() {
                   <TableHead>Специализация</TableHead>
                   <TableHead>О сотруднике</TableHead>
                   <TableHead>Соцсети</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeletonRows columns={8} />
+                  <TableSkeletonRows columns={7} />
                 ) : trainers.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={7}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Пока нет сотрудников. Нажмите «Добавить тренера» или «Добавить админа».
@@ -312,7 +311,7 @@ function TrainersPage() {
                           { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(t) },
                         ]}
                     >
-  <TableRow key={t.id}>
+                      <TableRow key={t.id}>
                         <TableCell>
                           <TrainerPhoto value={t.photo_url} name={t.full_name} />
                         </TableCell>
@@ -341,16 +340,6 @@ function TrainersPage() {
                           ) : (
                             <SocialLinks trainer={t} />
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(t)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
                         </TableCell>
                       </TableRow>
                     </RowContextMenu>

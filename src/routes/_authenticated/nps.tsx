@@ -498,14 +498,13 @@ function NpsPage() {
                     <TableHead>Категория</TableHead>
                     <TableHead>Комментарий</TableHead>
                     <TableHead>Опрос</TableHead>
-                    <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pg.total === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={6}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         Нет ответов.
@@ -520,7 +519,7 @@ function NpsPage() {
                             { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => setDeleteId(r.id) },
                           ]}
                         >
-  <TableRow key={r.id}>
+                          <TableRow key={r.id}>
                             <TableCell className="whitespace-nowrap text-muted-foreground">
                               {format(parseISO(r.created_at), "d MMM, HH:mm", { locale: ru })}
                             </TableCell>
@@ -538,13 +537,6 @@ function NpsPage() {
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                               {TYPE_LABEL[r.survey_type]}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex justify-end">
-                                <Button variant="ghost" size="icon" onClick={() => setDeleteId(r.id)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
                             </TableCell>
                           </TableRow>
                         </RowContextMenu>

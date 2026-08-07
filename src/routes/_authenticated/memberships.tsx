@@ -231,16 +231,15 @@ function MembershipsPage() {
                     <TableHead>Рассрочка</TableHead>
                     <TableHead>Цена</TableHead>
                     <TableHead>Статус</TableHead>
-                    <TableHead className="w-[140px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableSkeletonRows columns={11} />
+                    <TableSkeletonRows columns={10} />
                   ) : filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={11}
+                        colSpan={10}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         {items.length === 0
@@ -257,7 +256,7 @@ function MembershipsPage() {
                           { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(m) },
                         ]}
                       >
-  <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
+                        <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
                           <TableCell>
                             <CoverThumb value={m.cover_url} alt={m.name} />
                           </TableCell>
@@ -301,37 +300,6 @@ function MembershipsPage() {
                               ) : (
                                 <Badge variant="outline">Скрыт</Badge>
                               )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Дублировать (создать обновлённую копию)"
-                                onClick={() => handleClone(m)}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Редактировать"
-                                onClick={() => {
-                                  setEditing(m);
-                                  setOpen(true);
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Удалить"
-                                onClick={() => handleDelete(m)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>

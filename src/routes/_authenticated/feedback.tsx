@@ -392,15 +392,14 @@ function FeedbackPage() {
                 <TableHead>Контакт</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Отработал</TableHead>
-                <TableHead className="w-[60px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableSkeletonRows columns={9} />
+                <TableSkeletonRows columns={8} />
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
                     <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
                     Обращений нет.
                   </TableCell>
@@ -413,7 +412,7 @@ function FeedbackPage() {
                       { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => setDeleteId(i.id) },
                     ]}
                   >
-  <TableRow
+                    <TableRow
                       key={i.id}
                       onClick={() => {
                         setSelectedId(i.id);
@@ -457,20 +456,6 @@ function FeedbackPage() {
                         ) : (
                           "—"
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteId(i.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
                       </TableCell>
                     </TableRow>
                   </RowContextMenu>

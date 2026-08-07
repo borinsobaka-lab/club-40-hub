@@ -171,16 +171,15 @@ function PushPage() {
                   <TableHead>Отправлено</TableHead>
                   <TableHead>Доставлено</TableHead>
                   <TableHead>Прочитано</TableHead>
-                  <TableHead className="w-[110px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeletonRows columns={8} />
+                  <TableSkeletonRows columns={7} />
                 ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={7}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Пока нет уведомлений. Нажмите «Добавить уведомление».
@@ -194,7 +193,7 @@ function PushPage() {
                           { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(p) },
                         ]}
                     >
-  <TableRow key={p.id}>
+                      <TableRow key={p.id}>
                         <TableCell className="font-medium max-w-[280px]">
                           <div className="truncate">{p.title}</div>
                           {p.message ? (
@@ -225,23 +224,6 @@ function PushPage() {
                         <TableCell className="tabular-nums">{p.sent_count}</TableCell>
                         <TableCell className="tabular-nums">{p.delivered_count}</TableCell>
                         <TableCell className="tabular-nums">{p.read_count}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setEditing(p);
-                                setOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
                       </TableRow>
                     </RowContextMenu>
                   ))

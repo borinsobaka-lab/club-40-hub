@@ -220,16 +220,15 @@ function ServicesPage() {
                   <TableHead>Заголовок</TableHead>
                   <TableHead>Описание</TableHead>
                   <TableHead className="w-[140px]">Кнопка</TableHead>
-                  <TableHead className="w-[110px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeletonRows columns={7} />
+                  <TableSkeletonRows columns={6} />
                 ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={6}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Пока нет услуг. Нажмите «Добавить услугу».
@@ -245,7 +244,7 @@ function ServicesPage() {
                           { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(n) },
                         ]}
                       >
-  <TableRow key={n.id}>
+                        <TableRow key={n.id}>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <Button
@@ -285,16 +284,6 @@ function ServicesPage() {
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {n.button_text && n.button_url ? n.button_text : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openEdit(n)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(n)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
                           </TableCell>
                         </TableRow>
                       </RowContextMenu>

@@ -326,16 +326,15 @@ function ClientsPage() {
                     <TableHead>Регистрация</TableHead>
                     <TableHead>Последний визит</TableHead>
                     <TableHead>Заметки</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableSkeletonRows columns={11} />
+                    <TableSkeletonRows columns={9} />
                   ) : clients.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={11}
+                        colSpan={9}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         {hasFilters
@@ -357,7 +356,7 @@ function ClientsPage() {
                           },
                         ]}
                       >
-  <TableRow key={c.id}>
+                        <TableRow key={c.id}>
                           <TableCell className="font-medium">
                             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                               <button
@@ -381,16 +380,6 @@ function ClientsPage() {
                           <TableCell>{formatDate(c.last_visit_date)}</TableCell>
                           <TableCell className="max-w-[200px] truncate text-muted-foreground">
                             {c.notes ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(c)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
                           </TableCell>
                         </TableRow>
                       </RowContextMenu>

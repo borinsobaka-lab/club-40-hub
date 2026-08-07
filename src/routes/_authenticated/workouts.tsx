@@ -209,16 +209,15 @@ function WorkoutsPage() {
                     <TableHead>Описание</TableHead>
                     <TableHead className="w-[120px]">Вместимость</TableHead>
                     <TableHead className="w-[90px]">MET</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableSkeletonRows columns={7} />
+                    <TableSkeletonRows columns={6} />
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={6}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         {workouts.length === 0
@@ -234,7 +233,7 @@ function WorkoutsPage() {
                           { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(w) },
                         ]}
                       >
-  <TableRow key={w.id}>
+                        <TableRow key={w.id}>
                           <TableCell>
                             <WorkoutPhoto value={w.photo_url} name={w.name} />
                           </TableCell>
@@ -250,16 +249,6 @@ function WorkoutsPage() {
                           </TableCell>
                           <TableCell className="text-sm tabular-nums text-muted-foreground">
                             {w.met_value != null ? Number(w.met_value).toFixed(1) : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(w)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
                           </TableCell>
                         </TableRow>
                       </RowContextMenu>

@@ -296,16 +296,15 @@ function SalesPage() {
                     <TableHead>Рассрочка</TableHead>
                     <TableHead>Администратор</TableHead>
                     <TableHead>Комментарий</TableHead>
-                    <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableSkeletonRows columns={14} />
+                    <TableSkeletonRows columns={13} />
                   ) : sales.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={14}
+                        colSpan={13}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         {debouncedSearch.trim()
@@ -323,7 +322,7 @@ function SalesPage() {
                           { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(s) },
                         ]}
                         >
-  <TableRow key={s.id}>
+                          <TableRow key={s.id}>
                             <TableCell>
                               {s.clients ? (
                                 <ClientNameLink clientId={s.client_id}>
@@ -376,21 +375,6 @@ function SalesPage() {
                             </TableCell>
                             <TableCell className="max-w-[220px] truncate text-muted-foreground">
                               {s.comment ?? "—"}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 px-2 text-xs"
-                                  onClick={() => setRefundSale(s)}
-                                >
-                                  Возврат
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
                             </TableCell>
                           </TableRow>
                         </RowContextMenu>

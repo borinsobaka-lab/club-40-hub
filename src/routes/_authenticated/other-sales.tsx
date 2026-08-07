@@ -282,15 +282,14 @@ function SalesTab({
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Оплата</TableHead>
               <TableHead>Дата</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableSkeletonRows columns={9} />
+              <TableSkeletonRows columns={8} />
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
                   Пока нет продаж. Нажмите «Добавить продажу».
                 </TableCell>
               </TableRow>
@@ -301,7 +300,7 @@ function SalesTab({
                     { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(s) },
                   ]}
                 >
-  <TableRow key={s.id}>
+                  <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.item_name}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{KIND_LABEL[s.item_kind]}</Badge>
@@ -326,13 +325,6 @@ function SalesTab({
                       {s.payment_method ? PAYMENT_LABEL[s.payment_method] : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
-                    <TableCell>
-                      <div className="flex justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
                   </TableRow>
                 </RowContextMenu>
               ))
@@ -644,13 +636,12 @@ function CatalogTab({
               <TableHead>Тип</TableHead>
               <TableHead className="text-right">Цена</TableHead>
               <TableHead className="w-[100px]">Активна</TableHead>
-              <TableHead className="w-[110px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                   Пока нет позиций. Нажмите «Добавить позицию».
                 </TableCell>
               </TableRow>
@@ -662,7 +653,7 @@ function CatalogTab({
                     { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(i) },
                   ]}
                 >
-  <TableRow key={i.id}>
+                  <TableRow key={i.id}>
                     <TableCell className="font-medium">{i.name}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{KIND_LABEL[i.kind]}</Badge>
@@ -672,23 +663,6 @@ function CatalogTab({
                     </TableCell>
                     <TableCell>
                       <Switch checked={i.is_active} onCheckedChange={(v) => toggleActive(i, v)} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditing(i);
-                            setOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(i)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
                     </TableCell>
                   </TableRow>
                 </RowContextMenu>
