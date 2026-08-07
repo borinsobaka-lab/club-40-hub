@@ -53,6 +53,7 @@ type Membership = {
   studio_id: string | null;
   cover_url: string | null;
   for_couple?: boolean | null;
+  freeze_days_allowed?: number | null;
 };
 
 function formatPeriod(days: number): string {
@@ -84,6 +85,7 @@ type ActiveMembership = {
     visits_count: number | null;
     duration_days: number | null;
     price: number | null;
+    freeze_days_allowed?: number | null;
   } | null;
 };
 
@@ -221,7 +223,7 @@ function MembershipsPage() {
         );
 
         const membershipSelect =
-          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple";
+          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple, freeze_days_allowed";
         const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
           db
             .from("memberships")
@@ -232,7 +234,7 @@ function MembershipsPage() {
           db
             .from("client_memberships")
             .select(
-              "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)",
+              "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
             )
             .eq("client_id", c.id)
             .eq("status", "active")
@@ -271,7 +273,7 @@ function MembershipsPage() {
     const { data: act } = await db
       .from("client_memberships")
       .select(
-        "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price)",
+        "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
       )
       .eq("client_id", client.id)
       .eq("status", "active")
@@ -704,8 +706,11 @@ function MembershipCard({
   const features = [
     membership.visits_count === null ? "Безлимит посещений" : `${membership.visits_count} занятий`,
     `Срок действия ${membership.duration_days} дней`,
+    membership.freeze_days_allowed
+      ? `Заморозка до ${membership.freeze_days_allowed} дней`
+      : null,
     ...((membership.benefits ?? []).filter(Boolean) as string[]),
-  ];
+  ].filter(Boolean) as string[];
 
   return (
     <Card className="shrink-0 w-[85%] snap-start overflow-hidden rounded-xl p-0 flex flex-col">
@@ -988,6 +993,7 @@ function ActiveMembershipDrawer({
   const features = [
     m?.visits_count == null ? "Безлимит посещений" : `${m.visits_count} занятий`,
     m?.duration_days ? `Срок действия ${m.duration_days} дней` : null,
+    m?.freeze_days_allowed ? `Заморозка до ${m.freeze_days_allowed} дней` : null,
     ...((m?.benefits ?? []).filter(Boolean) as string[]),
   ].filter(Boolean) as string[];
 

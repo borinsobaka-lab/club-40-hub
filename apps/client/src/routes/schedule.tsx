@@ -92,6 +92,7 @@ function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
+  const [waitlistedIds, setWaitlistedIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const clubSettings = useClubSettings();
@@ -146,13 +147,19 @@ function SchedulePage() {
       // и без фильтра у сотрудника, зашедшего в клиентское приложение, чужие
       // записи выглядели бы как его собственные.
       if (!user) return;
-      const { data: b } = await supabase
+      // types.ts ещё без 'waitlist' в enum брони (регенерация ждёт токен) —
+      // приводим клиент к any для этого запроса, как в остальном коде репозитория.
+      const { data: b } = await (supabase as any)
         .from("schedule_bookings")
-        .select("entry_id")
+        .select("entry_id, status")
         .eq("user_id", user.id)
-        .eq("status", "booked");
+        .in("status", ["booked", "waitlist"]);
       if (!cancelled && b) {
-        setBookedIds(new Set(b.map((r) => r.entry_id)));
+        const rows = b as { entry_id: string; status: string }[];
+        setBookedIds(new Set(rows.filter((r) => r.status === "booked").map((r) => r.entry_id)));
+        setWaitlistedIds(
+          new Set(rows.filter((r) => r.status === "waitlist").map((r) => r.entry_id)),
+        );
       }
     })();
     return () => {
@@ -177,15 +184,20 @@ function SchedulePage() {
     };
   }, []);
 
-  async function toggleBooking(entryId: string) {
+  async function toggleBooking(entryId: string, reason?: string) {
     if (pendingId) return;
     setPendingId(entryId);
-    const isBooked = bookedIds.has(entryId);
-    const fn = isBooked ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
-    const { data, error } = await supabase.rpc(fn, { p_entry_id: entryId });
+    const wasBooked = bookedIds.has(entryId);
+    const wasWaitlisted = waitlistedIds.has(entryId);
+    const isActive = wasBooked || wasWaitlisted;
+    const fn = isActive ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
+    const { data, error } = await supabase.rpc(
+      fn,
+      isActive ? { p_entry_id: entryId, p_reason: reason ?? null } : { p_entry_id: entryId },
+    );
     setPendingId(null);
     if (error) {
-      toast.error(`Не удалось ${isBooked ? "отменить запись" : "записаться"}: ${error.message}`);
+      toast.error(`Не удалось ${isActive ? "отменить запись" : "записаться"}: ${error.message}`);
       return;
     }
     const reasonMessages: Record<string, string> = {
@@ -201,30 +213,57 @@ function SchedulePage() {
     const res = data as {
       ok: boolean;
       reason?: string;
+      waitlisted?: boolean;
       booked_count?: number;
       capacity?: number | null;
     } | null;
     if (res?.ok) {
-      setBookedIds((prev) => {
-        const next = new Set(prev);
-        if (isBooked) next.delete(entryId);
-        else next.add(entryId);
-        return next;
-      });
-      setEntries((prev) =>
-        prev.map((e) =>
-          e.id === entryId
-            ? {
-                ...e,
-                booked_count:
-                  typeof res.booked_count === "number"
-                    ? res.booked_count
-                    : Math.max(0, e.booked_count + (isBooked ? -1 : 1)),
-              }
-            : e,
-        ),
-      );
-      toast.success(isBooked ? "Запись отменена" : "Вы записаны на тренировку");
+      if (isActive) {
+        // отмена записи или выход из очереди
+        setBookedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(entryId);
+          return next;
+        });
+        setWaitlistedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(entryId);
+          return next;
+        });
+        if (wasBooked) {
+          setEntries((prev) =>
+            prev.map((e) =>
+              e.id === entryId
+                ? {
+                    ...e,
+                    booked_count:
+                      typeof res.booked_count === "number"
+                        ? res.booked_count
+                        : Math.max(0, e.booked_count - 1),
+                  }
+                : e,
+            ),
+          );
+        }
+        toast.success(wasWaitlisted ? "Вы вышли из листа ожидания" : "Запись отменена");
+      } else if (res.waitlisted) {
+        setWaitlistedIds((prev) => new Set(prev).add(entryId));
+        toast.success("Мест нет — вы в листе ожидания");
+      } else {
+        setBookedIds((prev) => new Set(prev).add(entryId));
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.id === entryId
+              ? {
+                  ...e,
+                  booked_count:
+                    typeof res.booked_count === "number" ? res.booked_count : e.booked_count + 1,
+                }
+              : e,
+          ),
+        );
+        toast.success("Вы записаны на тренировку");
+      }
     } else if (res?.reason === "already_booked") {
       setBookedIds((prev) => new Set(prev).add(entryId));
       if (typeof res.booked_count === "number") {
@@ -233,6 +272,8 @@ function SchedulePage() {
           prev.map((e) => (e.id === entryId ? { ...e, booked_count: newCount } : e)),
         );
       }
+    } else if (res?.reason === "already_waitlisted") {
+      setWaitlistedIds((prev) => new Set(prev).add(entryId));
     } else if (res?.reason === "no_membership" || res?.reason === "no_visits_left") {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });
@@ -466,6 +507,8 @@ function SchedulePage() {
                         {dayList.map((c) => {
                           const meta = workoutTypeMeta(c.workout?.type);
                           const isBooked = bookedIds.has(c.id);
+                          const isWaitlisted = waitlistedIds.has(c.id);
+                          const isActive = isBooked || isWaitlisted;
                           const isPending = pendingId === c.id;
                           const isPast = new Date(c.starts_at) < new Date();
                           return (
@@ -477,7 +520,9 @@ function SchedulePage() {
                                 className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
                                   isBooked
                                     ? "bg-primary text-primary-foreground border-primary"
-                                    : ""
+                                    : isWaitlisted
+                                      ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40"
+                                      : ""
                                 }`}
                               >
                                 <span
@@ -497,6 +542,11 @@ function SchedulePage() {
                                     <div className="font-medium break-words leading-snug">
                                       {c.workout?.name ?? "Занятие"}
                                     </div>
+                                    {isWaitlisted && (
+                                      <div className="text-xs mt-0.5 font-semibold text-blue-600 dark:text-blue-400">
+                                        В листе ожидания
+                                      </div>
+                                    )}
                                     {(() => {
                                       const names = (c.trainers ?? [])
                                         .map((t) => t.trainer?.full_name)
@@ -543,7 +593,7 @@ function SchedulePage() {
                                     })()}
                                   </div>
                                 </button>
-                                {!isBooked && (
+                                {!isActive && (
                                   <button
                                     type="button"
                                     disabled={isPending}
@@ -600,10 +650,17 @@ function SchedulePage() {
           if (!o) setOpenEntry(null);
         }}
         isBooked={openEntry ? bookedIds.has(openEntry.id) : false}
+        isWaitlisted={openEntry ? waitlistedIds.has(openEntry.id) : false}
+        isFull={(() => {
+          if (!openEntry) return false;
+          const e = entries.find((x) => x.id === openEntry.id);
+          const cap = e?.capacity ?? e?.workout?.capacity ?? null;
+          return cap != null && (e?.booked_count ?? 0) >= cap;
+        })()}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
-        onBook={() => {
-          if (openEntry) toggleBooking(openEntry.id);
+        onBook={(reason) => {
+          if (openEntry) toggleBooking(openEntry.id, reason);
         }}
       />
     </PageShell>
