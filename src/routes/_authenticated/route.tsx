@@ -51,7 +51,7 @@ function sidebarOpenFromCookie() {
 function AuthenticatedLayout() {
   return (
     <SidebarProvider defaultOpen={sidebarOpenFromCookie()}>
-      <div className="flex h-screen w-full overflow-hidden bg-muted/30">
+      <div className="flex h-screen w-full overflow-hidden bg-canvas">
         <AppSidebar />
         <div className="flex h-screen flex-1 flex-col overflow-hidden">
           <Outlet />

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -184,8 +185,8 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
-      <SidebarContent>
-        {GROUPS.map((group) => (
+      <SidebarContent className="sidebar-scroll">
+        {GROUPS.map((group, index) => (
           <Collapsible
             key={group.key}
             // В свёрнутом меню блоки держим открытыми принудительно: заголовков
@@ -194,6 +195,12 @@ export function AppSidebar() {
             onOpenChange={(open) => setGroupOpen(group.key, open)}
           >
             <SidebarGroup className={group.atBottom ? "mt-auto" : undefined}>
+              {/*
+                В свёрнутом меню заголовков нет, и блоки слипаются в одну ленту
+                иконок. Оставляем от заголовка только линейку — она и делит.
+                Перед первым блоком не нужна: он и так отделён шапкой.
+              */}
+              {collapsed && index > 0 && <div className="mx-2 mb-1 h-px bg-white/15" />}
               {!collapsed && (
                 <SidebarGroupLabel asChild>
                   <CollapsibleTrigger className="group/label w-full cursor-pointer gap-2 text-[13px] text-white/50 hover:text-white/70">
@@ -222,7 +229,17 @@ export function AppSidebar() {
                           className="font-medium text-white hover:bg-white/10 hover:text-white active:bg-white/10 active:text-white data-[active=true]:bg-white/10 data-[active=true]:font-semibold data-[active=true]:text-white"
                         >
                           <Link to={item.url} className="flex items-center gap-2">
-                            <item.icon className="h-4 w-4 text-sidebar-icon" />
+                            {/*
+                              В свёрнутом меню иконка остаётся единственным
+                              содержимым пункта — фирменный жёлтый контуром
+                              читается тонко, поэтому там она белая.
+                            */}
+                            <item.icon
+                              className={cn(
+                                "h-4 w-4",
+                                collapsed ? "text-white" : "text-sidebar-icon",
+                              )}
+                            />
                             {!collapsed && <span>{item.title}</span>}
                           </Link>
                         </SidebarMenuButton>

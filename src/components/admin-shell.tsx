@@ -24,7 +24,12 @@ export function AdminShell({
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+      {/*
+        Шапка сплошная белая: она не перекрывает прокручиваемый контент (main —
+        соседний блок), поэтому полупрозрачность только подмешивала подложку и
+        размывала границу между шапкой и рабочей областью.
+      */}
+      <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4">
         <div className="flex flex-1 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             {/*

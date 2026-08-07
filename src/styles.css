@@ -106,6 +106,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-dark: var(--sidebar-dark);
   --color-sidebar-icon: var(--sidebar-icon);
+  --color-canvas: var(--canvas);
 }
 
 :root {
@@ -144,6 +145,13 @@
   --sidebar-ring: oklch(0.704 0.04 256.788);
   --sidebar-dark: #2a2b2f;
   --sidebar-icon: #ffe500;
+
+  /* Подложка рабочей области справа от меню. Белые карточки, таблицы и шапка
+     лежат на ней и должны читаться как отдельные поверхности — раньше здесь
+     был muted/30 (почти белый), и всё сливалось в одно белое поле.
+     Тон холоднее muted и на ступень темнее: карточки отделяются, но лист не
+     выглядит грязным. */
+  --canvas: oklch(0.958 0.006 254);
 }
 
 .dark {
@@ -181,6 +189,9 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
   --sidebar-dark: #2a2b2f;
   --sidebar-icon: #ffe500;
+  /* Тёмной темы в приложении нет, но токен объявляем и здесь: иначе случайно
+     навешенный класс .dark оставил бы светлую подложку под тёмным контентом. */
+  --canvas: oklch(0.21 0.03 264);
 }
 
 @layer base {
@@ -210,6 +221,30 @@
 
   p {
     text-wrap: pretty;
+  }
+}
+
+/* Полоса прокрутки бокового меню. Системная на тёмной панели выглядит как
+   светлый брусок во всю ширину жёлоба; здесь — узкая пилюля в тот же
+   полупрозрачный белый, что и подложка активного пункта (bg-white/10).
+   scrollbar-* понимают Firefox и свежие Chromium, ::-webkit-* — остальные
+   WebKit-браузеры; задаём оба, они не конфликтуют. */
+@utility sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.1) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.1);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(255 255 255 / 0.2);
   }
 }
 
