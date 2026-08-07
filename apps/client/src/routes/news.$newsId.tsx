@@ -4,6 +4,7 @@ import { AltArrowLeft } from "@solar-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/news/$newsId")({
   head: () => ({
@@ -56,13 +57,13 @@ function NewsDetailPage() {
       <div className="flex flex-col flex-1">
         <div className="flex-1 overflow-y-auto pb-24">
           <div className="px-4 pt-4">
-            <div className="w-full aspect-[4/3] rounded-xl bg-muted animate-pulse" />
+            <Skeleton className="w-full aspect-[4/3] rounded-xl" />
           </div>
           <div className="px-4 mt-5 space-y-3">
-            <div className="h-7 w-3/4 rounded-md bg-muted animate-pulse" />
-            <div className="h-4 w-full rounded-md bg-muted animate-pulse" />
-            <div className="h-4 w-5/6 rounded-md bg-muted animate-pulse" />
-            <div className="h-4 w-2/3 rounded-md bg-muted animate-pulse" />
+            <Skeleton className="h-7 w-3/4 rounded-md" />
+            <Skeleton className="h-4 w-full rounded-md" />
+            <Skeleton className="h-4 w-5/6 rounded-md" />
+            <Skeleton className="h-4 w-2/3 rounded-md" />
           </div>
         </div>
       </div>
@@ -92,7 +93,7 @@ function NewsDetailPage() {
             {hero ? (
               <div className="relative w-full aspect-[4/3]">
                 {!imgLoaded && (
-                  <div className="absolute inset-0 rounded-xl bg-muted animate-pulse" />
+                  <Skeleton className="absolute inset-0 rounded-xl" />
                 )}
                 <img
                   src={hero}

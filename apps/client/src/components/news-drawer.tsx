@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type NewsFull = {
   id: string;
@@ -71,13 +72,13 @@ export function NewsDrawer({
             {loading || !item ? (
               <>
                 <div className="px-3 pt-1">
-                  <div className="w-full aspect-[4/3] rounded-2xl bg-muted animate-pulse" />
+                  <Skeleton className="w-full aspect-[4/3] rounded-2xl" />
                 </div>
                 <div className="px-3 pt-4 space-y-3">
-                  <div className="h-7 w-3/4 rounded-md bg-muted animate-pulse" />
-                  <div className="h-4 w-full rounded-md bg-muted animate-pulse" />
-                  <div className="h-4 w-5/6 rounded-md bg-muted animate-pulse" />
-                  <div className="h-4 w-2/3 rounded-md bg-muted animate-pulse" />
+                  <Skeleton className="h-7 w-3/4 rounded-md" />
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-5/6 rounded-md" />
+                  <Skeleton className="h-4 w-2/3 rounded-md" />
                 </div>
               </>
             ) : (
@@ -86,7 +87,7 @@ export function NewsDrawer({
                   <div className="px-3 pt-1">
                     <div className="relative w-full">
                       {!imgLoaded && (
-                        <div className="w-full aspect-[4/3] rounded-2xl bg-muted animate-pulse" />
+                        <Skeleton className="w-full aspect-[4/3] rounded-2xl" />
                       )}
                       <img
                         src={hero}
