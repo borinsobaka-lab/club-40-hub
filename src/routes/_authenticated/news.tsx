@@ -133,7 +133,12 @@ function NewsPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (n: NewsItem) => {
-    if (!(await confirm({ title: "Удалить новость?", description: `«${n.title}» пропадёт из приложения клиентов.` })))
+    if (
+      !(await confirm({
+        title: "Удалить новость?",
+        description: `«${n.title}» пропадёт из приложения клиентов.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("news").delete().eq("id", n.id);
     if (error) {
@@ -242,7 +247,12 @@ function NewsPage() {
                       <RowContextMenu
                         actions={[
                           { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(n) },
-                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(n) },
+                          {
+                            label: "Удалить",
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => handleDelete(n),
+                          },
                         ]}
                       >
                         <TableRow key={n.id}>
@@ -306,7 +316,7 @@ function NewsPage() {
         nextPosition={items.length > 0 ? Math.max(...items.map((i) => i.position)) + 1 : 0}
         onSaved={fetchAll}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }

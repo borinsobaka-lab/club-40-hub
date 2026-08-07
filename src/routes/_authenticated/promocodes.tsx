@@ -69,7 +69,6 @@ function formatDiscount(type: DiscountType, value: number) {
   return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 }
 
-
 function PromoCodesPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
@@ -104,7 +103,12 @@ function PromoCodesPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (p: PromoCode) => {
-    if (!(await confirm({ title: "Удалить промокод?", description: `«${p.name}» перестанет действовать.` })))
+    if (
+      !(await confirm({
+        title: "Удалить промокод?",
+        description: `«${p.name}» перестанет действовать.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("promo_codes").delete().eq("id", p.id);
     if (error) {
@@ -183,9 +187,14 @@ function PromoCodesPage() {
                   pg.paged.map((p) => (
                     <RowContextMenu
                       actions={[
-                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
-                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(p) },
-                        ]}
+                        { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
+                        {
+                          label: "Удалить",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => handleDelete(p),
+                        },
+                      ]}
                     >
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.name}</TableCell>
@@ -206,7 +215,10 @@ function PromoCodesPage() {
                           {p.description ?? "—"}
                         </TableCell>
                         <TableCell>
-                          <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} />
+                          <Switch
+                            checked={p.is_active}
+                            onCheckedChange={(v) => toggleActive(p, v)}
+                          />
                         </TableCell>
                       </TableRow>
                     </RowContextMenu>
@@ -226,7 +238,7 @@ function PromoCodesPage() {
         item={editing}
         onSaved={fetchAll}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }

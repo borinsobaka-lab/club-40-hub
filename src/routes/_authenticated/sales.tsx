@@ -142,9 +142,7 @@ function SourceBadge({ source }: { source: "admin" | "mobile" }) {
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        isMobile
-          ? "bg-blue-100 text-blue-700"
-          : "bg-muted text-muted-foreground",
+        isMobile ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground",
       )}
     >
       {isMobile ? "Приложение" : "Портал"}
@@ -155,9 +153,6 @@ function SourceBadge({ source }: { source: "admin" | "mobile" }) {
 function clientName(c: { first_name: string | null; last_name: string | null; full_name: string }) {
   return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
 }
-
-
-
 
 function addMonthsISO(iso: string, months: number) {
   const d = new Date(iso);
@@ -243,7 +238,12 @@ function SalesPage() {
   }, [fetchClients, refreshSignal]);
 
   const handleDelete = async (s: Sale) => {
-    if (!(await confirm({ title: "Удалить продажу?", description: "Продажа будет удалена. Выданный по ней абонемент останется у клиента." })))
+    if (
+      !(await confirm({
+        title: "Удалить продажу?",
+        description: "Продажа будет удалена. Выданный по ней абонемент останется у клиента.",
+      }))
+    )
       return;
     const { error } = await supabase.from("sales").delete().eq("id", s.id);
     if (error) {
@@ -318,9 +318,18 @@ function SalesPage() {
                       return (
                         <RowContextMenu
                           actions={[
-                          { label: "Оформить возврат", icon: Receipt, onSelect: () => setRefundSale(s) },
-                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(s) },
-                        ]}
+                            {
+                              label: "Оформить возврат",
+                              icon: Receipt,
+                              onSelect: () => setRefundSale(s),
+                            },
+                            {
+                              label: "Удалить",
+                              icon: Trash2,
+                              destructive: true,
+                              onSelect: () => handleDelete(s),
+                            },
+                          ]}
                         >
                           <TableRow key={s.id}>
                             <TableCell>
@@ -368,7 +377,9 @@ function SalesPage() {
                                 : "—"}
                             </TableCell>
                             <TableCell>
-                              {s.remaining_installments > 0 ? `1 + ${s.remaining_installments}` : "—"}
+                              {s.remaining_installments > 0
+                                ? `1 + ${s.remaining_installments}`
+                                : "—"}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
                               {s.admin_name ?? "—"}
@@ -407,7 +418,7 @@ function SalesPage() {
         adminName={user?.email ?? null}
         onSaved={fetchSales}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }
@@ -828,7 +839,6 @@ function SaleDialog({
     </Dialog>
   );
 }
-
 
 function RefundDialog({
   sale,

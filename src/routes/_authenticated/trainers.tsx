@@ -226,7 +226,12 @@ function TrainersPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (t: Trainer) => {
-    if (!(await confirm({ title: "Удалить сотрудника?", description: `«${t.full_name}» будет удалён без возможности восстановления.` })))
+    if (
+      !(await confirm({
+        title: "Удалить сотрудника?",
+        description: `«${t.full_name}» будет удалён без возможности восстановления.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("trainers").delete().eq("id", t.id);
     if (error) {
@@ -307,9 +312,14 @@ function TrainersPage() {
                   pg.paged.map((t) => (
                     <RowContextMenu
                       actions={[
-                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(t) },
-                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(t) },
-                        ]}
+                        { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(t) },
+                        {
+                          label: "Удалить",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => handleDelete(t),
+                        },
+                      ]}
                     >
                       <TableRow key={t.id}>
                         <TableCell>
@@ -330,7 +340,9 @@ function TrainersPage() {
                           </span>
                         </TableCell>
                         <TableCell>{t.role === "admin" ? "—" : genderLabel(t.gender)}</TableCell>
-                        <TableCell>{t.role === "admin" ? "—" : (t.specialization ?? "—")}</TableCell>
+                        <TableCell>
+                          {t.role === "admin" ? "—" : (t.specialization ?? "—")}
+                        </TableCell>
                         <TableCell className="max-w-[320px] truncate text-muted-foreground">
                           {t.bio ?? "—"}
                         </TableCell>
@@ -360,7 +372,7 @@ function TrainersPage() {
         defaultRole={creatingRole}
         onSaved={fetchTrainers}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }

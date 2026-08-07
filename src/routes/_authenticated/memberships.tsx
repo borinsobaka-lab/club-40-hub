@@ -145,7 +145,12 @@ function MembershipsPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (m: Membership) => {
-    if (!(await confirm({ title: "Удалить абонемент?", description: `«${m.name}» пропадёт из каталога. Уже проданные абонементы клиентов останутся.` })))
+    if (
+      !(await confirm({
+        title: "Удалить абонемент?",
+        description: `«${m.name}» пропадёт из каталога. Уже проданные абонементы клиентов останутся.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("memberships").delete().eq("id", m.id);
     if (error) {
@@ -252,8 +257,20 @@ function MembershipsPage() {
                       <RowContextMenu
                         actions={[
                           { label: "Дублировать", icon: Copy, onSelect: () => handleClone(m) },
-                          { label: "Редактировать", icon: Pencil, onSelect: () => { setEditing(m); setOpen(true); } },
-                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(m) },
+                          {
+                            label: "Редактировать",
+                            icon: Pencil,
+                            onSelect: () => {
+                              setEditing(m);
+                              setOpen(true);
+                            },
+                          },
+                          {
+                            label: "Удалить",
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => handleDelete(m),
+                          },
                         ]}
                       >
                         <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
@@ -321,7 +338,7 @@ function MembershipsPage() {
         membership={editing}
         onSaved={fetchItems}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }

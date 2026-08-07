@@ -84,7 +84,6 @@ const CLIENT_COLUMNS =
   "id, studio_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
   "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status";
 
-
 function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
   const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
   return composed || c.full_name || "—";
@@ -147,7 +146,6 @@ function DateRangeFilter({
     </Popover>
   );
 }
-
 
 function ClientsPage() {
   const { confirm, confirmDialog } = useConfirm();
@@ -232,7 +230,12 @@ function ClientsPage() {
   }, [fetchClients, refreshSignal]);
 
   const handleDelete = async (c: Client) => {
-    if (!(await confirm({ title: "Удалить клиента?", description: `«${displayName(c)}» будет удалён вместе с историей. Действие необратимо.` })))
+    if (
+      !(await confirm({
+        title: "Удалить клиента?",
+        description: `«${displayName(c)}» будет удалён вместе с историей. Действие необратимо.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("clients").delete().eq("id", c.id);
     if (error) {
@@ -411,7 +414,7 @@ function ClientsPage() {
           setOpen(true);
         }}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }

@@ -408,8 +408,20 @@ function FeedbackPage() {
                 pg.paged.map((i) => (
                   <RowContextMenu
                     actions={[
-                      { label: "Открыть обращение", icon: MessageSquare, onSelect: () => { setSelectedId(i.id); setResolutionComment(i.resolution_comment || ""); } },
-                      { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => setDeleteId(i.id) },
+                      {
+                        label: "Открыть обращение",
+                        icon: MessageSquare,
+                        onSelect: () => {
+                          setSelectedId(i.id);
+                          setResolutionComment(i.resolution_comment || "");
+                        },
+                      },
+                      {
+                        label: "Удалить",
+                        icon: Trash2,
+                        destructive: true,
+                        onSelect: () => setDeleteId(i.id),
+                      },
                     ]}
                   >
                     <TableRow
@@ -450,7 +462,9 @@ function FeedbackPage() {
                           <>
                             {i.resolved_by_name}
                             {i.resolved_at && (
-                              <div>{format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}</div>
+                              <div>
+                                {format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}
+                              </div>
                             )}
                           </>
                         ) : (

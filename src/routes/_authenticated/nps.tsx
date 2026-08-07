@@ -516,7 +516,12 @@ function NpsPage() {
                       return (
                         <RowContextMenu
                           actions={[
-                            { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => setDeleteId(r.id) },
+                            {
+                              label: "Удалить",
+                              icon: Trash2,
+                              destructive: true,
+                              onSelect: () => setDeleteId(r.id),
+                            },
                           ]}
                         >
                           <TableRow key={r.id}>

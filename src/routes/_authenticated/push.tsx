@@ -125,7 +125,12 @@ function PushPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (p: PushNotification) => {
-    if (!(await confirm({ title: "Удалить уведомление?", description: `«${p.title}» будет удалено без возможности восстановления.` })))
+    if (
+      !(await confirm({
+        title: "Удалить уведомление?",
+        description: `«${p.title}» будет удалено без возможности восстановления.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("push_notifications").delete().eq("id", p.id);
     if (error) {
@@ -189,15 +194,29 @@ function PushPage() {
                   pg.paged.map((p) => (
                     <RowContextMenu
                       actions={[
-                          { label: "Редактировать", icon: Pencil, onSelect: () => { setEditing(p); setOpen(true); } },
-                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(p) },
-                        ]}
+                        {
+                          label: "Редактировать",
+                          icon: Pencil,
+                          onSelect: () => {
+                            setEditing(p);
+                            setOpen(true);
+                          },
+                        },
+                        {
+                          label: "Удалить",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => handleDelete(p),
+                        },
+                      ]}
                     >
                       <TableRow key={p.id}>
                         <TableCell className="font-medium max-w-[280px]">
                           <div className="truncate">{p.title}</div>
                           {p.message ? (
-                            <div className="truncate text-xs text-muted-foreground">{p.message}</div>
+                            <div className="truncate text-xs text-muted-foreground">
+                              {p.message}
+                            </div>
                           ) : null}
                         </TableCell>
                         <TableCell>{renderSegments(p.segments)}</TableCell>
@@ -242,7 +261,7 @@ function PushPage() {
         item={editing}
         onSaved={fetchAll}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }

@@ -153,7 +153,12 @@ function WorkoutsPage() {
   }, [studioId, refreshSignal]);
 
   const handleDelete = async (w: Workout) => {
-    if (!(await confirm({ title: "Удалить тренировку?", description: `«${w.name}» будет удалена. Занятия в расписании, использующие её, тоже пропадут.` })))
+    if (
+      !(await confirm({
+        title: "Удалить тренировку?",
+        description: `«${w.name}» будет удалена. Занятия в расписании, использующие её, тоже пропадут.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("workouts").delete().eq("id", w.id);
     if (error) {
@@ -230,7 +235,12 @@ function WorkoutsPage() {
                       <RowContextMenu
                         actions={[
                           { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(w) },
-                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(w) },
+                          {
+                            label: "Удалить",
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => handleDelete(w),
+                          },
                         ]}
                       >
                         <TableRow key={w.id}>
@@ -269,7 +279,7 @@ function WorkoutsPage() {
         workout={editing}
         onSaved={fetchWorkouts}
       />
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }

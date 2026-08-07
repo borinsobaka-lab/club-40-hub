@@ -101,8 +101,6 @@ const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   app: "Приложение",
 };
 
-
-
 function clientName(c: { first_name: string | null; last_name: string | null; full_name: string }) {
   const joined = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
   return joined || c.full_name || "—";
@@ -242,7 +240,12 @@ function SalesTab({
   }, [fetchSales, refreshSignal]);
 
   const handleDelete = async (s: OtherSale) => {
-    if (!(await confirm({ title: "Удалить продажу?", description: `Продажа «${s.item_name}» будет удалена.` })))
+    if (
+      !(await confirm({
+        title: "Удалить продажу?",
+        description: `Продажа «${s.item_name}» будет удалена.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("other_sales").delete().eq("id", s.id);
     if (error) {
@@ -297,7 +300,12 @@ function SalesTab({
               pg.paged.map((s) => (
                 <RowContextMenu
                   actions={[
-                    { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(s) },
+                    {
+                      label: "Удалить",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => handleDelete(s),
+                    },
                   ]}
                 >
                   <TableRow key={s.id}>
@@ -591,7 +599,12 @@ function CatalogTab({
   const [editing, setEditing] = useState<SaleItem | null>(null);
 
   const handleDelete = async (i: SaleItem) => {
-    if (!(await confirm({ title: "Удалить позицию?", description: `«${i.name}» пропадёт из каталога. Прошлые продажи сохранятся.` })))
+    if (
+      !(await confirm({
+        title: "Удалить позицию?",
+        description: `«${i.name}» пропадёт из каталога. Прошлые продажи сохранятся.`,
+      }))
+    )
       return;
     const { error } = await supabase.from("sale_items").delete().eq("id", i.id);
     if (error) {
@@ -649,8 +662,20 @@ function CatalogTab({
               pg.paged.map((i) => (
                 <RowContextMenu
                   actions={[
-                    { label: "Редактировать", icon: Pencil, onSelect: () => { setEditing(i); setOpen(true); } },
-                    { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(i) },
+                    {
+                      label: "Редактировать",
+                      icon: Pencil,
+                      onSelect: () => {
+                        setEditing(i);
+                        setOpen(true);
+                      },
+                    },
+                    {
+                      label: "Удалить",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => handleDelete(i),
+                    },
                   ]}
                 >
                   <TableRow key={i.id}>
