@@ -1,5 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -26,5 +28,26 @@ export const Route = createFileRoute("/_authenticated")({
 
     return { user: data.user };
   },
-  component: () => <Outlet />,
+  component: AuthenticatedLayout,
 });
+
+/**
+ * Каркас админки живёт здесь, а не в AdminShell на каждой странице.
+ *
+ * Иначе боковое меню размонтируется и монтируется заново при каждом переходе:
+ * его прокрутка отскакивала наверх, а сама панель на кадр перерисовывалась.
+ * В layout-роуте она монтируется один раз, а меняется только содержимое
+ * Outlet — AdminShell рисует шапку с заголовком и тело страницы.
+ */
+function AuthenticatedLayout() {
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen w-full overflow-hidden bg-muted/30">
+        <AppSidebar />
+        <div className="flex h-screen flex-1 flex-col overflow-hidden">
+          <Outlet />
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}

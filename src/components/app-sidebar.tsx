@@ -89,7 +89,12 @@ export function AppSidebar() {
           <SidebarMenuButton
             asChild
             isActive={isActive(item.url)}
-            className="text-white hover:bg-white/10 hover:text-white data-[active=true]:bg-white/10 data-[active=true]:text-white"
+            /*
+              active: перекрывать обязательно — в базовых стилях shadcn нажатая
+              кнопка красится в `sidebar-accent`, а это почти белый: на тёмной
+              панели получалась вспышка под курсором на каждый клик.
+            */
+            className="font-medium text-white hover:bg-white/10 hover:text-white active:bg-white/10 active:text-white data-[active=true]:bg-white/10 data-[active=true]:font-semibold data-[active=true]:text-white"
           >
             <Link to={item.url} className="flex items-center gap-2">
               <item.icon className="h-4 w-4 text-sidebar-icon" />

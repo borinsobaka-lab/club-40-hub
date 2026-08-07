@@ -2,8 +2,6 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cat, RefreshCw } from "lucide-react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
@@ -24,50 +22,51 @@ export function AdminShell({
   const [kateOpen, setKateOpen] = useState(false);
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-muted/30">
-        <AppSidebar />
-        <div className="flex h-screen flex-1 flex-col overflow-hidden">
-          <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
-            <div className="flex flex-1 items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <h1
-                  className="truncate pt-1 text-2xl font-black italic uppercase leading-none tracking-tight"
-                  style={{ fontFamily: "Roboto, sans-serif" }}
-                >
-                  {title}
-                </h1>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Обновить"
-                  onClick={() => {
-                    router.invalidate();
-                    triggerRefresh();
-                  }}
-                >
-                  <RefreshCw className="h-5 w-5" />
-                </Button>
-              </div>
+    <>
+      <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+        <div className="flex flex-1 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            {/*
+              Заголовок раздела: Roboto 900, но без наклона и капса — обычная
+              прописная в начале. leading-tight обязателен: у «Промокодов» и
+              «Пуш-уведомлений» есть выносные элементы (р, у), а truncate
+              режет по границе строки.
+            */}
+            <h1
+              className="truncate text-2xl font-black leading-tight tracking-tight"
+              style={{ fontFamily: "Roboto, sans-serif" }}
+            >
+              {title}
+            </h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Обновить"
+              onClick={() => {
+                router.invalidate();
+                triggerRefresh();
+              }}
+            >
+              <RefreshCw className="h-5 w-5" />
+            </Button>
+          </div>
 
-              <div className="flex items-center gap-2">
-                {actions}
-                <button
-                  type="button"
-                  onClick={() => setKateOpen(true)}
-                  className="ai-gradient group relative inline-flex h-9 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
-                >
-                  <Cat className="h-4 w-4" />
-                  <span>Kate</span>
-                </button>
-                <StudioSwitcher />
-                <SignOutButton />
-              </div>
-            </div>
-          </header>
-          <main className="flex-1 overflow-auto p-6">{children}</main>
+          <div className="flex items-center gap-2">
+            {actions}
+            <button
+              type="button"
+              onClick={() => setKateOpen(true)}
+              className="ai-gradient group relative inline-flex h-9 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
+            >
+              <Cat className="h-4 w-4" />
+              <span>Kate</span>
+            </button>
+            <StudioSwitcher />
+            <SignOutButton />
+          </div>
         </div>
-      </div>
+      </header>
+      <main className="flex-1 overflow-auto p-6">{children}</main>
 
       <DialogPrimitive.Root open={kateOpen} onOpenChange={setKateOpen}>
         <DialogPrimitive.Portal>
@@ -81,6 +80,6 @@ export function AdminShell({
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
-    </SidebarProvider>
+    </>
   );
 }
