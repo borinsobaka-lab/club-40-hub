@@ -122,8 +122,9 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KE
 
 - Клиент Supabase в браузере НЕтипизированный (без `<Database>`); свежие типы
   генерировать пока нечем — нужен access token владельца.
-- Стиль: русские тексты UI, `@/` алиасы, иконки lucide-имена → Solar через
-  alias в vite.config (`src/lib/icons.tsx`).
+- Стиль: русские тексты UI, `@/` алиасы, иконки — `lucide-react` напрямую
+  (подмену на Solar через alias в vite.config сняли 2026-08-07 по решению
+  владельца, шим `src/lib/icons.tsx` удалён).
 - Пагинация таблиц: `useServerPagination` + `DataPagination`
   (`src/components/data-pagination.tsx`), поиск через `useDebouncedValue`.
 - Файлы страниц в `src/routes/_authenticated/` — самодостаточные (запросы,

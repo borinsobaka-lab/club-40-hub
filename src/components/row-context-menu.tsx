@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export type RowAction = {
   label: string;
-  /** Иконка из @/lib/icons — по смыслу действия (Pencil, Trash2, Copy, …). */
+  /** Иконка из lucide-react — по смыслу действия (Pencil, Trash2, Copy, …). */
   icon?: ComponentType<{ className?: string }>;
   onSelect: () => void;
   /** Разрушающее действие уезжает вниз за разделитель и красится destructive. */

@@ -12,15 +12,7 @@ export default defineConfig(({ command }) => ({
   // CSS in both keeps the dev preview identical to the built output.
   css: { transformer: "lightningcss" },
   resolve: {
-    alias: [
-      { find: "@", replacement: path.resolve(__dirname, "src") },
-      // Project-wide icon pack swap: every `from "lucide-react"` resolves to
-      // our Solar-icons shim (Bold Duotone weight). See src/lib/icons.tsx.
-      {
-        find: /^lucide-react$/,
-        replacement: path.resolve(__dirname, "src/lib/icons.tsx"),
-      },
-    ],
+    alias: [{ find: "@", replacement: path.resolve(__dirname, "src") }],
     dedupe: [
       "react",
       "react-dom",
