@@ -19,10 +19,8 @@ grant all on public.nps_responses to service_role;
 
 alter table public.nps_responses enable row level security;
 
-drop policy if exists "nps read all auth" on public.nps_responses;
-create policy "nps read all auth" on public.nps_responses
-  for select to authenticated using (true);
-
-drop policy if exists "nps write all auth" on public.nps_responses;
-create policy "nps write all auth" on public.nps_responses
-  for all to authenticated using (true) with check (true);
+-- ВНИМАНИЕ: политики доступа к этой таблице заданы в
+-- db/security_hardening.sql (принцип «своя строка или сотрудник»).
+-- Здесь их намеренно НЕ создаём: этот файл идемпотентный и его
+-- перезапускают ради новых колонок — раньше он при этом молча
+-- возвращал широкую политику и заново открывал доступ.

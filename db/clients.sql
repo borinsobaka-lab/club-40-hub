@@ -30,10 +30,11 @@ grant all on public.clients to service_role;
 
 alter table public.clients enable row level security;
 
-drop policy if exists "clients studio select" on public.clients;
-create policy "clients studio select" on public.clients
-  for select to authenticated
-  using (studio_id = public.current_studio_id(auth.uid()));
+-- ВНИМАНИЕ: политики доступа к этой таблице заданы в
+-- db/security_hardening.sql (принцип «своя строка или сотрудник»).
+-- Здесь их намеренно НЕ создаём: этот файл идемпотентный и его
+-- перезапускают ради новых колонок — раньше он при этом молча
+-- возвращал широкую политику и заново открывал доступ.
 
 drop policy if exists "clients trainer write" on public.clients;
 create policy "clients trainer write" on public.clients

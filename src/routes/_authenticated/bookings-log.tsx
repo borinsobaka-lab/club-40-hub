@@ -125,6 +125,7 @@ function BookingsLogPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
+  const [markingNoShows, setMarkingNoShows] = useState(false);
 
   const debouncedSearch = useDebouncedValue(search);
   const pg = useServerPagination();
@@ -141,8 +142,6 @@ function BookingsLogPage() {
       return;
     }
     setLoading(true);
-    // Авто-отметка пропущенных тренировок (прошедшие без отметки посещения)
-    await supabase.rpc("mark_no_show_bookings");
 
     // Вью bookings_log_full уже объединяет журнал с записями, которые в него
     // ещё не попали (см. db/performance_indexes.sql), поэтому сшивать
@@ -173,6 +172,24 @@ function BookingsLogPage() {
   useEffect(() => {
     fetchRows();
   }, [fetchRows, refreshSignal]);
+
+  // Раньше эта простановка вызывалась внутри загрузки страницы, то есть на
+  // каждый ввод в поиске и на каждую смену страницы — а это два UPDATE'а по
+  // всему журналу. Теперь только по явному нажатию.
+  const markNoShows = async () => {
+    setMarkingNoShows(true);
+    const { data, error } = await supabase.rpc("mark_no_show_bookings", {
+      p_studio_id: studioId,
+    });
+    setMarkingNoShows(false);
+    if (error) {
+      toast.error("Не удалось отметить пропущенные: " + error.message);
+      return;
+    }
+    const n = typeof data === "number" ? data : 0;
+    toast.success(n > 0 ? `Отмечено пропущенных: ${n}` : "Новых пропусков нет");
+    fetchRows();
+  };
 
   return (
     <AdminShell
@@ -206,6 +223,15 @@ function BookingsLogPage() {
                   <SelectItem value="completed">Проведено</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={markNoShows}
+                disabled={markingNoShows}
+              >
+                {markingNoShows ? "Отмечаем…" : "Отметить пропущенные"}
+              </Button>
             </TableToolbar>
 
             <div className="rounded-lg border bg-background">

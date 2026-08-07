@@ -36,14 +36,6 @@ drop policy if exists "workout-photos public read" on storage.objects;
 create policy "workout-photos public read" on storage.objects
   for select using (bucket_id = 'workout-photos');
 
-drop policy if exists "workout-photos auth insert" on storage.objects;
-create policy "workout-photos auth insert" on storage.objects
-  for insert to authenticated with check (bucket_id = 'workout-photos');
-
-drop policy if exists "workout-photos auth update" on storage.objects;
-create policy "workout-photos auth update" on storage.objects
-  for update to authenticated using (bucket_id = 'workout-photos');
-
-drop policy if exists "workout-photos auth delete" on storage.objects;
-create policy "workout-photos auth delete" on storage.objects
-  for delete to authenticated using (bucket_id = 'workout-photos');
+-- ВНИМАНИЕ: запись в бакет разрешена только сотрудникам —
+-- политики заданы в db/storage_hardening.sql. Здесь их не
+-- создаём, иначе перезапуск файла снова открыл бы бакет всем.

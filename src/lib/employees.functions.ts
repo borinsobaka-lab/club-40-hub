@@ -162,7 +162,25 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     if (data.user_id === context.userId) {
       throw new Error("Нельзя удалить самого себя");
     }
+
     const admin = await loadAdmin();
+
+    // Удаление идёт сервис-ключом в обход RLS, поэтому цель обязана быть
+    // проверена явно: без этого владелец одной студии мог удалить любого
+    // пользователя проекта — сотрудника чужой студии или клиента приложения
+    // (auth.users каскадом уносит profiles/clients/записи).
+    const { data: targetRoles, error: targetErr } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user_id)
+      .eq("studio_id", studioId)
+      .in("role", ["owner", "admin", "trainer"])
+      .limit(1);
+    if (targetErr) throw new Error(targetErr.message);
+    if (!targetRoles?.length) {
+      throw new Error("Этот пользователь не является сотрудником вашей студии");
+    }
+
     const { error } = await admin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
     return { ok: true };

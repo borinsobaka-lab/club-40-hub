@@ -158,7 +158,10 @@ export function EditActiveMembershipDialog({
             </div>
           </div>
 
-          {allowed > 0 && (
+          {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
+              иначе после обнуления «дней заморозки» в тарифе разморозить его
+              стало бы нечем. */}
+          {(allowed > 0 || status === "frozen") && (
             <div className="space-y-2 rounded-md border bg-muted/30 p-3">
               <div className="text-sm font-medium">Заморозка</div>
               <div className="text-xs text-muted-foreground">

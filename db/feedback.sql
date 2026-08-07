@@ -22,10 +22,8 @@ grant all on public.feedback to service_role;
 
 alter table public.feedback enable row level security;
 
-drop policy if exists "feedback read all auth" on public.feedback;
-create policy "feedback read all auth" on public.feedback
-  for select to authenticated using (true);
-
-drop policy if exists "feedback write all auth" on public.feedback;
-create policy "feedback write all auth" on public.feedback
-  for all to authenticated using (true) with check (true);
+-- ВНИМАНИЕ: политики доступа к этой таблице заданы в
+-- db/security_hardening.sql (принцип «своя строка или сотрудник»).
+-- Здесь их намеренно НЕ создаём: этот файл идемпотентный и его
+-- перезапускают ради новых колонок — раньше он при этом молча
+-- возвращал широкую политику и заново открывал доступ.

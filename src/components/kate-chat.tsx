@@ -236,7 +236,15 @@ function VoiceInputButton({
         const ext = rec.mimeType.includes("mp4") ? "mp4" : "webm";
         const fd = new FormData();
         fd.append("file", blob, `recording.${ext}`);
-        const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+        // Эндпоинт распознавания пускает только сотрудников, поэтому токен
+        // обязателен — как и в транспорте чата выше.
+        const { data: session } = await supabase.auth.getSession();
+        const token = session.session?.access_token;
+        const res = await fetch("/api/transcribe", {
+          method: "POST",
+          body: fd,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!res.ok) throw new Error(await res.text());
         const data = (await res.json()) as { text?: string };
         const text = (data.text ?? "").trim();

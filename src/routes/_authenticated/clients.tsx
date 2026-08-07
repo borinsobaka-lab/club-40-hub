@@ -49,7 +49,7 @@ import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
-import { formatDate } from "@/lib/format";
+import { formatDate, sanitizeSearch } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -83,11 +83,6 @@ const CLIENT_COLUMNS =
   "id, studio_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
   "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status";
 
-// В синтаксисе .or() PostgREST запятая разделяет условия, а скобки группируют,
-// поэтому из поискового запроса их нужно убрать — иначе фильтр развалится.
-function sanitizeSearch(value: string) {
-  return value.trim().replace(/[,()]/g, " ").replace(/\s+/g, " ").trim();
-}
 
 function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
   const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();

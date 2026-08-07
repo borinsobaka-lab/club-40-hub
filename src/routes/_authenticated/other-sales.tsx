@@ -40,7 +40,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/table-skeleton";
-import { formatMoneyPrecise as formatMoney, formatDate } from "@/lib/format";
+import { formatMoneyPrecise as formatMoney, formatDate, todayISO } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -371,7 +371,7 @@ function AddSaleDialog({
   const [quantity, setQuantity] = useState("1");
   const [unitPrice, setUnitPrice] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("cash");
-  const [soldAt, setSoldAt] = useState(new Date().toISOString().slice(0, 10));
+  const [soldAt, setSoldAt] = useState(todayISO());
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -385,7 +385,7 @@ function AddSaleDialog({
       setQuantity("1");
       setUnitPrice("");
       setPayment("cash");
-      setSoldAt(new Date().toISOString().slice(0, 10));
+      setSoldAt(todayISO());
       setComment("");
     }
   }, [open]);

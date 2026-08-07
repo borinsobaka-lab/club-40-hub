@@ -50,3 +50,24 @@ export function clientName(c: {
   const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
   return composed || c.full_name || "—";
 }
+
+/**
+ * Сегодняшняя дата в локальном часовом поясе (YYYY-MM-DD).
+ * Через `new Date().toISOString()` брать нельзя: он отдаёт UTC, и всё раннее
+ * утро студии (Тбилиси, UTC+4) продажи падали бы вчерашним днём и ломали
+ * сверку кассы.
+ */
+export function todayISO() {
+  const d = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
+
+/**
+ * Чистит строку поиска для PostgREST-фильтра `.or()`: там запятая разделяет
+ * условия, а скобки группируют, поэтому «Иванов, ООО (Ромашка)» разваливает
+ * запрос и возвращает 400 вместо результата.
+ */
+export function sanitizeSearch(value: string) {
+  return value.trim().replace(/[,()]/g, " ").replace(/\s+/g, " ").trim();
+}

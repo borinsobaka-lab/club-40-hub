@@ -63,8 +63,17 @@ const ZERO: Metrics = {
 
 async function loadMetrics(studioId: string, from: string, to: string): Promise<Metrics> {
   // Запускаем все запросы параллельно.
-  const [salesRes, signupsRes, activeRes, expiringRes, visitsRes, debtPeriodRes, debtTotalRes] =
-    await Promise.all([
+  const [
+    salesRes,
+    signupsRes,
+    activeRes,
+    expiringRes,
+    visitsRes,
+    debtPeriodRes,
+    debtTotalRes,
+    otherSalesRes,
+    refundsRes,
+  ] = await Promise.all([
       supabase
         .from("sales")
         .select("total_amount, sold_at")
@@ -110,11 +119,39 @@ async function loadMetrics(studioId: string, from: string, to: string): Promise<
         .select("amount, sales!inner(studio_id)")
         .eq("paid", false)
         .eq("sales.studio_id", studioId),
+      // Продажи услуг и товаров — отдельная таблица, но выручка общая.
+      supabase
+        .from("other_sales")
+        .select("total_amount")
+        .eq("studio_id", studioId)
+        .gte("sold_at", from)
+        .lte("sold_at", to),
+      // Возвраты уменьшают выручку за период.
+      supabase
+        .from("refunds")
+        .select("amount")
+        .eq("studio_id", studioId)
+        .gte("refunded_at", `${from}T00:00:00`)
+        .lte("refunded_at", `${to}T23:59:59`),
     ]);
 
   const sales = (salesRes.data ?? []) as { total_amount: number }[];
-  const revenue = sales.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
-  const avgMembership = sales.length ? revenue / sales.length : 0;
+  const membershipRevenue = sales.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
+  const avgMembership = sales.length ? membershipRevenue / sales.length : 0;
+
+  const otherSales = (otherSalesRes.data ?? []) as { total_amount: number }[];
+  const servicesRevenue = otherSales.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
+  const avgServices = otherSales.length ? servicesRevenue / otherSales.length : 0;
+
+  const refunded = ((refundsRes.data ?? []) as { amount: number }[]).reduce(
+    (s, r) => s + Number(r.amount ?? 0),
+    0,
+  );
+
+  // Выручка — абонементы плюс услуги и товары, минус возвраты.
+  const revenue = membershipRevenue + servicesRevenue - refunded;
+  const dealsCount = sales.length + otherSales.length;
+  const avgTotal = dealsCount ? (membershipRevenue + servicesRevenue) / dealsCount : 0;
 
   const active = (activeRes.data ?? []) as { client_id: string; ends_at: string | null }[];
   const today = toISO(new Date());
@@ -132,8 +169,8 @@ async function loadMetrics(studioId: string, from: string, to: string): Promise<
     expiring: expiringRes.count ?? 0,
     visits: visitsRes.count ?? 0,
     avgMembership,
-    avgServices: 0,
-    avgTotal: avgMembership, // пока услуг нет — общий = по абонементам
+    avgServices,
+    avgTotal,
     debtPeriod: debtPeriodRows.reduce((s, r) => s + Number(r.amount ?? 0), 0),
     debtTotal: debtTotalRows.reduce((s, r) => s + Number(r.amount ?? 0), 0),
   };
@@ -202,7 +239,7 @@ const STATS: StatDef[] = [
   {
     key: "avgServices",
     label: "Средний чек за услуги",
-    hint: "пока 0",
+    hint: "за период",
     format: "money",
     compare: false,
     goodWhenUp: true,

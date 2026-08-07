@@ -3,6 +3,7 @@ import { convertToModelMessages, streamText, tool, stepCountIs, type UIMessage }
 import { z } from "zod";
 import { createAiProvider } from "@/lib/ai-gateway.server";
 import { getStaffContext } from "@/lib/staff-auth.server";
+import { sanitizeSearch } from "@/lib/format";
 
 type Body = { messages?: unknown };
 
@@ -68,9 +69,12 @@ export const Route = createFileRoute("/api/chat")({
                   .order("created_at", { ascending: false })
                   .limit(limit);
                 if (ids?.length) q = q.in("id", ids);
-                if (search)
+                // Запятые и скобки из строки модели развалили бы .or():
+                // там запятая разделяет условия, а скобки группируют.
+                const term = sanitizeSearch(search ?? "");
+                if (term)
                   q = q.or(
-                    `full_name.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`,
+                    `full_name.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`,
                   );
                 const { data, error } = await q;
                 if (error) return { error: error.message };

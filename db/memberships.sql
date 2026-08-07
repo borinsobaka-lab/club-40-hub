@@ -43,17 +43,9 @@ drop policy if exists "memberships-media public read" on storage.objects;
 create policy "memberships-media public read" on storage.objects
   for select using (bucket_id = 'memberships-media');
 
-drop policy if exists "memberships-media auth insert" on storage.objects;
-create policy "memberships-media auth insert" on storage.objects
-  for insert to authenticated with check (bucket_id = 'memberships-media');
-
-drop policy if exists "memberships-media auth update" on storage.objects;
-create policy "memberships-media auth update" on storage.objects
-  for update to authenticated using (bucket_id = 'memberships-media');
-
-drop policy if exists "memberships-media auth delete" on storage.objects;
-create policy "memberships-media auth delete" on storage.objects
-  for delete to authenticated using (bucket_id = 'memberships-media');
+-- ВНИМАНИЕ: запись в бакет разрешена только сотрудникам —
+-- политики заданы в db/storage_hardening.sql. Здесь их не
+-- создаём, иначе перезапуск файла снова открыл бы бакет всем.
 
 -- Remove legacy membership-assignment fields if they exist (older schema versions
 -- had user_id and plan_name as NOT NULL, which breaks saving the current form).
