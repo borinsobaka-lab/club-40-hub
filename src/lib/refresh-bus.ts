@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const EVENT = "club40:refresh";
+const EVENT = "base40:refresh";
 
 export function triggerRefresh() {
   if (typeof window === "undefined") return;
