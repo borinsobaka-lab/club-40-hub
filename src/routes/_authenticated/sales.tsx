@@ -204,6 +204,7 @@ function SalesPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [refundSale, setRefundSale] = useState<Sale | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
 
   const debouncedSearch = useDebouncedValue(search);
@@ -397,9 +398,19 @@ function SalesPage() {
                             {s.comment ?? "—"}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => setRefundSale(s)}
+                              >
+                                Возврат
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -421,6 +432,14 @@ function SalesPage() {
         adminId={user?.id ?? null}
         adminEmail={user?.email ?? null}
         clients={clients}
+        onSaved={fetchSales}
+      />
+
+      <RefundDialog
+        sale={refundSale}
+        onOpenChange={(v) => !v && setRefundSale(null)}
+        adminId={user?.id ?? null}
+        adminName={user?.email ?? null}
         onSaved={fetchSales}
       />
     </AdminShell>
@@ -911,5 +930,118 @@ function SearchableCombobox({
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function RefundDialog({
+  sale,
+  onOpenChange,
+  adminId,
+  adminName,
+  onSaved,
+}: {
+  sale: Sale | null;
+  onOpenChange: (v: boolean) => void;
+  adminId: string | null;
+  adminName: string | null;
+  onSaved: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (sale) {
+      setAmount(String(sale.total_amount ?? ""));
+      setReason("");
+      setMethod("cash");
+    }
+  }, [sale]);
+
+  const handleSave = async () => {
+    if (!sale) return;
+    const amt = Number(String(amount).replace(",", "."));
+    if (!Number.isFinite(amt) || amt < 0) {
+      toast.error("Укажите сумму возврата");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("refunds").insert({
+      studio_id: sale.studio_id,
+      sale_id: sale.id,
+      amount: amt,
+      reason: reason.trim() || null,
+      method,
+      refunded_by: adminId,
+      refunded_by_name: adminName,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error("Ошибка возврата: " + error.message);
+      return;
+    }
+    toast.success("Возврат зафиксирован");
+    onOpenChange(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={!!sale} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Возврат</DialogTitle>
+          <DialogDescription>
+            Возврат по продаже{sale?.memberships?.name ? ` «${sale.memberships.name}»` : ""}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="r-amount">Сумма возврата, ₾</Label>
+            <Input
+              id="r-amount"
+              type="number"
+              min={0}
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Способ</Label>
+            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {PAYMENT_METHOD_LABEL[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="r-reason">Причина (по желанию)</Label>
+            <Textarea
+              id="r-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+            Оформить возврат
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
