@@ -132,6 +132,14 @@ const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
   other: "Другое",
 };
 
+type PaymentMethod = "cash" | "card" | "transfer" | "app";
+const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  cash: "Наличные",
+  card: "Карта",
+  transfer: "Перевод",
+  app: "Приложение",
+};
+
 function SourceBadge({ source }: { source: "admin" | "mobile" }) {
   const isMobile = source === "mobile";
   return (
@@ -445,6 +453,7 @@ function SaleDialog({
   const [remainingCount, setRemainingCount] = useState<2 | 3>(2);
   const [comment, setComment] = useState<string>("");
   const [paymentType, setPaymentType] = useState<PaymentType>("first");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [promoCode, setPromoCode] = useState<string>("");
   const [adminName, setAdminName] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -459,6 +468,7 @@ function SaleDialog({
     setRemainingCount(2);
     setComment("");
     setPaymentType("first");
+    setPaymentMethod("cash");
     setPromoCode("");
   }, [open]);
 
@@ -512,6 +522,8 @@ function SaleDialog({
   const down = installmentEnabled ? Number(downPayment) || 0 : total;
   const remaining = installmentEnabled ? remainingCount : 0;
   const remainingTotal = Math.max(0, total - down);
+  const listPrice = selectedMembership?.price != null ? Number(selectedMembership.price) : null;
+  const discount = listPrice != null ? Math.max(0, listPrice - total) : 0;
 
   const schedule = useMemo(() => {
     if (!installmentEnabled || remaining === 0 || remainingTotal <= 0) return [];
@@ -591,6 +603,9 @@ function SaleDialog({
         remaining_installments: remaining,
         source: "admin",
         payment_type: paymentType,
+        payment_method: paymentMethod,
+        list_price: listPrice,
+        discount_amount: discount,
         promo_code: promoCode.trim() || null,
         comment: comment.trim() || null,
       })
@@ -680,16 +695,41 @@ function SaleDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="s-amount">Стоимость, ₾</Label>
-            <Input
-              id="s-amount"
-              type="number"
-              min={0}
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="s-amount">Стоимость, ₾</Label>
+              <Input
+                id="s-amount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              {discount > 0 && listPrice != null && (
+                <p className="text-xs text-muted-foreground">
+                  Цена по тарифу {formatMoney(listPrice)}, скидка {formatMoney(discount)}.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Способ оплаты</Label>
+              <Select
+                value={paymentMethod}
+                onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {PAYMENT_METHOD_LABEL[m]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {installmentEnabled ? (

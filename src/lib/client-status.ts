@@ -34,7 +34,11 @@ export function computeClubStatus(memberships: MembershipLite[] | null | undefin
   const list = memberships ?? [];
   if (list.length === 0) return "pchk";
   const today = todayISO();
-  const hasActive = list.some((m) => m.status === "active" && (!m.ends_at || m.ends_at >= today));
+  // Замороженный абонемент — тоже действующий (на паузе), клиент остаётся ЧК.
+  const hasActive = list.some(
+    (m) =>
+      m.status === "frozen" || (m.status === "active" && (!m.ends_at || m.ends_at >= today)),
+  );
   if (hasActive) return "chk";
   return "bchk";
 }

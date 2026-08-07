@@ -53,6 +53,7 @@ type Membership = {
   is_active: boolean;
   cover_url: string | null;
   for_couple: boolean;
+  freeze_days_allowed: number;
 };
 
 const COVER_BUCKET = "memberships-media";
@@ -370,6 +371,7 @@ function MembershipDialog({
   const [autoRenew, setAutoRenew] = useState(false);
   const [installmentEnabled, setInstallmentEnabled] = useState(false);
   const [price, setPrice] = useState<string>("");
+  const [freezeDays, setFreezeDays] = useState<string>("");
   const [isActive, setIsActive] = useState(true);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -391,6 +393,7 @@ function MembershipDialog({
     setAutoRenew(membership?.auto_renew ?? false);
     setInstallmentEnabled(membership?.installment_enabled ?? false);
     setPrice(membership?.price != null ? String(membership.price) : "");
+    setFreezeDays(membership?.freeze_days_allowed ? String(membership.freeze_days_allowed) : "");
     setIsActive(membership?.is_active ?? true);
     setCoverUrl(membership?.cover_url ?? null);
     setForCouple(membership?.for_couple ?? false);
@@ -441,6 +444,7 @@ function MembershipDialog({
       auto_renew: autoRenew,
       installment_enabled: installmentEnabled,
       price: price ? Number(price) : 0,
+      freeze_days_allowed: freezeDays ? Number(freezeDays) : 0,
       is_active: isActive,
       cover_url: coverUrl,
       for_couple: forCouple,
@@ -616,6 +620,21 @@ function MembershipDialog({
                 placeholder="0"
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="m-freeze">Дней заморозки (0 — заморозка недоступна)</Label>
+            <Input
+              id="m-freeze"
+              type="number"
+              min={0}
+              value={freezeDays}
+              onChange={(e) => setFreezeDays(e.target.value)}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">
+              Сколько дней клиент может заморозить этот абонемент суммарно.
+            </p>
           </div>
 
           <label className="flex items-center gap-2 text-sm">

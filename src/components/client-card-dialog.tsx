@@ -175,6 +175,8 @@ type SaleRow = {
     | null;
 };
 
+type MembershipRef = { name: string; freeze_days_allowed?: number | null };
+
 type ActiveCM = {
   id: string;
   source: "admin" | "mobile";
@@ -184,7 +186,9 @@ type ActiveCM = {
   auto_renew: boolean | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
-  memberships: { name: string } | { name: string }[] | null;
+  freeze_days_used: number | null;
+  frozen_until: string | null;
+  memberships: MembershipRef | MembershipRef[] | null;
 };
 
 type ActiveCMWithStatus = ActiveCM & { status: string };
@@ -193,6 +197,12 @@ function membershipName(m: ActiveCM["memberships"] | SaleRow["memberships"]) {
   if (!m) return "—";
   if (Array.isArray(m)) return m[0]?.name ?? "—";
   return m.name;
+}
+
+function membershipFreezeAllowed(m: ActiveCM["memberships"]): number {
+  if (!m) return 0;
+  const ref = Array.isArray(m) ? m[0] : m;
+  return ref?.freeze_days_allowed ?? 0;
 }
 
 export function ClientCardDialog({
@@ -233,19 +243,24 @@ export function ClientCardDialog({
     supabase
       .from("client_memberships")
       .select(
-        "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, memberships(name)",
+        "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, memberships(name, freeze_days_allowed)",
       )
       .eq("client_id", client.id)
       .order("started_at", { ascending: false })
       .then(({ data }) => {
         setLoadingActive(false);
-        const rows = (data as unknown as (ActiveCM & { status: string })[]) ?? [];
+        const rows = (data as unknown as ActiveCMWithStatus[]) ?? [];
         setAllMemberships(
           rows.map((r) => ({ client_id: client.id, status: r.status, ends_at: r.ends_at })),
         );
         const today = new Date().toISOString().slice(0, 10);
+        // Замороженный абонемент тоже показываем как текущий.
         const a =
-          rows.find((r) => r.status === "active" && (!r.ends_at || r.ends_at >= today)) ?? null;
+          rows.find(
+            (r) =>
+              r.status === "frozen" ||
+              (r.status === "active" && (!r.ends_at || r.ends_at >= today)),
+          ) ?? null;
         setActive(a);
       });
     if (client.user_id) {
@@ -363,6 +378,12 @@ export function ClientCardDialog({
                       <MembershipStatusBadge m={active} />
                       <AutoRenewBadge on={active.auto_renew} />
                     </div>
+                    {active.status === "frozen" && (
+                      <div className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                        Заморожен
+                        {active.frozen_until ? ` до ${formatDate(active.frozen_until)}` : ""}
+                      </div>
+                    )}
                     {active.cancelled_at && (
                       <div className="mt-1 text-xs text-rose-700 dark:text-rose-300">
                         Отменён: {formatDate(active.cancelled_at)}
@@ -457,7 +478,15 @@ export function ClientCardDialog({
           onOpenChange={setEditOpen}
           membership={
             active
-              ? { id: active.id, ends_at: active.ends_at, visits_left: active.visits_left }
+              ? {
+                  id: active.id,
+                  ends_at: active.ends_at,
+                  visits_left: active.visits_left,
+                  status: active.status,
+                  freeze_days_used: active.freeze_days_used,
+                  frozen_until: active.frozen_until,
+                  freeze_days_allowed: membershipFreezeAllowed(active.memberships),
+                }
               : null
           }
           onSaved={load}

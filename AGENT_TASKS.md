@@ -178,6 +178,8 @@ Postgres 16). Требуют, чтобы `security_hardening.sql` был уже 
    поэтому запускать **после** `db/client_memberships_cancel.sql`.
 4. `db/booking_hygiene.sql` — единый словарь статусов посещений, автоистечение
    `expire_memberships()`, триггер `last_visit_date`, причины/срок отмены брони.
+5. `db/bookings_log_full_reason.sql` — добавляет причину и срок отмены во вью
+   «Истории записей» (после 4).
 
 После прогона можно повесить на pg_cron ежедневно:
 `select public.expire_memberships();` и (если уже прогнан stats) обновление

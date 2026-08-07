@@ -59,6 +59,13 @@ type Entry = {
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
 
+const ADMIN_CANCEL_REASONS = [
+  "Клиент отменил",
+  "Клиент не пришёл",
+  "Замена или перенос",
+  "Технические причины",
+  "Другое",
+];
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
 const SLOT_PX_FULL = 88;
@@ -940,6 +947,7 @@ function BookingsPanel({
   const [memberships, setMemberships] = useState<Record<string, ActiveMembershipRow>>({});
   const [confirmBooking, setConfirmBooking] = useState<BookingRow | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState<string>("");
   const [attendingId, setAttendingId] = useState<string | null>(null);
 
   const load = async () => {
@@ -1004,6 +1012,7 @@ function BookingsPanel({
     setCancelling(true);
     const { data, error } = await supabase.rpc("cancel_schedule_booking_admin", {
       p_booking_id: confirmBooking.id,
+      p_reason: cancelReason || null,
     });
     setCancelling(false);
     if (error) {
@@ -1017,6 +1026,7 @@ function BookingsPanel({
     }
     toast.success("Запись отклонена");
     setConfirmBooking(null);
+    setCancelReason("");
     await load();
     onChanged();
   };
@@ -1133,6 +1143,21 @@ function BookingsPanel({
               снова, если останутся места.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label>Причина отмены</Label>
+            <Select value={cancelReason} onValueChange={setCancelReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Не указана" />
+              </SelectTrigger>
+              <SelectContent>
+                {ADMIN_CANCEL_REASONS.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={cancelling}>Отмена</AlertDialogCancel>
             <AlertDialogAction onClick={handleCancel} disabled={cancelling}>

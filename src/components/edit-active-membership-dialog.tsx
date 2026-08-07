@@ -18,7 +18,16 @@ export type ActiveMembership = {
   id: string;
   ends_at: string | null;
   visits_left: number | null;
+  status?: string;
+  freeze_days_used?: number | null;
+  frozen_until?: string | null;
+  freeze_days_allowed?: number;
 };
+
+function formatDate(d: string | null | undefined) {
+  if (!d) return "—";
+  return new Intl.DateTimeFormat("ru-RU").format(new Date(d));
+}
 
 export function EditActiveMembershipDialog({
   open,
@@ -35,13 +44,64 @@ export function EditActiveMembershipDialog({
   const [unlimitedVisits, setUnlimitedVisits] = useState(false);
   const [visitsLeft, setVisitsLeft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [freezeDaysInput, setFreezeDaysInput] = useState("");
+  const [freezing, setFreezing] = useState(false);
 
   useEffect(() => {
     if (!open || !membership) return;
     setEndsAt(membership.ends_at ?? "");
     setUnlimitedVisits(membership.visits_left == null);
     setVisitsLeft(membership.visits_left != null ? String(membership.visits_left) : "");
+    setFreezeDaysInput("");
   }, [open, membership]);
+
+  const allowed = membership?.freeze_days_allowed ?? 0;
+  const used = membership?.freeze_days_used ?? 0;
+  const remaining = Math.max(0, allowed - used);
+  const status = membership?.status;
+
+  const handleFreeze = async () => {
+    if (!membership) return;
+    const days = Math.floor(Number(freezeDaysInput) || 0);
+    if (days <= 0) {
+      toast.error("Укажите количество дней");
+      return;
+    }
+    if (days > remaining) {
+      toast.error(`Доступно только ${remaining} дн. заморозки`);
+      return;
+    }
+    setFreezing(true);
+    const { error } = await supabase.rpc("freeze_membership", {
+      _client_membership_id: membership.id,
+      _days: days,
+      _reason: null,
+    });
+    setFreezing(false);
+    if (error) {
+      toast.error("Ошибка заморозки: " + error.message);
+      return;
+    }
+    toast.success("Абонемент заморожен");
+    onOpenChange(false);
+    onSaved();
+  };
+
+  const handleUnfreeze = async () => {
+    if (!membership) return;
+    setFreezing(true);
+    const { error } = await supabase.rpc("unfreeze_membership", {
+      _client_membership_id: membership.id,
+    });
+    setFreezing(false);
+    if (error) {
+      toast.error("Ошибка разморозки: " + error.message);
+      return;
+    }
+    toast.success("Абонемент разморожен");
+    onOpenChange(false);
+    onSaved();
+  };
 
   const handleSave = async () => {
     if (!membership) return;
@@ -100,6 +160,53 @@ export function EditActiveMembershipDialog({
               </label>
             </div>
           </div>
+
+          {allowed > 0 && (
+            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+              <div className="text-sm font-medium">Заморозка</div>
+              <div className="text-xs text-muted-foreground">
+                Доступно {remaining} из {allowed} дн.
+                {status === "frozen" && membership?.frozen_until
+                  ? ` · заморожен до ${formatDate(membership.frozen_until)}`
+                  : ""}
+              </div>
+              {status === "frozen" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUnfreeze}
+                  disabled={freezing}
+                >
+                  {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                  Разморозить
+                </Button>
+              ) : status === "active" || status === undefined ? (
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 space-y-1">
+                    <Label htmlFor="cm-freeze">Дней</Label>
+                    <Input
+                      id="cm-freeze"
+                      type="number"
+                      min={1}
+                      max={remaining}
+                      value={freezeDaysInput}
+                      onChange={(e) => setFreezeDaysInput(e.target.value)}
+                      placeholder={String(remaining)}
+                      disabled={remaining <= 0}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleFreeze}
+                    disabled={freezing || remaining <= 0}
+                  >
+                    {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                    Заморозить
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>

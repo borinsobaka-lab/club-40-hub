@@ -50,10 +50,12 @@ type LogRow = {
   workout_type: string | null;
   starts_at: string;
   ends_at: string;
-  status: "booked" | "completed" | "cancelled" | "attended" | "no_show" | "rejected";
+  status: "booked" | "waitlist" | "cancelled" | "attended" | "no_show" | "completed" | "rejected";
   booked_at: string;
   cancelled_at: string | null;
   completed_at: string | null;
+  cancel_reason: string | null;
+  cancelled_lead_minutes: number | null;
   met_value: number | null;
   weight_at_time: number | null;
   duration_min: number | null;
@@ -64,6 +66,7 @@ const STATUS_ALL = "__all__";
 
 const statusLabel: Record<LogRow["status"], string> = {
   booked: "Забронировано",
+  waitlist: "Лист ожидания",
   attended: "Посещено",
   no_show: "Пропущено",
   cancelled: "Отменено",
@@ -103,6 +106,15 @@ function fmt(dt: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// Срок отмены: >0 — за сколько до начала, <=0 — после начала занятия.
+function formatLead(minutes: number) {
+  if (minutes <= 0) return "после начала";
+  if (minutes < 60) return `за ${minutes} мин до начала`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `за ${h} ч ${m} мин до начала` : `за ${h} ч до начала`;
 }
 
 function BookingsLogPage() {
@@ -276,7 +288,19 @@ function BookingsLogPage() {
                             {r.calories ?? "—"}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {fmt(r.cancelled_at)}
+                            {r.cancelled_at ? (
+                              <div className="space-y-0.5">
+                                <div>{fmt(r.cancelled_at)}</div>
+                                {r.cancel_reason && (
+                                  <div className="text-foreground">{r.cancel_reason}</div>
+                                )}
+                                {r.cancelled_lead_minutes != null && (
+                                  <div>{formatLead(r.cancelled_lead_minutes)}</div>
+                                )}
+                              </div>
+                            ) : (
+                              "—"
+                            )}
                           </TableCell>
                         </TableRow>
                       );
