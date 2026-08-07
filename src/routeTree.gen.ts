@@ -23,6 +23,7 @@ import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPushTriggersRouteImport } from './routes/_authenticated/push-triggers'
 import { Route as AuthenticatedPushRouteImport } from './routes/_authenticated/push'
 import { Route as AuthenticatedPromocodesRouteImport } from './routes/_authenticated/promocodes'
+import { Route as AuthenticatedOtherSalesRouteImport } from './routes/_authenticated/other-sales'
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
@@ -106,6 +107,11 @@ const AuthenticatedPromocodesRoute = AuthenticatedPromocodesRouteImport.update({
   path: '/promocodes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOtherSalesRoute = AuthenticatedOtherSalesRouteImport.update({
+  id: '/other-sales',
+  path: '/other-sales',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedNpsRoute = AuthenticatedNpsRouteImport.update({
   id: '/nps',
   path: '/nps',
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
+  '/other-sales': typeof AuthenticatedOtherSalesRoute
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
+  '/other-sales': typeof AuthenticatedOtherSalesRoute
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
+  '/_authenticated/other-sales': typeof AuthenticatedOtherSalesRoute
   '/_authenticated/promocodes': typeof AuthenticatedPromocodesRoute
   '/_authenticated/push': typeof AuthenticatedPushRoute
   '/_authenticated/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/memberships'
     | '/news'
     | '/nps'
+    | '/other-sales'
     | '/promocodes'
     | '/push'
     | '/push-triggers'
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/memberships'
     | '/news'
     | '/nps'
+    | '/other-sales'
     | '/promocodes'
     | '/push'
     | '/push-triggers'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/_authenticated/memberships'
     | '/_authenticated/news'
     | '/_authenticated/nps'
+    | '/_authenticated/other-sales'
     | '/_authenticated/promocodes'
     | '/_authenticated/push'
     | '/_authenticated/push-triggers'
@@ -447,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPromocodesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/other-sales': {
+      id: '/_authenticated/other-sales'
+      path: '/other-sales'
+      fullPath: '/other-sales'
+      preLoaderRoute: typeof AuthenticatedOtherSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/nps': {
       id: '/_authenticated/nps'
       path: '/nps'
@@ -547,6 +566,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
+  AuthenticatedOtherSalesRoute: typeof AuthenticatedOtherSalesRoute
   AuthenticatedPromocodesRoute: typeof AuthenticatedPromocodesRoute
   AuthenticatedPushRoute: typeof AuthenticatedPushRoute
   AuthenticatedPushTriggersRoute: typeof AuthenticatedPushTriggersRoute
@@ -572,6 +592,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,
+  AuthenticatedOtherSalesRoute: AuthenticatedOtherSalesRoute,
   AuthenticatedPromocodesRoute: AuthenticatedPromocodesRoute,
   AuthenticatedPushRoute: AuthenticatedPushRoute,
   AuthenticatedPushTriggersRoute: AuthenticatedPushTriggersRoute,

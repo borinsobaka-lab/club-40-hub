@@ -118,6 +118,7 @@ export const Save = adapt(Solar.Diskette, "Save");
 export const Search = adapt(Solar.Magnifer, "Search");
 export const Send = adapt(Solar.Plain, "Send");
 export const Settings = adapt(Solar.Settings, "Settings");
+export const ShoppingBag = adapt(Solar.Bag3, "ShoppingBag");
 export const Sparkles = adapt(Solar.Stars, "Sparkles");
 export const Tag = adapt(Solar.Tag, "Tag");
 export const Ticket = adapt(Solar.Ticket, "Ticket");

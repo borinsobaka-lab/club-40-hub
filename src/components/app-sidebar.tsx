@@ -12,6 +12,7 @@ import {
   Wallet,
   Newspaper,
   Receipt,
+  ShoppingBag,
   Sparkles,
   History,
   Ticket,
@@ -49,6 +50,7 @@ const studioItems = [
 
 const statsItems = [
   { title: "Продажи", url: "/sales", icon: Receipt },
+  { title: "Прочие продажи", url: "/other-sales", icon: ShoppingBag },
   { title: "История записей", url: "/bookings-log", icon: History },
   { title: "Отмены автопродления", url: "/autorenew-cancellations", icon: RefreshCwOff },
 ];
