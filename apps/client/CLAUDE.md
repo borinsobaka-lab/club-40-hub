@@ -1,4 +1,4 @@
-# CLUB 40 — клиентское приложение (club40-client-hub)
+# Base40 — клиентское приложение (club40-client-hub)
 
 Мобильно-ориентированное веб-приложение для клиентов студии (в планах — PWA).
 TanStack Start (SSR) + React 19 + Tailwind 4 + shadcn/radix. Пакетный

@@ -16,8 +16,8 @@ import { useAuth } from "@/hooks/use-auth";
 export const Route = createFileRoute("/schedule")({
   head: () => ({
     meta: [
-      { title: "Бронь — CLUB 40" },
-      { name: "description", content: "Бронирование занятий CLUB 40." },
+      { title: "Бронь — Base40" },
+      { name: "description", content: "Бронирование занятий Base40." },
     ],
   }),
   component: SchedulePage,

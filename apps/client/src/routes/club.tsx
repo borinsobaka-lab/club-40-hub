@@ -7,8 +7,8 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/club")({
   head: () => ({
     meta: [
-      { title: "Клуб — CLUB 40" },
-      { name: "description", content: "Челленджи, участники и жизнь клуба CLUB 40." },
+      { title: "Клуб — Base40" },
+      { name: "description", content: "Челленджи, участники и жизнь клуба Base40." },
     ],
   }),
   component: ClubPage,

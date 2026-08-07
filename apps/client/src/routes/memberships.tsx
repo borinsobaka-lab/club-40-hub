@@ -34,8 +34,8 @@ import { useAuth } from "@/hooks/use-auth";
 export const Route = createFileRoute("/memberships")({
   head: () => ({
     meta: [
-      { title: "Абонементы — CLUB 40" },
-      { name: "description", content: "Абонементы и пакеты занятий CLUB 40." },
+      { title: "Абонементы — Base40" },
+      { name: "description", content: "Абонементы и пакеты занятий Base40." },
     ],
   }),
   component: MembershipsPage,

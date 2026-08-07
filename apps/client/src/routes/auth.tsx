@@ -43,7 +43,7 @@ const emptyOtp = () => Array<string>(OTP_LENGTH).fill("");
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [{ title: "Регистрация — CLUB 40" }],
+    meta: [{ title: "Регистрация — Base40" }],
   }),
   component: AuthPage,
 });
@@ -189,7 +189,7 @@ function AuthPage() {
         {/* Brand */}
         <div className="flex flex-col items-center mb-10">
           <div className="text-2xl font-black tracking-widest">
-            CLUB <span className="text-primary">40</span>
+            Base<span className="text-primary">40</span>
           </div>
         </div>
 

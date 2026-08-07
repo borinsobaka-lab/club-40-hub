@@ -15,7 +15,7 @@ import { Mars, Venus } from "lucide-react";
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
     meta: [
-      { title: "Знакомство — CLUB 40" },
+      { title: "Знакомство — Base40" },
       { name: "description", content: "Пара вопросов, чтобы настроить тренировки под вас." },
     ],
   }),

@@ -34,10 +34,10 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Главное — CLUB 40" },
+      { title: "Главное — Base40" },
       {
         name: "description",
-        content: "Главная страница CLUB 40: новости, акции и быстрый доступ к профилю.",
+        content: "Главная страница Base40: новости, акции и быстрый доступ к профилю.",
       },
     ],
   }),

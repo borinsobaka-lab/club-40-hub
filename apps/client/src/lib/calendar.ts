@@ -83,7 +83,7 @@ export function buildICS(e: CalendarEvent) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//CLUB 40//RU",
+    "PRODID:-//Base40//RU",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

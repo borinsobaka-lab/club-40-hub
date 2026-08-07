@@ -33,8 +33,8 @@ import { PageShell } from "@/components/page-shell";
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "Профиль — CLUB 40" },
-      { name: "description", content: "Профиль участника CLUB 40." },
+      { title: "Профиль — Base40" },
+      { name: "description", content: "Профиль участника Base40." },
     ],
   }),
   component: ProfilePage,

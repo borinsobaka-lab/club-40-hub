@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/news/$newsId")({
   head: () => ({
-    meta: [{ title: "Новость — CLUB 40" }, { name: "description", content: "Новость CLUB 40." }],
+    meta: [{ title: "Новость — Base40" }, { name: "description", content: "Новость Base40." }],
   }),
   component: NewsDetailPage,
 });

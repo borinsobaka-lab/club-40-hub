@@ -6,8 +6,8 @@ import { Card } from "@/components/ui/card";
 export const Route = createFileRoute("/notifications")({
   head: () => ({
     meta: [
-      { title: "Уведомления — CLUB 40" },
-      { name: "description", content: "Уведомления CLUB 40." },
+      { title: "Уведомления — Base40" },
+      { name: "description", content: "Уведомления Base40." },
     ],
   }),
   component: NotificationsPage,
@@ -25,7 +25,7 @@ type Notification = {
 const MOCK: Notification[] = [
   {
     id: "1",
-    title: "🎉 Добро пожаловать в CLUB 40!",
+    title: "🎉 Добро пожаловать в Base40!",
     body: "Привет! Мы рады видеть тебя в клубе.\nЗагляни в раздел «Бронь» — там уже доступно расписание на ближайшие дни.",
     receivedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
     read: false,
@@ -40,7 +40,7 @@ const MOCK: Notification[] = [
   {
     id: "5",
     title: "🎁 Партнёрская акция",
-    body: "Скидка 20% на спортивное питание для участников CLUB 40.\nПодробности и промокод — на сайте партнёра.",
+    body: "Скидка 20% на спортивное питание для участников Base40.\nПодробности и промокод — на сайте партнёра.",
     receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
     read: false,
     link: "https://example.com/promo",
