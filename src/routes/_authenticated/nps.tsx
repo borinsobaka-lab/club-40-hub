@@ -99,14 +99,14 @@ function category(score: number) {
     return {
       label: "Промоутер",
       dot: "bg-emerald-500",
-      cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+      cls: "bg-emerald-500/10 text-emerald-700",
       type: "promoter",
     };
   if (score >= 7)
     return {
       label: "Пассивный",
       dot: "bg-amber-500",
-      cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+      cls: "bg-amber-500/10 text-amber-700",
       type: "passive",
     };
   return {

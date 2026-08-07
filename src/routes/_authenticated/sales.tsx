@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Loader2, Trash2, Search, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Loader2, Trash2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -20,15 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -51,6 +42,8 @@ import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { formatMoney, formatDate } from "@/lib/format";
+import { SearchableCombobox } from "@/components/searchable-combobox";
 import {
   MembershipStatusBadge,
   AutoRenewBadge,
@@ -148,7 +141,7 @@ function SourceBadge({ source }: { source: "admin" | "mobile" }) {
       className={cn(
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
         isMobile
-          ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+          ? "bg-blue-100 text-blue-700"
           : "bg-muted text-muted-foreground",
       )}
     >
@@ -161,22 +154,7 @@ function clientName(c: { first_name: string | null; last_name: string | null; fu
   return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
 }
 
-function formatMoney(n: number) {
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "GEL",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
 
-function formatDate(v: string | null | undefined) {
-  if (!v) return "—";
-  try {
-    return new Date(v).toLocaleDateString("ru-RU");
-  } catch {
-    return v;
-  }
-}
 
 function todayISO() {
   const d = new Date();
@@ -377,10 +355,10 @@ function SalesPage() {
                           <TableCell className="text-sm text-muted-foreground">
                             {s.promo_code ?? "—"}
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium tabular-nums">
                             {formatMoney(Number(s.total_amount))}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="tabular-nums">
                             {s.remaining_installments > 0
                               ? formatMoney(Number(s.down_payment_amount))
                               : "—"}
@@ -858,77 +836,6 @@ function SaleDialog({
   );
 }
 
-type ComboOption = { value: string; label: string; hint?: string; searchText: string };
-
-function SearchableCombobox({
-  value,
-  onChange,
-  options,
-  placeholder,
-  searchPlaceholder,
-  emptyText,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: ComboOption[];
-  placeholder: string;
-  searchPlaceholder: string;
-  emptyText: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.value === value);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
-          <span className={cn("truncate", !selected && "text-muted-foreground")}>
-            {selected ? selected.label : placeholder}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command
-          filter={(itemValue, search) => {
-            const opt = options.find((o) => o.value === itemValue);
-            if (!opt) return 0;
-            return opt.searchText.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-          }}
-        >
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((o) => (
-                <CommandItem
-                  key={o.value}
-                  value={o.value}
-                  onSelect={(v) => {
-                    onChange(v);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn("mr-2 h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")}
-                  />
-                  <span className="flex-1 truncate">{o.label}</span>
-                  {o.hint && (
-                    <span className="ml-2 shrink-0 text-xs text-muted-foreground">{o.hint}</span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 function RefundDialog({
   sale,

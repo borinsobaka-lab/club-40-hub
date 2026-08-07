@@ -86,7 +86,7 @@ function StatusBadge({ value }: { value: LogRow["status"] }) {
     return (
       <Badge
         variant="outline"
-        className="text-orange-600 border-orange-600 dark:text-orange-400 dark:border-orange-400"
+        className="text-orange-600 border-orange-600"
       >
         {statusLabel[value]}
       </Badge>

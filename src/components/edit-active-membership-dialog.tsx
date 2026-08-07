@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/format";
 
 export type ActiveMembership = {
   id: string;
@@ -24,10 +25,6 @@ export type ActiveMembership = {
   freeze_days_allowed?: number;
 };
 
-function formatDate(d: string | null | undefined) {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat("ru-RU").format(new Date(d));
-}
 
 export function EditActiveMembershipDialog({
   open,

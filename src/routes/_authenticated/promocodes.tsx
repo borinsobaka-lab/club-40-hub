@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/promocodes")({
   head: () => ({ meta: [{ title: "Промокоды — Base40 Admin" }] }),
@@ -66,11 +67,6 @@ function formatDiscount(type: DiscountType, value: number) {
   return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 }
 
-function formatDate(d: string | null) {
-  if (!d) return "—";
-  const date = new Date(d);
-  return new Intl.DateTimeFormat("ru-RU").format(date);
-}
 
 function PromoCodesPage() {
   const studioId = useActiveStudioId();

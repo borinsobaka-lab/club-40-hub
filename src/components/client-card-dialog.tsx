@@ -22,6 +22,7 @@ import {
   effectiveStatus,
 } from "@/components/membership-status-badge";
 import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
+import { formatMoney, formatDate } from "@/lib/format";
 
 type MemberProfile = {
   user_id: string;
@@ -127,22 +128,7 @@ function displayName(c: Pick<ClientLike, "first_name" | "last_name" | "full_name
   return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
 }
 
-function formatDate(v: string | null | undefined) {
-  if (!v) return "—";
-  try {
-    return new Date(v).toLocaleDateString("ru-RU");
-  } catch {
-    return v;
-  }
-}
 
-function formatMoney(n: number) {
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "GEL",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
 
 function genderLabel(g: string | null) {
   if (g === "male") return "Мужской";
@@ -379,13 +365,13 @@ export function ClientCardDialog({
                       <AutoRenewBadge on={active.auto_renew} />
                     </div>
                     {active.status === "frozen" && (
-                      <div className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                      <div className="mt-1 text-xs text-blue-700">
                         Заморожен
                         {active.frozen_until ? ` до ${formatDate(active.frozen_until)}` : ""}
                       </div>
                     )}
                     {active.cancelled_at && (
-                      <div className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+                      <div className="mt-1 text-xs text-rose-700">
                         Отменён: {formatDate(active.cancelled_at)}
                         {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
                       </div>
@@ -442,7 +428,7 @@ export function ClientCardDialog({
                                 : ""}
                             </div>
                           </div>
-                          <div className="shrink-0 font-medium">
+                          <div className="shrink-0 font-medium tabular-nums">
                             {formatMoney(Number(s.total_amount))}
                           </div>
                         </li>
@@ -657,7 +643,7 @@ function visitStatusBadge(v: VisitRow["status"]) {
     return (
       <Badge
         variant="outline"
-        className="text-orange-600 border-orange-600 dark:text-orange-400 dark:border-orange-400"
+        className="text-orange-600 border-orange-600"
       >
         {VISIT_STATUS_LABEL[v]}
       </Badge>

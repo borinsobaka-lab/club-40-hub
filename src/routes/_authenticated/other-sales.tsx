@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,15 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -50,6 +40,8 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { formatMoneyPrecise as formatMoney, formatDate } from "@/lib/format";
+import { SearchableCombobox } from "@/components/searchable-combobox";
 
 export const Route = createFileRoute("/_authenticated/other-sales")({
   head: () => ({ meta: [{ title: "Прочие продажи — Base40 Admin" }] }),
@@ -107,18 +99,7 @@ const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   app: "Приложение",
 };
 
-function formatMoney(n: number) {
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "GEL",
-    maximumFractionDigits: 2,
-  }).format(n);
-}
 
-function formatDate(d: string | null) {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat("ru-RU").format(new Date(d));
-}
 
 function clientName(c: { first_name: string | null; last_name: string | null; full_name: string }) {
   const joined = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
@@ -839,74 +820,3 @@ function CatalogDialog({
 // ---------------------------------------------------------------------------
 // Комбобокс с поиском (как в разделе «Продажи»)
 // ---------------------------------------------------------------------------
-type ComboOption = { value: string; label: string; hint?: string; searchText: string };
-
-function SearchableCombobox({
-  value,
-  onChange,
-  options,
-  placeholder,
-  searchPlaceholder,
-  emptyText,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: ComboOption[];
-  placeholder: string;
-  searchPlaceholder: string;
-  emptyText: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.value === value);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
-          <span className={cn("truncate", !selected && "text-muted-foreground")}>
-            {selected ? selected.label : placeholder}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command
-          filter={(itemValue, search) => {
-            const opt = options.find((o) => o.value === itemValue);
-            if (!opt) return 0;
-            return opt.searchText.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-          }}
-        >
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((o) => (
-                <CommandItem
-                  key={o.value}
-                  value={o.value}
-                  onSelect={(v) => {
-                    onChange(v);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn("mr-2 h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")}
-                  />
-                  <span className="flex-1 truncate">{o.label}</span>
-                  {o.hint && (
-                    <span className="ml-2 shrink-0 text-xs text-muted-foreground">{o.hint}</span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}

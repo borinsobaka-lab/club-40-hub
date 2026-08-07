@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { DataPagination, useServerPagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { formatMoneyPrecise as formatMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/cash")({
   head: () => ({ meta: [{ title: "Касса — Base40 Admin" }] }),
@@ -70,13 +71,6 @@ function categoryLabel(v: string) {
   return ALL_CATEGORIES.find((c) => c.value === v)?.label ?? v;
 }
 
-function formatMoney(v: number) {
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "GEL",
-    maximumFractionDigits: 2,
-  }).format(v);
-}
 
 function nowLocalInput() {
   const d = new Date();
@@ -250,7 +244,7 @@ function CashPage() {
                   <Wallet className="h-4 w-4" />
                   Баланс кассы
                 </div>
-                <div className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+                <div className="mt-2 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
                   {formatMoney(balance)}
                 </div>
               </div>
@@ -259,7 +253,7 @@ function CashPage() {
                   <TrendingUp className="h-4 w-4 text-emerald-600" />
                   Приход (всего)
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-emerald-600">
+                <div className="mt-2 text-2xl font-semibold tabular-nums text-emerald-600">
                   {formatMoney(totals.income)}
                 </div>
               </div>
@@ -268,7 +262,7 @@ function CashPage() {
                   <TrendingDown className="h-4 w-4 text-rose-600" />
                   Расход (всего)
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-rose-600">
+                <div className="mt-2 text-2xl font-semibold tabular-nums text-rose-600">
                   {formatMoney(totals.expense)}
                 </div>
               </div>
@@ -419,7 +413,7 @@ function CashPage() {
                         <TableCell className="text-sm">{categoryLabel(o.category)}</TableCell>
                         <TableCell
                           className={
-                            "whitespace-nowrap font-medium " +
+                            "whitespace-nowrap font-medium tabular-nums " +
                             (o.kind === "income" ? "text-emerald-600" : "text-rose-600")
                           }
                         >

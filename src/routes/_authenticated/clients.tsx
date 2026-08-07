@@ -49,6 +49,7 @@ import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — Base40 Admin" }] }),
@@ -150,14 +151,6 @@ function DateRangeFilter({
   );
 }
 
-function formatDate(v: string | null) {
-  if (!v) return "—";
-  try {
-    return new Date(v).toLocaleDateString("ru-RU");
-  } catch {
-    return v;
-  }
-}
 
 function ClientsPage() {
   const studioId = useActiveStudioId();
@@ -359,7 +352,7 @@ function ClientsPage() {
                             <button
                               type="button"
                               onClick={() => openCard(c)}
-                              className="cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                              className="cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700"
                             >
                               {displayName(c)}
                             </button>

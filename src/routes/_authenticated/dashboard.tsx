@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/components/studio-switcher";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatMoney, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Дашборд — Base40 Admin" }] }),
@@ -32,17 +33,7 @@ function toISO(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
 
-function formatMoney(n: number) {
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "GEL",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
 
-function formatNumber(n: number) {
-  return new Intl.NumberFormat("ru-RU").format(n);
-}
 
 type Metrics = {
   revenue: number;
@@ -268,8 +259,8 @@ function Delta({
   const color = flat
     ? "text-muted-foreground"
     : good
-      ? "text-emerald-600 dark:text-emerald-400"
-      : "text-rose-600 dark:text-rose-400";
+      ? "text-emerald-600"
+      : "text-rose-600";
   const Icon = flat ? Minus : up ? ArrowUp : ArrowDown;
   const diffText = isMoney ? formatMoney(Math.abs(diff)) : formatNumber(Math.abs(diff));
   return (
@@ -398,7 +389,7 @@ function DashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold">{value}</div>
+                    <div className="text-2xl font-semibold tabular-nums">{value}</div>
                     <div className="mt-1 flex items-center gap-2">
                       {stat.hint && (
                         <span className="text-xs text-muted-foreground">{stat.hint}</span>

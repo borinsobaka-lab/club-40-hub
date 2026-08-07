@@ -145,9 +145,40 @@
     border-color: var(--color-border);
   }
 
+  html {
+    /* Без этого macOS рендерит текст жирнее, чем задумано. */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+  }
+
+  /* Заголовки переносим сбалансированно, текст — без «висячих» слов. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+/* Уважаем системную настройку «меньше движения»: цвет и прозрачность
+   оставляем, перемещения и вращения — убираем. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
