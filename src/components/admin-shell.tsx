@@ -27,17 +27,14 @@ export function AdminShell({
         <div className="flex flex-1 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             {/*
-              Заголовок раздела: Roboto 900, но без наклона и капса — обычная
-              прописная в начале. leading-tight обязателен: у «Промокодов» и
-              «Пуш-уведомлений» есть выносные элементы (р, у), а truncate
-              режет по границе строки.
+              Заголовок раздела: font-semibold — тот же вес, что у заголовков
+              диалогов и карточек, и он же прописан в дизайн-системе как вес
+              ведущего элемента. Трекинг не задаём руками: он зашит в токен
+              --text-2xl--letter-spacing. leading-tight обязателен — заголовок
+              под truncate, а у «Промокодов» и «Пуш-уведомлений» есть выносные
+              элементы (р, у), их бы срезало.
             */}
-            <h1
-              className="truncate text-2xl font-black leading-tight tracking-tight"
-              style={{ fontFamily: "Roboto, sans-serif" }}
-            >
-              {title}
-            </h1>
+            <h1 className="truncate text-2xl font-semibold leading-tight">{title}</h1>
             <Button
               variant="ghost"
               size="icon"
