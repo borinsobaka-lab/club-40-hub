@@ -38,10 +38,27 @@ async function isOwner(supabase: any, userId: string, studioId: string): Promise
   return !!data;
 }
 
+async function isStaff(supabase: any, userId: string, studioId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("studio_id", studioId)
+    .in("role", ["owner", "admin", "trainer"])
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return !!data?.length;
+}
+
 export const getEmployeesContext = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const studioId = await getStudioId(context.supabase, context.userId);
+    // Список сотрудников (с email) — только для сотрудников. Клиент приложения
+    // — тоже авторизованный пользователь, но видеть штат клуба не должен.
+    if (!(await isStaff(context.supabase, context.userId, studioId))) {
+      throw new Error("Доступ только для сотрудников");
+    }
     const owner = await isOwner(context.supabase, context.userId, studioId);
 
     const admin = await loadAdmin();

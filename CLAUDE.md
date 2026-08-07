@@ -72,6 +72,22 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KE
 - Серверная пагинация админки опирается на вью `clients_with_status`,
   `sales_list`, `cash_totals`, `bookings_log_full` (db/performance_indexes.sql),
   все с `security_invoker = true` — RLS действует.
+- **Модель доступа: граница безопасности — RLS, не фронтенд.** Publishable-ключ
+  вшит в бандл, любой может дёргать PostgREST напрямую. Guard'ы роутов —
+  только UX. Все клиентские таблицы читаются по принципу «своя строка или
+  сотрудник» (`is_trainer`/`has_role`); витринные `news`/`services`/
+  `club_settings` — публичны намеренно. Каждый новый пользователь получает роль
+  `member` (auth_trigger.sql), поэтому «просто авторизован» ≠ «сотрудник» —
+  проверять роль явно. Хелперы: `has_role`, `is_trainer`, `is_staff` (staff в
+  любой студии — для пулов без studio_id: feedback/nps). Правки доступа собраны
+  в `db/security_hardening.sql` (аудит 2026-08-07): ужесточён select у
+  `clients`/`client_memberships`, закрыт IDOR в `cancel_membership*`,
+  `feedback`/`nps` — чтение/правка только сотрудник. **Прогнать в SQL Editor
+  (см. AGENT_TASKS.md, Задача 0).**
+- SECURITY DEFINER-функции, выданные `authenticated`, обходят RLS — обязаны
+  сами проверять вызывающего (`auth.uid()` — владелец записи или `is_trainer`).
+  Серверные роуты админки с service-ключом (chat/transcribe/employees) —
+  только для сотрудников через `getStaffContext`/`isStaff`.
 - Известные особенности живой БД: `club_settings` — глобальный синглтон
   (id = true), колонка studio_id в живой БД есть, но не используется;
   `feedback` и `nps_responses` не привязаны к студии (гэп для мультистудии);

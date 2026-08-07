@@ -1,41 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, tool, stepCountIs, type UIMessage } from "ai";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createAiProvider } from "@/lib/ai-gateway.server";
+import { getStaffContext } from "@/lib/staff-auth.server";
 
 type Body = { messages?: unknown };
 
+// Ассистент Kate — инструмент сотрудника, а не клиента приложения. Пускаем
+// только сотрудников (owner/admin/trainer); анонимы и клиенты получают 401.
 async function getUserContext(request: Request) {
-  const auth = request.headers.get("authorization");
-  if (!auth) return null;
-  const token = auth.replace(/^Bearer\s+/i, "");
-  const url =
-    (import.meta as any).env?.VITE_SUPABASE_URL ??
-    process.env.VITE_SUPABASE_URL ??
-    process.env.SUPABASE_URL ??
-    "";
-  const anon =
-    (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.SUPABASE_PUBLISHABLE_KEY ??
-    "";
-  if (!url || !anon) {
-    console.error("[api/chat] Supabase env is not configured");
-    return null;
-  }
-  const supabase = createClient(url, anon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return null;
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("studio_id, full_name")
-    .eq("id", data.user.id)
-    .maybeSingle();
-  return { supabase, userId: data.user.id, studioId: prof?.studio_id as string | undefined };
+  return await getStaffContext(request);
 }
 
 export const Route = createFileRoute("/api/chat")({
