@@ -102,6 +102,17 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KE
   отозвать (`drop policy "sales client insert own"` + `"sales client select
   own"` оставить). Альтернатива — выдача абонемента только сотрудником из
   админки (политика `sales studio rw` уже это позволяет).
+- Аналитика/новые фичи (аудит данных 2026-08-07, прогон — AGENT_TASKS Задача 6):
+  `other_sales.sql` (каталог `sale_items` + продажи услуг/товаров `other_sales`,
+  отдельно от абонементов); `sales_payment.sql` (оплата/скидки на
+  `sales`/`other_sales` + `refunds`); `membership_freeze.sql` (заморозка:
+  `memberships.freeze_days_allowed`, статус `frozen`, `membership_freezes`, RPC
+  `freeze_membership`/`unfreeze_membership`; новая продажа вытесняет и
+  замороженный абонемент); `booking_hygiene.sql` (единый словарь статусов
+  посещений `booked|waitlist|attended|no_show|cancelled`, `expire_memberships()`,
+  триггер `last_visit_date`, `cancel_reason`/`cancelled_lead_minutes` + причина в
+  `cancel_schedule_booking*`). Вейт-лист (запись в очередь при заполнении) —
+  отдельным заходом с UI.
 - Известные особенности живой БД: `club_settings` — глобальный синглтон
   (id = true), колонка studio_id в живой БД есть, но не используется;
   `feedback` и `nps_responses` не привязаны к студии (гэп для мультистудии);
