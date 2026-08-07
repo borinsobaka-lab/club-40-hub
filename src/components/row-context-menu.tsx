@@ -27,9 +27,10 @@ export type RowAction = {
  * прокручивать всю таблицу.
  *
  * Раз видимых кнопок нет, строке нужен признак, что с ней вообще что-то можно
- * сделать: вешаем системный курсор `context-menu`. Класс подмешивается первым,
- * поэтому собственный курсор строки (кликабельная строка в «Отзывах» —
- * `cursor-pointer`) его перебивает: twMerge оставляет последний из конфликтующих.
+ * сделать: вешаем `cursor-pointer` — палец читается как «здесь есть действие»
+ * и выглядит спокойнее системного курсора `context-menu`. Класс подмешивается
+ * первым, поэтому собственный курсор строки его перебивает: twMerge оставляет
+ * последний из конфликтующих.
  *
  * Если действий нет, компонент отдаёт строку как есть — без курсора и без
  * меню, правый клик тогда работает как обычно в браузере.
@@ -45,7 +46,7 @@ export function RowContextMenu({
   if (items.length === 0) return children;
 
   const row = cloneElement(children, {
-    className: cn("cursor-context-menu", children.props.className),
+    className: cn("cursor-pointer", children.props.className),
   });
 
   const regular = items.filter((a) => !a.destructive);
