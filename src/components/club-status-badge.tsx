@@ -4,7 +4,7 @@ import { CLUB_STATUS_FULL, CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/clie
 const STYLES: Record<ClubStatus, string> = {
   chk: "bg-emerald-100 text-emerald-700 border-emerald-200",
   pchk: "bg-blue-100 text-blue-700 border-blue-200",
-  bchk: "bg-muted text-muted-foreground border-border",
+  bchk: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
 export function ClubStatusBadge({
