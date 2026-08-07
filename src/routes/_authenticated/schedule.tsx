@@ -55,6 +55,7 @@ type Entry = {
   ends_at: string;
   capacity: number | null;
   booked_count: number;
+  waitlist_count?: number | null;
   workout?: { name: string; type?: string; capacity?: number | null } | null;
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
@@ -581,6 +582,7 @@ function SchedulePage() {
                                       const cap = e.capacity ?? e.workout?.capacity ?? 0;
                                       if (!cap) return null;
                                       const left = Math.max(0, cap - e.booked_count);
+                                      const waiting = e.waitlist_count ?? 0;
                                       const tone =
                                         left === 0
                                           ? "bg-red-500/90 text-white"
@@ -588,11 +590,21 @@ function SchedulePage() {
                                             ? "bg-amber-500/90 text-white"
                                             : "bg-black/25 text-white";
                                       return (
-                                        <span
-                                          className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
-                                        >
-                                          {e.booked_count}/{cap}
-                                        </span>
+                                        <div className="flex shrink-0 items-center gap-1">
+                                          <span
+                                            className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
+                                          >
+                                            {e.booked_count}/{cap}
+                                          </span>
+                                          {waiting > 0 && (
+                                            <span
+                                              title="Люди в листе ожидания — записались, когда мест уже не было"
+                                              className="rounded bg-blue-500/90 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-white"
+                                            >
+                                              +{waiting}
+                                            </span>
+                                          )}
+                                        </div>
                                       );
                                     })()}
                                   </div>

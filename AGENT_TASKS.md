@@ -180,6 +180,8 @@ Postgres 16). Требуют, чтобы `security_hardening.sql` был уже 
    `expire_memberships()`, триггер `last_visit_date`, причины/срок отмены брони.
 5. `db/bookings_log_full_reason.sql` — добавляет причину и срок отмены во вью
    «Истории записей» (после 4).
+6. `db/booking_waitlist.sql` — лист ожидания: запись в очередь при заполнении +
+   счётчик `waitlist_count` (после 4; переопределяет функции записи/отмены).
 
 После прогона можно повесить на pg_cron ежедневно:
 `select public.expire_memberships();` и (если уже прогнан stats) обновление
