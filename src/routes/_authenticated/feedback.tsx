@@ -442,7 +442,9 @@ function FeedbackPage() {
                       <TableCell className="text-center text-lg">
                         {i.mood ? MOOD[i.mood] : "—"}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{i.client_name || "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap font-medium">
+                        {i.client_name || "—"}
+                      </TableCell>
                       <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">
                         {i.client_contact || "—"}
                       </TableCell>

@@ -7,6 +7,7 @@ import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import { Plus, Loader2, Pencil, Trash2, Search, CalendarIcon, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
+import { clientNameClass } from "@/components/client-name-link";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -366,7 +367,7 @@ function ClientsPage() {
                               <button
                                 type="button"
                                 onClick={() => openCard(c)}
-                                className="cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700"
+                                className={clientNameClass}
                               >
                                 {displayName(c)}
                               </button>

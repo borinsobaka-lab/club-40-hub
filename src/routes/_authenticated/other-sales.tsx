@@ -314,7 +314,7 @@ function SalesTab({
                     <TableCell>
                       <Badge variant="secondary">{KIND_LABEL[s.item_kind]}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium">
                       {s.client_id && s.clients ? (
                         <ClientNameLink clientId={s.client_id}>
                           {clientName(s.clients)}

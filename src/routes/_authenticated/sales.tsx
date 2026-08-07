@@ -333,7 +333,7 @@ function SalesPage() {
                           ]}
                         >
                           <TableRow>
-                            <TableCell>
+                            <TableCell className="font-medium">
                               {s.clients ? (
                                 <ClientNameLink clientId={s.client_id}>
                                   {clientName(s.clients)}

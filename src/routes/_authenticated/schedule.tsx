@@ -1111,9 +1111,7 @@ function BookingsPanel({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col">
                     {c ? (
-                      <ClientNameLink clientId={c.id} className="font-medium">
-                        {name}
-                      </ClientNameLink>
+                      <ClientNameLink clientId={c.id}>{name}</ClientNameLink>
                     ) : (
                       <span className="font-medium">{name}</span>
                     )}
@@ -1183,9 +1181,7 @@ function BookingsPanel({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col">
                       {c ? (
-                        <ClientNameLink clientId={c.id} className="font-medium">
-                          {name}
-                        </ClientNameLink>
+                        <ClientNameLink clientId={c.id}>{name}</ClientNameLink>
                       ) : (
                         <span className="font-medium">{name}</span>
                       )}

@@ -62,6 +62,17 @@ async function fetchCrmLink(opts: {
 }
 
 /**
+ * Единый вид имени клиента: `font-medium` + фирменный синий.
+ *
+ * Вынесено отдельной константой, потому что раздел «Клиенты» рисует имя своей
+ * кнопкой (у него карточка уже загружена — перезапрашивать её незачем), и без
+ * общей строки классов два места неизбежно разъезжаются по весу шрифта.
+ * Любое новое место с именем клиента берёт этот класс, а не копию.
+ */
+export const clientNameClass =
+  "cursor-pointer text-left font-medium whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700";
+
+/**
  * Кликабельное имя клиента — при нажатии открывает модальное окно
  * с карточкой клиента (как в разделе «Клиенты»).
  *
@@ -156,10 +167,7 @@ export function ClientNameLink({
           type="button"
           onClick={handleClick}
           disabled={loading}
-          className={cn(
-            "cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700 disabled:opacity-60",
-            className,
-          )}
+          className={cn(clientNameClass, "disabled:opacity-60", className)}
         >
           {children}
         </button>
