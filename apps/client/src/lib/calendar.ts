@@ -87,7 +87,7 @@ export function buildICS(e: CalendarEvent) {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:${e.id}@club40`,
+    `UID:${e.id}@base40.fit`,
     `DTSTAMP:${now}`,
     `DTSTART:${toICSDate(e.startsAt)}`,
     `DTEND:${toICSDate(e.endsAt)}`,

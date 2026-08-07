@@ -6,6 +6,12 @@ import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
 
+function formatCooldown(sec: number) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s} сек`;
+}
+
 function humanizeAuthError(message: string, isSignup: boolean): string {
   const m = message.toLowerCase();
   if (m.includes("signups not allowed") || m.includes("otp_disabled")) {
@@ -29,6 +35,10 @@ function humanizeAuthError(message: string, isSignup: boolean): string {
 // Длина кода из письма. Supabase не даёт настраивать Email OTP Length —
 // всегда 6 цифр, поэтому значение зашито здесь одной константой.
 const OTP_LENGTH = 6;
+// Пауза между отправками кода. Supabase со своей стороны тоже ограничивает
+// частоту, но без своей паузы пользователь жмёт кнопку и получает сухую
+// ошибку — здесь кнопка просто заблокирована с обратным отсчётом.
+const RESEND_COOLDOWN_SEC = 60;
 const emptyOtp = () => Array<string>(OTP_LENGTH).fill("");
 
 export const Route = createFileRoute("/auth")({
@@ -51,10 +61,18 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
   }, [loading, session, navigate]);
+
+  // Обратный отсчёт до следующей возможной отправки кода.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown((v) => (v > 0 ? v - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
 
   const isSignup = mode === "signup";
 
@@ -89,11 +107,12 @@ function AuthPage() {
     }
     setOtp(emptyOtp());
     setStep("otp");
+    setCooldown(RESEND_COOLDOWN_SEC);
     setTimeout(() => otpRefs.current[0]?.focus(), 50);
   };
 
   const resendCode = async () => {
-    if (busy) return;
+    if (busy || cooldown > 0) return;
     setError(null);
     setBusy(true);
     const { error: sendError } = await requestOtp(email.trim(), {
@@ -103,8 +122,13 @@ function AuthPage() {
       phone,
     });
     setBusy(false);
-    if (sendError) setError(humanizeAuthError(sendError, isSignup));
-    else setOtp(emptyOtp());
+    if (sendError) {
+      setError(humanizeAuthError(sendError, isSignup));
+      return;
+    }
+    setOtp(emptyOtp());
+    setCooldown(RESEND_COOLDOWN_SEC);
+    otpRefs.current[0]?.focus();
   };
 
   const submitOtp = async () => {
@@ -280,10 +304,12 @@ function AuthPage() {
             <button
               type="button"
               onClick={resendCode}
-              disabled={busy}
-              className="w-full text-center text-sm font-medium text-foreground disabled:opacity-50"
+              disabled={busy || cooldown > 0}
+              className="w-full text-center text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Отправить код ещё раз
+              {cooldown > 0
+                ? `Отправить код ещё раз можно через ${formatCooldown(cooldown)}`
+                : "Отправить код ещё раз"}
             </button>
 
             <button

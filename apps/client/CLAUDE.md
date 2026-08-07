@@ -36,8 +36,9 @@ Coolify на Hetzner, https://app.base40.fit (инструкция агенту 
 
 ## Авторизация
 
-Вход по email-коду (6 цифр — Supabase не даёт менять длину; константа
-OTP_LENGTH в src/routes/auth.tsx): `requestOtp`/`verifyOtp` в
+Вход по email-коду (6 цифр — Supabase не даёт менять длину; константы
+OTP_LENGTH и RESEND_COOLDOWN_SEC = 60 в src/routes/auth.tsx — повторная
+отправка кода заблокирована на минуту с обратным отсчётом): `requestOtp`/`verifyOtp` в
 `src/hooks/use-auth.tsx` (signInWithOtp / verifyOtp type=email). Регистрация
 передаёт метаданные (first_name, last_name, full_name, phone) — их читает
 триггер handle_new_user. Паролей у клиентов НЕТ; настройка писем и длины кода

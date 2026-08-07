@@ -1,5 +1,5 @@
 {
-  "name": "club40-client-hub",
+  "name": "base40-client",
   "private": true,
   "sideEffects": false,
   "type": "module",
