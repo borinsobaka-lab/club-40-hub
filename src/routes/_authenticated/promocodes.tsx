@@ -37,6 +37,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/promocodes")({
   head: () => ({ meta: [{ title: "Промокоды — Base40 Admin" }] }),
@@ -169,11 +170,7 @@ function PromoCodesPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
-                  </TableRow>
+                  <TableSkeletonRows columns={8} />
                 ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell

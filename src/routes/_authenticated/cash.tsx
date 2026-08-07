@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { DataPagination, useServerPagination } from "@/components/data-pagination";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/cash")({
   head: () => ({ meta: [{ title: "Касса — Base40 Admin" }] }),
@@ -382,11 +383,7 @@ function CashPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      </TableCell>
-                    </TableRow>
+                    <TableSkeletonRows columns={6} />
                   ) : ops.length === 0 ? (
                     <TableRow>
                       <TableCell

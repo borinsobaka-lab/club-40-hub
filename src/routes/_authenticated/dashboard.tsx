@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/components/studio-switcher";
 import { useRefreshSignal } from "@/lib/refresh-bus";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Дашборд — Base40 Admin" }] }),
@@ -368,6 +369,20 @@ function DashboardPage() {
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.
+          </div>
+        ) : loading ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {STATS.map((stat) => (
+              <Card key={stat.key}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="mt-2 h-3 w-20" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

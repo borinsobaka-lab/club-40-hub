@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
@@ -180,7 +181,23 @@ function EmployeesPage() {
       }
     >
       <div className="space-y-3">
-        {isLoading && <div className="text-sm text-muted-foreground">Загрузка…</div>}
+        {isLoading && (
+          <div className="rounded-lg border bg-background">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Имя</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Роль</TableHead>
+                  <TableHead className="w-[60px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableSkeletonRows columns={4} rows={5} />
+              </TableBody>
+            </Table>
+          </div>
+        )}
         {error && <div className="text-sm text-destructive">{(error as Error).message}</div>}
 
         {data && (

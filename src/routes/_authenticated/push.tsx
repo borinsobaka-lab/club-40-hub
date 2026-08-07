@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/push")({
   head: () => ({ meta: [{ title: "Пуш-уведомления — Base40 Admin" }] }),
@@ -171,11 +172,7 @@ function PushPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
-                  </TableRow>
+                  <TableSkeletonRows columns={8} />
                 ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell

@@ -38,6 +38,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/trainers")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
@@ -289,11 +290,7 @@ function TrainersPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
-                  </TableRow>
+                  <TableSkeletonRows columns={8} />
                 ) : trainers.length === 0 ? (
                   <TableRow>
                     <TableCell

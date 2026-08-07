@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DAY_TYPES, type DayType, dayTypeColor, dayTypeLabel } from "@/lib/workout-types";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — Base40 Admin" }] }),
@@ -209,11 +210,7 @@ function WorkoutsPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      </TableCell>
-                    </TableRow>
+                    <TableSkeletonRows columns={7} />
                   ) : filteredWorkouts.length === 0 ? (
                     <TableRow>
                       <TableCell

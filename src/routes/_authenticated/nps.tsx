@@ -62,6 +62,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/nps")({
   head: () => ({ meta: [{ title: "NPS-опросы — Base40 Admin" }] }),
@@ -344,8 +345,14 @@ function NpsPage() {
         </Tabs>
 
         {loading ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border bg-background p-4">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="mt-2 h-3 w-2/3" />
+                <Skeleton className="mt-4 h-8 w-24" />
+              </div>
+            ))}
           </div>
         ) : tab === "surveys" ? (
           <div className="grid gap-3 sm:grid-cols-2">

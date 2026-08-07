@@ -48,6 +48,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { type ClubStatus } from "@/lib/client-status";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — Base40 Admin" }] }),
@@ -338,11 +339,7 @@ function ClientsPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      </TableCell>
-                    </TableRow>
+                    <TableSkeletonRows columns={11} />
                   ) : clients.length === 0 ? (
                     <TableRow>
                       <TableCell

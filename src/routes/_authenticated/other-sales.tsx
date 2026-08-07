@@ -49,6 +49,7 @@ import {
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/other-sales")({
   head: () => ({ meta: [{ title: "Прочие продажи — Base40 Admin" }] }),
@@ -301,11 +302,7 @@ function SalesTab({
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
-              </TableRow>
+              <TableSkeletonRows columns={9} />
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">

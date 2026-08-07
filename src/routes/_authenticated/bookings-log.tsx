@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -30,6 +30,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { toast } from "sonner";
 import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
 import { ClientNameLink } from "@/components/client-name-link";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/bookings-log")({
   head: () => ({ meta: [{ title: "История записей — Base40 Admin" }] }),
@@ -225,11 +226,7 @@ function BookingsLogPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="py-8 text-center">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      </TableCell>
-                    </TableRow>
+                    <TableSkeletonRows columns={10} />
                   ) : rows.length === 0 ? (
                     <TableRow>
                       <TableCell

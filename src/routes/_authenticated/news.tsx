@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({ meta: [{ title: "Новости — Base40 Admin" }] }),
@@ -221,11 +222,7 @@ function NewsPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
-                  </TableRow>
+                  <TableSkeletonRows columns={7} />
                 ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell

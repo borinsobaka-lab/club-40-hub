@@ -33,6 +33,7 @@ import {
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
@@ -231,11 +232,7 @@ function MembershipsPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      </TableCell>
-                    </TableRow>
+                    <TableSkeletonRows columns={11} />
                   ) : filtered.length === 0 ? (
                     <TableRow>
                       <TableCell

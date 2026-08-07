@@ -50,6 +50,7 @@ import { DataPagination, useServerPagination } from "@/components/data-paginatio
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientNameLink } from "@/components/client-name-link";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 import {
   MembershipStatusBadge,
   AutoRenewBadge,
@@ -323,11 +324,7 @@ function SalesPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      </TableCell>
-                    </TableRow>
+                    <TableSkeletonRows columns={14} />
                   ) : sales.length === 0 ? (
                     <TableRow>
                       <TableCell

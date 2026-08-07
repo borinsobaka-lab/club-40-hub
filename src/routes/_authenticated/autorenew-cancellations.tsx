@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";
@@ -27,6 +27,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { toast } from "sonner";
 import { ClientNameLink } from "@/components/client-name-link";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/autorenew-cancellations")({
   head: () => ({ meta: [{ title: "Отмены автопродления — Base40 Admin" }] }),
@@ -164,11 +165,7 @@ function AutorenewCancellationsPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
-                  </TableRow>
+                  <TableSkeletonRows columns={6} />
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell

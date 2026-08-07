@@ -50,6 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { TableSkeletonRows } from "@/components/table-skeleton";
 
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({ meta: [{ title: "Обратная связь — Base40 Admin" }] }),
@@ -395,11 +396,7 @@ function FeedbackPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                  </TableCell>
-                </TableRow>
+                <TableSkeletonRows columns={9} />
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
