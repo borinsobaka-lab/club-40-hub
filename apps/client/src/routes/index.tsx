@@ -30,6 +30,7 @@ import { StatsSection } from "@/components/stats-section";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { toast } from "sonner";
+import { CarouselSkeleton } from "@/components/content-skeletons";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -321,14 +322,7 @@ function HomePage() {
           {/* News */}
           <section className="mt-3">
             {news === null ? (
-              <div className="flex gap-3 overflow-hidden px-4 pb-2">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="shrink-0 w-32 h-44 rounded-2xl bg-background/60 animate-pulse"
-                  />
-                ))}
-              </div>
+              <CarouselSkeleton cards={3} className="h-44 w-32" />
             ) : news.length === 0 ? (
               <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
                 <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
@@ -412,11 +406,7 @@ function HomePage() {
           <section className="bg-background rounded-b-[14px] pb-5">
             <h2 className="px-4 text-2xl font-black uppercase mb-3">Тренировки</h2>
             {myBookings === null ? (
-              <div className="flex gap-3 overflow-hidden pb-2 px-4">
-                {[0, 1].map((i) => (
-                  <div key={i} className="shrink-0 w-56 h-24 rounded-2xl bg-card animate-pulse" />
-                ))}
-              </div>
+              <CarouselSkeleton cards={2} className="h-24 w-56" />
             ) : myBookings.length === 0 ? (
               <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
                 <Ghost className="h-14 w-14 text-muted-foreground ghost-nudge" />
@@ -527,13 +517,7 @@ function HomePage() {
               Дополнительные возможности для участников клуба
             </p>
             {services === null ? (
-              <div className="flex gap-3 overflow-hidden pb-2">
-                <div className="w-1 shrink-0" aria-hidden="true" />
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="shrink-0 w-56 h-32 rounded-2xl bg-muted animate-pulse" />
-                ))}
-                <div className="w-1 shrink-0" aria-hidden="true" />
-              </div>
+              <CarouselSkeleton cards={3} className="h-32 w-56" />
             ) : services.length === 0 ? (
               <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
                 <ClipboardText className="h-6 w-6" weight="BoldDuotone" />

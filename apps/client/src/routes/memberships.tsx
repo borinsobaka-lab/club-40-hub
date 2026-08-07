@@ -964,7 +964,7 @@ function CheckoutSheet({
             {/* Total + Pay */}
             <div className="mt-5 flex items-end justify-between">
               <div className="text-xs text-muted-foreground">К оплате</div>
-              <div className="text-2xl font-black">{total.toLocaleString("ru-RU")} ₾</div>
+              <div className="text-2xl font-black tabular-nums">{total.toLocaleString("ru-RU")} ₾</div>
             </div>
 
             <Button

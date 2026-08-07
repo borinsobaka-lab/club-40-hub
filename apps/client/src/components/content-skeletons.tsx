@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -64,6 +65,29 @@ export function CardListSkeleton({ rows = 3 }: { rows?: number }) {
             <Skeleton className="h-3 w-1/2" />
           </div>
         </Card>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Горизонтальная карусель (новости, мои тренировки, услуги на главной).
+ * Раньше в каждой из трёх каруселей лежал свой инлайновый `animate-pulse`
+ * с разным фоном (`bg-background/60`, `bg-card`, `bg-muted`) — одно и то же
+ * состояние загрузки выглядело по-разному на одном экране. Размер плитки
+ * задаётся снаружи: он у каруселей действительно разный.
+ */
+export function CarouselSkeleton({
+  cards = 3,
+  className,
+}: {
+  cards?: number;
+  className?: string;
+}) {
+  return (
+    <div className="flex gap-3 overflow-hidden px-4 pb-2">
+      {Array.from({ length: cards }).map((_, i) => (
+        <Skeleton key={i} className={cn("shrink-0 rounded-2xl", className)} />
       ))}
     </div>
   );
