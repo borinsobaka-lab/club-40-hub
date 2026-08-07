@@ -80,12 +80,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "CLUB 40 — Админ-панель" },
       { property: "og:description", content: "Админ-панель фитнес-студии CLUB 40." },
       { property: "og:type", content: "website" },
+      // Цвет плашки иконки — им же браузеры красят интерфейс на мобильных.
+      { name: "theme-color", content: "#1B1C1F" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      // Фирменная «40». SVG — для современных браузеров, png/ico — фолбэк
+      // (часть браузеров дёргает /favicon.ico напрямую, минуя разметку).
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
