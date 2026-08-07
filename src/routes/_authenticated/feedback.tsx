@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({ meta: [{ title: "Обратная связь — Base40 Admin" }] }),
@@ -406,66 +407,73 @@ function FeedbackPage() {
                 </TableRow>
               ) : (
                 pg.paged.map((i) => (
-                  <TableRow
-                    key={i.id}
-                    onClick={() => {
-                      setSelectedId(i.id);
-                      setResolutionComment(i.resolution_comment || "");
-                    }}
-                    className="cursor-pointer"
+                  <RowContextMenu
+                    actions={[
+                      { label: "Открыть обращение", icon: MessageSquare, onSelect: () => { setSelectedId(i.id); setResolutionComment(i.resolution_comment || ""); } },
+                      { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => setDeleteId(i.id) },
+                    ]}
                   >
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {TOPICS[i.topic] || i.topic}
-                    </TableCell>
-                    <TableCell className="max-w-[280px] truncate">{i.message}</TableCell>
-                    <TableCell className="text-center text-lg">
-                      {i.mood ? MOOD[i.mood] : "—"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{i.client_name || "—"}</TableCell>
-                    <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">
-                      {i.client_contact || "—"}
-                    </TableCell>
-                    <TableCell>
-                      {i.status === "pending" ? (
-                        <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                          Не отработано
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Отработано
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {i.resolved_by_name ? (
-                        <>
-                          {i.resolved_by_name}
-                          {i.resolved_at && (
-                            <div>{format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}</div>
-                          )}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteId(i.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+  <TableRow
+                      key={i.id}
+                      onClick={() => {
+                        setSelectedId(i.id);
+                        setResolutionComment(i.resolution_comment || "");
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {TOPICS[i.topic] || i.topic}
+                      </TableCell>
+                      <TableCell className="max-w-[280px] truncate">{i.message}</TableCell>
+                      <TableCell className="text-center text-lg">
+                        {i.mood ? MOOD[i.mood] : "—"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{i.client_name || "—"}</TableCell>
+                      <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">
+                        {i.client_contact || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {i.status === "pending" ? (
+                          <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                            Не отработано
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            Отработано
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                        {i.resolved_by_name ? (
+                          <>
+                            {i.resolved_by_name}
+                            {i.resolved_at && (
+                              <div>{format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}</div>
+                            )}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(i.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </RowContextMenu>
                 ))
               )}
             </TableBody>

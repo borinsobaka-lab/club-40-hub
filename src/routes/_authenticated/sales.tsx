@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Loader2, Trash2, Search } from "lucide-react";
+import { Plus, Loader2, Trash2, Search, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -45,6 +45,7 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatMoney, formatDate, todayISO } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 import {
   MembershipStatusBadge,
   AutoRenewBadge,
@@ -316,76 +317,83 @@ function SalesPage() {
                     sales.map((s) => {
                       const cm = s.client_memberships?.[0] ?? null;
                       return (
-                        <TableRow key={s.id}>
-                          <TableCell>
-                            {s.clients ? (
-                              <ClientNameLink clientId={s.client_id}>
-                                {clientName(s.clients)}
-                              </ClientNameLink>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            <div>{s.clients?.phone ?? "—"}</div>
-                            <div className="text-xs">{s.clients?.email ?? "—"}</div>
-                          </TableCell>
-                          <TableCell>{formatDate(s.sold_at)}</TableCell>
-                          <TableCell>
-                            <SourceBadge source={s.source ?? "admin"} />
-                          </TableCell>
-                          <TableCell>{s.memberships?.name ?? "—"}</TableCell>
-                          <TableCell>
-                            {cm ? (
-                              <div className="flex flex-col gap-1">
-                                <MembershipStatusBadge m={cm} />
-                                {effectiveStatus(cm) === "active" && (
-                                  <AutoRenewBadge on={cm.auto_renew} />
-                                )}
+                        <RowContextMenu
+                          actions={[
+                          { label: "Оформить возврат", icon: Receipt, onSelect: () => setRefundSale(s) },
+                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(s) },
+                        ]}
+                        >
+  <TableRow key={s.id}>
+                            <TableCell>
+                              {s.clients ? (
+                                <ClientNameLink clientId={s.client_id}>
+                                  {clientName(s.clients)}
+                                </ClientNameLink>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              <div>{s.clients?.phone ?? "—"}</div>
+                              <div className="text-xs">{s.clients?.email ?? "—"}</div>
+                            </TableCell>
+                            <TableCell>{formatDate(s.sold_at)}</TableCell>
+                            <TableCell>
+                              <SourceBadge source={s.source ?? "admin"} />
+                            </TableCell>
+                            <TableCell>{s.memberships?.name ?? "—"}</TableCell>
+                            <TableCell>
+                              {cm ? (
+                                <div className="flex flex-col gap-1">
+                                  <MembershipStatusBadge m={cm} />
+                                  {effectiveStatus(cm) === "active" && (
+                                    <AutoRenewBadge on={cm.auto_renew} />
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {s.promo_code ?? "—"}
+                            </TableCell>
+                            <TableCell className="font-medium tabular-nums">
+                              {formatMoney(Number(s.total_amount))}
+                            </TableCell>
+                            <TableCell className="tabular-nums">
+                              {s.remaining_installments > 0
+                                ? formatMoney(Number(s.down_payment_amount))
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {s.remaining_installments > 0 ? `1 + ${s.remaining_installments}` : "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {s.admin_name ?? "—"}
+                            </TableCell>
+                            <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                              {s.comment ?? "—"}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-xs"
+                                  onClick={() => setRefundSale(s)}
+                                >
+                                  Возврат
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {PAYMENT_TYPE_LABEL[(s.payment_type ?? "other") as PaymentType]}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {s.promo_code ?? "—"}
-                          </TableCell>
-                          <TableCell className="font-medium tabular-nums">
-                            {formatMoney(Number(s.total_amount))}
-                          </TableCell>
-                          <TableCell className="tabular-nums">
-                            {s.remaining_installments > 0
-                              ? formatMoney(Number(s.down_payment_amount))
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {s.remaining_installments > 0 ? `1 + ${s.remaining_installments}` : "—"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {s.admin_name ?? "—"}
-                          </TableCell>
-                          <TableCell className="max-w-[220px] truncate text-muted-foreground">
-                            {s.comment ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 px-2 text-xs"
-                                onClick={() => setRefundSale(s)}
-                              >
-                                Возврат
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                            </TableCell>
+                          </TableRow>
+                        </RowContextMenu>
                       );
                     })
                   )}

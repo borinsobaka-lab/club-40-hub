@@ -97,6 +97,7 @@ export const ChevronsUpDown = adapt(Solar.Sort, "ChevronsUpDown");
 export const Copy = adapt(Solar.Copy, "Copy");
 export const Dumbbell = adapt(Solar.Dumbbell, "Dumbbell");
 export const ExternalLink = adapt(Solar.ArrowRightUp, "ExternalLink");
+export const Eye = adapt(Solar.Eye, "Eye");
 export const Flame = adapt(Solar.Fire, "Flame");
 export const History = adapt(Solar.History, "History");
 export const ImageIcon = adapt(Solar.Gallery, "ImageIcon");

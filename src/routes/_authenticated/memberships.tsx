@@ -35,6 +35,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
@@ -249,84 +250,92 @@ function MembershipsPage() {
                     </TableRow>
                   ) : (
                     pg.paged.map((m) => (
-                      <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
-                        <TableCell>
-                          <CoverThumb value={m.cover_url} alt={m.name} />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <span>{m.name}</span>
-                            {m.for_couple && <Badge variant="outline">Для двоих</Badge>}
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-[260px] truncate text-muted-foreground">
-                          {m.description ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          {m.benefits?.length ? (
-                            <ul className="list-disc space-y-0.5 pl-4 text-xs">
-                              {m.benefits.map((b, i) => (
-                                <li key={i}>{b}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {m.visits_count == null ? "Безлимит" : m.visits_count}
-                        </TableCell>
-                        <TableCell>{formatDuration(m.duration_days)}</TableCell>
-                        <TableCell>{m.auto_renew ? "Да" : "Нет"}</TableCell>
-                        <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
-                        <TableCell className="font-medium">
-                          {formatPrice(Number(m.price))}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={m.is_active}
-                              onCheckedChange={(v) => handleToggleActive(m, v)}
-                            />
-                            {m.is_active ? (
-                              <Badge variant="secondary">Активен</Badge>
+                      <RowContextMenu
+                        actions={[
+                          { label: "Дублировать", icon: Copy, onSelect: () => handleClone(m) },
+                          { label: "Редактировать", icon: Pencil, onSelect: () => { setEditing(m); setOpen(true); } },
+                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(m) },
+                        ]}
+                      >
+  <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
+                          <TableCell>
+                            <CoverThumb value={m.cover_url} alt={m.name} />
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <span>{m.name}</span>
+                              {m.for_couple && <Badge variant="outline">Для двоих</Badge>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[260px] truncate text-muted-foreground">
+                            {m.description ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            {m.benefits?.length ? (
+                              <ul className="list-disc space-y-0.5 pl-4 text-xs">
+                                {m.benefits.map((b, i) => (
+                                  <li key={i}>{b}</li>
+                                ))}
+                              </ul>
                             ) : (
-                              <Badge variant="outline">Скрыт</Badge>
+                              "—"
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Дублировать (создать обновлённую копию)"
-                              onClick={() => handleClone(m)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Редактировать"
-                              onClick={() => {
-                                setEditing(m);
-                                setOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Удалить"
-                              onClick={() => handleDelete(m)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                          </TableCell>
+                          <TableCell>
+                            {m.visits_count == null ? "Безлимит" : m.visits_count}
+                          </TableCell>
+                          <TableCell>{formatDuration(m.duration_days)}</TableCell>
+                          <TableCell>{m.auto_renew ? "Да" : "Нет"}</TableCell>
+                          <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
+                          <TableCell className="font-medium">
+                            {formatPrice(Number(m.price))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={m.is_active}
+                                onCheckedChange={(v) => handleToggleActive(m, v)}
+                              />
+                              {m.is_active ? (
+                                <Badge variant="secondary">Активен</Badge>
+                              ) : (
+                                <Badge variant="outline">Скрыт</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Дублировать (создать обновлённую копию)"
+                                onClick={() => handleClone(m)}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Редактировать"
+                                onClick={() => {
+                                  setEditing(m);
+                                  setOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Удалить"
+                                onClick={() => handleDelete(m)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </RowContextMenu>
                     ))
                   )}
                 </TableBody>

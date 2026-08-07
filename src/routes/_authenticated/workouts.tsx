@@ -40,6 +40,7 @@ import {
 import { DAY_TYPES, type DayType, dayTypeColor, dayTypeLabel } from "@/lib/workout-types";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — Base40 Admin" }] }),
@@ -227,34 +228,41 @@ function WorkoutsPage() {
                     </TableRow>
                   ) : (
                     pg.paged.map((w) => (
-                      <TableRow key={w.id}>
-                        <TableCell>
-                          <WorkoutPhoto value={w.photo_url} name={w.name} />
-                        </TableCell>
-                        <TableCell className="font-medium">{w.name}</TableCell>
-                        <TableCell>
-                          <WorkoutTypeBadge value={w.type} />
-                        </TableCell>
-                        <TableCell className="max-w-[420px] truncate text-muted-foreground">
-                          {w.description ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {w.capacity ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-sm tabular-nums text-muted-foreground">
-                          {w.met_value != null ? Number(w.met_value).toFixed(1) : "—"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(w)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <RowContextMenu
+                        actions={[
+                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(w) },
+                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(w) },
+                        ]}
+                      >
+  <TableRow key={w.id}>
+                          <TableCell>
+                            <WorkoutPhoto value={w.photo_url} name={w.name} />
+                          </TableCell>
+                          <TableCell className="font-medium">{w.name}</TableCell>
+                          <TableCell>
+                            <WorkoutTypeBadge value={w.type} />
+                          </TableCell>
+                          <TableCell className="max-w-[420px] truncate text-muted-foreground">
+                            {w.description ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {w.capacity ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-sm tabular-nums text-muted-foreground">
+                            {w.met_value != null ? Number(w.met_value).toFixed(1) : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openEdit(w)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(w)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </RowContextMenu>
                     ))
                   )}
                 </TableBody>

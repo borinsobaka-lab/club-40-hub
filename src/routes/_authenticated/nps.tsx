@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/nps")({
   head: () => ({ meta: [{ title: "NPS-опросы — Base40 Admin" }] }),
@@ -514,33 +515,39 @@ function NpsPage() {
                     pg.paged.map((r) => {
                       const c = category(r.score);
                       return (
-                        <TableRow key={r.id}>
-                          <TableCell className="whitespace-nowrap text-muted-foreground">
-                            {format(parseISO(r.created_at), "d MMM, HH:mm", { locale: ru })}
-                          </TableCell>
-                          <TableCell className="font-medium">{r.client_name || "—"}</TableCell>
-                          <TableCell className="text-center font-bold">{r.score}</TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c.cls}`}
-                            >
-                              {c.label}
-                            </span>
-                          </TableCell>
-                          <TableCell className="max-w-[320px] truncate text-muted-foreground">
-                            {r.comment || "—"}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                            {TYPE_LABEL[r.survey_type]}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end">
-                              <Button variant="ghost" size="icon" onClick={() => setDeleteId(r.id)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                        <RowContextMenu
+                          actions={[
+                            { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => setDeleteId(r.id) },
+                          ]}
+                        >
+  <TableRow key={r.id}>
+                            <TableCell className="whitespace-nowrap text-muted-foreground">
+                              {format(parseISO(r.created_at), "d MMM, HH:mm", { locale: ru })}
+                            </TableCell>
+                            <TableCell className="font-medium">{r.client_name || "—"}</TableCell>
+                            <TableCell className="text-center font-bold">{r.score}</TableCell>
+                            <TableCell>
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c.cls}`}
+                              >
+                                {c.label}
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[320px] truncate text-muted-foreground">
+                              {r.comment || "—"}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                              {TYPE_LABEL[r.survey_type]}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex justify-end">
+                                <Button variant="ghost" size="icon" onClick={() => setDeleteId(r.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        </RowContextMenu>
                       );
                     })
                   )}

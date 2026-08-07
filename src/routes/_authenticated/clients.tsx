@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
-import { Plus, Loader2, Pencil, Trash2, Search, CalendarIcon } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Search, CalendarIcon, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +51,7 @@ import { type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatDate, sanitizeSearch } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — Base40 Admin" }] }),
@@ -344,42 +345,55 @@ function ClientsPage() {
                     </TableRow>
                   ) : (
                     clients.map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium">
-                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => openCard(c)}
-                              className="cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700"
-                            >
-                              {displayName(c)}
-                            </button>
-                            {c.crm_link && <AmoCrmLinkIcon href={c.crm_link} />}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <ClubStatusBadge status={c.club_status ?? "pchk"} />
-                        </TableCell>
-                        <TableCell>{c.phone ?? "—"}</TableCell>
-                        <TableCell>{c.email ?? "—"}</TableCell>
-                        <TableCell>{genderLabel(c.gender)}</TableCell>
-                        <TableCell>{formatDate(c.birthday)}</TableCell>
-                        <TableCell>{formatDate(c.registration_date)}</TableCell>
-                        <TableCell>{formatDate(c.last_visit_date)}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                          {c.notes ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(c)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <RowContextMenu
+                        actions={[
+                          { label: "Открыть карточку", icon: Eye, onSelect: () => openCard(c) },
+                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(c) },
+                          {
+                            label: "Удалить",
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => handleDelete(c),
+                          },
+                        ]}
+                      >
+  <TableRow key={c.id}>
+                          <TableCell className="font-medium">
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => openCard(c)}
+                                className="cursor-pointer text-left whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700"
+                              >
+                                {displayName(c)}
+                              </button>
+                              {c.crm_link && <AmoCrmLinkIcon href={c.crm_link} />}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <ClubStatusBadge status={c.club_status ?? "pchk"} />
+                          </TableCell>
+                          <TableCell>{c.phone ?? "—"}</TableCell>
+                          <TableCell>{c.email ?? "—"}</TableCell>
+                          <TableCell>{genderLabel(c.gender)}</TableCell>
+                          <TableCell>{formatDate(c.birthday)}</TableCell>
+                          <TableCell>{formatDate(c.registration_date)}</TableCell>
+                          <TableCell>{formatDate(c.last_visit_date)}</TableCell>
+                          <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                            {c.notes ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(c)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </RowContextMenu>
                     ))
                   )}
                 </TableBody>

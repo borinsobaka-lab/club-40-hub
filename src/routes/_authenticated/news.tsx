@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/news")({
   head: () => ({ meta: [{ title: "Новости — Base40 Admin" }] }),
@@ -239,58 +240,65 @@ function NewsPage() {
                   pg.paged.map((n) => {
                     const idx = items.indexOf(n);
                     return (
-                      <TableRow key={n.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              disabled={idx === 0 || busyId !== null}
-                              onClick={() => moveUp(idx)}
-                              aria-label="Выше"
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              disabled={idx === items.length - 1 || busyId !== null}
-                              onClick={() => moveDown(idx)}
-                              aria-label="Ниже"
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                            <span className="ml-1 w-5 text-xs text-muted-foreground">
-                              {idx + 1}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <MediaThumb value={n.image_url} alt={n.title} />
-                        </TableCell>
-                        <TableCell>
-                          <MediaThumb value={n.banner_url} alt={n.title} aspect="h-10 w-28" />
-                        </TableCell>
-                        <TableCell className="font-medium">{n.title}</TableCell>
-                        <TableCell className="max-w-[360px] truncate text-muted-foreground">
-                          {n.description ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {n.button_text && n.button_url ? n.button_text : "—"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(n)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(n)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <RowContextMenu
+                        actions={[
+                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(n) },
+                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(n) },
+                        ]}
+                      >
+  <TableRow key={n.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                disabled={idx === 0 || busyId !== null}
+                                onClick={() => moveUp(idx)}
+                                aria-label="Выше"
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                disabled={idx === items.length - 1 || busyId !== null}
+                                onClick={() => moveDown(idx)}
+                                aria-label="Ниже"
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                              <span className="ml-1 w-5 text-xs text-muted-foreground">
+                                {idx + 1}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <MediaThumb value={n.image_url} alt={n.title} />
+                          </TableCell>
+                          <TableCell>
+                            <MediaThumb value={n.banner_url} alt={n.title} aspect="h-10 w-28" />
+                          </TableCell>
+                          <TableCell className="font-medium">{n.title}</TableCell>
+                          <TableCell className="max-w-[360px] truncate text-muted-foreground">
+                            {n.description ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {n.button_text && n.button_url ? n.button_text : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openEdit(n)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(n)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </RowContextMenu>
                     );
                   })
                 )}

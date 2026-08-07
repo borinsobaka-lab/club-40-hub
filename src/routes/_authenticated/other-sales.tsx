@@ -43,6 +43,7 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatMoneyPrecise as formatMoney, formatDate, todayISO } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/other-sales")({
   head: () => ({ meta: [{ title: "Прочие продажи — Base40 Admin" }] }),
@@ -295,39 +296,45 @@ function SalesTab({
               </TableRow>
             ) : (
               pg.paged.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.item_name}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{KIND_LABEL[s.item_kind]}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {s.client_id && s.clients ? (
-                      <ClientNameLink clientId={s.client_id}>
-                        {clientName(s.clients)}
-                      </ClientNameLink>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{s.quantity}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatMoney(Number(s.unit_price))}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatMoney(Number(s.total_amount))}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {s.payment_method ? PAYMENT_LABEL[s.payment_method] : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <RowContextMenu
+                  actions={[
+                    { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(s) },
+                  ]}
+                >
+  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.item_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{KIND_LABEL[s.item_kind]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {s.client_id && s.clients ? (
+                        <ClientNameLink clientId={s.client_id}>
+                          {clientName(s.clients)}
+                        </ClientNameLink>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{s.quantity}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(Number(s.unit_price))}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatMoney(Number(s.total_amount))}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {s.payment_method ? PAYMENT_LABEL[s.payment_method] : "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(s)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </RowContextMenu>
               ))
             )}
           </TableBody>
@@ -649,35 +656,42 @@ function CatalogTab({
               </TableRow>
             ) : (
               pg.paged.map((i) => (
-                <TableRow key={i.id}>
-                  <TableCell className="font-medium">{i.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{KIND_LABEL[i.kind]}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatMoney(Number(i.price))}
-                  </TableCell>
-                  <TableCell>
-                    <Switch checked={i.is_active} onCheckedChange={(v) => toggleActive(i, v)} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditing(i);
-                          setOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(i)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <RowContextMenu
+                  actions={[
+                    { label: "Редактировать", icon: Pencil, onSelect: () => { setEditing(i); setOpen(true); } },
+                    { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(i) },
+                  ]}
+                >
+  <TableRow key={i.id}>
+                    <TableCell className="font-medium">{i.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{KIND_LABEL[i.kind]}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(Number(i.price))}
+                    </TableCell>
+                    <TableCell>
+                      <Switch checked={i.is_active} onCheckedChange={(v) => toggleActive(i, v)} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditing(i);
+                            setOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(i)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </RowContextMenu>
               ))
             )}
           </TableBody>

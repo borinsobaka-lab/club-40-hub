@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
@@ -215,31 +216,52 @@ function EmployeesPage() {
               </TableHeader>
               <TableBody>
                 {pg.paged.map((e) => (
-                  <TableRow key={e.user_id}>
-                    <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
-                    <TableCell>{e.email ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{ROLE_LABEL[e.role] ?? e.role}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isOwner && e.user_id !== data.currentUserId && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: "Удалить сотрудника?",
-                              description: `${e.full_name ?? e.email} потеряет доступ к админке.`,
-                            });
-                            if (ok) deleteMut.mutate(e.user_id);
-                          }}
-                          disabled={deleteMut.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <RowContextMenu
+                    actions={[
+                      ...(isOwner && e.user_id !== data.currentUserId
+                        ? [
+                            {
+                              label: "Удалить",
+                              icon: Trash2,
+                              destructive: true,
+                              onSelect: async () => {
+                                const ok = await confirm({
+                                  title: "Удалить сотрудника?",
+                                  description: `${e.full_name ?? e.email} потеряет доступ к админке.`,
+                                });
+                                if (ok) deleteMut.mutate(e.user_id);
+                              },
+                            },
+                          ]
+                        : []),
+                    ]}
+                  >
+  <TableRow key={e.user_id}>
+                      <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
+                      <TableCell>{e.email ?? "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{ROLE_LABEL[e.role] ?? e.role}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isOwner && e.user_id !== data.currentUserId && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: "Удалить сотрудника?",
+                                description: `${e.full_name ?? e.email} потеряет доступ к админке.`,
+                              });
+                              if (ok) deleteMut.mutate(e.user_id);
+                            }}
+                            disabled={deleteMut.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  </RowContextMenu>
                 ))}
                 {data.employees.length === 0 && (
                   <TableRow>

@@ -40,6 +40,7 @@ import {
 import { toast } from "sonner";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/trainers")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
@@ -305,47 +306,54 @@ function TrainersPage() {
                   </TableRow>
                 ) : (
                   pg.paged.map((t) => (
-                    <TableRow key={t.id}>
-                      <TableCell>
-                        <TrainerPhoto value={t.photo_url} name={t.full_name} />
-                      </TableCell>
+                    <RowContextMenu
+                      actions={[
+                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(t) },
+                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(t) },
+                        ]}
+                    >
+  <TableRow key={t.id}>
+                        <TableCell>
+                          <TrainerPhoto value={t.photo_url} name={t.full_name} />
+                        </TableCell>
 
-                      <TableCell className="font-medium">{t.full_name}</TableCell>
-                      <TableCell>
-                        <span
-                          className={
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
-                            (t.role === "admin"
-                              ? "bg-violet-100 text-violet-700"
-                              : "bg-sky-100 text-sky-700")
-                          }
-                        >
-                          {roleLabel(t.role)}
-                        </span>
-                      </TableCell>
-                      <TableCell>{t.role === "admin" ? "—" : genderLabel(t.gender)}</TableCell>
-                      <TableCell>{t.role === "admin" ? "—" : (t.specialization ?? "—")}</TableCell>
-                      <TableCell className="max-w-[320px] truncate text-muted-foreground">
-                        {t.bio ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        {t.role === "admin" ? (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        ) : (
-                          <SocialLinks trainer={t} />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(t)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        <TableCell className="font-medium">{t.full_name}</TableCell>
+                        <TableCell>
+                          <span
+                            className={
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
+                              (t.role === "admin"
+                                ? "bg-violet-100 text-violet-700"
+                                : "bg-sky-100 text-sky-700")
+                            }
+                          >
+                            {roleLabel(t.role)}
+                          </span>
+                        </TableCell>
+                        <TableCell>{t.role === "admin" ? "—" : genderLabel(t.gender)}</TableCell>
+                        <TableCell>{t.role === "admin" ? "—" : (t.specialization ?? "—")}</TableCell>
+                        <TableCell className="max-w-[320px] truncate text-muted-foreground">
+                          {t.bio ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          {t.role === "admin" ? (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          ) : (
+                            <SocialLinks trainer={t} />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(t)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </RowContextMenu>
                   ))
                 )}
               </TableBody>

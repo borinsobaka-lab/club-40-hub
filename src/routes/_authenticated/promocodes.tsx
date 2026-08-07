@@ -40,6 +40,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatDate } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/promocodes")({
   head: () => ({ meta: [{ title: "Промокоды — Base40 Admin" }] }),
@@ -181,38 +182,45 @@ function PromoCodesPage() {
                   </TableRow>
                 ) : (
                   pg.paged.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="font-mono uppercase">
-                          {p.code}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatDiscount(p.discount_type, p.discount_value)}</TableCell>
-                      <TableCell>{formatDate(p.expires_at)}</TableCell>
-                      <TableCell>
-                        <span className="tabular-nums">
-                          {p.usage_count}
-                          {p.usage_limit != null ? ` / ${p.usage_limit}` : " / ∞"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-w-[280px] truncate text-muted-foreground">
-                        {p.description ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <RowContextMenu
+                      actions={[
+                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
+                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(p) },
+                        ]}
+                    >
+  <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="font-mono uppercase">
+                            {p.code}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatDiscount(p.discount_type, p.discount_value)}</TableCell>
+                        <TableCell>{formatDate(p.expires_at)}</TableCell>
+                        <TableCell>
+                          <span className="tabular-nums">
+                            {p.usage_count}
+                            {p.usage_limit != null ? ` / ${p.usage_limit}` : " / ∞"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-[280px] truncate text-muted-foreground">
+                          {p.description ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p, v)} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </RowContextMenu>
                   ))
                 )}
               </TableBody>

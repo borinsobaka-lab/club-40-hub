@@ -33,6 +33,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/push")({
   head: () => ({ meta: [{ title: "Пуш-уведомления — Base40 Admin" }] }),
@@ -187,55 +188,62 @@ function PushPage() {
                   </TableRow>
                 ) : (
                   pg.paged.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium max-w-[280px]">
-                        <div className="truncate">{p.title}</div>
-                        {p.message ? (
-                          <div className="truncate text-xs text-muted-foreground">{p.message}</div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>{renderSegments(p.segments)}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {p.status === "sent"
-                          ? fmtDateTime(p.sent_at)
-                          : p.status === "scheduled"
-                            ? fmtDateTime(p.scheduled_at)
-                            : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            p.status === "sent"
-                              ? "default"
-                              : p.status === "scheduled"
-                                ? "secondary"
-                                : "outline"
-                          }
-                        >
-                          {STATUS_LABEL[p.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="tabular-nums">{p.sent_count}</TableCell>
-                      <TableCell className="tabular-nums">{p.delivered_count}</TableCell>
-                      <TableCell className="tabular-nums">{p.read_count}</TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditing(p);
-                              setOpen(true);
-                            }}
+                    <RowContextMenu
+                      actions={[
+                          { label: "Редактировать", icon: Pencil, onSelect: () => { setEditing(p); setOpen(true); } },
+                          { label: "Удалить", icon: Trash2, destructive: true, onSelect: () => handleDelete(p) },
+                        ]}
+                    >
+  <TableRow key={p.id}>
+                        <TableCell className="font-medium max-w-[280px]">
+                          <div className="truncate">{p.title}</div>
+                          {p.message ? (
+                            <div className="truncate text-xs text-muted-foreground">{p.message}</div>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>{renderSegments(p.segments)}</TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {p.status === "sent"
+                            ? fmtDateTime(p.sent_at)
+                            : p.status === "scheduled"
+                              ? fmtDateTime(p.scheduled_at)
+                              : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              p.status === "sent"
+                                ? "default"
+                                : p.status === "scheduled"
+                                  ? "secondary"
+                                  : "outline"
+                            }
                           >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                            {STATUS_LABEL[p.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="tabular-nums">{p.sent_count}</TableCell>
+                        <TableCell className="tabular-nums">{p.delivered_count}</TableCell>
+                        <TableCell className="tabular-nums">{p.read_count}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditing(p);
+                                setOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(p)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </RowContextMenu>
                   ))
                 )}
               </TableBody>
