@@ -267,7 +267,7 @@ function TrainersPage() {
         </div>
       }
     >
-      <div className="mx-auto max-w-6xl">
+      <div className="space-y-3">
         {!studioId ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             Сначала выберите студию в шапке.

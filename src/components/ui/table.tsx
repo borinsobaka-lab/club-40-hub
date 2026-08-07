@@ -15,7 +15,16 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  // Светло-серая заливка шапки: отделяет заголовки от строк с контентом.
+  // Скругляем верхние углы, чтобы заливка не выходила за рамку обёртки таблицы.
+  <thead
+    ref={ref}
+    className={cn(
+      "bg-muted/60 [&_tr]:border-b [&>tr:first-child>th:first-child]:rounded-tl-lg [&>tr:first-child>th:last-child]:rounded-tr-lg",
+      className,
+    )}
+    {...props}
+  />
 ));
 TableHeader.displayName = "TableHeader";
 

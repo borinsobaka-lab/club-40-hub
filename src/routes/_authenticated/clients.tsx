@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
-import { Plus, Loader2, Pencil, Trash2, Search, ExternalLink, CalendarIcon } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Search, CalendarIcon } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +41,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { DataPagination, useServerPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
@@ -85,17 +84,6 @@ const CLIENT_COLUMNS =
 // поэтому из поискового запроса их нужно убрать — иначе фильтр развалится.
 function sanitizeSearch(value: string) {
   return value.trim().replace(/[,()]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((s) => s[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
 }
 
 function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
@@ -336,7 +324,7 @@ function ClientsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[240px]">ФИО</TableHead>
+                    <TableHead className="min-w-[240px]">Клиент</TableHead>
                     <TableHead className="w-[80px]">Статус</TableHead>
                     <TableHead>Телефон</TableHead>
                     <TableHead>Email</TableHead>
@@ -344,7 +332,6 @@ function ClientsPage() {
                     <TableHead>Дата рождения</TableHead>
                     <TableHead>Регистрация</TableHead>
                     <TableHead>Последний визит</TableHead>
-                    <TableHead>CRM</TableHead>
                     <TableHead>Заметки</TableHead>
                     <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
@@ -371,15 +358,7 @@ function ClientsPage() {
                     clients.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">
-                          <div className="flex items-center gap-2.5">
-                            <Avatar className="h-8 w-8">
-                              {c.photo_url && (
-                                <AvatarImage src={c.photo_url || ""} alt={displayName(c)} />
-                              )}
-                              <AvatarFallback className="text-xs">
-                                {initials(displayName(c))}
-                              </AvatarFallback>
-                            </Avatar>
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                             <button
                               type="button"
                               onClick={() => openCard(c)}
@@ -388,7 +367,7 @@ function ClientsPage() {
                               {displayName(c)}
                             </button>
                             {c.crm_link && <AmoCrmLinkIcon href={c.crm_link} />}
-                          </div>
+                          </span>
                         </TableCell>
                         <TableCell>
                           <ClubStatusBadge status={c.club_status ?? "pchk"} />
@@ -399,21 +378,6 @@ function ClientsPage() {
                         <TableCell>{formatDate(c.birthday)}</TableCell>
                         <TableCell>{formatDate(c.registration_date)}</TableCell>
                         <TableCell>{formatDate(c.last_visit_date)}</TableCell>
-                        <TableCell>
-                          {c.crm_link ? (
-                            <a
-                              href={c.crm_link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-primary hover:underline"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                              Открыть
-                            </a>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
                         <TableCell className="max-w-[200px] truncate text-muted-foreground">
                           {c.notes ?? "—"}
                         </TableCell>

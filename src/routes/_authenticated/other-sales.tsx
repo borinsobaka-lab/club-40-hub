@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { ClientNameLink } from "@/components/client-name-link";
 
 export const Route = createFileRoute("/_authenticated/other-sales")({
   head: () => ({ meta: [{ title: "Прочие продажи — Base40 Admin" }] }),
@@ -318,8 +319,14 @@ function SalesTab({
                   <TableCell>
                     <Badge variant="secondary">{KIND_LABEL[s.item_kind]}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {s.clients ? clientName(s.clients) : "—"}
+                  <TableCell>
+                    {s.client_id && s.clients ? (
+                      <ClientNameLink clientId={s.client_id}>
+                        {clientName(s.clients)}
+                      </ClientNameLink>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{s.quantity}</TableCell>
                   <TableCell className="text-right tabular-nums">

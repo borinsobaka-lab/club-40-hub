@@ -104,8 +104,10 @@ export function DataPagination({
   const to = Math.min(page * pageSize, total);
 
   return (
+    // Подвал таблицы оформлен как шапка: светло-серая заливка + верхний
+    // разделитель, скруглены нижние углы под обёртку таблицы.
     <div
-      className={`flex flex-col gap-3 px-2 py-3 sm:flex-row sm:items-center sm:justify-between ${className ?? ""}`}
+      className={`flex flex-col gap-3 rounded-b-lg border-t bg-muted/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between ${className ?? ""}`}
     >
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span>Строк на странице</span>
