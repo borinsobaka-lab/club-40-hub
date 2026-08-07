@@ -245,6 +245,7 @@ function NewsPage() {
                     const idx = items.indexOf(n);
                     return (
                       <RowContextMenu
+                        key={n.id}
                         actions={[
                           { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(n) },
                           {
@@ -255,7 +256,7 @@ function NewsPage() {
                           },
                         ]}
                       >
-                        <TableRow key={n.id}>
+                        <TableRow>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <Button

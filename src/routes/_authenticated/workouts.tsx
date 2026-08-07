@@ -233,6 +233,7 @@ function WorkoutsPage() {
                   ) : (
                     pg.paged.map((w) => (
                       <RowContextMenu
+                        key={w.id}
                         actions={[
                           { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(w) },
                           {
@@ -243,7 +244,7 @@ function WorkoutsPage() {
                           },
                         ]}
                       >
-                        <TableRow key={w.id}>
+                        <TableRow>
                           <TableCell>
                             <WorkoutPhoto value={w.photo_url} name={w.name} />
                           </TableCell>

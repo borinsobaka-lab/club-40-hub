@@ -407,6 +407,7 @@ function FeedbackPage() {
               ) : (
                 pg.paged.map((i) => (
                   <RowContextMenu
+                    key={i.id}
                     actions={[
                       {
                         label: "Открыть обращение",
@@ -425,7 +426,6 @@ function FeedbackPage() {
                     ]}
                   >
                     <TableRow
-                      key={i.id}
                       onClick={() => {
                         setSelectedId(i.id);
                         setResolutionComment(i.resolution_comment || "");

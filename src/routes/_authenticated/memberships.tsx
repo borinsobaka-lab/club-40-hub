@@ -255,6 +255,7 @@ function MembershipsPage() {
                   ) : (
                     pg.paged.map((m) => (
                       <RowContextMenu
+                        key={m.id}
                         actions={[
                           { label: "Дублировать", icon: Copy, onSelect: () => handleClone(m) },
                           {
@@ -273,7 +274,7 @@ function MembershipsPage() {
                           },
                         ]}
                       >
-                        <TableRow key={m.id} className={m.is_active ? "" : "opacity-60"}>
+                        <TableRow className={m.is_active ? "" : "opacity-60"}>
                           <TableCell>
                             <CoverThumb value={m.cover_url} alt={m.name} />
                           </TableCell>

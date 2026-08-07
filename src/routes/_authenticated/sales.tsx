@@ -317,6 +317,7 @@ function SalesPage() {
                       const cm = s.client_memberships?.[0] ?? null;
                       return (
                         <RowContextMenu
+                          key={s.id}
                           actions={[
                             {
                               label: "Оформить возврат",
@@ -331,7 +332,7 @@ function SalesPage() {
                             },
                           ]}
                         >
-                          <TableRow key={s.id}>
+                          <TableRow>
                             <TableCell>
                               {s.clients ? (
                                 <ClientNameLink clientId={s.client_id}>

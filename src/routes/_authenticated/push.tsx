@@ -193,6 +193,7 @@ function PushPage() {
                 ) : (
                   pg.paged.map((p) => (
                     <RowContextMenu
+                      key={p.id}
                       actions={[
                         {
                           label: "Редактировать",
@@ -210,7 +211,7 @@ function PushPage() {
                         },
                       ]}
                     >
-                      <TableRow key={p.id}>
+                      <TableRow>
                         <TableCell className="font-medium max-w-[280px]">
                           <div className="truncate">{p.title}</div>
                           {p.message ? (

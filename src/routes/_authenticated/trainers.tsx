@@ -311,6 +311,7 @@ function TrainersPage() {
                 ) : (
                   pg.paged.map((t) => (
                     <RowContextMenu
+                      key={t.id}
                       actions={[
                         { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(t) },
                         {
@@ -321,7 +322,7 @@ function TrainersPage() {
                         },
                       ]}
                     >
-                      <TableRow key={t.id}>
+                      <TableRow>
                         <TableCell>
                           <TrainerPhoto value={t.photo_url} name={t.full_name} />
                         </TableCell>

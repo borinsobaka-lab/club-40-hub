@@ -299,6 +299,7 @@ function SalesTab({
             ) : (
               pg.paged.map((s) => (
                 <RowContextMenu
+                  key={s.id}
                   actions={[
                     {
                       label: "Удалить",
@@ -308,7 +309,7 @@ function SalesTab({
                     },
                   ]}
                 >
-                  <TableRow key={s.id}>
+                  <TableRow>
                     <TableCell className="font-medium">{s.item_name}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{KIND_LABEL[s.item_kind]}</Badge>
@@ -661,6 +662,7 @@ function CatalogTab({
             ) : (
               pg.paged.map((i) => (
                 <RowContextMenu
+                  key={i.id}
                   actions={[
                     {
                       label: "Редактировать",
@@ -678,7 +680,7 @@ function CatalogTab({
                     },
                   ]}
                 >
-                  <TableRow key={i.id}>
+                  <TableRow>
                     <TableCell className="font-medium">{i.name}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{KIND_LABEL[i.kind]}</Badge>

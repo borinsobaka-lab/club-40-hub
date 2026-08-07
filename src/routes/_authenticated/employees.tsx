@@ -192,11 +192,10 @@ function EmployeesPage() {
                   <TableHead>Имя</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Роль</TableHead>
-                  <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableSkeletonRows columns={4} rows={5} />
+                <TableSkeletonRows columns={3} rows={5} />
               </TableBody>
             </Table>
           </div>
@@ -216,6 +215,7 @@ function EmployeesPage() {
               <TableBody>
                 {pg.paged.map((e) => (
                   <RowContextMenu
+                    key={e.user_id}
                     actions={[
                       ...(isOwner && e.user_id !== data.currentUserId
                         ? [
@@ -236,7 +236,7 @@ function EmployeesPage() {
                         : []),
                     ]}
                   >
-                    <TableRow key={e.user_id}>
+                    <TableRow>
                       <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
                       <TableCell>{e.email ?? "—"}</TableCell>
                       <TableCell>

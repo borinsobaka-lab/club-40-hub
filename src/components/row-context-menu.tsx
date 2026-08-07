@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import { cloneElement, type ComponentType, type ReactElement } from "react";
 
 import {
   ContextMenu,
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export type RowAction = {
   label: string;
-  /** Иконка из @/lib/icons — та же, что у кнопки этого действия в строке. */
+  /** Иконка из @/lib/icons — по смыслу действия (Pencil, Trash2, Copy, …). */
   icon?: ComponentType<{ className?: string }>;
   onSelect: () => void;
   /** Разрушающее действие уезжает вниз за разделитель и красится destructive. */
@@ -22,23 +22,31 @@ export type RowAction = {
 /**
  * Контекстное меню строки таблицы (правый клик / долгое нажатие).
  *
- * Зачем: кнопки действий стоят в последней колонке, и на узком экране до них
- * нужно горизонтально прокручивать всю таблицу. Правый клик даёт те же
- * действия из любого места строки. Кнопки в колонке остаются — меню их
- * дублирует, а не заменяет.
+ * Единственное место, где живут действия со строкой: колонки с кнопками в
+ * конце строки нет — на узком экране до неё пришлось бы горизонтально
+ * прокручивать всю таблицу.
  *
- * Если действий нет, компонент отдаёт строку как есть: правый клик тогда
- * работает как обычно в браузере.
+ * Раз видимых кнопок нет, строке нужен признак, что с ней вообще что-то можно
+ * сделать: вешаем системный курсор `context-menu`. Класс подмешивается первым,
+ * поэтому собственный курсор строки (кликабельная строка в «Отзывах» —
+ * `cursor-pointer`) его перебивает: twMerge оставляет последний из конфликтующих.
+ *
+ * Если действий нет, компонент отдаёт строку как есть — без курсора и без
+ * меню, правый клик тогда работает как обычно в браузере.
  */
 export function RowContextMenu({
   actions,
   children,
 }: {
   actions: RowAction[];
-  children: ReactNode;
+  children: ReactElement<{ className?: string }>;
 }) {
   const items = actions.filter(Boolean);
-  if (items.length === 0) return <>{children}</>;
+  if (items.length === 0) return children;
+
+  const row = cloneElement(children, {
+    className: cn("cursor-context-menu", children.props.className),
+  });
 
   const regular = items.filter((a) => !a.destructive);
   const destructive = items.filter((a) => a.destructive);
@@ -63,7 +71,7 @@ export function RowContextMenu({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         {regular.map(renderItem)}
         {regular.length > 0 && destructive.length > 0 && <ContextMenuSeparator />}

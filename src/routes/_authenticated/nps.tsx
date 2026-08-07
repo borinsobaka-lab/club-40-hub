@@ -515,6 +515,7 @@ function NpsPage() {
                       const c = category(r.score);
                       return (
                         <RowContextMenu
+                          key={r.id}
                           actions={[
                             {
                               label: "Удалить",
@@ -524,7 +525,7 @@ function NpsPage() {
                             },
                           ]}
                         >
-                          <TableRow key={r.id}>
+                          <TableRow>
                             <TableCell className="whitespace-nowrap text-muted-foreground">
                               {format(parseISO(r.created_at), "d MMM, HH:mm", { locale: ru })}
                             </TableCell>

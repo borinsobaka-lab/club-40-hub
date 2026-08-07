@@ -186,6 +186,7 @@ function PromoCodesPage() {
                 ) : (
                   pg.paged.map((p) => (
                     <RowContextMenu
+                      key={p.id}
                       actions={[
                         { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
                         {
@@ -196,7 +197,7 @@ function PromoCodesPage() {
                         },
                       ]}
                     >
-                      <TableRow key={p.id}>
+                      <TableRow>
                         <TableCell className="font-medium">{p.name}</TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="font-mono uppercase">

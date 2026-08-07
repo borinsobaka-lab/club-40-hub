@@ -348,6 +348,7 @@ function ClientsPage() {
                   ) : (
                     clients.map((c) => (
                       <RowContextMenu
+                        key={c.id}
                         actions={[
                           { label: "Открыть карточку", icon: Eye, onSelect: () => openCard(c) },
                           { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(c) },
@@ -359,7 +360,7 @@ function ClientsPage() {
                           },
                         ]}
                       >
-                        <TableRow key={c.id}>
+                        <TableRow>
                           <TableCell className="font-medium">
                             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                               <button
