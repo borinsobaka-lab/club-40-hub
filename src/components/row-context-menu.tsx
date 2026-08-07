@@ -64,7 +64,12 @@ export function RowContextMenu({
           a.destructive && "text-destructive focus:bg-destructive/10 focus:text-destructive",
         )}
       >
-        {Icon && <Icon className="h-4 w-4" />}
+        {/*
+          Иконка приглушена, как в плашке фильтров: она подсказка к пункту, а
+          не второй акцент рядом с текстом. У разрушающего пункта цвет не
+          трогаем — иконка наследует destructive от самого пункта.
+        */}
+        {Icon && <Icon className={cn("h-4 w-4", !a.destructive && "text-muted-foreground")} />}
         {a.label}
       </ContextMenuItem>
     );
