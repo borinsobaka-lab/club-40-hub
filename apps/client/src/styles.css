@@ -2,10 +2,25 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* Roboto — корпоративный шрифт Base40, общий с админкой. Самохостится из
+   node_modules (@fontsource/roboto), без обращений к Google Fonts: работает
+   офлайн и не утекает на сторонние домены. Подсеты (латиница/кириллица)
+   браузер тянет по unicode-range, лишнего не грузит.
+   400 — текст, 500/600 — подписи и кнопки, 700/900 — заголовки и акценты.
+
+   Раньше стек начинался с "Google Sans"/"Product Sans" — это проприетарные
+   шрифты Google, которых нет на устройствах пользователей, поэтому приложение
+   рендерилось системным шрифтом (San Francisco на iPhone), а не фирменным. */
+@import "@fontsource/roboto/400.css";
+@import "@fontsource/roboto/500.css";
+@import "@fontsource/roboto/600.css";
+@import "@fontsource/roboto/700.css";
+@import "@fontsource/roboto/900.css";
+
 @theme {
   --font-sans:
-    "Google Sans", "Product Sans", "Google Sans Text", ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    Roboto, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
 }
 
 @custom-variant dark (&:is(.dark *));

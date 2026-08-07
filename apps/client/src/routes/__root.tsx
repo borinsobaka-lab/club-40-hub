@@ -100,12 +100,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
     links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700;900&family=Google+Sans+Text:wght@400;500;700&display=swap",
-      },
+      // Шрифт (Roboto) самохостится и подключён в styles.css. Обращений к
+      // Google Fonts нет намеренно: «Google Sans» там публично не раздаётся,
+      // так что прежние preconnect и stylesheet уходили впустую на каждой
+      // загрузке — и утекали на сторонний домен.
       {
         rel: "stylesheet",
         href: appCss,
