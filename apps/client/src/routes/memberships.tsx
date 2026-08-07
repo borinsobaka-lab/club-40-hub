@@ -197,12 +197,22 @@ function MembershipsPage() {
       setLoading(true);
       setError(null);
       try {
-        const { data: c, error: cErr } = await db
+        let { data: c, error: cErr } = await db
           .from("clients")
           .select("id, studio_id")
           .eq("user_id", user.id)
           .maybeSingle();
         if (cErr) throw cErr;
+
+        // Нет карточки — не тупик: заводим её на сервере и продолжаем.
+        // Раньше здесь показывалось «обратитесь к администратору», хотя
+        // студия одна и привязать клиента можно автоматически.
+        if (!c || !c.studio_id) {
+          const { data: ensured } = await (db as any).rpc("ensure_client_profile");
+          const row = Array.isArray(ensured) ? ensured[0] : ensured;
+          if (row?.studio_id) c = { id: row.id, studio_id: row.studio_id };
+        }
+
         if (!c || !c.studio_id) {
           if (!cancelled) {
             setClient(null);

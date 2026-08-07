@@ -32,7 +32,14 @@ async function fetchStudioId(userId: string): Promise<string | null> {
     .select("studio_id")
     .eq("user_id", userId)
     .maybeSingle();
-  return data?.studio_id ?? null;
+  if (data?.studio_id) return data.studio_id;
+
+  // Карточки клиента нет — заводим её на сервере. Так бывает у тех, кто
+  // зарегистрировался до появления автосоздания: триггер срабатывает только
+  // на нового пользователя, а повторный вход нового пользователя не создаёт.
+  const { data: ensured } = await (supabase as any).rpc("ensure_client_profile");
+  const row = Array.isArray(ensured) ? ensured[0] : ensured;
+  return row?.studio_id ?? null;
 }
 
 export function useClientStudioId(): State {
