@@ -575,7 +575,7 @@ function SchedulePage() {
                                     ev.stopPropagation();
                                     openEdit(e);
                                   }}
-                                  className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight shadow-sm hover:opacity-90 flex flex-col ${colorClasses}`}
+                                  className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight hover:opacity-90 flex flex-col ${colorClasses}`}
                                 >
                                   <div className="flex items-start justify-between gap-1">
                                     <span className="whitespace-nowrap opacity-80">

@@ -64,7 +64,7 @@ export function AdminShell({
             <button
               type="button"
               onClick={() => setKateOpen(true)}
-              className="ai-gradient group relative inline-flex h-9 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white shadow-sm transition hover:shadow-md"
+              className="ai-gradient group relative inline-flex h-9 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white transition"
             >
               <Cat className="h-4 w-4" />
               <span>Kate</span>
