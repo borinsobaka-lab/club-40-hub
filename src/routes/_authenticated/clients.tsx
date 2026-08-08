@@ -37,6 +37,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -124,9 +125,8 @@ function DateRangeFilter({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
           className={cn(
-            "h-8 justify-start px-2.5 text-left font-normal",
+            "justify-start px-3 text-left font-normal",
             !value?.from && "text-muted-foreground",
           )}
         >
@@ -289,7 +289,7 @@ function ClientsPage() {
                 placeholder="Поиск по имени, телефону, email"
               />
               <Select value={genderFilter} onValueChange={setGenderFilter}>
-                <SelectTrigger className="h-8 w-[110px]">
+                <SelectTrigger className="w-[110px]">
                   <SelectValue placeholder="Пол" />
                 </SelectTrigger>
                 <SelectContent>
@@ -301,7 +301,7 @@ function ClientsPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 w-[150px]">
+                <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Статус" />
                 </SelectTrigger>
                 <SelectContent>
@@ -312,7 +312,7 @@ function ClientsPage() {
               </Select>
               <DateRangeFilter label="Регистрация" value={regRange} onChange={setRegRange} />
               <DateRangeFilter label="Визит" value={visitRange} onChange={setVisitRange} />
-              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 shrink-0">
+              <Button variant="ghost" onClick={resetFilters} className="shrink-0">
                 Сбросить
               </Button>
             </TableToolbar>
@@ -516,136 +516,138 @@ function ClientDialog({
           <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
           <DialogDescription>Контактные данные и заметки по клиенту.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-3 py-2">
-          <div className="flex items-center gap-4">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
-              {photoUrl ? (
-                <img
-                  src={photoUrl}
-                  alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
-                  {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
+        <DialogBody>
+          <div className="grid gap-3 py-2">
+            <div className="flex items-center gap-4">
+              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
+                    {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="grid flex-1 grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="cl-last-name">Фамилия</Label>
+                  <Input
+                    id="cl-last-name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
                 </div>
-              )}
+                <div className="grid gap-1.5">
+                  <Label htmlFor="cl-first-name">Имя *</Label>
+                  <Input
+                    id="cl-first-name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="grid flex-1 grid-cols-2 gap-3">
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
+              <Input
+                id="cl-crm"
+                type="url"
+                value={crmLink}
+                onChange={(e) => setCrmLink(e.target.value)}
+                placeholder="https://your-account.amocrm.ru/contacts/detail/..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="cl-last-name">Фамилия</Label>
+                <Label htmlFor="cl-phone">Телефон</Label>
+                <Input id="cl-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-email">Email</Label>
                 <Input
-                  id="cl-last-name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  id="cl-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-bday">Дата рождения</Label>
+                <Input
+                  id="cl-bday"
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="cl-first-name">Имя *</Label>
+                <Label>Пол</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-reg">Дата регистрации</Label>
                 <Input
-                  id="cl-first-name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  id="cl-reg"
+                  type="date"
+                  value={registrationDate}
+                  onChange={(e) => setRegistrationDate(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-last">Последний визит</Label>
+                <Input
+                  id="cl-last"
+                  type="date"
+                  value={lastVisitDate}
+                  onChange={(e) => setLastVisitDate(e.target.value)}
                 />
               </div>
             </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
-            <Input
-              id="cl-crm"
-              type="url"
-              value={crmLink}
-              onChange={(e) => setCrmLink(e.target.value)}
-              placeholder="https://your-account.amocrm.ru/contacts/detail/..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="cl-phone">Телефон</Label>
-              <Input id="cl-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-email">Email</Label>
+              <Label htmlFor="cl-photo">Фото (URL)</Label>
               <Input
-                id="cl-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-bday">Дата рождения</Label>
-              <Input
-                id="cl-bday"
-                type="date"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
+                id="cl-photo"
+                type="url"
+                value={photoUrl}
+                onChange={(e) => setPhotoUrl(e.target.value)}
+                placeholder="https://..."
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Пол</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>
-                      {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-reg">Дата регистрации</Label>
-              <Input
-                id="cl-reg"
-                type="date"
-                value={registrationDate}
-                onChange={(e) => setRegistrationDate(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-last">Последний визит</Label>
-              <Input
-                id="cl-last"
-                type="date"
-                value={lastVisitDate}
-                onChange={(e) => setLastVisitDate(e.target.value)}
+              <Label htmlFor="cl-notes">Заметки</Label>
+              <Textarea
+                id="cl-notes"
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
             </div>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-photo">Фото (URL)</Label>
-            <Input
-              id="cl-photo"
-              type="url"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-notes">Заметки</Label>
-            <Textarea
-              id="cl-notes"
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-        </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена

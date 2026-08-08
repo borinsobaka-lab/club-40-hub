@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -127,8 +128,6 @@ function initials(name: string) {
 function displayName(c: Pick<ClientLike, "first_name" | "last_name" | "full_name">) {
   return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
 }
-
-
 
 function genderLabel(g: string | null) {
   if (g === "male") return "Мужской";
@@ -288,167 +287,169 @@ export function ClientCardDialog({
         <DialogHeader>
           <DialogTitle className="sr-only">Карточка клиента {name}</DialogTitle>
         </DialogHeader>
-
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto pr-1">
-          <div className="flex items-start gap-4">
-            <Avatar className="h-20 w-20">
-              {photo && <AvatarImage src={photo} alt={name} />}
-              <AvatarFallback className="text-lg">{initials(name)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="text-xl font-semibold">{name}</div>
-                <ClubStatusBadge status={clubStatus} withFull />
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {client.phone || "—"} {client.email ? `· ${client.email}` : ""}
-              </div>
-              {client.crm_link && (
-                <div className="mt-2">
-                  <AmoCrmLinkIcon href={client.crm_link} size={22} />
+        <DialogBody>
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <Avatar className="h-20 w-20">
+                {photo && <AvatarImage src={photo} alt={name} />}
+                <AvatarFallback className="text-lg">{initials(name)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-xl font-semibold">{name}</div>
+                  <ClubStatusBadge status={clubStatus} withFull />
                 </div>
-              )}
-            </div>
-          </div>
-
-          <Tabs defaultValue="card" className="w-full">
-            <TabsList>
-              <TabsTrigger value="card">Карточка</TabsTrigger>
-              <TabsTrigger value="visits">Посещения</TabsTrigger>
-              <TabsTrigger value="profile">Анкета</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="card" className="mt-4 space-y-5">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
-                <Field label="Пол" value={genderLabel(client.gender)} />
-                <Field label="Дата рождения" value={formatDate(client.birthday)} />
-                <Field label="Регистрация" value={formatDate(client.registration_date)} />
-                <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
+                <div className="text-sm text-muted-foreground">
+                  {client.phone || "—"} {client.email ? `· ${client.email}` : ""}
+                </div>
+                {client.crm_link && (
+                  <div className="mt-2">
+                    <AmoCrmLinkIcon href={client.crm_link} size={22} />
+                  </div>
+                )}
               </div>
+            </div>
 
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-xs uppercase text-muted-foreground">Активный абонемент</div>
-                  {active && (
-                    <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                      <Pencil className="mr-1 h-3.5 w-3.5" />
-                      Редактировать
-                    </Button>
+            <Tabs defaultValue="card" className="w-full">
+              <TabsList>
+                <TabsTrigger value="card">Карточка</TabsTrigger>
+                <TabsTrigger value="visits">Посещения</TabsTrigger>
+                <TabsTrigger value="profile">Анкета</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="card" className="mt-4 space-y-5">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
+                  <Field label="Пол" value={genderLabel(client.gender)} />
+                  <Field label="Дата рождения" value={formatDate(client.birthday)} />
+                  <Field label="Регистрация" value={formatDate(client.registration_date)} />
+                  <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-xs uppercase text-muted-foreground">
+                      Активный абонемент
+                    </div>
+                    {active && (
+                      <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                        <Pencil className="mr-1 h-3.5 w-3.5" />
+                        Редактировать
+                      </Button>
+                    )}
+                  </div>
+                  {loadingActive ? (
+                    <div className="flex justify-center py-3">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : !active ? (
+                    <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
+                      Нет активного абонемента.
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border bg-background p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-medium">{membershipName(active.memberships)}</div>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {sourceLabel(active.source)}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {formatDate(active.started_at)} →{" "}
+                        {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                        {" · "}
+                        {active.visits_left == null
+                          ? "посещения: безлимит"
+                          : `осталось посещений: ${active.visits_left}`}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <MembershipStatusBadge m={active} />
+                        <AutoRenewBadge on={active.auto_renew} />
+                      </div>
+                      {active.status === "frozen" && (
+                        <div className="mt-1 text-xs text-blue-700">
+                          Заморожен
+                          {active.frozen_until ? ` до ${formatDate(active.frozen_until)}` : ""}
+                        </div>
+                      )}
+                      {active.cancelled_at && (
+                        <div className="mt-1 text-xs text-rose-700">
+                          Отменён: {formatDate(active.cancelled_at)}
+                          {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-                {loadingActive ? (
-                  <div className="flex justify-center py-3">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : !active ? (
-                  <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
-                    Нет активного абонемента.
-                  </div>
-                ) : (
-                  <div className="rounded-lg border bg-background p-3 text-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium">{membershipName(active.memberships)}</div>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        {sourceLabel(active.source)}
-                      </span>
+
+                {client.notes && (
+                  <div>
+                    <div className="mb-1 text-xs uppercase text-muted-foreground">Заметки</div>
+                    <div className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
+                      {client.notes}
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {formatDate(active.started_at)} →{" "}
-                      {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
-                      {" · "}
-                      {active.visits_left == null
-                        ? "посещения: безлимит"
-                        : `осталось посещений: ${active.visits_left}`}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <MembershipStatusBadge m={active} />
-                      <AutoRenewBadge on={active.auto_renew} />
-                    </div>
-                    {active.status === "frozen" && (
-                      <div className="mt-1 text-xs text-blue-700">
-                        Заморожен
-                        {active.frozen_until ? ` до ${formatDate(active.frozen_until)}` : ""}
-                      </div>
-                    )}
-                    {active.cancelled_at && (
-                      <div className="mt-1 text-xs text-rose-700">
-                        Отменён: {formatDate(active.cancelled_at)}
-                        {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
-                      </div>
-                    )}
                   </div>
                 )}
-              </div>
 
-              {client.notes && (
                 <div>
-                  <div className="mb-1 text-xs uppercase text-muted-foreground">Заметки</div>
-                  <div className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
-                    {client.notes}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <div className="mb-2 text-xs uppercase text-muted-foreground">История продаж</div>
-                {loadingSales ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : sales.length === 0 ? (
-                  <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
-                    Продаж пока нет.
-                  </div>
-                ) : (
-                  <ul className="divide-y rounded-lg border bg-background">
-                    {sales.map((s) => {
-                      const cm = s.client_memberships?.[0] ?? null;
-                      return (
-                        <li
-                          key={s.id}
-                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                        >
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium truncate">
-                                {membershipName(s.memberships)}
+                  <div className="mb-2 text-xs uppercase text-muted-foreground">История продаж</div>
+                  {loadingSales ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : sales.length === 0 ? (
+                    <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
+                      Продаж пока нет.
+                    </div>
+                  ) : (
+                    <ul className="divide-y rounded-lg border bg-background">
+                      {sales.map((s) => {
+                        const cm = s.client_memberships?.[0] ?? null;
+                        return (
+                          <li
+                            key={s.id}
+                            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="font-medium truncate">
+                                  {membershipName(s.memberships)}
+                                </div>
+                                {cm && <MembershipStatusBadge m={cm} />}
+                                {cm && effectiveStatus(cm) === "active" && (
+                                  <AutoRenewBadge on={cm.auto_renew} />
+                                )}
                               </div>
-                              {cm && <MembershipStatusBadge m={cm} />}
-                              {cm && effectiveStatus(cm) === "active" && (
-                                <AutoRenewBadge on={cm.auto_renew} />
-                              )}
+                              <div className="text-xs text-muted-foreground">
+                                {formatDate(s.sold_at)}
+                                {" · "}
+                                {sourceLabel(s.source)}
+                                {s.admin_name ? ` · ${s.admin_name}` : ""}
+                                {s.remaining_installments > 0
+                                  ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
+                                  : ""}
+                              </div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatDate(s.sold_at)}
-                              {" · "}
-                              {sourceLabel(s.source)}
-                              {s.admin_name ? ` · ${s.admin_name}` : ""}
-                              {s.remaining_installments > 0
-                                ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
-                                : ""}
+                            <div className="shrink-0 font-medium tabular-nums">
+                              {formatMoney(Number(s.total_amount))}
                             </div>
-                          </div>
-                          <div className="shrink-0 font-medium tabular-nums">
-                            {formatMoney(Number(s.total_amount))}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </TabsContent>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </TabsContent>
 
-            <TabsContent value="visits" className="mt-4">
-              <VisitsTab open={open} userId={client.user_id ?? null} />
-            </TabsContent>
+              <TabsContent value="visits" className="mt-4">
+                <VisitsTab open={open} userId={client.user_id ?? null} />
+              </TabsContent>
 
-            <TabsContent value="profile" className="mt-4">
-              <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!client.user_id} />
-            </TabsContent>
-          </Tabs>
-        </div>
-
+              <TabsContent value="profile" className="mt-4">
+                <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!client.user_id} />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </DialogBody>
         <DialogFooter>
           {onEdit && (
             <Button variant="outline" onClick={() => onEdit(client)}>
@@ -641,10 +642,7 @@ function visitStatusBadge(v: VisitRow["status"]) {
   if (v === "cancelled") return <Badge variant="destructive">{VISIT_STATUS_LABEL[v]}</Badge>;
   if (v === "rejected")
     return (
-      <Badge
-        variant="outline"
-        className="text-orange-600 border-orange-600"
-      >
+      <Badge variant="outline" className="text-orange-600 border-orange-600">
         {VISIT_STATUS_LABEL[v]}
       </Badge>
     );

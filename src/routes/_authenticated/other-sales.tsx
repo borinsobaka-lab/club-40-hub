@@ -31,6 +31,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -456,119 +457,119 @@ function AddSaleDialog({
             Выберите позицию, количество и цену. Клиент — по желанию.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-          <div className="space-y-1.5">
-            <Label>Позиция</Label>
-            <SearchableCombobox
-              placeholder="Выбрать услугу или товар"
-              searchPlaceholder="Поиск по названию"
-              emptyText="Ничего не найдено"
-              value={itemId}
-              onChange={setItemId}
-              options={activeItems.map((i) => ({
-                value: i.id,
-                label: i.name,
-                hint: `${KIND_LABEL[i.kind]} · ${formatMoney(Number(i.price))}`,
-                searchText: `${i.name} ${KIND_LABEL[i.kind]}`,
-              }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        <DialogBody>
+          <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="os-qty">Количество</Label>
-              <Input
-                id="os-qty"
-                type="number"
-                min={1}
-                step="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+              <Label>Позиция</Label>
+              <SearchableCombobox
+                placeholder="Выбрать услугу или товар"
+                searchPlaceholder="Поиск по названию"
+                emptyText="Ничего не найдено"
+                value={itemId}
+                onChange={setItemId}
+                options={activeItems.map((i) => ({
+                  value: i.id,
+                  label: i.name,
+                  hint: `${KIND_LABEL[i.kind]} · ${formatMoney(Number(i.price))}`,
+                  searchText: `${i.name} ${KIND_LABEL[i.kind]}`,
+                }))}
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="os-qty">Количество</Label>
+                <Input
+                  id="os-qty"
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="os-price">Цена за штуку, ₾</Label>
+                <Input
+                  id="os-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={unitPrice}
+                  onChange={(e) => setUnitPrice(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Итого</span>
+              <span className="font-semibold tabular-nums">{formatMoney(total)}</span>
+            </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="os-price">Цена за штуку, ₾</Label>
-              <Input
-                id="os-price"
-                type="number"
-                min={0}
-                step="0.01"
-                value={unitPrice}
-                onChange={(e) => setUnitPrice(e.target.value)}
+              <Label>Клиент (по желанию)</Label>
+              <SearchableCombobox
+                placeholder="Без клиента"
+                searchPlaceholder="Поиск по имени, телефону, email"
+                emptyText="Ничего не найдено"
+                value={clientId}
+                onChange={setClientId}
+                options={clients.map((c) => ({
+                  value: c.id,
+                  label: clientName(c),
+                  hint: c.phone ?? c.email ?? "",
+                  searchText: `${clientName(c)} ${c.phone ?? ""} ${c.email ?? ""}`,
+                }))}
+              />
+              {clientId && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  onClick={() => setClientId("")}
+                >
+                  Убрать клиента
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Оплата</Label>
+                <Select value={payment} onValueChange={(v) => setPayment(v as PaymentMethod)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {PAYMENT_LABEL[m]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="os-date">Дата</Label>
+                <Input
+                  id="os-date"
+                  type="date"
+                  value={soldAt}
+                  onChange={(e) => setSoldAt(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Комментарий (по желанию)</Label>
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Заметка к продаже"
+                rows={2}
               />
             </div>
           </div>
-
-          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Итого</span>
-            <span className="font-semibold tabular-nums">{formatMoney(total)}</span>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Клиент (по желанию)</Label>
-            <SearchableCombobox
-              placeholder="Без клиента"
-              searchPlaceholder="Поиск по имени, телефону, email"
-              emptyText="Ничего не найдено"
-              value={clientId}
-              onChange={setClientId}
-              options={clients.map((c) => ({
-                value: c.id,
-                label: clientName(c),
-                hint: c.phone ?? c.email ?? "",
-                searchText: `${clientName(c)} ${c.phone ?? ""} ${c.email ?? ""}`,
-              }))}
-            />
-            {clientId && (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => setClientId("")}
-              >
-                Убрать клиента
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Оплата</Label>
-              <Select value={payment} onValueChange={(v) => setPayment(v as PaymentMethod)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {PAYMENT_LABEL[m]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="os-date">Дата</Label>
-              <Input
-                id="os-date"
-                type="date"
-                value={soldAt}
-                onChange={(e) => setSoldAt(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Комментарий (по желанию)</Label>
-            <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Заметка к продаже"
-              rows={2}
-            />
-          </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена
@@ -778,53 +779,53 @@ function CatalogDialog({
           <DialogTitle>{item ? "Редактировать позицию" : "Новая позиция"}</DialogTitle>
           <DialogDescription>Услуга или товар, доступные для продажи.</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Тип</Label>
-            <Select value={kind} onValueChange={(v) => setKind(v as ItemKind)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="service">Услуга</SelectItem>
-                <SelectItem value="product">Товар</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Название</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={kind === "product" ? "Вода 0.5 л" : "Персональная тренировка"}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Цена, ₾</Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0"
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Активна</div>
-              <div className="text-xs text-muted-foreground">
-                Неактивные позиции не показываются при продаже.
-              </div>
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Тип</Label>
+              <Select value={kind} onValueChange={(v) => setKind(v as ItemKind)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="service">Услуга</SelectItem>
+                  <SelectItem value="product">Товар</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
-        </div>
 
+            <div className="space-y-2">
+              <Label>Название</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={kind === "product" ? "Вода 0.5 л" : "Персональная тренировка"}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Цена, ₾</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Активна</div>
+                <div className="text-xs text-muted-foreground">
+                  Неактивные позиции не показываются при продаже.
+                </div>
+              </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+            </div>
+          </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена

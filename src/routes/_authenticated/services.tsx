@@ -22,6 +22,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -421,178 +422,178 @@ function ServiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{item ? "Редактировать услугу" : "Новая услуга"}</DialogTitle>
           <DialogDescription>Услуга отображается в мобильном приложении.</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Картинка (превью)</Label>
-              <div className="flex items-center gap-3">
-                <MediaThumb value={imageUrl} alt="image" />
-                <div className="flex flex-col gap-1">
-                  <input
-                    ref={imageRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) upload(f, "image");
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingImage}
-                    onClick={() => imageRef.current?.click()}
-                  >
-                    {uploadingImage ? (
-                      <>
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
-                      </>
-                    ) : imageUrl ? (
-                      "Заменить"
-                    ) : (
-                      "Загрузить"
-                    )}
-                  </Button>
-                  {imageUrl && (
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Картинка (превью)</Label>
+                <div className="flex items-center gap-3">
+                  <MediaThumb value={imageUrl} alt="image" />
+                  <div className="flex flex-col gap-1">
+                    <input
+                      ref={imageRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) upload(f, "image");
+                      }}
+                    />
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => setImageUrl(null)}
+                      disabled={uploadingImage}
+                      onClick={() => imageRef.current?.click()}
                     >
-                      Удалить
+                      {uploadingImage ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
+                        </>
+                      ) : imageUrl ? (
+                        "Заменить"
+                      ) : (
+                        "Загрузить"
+                      )}
                     </Button>
-                  )}
+                    {imageUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setImageUrl(null)}
+                      >
+                        Удалить
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Баннер</Label>
+                <div className="flex items-center gap-3">
+                  <MediaThumb value={bannerUrl} alt="banner" aspect="h-10 w-28" />
+                  <div className="flex flex-col gap-1">
+                    <input
+                      ref={bannerRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) upload(f, "banner");
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingBanner}
+                      onClick={() => bannerRef.current?.click()}
+                    >
+                      {uploadingBanner ? (
+                        <>
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
+                        </>
+                      ) : bannerUrl ? (
+                        "Заменить"
+                      ) : (
+                        "Загрузить"
+                      )}
+                    </Button>
+                    {bannerUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setBannerUrl(null)}
+                      >
+                        Удалить
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Баннер</Label>
-              <div className="flex items-center gap-3">
-                <MediaThumb value={bannerUrl} alt="banner" aspect="h-10 w-28" />
-                <div className="flex flex-col gap-1">
-                  <input
-                    ref={bannerRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) upload(f, "banner");
-                    }}
+            <div className="space-y-1.5">
+              <Label htmlFor="title">Заголовок</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Краткий заголовок для списка"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Описание</Label>
+              <Textarea
+                id="description"
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Короткое описание для превью"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="full_title">Полный заголовок</Label>
+              <Input
+                id="full_title"
+                value={fullTitle}
+                onChange={(e) => setFullTitle(e.target.value)}
+                placeholder="Заголовок на странице услуги"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="full_text">Полный текст</Label>
+              <Textarea
+                id="full_text"
+                rows={8}
+                value={fullText}
+                onChange={(e) => setFullText(e.target.value)}
+                placeholder="Текст услуги"
+              />
+            </div>
+
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
+              <div className="text-xs text-muted-foreground">
+                Если оба поля заполнены — в мобильном приложении под услугой появится кнопка-ссылка.
+                Если пусто — кнопки не будет.
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="button_text">Текст на кнопке</Label>
+                  <Input
+                    id="button_text"
+                    value={buttonText}
+                    onChange={(e) => setButtonText(e.target.value)}
+                    placeholder="Например: Записаться"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingBanner}
-                    onClick={() => bannerRef.current?.click()}
-                  >
-                    {uploadingBanner ? (
-                      <>
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
-                      </>
-                    ) : bannerUrl ? (
-                      "Заменить"
-                    ) : (
-                      "Загрузить"
-                    )}
-                  </Button>
-                  {bannerUrl && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setBannerUrl(null)}
-                    >
-                      Удалить
-                    </Button>
-                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="button_url">Ссылка</Label>
+                  <Input
+                    id="button_url"
+                    value={buttonUrl}
+                    onChange={(e) => setButtonUrl(e.target.value)}
+                    placeholder="https://…"
+                  />
                 </div>
               </div>
             </div>
           </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="title">Заголовок</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Краткий заголовок для списка"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Короткое описание для превью"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="full_title">Полный заголовок</Label>
-            <Input
-              id="full_title"
-              value={fullTitle}
-              onChange={(e) => setFullTitle(e.target.value)}
-              placeholder="Заголовок на странице услуги"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="full_text">Полный текст</Label>
-            <Textarea
-              id="full_text"
-              rows={8}
-              value={fullText}
-              onChange={(e) => setFullText(e.target.value)}
-              placeholder="Текст услуги"
-            />
-          </div>
-
-          <div className="rounded-md border p-3 space-y-3">
-            <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
-            <div className="text-xs text-muted-foreground">
-              Если оба поля заполнены — в мобильном приложении под услугой появится кнопка-ссылка.
-              Если пусто — кнопки не будет.
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="button_text">Текст на кнопке</Label>
-                <Input
-                  id="button_text"
-                  value={buttonText}
-                  onChange={(e) => setButtonText(e.target.value)}
-                  placeholder="Например: Записаться"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="button_url">Ссылка</Label>
-                <Input
-                  id="button_url"
-                  value={buttonUrl}
-                  onChange={(e) => setButtonUrl(e.target.value)}
-                  placeholder="https://…"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена

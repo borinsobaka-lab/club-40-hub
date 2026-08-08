@@ -84,10 +84,7 @@ function StatusBadge({ value }: { value: LogRow["status"] }) {
   }
   if (value === "rejected") {
     return (
-      <Badge
-        variant="outline"
-        className="text-orange-600 border-orange-600"
-      >
+      <Badge variant="outline" className="text-orange-600 border-orange-600">
         {statusLabel[value]}
       </Badge>
     );
@@ -210,7 +207,7 @@ function BookingsLogPage() {
                 placeholder="Поиск: имя, телефон, почта, тренировка"
               />
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-8 w-[200px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,13 +220,7 @@ function BookingsLogPage() {
                   <SelectItem value="completed">Проведено</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={markNoShows}
-                disabled={markingNoShows}
-              >
+              <Button variant="outline" onClick={markNoShows} disabled={markingNoShows}>
                 {markingNoShows ? "Отмечаем…" : "Отметить пропущенные"}
               </Button>
             </TableToolbar>

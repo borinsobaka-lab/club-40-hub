@@ -31,6 +31,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -480,7 +481,7 @@ function TrainerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {trainer
@@ -497,164 +498,164 @@ function TrainerDialog({
               : "Заполните данные тренера студии."}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="role">Роль</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
-              <SelectTrigger id="role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="trainer">Тренер</SelectItem>
-                <SelectItem value="admin">Админ студии</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <TrainerPhoto value={photoUrl} name={fullName || "?"} />
-
-            <div className="space-y-1">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUpload(f);
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
-                  </>
-                ) : photoUrl ? (
-                  "Заменить фото"
-                ) : (
-                  "Загрузить фото"
-                )}
-              </Button>
-              {photoUrl && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setPhotoUrl(null)}>
-                  Удалить
-                </Button>
-              )}
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="role">Роль</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trainer">Тренер</SelectItem>
+                  <SelectItem value="admin">Админ студии</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="full_name">ФИО</Label>
-            <Input
-              id="full_name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Иванов Иван Иванович"
-            />
-          </div>
+            <div className="flex items-center gap-4">
+              <TrainerPhoto value={photoUrl} name={fullName || "?"} />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="bio">{role === "admin" ? "Об администраторе" : "О тренере"}</Label>
-            <Textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={3}
-              placeholder={
-                role === "admin"
-                  ? "Должность, обязанности, контакты"
-                  : "Опыт, достижения, подход к работе"
-              }
-            />
-          </div>
-
-          {role === "trainer" && (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="gender">Пол</Label>
-                <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger id="gender">
-                    <SelectValue placeholder="Не указан" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GENDERS.map((g) => (
-                      <SelectItem key={g.value} value={g.value}>
-                        {g.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="specialization">Специализация</Label>
-                <Input
-                  id="specialization"
-                  value={specialization}
-                  onChange={(e) => setSpecialization(e.target.value)}
-                  placeholder="Силовой тренинг, кроссфит"
+              <div className="space-y-1">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload(f);
+                  }}
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
+                    </>
+                  ) : photoUrl ? (
+                    "Заменить фото"
+                  ) : (
+                    "Загрузить фото"
+                  )}
+                </Button>
+                {photoUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setPhotoUrl(null)}>
+                    Удалить
+                  </Button>
+                )}
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="telegram">Telegram</Label>
-                  <Input
-                    id="telegram"
-                    value={telegram}
-                    onChange={(e) => setTelegram(e.target.value)}
-                    placeholder="username или ссылка"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
-                  <Input
-                    id="whatsapp"
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="+7... или ссылка"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="instagram">Instagram</Label>
-                  <Input
-                    id="instagram"
-                    value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
-                    placeholder="username или ссылка"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="facebook">Facebook</Label>
-                  <Input
-                    id="facebook"
-                    value={facebook}
-                    onChange={(e) => setFacebook(e.target.value)}
-                    placeholder="username или ссылка"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="tiktok">TikTok</Label>
-                  <Input
-                    id="tiktok"
-                    value={tiktok}
-                    onChange={(e) => setTiktok(e.target.value)}
-                    placeholder="@username или ссылка"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="full_name">ФИО</Label>
+              <Input
+                id="full_name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Иванов Иван Иванович"
+              />
+            </div>
 
+            <div className="space-y-1.5">
+              <Label htmlFor="bio">{role === "admin" ? "Об администраторе" : "О тренере"}</Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder={
+                  role === "admin"
+                    ? "Должность, обязанности, контакты"
+                    : "Опыт, достижения, подход к работе"
+                }
+              />
+            </div>
+
+            {role === "trainer" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="gender">Пол</Label>
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Не указан" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDERS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>
+                          {g.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="specialization">Специализация</Label>
+                  <Input
+                    id="specialization"
+                    value={specialization}
+                    onChange={(e) => setSpecialization(e.target.value)}
+                    placeholder="Силовой тренинг, кроссфит"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="telegram">Telegram</Label>
+                    <Input
+                      id="telegram"
+                      value={telegram}
+                      onChange={(e) => setTelegram(e.target.value)}
+                      placeholder="username или ссылка"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="whatsapp">WhatsApp</Label>
+                    <Input
+                      id="whatsapp"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="+7... или ссылка"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="instagram">Instagram</Label>
+                    <Input
+                      id="instagram"
+                      value={instagram}
+                      onChange={(e) => setInstagram(e.target.value)}
+                      placeholder="username или ссылка"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="facebook">Facebook</Label>
+                    <Input
+                      id="facebook"
+                      value={facebook}
+                      onChange={(e) => setFacebook(e.target.value)}
+                      placeholder="username или ссылка"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tiktok">TikTok</Label>
+                    <Input
+                      id="tiktok"
+                      value={tiktok}
+                      onChange={(e) => setTiktok(e.target.value)}
+                      placeholder="@username или ссылка"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Отмена

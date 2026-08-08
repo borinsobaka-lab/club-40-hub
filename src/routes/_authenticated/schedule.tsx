@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -336,7 +337,12 @@ function SchedulePage() {
   };
 
   const handleDelete = async (e: Entry) => {
-    if (!(await confirm({ title: "Удалить занятие?", description: "Занятие пропадёт из расписания, записи на него будут отменены." })))
+    if (
+      !(await confirm({
+        title: "Удалить занятие?",
+        description: "Занятие пропадёт из расписания, записи на него будут отменены.",
+      }))
+    )
       return;
     const { error } = await supabase.from("schedule_entries").delete().eq("id", e.id);
     if (error) {
@@ -411,7 +417,7 @@ function SchedulePage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Тип:</span>
                   <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="h-8 w-40 text-xs">
+                    <SelectTrigger className="w-40">
                       <SelectValue placeholder="Все типы" />
                     </SelectTrigger>
                     <SelectContent>
@@ -426,7 +432,7 @@ function SchedulePage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Тренер:</span>
                   <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
-                    <SelectTrigger className="h-8 w-48 text-xs">
+                    <SelectTrigger className="w-48">
                       <SelectValue placeholder="Все тренеры" />
                     </SelectTrigger>
                     <SelectContent>
@@ -443,7 +449,6 @@ function SchedulePage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-xs"
                     onClick={() => {
                       setFilterType(ALL_FILTER_VALUE);
                       setFilterTrainerId(ALL_FILTER_VALUE);
@@ -688,7 +693,7 @@ function SchedulePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    {confirmDialog}
+      {confirmDialog}
     </AdminShell>
   );
 }
@@ -830,69 +835,72 @@ function EntryDialog({
               : "Выберите тренировку, время и тренеров."}
           </DialogDescription>
         </DialogHeader>
-
-        <div className={entry ? "grid gap-6 md:grid-cols-2" : ""}>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Тренировка</Label>
-              <Select value={workoutId} onValueChange={setWorkoutId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите тренировку" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workouts.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+        <DialogBody>
+          <div className={entry ? "grid gap-6 md:grid-cols-2" : ""}>
+            <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Начало</Label>
-                <Input
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={(e) => setStartsAt(e.target.value)}
-                />
+                <Label>Тренировка</Label>
+                <Select value={workoutId} onValueChange={setWorkoutId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите тренировку" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workouts.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Начало</Label>
+                  <Input
+                    type="datetime-local"
+                    value={startsAt}
+                    onChange={(e) => setStartsAt(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Окончание</Label>
+                  <Input
+                    type="datetime-local"
+                    value={endsAt}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
-                <Label>Окончание</Label>
-                <Input
-                  type="datetime-local"
-                  value={endsAt}
-                  onChange={(e) => setEndsAt(e.target.value)}
-                />
+                <Label>Тренеры</Label>
+                {trainers.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                    Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
+                  </div>
+                ) : (
+                  <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
+                    {trainers.map((t) => {
+                      const checked = trainerIds.includes(t.id);
+                      return (
+                        <label
+                          key={t.id}
+                          className="flex cursor-pointer items-center gap-2 text-sm"
+                        >
+                          <Checkbox checked={checked} onCheckedChange={() => toggleTrainer(t.id)} />
+                          <span>{t.full_name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Тренеры</Label>
-              {trainers.length === 0 ? (
-                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                  Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
-                </div>
-              ) : (
-                <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
-                  {trainers.map((t) => {
-                    const checked = trainerIds.includes(t.id);
-                    return (
-                      <label key={t.id} className="flex cursor-pointer items-center gap-2 text-sm">
-                        <Checkbox checked={checked} onCheckedChange={() => toggleTrainer(t.id)} />
-                        <span>{t.full_name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {entry && <BookingsPanel entry={entry} open={open} onChanged={onSaved} />}
           </div>
-
-          {entry && <BookingsPanel entry={entry} open={open} onChanged={onSaved} />}
-        </div>
-
+        </DialogBody>
         <DialogFooter className="flex sm:justify-between">
           <div>
             {entry && onDelete && (
@@ -1199,7 +1207,6 @@ function BookingsPanel({
           </div>
         </div>
       )}
-
 
       <AlertDialog open={!!confirmBooking} onOpenChange={(v) => !v && setConfirmBooking(null)}>
         <AlertDialogContent>

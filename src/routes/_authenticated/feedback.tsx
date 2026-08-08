@@ -25,6 +25,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -235,67 +236,69 @@ function FeedbackPage() {
               <DialogTitle>Новое обращение</DialogTitle>
               <DialogDescription>Заполните данные обращения клиента.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="topic">Тема</Label>
-                <Select value={form.topic} onValueChange={(v) => setForm({ ...form, topic: v })}>
-                  <SelectTrigger id="topic">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(TOPICS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="message">Сообщение</Label>
-                <Textarea
-                  id="message"
-                  rows={4}
-                  value={form.message}
-                  onChange={(e) => setForm({ ...form, message: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="mood">Оценка</Label>
-                <Select
-                  value={form.mood || "none"}
-                  onValueChange={(v) => setForm({ ...form, mood: v === "none" ? "" : v })}
-                >
-                  <SelectTrigger id="mood">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Без оценки</SelectItem>
-                    <SelectItem value="negative">😞 Плохо</SelectItem>
-                    <SelectItem value="neutral">😐 Нормально</SelectItem>
-                    <SelectItem value="positive">😊 Хорошо</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            <DialogBody>
+              <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="cname">Имя</Label>
-                  <Input
-                    id="cname"
-                    value={form.client_name}
-                    onChange={(e) => setForm({ ...form, client_name: e.target.value })}
+                  <Label htmlFor="topic">Тема</Label>
+                  <Select value={form.topic} onValueChange={(v) => setForm({ ...form, topic: v })}>
+                    <SelectTrigger id="topic">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(TOPICS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>
+                          {v}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="message">Сообщение</Label>
+                  <Textarea
+                    id="message"
+                    rows={4}
+                    value={form.message}
+                    onChange={(e) => setForm({ ...form, message: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="ccontact">Контакт</Label>
-                  <Input
-                    id="ccontact"
-                    value={form.client_contact}
-                    onChange={(e) => setForm({ ...form, client_contact: e.target.value })}
-                  />
+                  <Label htmlFor="mood">Оценка</Label>
+                  <Select
+                    value={form.mood || "none"}
+                    onValueChange={(v) => setForm({ ...form, mood: v === "none" ? "" : v })}
+                  >
+                    <SelectTrigger id="mood">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Без оценки</SelectItem>
+                      <SelectItem value="negative">😞 Плохо</SelectItem>
+                      <SelectItem value="neutral">😐 Нормально</SelectItem>
+                      <SelectItem value="positive">😊 Хорошо</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cname">Имя</Label>
+                    <Input
+                      id="cname"
+                      value={form.client_name}
+                      onChange={(e) => setForm({ ...form, client_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ccontact">Контакт</Label>
+                    <Input
+                      id="ccontact"
+                      value={form.client_contact}
+                      onChange={(e) => setForm({ ...form, client_contact: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            </DialogBody>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setAddOpen(false)}>
                 Отмена
@@ -330,7 +333,7 @@ function FeedbackPage() {
 
         <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
           <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger className="h-8 sm:w-[180px]">
+            <SelectTrigger className="sm:w-[180px]">
               <SelectValue placeholder="Все темы" />
             </SelectTrigger>
             <SelectContent>
@@ -343,7 +346,7 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 sm:w-[160px]">
+            <SelectTrigger className="sm:w-[160px]">
               <SelectValue placeholder="Все статусы" />
             </SelectTrigger>
             <SelectContent>
@@ -353,7 +356,7 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           <Select value={moodFilter} onValueChange={setMoodFilter}>
-            <SelectTrigger className="h-8 sm:w-[160px]">
+            <SelectTrigger className="sm:w-[160px]">
               <SelectValue placeholder="Все оценки" />
             </SelectTrigger>
             <SelectContent>
@@ -367,8 +370,6 @@ function FeedbackPage() {
           {hasFilters && (
             <Button
               variant="ghost"
-              size="sm"
-              className="h-8"
               onClick={() => {
                 setTopicFilter("all");
                 setStatusFilter("all");

@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -24,7 +25,6 @@ export type ActiveMembership = {
   frozen_until?: string | null;
   freeze_days_allowed?: number;
 };
-
 
 export function EditActiveMembershipDialog({
   open,
@@ -126,88 +126,81 @@ export function EditActiveMembershipDialog({
         <DialogHeader>
           <DialogTitle>Редактировать активный абонемент</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="cm-ends">Действует до</Label>
-            <Input
-              id="cm-ends"
-              type="date"
-              value={endsAt}
-              onChange={(e) => setEndsAt(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Осталось посещений</Label>
-            <div className="flex items-center gap-2">
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="cm-ends">Действует до</Label>
               <Input
-                type="number"
-                min={0}
-                value={visitsLeft}
-                onChange={(e) => setVisitsLeft(e.target.value)}
-                disabled={unlimitedVisits}
-                placeholder="Например, 5"
-                className="flex-1"
+                id="cm-ends"
+                type="date"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
               />
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={unlimitedVisits}
-                  onCheckedChange={(v) => setUnlimitedVisits(!!v)}
-                />
-                Безлимит
-              </label>
             </div>
-          </div>
+            <div className="space-y-1.5">
+              <Label>Осталось посещений</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  value={visitsLeft}
+                  onChange={(e) => setVisitsLeft(e.target.value)}
+                  disabled={unlimitedVisits}
+                  placeholder="Например, 5"
+                  className="flex-1"
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={unlimitedVisits}
+                    onCheckedChange={(v) => setUnlimitedVisits(!!v)}
+                  />
+                  Безлимит
+                </label>
+              </div>
+            </div>
 
-          {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
+            {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
               иначе после обнуления «дней заморозки» в тарифе разморозить его
               стало бы нечем. */}
-          {(allowed > 0 || status === "frozen") && (
-            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-              <div className="text-sm font-medium">Заморозка</div>
-              <div className="text-xs text-muted-foreground">
-                Доступно {remaining} из {allowed} дн.
-                {status === "frozen" && membership?.frozen_until
-                  ? ` · заморожен до ${formatDate(membership.frozen_until)}`
-                  : ""}
-              </div>
-              {status === "frozen" ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUnfreeze}
-                  disabled={freezing}
-                >
-                  {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                  Разморозить
-                </Button>
-              ) : status === "active" || status === undefined ? (
-                <div className="flex items-end gap-2">
-                  <div className="flex-1 space-y-1">
-                    <Label htmlFor="cm-freeze">Дней</Label>
-                    <Input
-                      id="cm-freeze"
-                      type="number"
-                      min={1}
-                      max={remaining}
-                      value={freezeDaysInput}
-                      onChange={(e) => setFreezeDaysInput(e.target.value)}
-                      placeholder={String(remaining)}
-                      disabled={remaining <= 0}
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={handleFreeze}
-                    disabled={freezing || remaining <= 0}
-                  >
-                    {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                    Заморозить
-                  </Button>
+            {(allowed > 0 || status === "frozen") && (
+              <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                <div className="text-sm font-medium">Заморозка</div>
+                <div className="text-xs text-muted-foreground">
+                  Доступно {remaining} из {allowed} дн.
+                  {status === "frozen" && membership?.frozen_until
+                    ? ` · заморожен до ${formatDate(membership.frozen_until)}`
+                    : ""}
                 </div>
-              ) : null}
-            </div>
-          )}
-        </div>
+                {status === "frozen" ? (
+                  <Button variant="outline" size="sm" onClick={handleUnfreeze} disabled={freezing}>
+                    {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                    Разморозить
+                  </Button>
+                ) : status === "active" || status === undefined ? (
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor="cm-freeze">Дней</Label>
+                      <Input
+                        id="cm-freeze"
+                        type="number"
+                        min={1}
+                        max={remaining}
+                        value={freezeDaysInput}
+                        onChange={(e) => setFreezeDaysInput(e.target.value)}
+                        placeholder={String(remaining)}
+                        disabled={remaining <= 0}
+                      />
+                    </div>
+                    <Button size="sm" onClick={handleFreeze} disabled={freezing || remaining <= 0}>
+                      {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                      Заморозить
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена

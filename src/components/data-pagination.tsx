@@ -112,7 +112,7 @@ export function DataPagination({
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span>Строк на странице</span>
         <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-          <SelectTrigger className="h-8 w-[80px]">
+          <SelectTrigger className="w-[80px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

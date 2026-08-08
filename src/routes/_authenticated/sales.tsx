@@ -31,6 +31,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -641,191 +642,191 @@ function SaleDialog({
             Выберите клиента и абонемент. Стоимость подтянется автоматически.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-          <div className="space-y-1.5">
-            <Label>Клиент</Label>
-            <SearchableCombobox
-              placeholder="Выбрать клиента"
-              searchPlaceholder="Поиск по имени, телефону, email"
-              emptyText="Ничего не найдено"
-              value={clientId}
-              onChange={setClientId}
-              options={clients.map((c) => ({
-                value: c.id,
-                label: clientName(c),
-                hint: c.phone ?? c.email ?? "",
-                searchText: `${clientName(c)} ${c.phone ?? ""} ${c.email ?? ""}`,
-              }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        <DialogBody>
+          <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="s-date">Дата продажи</Label>
-              <Input
-                id="s-date"
-                type="date"
-                value={soldAt}
-                onChange={(e) => setSoldAt(e.target.value)}
+              <Label>Клиент</Label>
+              <SearchableCombobox
+                placeholder="Выбрать клиента"
+                searchPlaceholder="Поиск по имени, телефону, email"
+                emptyText="Ничего не найдено"
+                value={clientId}
+                onChange={setClientId}
+                options={clients.map((c) => ({
+                  value: c.id,
+                  label: clientName(c),
+                  hint: c.phone ?? c.email ?? "",
+                  searchText: `${clientName(c)} ${c.phone ?? ""} ${c.email ?? ""}`,
+                }))}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Администратор</Label>
-              <Input value={adminName} disabled readOnly />
-            </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Абонемент</Label>
-            <SearchableCombobox
-              placeholder="Выбрать абонемент"
-              searchPlaceholder="Поиск по названию"
-              emptyText="Ничего не найдено"
-              value={membershipId}
-              onChange={setMembershipId}
-              options={memberships.map((m) => ({
-                value: m.id,
-                label: m.name,
-                hint: formatMoney(Number(m.price ?? 0)),
-                searchText: m.name,
-              }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="s-amount">Стоимость, ₾</Label>
-              <Input
-                id="s-amount"
-                type="number"
-                min={0}
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-              {discount > 0 && listPrice != null && (
-                <p className="text-xs text-muted-foreground">
-                  Цена по тарифу {formatMoney(listPrice)}, скидка {formatMoney(discount)}.
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Способ оплаты</Label>
-              <Select
-                value={paymentMethod}
-                onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {PAYMENT_METHOD_LABEL[m]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {installmentEnabled ? (
-            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="s-down">Первый взнос, ₾</Label>
+                <Label htmlFor="s-date">Дата продажи</Label>
                 <Input
-                  id="s-down"
+                  id="s-date"
+                  type="date"
+                  value={soldAt}
+                  onChange={(e) => setSoldAt(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Администратор</Label>
+                <Input value={adminName} disabled readOnly />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Абонемент</Label>
+              <SearchableCombobox
+                placeholder="Выбрать абонемент"
+                searchPlaceholder="Поиск по названию"
+                emptyText="Ничего не найдено"
+                value={membershipId}
+                onChange={setMembershipId}
+                options={memberships.map((m) => ({
+                  value: m.id,
+                  label: m.name,
+                  hint: formatMoney(Number(m.price ?? 0)),
+                  searchText: m.name,
+                }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="s-amount">Стоимость, ₾</Label>
+                <Input
+                  id="s-amount"
                   type="number"
                   min={0}
                   step="0.01"
-                  value={downPayment}
-                  onChange={(e) => setDownPayment(e.target.value)}
-                  placeholder="Сколько клиент вносит сейчас"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+                {discount > 0 && listPrice != null && (
+                  <p className="text-xs text-muted-foreground">
+                    Цена по тарифу {formatMoney(listPrice)}, скидка {formatMoney(discount)}.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Способ оплаты</Label>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {PAYMENT_METHOD_LABEL[m]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {installmentEnabled ? (
+              <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="s-down">Первый взнос, ₾</Label>
+                  <Input
+                    id="s-down"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={downPayment}
+                    onChange={(e) => setDownPayment(e.target.value)}
+                    placeholder="Сколько клиент вносит сейчас"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Ещё платежей</Label>
+                  <div className="flex gap-2">
+                    {([2, 3] as const).map((n) => (
+                      <Button
+                        key={n}
+                        type="button"
+                        variant={remainingCount === n ? "default" : "outline"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setRemainingCount(n)}
+                      >
+                        {n} мес.
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {schedule.length > 0 && (
+                  <ul className="divide-y rounded-md border bg-background text-sm">
+                    {schedule.map((p, i) => (
+                      <li key={i} className="flex items-center justify-between px-3 py-1.5">
+                        <span className="text-muted-foreground">
+                          {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
+                          {formatDate(p.date)}
+                        </span>
+                        <span className="font-medium">{formatMoney(p.amount)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : selectedMembership ? (
+              <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
+                Рассрочка недоступна для этого абонемента. Оплата производится сразу.
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Тип оплаты</Label>
+                <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="first">Первая оплата</SelectItem>
+                    <SelectItem value="recurring">Регулярная оплата</SelectItem>
+                    <SelectItem value="other">Другое</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="s-promo">Промо-код</Label>
+                <Input
+                  id="s-promo"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  placeholder="Необязательно"
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <Label>Ещё платежей</Label>
-                <div className="flex gap-2">
-                  {([2, 3] as const).map((n) => (
-                    <Button
-                      key={n}
-                      type="button"
-                      variant={remainingCount === n ? "default" : "outline"}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setRemainingCount(n)}
-                    >
-                      {n} мес.
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {schedule.length > 0 && (
-                <ul className="divide-y rounded-md border bg-background text-sm">
-                  {schedule.map((p, i) => (
-                    <li key={i} className="flex items-center justify-between px-3 py-1.5">
-                      <span className="text-muted-foreground">
-                        {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
-                        {formatDate(p.date)}
-                      </span>
-                      <span className="font-medium">{formatMoney(p.amount)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
-          ) : selectedMembership ? (
-            <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
-              Рассрочка недоступна для этого абонемента. Оплата производится сразу.
-            </div>
-          ) : null}
 
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Тип оплаты</Label>
-              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="first">Первая оплата</SelectItem>
-                  <SelectItem value="recurring">Регулярная оплата</SelectItem>
-                  <SelectItem value="other">Другое</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="s-promo">Промо-код</Label>
-              <Input
-                id="s-promo"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value)}
+              <Label htmlFor="s-comment">Комментарий</Label>
+              <Textarea
+                id="s-comment"
+                rows={2}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
                 placeholder="Необязательно"
               />
             </div>
+
+            {selectedClient && selectedMembership && (
+              <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
+                Продажа абонемента «{selectedMembership.name}» клиенту {clientName(selectedClient)}.
+              </div>
+            )}
           </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="s-comment">Комментарий</Label>
-            <Textarea
-              id="s-comment"
-              rows={2}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Необязательно"
-            />
-          </div>
-
-          {selectedClient && selectedMembership && (
-            <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
-              Продажа абонемента «{selectedMembership.name}» клиенту {clientName(selectedClient)}.
-            </div>
-          )}
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена
@@ -903,43 +904,45 @@ function RefundDialog({
             Возврат по продаже{sale?.memberships?.name ? ` «${sale.memberships.name}»` : ""}.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="r-amount">Сумма возврата, ₾</Label>
-            <Input
-              id="r-amount"
-              type="number"
-              min={0}
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="r-amount">Сумма возврата, ₾</Label>
+              <Input
+                id="r-amount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Способ</Label>
+              <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {PAYMENT_METHOD_LABEL[m]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="r-reason">Причина (по желанию)</Label>
+              <Textarea
+                id="r-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+              />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Способ</Label>
-            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {PAYMENT_METHOD_LABEL[m]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="r-reason">Причина (по желанию)</Label>
-            <Textarea
-              id="r-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-            />
-          </div>
-        </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена

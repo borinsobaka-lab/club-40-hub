@@ -25,6 +25,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -465,220 +466,225 @@ function MembershipDialog({
           <DialogTitle>{isEditing ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
           <DialogDescription>Заполните параметры номенклатуры.</DialogDescription>
         </DialogHeader>
-
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-          <div className="space-y-1.5">
-            <Label htmlFor="m-name">Название</Label>
-            <Input
-              id="m-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Безлимит на месяц"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Обложка (для мобильного приложения)</Label>
-            <div className="flex items-center gap-3">
-              <CoverThumb value={coverUrl} alt="cover" />
-              <div className="flex flex-col gap-1">
-                <input
-                  ref={coverRef}
-                  type="file"
-                  accept="image/svg+xml,image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) uploadCover(f);
-                    e.target.value = "";
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploadingCover || !studioId}
-                  onClick={() => coverRef.current?.click()}
-                >
-                  {uploadingCover ? (
-                    <>
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
-                    </>
-                  ) : coverUrl ? (
-                    "Заменить"
-                  ) : (
-                    "Загрузить SVG/PNG"
-                  )}
-                </Button>
-                {coverUrl && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setCoverUrl(null)}>
-                    Удалить
-                  </Button>
-                )}
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Рекомендуемые размеры: соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="m-desc">Описание</Label>
-            <Textarea
-              id="m-desc"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Преимущества</Label>
-            <div className="flex gap-2">
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="m-name">Название</Label>
               <Input
-                value={benefitDraft}
-                onChange={(e) => setBenefitDraft(e.target.value)}
-                placeholder="Добавьте преимущество и нажмите +"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addBenefit();
-                  }
-                }}
+                id="m-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Безлимит на месяц"
               />
-              <Button type="button" variant="outline" onClick={addBenefit}>
-                <Plus className="h-4 w-4" />
-              </Button>
             </div>
-            {benefits.length > 0 && (
-              <ul className="space-y-1 pt-1">
-                {benefits.map((b, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1 text-sm"
+
+            <div className="space-y-1.5">
+              <Label>Обложка (для мобильного приложения)</Label>
+              <div className="flex items-center gap-3">
+                <CoverThumb value={coverUrl} alt="cover" />
+                <div className="flex flex-col gap-1">
+                  <input
+                    ref={coverRef}
+                    type="file"
+                    accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadCover(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingCover || !studioId}
+                    onClick={() => coverRef.current?.click()}
                   >
-                    <span className="truncate">{b}</span>
+                    {uploadingCover ? (
+                      <>
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
+                      </>
+                    ) : coverUrl ? (
+                      "Заменить"
+                    ) : (
+                      "Загрузить SVG/PNG"
+                    )}
+                  </Button>
+                  {coverUrl && (
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => removeBenefit(i)}
+                      size="sm"
+                      onClick={() => setCoverUrl(null)}
                     >
-                      <X className="h-3.5 w-3.5" />
+                      Удалить
                     </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Количество посещений</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                value={visitsCount}
-                onChange={(e) => setVisitsCount(e.target.value)}
-                disabled={unlimited}
-                placeholder="Например, 8"
-                className="flex-1"
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={unlimited} onCheckedChange={(v) => setUnlimited(!!v)} />
-                Безлимит
-              </label>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Рекомендуемые размеры: соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px
+              </p>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="m-dur">Срок действия (дней)</Label>
-              <Input
-                id="m-dur"
-                type="number"
-                min={0}
-                value={durationDays}
-                onChange={(e) => setDurationDays(e.target.value)}
-                placeholder="30"
+              <Label htmlFor="m-desc">Описание</Label>
+              <Textarea
+                id="m-desc"
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="m-price">Цена, ₾</Label>
+              <Label>Преимущества</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={benefitDraft}
+                  onChange={(e) => setBenefitDraft(e.target.value)}
+                  placeholder="Добавьте преимущество и нажмите +"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addBenefit();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={addBenefit}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {benefits.length > 0 && (
+                <ul className="space-y-1 pt-1">
+                  {benefits.map((b, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1 text-sm"
+                    >
+                      <span className="truncate">{b}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => removeBenefit(i)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Количество посещений</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  value={visitsCount}
+                  onChange={(e) => setVisitsCount(e.target.value)}
+                  disabled={unlimited}
+                  placeholder="Например, 8"
+                  className="flex-1"
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={unlimited} onCheckedChange={(v) => setUnlimited(!!v)} />
+                  Безлимит
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="m-dur">Срок действия (дней)</Label>
+                <Input
+                  id="m-dur"
+                  type="number"
+                  min={0}
+                  value={durationDays}
+                  onChange={(e) => setDurationDays(e.target.value)}
+                  placeholder="30"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="m-price">Цена, ₾</Label>
+                <Input
+                  id="m-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="m-freeze">Дней заморозки (0 — заморозка недоступна)</Label>
               <Input
-                id="m-price"
+                id="m-freeze"
                 type="number"
                 min={0}
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                value={freezeDays}
+                onChange={(e) => setFreezeDays(e.target.value)}
                 placeholder="0"
               />
+              <p className="text-xs text-muted-foreground">
+                Сколько дней клиент может заморозить этот абонемент суммарно.
+              </p>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="m-freeze">Дней заморозки (0 — заморозка недоступна)</Label>
-            <Input
-              id="m-freeze"
-              type="number"
-              min={0}
-              value={freezeDays}
-              onChange={(e) => setFreezeDays(e.target.value)}
-              placeholder="0"
-            />
-            <p className="text-xs text-muted-foreground">
-              Сколько дней клиент может заморозить этот абонемент суммарно.
-            </p>
-          </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} />
+              Автопродление
+            </label>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} />
-            Автопродление
-          </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={installmentEnabled}
+                onCheckedChange={(v) => setInstallmentEnabled(!!v)}
+              />
+              Рассрочка доступна
+            </label>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={installmentEnabled}
-              onCheckedChange={(v) => setInstallmentEnabled(!!v)}
-            />
-            Рассрочка доступна
-          </label>
-
-          <label className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            <Checkbox
-              checked={forCouple}
-              onCheckedChange={(v) => setForCouple(!!v)}
-              className="mt-0.5"
-            />
-            <div className="space-y-0.5">
-              <div className="font-medium">Абонемент для двоих</div>
-              <div className="text-xs text-muted-foreground">
-                Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении.
+            <label className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <Checkbox
+                checked={forCouple}
+                onCheckedChange={(v) => setForCouple(!!v)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <div className="font-medium">Абонемент для двоих</div>
+                <div className="text-xs text-muted-foreground">
+                  Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении.
+                </div>
               </div>
-            </div>
-          </label>
+            </label>
 
-          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
-            <div className="space-y-0.5">
-              <div className="text-sm font-medium">Показывать в мобильном приложении</div>
-              <div className="text-xs text-muted-foreground">
-                Выключите, чтобы новые клиенты не могли его купить. Уже купившие сохранят условия.
+            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Показывать в мобильном приложении</div>
+                <div className="text-xs text-muted-foreground">
+                  Выключите, чтобы новые клиенты не могли его купить. Уже купившие сохранят условия.
+                </div>
               </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
+
+            {isEditing && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Изменения цены и условий применятся ко всем будущим продажам этого абонемента. Если
+                у вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию, а
+                старую запись скройте переключателем выше.
+              </div>
+            )}
           </div>
-
-          {isEditing && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Изменения цены и условий применятся ко всем будущим продажам этого абонемента. Если у
-              вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию, а старую
-              запись скройте переключателем выше.
-            </div>
-          )}
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена

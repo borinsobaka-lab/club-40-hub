@@ -37,6 +37,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -275,56 +276,58 @@ function NpsPage() {
               <DialogTitle>Новый ответ NPS</DialogTitle>
               <DialogDescription>Заполните данные ответа клиента.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="survey-type">Тип опроса</Label>
-                <Select
-                  value={form.survey_type}
-                  onValueChange={(v) => setForm({ ...form, survey_type: v as SurveyType })}
-                >
-                  <SelectTrigger id="survey-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SURVEY_TYPES.map((s) => (
-                      <SelectItem key={s.type} value={s.type}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <DialogBody>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="survey-type">Тип опроса</Label>
+                  <Select
+                    value={form.survey_type}
+                    onValueChange={(v) => setForm({ ...form, survey_type: v as SurveyType })}
+                  >
+                    <SelectTrigger id="survey-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_TYPES.map((s) => (
+                        <SelectItem key={s.type} value={s.type}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="score">Оценка (0–10)</Label>
+                  <Input
+                    id="score"
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={form.score}
+                    onChange={(e) =>
+                      setForm({ ...form, score: Math.max(0, Math.min(10, Number(e.target.value))) })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="client-name">Имя клиента</Label>
+                  <Input
+                    id="client-name"
+                    value={form.client_name}
+                    onChange={(e) => setForm({ ...form, client_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="comment">Комментарий</Label>
+                  <Textarea
+                    id="comment"
+                    value={form.comment}
+                    onChange={(e) => setForm({ ...form, comment: e.target.value })}
+                    rows={3}
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="score">Оценка (0–10)</Label>
-                <Input
-                  id="score"
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={form.score}
-                  onChange={(e) =>
-                    setForm({ ...form, score: Math.max(0, Math.min(10, Number(e.target.value))) })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="client-name">Имя клиента</Label>
-                <Input
-                  id="client-name"
-                  value={form.client_name}
-                  onChange={(e) => setForm({ ...form, client_name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="comment">Комментарий</Label>
-                <Textarea
-                  id="comment"
-                  value={form.comment}
-                  onChange={(e) => setForm({ ...form, comment: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </div>
+            </DialogBody>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setAddOpen(false)}>
                 Отмена
@@ -377,7 +380,7 @@ function NpsPage() {
           <div className="space-y-3">
             <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="h-8 sm:w-[200px]">
+                <SelectTrigger className="sm:w-[200px]">
                   <SelectValue placeholder="Все опросы" />
                 </SelectTrigger>
                 <SelectContent>
@@ -390,7 +393,7 @@ function NpsPage() {
                 </SelectContent>
               </Select>
               <Select value={clientFilter} onValueChange={setClientFilter}>
-                <SelectTrigger className="h-8 sm:w-[180px]">
+                <SelectTrigger className="sm:w-[180px]">
                   <SelectValue placeholder="Все категории" />
                 </SelectTrigger>
                 <SelectContent>

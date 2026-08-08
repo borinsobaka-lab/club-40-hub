@@ -29,6 +29,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -338,103 +339,107 @@ function PromoCodeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{item ? "Редактировать промокод" : "Новый промокод"}</DialogTitle>
           <DialogDescription>Промокод можно применить при покупке для скидки.</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Название</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Летняя акция"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Промокод (латиница и цифры)</Label>
-            <Input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-              placeholder="SUMMER25"
-              className="font-mono uppercase"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        <DialogBody>
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Тип скидки</Label>
-              <Select
-                value={discountType}
-                onValueChange={(v) => setDiscountType(v as DiscountType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="amount">В рублях (₽)</SelectItem>
-                  <SelectItem value="percent">В процентах (%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Размер скидки</Label>
+              <Label>Название</Label>
               <Input
-                inputMode="decimal"
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder={discountType === "percent" ? "10" : "500"}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Летняя акция"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Срок действия</Label>
-              <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Количество применений</Label>
+              <Label>Промокод (латиница и цифры)</Label>
               <Input
-                inputMode="numeric"
-                value={usageLimit}
-                onChange={(e) => setUsageLimit(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="Без ограничений"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                placeholder="SUMMER25"
+                className="font-mono uppercase"
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Описание (внутреннее)</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Для чего создан промокод"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Активен</div>
-              <div className="text-xs text-muted-foreground">
-                Неактивные промокоды нельзя применить.
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Тип скидки</Label>
+                <Select
+                  value={discountType}
+                  onValueChange={(v) => setDiscountType(v as DiscountType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="amount">В рублях (₽)</SelectItem>
+                    <SelectItem value="percent">В процентах (%)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Размер скидки</Label>
+                <Input
+                  inputMode="decimal"
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value)}
+                  placeholder={discountType === "percent" ? "10" : "500"}
+                />
               </div>
             </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
 
-          {item && (
-            <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-              Применений: <span className="font-medium text-foreground">{item.usage_count}</span>
-              {item.usage_limit != null ? ` из ${item.usage_limit}` : " (без ограничений)"}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Срок действия</Label>
+                <Input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Количество применений</Label>
+                <Input
+                  inputMode="numeric"
+                  value={usageLimit}
+                  onChange={(e) => setUsageLimit(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Без ограничений"
+                />
+              </div>
             </div>
-          )}
-        </div>
 
+            <div className="space-y-2">
+              <Label>Описание (внутреннее)</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Для чего создан промокод"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Активен</div>
+                <div className="text-xs text-muted-foreground">
+                  Неактивные промокоды нельзя применить.
+                </div>
+              </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+            </div>
+
+            {item && (
+              <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                Применений: <span className="font-medium text-foreground">{item.usage_count}</span>
+                {item.usage_limit != null ? ` из ${item.usage_limit}` : " (без ограничений)"}
+              </div>
+            )}
+          </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена

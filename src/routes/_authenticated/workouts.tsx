@@ -22,6 +22,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -384,125 +385,125 @@ function WorkoutDialog({
           <DialogTitle>{workout ? "Редактировать тренировку" : "Новая тренировка"}</DialogTitle>
           <DialogDescription>Заполните данные тренировки студии.</DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <WorkoutPhoto value={photoUrl} name={name || "?"} />
-            <div className="space-y-1">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUpload(f);
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
-                  </>
-                ) : photoUrl ? (
-                  "Заменить иконку"
-                ) : (
-                  "Загрузить иконку"
-                )}
-              </Button>
-              {photoUrl && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setPhotoUrl(null)}>
-                  Удалить
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <WorkoutPhoto value={photoUrl} name={name || "?"} />
+              <div className="space-y-1">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload(f);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
+                    </>
+                  ) : photoUrl ? (
+                    "Заменить иконку"
+                  ) : (
+                    "Загрузить иконку"
+                  )}
                 </Button>
-              )}
+                {photoUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setPhotoUrl(null)}>
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Название</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Силовая базовая"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Описание</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Краткое описание тренировки"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="type">Тип тренировки</Label>
+              <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
+                <SelectTrigger id="type">
+                  <SelectValue placeholder="Выберите тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_TYPE}>
+                    <span className="text-muted-foreground">Не указан</span>
+                  </SelectItem>
+                  {DAY_TYPES.map((t) => {
+                    const c = dayTypeColor(t.value)!;
+                    return (
+                      <SelectItem key={t.value} value={t.value}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className={`inline-block h-2.5 w-2.5 rounded-full ${c.dot}`} />
+                          {t.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="capacity">Вместимость (чел.)</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={0}
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                placeholder="Например: 12"
+              />
+              <p className="text-xs text-muted-foreground">
+                Используется по умолчанию для всех занятий этой тренировки в расписании.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="met">MET — интенсивность</Label>
+              <Input
+                id="met"
+                type="number"
+                step="0.1"
+                min={0}
+                value={metValue}
+                onChange={(e) => setMetValue(e.target.value)}
+                placeholder="Кардио 8.5 · Силовая 7.0 · Гибрид 8.0 · Восстановление 2.8"
+              />
+              <p className="text-xs text-muted-foreground">
+                Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто —
+                берётся значение по умолчанию для типа тренировки.
+              </p>
             </div>
           </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Название</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Силовая базовая"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Краткое описание тренировки"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="type">Тип тренировки</Label>
-            <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
-              <SelectTrigger id="type">
-                <SelectValue placeholder="Выберите тип" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_TYPE}>
-                  <span className="text-muted-foreground">Не указан</span>
-                </SelectItem>
-                {DAY_TYPES.map((t) => {
-                  const c = dayTypeColor(t.value)!;
-                  return (
-                    <SelectItem key={t.value} value={t.value}>
-                      <span className="inline-flex items-center gap-2">
-                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${c.dot}`} />
-                        {t.label}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="capacity">Вместимость (чел.)</Label>
-            <Input
-              id="capacity"
-              type="number"
-              min={0}
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              placeholder="Например: 12"
-            />
-            <p className="text-xs text-muted-foreground">
-              Используется по умолчанию для всех занятий этой тренировки в расписании.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="met">MET — интенсивность</Label>
-            <Input
-              id="met"
-              type="number"
-              step="0.1"
-              min={0}
-              value={metValue}
-              onChange={(e) => setMetValue(e.target.value)}
-              placeholder="Кардио 8.5 · Силовая 7.0 · Гибрид 8.0 · Восстановление 2.8"
-            />
-            <p className="text-xs text-muted-foreground">
-              Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто —
-              берётся значение по умолчанию для типа тренировки.
-            </p>
-          </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Отмена

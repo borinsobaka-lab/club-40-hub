@@ -22,6 +22,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -383,101 +384,101 @@ function PushDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{item ? "Редактировать уведомление" : "Новое пуш-уведомление"}</DialogTitle>
           <DialogDescription>
             Уведомление будет отправлено выбранным клиентам в мобильное приложение.
           </DialogDescription>
         </DialogHeader>
+        <DialogBody>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Заголовок</Label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Например: Скидка 20% на абонементы"
+              />
+            </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Заголовок</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: Скидка 20% на абонементы"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label>Сообщение</Label>
+              <Textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Текст пуш-уведомления"
+                rows={4}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label>Сообщение</Label>
-            <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Текст пуш-уведомления"
-              rows={4}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label>Ссылка перехода (необязательно)</Label>
+              <Input
+                value={actionUrl}
+                onChange={(e) => setActionUrl(e.target.value)}
+                placeholder="https://… или внутренний раздел"
+              />
+              <p className="text-xs text-muted-foreground">
+                Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
+              </p>
+            </div>
 
-          <div className="space-y-2">
-            <Label>Ссылка перехода (необязательно)</Label>
-            <Input
-              value={actionUrl}
-              onChange={(e) => setActionUrl(e.target.value)}
-              placeholder="https://… или внутренний раздел"
-            />
-            <p className="text-xs text-muted-foreground">
-              Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Статус клиентов</Label>
-            <div className="space-y-2 rounded-md border p-3">
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(v) => setAllSelected(Boolean(v))}
-                />
-                <span>Все клиенты</span>
-              </label>
-              <div className="flex flex-wrap gap-3 pl-1">
-                {ALL_SEGMENTS.map((s) => (
-                  <label key={s} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={!allSelected && segments.includes(s)}
-                      disabled={allSelected}
-                      onCheckedChange={(v) => toggleSegment(s, Boolean(v))}
-                    />
-                    <span>{CLUB_STATUS_LABEL[s]}</span>
-                  </label>
-                ))}
+            <div className="space-y-2">
+              <Label>Статус клиентов</Label>
+              <div className="space-y-2 rounded-md border p-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(v) => setAllSelected(Boolean(v))}
+                  />
+                  <span>Все клиенты</span>
+                </label>
+                <div className="flex flex-wrap gap-3 pl-1">
+                  {ALL_SEGMENTS.map((s) => (
+                    <label key={s} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={!allSelected && segments.includes(s)}
+                        disabled={allSelected}
+                        onCheckedChange={(v) => toggleSegment(s, Boolean(v))}
+                      />
+                      <span>{CLUB_STATUS_LABEL[s]}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Время отправки</Label>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={sendMode === "now"}
-                  onChange={() => setSendMode("now")}
+            <div className="space-y-2">
+              <Label>Время отправки</Label>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={sendMode === "now"}
+                    onChange={() => setSendMode("now")}
+                  />
+                  <span>Отправить сейчас</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={sendMode === "schedule"}
+                    onChange={() => setSendMode("schedule")}
+                  />
+                  <span>Запланировать</span>
+                </label>
+              </div>
+              {sendMode === "schedule" && (
+                <Input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
                 />
-                <span>Отправить сейчас</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={sendMode === "schedule"}
-                  onChange={() => setSendMode("schedule")}
-                />
-                <span>Запланировать</span>
-              </label>
+              )}
             </div>
-            {sendMode === "schedule" && (
-              <Input
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-              />
-            )}
           </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена

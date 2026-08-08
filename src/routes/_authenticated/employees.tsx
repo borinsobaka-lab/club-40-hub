@@ -23,6 +23,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogBody,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -122,55 +123,57 @@ function EmployeesPage() {
                 </DialogDescription>
               </DialogHeader>
               <form
-                className="space-y-3"
+                className="flex min-h-0 flex-1 flex-col"
                 onSubmit={(e) => {
                   e.preventDefault();
                   createMut.mutate(form);
                 }}
               >
-                <div className="space-y-1">
-                  <Label>Полное имя</Label>
-                  <Input
-                    value={form.full_name}
-                    onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Пароль</Label>
-                  <Input
-                    type="text"
-                    minLength={6}
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Роль</Label>
-                  <Select
-                    value={form.role}
-                    onValueChange={(v) => setForm({ ...form, role: v as typeof form.role })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="owner">Владелец</SelectItem>
-                      <SelectItem value="admin">Администратор</SelectItem>
-                      <SelectItem value="trainer">Тренер</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <DialogBody className="space-y-3">
+                  <div className="space-y-1">
+                    <Label>Полное имя</Label>
+                    <Input
+                      value={form.full_name}
+                      onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Пароль</Label>
+                    <Input
+                      type="text"
+                      minLength={6}
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Роль</Label>
+                    <Select
+                      value={form.role}
+                      onValueChange={(v) => setForm({ ...form, role: v as typeof form.role })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner">Владелец</SelectItem>
+                        <SelectItem value="admin">Администратор</SelectItem>
+                        <SelectItem value="trainer">Тренер</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </DialogBody>
                 <DialogFooter>
                   <Button type="submit" disabled={createMut.isPending}>
                     {createMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
