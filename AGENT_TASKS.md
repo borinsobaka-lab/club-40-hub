@@ -9,6 +9,7 @@
 
 | Задача                                                        | Статус                                                     |
 | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| S. 🔴 Переезд на self-hosted Supabase (env, письма, SQL)      | ⏳ см. Задачу S — без неё вход по почте не работает         |
 | 0a. 🔴 Миграция security_hardening (дыры доступа)             | ⏳ прогнать в SQL Editor, см. Задачу 0                      |
 | 0b. 🟠 Миграция storage_hardening (запись в бакеты)           | ⏳ прогнать после 0a, см. Задачу 0                          |
 | 1. Миграция БД feedback/nps                                   | ✅ **Выполнена** — колонки в базе, пропусти её             |
@@ -20,9 +21,49 @@
 
 ## Доступы
 
-Supabase Dashboard (проект `lyvarbqquvgxufmqgyix`), Coolify
+Supabase — self-hosted в Coolify (Studio в ресурсе Supabase, API
+`https://api.base40.fit`; облачный проект `lyvarbqquvgxufmqgyix` больше не
+используется — шаги ниже про «Supabase Dashboard» выполнять в Studio / в
+переменных `GOTRUE_*` сервиса auth), Coolify
 (https://coolify.base40.fit), Resend, GitHub (`borinsobaka-lab`),
 Hetzner Cloud. **Ничего не удаляй**, ключи и пароли никуда не пересылай.
+
+---
+
+# Задача S. 🔴 Переезд на self-hosted Supabase (2026-10-07)
+
+База перенесена с облачного проекта `lyvarbqquvgxufmqgyix` на self-hosted
+Supabase в Coolify (API `https://api.base40.fit`) 1:1. Код обоих приложений
+переключён (`.env`), осталось окружение. Настройки Auth облачного проекта
+(хук писем, redirect URLs, лимиты) НЕ переносятся вместе с базой — их нужно
+задать заново переменными сервиса **auth** в ресурсе Supabase в Coolify.
+
+1. **Coolify → club40-admin и club40-client → Environment Variables**:
+   `VITE_SUPABASE_URL` = `https://api.base40.fit`,
+   `VITE_SUPABASE_PUBLISHABLE_KEY` = значение из `.env` репозитория (`eyJ...`),
+   обе с галочкой Build Variable. У club40-admin дополнительно
+   `APP_SUPABASE_SERVICE_KEY` = service_role JWT self-hosted инстанса.
+   `VITE_SUPABASE_PROJECT_ID` у club40-client можно удалить. Затем Redeploy
+   обоих (VITE_* вшиваются при сборке — простого Restart мало).
+2. **Сервис auth (GoTrue)**, переменные:
+   (в шаблоне Coolify часть из них проброшена через короткие имена —
+   `SITE_URL`, `ADDITIONAL_REDIRECT_URLS`, `DISABLE_SIGNUP`; тогда менять их)
+   - `GOTRUE_SITE_URL=https://admin.base40.fit`
+   - `GOTRUE_URI_ALLOW_LIST=https://admin.base40.fit/**,https://app.base40.fit/**`
+   - `API_EXTERNAL_URL=https://api.base40.fit`
+   - `GOTRUE_DISABLE_SIGNUP=false` — сейчас регистрация на инстансе выключена
+     (`disable_signup: true` в `/auth/v1/settings`), новые клиенты не смогут
+     зарегистрироваться;
+   - хук писем (SMTP не нужен): `GOTRUE_HOOK_SEND_EMAIL_ENABLED=true`,
+     `GOTRUE_HOOK_SEND_EMAIL_URI=https://admin.base40.fit/api/auth-email`,
+     `GOTRUE_HOOK_SEND_EMAIL_SECRETS=` то же значение, что
+     `SEND_EMAIL_HOOK_SECRET` у club40-admin (`v1,whsec_...`);
+   - `GOTRUE_RATE_LIMIT_EMAIL_SENT=100`.
+   Затем перезапустить сервис auth.
+3. **SQL** (Studio → SQL Editor): прогнать `db/selfhosted_storage_urls.sql` —
+   переписывает в данных ссылки на аватарки со старого облачного хоста.
+4. Проверка: вход кодом в клиентском приложении и ссылкой в админке (см.
+   Задачу 2, шаг 7); в DevTools нет запросов к `*.supabase.co`.
 
 ---
 

@@ -42,9 +42,16 @@ merge в main = выкладка. Env-переменные: `VITE_SUPABASE_URL`,
 `AI_CHAT_MODEL`, `AI_TRANSCRIBE_MODEL`) не заданы — ассистент и диктовка
 намеренно отвечают 503 до выбора провайдера.
 
+Supabase — **self-hosted в Coolify** (с 2026-10-07): API
+`https://api.base40.fit`, публичный ключ — anon в JWT-формате (`eyJ...`, в `.env`
+под прежним именем `VITE_SUPABASE_PUBLISHABLE_KEY`); `APP_SUPABASE_SERVICE_KEY` —
+service_role JWT этого же инстанса. Облачный проект `lyvarbqquvgxufmqgyix` не
+используется. Настройки Auth (redirect URLs, Send Email Hook, лимиты) —
+переменные `GOTRUE_*` сервиса auth в Coolify; SQL — через Studio. Edge Functions нет.
+
 ## Auth-письма
 
-Send Email Hook: Supabase дёргает /api/auth-email (src/routes/api/auth-email.ts),
+Send Email Hook (`GOTRUE_HOOK_SEND_EMAIL_*` у сервиса auth): Supabase дёргает /api/auth-email (src/routes/api/auth-email.ts),
 логика писем — src/lib/auth-email.ts (+ тест auth-email.test.ts), отправка
 через Resend с noreply@base40.fit.
 

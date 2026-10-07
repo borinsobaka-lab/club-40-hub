@@ -106,11 +106,11 @@
    - **Domain**: `https://admin.<домен>`.
 3. **Environment Variables** — добавь три переменные:
 
-   | Имя                             | Значение                                                                      | Особенность                              |
-   | ------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------- |
-   | `VITE_SUPABASE_URL`             | `https://lyvarbqquvgxufmqgyix.supabase.co`                                    | отметь галочку **Build Variable**        |
-   | `VITE_SUPABASE_PUBLISHABLE_KEY` | значение из файла `.env` в репозитории (начинается с `sb_publishable_`)       | отметь галочку **Build Variable**        |
-   | `APP_SUPABASE_SERVICE_KEY`      | из Supabase Dashboard → Project Settings → API keys → `service_role` (secret) | runtime-секрет, галочку Build НЕ ставить |
+   | Имя                             | Значение                                                               | Особенность                              |
+   | ------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
+   | `VITE_SUPABASE_URL`             | `https://api.base40.fit`                                               | отметь галочку **Build Variable**        |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` | значение из файла `.env` в репозитории (anon-ключ, начинается с `eyJ`) | отметь галочку **Build Variable**        |
+   | `APP_SUPABASE_SERVICE_KEY`      | service_role JWT self-hosted Supabase (Coolify → ресурс Supabase)      | runtime-секрет, галочку Build НЕ ставить |
 
    Переменные AI (`AI_GATEWAY_*`, `AI_CHAT_MODEL`, `AI_TRANSCRIBE_MODEL`) сейчас
    задавать НЕ нужно: ассистент и диктовка сознательно отключены до выбора провайдера.

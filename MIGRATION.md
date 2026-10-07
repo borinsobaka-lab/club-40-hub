@@ -5,7 +5,8 @@
 ## Что показал аудит кода
 
 Хорошая новость: **вся «начинка» уже наша**. Auth, база, RLS-политики, storage — всё в личном
-Supabase (`lyvarbqquvgxufmqgyix.supabase.co`), схема БД версионируется в `db/*.sql`. Данные
+Supabase (на момент аудита — облачный `lyvarbqquvgxufmqgyix.supabase.co`; с 2026-10-07 —
+self-hosted в Coolify, API `https://api.base40.fit`), схема БД версионируется в `db/*.sql`. Данные
 переносить не нужно вообще. От Lovable зависят только четыре вещи:
 
 | #   | Зависимость                                                                                                                   | Где                                                                                                                                                                            | Что делать                                                                                                                |
