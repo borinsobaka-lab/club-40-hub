@@ -31,14 +31,18 @@ GitHub App **club40-github** (App ID 4507927) сейчас, скорее все�
 
 ## Шаг 3. Переменные окружения
 
-Все три — публичные, и все три нужны **на этапе сборки**: отметь у каждой галочку
+Обе — публичные, и обе нужны **на этапе сборки**: отметь у каждой галочку
 **Build Variable** (Runtime можно оставить включённым тоже).
 
-| Имя                             | Значение                                                                      |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| `VITE_SUPABASE_PROJECT_ID`      | `lyvarbqquvgxufmqgyix`                                                        |
-| `VITE_SUPABASE_URL`             | `https://lyvarbqquvgxufmqgyix.supabase.co`                                    |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | значение из файла `.env` в корне репозитория (начинается с `sb_publishable_`) |
+| Имя                             | Значение                                                          |
+| ------------------------------- | ----------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`             | `https://api.base40.fit`                                          |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | значение из файла `.env` в корне репозитория (anon-ключ `eyJ...`) |
+
+Supabase — self-hosted в Coolify (API `https://api.base40.fit`); облачный проект
+`lyvarbqquvgxufmqgyix` больше не используется. Переменную
+`VITE_SUPABASE_PROJECT_ID`, если она осталась в Coolify, можно удалить — код её
+не читает.
 
 Секретных ключей (`service_role`) этому приложению НЕ нужно — не добавляй их.
 
@@ -49,19 +53,21 @@ GitHub App **club40-github** (App ID 4507927) сейчас, скорее все�
 
 ## Шаг 5. Supabase
 
-Dashboard проекта `lyvarbqquvgxufmqgyix` → **Authentication → URL Configuration**:
+Self-hosted Supabase настраивается переменными сервиса **auth** (GoTrue) в
+Coolify (ресурс Supabase на coolify.base40.fit), а не через Dashboard:
 
-- В **Redirect URLs** добавь `https://app.base40.fit/**`.
-- **Site URL не меняй** — он указывает на админку, и это сейчас правильно:
-  клиентское приложение передаёт свой адрес явно при регистрации.
-- Старые lovable-адреса не удаляй.
+- `GOTRUE_URI_ALLOW_LIST` (в шаблоне Coolify — `ADDITIONAL_REDIRECT_URLS`)
+  должен содержать `https://app.base40.fit/**`.
+- `GOTRUE_SITE_URL` указывает на админку — это правильно: клиентское
+  приложение передаёт свой адрес явно при регистрации.
 
 ## Шаг 6. Смоук-тест (без входа в аккаунт)
 
 1. `https://app.base40.fit` открывается, сертификат валиден.
 2. Экран входа отрисовывается, шрифты и стили на месте.
-3. В DevTools → Network нет запросов к `nmeefwuetncpxgufwelj.supabase.co`
-   (это мёртвый проект; все запросы должны идти на `lyvarbqquvgxufmqgyix.supabase.co`).
+3. В DevTools → Network нет запросов к `*.supabase.co` (облачные проекты
+   `nmeefwuetncpxgufwelj` и `lyvarbqquvgxufmqgyix` больше не используются; все
+   запросы должны идти на `api.base40.fit`).
 4. Нет запросов к доменам lovable.dev / lovable.app.
 
 Проверки, требующие входа, выполнит владелец: вход, расписание и запись на

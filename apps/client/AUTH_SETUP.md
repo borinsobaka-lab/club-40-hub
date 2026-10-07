@@ -30,12 +30,12 @@
 
 ## Шаг 2. Секрет хука в Supabase
 
-Dashboard проекта `lyvarbqquvgxufmqgyix` → **Authentication → Hooks** →
-**Send Email Hook**:
+Supabase self-hosted (Coolify, API `https://api.base40.fit`): Dashboard с
+разделом Hooks нет, хук задаётся переменными сервиса **auth** (GoTrue).
 
-1. Тип: **HTTPS**, URL: `https://admin.base40.fit/api/auth-email`.
-2. Скопировать **сгенерированный секрет** (`v1,whsec_...`).
-3. **ПОКА НЕ включать** (не сохранять Enabled) — сначала шаг 3.
+1. Сгенерировать секрет: `echo "v1,whsec_$(openssl rand -base64 32)"`.
+   (Если секрет уже стоит у club40-admin в `SEND_EMAIL_HOOK_SECRET` — взять его.)
+2. **ПОКА НЕ включать** хук — сначала шаг 3.
 
 ## Шаг 3. Переменные в Coolify
 
@@ -51,20 +51,27 @@ runtime-переменные (галочку Build Variable НЕ ставить)
 
 ## Шаг 4. Включить хук
 
-Вернуться в Supabase → Authentication → Hooks → Send Email → **Enable**.
+Coolify → ресурс Supabase → сервис **auth** → Environment, добавить:
+
+```
+GOTRUE_HOOK_SEND_EMAIL_ENABLED=true
+GOTRUE_HOOK_SEND_EMAIL_URI=https://admin.base40.fit/api/auth-email
+GOTRUE_HOOK_SEND_EMAIL_SECRETS=<секрет из шага 2, v1,whsec_...>
+```
+
+и перезапустить сервис auth. С хуком SMTP в Supabase не нужен.
 Порядок важен: если включить хук до рестарта админки с переменными, письма
 перестанут уходить вовсе (роут ответит 500).
 
 ## Шаг 5. Длина кода
 
-Менять не нужно: Supabase не даёт настраивать Email OTP Length, там всегда
-6 цифр — приложение под это подстроено. Проверьте только OTP Expiration
-(3600 сек достаточно).
+Приложение рассчитано на 6 цифр. Проверьте `GOTRUE_MAILER_OTP_LENGTH`
+(не задан = 6) и `GOTRUE_MAILER_OTP_EXP` (3600 сек достаточно).
 
 ## Шаг 6. Лимиты
 
-**Authentication → Rate Limits**: поднять лимит писем до разумного
-(например, 100/час) — с хуком отправка идёт через ваш Resend.
+`GOTRUE_RATE_LIMIT_EMAIL_SENT` у сервиса auth: поднять до разумного
+(например, 100 в час) — с хуком отправка идёт через ваш Resend.
 
 ## Шаг 7. Проверка
 
@@ -79,8 +86,8 @@ runtime-переменные (галочку Build Variable НЕ ставить)
 4. Письма не в спаме.
 
 Если письма перестали приходить: Coolify → club40-admin → Logs, искать
-`[auth-email]`. Быстрый откат — выключить хук в Supabase (вернутся встроенные
-письма Supabase с их шаблонами).
+`[auth-email]`. Откат — `GOTRUE_HOOK_SEND_EMAIL_ENABLED=false` (но без
+настроенного SMTP встроенные письма Supabase уходить не будут).
 
 ## Как это устроено (для справки)
 
@@ -97,5 +104,5 @@ email_change (код). Секреты живут только в Coolify у ад
 Раньше OTP в клиентском приложении был бутафорией: код не проверялся, а вход
 шёл по выводимому из email паролю — войти можно было под любым клиентом, зная
 только его почту. Теперь вход только по настоящему коду. После настройки
-стоит просмотреть Authentication → Users на предмет подозрительных аккаунтов,
+стоит просмотреть список пользователей (Supabase Studio → Authentication → Users) на предмет подозрительных аккаунтов,
 созданных за время тестирования.

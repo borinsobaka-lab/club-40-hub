@@ -30,9 +30,16 @@ TanStack Start (SSR) + React 19 + Tailwind 4 + shadcn/radix. Пакетный
 ## Деплой
 
 Coolify на Hetzner, https://app.base40.fit (инструкция агенту — `DEPLOY.md`).
-После подключения автодеплоя пуш в `main` = выкладка. Env: только три
-публичные `VITE_SUPABASE_*` переменные (build-time); секретов у этого
-приложения нет и быть не должно.
+После подключения автодеплоя пуш в `main` = выкладка. Env: только две
+публичные переменные `VITE_SUPABASE_URL` и `VITE_SUPABASE_PUBLISHABLE_KEY`
+(build-time); секретов у этого приложения нет и быть не должно.
+
+Supabase — **self-hosted в Coolify** (с 2026-10-07): API
+`https://api.base40.fit`, ключ — anon в JWT-формате (`eyJ...`, лежит в `.env`
+под прежним именем `VITE_SUPABASE_PUBLISHABLE_KEY`). Облачный проект
+`lyvarbqquvgxufmqgyix` не используется. Настройки Auth (redirect URLs, Send
+Email Hook, лимиты) — переменные `GOTRUE_*` сервиса auth в Coolify, а не
+Dashboard. Edge Functions нет.
 
 ## Авторизация
 
