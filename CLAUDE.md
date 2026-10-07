@@ -45,21 +45,23 @@ merge в main = выкладка. Env-переменные: `VITE_SUPABASE_URL`,
 Supabase — **self-hosted в Coolify** (с 2026-10-07): API
 `https://api.base40.fit`, публичный ключ — anon в JWT-формате (`eyJ...`, в `.env`
 под прежним именем `VITE_SUPABASE_PUBLISHABLE_KEY`); `APP_SUPABASE_SERVICE_KEY` —
-service_role JWT этого же инстанса. Облачный проект `lyvarbqquvgxufmqgyix` не
+service*role JWT этого же инстанса. Облачный проект `lyvarbqquvgxufmqgyix` не
 используется. Настройки Auth (redirect URLs, Send Email Hook, лимиты) —
-переменные `GOTRUE_*` сервиса auth в Coolify; SQL — через Studio. Edge Functions нет.
+переменные `GOTRUE*\*` сервиса auth в Coolify; SQL — через Studio. Edge Functions нет.
 
 ## Auth-письма
 
 Send Email Hook (`GOTRUE_HOOK_SEND_EMAIL_*` у сервиса auth): Supabase дёргает /api/auth-email (src/routes/api/auth-email.ts),
-логика писем — src/lib/auth-email.ts (+ тест auth-email.test.ts), отправка
-через Resend с noreply@base40.fit.
+логика писем — src/lib/auth-email.ts (+ тест auth-email.test.ts), отправка —
+src/lib/mail.ts с noreply@base40.fit: через Unisender Go, если задан
+UNISENDER_GO_API_KEY, иначе по-старому Resend (код Resend удалим отдельным
+шагом после переключения ключа).
 
 **Разделение по ПРИЛОЖЕНИЮ, а не по человеку**: админка и клиентское
 приложение — разные сущности, один человек может быть и админом, и клиентом.
 Признак — хост в redirect_to (оба приложения задают emailRedirectTo явно):
 admin.base40.fit -> ссылка авто-входа, всё остальное (включая нераспознанный
-redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
+redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_API_KEY (или RESEND_API_KEY),
 опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
 в club40-client-hub.
 
@@ -107,7 +109,7 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KE
   запуском обязательно:** создание продажи вынести на сервер за проверку
   платежа (webhook/подтверждение провайдера), а клиентскую вставку в `sales`
   отозвать (`drop policy "sales client insert own"` + `"sales client select
-  own"` оставить). Альтернатива — выдача абонемента только сотрудником из
+own"` оставить). Альтернатива — выдача абонемента только сотрудником из
   админки (политика `sales studio rw` уже это позволяет).
 - Аналитика/новые фичи (аудит данных 2026-08-07, прогон — AGENT_TASKS Задача 6):
   `other_sales.sql` (каталог `sale_items` + продажи услуг/товаров `other_sales`,

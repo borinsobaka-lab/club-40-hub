@@ -2,10 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { buildEmail, isAdminApp, type HookPayload } from "@/lib/auth-email";
+import { mailProvider, sendMail } from "@/lib/mail";
 
 // Send Email Hook для Supabase Auth: Supabase больше не шлёт письма сам, а
-// дёргает этот эндпоинт, и мы отправляем письмо через Resend с
-// noreply@base40.fit.
+// дёргает этот эндпоинт, и мы отправляем письмо с noreply@base40.fit через
+// Unisender Go (если задан UNISENDER_GO_API_KEY), иначе по-старому через
+// Resend — см. src/lib/mail.ts.
 //
 // РАЗДЕЛЕНИЕ ИДЁТ ПО ПРИЛОЖЕНИЮ, А НЕ ПО ЧЕЛОВЕКУ. Админка и клиентское
 // приложение — разные сущности: один и тот же человек может быть и
@@ -22,7 +24,8 @@ import { buildEmail, isAdminApp, type HookPayload } from "@/lib/auth-email";
 //
 // Настройка: Supabase Dashboard -> Authentication -> Hooks -> Send Email ->
 // HTTPS, URL https://admin.base40.fit/api/auth-email; выданный секрет и ключ
-// Resend задать в Coolify (SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY).
+// почты задать в Coolify (SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_API_KEY или
+// RESEND_API_KEY).
 // Пока переменные не заданы, роут отвечает 500 и Supabase шлёт письма сам —
 // хук в дашборде стоит включать только после задания переменных.
 
@@ -46,9 +49,10 @@ export const Route = createFileRoute("/api/auth-email")({
     handlers: {
       POST: async ({ request }) => {
         const secret = process.env.SEND_EMAIL_HOOK_SECRET;
-        const resendKey = process.env.RESEND_API_KEY;
-        if (!secret || !resendKey) {
-          console.error("[auth-email] SEND_EMAIL_HOOK_SECRET / RESEND_API_KEY не заданы");
+        if (!secret || !mailProvider()) {
+          console.error(
+            "[auth-email] SEND_EMAIL_HOOK_SECRET / UNISENDER_GO_API_KEY (или RESEND_API_KEY) не заданы",
+          );
           return new Response("hook not configured", { status: 500 });
         }
 
@@ -77,23 +81,9 @@ export const Route = createFileRoute("/api/auth-email")({
         const fromAdminApp = isAdminApp(payload.email_data.redirect_to);
         const { subject, html } = buildEmail(payload, fromAdminApp);
 
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "Base40 <noreply@base40.fit>",
-            to: payload.user.email,
-            subject,
-            html,
-          }),
-        });
-
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          console.error("[auth-email] Resend error", res.status, text);
+        const sent = await sendMail({ to: payload.user.email, subject, html });
+        if (!sent.ok) {
+          console.error("[auth-email] письмо не отправлено:", sent.error);
           // Не-200 заставит Supabase показать ошибку отправки и повторить.
           return new Response("email send failed", { status: 500 });
         }
