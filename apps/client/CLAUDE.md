@@ -49,7 +49,8 @@ OTP_LENGTH и RESEND_COOLDOWN_SEC = 60 в src/routes/auth.tsx — повторн
 `src/hooks/use-auth.tsx` (signInWithOtp / verifyOtp type=email). Регистрация
 передаёт метаданные (first_name, last_name, full_name, phone) — их читает
 триггер handle_new_user. Паролей у клиентов НЕТ; настройка писем и длины кода
-в Supabase — см. AUTH_SETUP.md. Письма уходят с noreply@base40.fit (Resend).
+в Supabase — см. AUTH_SETUP.md. Письма уходят с noreply@base40.fit через Unisender Go (хук в админке,
+`UNISENDER_GO_API_KEY` у club40-admin; без ключа — по-старому Resend).
 
 ## Данные и мультистудийность
 
