@@ -181,7 +181,40 @@ export const deleteEmployee = createServerFn({ method: "POST" })
       throw new Error("Этот пользователь не является сотрудником вашей студии");
     }
 
+    // Один человек может быть и сотрудником, и клиентом (или сотрудником
+    // другой студии). Удаление auth-пользователя каскадом сносит его записи,
+    // анкету и роли во всех студиях, поэтому сначала снимаем только роли
+    // сотрудника в этой студии, а аккаунт удаляем, лишь если больше он ни к
+    // чему не привязан.
+    const { error: revokeErr } = await admin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.user_id)
+      .eq("studio_id", studioId)
+      .in("role", ["owner", "admin", "trainer"]);
+    if (revokeErr) throw new Error(revokeErr.message);
+
+    // Аккаунт оставляем, если человек — сотрудник другой студии, клиент
+    // студии (карточка в clients) или пользователь клиентского приложения
+    // (анкета member_profiles, даже без карточки).
+    const links = await Promise.all([
+      admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user_id)
+        .in("role", ["owner", "admin", "trainer"])
+        .limit(1),
+      admin.from("clients").select("id").eq("user_id", data.user_id).limit(1),
+      admin.from("member_profiles").select("user_id").eq("user_id", data.user_id).limit(1),
+    ]);
+    for (const { error: linkErr } of links) {
+      if (linkErr) throw new Error(linkErr.message);
+    }
+    if (links.some(({ data: rows }) => rows?.length)) {
+      return { ok: true, accountKept: true };
+    }
+
     const { error } = await admin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, accountKept: false };
   });

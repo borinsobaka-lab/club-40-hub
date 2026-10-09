@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { buildEmail, isAdminApp, type HookPayload } from "@/lib/auth-email";
+import { buildEmails, isAdminApp, type HookPayload } from "@/lib/auth-email";
 import { mailProvider, sendMail } from "@/lib/mail";
 
 // Send Email Hook для Supabase Auth: Supabase больше не шлёт письма сам, а
@@ -79,13 +79,14 @@ export const Route = createFileRoute("/api/auth-email")({
         }
 
         const fromAdminApp = isAdminApp(payload.email_data.redirect_to);
-        const { subject, html } = buildEmail(payload, fromAdminApp);
 
-        const sent = await sendMail({ to: payload.user.email, subject, html });
-        if (!sent.ok) {
-          console.error("[auth-email] письмо не отправлено:", sent.error);
-          // Не-200 заставит Supabase показать ошибку отправки и повторить.
-          return new Response("email send failed", { status: 500 });
+        for (const email of buildEmails(payload, fromAdminApp)) {
+          const sent = await sendMail(email);
+          if (!sent.ok) {
+            console.error("[auth-email] письмо не отправлено:", sent.error);
+            // Не-200 заставит Supabase показать ошибку отправки и повторить.
+            return new Response("email send failed", { status: 500 });
+          }
         }
 
         return new Response("{}", {

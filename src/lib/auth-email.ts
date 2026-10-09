@@ -6,6 +6,8 @@ export type HookPayload = {
   user: {
     id: string;
     email: string;
+    // Новый адрес при смене почты (email_change).
+    new_email?: string | null;
     user_metadata?: Record<string, unknown> | null;
   };
   email_data: {
@@ -71,6 +73,51 @@ const linkEmail = (title: string, lead: string, url: string, cta: string) =>
     </div>
     <p style="color:#52525b;font-size:13px">Ссылка действует 1 час и работает один раз.</p>`);
 
+export type OutgoingEmail = { to: string; subject: string; html: string };
+
+const EMAIL_CHANGE_SUBJECT = "Подтверждение смены почты — Base40";
+
+/**
+ * Все письма, которые нужно отправить по одному вызову хука.
+ *
+ * Обычно это одно письмо на user.email. Исключение — смена почты: код нужен
+ * НОВОМУ адресу (user.new_email), а при включённой Secure Email Change —
+ * обоим: текущему адресу token, новому token_new (см. документацию Supabase
+ * Send Email Hook; имена token_hash/token_hash_new там перепутаны намеренно,
+ * на суффикс _new не полагаемся). Раньше код уходил только на старый адрес,
+ * и подтвердить новую почту было нечем.
+ */
+export function buildEmails(payload: HookPayload, fromAdminApp: boolean): OutgoingEmail[] {
+  const { user, email_data } = payload;
+  if (email_data.email_action_type === "email_change") {
+    const newEmail = user.new_email || null;
+    if (email_data.token_new && newEmail) {
+      return [
+        {
+          to: user.email,
+          subject: EMAIL_CHANGE_SUBJECT,
+          html: codeEmail(
+            "Смена почты",
+            "Код для подтверждения смены почты (с текущего адреса):",
+            email_data.token,
+          ),
+        },
+        {
+          to: newEmail,
+          subject: EMAIL_CHANGE_SUBJECT,
+          html: codeEmail(
+            "Смена почты",
+            "Код для подтверждения новой почты:",
+            email_data.token_new,
+          ),
+        },
+      ];
+    }
+    return [{ to: newEmail ?? user.email, ...buildEmail(payload, fromAdminApp) }];
+  }
+  return [{ to: user.email, ...buildEmail(payload, fromAdminApp) }];
+}
+
 export function buildEmail(
   payload: HookPayload,
   fromAdminApp: boolean,
@@ -133,7 +180,7 @@ export function buildEmail(
       };
     case "email_change":
       return {
-        subject: "Подтверждение смены почты — Base40",
+        subject: EMAIL_CHANGE_SUBJECT,
         html: codeEmail("Смена почты", "Код для подтверждения новой почты:", token),
       };
     default:

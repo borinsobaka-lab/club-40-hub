@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,13 +20,18 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [step, setStep] = useState<Step>("credentials");
   const [loading, setLoading] = useState(false);
+  // Пока идёт проверка пароля, signInWithPassword уже создаёт сессию и шлёт
+  // SIGNED_IN. Без этого флага подписка ниже сразу уводила на «/» — в обход
+  // проверки роли и письма-подтверждения, а следующий signOut выбивал
+  // сессию уже из-под открытой админки.
+  const passwordCheckRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
+      if (data.session && !passwordCheckRef.current) navigate({ to: "/" });
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      if (s) navigate({ to: "/" });
+      if (s && !passwordCheckRef.current) navigate({ to: "/" });
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
@@ -45,13 +50,22 @@ function AuthPage() {
   const signIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    passwordCheckRef.current = true;
+    try {
+      await checkPasswordAndSendLink();
+    } finally {
+      passwordCheckRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const checkPasswordAndSendLink = async () => {
     // Step 1: validate password
     const { data: signInData, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) {
-      setLoading(false);
       toast.error(error.message);
       return;
     }
@@ -67,7 +81,6 @@ function AuthPage() {
       .limit(1);
     if (!roles?.length) {
       await supabase.auth.signOut();
-      setLoading(false);
       toast.error("Эта учётная запись не имеет доступа к админ-панели");
       return;
     }
@@ -81,7 +94,6 @@ function AuthPage() {
     } catch (err) {
       toast.error((err as Error).message);
     }
-    setLoading(false);
   };
 
   const resend = async () => {
