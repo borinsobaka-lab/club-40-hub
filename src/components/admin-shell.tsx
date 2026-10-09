@@ -7,7 +7,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
-import { triggerRefresh } from "@/lib/refresh-bus";
 import { KateChat } from "@/components/kate-chat";
 
 export function AdminShell({
@@ -16,7 +15,6 @@ export function AdminShell({
   children,
 }: {
   title: string;
-  description?: string;
   actions?: ReactNode;
   children: ReactNode;
 }) {
@@ -55,7 +53,6 @@ export function AdminShell({
               onClick={() => {
                 router.invalidate();
                 queryClient.invalidateQueries();
-                triggerRefresh();
               }}
             >
               <RefreshCw className="h-5 w-5" />

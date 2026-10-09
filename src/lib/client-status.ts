@@ -4,6 +4,8 @@
  *  - bchk — Бывший член клуба: когда-то был абонемент, сейчас нет активного.
  *  - pchk — Потенциальный член клуба: никогда не покупал абонементы.
  */
+import { todayISO } from "@/lib/format";
+
 export type ClubStatus = "chk" | "pchk" | "bchk";
 
 export const CLUB_STATUS_LABEL: Record<ClubStatus, string> = {
@@ -23,12 +25,6 @@ export type MembershipLite = {
   status: string | null;
   ends_at: string | null;
 };
-
-function todayISO() {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
-}
 
 export function computeClubStatus(memberships: MembershipLite[] | null | undefined): ClubStatus {
   const list = memberships ?? [];

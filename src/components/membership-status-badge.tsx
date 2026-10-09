@@ -1,3 +1,4 @@
+import { todayISO } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type CMStatus = "active" | "frozen" | "replaced" | "expired" | "cancelled" | string;
@@ -8,12 +9,6 @@ export type MembershipStatusInput = {
   auto_renew?: boolean | null;
   cancelled_at?: string | null;
 };
-
-function todayISO() {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
-}
 
 export function effectiveStatus(m: MembershipStatusInput): CMStatus {
   if (!m.status) return "expired";
