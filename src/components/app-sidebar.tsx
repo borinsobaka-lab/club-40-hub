@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronUp, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-// Иконки пунктов меню — Solar LineDuotone (см. scripts/gen-nav-icons.ts);
-// остальной интерфейс — на Hugeicons через lucide-шим.
+// Иконки пунктов меню — Solar: Outline, у активного пункта BoldDuotone
+// (см. scripts/gen-nav-icons.ts); остальной интерфейс — Hugeicons через lucide-шим.
 import {
   Bag3,
   BellBing,
@@ -246,7 +246,10 @@ export function AppSidebar() {
                                 isActive(item.url) ? "text-brand" : "text-white",
                               )}
                             >
-                              <item.icon className="-m-px size-[18px]" />
+                              <item.icon
+                                active={isActive(item.url)}
+                                className="-m-px size-[18px]"
+                              />
                             </span>
                             {!collapsed && <span>{item.title}</span>}
                           </Link>

@@ -152,8 +152,8 @@ own"` оставить). Альтернатива — выдача абонем�
   `lucide-react` на шим `src/lib/icons.tsx` (сам пакет `lucide-react` из
   зависимостей убран). Шим генерируется — `bun run scripts/gen-icons.ts`
   пересобирает его по фактическим импортам; ручные соответствия имён лежат
-  в `MANUAL` там же. Исключение — иконки бокового меню: Solar LineDuotone в
-  `components/nav-icons.tsx`, генерируются `bun run scripts/gen-nav-icons.ts`
+  в `MANUAL` там же. Исключение — иконки бокового меню: Solar (Outline, у
+  активного пункта — BoldDuotone) в `components/nav-icons.tsx`, генерируются `bun run scripts/gen-nav-icons.ts`
   (пакет `@solar-icons/react` — только devDependency: в нём все 6 начертаний
   на иконку, напрямую он раздувал бандл на ~226 kB).
 - Цвета: фирменный розовый — токен `--brand` (`text-brand`, `border-b-brand`),

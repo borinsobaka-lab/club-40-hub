@@ -1,9 +1,10 @@
 /**
- * Иконки бокового меню — Solar LineDuotone, вынутые из @solar-icons/react.
+ * Иконки бокового меню — Solar, вынутые из @solar-icons/react: Outline для
+ * обычного пункта, BoldDuotone для активного.
  *
  * Пакет кладёт в каждую иконку все шесть начертаний: двадцать иконок меню
- * прибавляли к бандлу ~226 kB (51 kB gzip), из которых нужно одно. Скрипт
- * рендерит нужное начертание в статичную разметку и пишет готовые
+ * прибавляли к бандлу ~226 kB (51 kB gzip), из которых нужно два. Скрипт
+ * рендерит нужные начертания в статичную разметку и пишет готовые
  * компоненты в src/components/nav-icons.tsx; сам пакет — только devDependency.
  *
  * Запуск: bun run scripts/gen-nav-icons.ts. Добавляя пункт меню — допиши
@@ -45,31 +46,41 @@ const toJsx = (markup: string) =>
     )
     .replace(/<(path|circle|rect|ellipse|line)([^>]*)><\/\1>/g, "<$1$2 />");
 
+const WEIGHTS = { outline: "Outline", active: "BoldDuotone" } as const;
+
+const render = (Icon: Parameters<typeof createElement>[0], weight: string) => {
+  const svg = renderToStaticMarkup(createElement(Icon, { weight }));
+  const inner = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+  return `<>\n      ${toJsx(inner).replace(/></g, ">\n      <")}\n    </>`;
+};
+
 const blocks: string[] = [];
 for (const [name, category] of Object.entries(ICONS)) {
   const mod = await import(`@solar-icons/react/ssr/${category}/${name}`);
-  const svg = renderToStaticMarkup(createElement(mod.default, { weight: "LineDuotone" }));
-  const inner = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
-  blocks.push(
-    `export const ${name} = navIcon(\n  "${name}",\n  <>\n    ${toJsx(inner).replace(/></g, ">\n    <")}\n  </>,\n);`,
-  );
+  const variants = Object.entries(WEIGHTS)
+    .map(([key, weight]) => `    ${key}: ${render(mod.default, weight)},`)
+    .join("\n");
+  blocks.push(`export const ${name} = navIcon("${name}", {\n${variants}\n});`);
 }
 
 writeFileSync(
   "src/components/nav-icons.tsx",
   `/**
- * Иконки бокового меню: Solar, начертание LineDuotone.
+ * Иконки бокового меню: Solar, Outline у обычного пункта и BoldDuotone
+ * у активного (проп \`active\`).
  * Файл сгенерирован scripts/gen-nav-icons.ts — руками не править.
  */
 import { forwardRef, type ReactNode, type SVGProps } from "react";
 
 export type NavIcon = ReturnType<typeof navIcon>;
 
-function navIcon(displayName: string, paths: ReactNode) {
-  const Comp = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(function Comp(props, ref) {
+type NavIconProps = SVGProps<SVGSVGElement> & { active?: boolean };
+
+function navIcon(displayName: string, paths: { outline: ReactNode; active: ReactNode }) {
+  const Comp = forwardRef<SVGSVGElement, NavIconProps>(function Comp({ active, ...props }, ref) {
     return (
       <svg ref={ref} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" {...props}>
-        {paths}
+        {active ? paths.active : paths.outline}
       </svg>
     );
   });
