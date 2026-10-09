@@ -180,14 +180,17 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
   const [form, setForm] = useState({
     full_name: "",
     email: "",
-    password: "",
     role: "trainer" as StaffRole,
   });
 
   const createMut = useMutation({
     mutationFn: (input: typeof form) => createFn({ data: input }),
-    onSuccess: () => {
-      toast.success("Сотрудник добавлен");
+    onSuccess: (res) => {
+      toast.success(
+        res.existing
+          ? "Роль выдана. У человека уже была учётная запись — вход по ссылке на ту же почту"
+          : "Сотрудник добавлен. Вход — по ссылке на указанную почту",
+      );
       onDone();
       qc.invalidateQueries({ queryKey: ["employees"] });
     },
@@ -198,7 +201,10 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
     <>
       <DialogHeader>
         <DialogTitle>Новый сотрудник</DialogTitle>
-        <DialogDescription>Создайте учётную запись для нового пользователя</DialogDescription>
+        <DialogDescription>
+          Вход в админку — по ссылке на эту почту, пароль не нужен. Если у человека уже есть учётная
+          запись (например, он клиент приложения), ему просто выдаётся роль.
+        </DialogDescription>
       </DialogHeader>
       <form
         className="flex min-h-0 flex-1 flex-col"
@@ -226,16 +232,6 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
             />
           </div>
           <div className="space-y-1">
-            <Label>Пароль</Label>
-            <Input
-              type="text"
-              minLength={6}
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-            />
-          </div>
-          <div className="space-y-1">
             <Label>Роль</Label>
             <Select
               value={form.role}
@@ -255,7 +251,7 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
         <DialogFooter>
           <Button type="submit" disabled={createMut.isPending}>
             {createMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Создать
+            Добавить
           </Button>
         </DialogFooter>
       </form>
