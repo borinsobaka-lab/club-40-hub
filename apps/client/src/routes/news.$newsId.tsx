@@ -96,9 +96,7 @@ function NewsDetailPage() {
           <div className="px-4 pt-4">
             {hero ? (
               <div className="relative w-full aspect-[4/3]">
-                {!imgLoaded && (
-                  <Skeleton className="absolute inset-0 rounded-xl" />
-                )}
+                {!imgLoaded && <Skeleton className="absolute inset-0 rounded-xl" />}
                 <img
                   src={hero}
                   alt={title}

@@ -690,9 +690,7 @@ function MembershipCard({
   const features = [
     membership.visits_count === null ? "Безлимит посещений" : `${membership.visits_count} занятий`,
     `Срок действия ${membership.duration_days} дней`,
-    membership.freeze_days_allowed
-      ? `Заморозка до ${membership.freeze_days_allowed} дней`
-      : null,
+    membership.freeze_days_allowed ? `Заморозка до ${membership.freeze_days_allowed} дней` : null,
     ...((membership.benefits ?? []).filter(Boolean) as string[]),
   ].filter(Boolean) as string[];
 
@@ -935,7 +933,9 @@ function CheckoutSheet({
             {/* Total + Pay */}
             <div className="mt-5 flex items-end justify-between">
               <div className="text-xs text-muted-foreground">К оплате</div>
-              <div className="text-2xl font-black tabular-nums">{total.toLocaleString("ru-RU")} ₾</div>
+              <div className="text-2xl font-black tabular-nums">
+                {total.toLocaleString("ru-RU")} ₾
+              </div>
             </div>
 
             <Button

@@ -77,13 +77,7 @@ export function CardListSkeleton({ rows = 3 }: { rows?: number }) {
  * состояние загрузки выглядело по-разному на одном экране. Размер плитки
  * задаётся снаружи: он у каруселей действительно разный.
  */
-export function CarouselSkeleton({
-  cards = 3,
-  className,
-}: {
-  cards?: number;
-  className?: string;
-}) {
+export function CarouselSkeleton({ cards = 3, className }: { cards?: number; className?: string }) {
   return (
     <div className="flex gap-3 overflow-hidden px-4 pb-2">
       {Array.from({ length: cards }).map((_, i) => (

@@ -19,8 +19,7 @@
 
 @theme {
   --font-sans:
-    Roboto, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial,
-    sans-serif;
+    Roboto, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 @custom-variant dark (&:is(.dark *));

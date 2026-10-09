@@ -304,8 +304,7 @@ export function StatsSection() {
         // Матвью закрыта для клиентов (RLS на материализованных вью не
         // работает, а select был выдан всем вошедшим). Свою строку получаем
         // через SECURITY DEFINER-функцию my_stats_30d.
-        (supabase as unknown as { rpc: (fn: string) => any }).rpc("my_stats_30d")
-          .maybeSingle(),
+        (supabase as unknown as { rpc: (fn: string) => any }).rpc("my_stats_30d").maybeSingle(),
         supabase.from("member_profiles").select("weight_kg").eq("user_id", user.id).maybeSingle(),
       ]);
 
