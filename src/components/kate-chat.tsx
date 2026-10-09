@@ -60,12 +60,11 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
     }
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = () => {
     const text = input.trim();
     if (!text || isLoading) return;
     setInput("");
-    await sendText(text);
+    void sendText(text);
   };
 
   return (
@@ -116,7 +115,13 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
             </div>
           )}
         </div>
-        <form onSubmit={onSubmit} className="border-t p-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="border-t p-3"
+        >
           <div className="flex items-start gap-2">
             <Textarea
               value={input}
@@ -124,7 +129,7 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  onSubmit(e as unknown as React.FormEvent);
+                  submit();
                 }
               }}
               placeholder="Напишите вопрос Kate…"
@@ -189,6 +194,11 @@ function MessageBubble({ message }: { message: UIMessage }) {
   );
 }
 
+/** Выключает микрофон: пока дорожки потока живы, браузер держит его занятым. */
+function stopTracks(stream: MediaStream | null) {
+  stream?.getTracks().forEach((t) => t.stop());
+}
+
 function VoiceInputButton({
   disabled,
   onTranscribed,
@@ -201,6 +211,24 @@ function VoiceInputButton({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const mountedRef = useRef(false);
+
+  // Окно Kate могут закрыть посреди записи: без этого запись продолжалась, а
+  // микрофон оставался включённым, пока не закроют вкладку.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      const rec = recorderRef.current;
+      if (rec && rec.state !== "inactive") {
+        // Недописанную запись на распознавание не отправляем.
+        rec.onstop = null;
+        rec.stop();
+      }
+      stopTracks(streamRef.current);
+      streamRef.current = null;
+    };
+  }, []);
 
   const start = async () => {
     if (disabled || busy) return;
@@ -211,11 +239,16 @@ function VoiceInputButton({
       toast.error("Нужен доступ к микрофону");
       return;
     }
+    // Окно закрыли, пока браузер спрашивал доступ, — микрофон сразу гасим.
+    if (!mountedRef.current) {
+      stopTracks(stream);
+      return;
+    }
     const mimeType = ["audio/webm", "audio/mp4"].find(
       (t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
     );
     if (!mimeType) {
-      stream.getTracks().forEach((t) => t.stop());
+      stopTracks(stream);
       toast.error("Браузер не поддерживает запись аудио");
       return;
     }
@@ -225,7 +258,8 @@ function VoiceInputButton({
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
     rec.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
+      stopTracks(stream);
+      streamRef.current = null;
       const blob = new Blob(chunksRef.current, { type: rec.mimeType });
       if (blob.size < 1024) {
         toast.error("Запись пустая, попробуйте ещё раз");

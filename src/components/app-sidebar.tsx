@@ -140,8 +140,9 @@ export function AppSidebar() {
   }, []);
 
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
-  const isActive = (path: string) =>
-    path === "/" ? currentPath === "/" : currentPath.startsWith(path);
+  // Точное совпадение или вложенный путь: голый startsWith подсвечивал
+  // «Пуш-уведомления» (/push) ещё и на /push-triggers.
+  const isActive = (path: string) => currentPath === path || currentPath.startsWith(`${path}/`);
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
