@@ -6,7 +6,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  { ignores: ["dist", ".output", ".claude"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -27,7 +27,7 @@ export default tseslint.config(
             {
               name: "server-only",
               message:
-                "TanStack Start does not use the Next.js `server-only` package. Rename the module to `*.server.ts` or mark it with `@tanstack/react-start/server-only`.",
+                "Пакет server-only из Next.js здесь не работает. Серверный модуль называйте *.server.ts — импорт такого файла в клиентский код валит сборку (importProtection в vite.config).",
             },
           ],
         },
