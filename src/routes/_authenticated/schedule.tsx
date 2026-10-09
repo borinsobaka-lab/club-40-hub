@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRefreshSignal } from "@/lib/refresh-bus";
-
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
+import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
+import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
+import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ClientNameLink } from "@/components/client-name-link";
@@ -39,7 +42,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { dayTypeColor } from "@/lib/workout-types";
 import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
@@ -62,6 +64,16 @@ type Entry = {
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
 
+/** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
+type EntryDraft = { workout_id: string; starts_at: string; ends_at: string; trainerIds: string[] };
+
+const ENTRY_SELECT =
+  "*, workout:workouts(name, type, capacity), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))";
+// Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Тренеры»
+// грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
+const WORKOUT_COLS = "id, name, type, capacity";
+const TRAINER_COLS = "id, full_name";
+
 const ADMIN_CANCEL_REASONS = [
   "Клиент отменил",
   "Клиент не пришёл",
@@ -74,6 +86,7 @@ const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
 const SLOT_PX_FULL = 88;
 const SLOT_PX_EMPTY = 28;
 const ALL_FILTER_VALUE = "all";
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function startOfWeek(d: Date) {
   const date = new Date(d);
@@ -102,18 +115,96 @@ function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
-function toLocalISO(d: Date) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+function nextFullHour() {
+  const d = new Date();
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() + 1);
+  return d;
+}
+
+/** Ячейка сетки «день + час». */
+function cellKey(day: Date, hour: number) {
+  return `${day.toDateString()}|${hour}`;
+}
+
+/** «Тренировка + начало» — так узнаём одно и то же занятие в разных выборках. */
+function entryKey(workoutId: string, startsAt: string) {
+  return `${workoutId}|${new Date(startsAt).toISOString()}`;
+}
+
+function trainerIdsOf(e: Entry) {
+  return e.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
+}
+
+/**
+ * Вместимость занятия: своя или по умолчанию из тренировки; 0 и пусто — без
+ * лимита. Одна на сетку и панель записей: панель раньше брала только свою и
+ * при вместимости из тренировки показывала «3» вместо «3 / 12».
+ */
+function entryCapacity(e: Entry) {
+  return (e.capacity ?? e.workout?.capacity) || null;
+}
+
+/** Копия занятия с новым началом: та же тренировка, длительность и тренеры. */
+function copyDraft(e: Entry, start: Date): EntryDraft {
+  const duration = new Date(e.ends_at).getTime() - new Date(e.starts_at).getTime();
+  return {
+    workout_id: e.workout_id,
+    starts_at: start.toISOString(),
+    ends_at: new Date(start.getTime() + duration).toISOString(),
+    trainerIds: trainerIdsOf(e),
+  };
+}
+
+/** Привязывает тренеров к занятиям; возвращает текст ошибки или null. */
+async function linkTrainers(links: { entry_id: string; trainer_id: string }[]) {
+  if (links.length === 0) return null;
+  const { error } = await supabase.from("schedule_entry_trainers").insert(links);
+  return error?.message ?? null;
+}
+
+type InsertResult =
+  | { ok: false; error: string }
+  | { ok: true; count: number; trainersError: string | null };
+
+/**
+ * Создаёт занятия вместе с привязками тренеров — общий путь для «Нового
+ * занятия», вставки скопированного и «Дублировать неделю». Ошибку привязки
+ * тренеров отдаём отдельно: занятия к этому моменту уже созданы, и повторная
+ * вставка дала бы дубли.
+ */
+async function insertEntries(studioId: string, drafts: EntryDraft[]): Promise<InsertResult> {
+  const { data, error } = await supabase
+    .from("schedule_entries")
+    .insert(
+      drafts.map((d) => ({
+        studio_id: studioId,
+        workout_id: d.workout_id,
+        starts_at: d.starts_at,
+        ends_at: d.ends_at,
+      })),
+    )
+    .select("id, workout_id, starts_at");
+  if (error || !data) return { ok: false, error: error?.message ?? "" };
+  // Тренеров сопоставляем по «тренировка + начало», а не по порядку строк:
+  // порядок строк в ответе на вставку база не гарантирует.
+  const trainersByKey = new Map(
+    drafts.map((d) => [entryKey(d.workout_id, d.starts_at), d.trainerIds]),
+  );
+  const links = data.flatMap((row: { id: string; workout_id: string; starts_at: string }) =>
+    (trainersByKey.get(entryKey(row.workout_id, row.starts_at)) ?? []).map((trainer_id) => ({
+      entry_id: row.id,
+      trainer_id,
+    })),
+  );
+  return { ok: true, count: data.length, trainersError: await linkTrainers(links) };
 }
 
 function SchedulePage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
+  const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [presetStart, setPresetStart] = useState<Date | null>(null);
@@ -124,116 +215,113 @@ function SchedulePage() {
   const [duplicateWeekOpen, setDuplicateWeekOpen] = useState(false);
   const [duplicatingWeek, setDuplicatingWeek] = useState(false);
 
+  // Справочники зависят только от студии, занятия — ещё и от недели: листание
+  // недель не перезапрашивает тренировки и тренеров.
+  const { data: workouts = [], isFetching: workoutsFetching } = useQuery({
+    queryKey: ["workouts", studioId, WORKOUT_COLS],
+    queryFn: () =>
+      unwrap<Workout[]>(
+        supabase.from("workouts").select(WORKOUT_COLS).eq("studio_id", studioId!).order("name"),
+      ),
+    enabled: !!studioId,
+    meta: { errorMessage: "Ошибка загрузки тренировок" },
+  });
+  const { data: trainers = [], isFetching: trainersFetching } = useQuery({
+    queryKey: ["trainers", studioId, TRAINER_COLS],
+    queryFn: () =>
+      unwrap<Trainer[]>(
+        supabase
+          .from("trainers")
+          .select(TRAINER_COLS)
+          .eq("studio_id", studioId!)
+          .order("full_name"),
+      ),
+    enabled: !!studioId,
+    meta: { errorMessage: "Ошибка загрузки тренеров" },
+  });
+  // Без placeholderData: пока грузится новая неделя, занятий нет вовсе, а не
+  // занятия прошлой — иначе «Дублировать неделю» скопировал бы чужую неделю.
+  // Ответ, пришедший после перелистывания, ложится в кэш своей недели.
+  const weekFrom = weekStart.toISOString();
+  const { data: entries = [], isFetching: entriesFetching } = useQuery({
+    queryKey: ["schedule_entries", studioId, weekFrom],
+    queryFn: () =>
+      unwrap<Entry[]>(
+        supabase
+          .from("schedule_entries")
+          .select(ENTRY_SELECT)
+          .eq("studio_id", studioId!)
+          .gte("starts_at", weekFrom)
+          .lt("starts_at", addDays(weekStart, 7).toISOString())
+          .order("starts_at"),
+      ),
+    enabled: !!studioId,
+    meta: { errorMessage: "Ошибка загрузки расписания" },
+  });
+  const loading = workoutsFetching || trainersFetching || entriesFetching;
+  const reloadEntries = () => queryClient.invalidateQueries({ queryKey: ["schedule_entries"] });
+
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
-  const weekEnd = addDays(weekStart, 7);
 
-  const fetchData = async () => {
-    if (!studioId) {
-      setEntries([]);
-      setWorkouts([]);
-      setTrainers([]);
-      return;
+  // Видимые занятия раскладываем по ячейкам один раз, а не сканируем весь
+  // список для каждой ячейки и каждого часа.
+  const grid = useMemo(() => {
+    const cells = new Map<string, Entry[]>();
+    const busyHours = new Set<number>();
+    for (const e of entries) {
+      if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) continue;
+      if (
+        filterTrainerId !== ALL_FILTER_VALUE &&
+        !e.schedule_entry_trainers?.some((x) => x.trainer_id === filterTrainerId)
+      )
+        continue;
+      const start = new Date(e.starts_at);
+      const key = cellKey(start, start.getHours());
+      cells.set(key, [...(cells.get(key) ?? []), e]);
+      busyHours.add(start.getHours());
     }
-    setLoading(true);
-    const [eRes, wRes, tRes] = await Promise.all([
-      supabase
-        .from("schedule_entries")
-        .select(
-          "*, workout:workouts(name, type, capacity), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))",
-        )
-        .eq("studio_id", studioId)
-        .gte("starts_at", weekStart.toISOString())
-        .lt("starts_at", weekEnd.toISOString())
-        .order("starts_at"),
-      supabase
-        .from("workouts")
-        .select("id, name, type, capacity")
-        .eq("studio_id", studioId)
-        .order("name"),
-      supabase
-        .from("trainers")
-        .select("id, full_name")
-        .eq("studio_id", studioId)
-        .order("full_name"),
-    ]);
-    setLoading(false);
-    if (eRes.error) {
-      toast.error("Ошибка загрузки расписания: " + eRes.error.message);
-      return;
-    }
-    if (wRes.error) {
-      toast.error("Ошибка загрузки тренировок: " + wRes.error.message);
-      return;
-    }
-    if (tRes.error) {
-      toast.error("Ошибка загрузки тренеров: " + tRes.error.message);
-      return;
-    }
-    setEntries((eRes.data as Entry[]) ?? []);
-    setWorkouts((wRes.data as Workout[]) ?? []);
-    setTrainers((tRes.data as Trainer[]) ?? []);
-  };
-
-  const refreshSignal = useRefreshSignal();
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, weekStart, refreshSignal]);
+    return { cells, busyHours };
+  }, [entries, filterType, filterTrainerId]);
 
   const openSlot = (day: Date, hour: number) => {
-    const d = new Date(day);
-    d.setHours(hour, 0, 0, 0);
+    const start = new Date(day);
+    start.setHours(hour, 0, 0, 0);
     if (copySource) {
-      pasteCopy(d);
+      pasteCopy(copySource, start);
       return;
     }
     setEditing(null);
-    setPresetStart(d);
+    setPresetStart(start);
     setDialogOpen(true);
   };
 
-  const pasteCopy = async (newStart: Date) => {
-    if (!copySource || !studioId || pasting) return;
-    const origStart = new Date(copySource.starts_at);
-    const origEnd = new Date(copySource.ends_at);
-    const durationMs = origEnd.getTime() - origStart.getTime();
-    const newEnd = new Date(newStart.getTime() + durationMs);
+  const startCopy = (e: Entry) => {
+    setCopySource(e);
+    toast.message("Выберите пустой слот, куда скопировать занятие");
+  };
+
+  const pasteCopy = async (source: Entry, start: Date) => {
+    if (!studioId || pasting) return;
     setPasting(true);
-    const { data, error } = await supabase
-      .from("schedule_entries")
-      .insert({
-        studio_id: studioId,
-        workout_id: copySource.workout_id,
-        starts_at: newStart.toISOString(),
-        ends_at: newEnd.toISOString(),
-      })
-      .select("id")
-      .single();
-    if (error || !data) {
-      setPasting(false);
-      toast.error("Ошибка копирования: " + (error?.message ?? ""));
-      return;
-    }
-    const trainerIds = copySource.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
-    if (trainerIds.length > 0) {
-      const { error: tErr } = await supabase
-        .from("schedule_entry_trainers")
-        .insert(trainerIds.map((tid) => ({ entry_id: data.id, trainer_id: tid })));
-      if (tErr) {
-        setPasting(false);
-        toast.error("Занятие создано, но тренеры не привязаны: " + tErr.message);
-        setCopySource(null);
-        fetchData();
+    try {
+      const res = await insertEntries(studioId, [copyDraft(source, start)]);
+      if (!res.ok) {
+        toast.error("Ошибка копирования: " + res.error);
         return;
       }
+      setCopySource(null);
+      if (res.trainersError) {
+        toast.error("Занятие создано, но тренеры не привязаны: " + res.trainersError);
+      } else {
+        toast.success("Занятие скопировано");
+      }
+      reloadEntries();
+    } finally {
+      setPasting(false);
     }
-    setPasting(false);
-    setCopySource(null);
-    toast.success("Занятие скопировано");
-    fetchData();
   };
 
   const duplicateWeek = async () => {
@@ -243,85 +331,49 @@ function SchedulePage() {
       setDuplicateWeekOpen(false);
       return;
     }
-    setDuplicatingWeek(true);
-    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     const nextWeekStart = addDays(weekStart, 7);
-    const nextWeekEnd = addDays(nextWeekStart, 7);
-    // Check existing entries on the target week to avoid duplicates
-    const { data: existing, error: exErr } = await supabase
-      .from("schedule_entries")
-      .select("workout_id, starts_at")
-      .eq("studio_id", studioId)
-      .gte("starts_at", nextWeekStart.toISOString())
-      .lt("starts_at", nextWeekEnd.toISOString());
-    if (exErr) {
-      setDuplicatingWeek(false);
-      toast.error("Ошибка проверки следующей недели: " + exErr.message);
-      return;
-    }
-    const existingKeys = new Set(
-      (existing ?? []).map((e) => `${e.workout_id}|${new Date(e.starts_at).toISOString()}`),
-    );
-
-    const rows = entries
-      .map((e) => {
-        const newStartMs = new Date(e.starts_at).getTime() + WEEK_MS;
-        const newEndMs = new Date(e.ends_at).getTime() + WEEK_MS;
-        const newStartIso = new Date(newStartMs).toISOString();
-        const key = `${e.workout_id}|${newStartIso}`;
-        if (existingKeys.has(key)) return null;
-        return {
-          studio_id: studioId,
-          workout_id: e.workout_id,
-          starts_at: newStartIso,
-          ends_at: new Date(newEndMs).toISOString(),
-          _trainer_ids: e.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [],
-        };
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
-
-    if (rows.length === 0) {
-      setDuplicatingWeek(false);
-      setDuplicateWeekOpen(false);
-      toast.info("Все занятия уже скопированы на следующую неделю");
-      return;
-    }
-
-    const insertRows = rows.map(({ _trainer_ids, ...rest }) => rest);
-    const { data: inserted, error: insErr } = await supabase
-      .from("schedule_entries")
-      .insert(insertRows)
-      .select("id, workout_id, starts_at");
-    if (insErr || !inserted) {
-      setDuplicatingWeek(false);
-      toast.error("Ошибка копирования недели: " + (insErr?.message ?? ""));
-      return;
-    }
-
-    // Map inserted rows back to trainer ids
-    const trainerLinks: { entry_id: string; trainer_id: string }[] = [];
-    for (const ins of inserted) {
-      const key = `${ins.workout_id}|${new Date(ins.starts_at).toISOString()}`;
-      const src = rows.find((r) => `${r.workout_id}|${r.starts_at}` === key);
-      if (!src) continue;
-      for (const tid of src._trainer_ids) {
-        trainerLinks.push({ entry_id: ins.id, trainer_id: tid });
-      }
-    }
-    if (trainerLinks.length > 0) {
-      const { error: tErr } = await supabase.from("schedule_entry_trainers").insert(trainerLinks);
-      if (tErr) {
-        setDuplicatingWeek(false);
-        setDuplicateWeekOpen(false);
-        toast.error("Занятия скопированы, но тренеры не привязаны: " + tErr.message);
-        setWeekStart(nextWeekStart);
+    setDuplicatingWeek(true);
+    try {
+      // Уже стоящие на следующей неделе занятия (та же тренировка и время) не дублируем.
+      const { data: existing, error: exErr } = await supabase
+        .from("schedule_entries")
+        .select("workout_id, starts_at")
+        .eq("studio_id", studioId)
+        .gte("starts_at", nextWeekStart.toISOString())
+        .lt("starts_at", addDays(nextWeekStart, 7).toISOString());
+      if (exErr) {
+        toast.error("Ошибка проверки следующей недели: " + exErr.message);
         return;
       }
+      const existingKeys = new Set(
+        (existing ?? []).map((e: { workout_id: string; starts_at: string }) =>
+          entryKey(e.workout_id, e.starts_at),
+        ),
+      );
+      const drafts = entries
+        .map((e) => copyDraft(e, new Date(new Date(e.starts_at).getTime() + WEEK_MS)))
+        .filter((d) => !existingKeys.has(entryKey(d.workout_id, d.starts_at)));
+      if (drafts.length === 0) {
+        setDuplicateWeekOpen(false);
+        toast.info("Все занятия уже скопированы на следующую неделю");
+        return;
+      }
+
+      const res = await insertEntries(studioId, drafts);
+      if (!res.ok) {
+        toast.error("Ошибка копирования недели: " + res.error);
+        return;
+      }
+      setDuplicateWeekOpen(false);
+      if (res.trainersError) {
+        toast.error("Занятия скопированы, но тренеры не привязаны: " + res.trainersError);
+      } else {
+        toast.success(`Скопировано занятий: ${res.count}`);
+      }
+      setWeekStart(nextWeekStart);
+    } finally {
+      setDuplicatingWeek(false);
     }
-    setDuplicatingWeek(false);
-    setDuplicateWeekOpen(false);
-    toast.success(`Скопировано занятий: ${inserted.length}`);
-    setWeekStart(nextWeekStart);
   };
 
   const openAdd = () => {
@@ -340,7 +392,8 @@ function SchedulePage() {
     if (
       !(await confirm({
         title: "Удалить занятие?",
-        description: "Занятие пропадёт из расписания, записи на него будут отменены.",
+        // Записи (schedule_bookings) удаляются каскадом вместе с занятием.
+        description: "Занятие и записи клиентов на него будут удалены.",
       }))
     )
       return;
@@ -350,7 +403,7 @@ function SchedulePage() {
       return;
     }
     toast.success("Занятие удалено");
-    fetchData();
+    reloadEntries();
   };
 
   const weekLabel = `${fmtDate(weekStart)} — ${fmtDate(addDays(weekStart, 6))}`;
@@ -359,19 +412,17 @@ function SchedulePage() {
   return (
     <AdminShell
       title="Расписание"
-      description="Недельное расписание занятий"
       actions={
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="default"
             onClick={() => setDuplicateWeekOpen(true)}
             disabled={!studioId || entries.length === 0 || loading}
           >
             <Copy className="mr-1 h-4 w-4" />
             Дублировать неделю
           </Button>
-          <Button size="default" onClick={openAdd} disabled={!studioId || workouts.length === 0}>
+          <Button onClick={openAdd} disabled={!studioId || workouts.length === 0}>
             <Plus className="mr-1 h-4 w-4" />
             Добавить занятие
           </Button>
@@ -379,283 +430,181 @@ function SchedulePage() {
       }
     >
       <div className="space-y-3">
-        {!studioId ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Сначала выберите студию в шапке.
-          </div>
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setWeekStart(addDays(weekStart, -7))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setWeekStart(startOfWeek(new Date()))}
-                  disabled={isCurrentWeek}
-                >
-                  Текущая неделя
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setWeekStart(addDays(weekStart, 7))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <span className="ml-1 text-sm font-medium">{weekLabel}</span>
-                {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              </div>
-
-              <div className="ml-auto flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Тип:</span>
-                  <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Все типы" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
-                      <SelectItem value="strength">Силовая</SelectItem>
-                      <SelectItem value="cardio">Кардио</SelectItem>
-                      <SelectItem value="hybrid">Гибрид</SelectItem>
-                      <SelectItem value="recovery">Восстановление</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Тренер:</span>
-                  <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Все тренеры" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
-                      {trainers.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {(filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setFilterType(ALL_FILTER_VALUE);
-                      setFilterTrainerId(ALL_FILTER_VALUE);
-                    }}
-                  >
-                    Сбросить
-                  </Button>
-                )}
-              </div>
+        <RequireStudio studioId={studioId}>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setWeekStart(addDays(weekStart, -7))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setWeekStart(startOfWeek(new Date()))}
+                disabled={isCurrentWeek}
+              >
+                Текущая неделя
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setWeekStart(addDays(weekStart, 7))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <span className="ml-1 text-sm font-medium">{weekLabel}</span>
+              {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
 
-            {copySource && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
-                <div className="flex items-center gap-2">
-                  {pasting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                  <span>
-                    Копирование «{copySource.workout?.name ?? "Занятие"}» — кликните на свободный
-                    слот, чтобы вставить.
-                  </span>
-                </div>
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Тип:</span>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Все типы" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
+                    {DAY_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Тренер:</span>
+                <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Все тренеры" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
+                    {trainers.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE) && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7"
-                  onClick={() => setCopySource(null)}
-                  disabled={pasting}
+                  onClick={() => {
+                    setFilterType(ALL_FILTER_VALUE);
+                    setFilterTrainerId(ALL_FILTER_VALUE);
+                  }}
                 >
-                  <X className="mr-1 h-3 w-3" /> Отмена
+                  Сбросить
                 </Button>
-              </div>
-            )}
-
-            <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border bg-background">
-              <div
-                className="grid min-w-[1200px]"
-                style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
-              >
-                <div className="sticky top-0 z-20 border-b border-r bg-background" />
-                {weekDays.map((d, i) => {
-                  const today = d.toDateString() === new Date().toDateString();
-                  return (
-                    <div
-                      key={i}
-                      className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
-                        today
-                          ? "border-b-4 border-b-yellow-400 font-semibold text-primary"
-                          : "border-b"
-                      }`}
-                    >
-                      <div className="uppercase tracking-wide text-muted-foreground">
-                        {DAY_NAMES[i]}
-                      </div>
-                      <div>
-                        {d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {HOURS.map((hour) => {
-                  const hasAnyForHour = weekDays.some((day) =>
-                    entries.some((e) => {
-                      const s = new Date(e.starts_at);
-                      const matchesDayHour =
-                        s.toDateString() === day.toDateString() && s.getHours() === hour;
-                      if (!matchesDayHour) return false;
-                      if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType)
-                        return false;
-                      if (filterTrainerId !== ALL_FILTER_VALUE) {
-                        const hasTrainer = e.schedule_entry_trainers?.some(
-                          (x) => x.trainer_id === filterTrainerId,
-                        );
-                        if (!hasTrainer) return false;
-                      }
-                      return true;
-                    }),
-                  );
-                  const rowHeight = hasAnyForHour ? SLOT_PX_FULL : SLOT_PX_EMPTY;
-                  return (
-                    <div key={`row-${hour}`} className="contents">
-                      <div
-                        className="border-b border-r px-2 text-right text-xs text-muted-foreground"
-                        style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
-                      >
-                        {pad(hour)}:00
-                      </div>
-                      {weekDays.map((day, di) => {
-                        const slotEntries = entries.filter((e) => {
-                          const s = new Date(e.starts_at);
-                          const matchesDayHour =
-                            s.toDateString() === day.toDateString() && s.getHours() === hour;
-                          if (!matchesDayHour) return false;
-                          if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType)
-                            return false;
-                          if (filterTrainerId !== ALL_FILTER_VALUE) {
-                            const hasTrainer = e.schedule_entry_trainers?.some(
-                              (x) => x.trainer_id === filterTrainerId,
-                            );
-                            if (!hasTrainer) return false;
-                          }
-                          return true;
-                        });
-                        return (
-                          <button
-                            key={`${hour}-${di}`}
-                            type="button"
-                            onClick={() => openSlot(day, hour)}
-                            className="relative border-b border-r text-left transition hover:bg-accent/40"
-                            style={{ height: rowHeight }}
-                          >
-                            {slotEntries.map((e) => {
-                              const names =
-                                e.schedule_entry_trainers
-                                  ?.map((x) => x.trainer?.full_name)
-                                  .filter(Boolean)
-                                  .join(", ") ?? "";
-                              const color = dayTypeColor(e.workout?.type);
-                              const colorClasses = color
-                                ? `${color.bg} ${color.text}`
-                                : "bg-primary text-primary-foreground";
-                              return (
-                                <div
-                                  key={e.id}
-                                  onClick={(ev) => {
-                                    ev.stopPropagation();
-                                    openEdit(e);
-                                  }}
-                                  className={`absolute inset-1 cursor-pointer overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight hover:opacity-90 flex flex-col ${colorClasses}`}
-                                >
-                                  <div className="flex items-start justify-between gap-1">
-                                    <span className="whitespace-nowrap opacity-80">
-                                      {fmtTime(e.starts_at)}–{fmtTime(e.ends_at)}
-                                    </span>
-                                    {(() => {
-                                      const cap = e.capacity ?? e.workout?.capacity ?? 0;
-                                      if (!cap) return null;
-                                      const left = Math.max(0, cap - e.booked_count);
-                                      const waiting = e.waitlist_count ?? 0;
-                                      const tone =
-                                        left === 0
-                                          ? "bg-red-500/90 text-white"
-                                          : left <= 5
-                                            ? "bg-amber-500/90 text-white"
-                                            : "bg-black/25 text-white";
-                                      return (
-                                        <div className="flex shrink-0 items-center gap-1">
-                                          <span
-                                            className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}
-                                          >
-                                            {e.booked_count}/{cap}
-                                          </span>
-                                          {waiting > 0 && (
-                                            <span
-                                              title="Люди в листе ожидания — записались, когда мест уже не было"
-                                              className="rounded bg-blue-500/90 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-white"
-                                            >
-                                              +{waiting}
-                                            </span>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-                                  </div>
-                                  <div className="font-medium line-clamp-2">
-                                    {e.workout?.name ?? "Занятие"}
-                                  </div>
-                                  {names && <div className="truncate opacity-80">{names}</div>}
-                                  <div className="mt-auto flex justify-end">
-                                    <button
-                                      type="button"
-                                      aria-label="Копировать занятие"
-                                      title="Копировать занятие"
-                                      onClick={(ev) => {
-                                        ev.stopPropagation();
-                                        setCopySource(e);
-                                        toast.message(
-                                          "Выберите пустой слот, куда скопировать занятие",
-                                        );
-                                      }}
-                                      className="rounded bg-black/25 p-0.5 text-white hover:bg-black/40"
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
+              )}
             </div>
+          </div>
 
-            {workouts.length === 0 && (
-              <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                Чтобы добавить занятие, сначала создайте тренировки в разделе «Тренировки».
+          {copySource && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
+              <div className="flex items-center gap-2">
+                {pasting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                <span>
+                  Копирование «{copySource.workout?.name ?? "Занятие"}» — кликните на свободный
+                  слот, чтобы вставить.
+                </span>
               </div>
-            )}
-          </>
-        )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => setCopySource(null)}
+                disabled={pasting}
+              >
+                <X className="mr-1 h-3 w-3" /> Отмена
+              </Button>
+            </div>
+          )}
+
+          <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border bg-background">
+            <div
+              className="grid min-w-[1200px]"
+              style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
+            >
+              <div className="sticky top-0 z-20 border-b border-r bg-background" />
+              {weekDays.map((d, i) => {
+                const today = d.toDateString() === new Date().toDateString();
+                return (
+                  <div
+                    key={i}
+                    className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
+                      today
+                        ? "border-b-4 border-b-yellow-400 font-semibold text-primary"
+                        : "border-b"
+                    }`}
+                  >
+                    <div className="uppercase tracking-wide text-muted-foreground">
+                      {DAY_NAMES[i]}
+                    </div>
+                    <div>{d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
+                  </div>
+                );
+              })}
+
+              {HOURS.map((hour) => {
+                const rowHeight = grid.busyHours.has(hour) ? SLOT_PX_FULL : SLOT_PX_EMPTY;
+                return (
+                  <div key={`row-${hour}`} className="contents">
+                    <div
+                      className="border-b border-r px-2 text-right text-xs text-muted-foreground"
+                      style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
+                    >
+                      {pad(hour)}:00
+                    </div>
+                    {weekDays.map((day, di) => (
+                      <div
+                        key={`${hour}-${di}`}
+                        className="relative border-b border-r"
+                        style={{ height: rowHeight }}
+                      >
+                        {/*
+                          Кнопка слота лежит под карточками, а не оборачивает их:
+                          кнопка внутри кнопки — невалидный HTML и ломает доступность.
+                        */}
+                        <button
+                          type="button"
+                          aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
+                          onClick={() => openSlot(day, hour)}
+                          className="absolute inset-0 transition hover:bg-accent/40"
+                        />
+                        {grid.cells.get(cellKey(day, hour))?.map((e) => (
+                          <EntryCard
+                            key={e.id}
+                            entry={e}
+                            onOpen={() => openEdit(e)}
+                            onCopy={() => startCopy(e)}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {workouts.length === 0 && (
+            <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+              Чтобы добавить занятие, сначала создайте тренировки в разделе «Тренировки».
+            </div>
+          )}
+        </RequireStudio>
       </div>
 
       <EntryDialog
@@ -666,8 +615,8 @@ function SchedulePage() {
         trainers={trainers}
         entry={editing}
         presetStart={presetStart}
-        onSaved={fetchData}
-        onDelete={editing ? () => handleDelete(editing) : undefined}
+        onSaved={reloadEntries}
+        onDelete={handleDelete}
       />
 
       <AlertDialog
@@ -686,7 +635,15 @@ function SchedulePage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={duplicatingWeek}>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={duplicateWeek} disabled={duplicatingWeek}>
+            <AlertDialogAction
+              onClick={(ev) => {
+                // Окно закрывает сам duplicateWeek по итогу: на время копирования
+                // остаётся спиннер, при ошибке можно повторить.
+                ev.preventDefault();
+                duplicateWeek();
+              }}
+              disabled={duplicatingWeek}
+            >
               {duplicatingWeek && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
               Дублировать
             </AlertDialogAction>
@@ -698,17 +655,84 @@ function SchedulePage() {
   );
 }
 
-function EntryDialog({
-  open,
-  onOpenChange,
-  studioId,
-  workouts,
-  trainers,
+/** Бейдж «записано/мест» и очередь листа ожидания на карточке занятия. */
+function CapacityBadge({ entry }: { entry: Entry }) {
+  const cap = entryCapacity(entry);
+  if (!cap) return null;
+  const left = Math.max(0, cap - entry.booked_count);
+  const waiting = entry.waitlist_count ?? 0;
+  const tone =
+    left === 0
+      ? "bg-red-500/90 text-white"
+      : left <= 5
+        ? "bg-amber-500/90 text-white"
+        : "bg-black/25 text-white";
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}>
+        {entry.booked_count}/{cap}
+      </span>
+      {waiting > 0 && (
+        <span
+          title="Люди в листе ожидания — записались, когда мест уже не было"
+          className="rounded bg-blue-500/90 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-white"
+        >
+          +{waiting}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function EntryCard({
   entry,
-  presetStart,
-  onSaved,
-  onDelete,
+  onOpen,
+  onCopy,
 }: {
+  entry: Entry;
+  onOpen: () => void;
+  onCopy: () => void;
+}) {
+  const names =
+    entry.schedule_entry_trainers
+      ?.map((x) => x.trainer?.full_name)
+      .filter(Boolean)
+      .join(", ") ?? "";
+  const color = dayTypeColor(entry.workout?.type);
+  const colorClasses = color ? `${color.bg} ${color.text}` : "bg-primary text-primary-foreground";
+  return (
+    <div
+      className={`absolute inset-1 overflow-hidden rounded-md text-[11px] leading-tight ${colorClasses}`}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex h-full w-full cursor-pointer flex-col px-2 py-1 text-left hover:opacity-90"
+      >
+        <span className="flex w-full items-start justify-between gap-1">
+          <span className="whitespace-nowrap opacity-80">
+            {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
+          </span>
+          <CapacityBadge entry={entry} />
+        </span>
+        <span className="font-medium line-clamp-2">{entry.workout?.name ?? "Занятие"}</span>
+        {names && <span className="block truncate opacity-80">{names}</span>}
+      </button>
+      {/* Соседняя кнопка поверх карточки, а не вложенная в неё — там же, где была. */}
+      <button
+        type="button"
+        aria-label="Копировать занятие"
+        title="Копировать занятие"
+        onClick={onCopy}
+        className="absolute bottom-1 right-2 rounded bg-black/25 p-0.5 text-white hover:bg-black/40"
+      >
+        <Copy className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+type EntryDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
@@ -717,41 +741,64 @@ function EntryDialog({
   entry: Entry | null;
   presetStart: Date | null;
   onSaved: () => void;
-  onDelete?: () => void;
-}) {
-  const [workoutId, setWorkoutId] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [trainerIds, setTrainerIds] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+  onDelete: (entry: Entry) => void;
+};
 
-  useEffect(() => {
-    if (!open) return;
-    if (entry) {
-      setWorkoutId(entry.workout_id);
-      setStartsAt(toLocalISO(new Date(entry.starts_at)).slice(0, 16));
-      setEndsAt(toLocalISO(new Date(entry.ends_at)).slice(0, 16));
-      setTrainerIds(entry.schedule_entry_trainers?.map((x) => x.trainer_id) ?? []);
-    } else {
-      setWorkoutId(workouts[0]?.id ?? "");
-      const start =
-        presetStart ??
-        (() => {
-          const d = new Date();
-          d.setMinutes(0, 0, 0);
-          d.setHours(d.getHours() + 1);
-          return d;
-        })();
-      const end = new Date(start);
-      end.setHours(end.getHours() + 1);
-      setStartsAt(toLocalISO(start).slice(0, 16));
-      setEndsAt(toLocalISO(end).slice(0, 16));
-      setTrainerIds([]);
-    }
-  }, [open, entry, presetStart, workouts]);
+function EntryDialog({ open, ...formProps }: EntryDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={formProps.onOpenChange}>
+      <DialogContent className={formProps.entry ? "max-w-4xl" : "max-w-md"}>
+        {/*
+          Форма монтируется при каждом открытии и сбрасывать её не нужно. Раньше
+          поля сбрасывал эффект по списку тренировок, и любая перезагрузка
+          («Посетил» в панели записей, «Обновить» в шапке) затирала правки.
+        */}
+        <EntryForm key={formProps.entry?.id ?? "new"} {...formProps} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EntryForm({
+  onOpenChange,
+  studioId,
+  workouts,
+  trainers,
+  entry,
+  presetStart,
+  onSaved,
+  onDelete,
+}: Omit<EntryDialogProps, "open">) {
+  const [workoutId, setWorkoutId] = useState(entry?.workout_id ?? workouts[0]?.id ?? "");
+  const [startsAt, setStartsAt] = useState(() =>
+    toDateTimeLocalValue(entry ? new Date(entry.starts_at) : (presetStart ?? nextFullHour())),
+  );
+  const [endsAt, setEndsAt] = useState(() => {
+    if (entry) return toDateTimeLocalValue(new Date(entry.ends_at));
+    const end = new Date(startsAt);
+    end.setHours(end.getHours() + 1);
+    return toDateTimeLocalValue(end);
+  });
+  const [trainerIds, setTrainerIds] = useState<string[]>(() => (entry ? trainerIdsOf(entry) : []));
+  const [saving, setSaving] = useState(false);
 
   const toggleTrainer = (id: string) => {
     setTrainerIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  /** Правка занятия: строка и полный пересбор тренеров. Возвращает текст ошибки. */
+  const updateEntry = async (id: string, row: Record<string, string>) => {
+    const { error } = await supabase.from("schedule_entries").update(row).eq("id", id);
+    if (error) return "Ошибка сохранения: " + error.message;
+    const { error: delErr } = await supabase
+      .from("schedule_entry_trainers")
+      .delete()
+      .eq("entry_id", id);
+    if (delErr) return "Ошибка обновления тренеров: " + delErr.message;
+    const linkErr = await linkTrainers(
+      trainerIds.map((trainer_id) => ({ entry_id: id, trainer_id })),
+    );
+    return linkErr ? "Ошибка добавления тренеров: " + linkErr : null;
   };
 
   const handleSave = async () => {
@@ -766,168 +813,140 @@ function EntryDialog({
       toast.error("Время окончания должно быть позже начала");
       return;
     }
-    setSaving(true);
-    const payload = {
-      studio_id: studioId,
+    const row = {
       workout_id: workoutId,
       starts_at: startDate.toISOString(),
       ends_at: endDate.toISOString(),
     };
-    let entryId = entry?.id;
-    if (entry) {
-      const { error } = await supabase.from("schedule_entries").update(payload).eq("id", entry.id);
-      if (error) {
-        setSaving(false);
-        toast.error("Ошибка сохранения: " + error.message);
-        return;
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("schedule_entries")
-        .insert(payload)
-        .select("id")
-        .single();
-      if (error || !data) {
-        setSaving(false);
-        toast.error("Ошибка сохранения: " + (error?.message ?? ""));
-        return;
-      }
-      entryId = data.id;
-    }
-
-    // Sync trainers
-    if (entryId) {
-      const { error: delErr } = await supabase
-        .from("schedule_entry_trainers")
-        .delete()
-        .eq("entry_id", entryId);
-      if (delErr) {
-        setSaving(false);
-        toast.error("Ошибка обновления тренеров: " + delErr.message);
-        return;
-      }
-      if (trainerIds.length > 0) {
-        const { error: insErr } = await supabase
-          .from("schedule_entry_trainers")
-          .insert(trainerIds.map((tid) => ({ entry_id: entryId!, trainer_id: tid })));
-        if (insErr) {
-          setSaving(false);
-          toast.error("Ошибка добавления тренеров: " + insErr.message);
+    setSaving(true);
+    try {
+      if (entry) {
+        const failure = await updateEntry(entry.id, { studio_id: studioId, ...row });
+        if (failure) {
+          toast.error(failure);
           return;
         }
+        toast.success("Занятие обновлено");
+      } else {
+        const res = await insertEntries(studioId, [{ ...row, trainerIds }]);
+        if (!res.ok) {
+          toast.error("Ошибка сохранения: " + res.error);
+          return;
+        }
+        // Занятие уже создано: окно закрываем и при ошибке тренеров, иначе
+        // повторное «Сохранить» создало бы второе такое же.
+        if (res.trainersError) {
+          toast.error("Занятие добавлено, но тренеры не привязаны: " + res.trainersError);
+        } else {
+          toast.success("Занятие добавлено");
+        }
       }
+      onOpenChange(false);
+      onSaved();
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
-    toast.success(entry ? "Занятие обновлено" : "Занятие добавлено");
-    onOpenChange(false);
-    onSaved();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={entry ? "max-w-4xl" : "max-w-md"}>
-        <DialogHeader>
-          <DialogTitle>{entry ? "Редактировать занятие" : "Новое занятие"}</DialogTitle>
-          <DialogDescription>
-            {entry
-              ? "Слева — настройки занятия, справа — записанные участники."
-              : "Выберите тренировку, время и тренеров."}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <div className={entry ? "grid gap-6 md:grid-cols-2" : ""}>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Тренировка</Label>
-                <Select value={workoutId} onValueChange={setWorkoutId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите тренировку" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workouts.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>{entry ? "Редактировать занятие" : "Новое занятие"}</DialogTitle>
+        <DialogDescription>
+          {entry
+            ? "Слева — настройки занятия, справа — записанные участники."
+            : "Выберите тренировку, время и тренеров."}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className={entry ? "grid gap-6 md:grid-cols-2" : ""}>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Тренировка</Label>
+              <Select value={workoutId} onValueChange={setWorkoutId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите тренировку" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workouts.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Начало</Label>
-                  <Input
-                    type="datetime-local"
-                    value={startsAt}
-                    onChange={(e) => setStartsAt(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Окончание</Label>
-                  <Input
-                    type="datetime-local"
-                    value={endsAt}
-                    onChange={(e) => setEndsAt(e.target.value)}
-                  />
-                </div>
-              </div>
-
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Тренеры</Label>
-                {trainers.length === 0 ? (
-                  <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                    Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
-                  </div>
-                ) : (
-                  <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
-                    {trainers.map((t) => {
-                      const checked = trainerIds.includes(t.id);
-                      return (
-                        <label
-                          key={t.id}
-                          className="flex cursor-pointer items-center gap-2 text-sm"
-                        >
-                          <Checkbox checked={checked} onCheckedChange={() => toggleTrainer(t.id)} />
-                          <span>{t.full_name}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
+                <Label>Начало</Label>
+                <Input
+                  type="datetime-local"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Окончание</Label>
+                <Input
+                  type="datetime-local"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                />
               </div>
             </div>
 
-            {entry && <BookingsPanel entry={entry} open={open} onChanged={onSaved} />}
+            <div className="space-y-1.5">
+              <Label>Тренеры</Label>
+              {trainers.length === 0 ? (
+                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
+                </div>
+              ) : (
+                <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
+                  {trainers.map((t) => (
+                    <label key={t.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={trainerIds.includes(t.id)}
+                        onCheckedChange={() => toggleTrainer(t.id)}
+                      />
+                      <span>{t.full_name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </DialogBody>
-        <DialogFooter className="flex sm:justify-between">
-          <div>
-            {entry && onDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onOpenChange(false);
-                  onDelete();
-                }}
-              >
-                <Trash2 className="mr-1 h-4 w-4" /> Удалить
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Отмена
+
+          {entry && <BookingsPanel entry={entry} onChanged={onSaved} />}
+        </div>
+      </DialogBody>
+      <DialogFooter className="flex sm:justify-between">
+        <div>
+          {entry && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onOpenChange(false);
+                onDelete(entry);
+              }}
+            >
+              <Trash2 className="mr-1 h-4 w-4" /> Удалить
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-              Сохранить
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Отмена
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+            Сохранить
+          </Button>
+        </div>
+      </DialogFooter>
+    </>
   );
 }
 
@@ -956,134 +975,125 @@ type ActiveMembershipRow = {
   membership: { name: string | null } | null;
 };
 
-function BookingsPanel({
-  entry,
-  open,
-  onChanged,
-}: {
-  entry: Entry;
-  open: boolean;
-  onChanged: () => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [bookings, setBookings] = useState<BookingRow[]>([]);
-  const [clients, setClients] = useState<Record<string, ClientRow>>({});
-  const [memberships, setMemberships] = useState<Record<string, ActiveMembershipRow>>({});
-  const [confirmBooking, setConfirmBooking] = useState<BookingRow | null>(null);
-  const [cancelling, setCancelling] = useState(false);
-  const [cancelReason, setCancelReason] = useState<string>("");
-  const [attendingId, setAttendingId] = useState<string | null>(null);
+type BookingsData = {
+  bookings: BookingRow[];
+  clientsByUser: Map<string, ClientRow>;
+  membershipsByClient: Map<string, ActiveMembershipRow>;
+};
 
-  const load = async () => {
-    setLoading(true);
-    const { data: bData, error: bErr } = await supabase
+/** Записи на занятие + анкеты клиентов студии + их активные абонементы. */
+async function fetchBookings(entry: Entry): Promise<BookingsData> {
+  const bookings = await unwrap<BookingRow[]>(
+    supabase
       .from("schedule_bookings")
       .select("id, user_id, status, created_at")
       .eq("entry_id", entry.id)
       .in("status", ["booked", "attended", "waitlist"])
-      .order("created_at");
-    if (bErr) {
-      setLoading(false);
-      toast.error("Ошибка загрузки записей: " + bErr.message);
-      return;
-    }
-    const rows = (bData as BookingRow[]) ?? [];
-    setBookings(rows);
-    const userIds = Array.from(new Set(rows.map((r) => r.user_id))).filter(Boolean);
-    if (userIds.length === 0) {
-      setClients({});
-      setMemberships({});
-      setLoading(false);
-      return;
-    }
-    const { data: cData } = await supabase
-      .from("clients")
-      .select("id, user_id, first_name, last_name, full_name, phone, email")
-      .eq("studio_id", entry.studio_id)
-      .in("user_id", userIds);
-    const cMap: Record<string, ClientRow> = {};
-    const clientIds: string[] = [];
-    ((cData as ClientRow[]) ?? []).forEach((c) => {
-      if (c.user_id) cMap[c.user_id] = c;
-      clientIds.push(c.id);
-    });
-    setClients(cMap);
-    if (clientIds.length > 0) {
-      const { data: mData } = await supabase
-        .from("client_memberships")
-        .select("client_id, started_at, ends_at, visits_left, membership:memberships(name)")
-        .eq("status", "active")
-        .in("client_id", clientIds);
-      const mMap: Record<string, ActiveMembershipRow> = {};
-      ((mData as unknown as ActiveMembershipRow[]) ?? []).forEach((m) => {
-        mMap[m.client_id] = m;
-      });
-      setMemberships(mMap);
-    } else {
-      setMemberships({});
-    }
-    setLoading(false);
+      .order("created_at"),
+  );
+  const clientsByUser = new Map<string, ClientRow>();
+  const membershipsByClient = new Map<string, ActiveMembershipRow>();
+  const userIds = Array.from(new Set(bookings.map((r) => r.user_id))).filter(Boolean);
+  if (userIds.length === 0) return { bookings, clientsByUser, membershipsByClient };
+
+  // Анкеты и абонементы — дополнение: если они не загрузились, записи всё
+  // равно показываем (с «Пользователь без анкеты»), а не ошибку на всю панель.
+  const { data: cData } = await supabase
+    .from("clients")
+    .select("id, user_id, first_name, last_name, full_name, phone, email")
+    .eq("studio_id", entry.studio_id)
+    .in("user_id", userIds);
+  const clients: ClientRow[] = cData ?? [];
+  for (const c of clients) if (c.user_id) clientsByUser.set(c.user_id, c);
+  if (clients.length === 0) return { bookings, clientsByUser, membershipsByClient };
+
+  const { data: mData } = await supabase
+    .from("client_memberships")
+    .select("client_id, started_at, ends_at, visits_left, membership:memberships(name)")
+    .eq("status", "active")
+    .in(
+      "client_id",
+      clients.map((c) => c.id),
+    );
+  // membership — связь «многие к одному», но разбор select без схемы базы
+  // считает любую связь массивом.
+  const memberships = (mData ?? []) as unknown as ActiveMembershipRow[];
+  for (const m of memberships) membershipsByClient.set(m.client_id, m);
+  return { bookings, clientsByUser, membershipsByClient };
+}
+
+/**
+ * RPC записей отвечают { ok, reason }: ok=false — штатный отказ базы (запись
+ * уже отменена и т. п.), а не ошибка запроса. Тост об ошибке показываем здесь;
+ * true — успех.
+ */
+async function bookingRpc(
+  fn: "mark_booking_attended" | "cancel_schedule_booking_admin",
+  args: Record<string, string | null>,
+  messages: { error: string; failed: string },
+) {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) {
+    toast.error(`${messages.error}: ${error.message}`);
+    return false;
+  }
+  const result = data as { ok?: boolean; reason?: string } | null;
+  if (!result?.ok) {
+    toast.error(`${messages.failed}: ${result?.reason ?? "неизвестно"}`);
+    return false;
+  }
+  return true;
+}
+
+function BookingClientName({ client }: { client: ClientRow | undefined }) {
+  if (!client) return <span className="font-medium">Пользователь без анкеты</span>;
+  return <ClientNameLink clientId={client.id}>{clientName(client)}</ClientNameLink>;
+}
+
+function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => void }) {
+  const queryClient = useQueryClient();
+  const [attendingId, setAttendingId] = useState<string | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<BookingRow | null>(null);
+
+  const queryKey = ["schedule_bookings", entry.id];
+  const { data, isLoading: loading } = useQuery({
+    queryKey,
+    queryFn: () => fetchBookings(entry),
+    meta: { errorMessage: "Ошибка загрузки записей" },
+  });
+  const bookings = data?.bookings ?? [];
+  const reload = () => {
+    queryClient.invalidateQueries({ queryKey });
+    onChanged();
   };
 
-  useEffect(() => {
-    if (!open) return;
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, entry.id]);
-
-  const handleCancel = async () => {
-    if (!confirmBooking) return;
-    setCancelling(true);
-    const { data, error } = await supabase.rpc("cancel_schedule_booking_admin", {
-      p_booking_id: confirmBooking.id,
-      p_reason: cancelReason || null,
-    });
-    setCancelling(false);
-    if (error) {
-      toast.error("Ошибка отмены: " + error.message);
-      return;
-    }
-    const result = data as { ok?: boolean; reason?: string } | null;
-    if (!result?.ok) {
-      toast.error("Не удалось отписать: " + (result?.reason ?? "неизвестно"));
-      return;
-    }
-    toast.success("Запись отклонена");
-    setConfirmBooking(null);
-    setCancelReason("");
-    await load();
-    onChanged();
+  const askCancel = (b: BookingRow) => {
+    setCancelTarget(b);
+    setCancelOpen(true);
   };
 
   const handleAttend = async (b: BookingRow) => {
     setAttendingId(b.id);
-    const { data, error } = await supabase.rpc("mark_booking_attended", {
-      p_booking_id: b.id,
-    });
-    setAttendingId(null);
-    if (error) {
-      toast.error("Ошибка: " + error.message);
-      return;
+    try {
+      const ok = await bookingRpc(
+        "mark_booking_attended",
+        { p_booking_id: b.id },
+        { error: "Ошибка", failed: "Не удалось отметить" },
+      );
+      if (!ok) return;
+      toast.success("Посещение зафиксировано");
+      reload();
+    } finally {
+      setAttendingId(null);
     }
-    const result = data as { ok?: boolean; reason?: string } | null;
-    if (!result?.ok) {
-      toast.error("Не удалось отметить: " + (result?.reason ?? "неизвестно"));
-      return;
-    }
-    toast.success("Посещение зафиксировано");
-    await load();
-    onChanged();
   };
 
   // Лист ожидания держим отдельно от записанных: он не занимает мест и не
   // должен путаться со счётчиком заполненности.
   const booked = bookings.filter((b) => b.status !== "waitlist");
   const waitlisted = bookings.filter((b) => b.status === "waitlist");
-
-  const fmtMembershipDates = (m: ActiveMembershipRow) => {
-    const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("ru-RU") : "—");
-    return `${fmt(m.started_at)} – ${m.ends_at ? fmt(m.ends_at) : "∞"}`;
-  };
+  const capacity = entryCapacity(entry);
 
   return (
     <div className="space-y-2">
@@ -1091,7 +1101,7 @@ function BookingsPanel({
         <Label>Записанные участники</Label>
         <span className="text-xs text-muted-foreground">
           {booked.length}
-          {entry.capacity != null ? ` / ${entry.capacity}` : ""}
+          {capacity != null ? ` / ${capacity}` : ""}
           {waitlisted.length > 0 && (
             <span className="ml-2 text-blue-600">+{waitlisted.length} в очереди</span>
           )}
@@ -1109,20 +1119,13 @@ function BookingsPanel({
       ) : (
         <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
           {booked.map((b) => {
-            const c = clients[b.user_id];
-            const m = c ? memberships[c.id] : undefined;
-            const name = c
-              ? [c.last_name, c.first_name].filter(Boolean).join(" ") || c.full_name
-              : "Пользователь без анкеты";
+            const c = data?.clientsByUser.get(b.user_id);
+            const m = c ? data?.membershipsByClient.get(c.id) : undefined;
             return (
               <div key={b.id} className="rounded-md border p-3 text-sm space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col">
-                    {c ? (
-                      <ClientNameLink clientId={c.id}>{name}</ClientNameLink>
-                    ) : (
-                      <span className="font-medium">{name}</span>
-                    )}
+                    <BookingClientName client={c} />
                     {b.status === "attended" && (
                       <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
                         Посещение зафиксировано
@@ -1139,7 +1142,7 @@ function BookingsPanel({
                         {attendingId === b.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                         Посетил
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setConfirmBooking(b)}>
+                      <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
                         Отклонить
                       </Button>
                     </div>
@@ -1152,7 +1155,7 @@ function BookingsPanel({
                     <div>
                       🎟 {m.membership?.name ?? "Абонемент"} ·{" "}
                       {m.visits_left != null ? `осталось ${m.visits_left}` : "безлимит"} ·{" "}
-                      {fmtMembershipDates(m)}
+                      {formatDate(m.started_at)} – {m.ends_at ? formatDate(m.ends_at) : "∞"}
                     </div>
                   ) : (
                     <div className="italic">Нет активного абонемента</div>
@@ -1177,10 +1180,7 @@ function BookingsPanel({
           </div>
           <div className="space-y-2">
             {waitlisted.map((b) => {
-              const c = clients[b.user_id];
-              const name = c
-                ? [c.last_name, c.first_name].filter(Boolean).join(" ") || c.full_name
-                : "Пользователь без анкеты";
+              const c = data?.clientsByUser.get(b.user_id);
               return (
                 <div
                   key={b.id}
@@ -1188,16 +1188,12 @@ function BookingsPanel({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col">
-                      {c ? (
-                        <ClientNameLink clientId={c.id}>{name}</ClientNameLink>
-                      ) : (
-                        <span className="font-medium">{name}</span>
-                      )}
+                      <BookingClientName client={c} />
                       <span className="mt-0.5 text-xs text-muted-foreground">
                         {c?.phone ?? c?.email ?? "—"}
                       </span>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setConfirmBooking(b)}>
+                    <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
                       Убрать
                     </Button>
                   </div>
@@ -1208,39 +1204,92 @@ function BookingsPanel({
         </div>
       )}
 
-      <AlertDialog open={!!confirmBooking} onOpenChange={(v) => !v && setConfirmBooking(null)}>
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Отклонить?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Бронирование будет отменено со статусом «Отклонена». Пользователь сможет записаться
-              снова, если останутся места.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-1.5">
-            <Label>Причина отмены</Label>
-            <Select value={cancelReason} onValueChange={setCancelReason}>
-              <SelectTrigger>
-                <SelectValue placeholder="Не указана" />
-              </SelectTrigger>
-              <SelectContent>
-                {ADMIN_CANCEL_REASONS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelling}>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancel} disabled={cancelling}>
-              {cancelling && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-              Отклонить
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          {cancelTarget && (
+            <CancelBookingForm
+              key={cancelTarget.id}
+              booking={cancelTarget}
+              onClose={() => setCancelOpen(false)}
+              onDone={reload}
+            />
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function CancelBookingForm({
+  booking,
+  onClose,
+  onDone,
+}: {
+  booking: BookingRow;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  // Причина живёт в форме, а форма монтируется при каждом открытии окна:
+  // «Отклонить» у другого клиента не наследует прошлую причину.
+  const [reason, setReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      const ok = await bookingRpc(
+        "cancel_schedule_booking_admin",
+        { p_booking_id: booking.id, p_reason: reason || null },
+        { error: "Ошибка отмены", failed: "Не удалось отписать" },
+      );
+      if (!ok) return;
+      toast.success("Запись отклонена");
+      onClose();
+      onDone();
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Отклонить?</AlertDialogTitle>
+        <AlertDialogDescription>
+          Бронирование будет отменено со статусом «Отклонена». Пользователь сможет записаться снова,
+          если останутся места.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <div className="space-y-1.5">
+        <Label>Причина отмены</Label>
+        <Select value={reason} onValueChange={setReason}>
+          <SelectTrigger>
+            <SelectValue placeholder="Не указана" />
+          </SelectTrigger>
+          <SelectContent>
+            {ADMIN_CANCEL_REASONS.map((r) => (
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <AlertDialogFooter>
+        <AlertDialogCancel disabled={cancelling}>Отмена</AlertDialogCancel>
+        <AlertDialogAction
+          onClick={(ev) => {
+            // Окно закрывается по успеху: на время запроса виден спиннер, при
+            // ошибке можно повторить.
+            ev.preventDefault();
+            handleCancel();
+          }}
+          disabled={cancelling}
+        >
+          {cancelling && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+          Отклонить
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </>
   );
 }
