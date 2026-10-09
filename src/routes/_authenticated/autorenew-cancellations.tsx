@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
+import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
-import { useRefreshSignal } from "@/lib/refresh-bus";
-import { Input } from "@/components/ui/input";
+import { unwrap } from "@/lib/query";
 import {
   Select,
   SelectContent,
@@ -25,9 +25,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
-import { toast } from "sonner";
 import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/autorenew-cancellations")({
   head: () => ({ meta: [{ title: "Отмены автопродления — Base40 Admin" }] }),
@@ -49,29 +49,22 @@ type Row = {
     last_name: string | null;
     phone: string | null;
     email: string | null;
+    crm_link: string | null;
   } | null;
 };
 
 const REASON_ALL = "__all__";
 
-function fmtDate(d: string | null) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
+// crm_link берём эмбедом: иначе ClientNameLink запрашивал его на каждую строку.
+const COLUMNS =
+  "id, client_id, ends_at, auto_renew_cancelled_at, auto_renew_cancel_reason, membership:memberships(name), client:clients(id, user_id, full_name, first_name, last_name, phone, email, crm_link)";
 
-function fmtDateTime(d: string | null) {
-  if (!d) return "—";
-  return new Date(d).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+// Здесь «Имя Фамилия» и full_name в приоритете, а не clientName(): менять вид
+// имени в разделе — решение владельца, а не рефакторинга.
+function rowClientName(r: Row) {
+  return (
+    r.client?.full_name || [r.client?.first_name, r.client?.last_name].filter(Boolean).join(" ")
+  );
 }
 
 function ReasonBadge({ value }: { value: Row["auto_renew_cancel_reason"] }) {
@@ -86,71 +79,60 @@ function ReasonBadge({ value }: { value: Row["auto_renew_cancel_reason"] }) {
 
 function AutorenewCancellationsPage() {
   const studioId = useActiveStudioId();
-  const refreshSignal = useRefreshSignal();
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [reason, setReason] = useState<string>(REASON_ALL);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (!studioId) {
-        setRows([]);
-        return;
-      }
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("client_memberships")
-        .select(
-          "id, client_id, ends_at, auto_renew_cancelled_at, auto_renew_cancel_reason, membership:memberships(name), client:clients(id, user_id, full_name, first_name, last_name, phone, email)",
-        )
-        .eq("studio_id", studioId)
-        .not("auto_renew_cancelled_at", "is", null)
-        .order("auto_renew_cancelled_at", { ascending: false })
-        .limit(1000);
-      if (cancelled) return;
-      if (error) {
-        toast.error("Не удалось загрузить отмены: " + error.message);
-        setRows([]);
-      } else {
-        setRows((data as unknown as Row[]) ?? []);
-      }
-      setLoading(false);
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [studioId, refreshSignal]);
+  const { data: rows = [], isLoading: loading } = useQuery({
+    queryKey: ["client_memberships", studioId, "autorenew-cancelled"],
+    queryFn: () =>
+      unwrap<Row[]>(
+        supabase
+          .from("client_memberships")
+          .select(COLUMNS)
+          .eq("studio_id", studioId!)
+          .not("auto_renew_cancelled_at", "is", null)
+          .order("auto_renew_cancelled_at", { ascending: false })
+          .limit(1000),
+      ),
+    enabled: !!studioId,
+    meta: { errorMessage: "Не удалось загрузить отмены" },
+  });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (reason !== REASON_ALL && (r.auto_renew_cancel_reason ?? "") !== reason) return false;
       if (!q) return true;
-      const name =
-        r.client?.full_name ||
-        [r.client?.first_name, r.client?.last_name].filter(Boolean).join(" ");
-      return [name, r.client?.phone, r.client?.email, r.membership?.name]
-        .filter(Boolean)
-        .some((v) => (v as string).toLowerCase().includes(q));
+      return [rowClientName(r), r.client?.phone, r.client?.email, r.membership?.name].some((v) =>
+        v?.toLowerCase().includes(q),
+      );
     });
   }, [rows, search, reason]);
 
   const pg = usePagination(filtered);
 
   return (
-    <AdminShell
-      title="Отмены автопродления"
-      description="Абонементы, у которых отключено автопродление"
-    >
+    <AdminShell title="Отмены автопродления">
       <div className="space-y-3">
-        {!studioId ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Сначала выберите студию в шапке.
-          </div>
-        ) : (
+        <RequireStudio studioId={studioId}>
+          <TableToolbar>
+            <ToolbarSearch
+              value={search}
+              onChange={setSearch}
+              placeholder="Поиск: имя, телефон, почта, абонемент"
+            />
+            <Select value={reason} onValueChange={setReason}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={REASON_ALL}>Все причины</SelectItem>
+                <SelectItem value="self">Самостоятельная</SelectItem>
+                <SelectItem value="auto">Автоматическая</SelectItem>
+              </SelectContent>
+            </Select>
+          </TableToolbar>
+
           <div className="rounded-lg border bg-background">
             <Table>
               <TableHeader>
@@ -177,15 +159,14 @@ function AutorenewCancellationsPage() {
                   </TableRow>
                 ) : (
                   pg.paged.map((r) => {
-                    const name =
-                      r.client?.full_name ||
-                      [r.client?.first_name, r.client?.last_name].filter(Boolean).join(" ") ||
-                      "—";
+                    const name = rowClientName(r) || "—";
                     return (
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">
                           {r.client?.id && name !== "—" ? (
-                            <ClientNameLink clientId={r.client.id}>{name}</ClientNameLink>
+                            <ClientNameLink clientId={r.client.id} crmLink={r.client.crm_link}>
+                              {name}
+                            </ClientNameLink>
                           ) : (
                             name
                           )}
@@ -195,12 +176,12 @@ function AutorenewCancellationsPage() {
                           <div className="text-xs">{r.client?.email ?? "—"}</div>
                         </TableCell>
                         <TableCell>{r.membership?.name ?? "—"}</TableCell>
-                        <TableCell className="text-sm">{fmtDate(r.ends_at)}</TableCell>
+                        <TableCell className="text-sm">{formatDate(r.ends_at)}</TableCell>
                         <TableCell>
                           <ReasonBadge value={r.auto_renew_cancel_reason} />
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {fmtDateTime(r.auto_renew_cancelled_at)}
+                          {formatDateTime(r.auto_renew_cancelled_at)}
                         </TableCell>
                       </TableRow>
                     );
@@ -210,7 +191,7 @@ function AutorenewCancellationsPage() {
             </Table>
             <DataPagination {...pg} />
           </div>
-        )}
+        </RequireStudio>
       </div>
     </AdminShell>
   );
