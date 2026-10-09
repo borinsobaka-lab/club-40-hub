@@ -72,9 +72,11 @@ export function ClientNameLink({
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState<ClientLike | null>(client ?? null);
   const [loading, setLoading] = useState(false);
-  const knownCrm = crmLink ?? client?.crm_link ?? loaded?.crm_link ?? null;
-  const fetchedCrm = useCrmLink({ clientId, userId, studioId, enabled: !knownCrm });
-  const resolvedCrm = knownCrm ?? fetchedCrm ?? null;
+  // crmLink === undefined — страница ссылку не знает, запрашиваем сами;
+  // null — знает, что ссылки нет. Карточка клиента (client/loaded) тоже знает.
+  const known = crmLink !== undefined || !!client || !!loaded;
+  const fetchedCrm = useCrmLink({ clientId, userId, studioId, enabled: !known });
+  const resolvedCrm = (crmLink ?? client?.crm_link ?? loaded?.crm_link ?? fetchedCrm) || null;
 
   const handleClick = async () => {
     if (loaded) {
