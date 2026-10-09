@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useActiveStudioId } from "@/components/studio-switcher";
-import { useRefreshSignal } from "@/lib/refresh-bus";
+import { RequireStudio } from "@/components/require-studio";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,35 +76,25 @@ function formatDiscount(type: DiscountType, value: number) {
 function PromoCodesPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
-  const [items, setItems] = useState<PromoCode[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PromoCode | null>(null);
 
-  const fetchAll = async () => {
-    if (!studioId) {
-      setItems([]);
-      return;
-    }
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("promo_codes")
-      .select("*")
-      .eq("studio_id", studioId)
-      .order("created_at", { ascending: false });
-    setLoading(false);
-    if (error) {
-      toast.error("Не удалось загрузить промокоды: " + error.message);
-      return;
-    }
-    setItems((data as PromoCode[]) ?? []);
-  };
-
-  const refreshSignal = useRefreshSignal();
-  useEffect(() => {
-    fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, refreshSignal]);
+  const queryKey = ["promo_codes", studioId];
+  const { data: items = [], isLoading: loading } = useQuery({
+    queryKey,
+    queryFn: () =>
+      unwrap<PromoCode[]>(
+        supabase
+          .from("promo_codes")
+          .select("*")
+          .eq("studio_id", studioId!)
+          .order("created_at", { ascending: false }),
+      ),
+    enabled: !!studioId,
+    meta: { errorMessage: "Не удалось загрузить промокоды" },
+  });
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["promo_codes"] });
 
   const handleDelete = async (p: PromoCode) => {
     if (
@@ -118,7 +110,7 @@ function PromoCodesPage() {
       return;
     }
     toast.success("Промокод удалён");
-    fetchAll();
+    reload();
   };
 
   const toggleActive = async (p: PromoCode, next: boolean) => {
@@ -130,7 +122,9 @@ function PromoCodesPage() {
       toast.error("Ошибка: " + error.message);
       return;
     }
-    setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_active: next } : x)));
+    queryClient.setQueryData<PromoCode[]>(queryKey, (prev) =>
+      prev?.map((x) => (x.id === p.id ? { ...x, is_active: next } : x)),
+    );
   };
 
   const openCreate = () => {
@@ -148,18 +142,14 @@ function PromoCodesPage() {
     <AdminShell
       title="Промокоды"
       actions={
-        <Button size="default" onClick={openCreate} disabled={!studioId}>
+        <Button onClick={openCreate} disabled={!studioId}>
           <Plus className="mr-1 h-4 w-4" />
           Добавить промокод
         </Button>
       }
     >
       <div className="space-y-3">
-        {!studioId ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Сначала выберите студию в шапке.
-          </div>
-        ) : (
+        <RequireStudio studioId={studioId}>
           <div className="rounded-lg border bg-background">
             <Table>
               <TableHeader>
@@ -231,7 +221,7 @@ function PromoCodesPage() {
             </Table>
             <DataPagination {...pg} />
           </div>
-        )}
+        </RequireStudio>
       </div>
 
       <PromoCodeDialog
@@ -239,48 +229,44 @@ function PromoCodesPage() {
         onOpenChange={setOpen}
         studioId={studioId}
         item={editing}
-        onSaved={fetchAll}
+        onSaved={reload}
       />
       {confirmDialog}
     </AdminShell>
   );
 }
 
-function PromoCodeDialog({
-  open,
-  onOpenChange,
-  studioId,
-  item,
-  onSaved,
-}: {
+type DialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
   item: PromoCode | null;
   onSaved: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [discountType, setDiscountType] = useState<DiscountType>("amount");
-  const [discountValue, setDiscountValue] = useState("");
-  const [usageLimit, setUsageLimit] = useState("");
-  const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(true);
-  const [saving, setSaving] = useState(false);
+};
 
-  useEffect(() => {
-    if (open) {
-      setName(item?.name ?? "");
-      setCode(item?.code ?? "");
-      setExpiresAt(item?.expires_at ?? "");
-      setDiscountType(item?.discount_type ?? "amount");
-      setDiscountValue(item ? String(item.discount_value) : "");
-      setUsageLimit(item?.usage_limit != null ? String(item.usage_limit) : "");
-      setDescription(item?.description ?? "");
-      setIsActive(item?.is_active ?? true);
-    }
-  }, [open, item]);
+function PromoCodeDialog(props: DialogProps) {
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent className="max-w-xl">
+        {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+        <PromoCodeForm key={props.item?.id ?? "new"} {...props} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
+  const [name, setName] = useState(item?.name ?? "");
+  const [code, setCode] = useState(item?.code ?? "");
+  const [expiresAt, setExpiresAt] = useState(item?.expires_at ?? "");
+  const [discountType, setDiscountType] = useState<DiscountType>(item?.discount_type ?? "amount");
+  const [discountValue, setDiscountValue] = useState(item ? String(item.discount_value) : "");
+  const [usageLimit, setUsageLimit] = useState(
+    item?.usage_limit != null ? String(item.usage_limit) : "",
+  );
+  const [description, setDescription] = useState(item?.description ?? "");
+  const [isActive, setIsActive] = useState(item?.is_active ?? true);
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!studioId) return;
@@ -339,118 +325,112 @@ function PromoCodeDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{item ? "Редактировать промокод" : "Новый промокод"}</DialogTitle>
-          <DialogDescription>Промокод можно применить при покупке для скидки.</DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Название</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Летняя акция"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Промокод (латиница и цифры)</Label>
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                placeholder="SUMMER25"
-                className="font-mono uppercase"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Тип скидки</Label>
-                <Select
-                  value={discountType}
-                  onValueChange={(v) => setDiscountType(v as DiscountType)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="amount">В лари (₾)</SelectItem>
-                    <SelectItem value="percent">В процентах (%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Размер скидки</Label>
-                <Input
-                  inputMode="decimal"
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(e.target.value)}
-                  placeholder={discountType === "percent" ? "10" : "500"}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Срок действия</Label>
-                <Input
-                  type="date"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Количество применений</Label>
-                <Input
-                  inputMode="numeric"
-                  value={usageLimit}
-                  onChange={(e) => setUsageLimit(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="Без ограничений"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Описание (внутреннее)</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Для чего создан промокод"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Активен</div>
-                <div className="text-xs text-muted-foreground">
-                  Неактивные промокоды нельзя применить.
-                </div>
-              </div>
-              <Switch checked={isActive} onCheckedChange={setIsActive} />
-            </div>
-
-            {item && (
-              <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-                Применений: <span className="font-medium text-foreground">{item.usage_count}</span>
-                {item.usage_limit != null ? ` из ${item.usage_limit}` : " (без ограничений)"}
-              </div>
-            )}
+    <>
+      <DialogHeader>
+        <DialogTitle>{item ? "Редактировать промокод" : "Новый промокод"}</DialogTitle>
+        <DialogDescription>Промокод можно применить при покупке для скидки.</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Название</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Летняя акция"
+            />
           </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Отмена
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-            Сохранить
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+          <div className="space-y-2">
+            <Label>Промокод (латиница и цифры)</Label>
+            <Input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+              placeholder="SUMMER25"
+              className="font-mono uppercase"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Тип скидки</Label>
+              <Select
+                value={discountType}
+                onValueChange={(v) => setDiscountType(v as DiscountType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="amount">В лари (₾)</SelectItem>
+                  <SelectItem value="percent">В процентах (%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Размер скидки</Label>
+              <Input
+                inputMode="decimal"
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                placeholder={discountType === "percent" ? "10" : "500"}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Срок действия</Label>
+              <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Количество применений</Label>
+              <Input
+                inputMode="numeric"
+                value={usageLimit}
+                onChange={(e) => setUsageLimit(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="Без ограничений"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Описание (внутреннее)</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Для чего создан промокод"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Активен</div>
+              <div className="text-xs text-muted-foreground">
+                Неактивные промокоды нельзя применить.
+              </div>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
+          {item && (
+            <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+              Применений: <span className="font-medium text-foreground">{item.usage_count}</span>
+              {item.usage_limit != null ? ` из ${item.usage_limit}` : " (без ограничений)"}
+            </div>
+          )}
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          Отмена
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          Сохранить
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

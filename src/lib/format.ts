@@ -36,6 +36,18 @@ export function formatDate(v: string | null | undefined) {
   }
 }
 
+/** Дата и время в ru-RU (dd.mm.yyyy, hh:mm). */
+export function formatDateTime(v: string | null | undefined) {
+  if (!v) return "—";
+  return new Date(v).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /** Число с разделителями разрядов. */
 export function formatNumber(n: number) {
   return new Intl.NumberFormat("ru-RU").format(n);
@@ -61,6 +73,37 @@ export function todayISO() {
   const d = new Date();
   const tz = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
+
+/** Значение для <input type="datetime-local"> в локальном поясе (YYYY-MM-DDTHH:mm). */
+export function toDateTimeLocalValue(d: Date = new Date()) {
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 16);
+}
+
+/** Инициалы для аватара: «Мария Тренерова» -> «МТ». */
+export function initials(name: string, fallback = "") {
+  const letters = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+  return letters || fallback;
+}
+
+/** Полный URL (а не путь в Storage). */
+export function isHttpUrl(v: string | null | undefined): v is string {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+export const GENDER_OPTIONS = [
+  { value: "male", label: "Мужской" },
+  { value: "female", label: "Женский" },
+] as const;
+
+export function genderLabel(v: string | null | undefined) {
+  return GENDER_OPTIONS.find((g) => g.value === v)?.label ?? "—";
 }
 
 /**

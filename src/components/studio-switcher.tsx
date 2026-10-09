@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveStudioId, setActiveStudioId } from "@/hooks/use-active-studio";
 import {
   Select,
   SelectContent,
@@ -9,39 +11,6 @@ import {
 } from "@/components/ui/select";
 
 type Studio = { id: string; name: string };
-
-const STORAGE_KEY = "base40.activeStudioId";
-// Ключ переименован с club40.* на base40.*; читаем старый как запасной, чтобы
-// у уже работающих админов не сбросился выбор студии. Убрать через пару месяцев.
-const LEGACY_STORAGE_KEY = "club40.activeStudioId";
-
-export function getActiveStudioId(): string | null {
-  if (typeof window === "undefined") return null;
-  const current = window.localStorage.getItem(STORAGE_KEY);
-  if (current) return current;
-  const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-  if (legacy) {
-    window.localStorage.setItem(STORAGE_KEY, legacy);
-    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-  }
-  return legacy;
-}
-
-export function setActiveStudioId(id: string) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, id);
-  window.dispatchEvent(new CustomEvent("base40:studio-changed", { detail: id }));
-}
-
-export function useActiveStudioId(): string | null {
-  const [id, setId] = useState<string | null>(() => getActiveStudioId());
-  useEffect(() => {
-    const handler = (e: Event) => setId((e as CustomEvent<string>).detail);
-    window.addEventListener("base40:studio-changed", handler);
-    return () => window.removeEventListener("base40:studio-changed", handler);
-  }, []);
-  return id;
-}
 
 // Module-level cache so the switcher doesn't re-fetch / flicker on route changes.
 let studiosCache: Studio[] | null = null;

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useActiveStudioId } from "@/components/studio-switcher";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 import { Input } from "@/components/ui/input";

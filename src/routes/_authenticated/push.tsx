@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Plus, Loader2, Pencil, Trash2, Send } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useActiveStudioId } from "@/components/studio-switcher";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";

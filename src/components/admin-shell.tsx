@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cat, RefreshCw } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -20,6 +21,7 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [kateOpen, setKateOpen] = useState(false);
 
   return (
@@ -52,6 +54,7 @@ export function AdminShell({
               aria-label="Обновить"
               onClick={() => {
                 router.invalidate();
+                queryClient.invalidateQueries();
                 triggerRefresh();
               }}
             >

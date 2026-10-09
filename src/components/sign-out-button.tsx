@@ -1,10 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 export function SignOutButton() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -12,12 +15,14 @@ export function SignOutButton() {
       toast.error(error.message);
       return;
     }
+    // Кэш запросов — данные прошлого сотрудника; следующему он не нужен.
+    queryClient.clear();
     toast.success("Вы вышли из аккаунта");
     navigate({ to: "/auth" });
   };
 
   return (
-    <Button size="default" variant="outline" onClick={handleSignOut}>
+    <Button variant="outline" onClick={handleSignOut}>
       Выйти
     </Button>
   );

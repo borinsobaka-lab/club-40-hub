@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useActiveStudioId } from "@/components/studio-switcher";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";

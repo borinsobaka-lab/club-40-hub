@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useActiveStudioId } from "@/components/studio-switcher";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 
@@ -23,42 +24,32 @@ type ClientLike = {
   photo_url: string | null;
 };
 
-// Простой in-memory кэш crm_link, чтобы не дергать БД по разу на строку списка.
-const crmCacheByClientId = new Map<string, string | null>();
-const crmCacheByUserId = new Map<string, string | null>();
-const crmInflight = new Map<string, Promise<string | null>>();
-
-async function fetchCrmLink(opts: {
+/**
+ * Ссылка amoCRM клиента, если её не передали сверху. Запрос кэшируется React
+ * Query: одна и та же строка в разных таблицах не дёргает базу повторно.
+ */
+function useCrmLink(opts: {
   clientId?: string | null;
   userId?: string | null;
-  studioId?: string | null;
-}): Promise<string | null> {
+  studioId: string | null;
+  enabled: boolean;
+}) {
   const { clientId, userId, studioId } = opts;
-  const key = clientId ? `c:${clientId}` : userId ? `u:${userId}:${studioId ?? ""}` : null;
-  if (!key) return null;
-  if (clientId && crmCacheByClientId.has(clientId)) return crmCacheByClientId.get(clientId) ?? null;
-  if (userId && crmCacheByUserId.has(userId)) return crmCacheByUserId.get(userId) ?? null;
-  const existing = crmInflight.get(key);
-  if (existing) return existing;
-  const promise = (async () => {
-    let q = supabase.from("clients").select("id, user_id, crm_link").limit(1);
-    if (clientId) q = q.eq("id", clientId);
-    else if (userId) {
-      q = q.eq("user_id", userId);
-      if (studioId) q = q.eq("studio_id", studioId);
-    }
-    const { data } = await q.maybeSingle();
-    const link = (data?.crm_link as string | null | undefined) ?? null;
-    if (data?.id) crmCacheByClientId.set(data.id as string, link);
-    if (data?.user_id) crmCacheByUserId.set(data.user_id as string, link);
-    return link;
-  })();
-  crmInflight.set(key, promise);
-  try {
-    return await promise;
-  } finally {
-    crmInflight.delete(key);
-  }
+  return useQuery({
+    queryKey: ["client-crm-link", clientId ?? null, userId ?? null, studioId],
+    queryFn: async () => {
+      let q = supabase.from("clients").select("id, user_id, crm_link").limit(1);
+      if (clientId) q = q.eq("id", clientId);
+      else {
+        q = q.eq("user_id", userId as string);
+        if (studioId) q = q.eq("studio_id", studioId);
+      }
+      const { data } = await q.maybeSingle();
+      return (data?.crm_link as string | null | undefined) ?? null;
+    },
+    enabled: opts.enabled && (!!clientId || !!userId),
+    staleTime: 5 * 60_000,
+  }).data;
 }
 
 /**
@@ -98,27 +89,9 @@ export function ClientNameLink({
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState<ClientLike | null>(client ?? null);
   const [loading, setLoading] = useState(false);
-  const [resolvedCrm, setResolvedCrm] = useState<string | null>(
-    crmLink ?? client?.crm_link ?? null,
-  );
-
-  useEffect(() => {
-    if (crmLink !== undefined && crmLink !== null) {
-      setResolvedCrm(crmLink);
-      return;
-    }
-    if (client?.crm_link) {
-      setResolvedCrm(client.crm_link);
-      return;
-    }
-    let cancelled = false;
-    fetchCrmLink({ clientId, userId, studioId }).then((link) => {
-      if (!cancelled) setResolvedCrm(link ?? null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId, userId, studioId, crmLink, client?.crm_link]);
+  const knownCrm = crmLink ?? client?.crm_link ?? loaded?.crm_link ?? null;
+  const fetchedCrm = useCrmLink({ clientId, userId, studioId, enabled: !knownCrm });
+  const resolvedCrm = knownCrm ?? fetchedCrm ?? null;
 
   const handleClick = async () => {
     if (loaded) {
@@ -147,13 +120,7 @@ export function ClientNameLink({
         toast.error("Клиент не найден");
         return;
       }
-      const c = data as ClientLike;
-      setLoaded(c);
-      if (c.crm_link) {
-        setResolvedCrm(c.crm_link);
-        if (c.id) crmCacheByClientId.set(c.id, c.crm_link);
-        if (c.user_id) crmCacheByUserId.set(c.user_id, c.crm_link);
-      }
+      setLoaded(data as ClientLike);
       setOpen(true);
     } finally {
       setLoading(false);

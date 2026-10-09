@@ -6,7 +6,7 @@ import { Plus, Loader2, Trash2, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useActiveStudioId } from "@/components/studio-switcher";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";

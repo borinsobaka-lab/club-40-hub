@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
-import { useActiveStudioId } from "@/components/studio-switcher";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 
 import { useEffect, useMemo, useState } from "react";
 import { Trash2, CheckCircle2, AlertTriangle, Plus, Loader2 } from "lucide-react";
