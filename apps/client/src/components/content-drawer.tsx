@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type ServiceFull = {
+type ContentItem = {
   id: string;
   title: string;
   description: string | null;
@@ -19,44 +19,55 @@ type ServiceFull = {
   button_url: string | null;
 };
 
-export function ServiceDrawer({
-  serviceId,
-  open,
+/** Откуда берётся карточка: таблица и бакет с её картинками. */
+const SOURCES = {
+  news: { table: "news", bucket: "news-media" },
+  service: { table: "services", bucket: "services-media" },
+} as const;
+
+/**
+ * Шторка с полным текстом новости или услуги (одинаковая разметка и набор
+ * полей; раньше это были два почти дословных компонента).
+ */
+export function ContentDrawer({
+  kind,
+  itemId,
   onOpenChange,
 }: {
-  serviceId: string | null;
-  open: boolean;
+  kind: keyof typeof SOURCES;
+  itemId: string | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [item, setItem] = useState<ServiceFull | null>(null);
-  const [loading, setLoading] = useState(false);
+  const open = itemId !== null;
+  const { table, bucket } = SOURCES[kind];
+  // Результат запоминаем вместе с id, для которого он получен: пока ответ на
+  // текущий id не пришёл — показываем скелетон, а не прошлую запись.
+  const [result, setResult] = useState<{ id: string; item: ContentItem | null } | null>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const loading = itemId !== null && result?.id !== itemId;
+  const item = loading ? null : (result?.item ?? null);
 
   useEffect(() => {
-    if (!open || !serviceId) return;
+    if (!itemId) return;
     let cancelled = false;
-    setLoading(true);
-    setItem(null);
     setImgLoaded(false);
+    // services нет в сгенерированных types.ts — общий запрос идёт через any.
     (supabase as any)
-      .from("services")
+      .from(table)
       .select(
         "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url",
       )
-      .eq("id", serviceId)
+      .eq("id", itemId)
       .maybeSingle()
-      .then(({ data }: { data: ServiceFull | null }) => {
-        if (cancelled) return;
-        setItem((data as ServiceFull | null) ?? null);
-        setLoading(false);
+      .then(({ data }: { data: ContentItem | null }) => {
+        if (!cancelled) setResult({ id: itemId, item: data ?? null });
       });
     return () => {
       cancelled = true;
     };
-  }, [open, serviceId]);
+  }, [table, itemId]);
 
-  const hero =
-    mediaUrl(item?.banner_url, "services-media") || mediaUrl(item?.image_url, "services-media");
+  const hero = mediaUrl(item?.banner_url, bucket) || mediaUrl(item?.image_url, bucket);
   const title = item?.full_title || item?.title || "";
   const hasCta = !!item?.button_text && !!item?.button_url;
 
@@ -70,7 +81,7 @@ export function ServiceDrawer({
         >
           <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
           <div className="flex-1 overflow-y-auto overscroll-contain pb-10">
-            {loading || !item ? (
+            {loading ? (
               <>
                 <div className="px-3 pt-1">
                   <Skeleton className="w-full aspect-[4/3] rounded-2xl" />
@@ -82,14 +93,23 @@ export function ServiceDrawer({
                   <Skeleton className="h-4 w-2/3 rounded-md" />
                 </div>
               </>
+            ) : !item ? (
+              // Запись удалена/скрыта или запрос не прошёл — раньше в этом
+              // случае скелетон крутился бесконечно.
+              <div className="px-4 pt-10 text-center">
+                <DrawerPrimitive.Title className="text-lg font-semibold">
+                  Не удалось открыть
+                </DrawerPrimitive.Title>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Запись не найдена или временно недоступна.
+                </p>
+              </div>
             ) : (
               <>
                 {hero && (
                   <div className="px-3 pt-1">
                     <div className="relative w-full">
-                      {!imgLoaded && (
-                        <Skeleton className="w-full aspect-[4/3] rounded-2xl" />
-                      )}
+                      {!imgLoaded && <Skeleton className="w-full aspect-[4/3] rounded-2xl" />}
                       <img
                         src={hero}
                         alt={title}

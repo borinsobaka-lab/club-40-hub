@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { mediaUrl } from "@/lib/media";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
 
 export const Route = createFileRoute("/memberships")({
@@ -68,12 +69,6 @@ function formatPeriod(days: number): string {
   return `на ${days} дней`;
 }
 
-function coverPublicUrl(path: string | null): string | null {
-  if (!path) return null;
-  const { data } = supabase.storage.from("memberships-media").getPublicUrl(path);
-  return data?.publicUrl ?? null;
-}
-
 type ActiveMembership = {
   id: string;
   ends_at: string | null;
@@ -95,6 +90,28 @@ const db = supabase as unknown as {
   from: (table: string) => any;
 };
 
+// Действующий абонемент клиента. Не maybeSingle() по статусу: при двух
+// строках active/frozen (переход на новый тариф, заморозка) PostgREST
+// возвращает ошибку, и страница целиком падала в «не удалось загрузить».
+function fetchActiveMembership(clientId: string) {
+  return db
+    .from("client_memberships")
+    .select(
+      "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
+    )
+    .eq("client_id", clientId)
+    .in("status", ["active", "frozen"])
+    .order("ends_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+}
+
+/** Локальная дата YYYY-MM-DD (toISOString() дала бы UTC — в первые часы суток вчерашнюю). */
+function localDateISO(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function MembershipsPage() {
   const { user, loading: authLoading } = useAuth();
   const [client, setClient] = useState<{ id: string; studio_id: string } | null>(null);
@@ -108,10 +125,8 @@ function MembershipsPage() {
   const [lastPaidTotal, setLastPaidTotal] = useState<number | null>(null);
   const [activeOpen, setActiveOpen] = useState(false);
   const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
-  const [confirmCancelRenewOpen, setConfirmCancelRenewOpen] = useState(false);
   const [cancellingRenew, setCancellingRenew] = useState(false);
   const [confirmManageOpen, setConfirmManageOpen] = useState(false);
-  const [cancellingMembership, setCancellingMembership] = useState(false);
 
   const unlimitedTopRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const unlimitedBottomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -158,8 +173,11 @@ function MembershipsPage() {
     setBottom(maxBottom);
   }
 
+  // Меряем группу активной вкладки: карточки неактивных вкладок не
+  // отрисованы, и замер при загрузке давал им 0 — выравнивание высот работало
+  // только на вкладке, открытой первой. Поэтому замер и при смене вкладки.
   useLayoutEffect(() => {
-    if (unlimitedMemberships.length > 0) {
+    if (activeTab === "unlimited" && unlimitedMemberships.length > 0) {
       measureGroup(
         unlimitedTopRefs,
         unlimitedBottomRefs,
@@ -167,10 +185,10 @@ function MembershipsPage() {
         setUnlimitedBottomHeight,
       );
     }
-  }, [unlimitedMemberships]);
+  }, [activeTab, unlimitedMemberships]);
 
   useLayoutEffect(() => {
-    if (packagesMemberships.length > 0) {
+    if (activeTab === "packages" && packagesMemberships.length > 0) {
       measureGroup(
         packagesTopRefs,
         packagesBottomRefs,
@@ -178,13 +196,13 @@ function MembershipsPage() {
         setPackagesBottomHeight,
       );
     }
-  }, [packagesMemberships]);
+  }, [activeTab, packagesMemberships]);
 
   useLayoutEffect(() => {
-    if (couplesMemberships.length > 0) {
+    if (activeTab === "couples" && couplesMemberships.length > 0) {
       measureGroup(couplesTopRefs, couplesBottomRefs, setCouplesTopHeight, setCouplesBottomHeight);
     }
-  }, [couplesMemberships]);
+  }, [activeTab, couplesMemberships]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -238,23 +256,20 @@ function MembershipsPage() {
             .eq("studio_id", c.studio_id)
             .eq("is_active", true)
             .order("price", { ascending: true }),
-          db
-            .from("client_memberships")
-            .select(
-              "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
-            )
-            .eq("client_id", c.id)
-            .in("status", ["active", "frozen"])
-            .maybeSingle(),
+          fetchActiveMembership(c.id),
         ]);
         if (mErr) throw mErr;
         if (aErr) throw aErr;
 
         let membershipRows = (m as Membership[]) ?? [];
         if (membershipRows.length === 0) {
+          // Запасной вариант — только тарифы без студии (общие). Раньше здесь
+          // выбирались активные тарифы ВСЕХ студий, и клиент студии без своих
+          // тарифов видел и мог купить тариф чужой студии.
           const { data: fallbackMemberships, error: fallbackErr } = await db
             .from("memberships")
             .select(membershipSelect)
+            .is("studio_id", null)
             .eq("is_active", true)
             .order("price", { ascending: true });
           if (fallbackErr) throw fallbackErr;
@@ -277,14 +292,9 @@ function MembershipsPage() {
 
   const refreshActive = async () => {
     if (!client) return;
-    const { data: act } = await db
-      .from("client_memberships")
-      .select(
-        "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
-      )
-      .eq("client_id", client.id)
-      .in("status", ["active", "frozen"])
-      .maybeSingle();
+    const { data: act, error: actErr } = await fetchActiveMembership(client.id);
+    // При ошибке не обнуляем абонемент: баннер «нет абонемента» был бы враньём.
+    if (actErr) return;
     setActive((act as ActiveMembership) ?? null);
   };
 
@@ -309,7 +319,7 @@ function MembershipsPage() {
         studio_id: selected.studio_id ?? client.studio_id,
         client_id: client.id,
         membership_id: selected.id,
-        sold_at: new Date().toISOString().slice(0, 10),
+        sold_at: localDateISO(new Date()),
         total_amount: paidTotal,
         down_payment_amount: paidTotal,
         list_price: listPrice,
@@ -340,8 +350,9 @@ function MembershipsPage() {
     }
   };
 
-  const handleCancelAutorenew = async () => {
-    if (!active) return;
+  /** true — автопродление отключено; при ошибке показывает тост и возвращает false. */
+  const handleCancelAutorenew = async (): Promise<boolean> => {
+    if (!active) return false;
     setCancellingRenew(true);
     try {
       const { error: rpcErr } = await (supabase as any).rpc("cancel_membership_autorenew", {
@@ -352,31 +363,12 @@ function MembershipsPage() {
       if (rpcErr) throw rpcErr;
       await refreshActive();
       toast.success("Автопродление отключено");
-      setConfirmCancelRenewOpen(false);
+      return true;
     } catch (e: any) {
       toast.error(e?.message ?? "Не удалось отключить автопродление");
+      return false;
     } finally {
       setCancellingRenew(false);
-    }
-  };
-
-  const handleCancelMembership = async () => {
-    if (!active) return;
-    setCancellingMembership(true);
-    try {
-      const { error: rpcErr } = await (supabase as any).rpc("cancel_membership", {
-        _client_membership_id: active.id,
-        _source: "mobile",
-      });
-      if (rpcErr) throw rpcErr;
-      await refreshActive();
-      toast.success("Абонемент отменён");
-      setConfirmManageOpen(false);
-      setActiveOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Не удалось отменить абонемент");
-    } finally {
-      setCancellingMembership(false);
     }
   };
 
@@ -636,30 +628,6 @@ function MembershipsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmCancelRenewOpen} onOpenChange={setConfirmCancelRenewOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Отключить автопродление?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Абонемент действует до конца оплаченного периода. После этой даты он закончится, и вы
-              не сможете посещать клуб, пока не оформите новый.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancellingRenew}>Отмена</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={cancellingRenew}
-              onClick={(e) => {
-                e.preventDefault();
-                handleCancelAutorenew();
-              }}
-            >
-              {cancellingRenew ? "Отключаем…" : "Отключить"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <Dialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
         <DialogContent>
           <DialogHeader>
@@ -683,7 +651,10 @@ function MembershipsPage() {
               variant="destructive"
               className="font-bold"
               onClick={() => {
-                handleCancelAutorenew().then(() => {
+                // Закрываем только при успехе: при ошибке клиент остаётся в
+                // диалоге и может повторить.
+                handleCancelAutorenew().then((ok) => {
+                  if (!ok) return;
                   setConfirmManageOpen(false);
                   setActiveOpen(false);
                 });
@@ -715,7 +686,7 @@ function MembershipCard({
   onTopRef?: (el: HTMLDivElement | null) => void;
   onBottomRef?: (el: HTMLDivElement | null) => void;
 }) {
-  const cover = coverPublicUrl(membership.cover_url);
+  const cover = mediaUrl(membership.cover_url, "memberships-media");
   const features = [
     membership.visits_count === null ? "Безлимит посещений" : `${membership.visits_count} занятий`,
     `Срок действия ${membership.duration_days} дней`,

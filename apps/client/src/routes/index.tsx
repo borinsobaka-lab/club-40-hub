@@ -24,11 +24,10 @@ import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useClientStudioId } from "@/hooks/use-client-studio";
 
-import { NewsDrawer } from "@/components/news-drawer";
-import { ServiceDrawer } from "@/components/service-drawer";
+import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
-import { workoutTypeMeta } from "@/lib/workout-types";
+import { entryToDrawerData, workoutTypeMeta } from "@/lib/workout-types";
 import { toast } from "sonner";
 import { CarouselSkeleton } from "@/components/content-skeletons";
 
@@ -44,12 +43,6 @@ export const Route = createFileRoute("/")({
   }),
   component: HomePage,
 });
-
-function resolvePublicUrl(bucket: string, path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (/^https?:\/\//.test(path)) return path;
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-}
 
 const DAY_NAMES_FULL = [
   "Воскресенье",
@@ -240,8 +233,11 @@ function HomePage() {
         });
     };
     load();
+    // Уникальное имя канала: supabase.channel() с тем же именем возвращает
+    // ещё не закрытый (leaving) канал из прошлого эффекта, и subscribe() на
+    // нём молча ничего не делает — обновления переставали приходить.
     const channel = supabase
-      .channel("news-feed")
+      .channel(`news-feed-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "news" }, () => load())
       .subscribe();
     return () => {
@@ -268,7 +264,7 @@ function HomePage() {
     };
     load();
     const channel = supabase
-      .channel("services-feed")
+      .channel(`services-feed-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => load())
       .subscribe();
     return () => {
@@ -434,7 +430,6 @@ function HomePage() {
                       {group.items.map((b) => {
                         const e = b.entry!;
                         const meta = workoutTypeMeta(e.workout?.type);
-                        void pendingId;
                         const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -446,31 +441,7 @@ function HomePage() {
                           <button
                             key={b.entry_id}
                             type="button"
-                            onClick={() => {
-                              const trainerList = (e.trainers ?? [])
-                                .map((t) => t.trainer)
-                                .filter((t): t is Trainer => !!t);
-                              const trainerName =
-                                trainerList
-                                  .map((t) => t.full_name)
-                                  .filter((n): n is string => !!n)
-                                  .join(", ") || null;
-                              const trainerPhoto = resolvePublicUrl(
-                                "trainer-photos",
-                                trainerList.find((t) => !!t.photo_url)?.photo_url,
-                              );
-                              setOpenEntry({
-                                id: e.id,
-                                name: e.workout?.name ?? "Занятие",
-                                type: e.workout?.type ?? null,
-                                description: e.workout?.description ?? null,
-                                photo: resolvePublicUrl("workout-photos", e.workout?.photo_url),
-                                trainerName,
-                                trainerPhoto,
-                                startsAt: e.starts_at,
-                                endsAt: e.ends_at,
-                              });
-                            }}
+                            onClick={() => setOpenEntry(entryToDrawerData(e))}
                             className="w-full text-left active:opacity-80 transition-opacity"
                           >
                             <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-primary text-primary-foreground border-primary">
@@ -566,17 +537,17 @@ function HomePage() {
         </div>
       </div>
 
-      <NewsDrawer
-        newsId={openNewsId}
-        open={openNewsId !== null}
+      <ContentDrawer
+        kind="news"
+        itemId={openNewsId}
         onOpenChange={(o) => {
           if (!o) setOpenNewsId(null);
         }}
       />
 
-      <ServiceDrawer
-        serviceId={openServiceId}
-        open={openServiceId !== null}
+      <ContentDrawer
+        kind="service"
+        itemId={openServiceId}
         onOpenChange={(o) => {
           if (!o) setOpenServiceId(null);
         }}

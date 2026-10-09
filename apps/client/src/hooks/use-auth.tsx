@@ -28,16 +28,33 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+// supabase-js при каждом возврате вкладки в фокус (и при обновлении токена)
+// перечитывает сессию из storage и шлёт SIGNED_IN с НОВЫМ объектом user. Все
+// эффекты страниц зависят от `user`, поэтому без стабилизации каждое
+// переключение приложений перезагружало расписание/абонементы со скелетоном,
+// затирало несохранённую анкету онбординга и форму профиля. Сохраняем прежние
+// объекты, пока по существу ничего не поменялось.
+function sameSession(a: Session | null, b: Session | null) {
+  return a?.access_token === b?.access_token && a?.user?.id === b?.user?.id;
+}
+function sameUser(a: User | null, b: User | null) {
+  return a?.id === b?.id && a?.updated_at === b?.updated_at;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-    });
+    const apply = (s: Session | null) => {
+      setSession((prev) => (sameSession(prev, s) ? prev : s));
+      const nextUser = s?.user ?? null;
+      setUser((prev) => (sameUser(prev, nextUser) ? prev : nextUser));
+    };
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => apply(s));
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+      apply(data.session);
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
@@ -45,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthCtx = {
     session,
-    user: session?.user ?? null,
+    user,
     loading,
     requestOtp: async (email, opts) => {
       const signup = opts?.signup ?? false;

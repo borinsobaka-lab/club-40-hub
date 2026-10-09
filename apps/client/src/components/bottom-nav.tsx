@@ -8,6 +8,7 @@ import {
   UsersGroupRounded,
 } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
+import { resetPageScrollPosition } from "@/lib/page-scroll";
 
 type NavItem = {
   to: "/" | "/schedule" | "/club";
@@ -26,16 +27,6 @@ const moreItems = [
   { to: "/profile" as const, label: "Профиль", Icon: User },
   { to: "/memberships" as const, label: "Абонементы", Icon: Card },
 ];
-
-function resetPageScrollPosition() {
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-  document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((element) => {
-    element.scrollTop = 0;
-    element.scrollLeft = 0;
-  });
-}
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

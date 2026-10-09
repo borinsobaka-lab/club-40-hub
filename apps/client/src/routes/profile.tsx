@@ -91,6 +91,107 @@ function splitFullName(full: string | null | undefined): { first: string; last: 
   return { last: parts[0], first: parts.slice(1).join(" ") };
 }
 
+function formFromClient(client: ClientRow) {
+  const split = splitFullName(client.full_name);
+  return {
+    first_name: client.first_name ?? split.first,
+    last_name: client.last_name ?? split.last,
+    phone: client.phone ?? "",
+    email: client.email ?? "",
+    birthday: client.birthday ?? "",
+    gender: client.gender ?? "",
+  };
+}
+
+/**
+ * Дата рождения (date, "YYYY-MM-DD") для показа. Не через new Date(): строка
+ * без времени разбирается как полночь UTC, и западнее Гринвича выходил
+ * предыдущий день.
+ */
+function formatBirthday(value: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : value;
+}
+
+const AVATAR_EXT_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
+
+/**
+ * Загружает аватар в storage и пишет ссылку в карточку клиента. Общая для
+ * страницы профиля и шторки редактирования (раньше — две копии кода).
+ * Возвращает обновлённую строку clients или undefined, если загрузка не
+ * удалась (ошибку уже показали тостом).
+ */
+async function uploadAvatar(userId: string, file: File): Promise<ClientRow | undefined> {
+  if (!file.type.startsWith("image/")) {
+    toast.error("Выберите изображение");
+    return undefined;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error("Файл больше 5 МБ");
+    return undefined;
+  }
+  const dot = file.name.lastIndexOf(".");
+  const ext =
+    AVATAR_EXT_BY_TYPE[file.type] ||
+    (dot > 0 ? file.name.slice(dot + 1).toLowerCase() : "") ||
+    "jpg";
+  const path = `${userId}/avatar-${Date.now()}.${ext}`;
+  const { error: upErr } = await supabase.storage
+    .from("avatars")
+    .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+  if (upErr) {
+    toast.error("Не удалось загрузить: " + upErr.message);
+    return undefined;
+  }
+  const publicUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  const { data: updated, error: dbErr } = await supabase
+    .from("clients")
+    .update({ photo_url: publicUrl } as never)
+    .eq("user_id", userId)
+    .select()
+    .maybeSingle();
+  if (dbErr) {
+    toast.error("Не удалось сохранить: " + dbErr.message);
+    return undefined;
+  }
+  toast.success("Аватар обновлён");
+  return (updated as ClientRow | null) ?? { photo_url: publicUrl };
+}
+
+/**
+ * Сохраняет поля карточки клиента. Если update не нашёл строку (карточки нет),
+ * заводит её через ensure_client_profile, как везде в приложении, и повторяет
+ * update. Прямой insert создавал карточку без studio_id и мог продублировать
+ * существующую.
+ */
+async function saveClient(
+  userId: string,
+  payload: ClientUpdate,
+): Promise<{ row: ClientRow } | { error: string }> {
+  const update = () => supabase.from("clients").update(payload).eq("user_id", userId).select();
+  let { data, error } = await update();
+  if (!error && !data?.length) {
+    // ensure_client_profile нет в сгенерированных types.ts.
+    const { error: ensureError } = await (
+      supabase as unknown as {
+        rpc: (fn: "ensure_client_profile") => PromiseLike<{ error: { message: string } | null }>;
+      }
+    ).rpc("ensure_client_profile");
+    if (ensureError) return { error: ensureError.message };
+    ({ data, error } = await update());
+  }
+  if (error) return { error: error.message };
+  const row = data?.[0];
+  return row ? { row: row as ClientRow } : { error: "карточка клиента не найдена" };
+}
+
 function ProfilePage() {
   const { user, signOut } = useAuth();
   const [client, setClient] = useState<ClientRow | null>(null);
@@ -117,8 +218,10 @@ function ProfilePage() {
 
     load();
 
+    // Уникальное имя канала: с прежним именем supabase.channel() отдавал
+    // ещё закрывающийся канал прошлого эффекта, и подписка молча умирала.
     const channel = supabase
-      .channel(`clients-${user.id}`)
+      .channel(`clients-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "clients", filter: `user_id=eq.${user.id}` },
@@ -143,40 +246,10 @@ function ProfilePage() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !user) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Выберите изображение");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Файл больше 5 МБ");
-      return;
-    }
     setUploadingAvatar(true);
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
-    if (upErr) {
-      setUploadingAvatar(false);
-      toast.error("Не удалось загрузить: " + upErr.message);
-      return;
-    }
-    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-    const publicUrl = pub.publicUrl;
-    const { data: updated, error: dbErr } = await supabase
-      .from("clients")
-      .update({ photo_url: publicUrl } as never)
-      .eq("user_id", user.id)
-      .select()
-      .maybeSingle();
+    const updated = await uploadAvatar(user.id, file);
     setUploadingAvatar(false);
-    if (dbErr) {
-      toast.error("Не удалось сохранить: " + dbErr.message);
-      return;
-    }
-    if (updated) setClient(updated as ClientRow);
-    toast.success("Аватар обновлён");
+    if (updated) setClient((prev) => ({ ...prev, ...updated }));
   };
 
   return (
@@ -254,7 +327,7 @@ function ProfilePage() {
               <ProfileField label="Email" value={email} />
               <ProfileField
                 label="Дата рождения"
-                value={birthday ? new Date(birthday).toLocaleDateString("ru-RU") : ""}
+                value={birthday ? formatBirthday(birthday) : ""}
               />
               <ProfileField
                 label="Пол"
@@ -400,77 +473,36 @@ function EditProfileSheet({
   onSaved: (updated: ClientRow) => void;
 }) {
   const { user } = useAuth();
-  const initial = (() => {
-    const split = splitFullName(client.full_name);
-    return {
-      first_name: client.first_name ?? split.first,
-      last_name: client.last_name ?? split.last,
-      phone: client.phone ?? "",
-      email: client.email ?? "",
-      birthday: client.birthday ?? "",
-      gender: client.gender ?? "",
-    };
-  })();
-  const [form, setForm] = useState(initial);
+  const [form, setForm] = useState(() => formFromClient(client));
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(client.photo_url ?? null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const wasOpenRef = useRef(false);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !user) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Выберите изображение");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Файл больше 5 МБ");
-      return;
-    }
     setUploadingAvatar(true);
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
-    if (upErr) {
-      setUploadingAvatar(false);
-      toast.error("Не удалось загрузить: " + upErr.message);
-      return;
-    }
-    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-    const publicUrl = pub.publicUrl;
-    const avatarUpdate = { photo_url: publicUrl } as never;
-    const { data: updated, error: dbErr } = await supabase
-      .from("clients")
-      .update(avatarUpdate)
-      .eq("user_id", user.id)
-      .select()
-      .maybeSingle();
+    const updated = await uploadAvatar(user.id, file);
     setUploadingAvatar(false);
-    if (dbErr) {
-      toast.error("Не удалось сохранить: " + dbErr.message);
-      return;
-    }
-    setAvatarUrl(publicUrl);
-    if (updated) onSaved(updated as ClientRow);
-    toast.success("Аватар обновлён");
+    if (!updated) return;
+    setAvatarUrl(updated.photo_url ?? null);
+    onSaved(updated);
   };
 
+  // Заполняем форму из карточки только в момент открытия. Раньше эффект
+  // срабатывал на каждое изменение `client` — загрузка аватара в этой же
+  // шторке или realtime-обновление карточки затирали несохранённые правки.
+  // Аватар тоже берём свежий: шторка смонтирована постоянно, и фото,
+  // сменённое на странице профиля, здесь оставалось старым.
   useEffect(() => {
-    if (open) {
-      const split = splitFullName(client.full_name);
-      setForm({
-        first_name: client.first_name ?? split.first,
-        last_name: client.last_name ?? split.last,
-        phone: client.phone ?? "",
-        email: client.email ?? "",
-        birthday: client.birthday ?? "",
-        gender: client.gender ?? "",
-      });
+    if (open && !wasOpenRef.current) {
+      setForm(formFromClient(client));
+      setAvatarUrl(client.photo_url ?? null);
     }
+    wasOpenRef.current = open;
   }, [open, client]);
 
   const handleSave = async () => {
@@ -493,36 +525,14 @@ function EditProfileSheet({
     };
 
     setSaving(true);
-    const { data, error } = await supabase
-      .from("clients")
-      .update(payload)
-      .eq("user_id", user.id)
-      .select();
+    const result = await saveClient(user.id, payload);
     setSaving(false);
-
-    if (error) {
-      toast.error("Не удалось сохранить: " + error.message);
-      return;
-    }
-    const rows = (data as ClientRow[] | null) ?? [];
-    if (rows.length === 0) {
-      const insertPayload = { ...payload, user_id: user.id };
-      const { data: inserted, error: insertError } = await supabase
-        .from("clients")
-        .insert(insertPayload)
-        .select()
-        .maybeSingle();
-      if (insertError) {
-        toast.error("Не удалось сохранить: " + insertError.message);
-        return;
-      }
-      toast.success("Профиль обновлён");
-      if (inserted) onSaved(inserted as ClientRow);
-      onOpenChange(false);
+    if ("error" in result) {
+      toast.error("Не удалось сохранить: " + result.error);
       return;
     }
     toast.success("Профиль обновлён");
-    onSaved(rows[0]);
+    onSaved(result.row);
     onOpenChange(false);
   };
 

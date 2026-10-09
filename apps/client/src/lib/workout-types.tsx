@@ -2,6 +2,45 @@ import type { ComponentType } from "react";
 import { HeartPulse, Leaf, Pulse } from "@solar-icons/react";
 import Dumbbell from "@solar-icons/react/icons/sports/Dumbbell";
 import Filters from "@solar-icons/react/icons/tools/Filters";
+import type { WorkoutDrawerData } from "@/components/workout-drawer";
+import { mediaUrl } from "@/lib/media";
+
+/** Занятие из schedule_entries в том виде, в каком его выбирают страницы. */
+export type ScheduleEntryForDrawer = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  workout: {
+    name: string;
+    type: string | null;
+    description: string | null;
+    photo_url: string | null;
+  } | null;
+  trainers: { trainer: { full_name: string | null; photo_url: string | null } | null }[] | null;
+};
+
+/** Данные шторки тренировки (общие для главной и расписания). */
+export function entryToDrawerData(entry: ScheduleEntryForDrawer): WorkoutDrawerData {
+  const trainerList = (entry.trainers ?? [])
+    .map((t) => t.trainer)
+    .filter((t): t is NonNullable<typeof t> => !!t);
+  const trainerName =
+    trainerList
+      .map((t) => t.full_name)
+      .filter((n): n is string => !!n)
+      .join(", ") || null;
+  return {
+    id: entry.id,
+    name: entry.workout?.name ?? "Занятие",
+    type: entry.workout?.type ?? null,
+    description: entry.workout?.description ?? null,
+    photo: mediaUrl(entry.workout?.photo_url, "workout-photos"),
+    trainerName,
+    trainerPhoto: mediaUrl(trainerList.find((t) => !!t.photo_url)?.photo_url, "trainer-photos"),
+    startsAt: entry.starts_at,
+    endsAt: entry.ends_at,
+  };
+}
 
 const DumbbellIcon = (props: { className?: string }) => (
   <Dumbbell {...props} weight="BoldDuotone" />

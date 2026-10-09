@@ -175,13 +175,26 @@ function OnboardingPage() {
       return false;
     }
 
-    // Sync gender and birthday (year) into the clients row so they appear in the profile.
-    const clientPatch: { gender?: string; birthday?: string } = {};
-    if (form.gender) clientPatch.gender = form.gender;
-    const yr = Number(form.birth_year);
-    if (Number.isFinite(yr) && yr > 1900) clientPatch.birthday = `${yr}-01-01`;
-    if (Object.keys(clientPatch).length > 0) {
-      await supabase.from("clients").update(clientPatch).eq("user_id", user.id);
+    // Пол и год рождения переносим в карточку клиента, чтобы они появились в
+    // профиле, — один раз при завершении и только в пустые поля. Раньше это
+    // делалось на каждом шаге и безусловно: точная дата рождения из карточки
+    // (её мог внести администратор или сам клиент) заменялась на 1 января.
+    if (extra?.onboarding_completed_at) {
+      if (form.gender) {
+        await supabase
+          .from("clients")
+          .update({ gender: form.gender })
+          .eq("user_id", user.id)
+          .is("gender", null);
+      }
+      const yr = Number(form.birth_year);
+      if (Number.isFinite(yr) && yr > 1900) {
+        await supabase
+          .from("clients")
+          .update({ birthday: `${yr}-01-01` })
+          .eq("user_id", user.id)
+          .is("birthday", null);
+      }
     }
 
     return true;

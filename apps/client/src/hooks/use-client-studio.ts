@@ -26,18 +26,26 @@ let cacheStudioId: string | null = null;
 // получал студию предыдущего и до конца сессии смотрел его расписание.
 let inflight: { userId: string; promise: Promise<string | null> } | null = null;
 
+// Ошибки запросов пробрасываем, а не превращаем в null: результат .then()
+// кэшируется на всю сессию, и разовый сбой сети навсегда отключал фильтр по
+// студии (клиент видел расписание и новости всех студий). Через .catch()
+// значение не кэшируется и при следующем монтировании запрашивается снова.
 async function fetchStudioId(userId: string): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("clients")
     .select("studio_id")
     .eq("user_id", userId)
     .maybeSingle();
+  if (error) throw error;
   if (data?.studio_id) return data.studio_id;
 
   // Карточки клиента нет — заводим её на сервере. Так бывает у тех, кто
   // зарегистрировался до появления автосоздания: триггер срабатывает только
   // на нового пользователя, а повторный вход нового пользователя не создаёт.
-  const { data: ensured } = await (supabase as any).rpc("ensure_client_profile");
+  const { data: ensured, error: ensureError } = await (supabase as any).rpc(
+    "ensure_client_profile",
+  );
+  if (ensureError) throw ensureError;
   const row = Array.isArray(ensured) ? ensured[0] : ensured;
   return row?.studio_id ?? null;
 }
@@ -62,6 +70,9 @@ export function useClientStudioId(): State {
     }
     const userId = user.id;
     let cancelled = false;
+    // Студия прежнего пользователя не должна оставаться «готовой», пока
+    // грузится студия нового.
+    setState({ studioId: null, studioReady: false });
     if (!inflight || inflight.userId !== userId) {
       inflight = { userId, promise: fetchStudioId(userId) };
     }

@@ -12,10 +12,11 @@ import {
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
-import { cn } from "@/lib/utils";
+import { resetPageScrollPosition } from "@/lib/page-scroll";
 
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -145,14 +146,12 @@ function RootComponent() {
   );
 }
 
-function resetPageScrollPosition() {
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-  document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((element) => {
-    element.scrollTop = 0;
-    element.scrollLeft = 0;
-  });
+function LoadingOverlay() {
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
+    </div>
+  );
 }
 
 function useRouteScrollReset(scrollKey: string) {
@@ -168,12 +167,16 @@ function useRouteScrollReset(scrollKey: string) {
   }, [scrollKey]);
 }
 
+// Только click: pointerdown/touchstart срабатывают и в начале жеста прокрутки,
+// так что палец, поставленный на ссылку («Перейти в профиль», «Забронировать»),
+// чтобы пролистать страницу, сбрасывал прокрутку наверх. Click приходит лишь
+// при настоящем нажатии и (capture на document) раньше навигации роутера.
 function useInternalNavigationScrollReset() {
   useEffect(() => {
-    const handleNavigationStart = (event: MouseEvent | PointerEvent | TouchEvent) => {
+    const handleNavigationStart = (event: MouseEvent) => {
       if (
         event.defaultPrevented ||
-        ("button" in event && event.button !== 0) ||
+        event.button !== 0 ||
         event.metaKey ||
         event.ctrlKey ||
         event.shiftKey ||
@@ -194,12 +197,8 @@ function useInternalNavigationScrollReset() {
       resetPageScrollPosition();
     };
 
-    document.addEventListener("pointerdown", handleNavigationStart, true);
-    document.addEventListener("touchstart", handleNavigationStart, true);
     document.addEventListener("click", handleNavigationStart, true);
     return () => {
-      document.removeEventListener("pointerdown", handleNavigationStart, true);
-      document.removeEventListener("touchstart", handleNavigationStart, true);
       document.removeEventListener("click", handleNavigationStart, true);
     };
   }, []);
@@ -237,8 +236,7 @@ function AppShell() {
     }
     let cancelled = false;
     (async () => {
-      const { supabase: sb } = await import("@/integrations/supabase/client");
-      const { data, error } = await (sb as any)
+      const { data, error } = await supabase
         .from("member_profiles")
         .select("onboarding_completed_at")
         .eq("user_id", user.id)
@@ -261,12 +259,6 @@ function AppShell() {
       cancelled = true;
     };
   }, [loading, user, onAuthRoute, onOnboardingRoute, navigate]);
-
-  const LoadingOverlay = () => (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
-    </div>
-  );
 
   if (onAuthRoute) {
     return (

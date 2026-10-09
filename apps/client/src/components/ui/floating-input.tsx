@@ -8,16 +8,20 @@ interface FloatingLabelInputProps extends React.ComponentProps<"input"> {
 }
 
 const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLabelInputProps>(
-  ({ className, label, onFocus, onBlur, value, ...props }, ref) => {
+  ({ className, label, onFocus, onBlur, value, placeholder, ...props }, ref) => {
     const [focused, setFocused] = React.useState(false);
     const hasValue = String(value ?? "").length > 0;
-    const active = focused || hasValue;
+    // У date-поля браузер всегда рисует маску «дд.мм.гггг» — подпись поверх
+    // неё накладывалась, поэтому она всегда в поднятом положении.
+    const active = focused || hasValue || props.type === "date";
 
     return (
       <div className="relative">
         <input
           ref={ref}
           value={value}
+          // Плейсхолдер — только когда подпись поднята, иначе они накладываются.
+          placeholder={active ? placeholder : undefined}
           className={cn(
             "flex h-14 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-none transition-colors",
             "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
@@ -67,7 +71,9 @@ const FloatingLabelSelect = React.forwardRef<HTMLButtonElement, FloatingLabelSel
   ({ label, value, onValueChange, placeholder, children, disabled, className }, ref) => {
     const [focused, setFocused] = React.useState(false);
     const [open, setOpen] = React.useState(false);
-    const hasValue = !!value && value !== "unset";
+    // "unset" тоже значение: SelectValue показывает текст пункта («Не указано»),
+    // и опущенная подпись ложилась прямо на него.
+    const hasValue = !!value;
     const active = focused || open || hasValue;
 
     return (

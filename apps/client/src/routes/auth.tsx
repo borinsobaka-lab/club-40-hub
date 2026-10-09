@@ -20,14 +20,17 @@ function humanizeAuthError(message: string, isSignup: boolean): string {
   if (m.includes("already registered") || m.includes("already exists")) {
     return "Эта почта уже зарегистрирована. Войдите по коду.";
   }
+  // Проверка формата email — раньше общего «invalid»: сообщение Supabase
+  // «Unable to validate email address: invalid format» тоже содержит
+  // «invalid», и клиенту с опечаткой в почте показывалось «неверный код».
+  if (m.includes("invalid format") || m.includes("valid email")) {
+    return "Проверьте формат email.";
+  }
   if (m.includes("expired") || m.includes("invalid")) {
     return "Неверный или устаревший код. Запросите новый.";
   }
   if (m.includes("rate limit") || m.includes("after ")) {
     return "Слишком часто. Подождите минуту и попробуйте ещё раз.";
-  }
-  if (m.includes("invalid format") || m.includes("valid email")) {
-    return "Проверьте формат email.";
   }
   return isSignup ? "Не удалось отправить код: " + message : message;
 }
@@ -62,6 +65,9 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [cooldown, setCooldown] = useState(0);
+  // На какой адрес ушёл последний код: «Изменить данные» → «Получить код» с
+  // тем же адресом не должен обходить паузу между отправками.
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
@@ -93,6 +99,13 @@ function AuthPage() {
       setError("Укажите email");
       return;
     }
+    if (cooldown > 0 && sentTo === email.trim()) {
+      // Код на этот адрес уже отправлен и пауза не истекла — возвращаем к
+      // вводу кода вместо повторной отправки.
+      setStep("otp");
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+      return;
+    }
     setBusy(true);
     const { error: sendError } = await requestOtp(email.trim(), {
       signup: isSignup,
@@ -105,6 +118,7 @@ function AuthPage() {
       setError(humanizeAuthError(sendError, isSignup));
       return;
     }
+    setSentTo(email.trim());
     setOtp(emptyOtp());
     setStep("otp");
     setCooldown(RESEND_COOLDOWN_SEC);
@@ -267,7 +281,10 @@ function AuthPage() {
                   }}
                   inputMode="numeric"
                   autoComplete={i === 0 ? "one-time-code" : "off"}
-                  maxLength={1}
+                  // Первая ячейка принимает автоподстановку кода целиком
+                  // (one-time-code): maxLength=1 обрезал бы её до одной цифры
+                  // ещё до onChange. Разбор по ячейкам делает setOtpDigit.
+                  maxLength={i === 0 ? OTP_LENGTH : 1}
                   value={d}
                   onChange={(e) => setOtpDigit(i, e.target.value)}
                   onPaste={(e) => {

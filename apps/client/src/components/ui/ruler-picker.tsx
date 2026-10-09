@@ -33,6 +33,11 @@ export function RulerPicker({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const draggingRef = useRef(false);
+  // Таймер «перетаскивание закончилось». Раньше хранился свойством функции
+  // onScroll, которая пересоздаётся на каждый рендер, — clearTimeout читал
+  // undefined, старые таймеры не отменялись, и флаг сбрасывался посреди жеста:
+  // эффект ниже начинал выставлять scrollLeft и дёргал линейку под пальцем.
+  const dragEndTimerRef = useRef<number | undefined>(undefined);
   const initialized = useRef(false);
 
   const count = max - min + 1;
@@ -72,11 +77,13 @@ export function RulerPicker({
     const idx = Math.round(el.scrollLeft / tickWidth);
     const v = Math.min(max, Math.max(min, min + idx));
     if (v !== value) onChange(v);
-    window.clearTimeout((onScroll as any)._t);
-    (onScroll as any)._t = window.setTimeout(() => {
+    window.clearTimeout(dragEndTimerRef.current);
+    dragEndTimerRef.current = window.setTimeout(() => {
       draggingRef.current = false;
     }, 150);
   };
+
+  useEffect(() => () => window.clearTimeout(dragEndTimerRef.current), []);
 
   const pad = Math.max(0, Math.floor(width / 2));
 

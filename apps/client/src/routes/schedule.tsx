@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
-import { workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
+import { entryToDrawerData, workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useClientStudioId } from "@/hooks/use-client-studio";
 import { useAuth } from "@/hooks/use-auth";
@@ -48,12 +48,6 @@ type Entry = {
   workout: Workout | null;
   trainers: { trainer: Trainer | null }[] | null;
 };
-
-function resolvePublicUrl(bucket: string, path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (/^https?:\/\//.test(path)) return path;
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-}
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
@@ -105,6 +99,7 @@ function SchedulePage() {
   const suppressedSwipeClickRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const wheelLockedRef = useRef(false);
   const wheelReleaseRef = useRef<number | null>(null);
+  const swipeAreaRef = useRef<HTMLDivElement>(null);
 
   const selectDay = useCallback(
     (idx: number) => {
@@ -138,25 +133,35 @@ function SchedulePage() {
         .gte("starts_at", from)
         .lt("starts_at", to);
       if (studioId) query = query.eq("studio_id", studioId);
-      const { data, error } = await query.order("starts_at");
+
+      // Брони клиента на те же дни — параллельно с занятиями. Явный фильтр по
+      // user_id: RLS позволяет тренеру видеть все брони студии, и без фильтра
+      // у сотрудника, зашедшего в клиентское приложение, чужие записи выглядели
+      // бы как его собственные. Диапазон дат (через !inner-связь с занятием)
+      // — чтобы не тянуть всю историю броней клиента.
+      // types.ts ещё без 'waitlist' в enum брони (регенерация ждёт токен) —
+      // приводим клиент к any для этого запроса, как в остальном коде репозитория.
+      const bookingsQuery = user
+        ? (supabase as any)
+            .from("schedule_bookings")
+            .select("entry_id, status, schedule_entries!inner(starts_at)")
+            .eq("user_id", user.id)
+            .in("status", ["booked", "waitlist"])
+            .gte("schedule_entries.starts_at", from)
+            .lt("schedule_entries.starts_at", to)
+        : null;
+
+      const [{ data, error }, bookings] = await Promise.all([
+        query.order("starts_at"),
+        bookingsQuery,
+      ]);
       if (cancelled) return;
       if (error) setError(error.message);
       else setEntries((data as unknown as Entry[]) ?? []);
       setLoading(false);
 
-      // Явный фильтр по user_id: RLS позволяет тренеру видеть все брони студии,
-      // и без фильтра у сотрудника, зашедшего в клиентское приложение, чужие
-      // записи выглядели бы как его собственные.
-      if (!user) return;
-      // types.ts ещё без 'waitlist' в enum брони (регенерация ждёт токен) —
-      // приводим клиент к any для этого запроса, как в остальном коде репозитория.
-      const { data: b } = await (supabase as any)
-        .from("schedule_bookings")
-        .select("entry_id, status")
-        .eq("user_id", user.id)
-        .in("status", ["booked", "waitlist"]);
-      if (!cancelled && b) {
-        const rows = b as { entry_id: string; status: string }[];
+      const rows = bookings?.data as { entry_id: string; status: string }[] | null | undefined;
+      if (rows) {
         setBookedIds(new Set(rows.filter((r) => r.status === "booked").map((r) => r.entry_id)));
         setWaitlistedIds(
           new Set(rows.filter((r) => r.status === "waitlist").map((r) => r.entry_id)),
@@ -184,6 +189,28 @@ function SchedulePage() {
       if (wheelReleaseRef.current !== null) window.clearTimeout(wheelReleaseRef.current);
     };
   }, []);
+
+  // Горизонтальный свайп тачпадом/колесом листает дни. Слушатель вешаем сами
+  // с passive: false: React регистрирует onWheel пассивным, и preventDefault()
+  // в нём игнорировался (браузер продолжал жест «назад» и т.п.). Область
+  // свайпа появляется только после загрузки, поэтому эффект зависит от неё.
+  useEffect(() => {
+    const el = swipeAreaRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      if (wheelReleaseRef.current !== null) window.clearTimeout(wheelReleaseRef.current);
+      wheelReleaseRef.current = window.setTimeout(() => {
+        wheelLockedRef.current = false;
+      }, 420);
+      if (wheelLockedRef.current) return;
+      wheelLockedRef.current = true;
+      shiftDay(e.deltaX > 0 ? 1 : -1);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [loading, error, activeTab, shiftDay]);
 
   async function toggleBooking(entryId: string, reason?: string) {
     if (pendingId) return;
@@ -281,32 +308,6 @@ function SchedulePage() {
     } else if (res?.reason) {
       toast.error(reasonMessages[res.reason] ?? `Не удалось выполнить действие: ${res.reason}`);
     }
-  }
-
-  function openWorkout(entry: Entry) {
-    const trainerList = (entry.trainers ?? [])
-      .map((t) => t.trainer)
-      .filter((t): t is Trainer => !!t);
-    const trainerName =
-      trainerList
-        .map((t) => t.full_name)
-        .filter((n): n is string => !!n)
-        .join(", ") || null;
-    const trainerPhoto = resolvePublicUrl(
-      "trainer-photos",
-      trainerList.find((t) => !!t.photo_url)?.photo_url,
-    );
-    setOpenEntry({
-      id: entry.id,
-      name: entry.workout?.name ?? "Занятие",
-      type: entry.workout?.type ?? null,
-      description: entry.workout?.description ?? null,
-      photo: resolvePublicUrl("workout-photos", entry.workout?.photo_url),
-      trainerName,
-      trainerPhoto,
-      startsAt: entry.starts_at,
-      endsAt: entry.ends_at,
-    });
   }
 
   const [activeType, setActiveType] = useState<string>("all");
@@ -442,17 +443,7 @@ function SchedulePage() {
             <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
           ) : (
             <div
-              onWheel={(e) => {
-                if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-                e.preventDefault();
-                if (wheelReleaseRef.current !== null) window.clearTimeout(wheelReleaseRef.current);
-                wheelReleaseRef.current = window.setTimeout(() => {
-                  wheelLockedRef.current = false;
-                }, 420);
-                if (wheelLockedRef.current) return;
-                wheelLockedRef.current = true;
-                shiftDay(e.deltaX > 0 ? 1 : -1);
-              }}
+              ref={swipeAreaRef}
               onPointerDown={(e) => {
                 if (e.pointerType === "mouse") return;
                 gestureStartRef.current = { x: e.clientX, y: e.clientY, idx: activeIdx };
@@ -531,7 +522,7 @@ function SchedulePage() {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => openWorkout(c)}
+                                  onClick={() => setOpenEntry(entryToDrawerData(c))}
                                   className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
                                 >
                                   <div className="flex flex-col items-center justify-center w-12 shrink-0">

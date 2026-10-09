@@ -17,7 +17,13 @@ function toICSDate(iso: string) {
 }
 
 function escapeICS(s: string) {
-  return s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+  // \r\n и одиночный \r тоже: описания из админки приходят с CRLF, а
+  // «голый» \r внутри значения ломает разбор строки календарём.
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
 }
 
 export type CalendarEvent = {

@@ -22,11 +22,15 @@ let inflight: Promise<ClubSettings> | null = null;
 // читают/пишут его без привязки к студии. В живой БД колонка studio_id уже
 // существует (в db/club_settings.sql её нет — дрейф схемы), но пока настройки
 // не станут пер-студийными осознанно, фильтровать здесь нечего.
+// Ошибку пробрасываем: раньше сбой запроса превращался в DEFAULTS и
+// кэшировался до перезагрузки страницы (без быстрых действий и с чужим
+// дедлайном отмены), а отклонённый промис оставался в inflight навсегда.
 async function fetchSettings(): Promise<ClubSettings> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("club_settings")
     .select("write_url, call_url, feedback_url, cancel_booking_minutes")
     .maybeSingle();
+  if (error) throw error;
   return data ? { ...DEFAULTS, ...data } : DEFAULTS;
 }
 
@@ -34,11 +38,23 @@ export function useClubSettings(): ClubSettings {
   const [s, setS] = useState<ClubSettings>(cached ?? DEFAULTS);
   useEffect(() => {
     if (cached) return;
+    let cancelled = false;
     if (!inflight) inflight = fetchSettings();
-    inflight.then((v) => {
-      cached = v;
-      setS(v);
-    });
+    const current = inflight;
+    current
+      .then((v) => {
+        cached = v;
+        if (!cancelled) setS(v);
+      })
+      .catch(() => {
+        // Остаёмся на DEFAULTS; следующее монтирование попробует снова.
+      })
+      .finally(() => {
+        if (inflight === current) inflight = null;
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   return s;
 }

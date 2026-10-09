@@ -25,6 +25,10 @@ type NewsItem = {
   button_url: string | null;
 };
 
+// Корень страницы — h-full, а не flex-1: <main> в AppShell не flex-контейнер
+// (overflow-hidden с фиксированной высотой), поэтому flex-1 ничего не давал,
+// внутренний overflow-y-auto рос по контенту, и длинная новость обрезалась
+// без возможности прокрутки.
 function NewsDetailPage() {
   const { newsId } = Route.useParams();
   const [item, setItem] = useState<NewsItem | null>(null);
@@ -54,7 +58,7 @@ function NewsDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1">
+      <div className="flex h-full flex-col">
         <div className="flex-1 overflow-y-auto pb-24">
           <div className="px-4 pt-4">
             <Skeleton className="w-full aspect-[4/3] rounded-xl" />
@@ -86,7 +90,7 @@ function NewsDetailPage() {
   const hasCta = !!item.button_text && !!item.button_url;
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="relative">
           <div className="px-4 pt-4">
