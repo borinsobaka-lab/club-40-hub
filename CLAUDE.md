@@ -13,11 +13,12 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
 - `bun run dev` — дев-сервер на :8080
 - `bun run build` — прод-сборка (Nitro node-server → `.output/server/index.mjs`)
 - `bunx tsc --noEmit` — типы; должен быть чистым перед коммитом
-- `bun test` — тесты (сейчас: логика auth-писем). Файлы `*.test.ts` исключены
-  из tsc: глобальные типы Bun конфликтуют с DOM-типами приложения.
-- `bun run lint` — форматный долг снят (prettier прогнан целиком); остались
-  содержательные замечания (no-explicit-any, exhaustive-deps) — чинить по ходу
-  задач. Форматирование и содержательные правки — разными коммитами.
+- `bun test` — тесты (логика auth-писем, отправка почты, инструменты Kate).
+  Файлы `*.test.ts` исключены из tsc: глобальные типы Bun конфликтуют с
+  DOM-типами приложения.
+- `bun run lint` — 0 ошибок (остаются 5 предупреждений react-refresh в
+  shadcn-файлах); держать так. `eslint-disable` и `as any` в коде страниц нет —
+  не добавлять. Форматирование и содержательные правки — разными коммитами.
 
 ## Рабочий режим (согласован с владельцем)
 
@@ -98,8 +99,12 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_
   Задача 0).**
 - SECURITY DEFINER-функции, выданные `authenticated`, обходят RLS — обязаны
   сами проверять вызывающего (`auth.uid()` — владелец записи или `is_trainer`).
-  Серверные роуты админки с service-ключом (chat/transcribe/employees) —
-  только для сотрудников через `getStaffContext`/`isStaff`.
+  Серверные роуты админки (chat/transcribe) — только для сотрудников через
+  `authenticateStaff` (`src/lib/staff-auth.server.ts`), серверные функции —
+  через middleware `requireStaff`/`requireOwner`
+  (`src/integrations/supabase/auth-middleware.ts`). Service-ключ
+  (`getSupabaseAdmin`) — только после такой проверки и только для того, что
+  RLS не позволяет (`auth.admin.*`).
 - **⚠️ Предрелизный риск (оплата): покупка абонемента клиентом — сейчас
   МУЛЯЖ без оплаты.** `handlePurchase` в клиенте вставляет строку в `sales`
   (политика `sales client insert own`, self-scoped: только своя строка в своей
@@ -137,10 +142,92 @@ own"` оставить). Альтернатива — выдача абонем�
   зависимостей убран). Шим генерируется — `bun run scripts/gen-icons.ts`
   пересобирает его по фактическим импортам; ручные соответствия имён лежат
   в `MANUAL` там же.
-- Пагинация таблиц: `useServerPagination` + `DataPagination`
-  (`src/components/data-pagination.tsx`), поиск через `useDebouncedValue`.
 - Файлы страниц в `src/routes/_authenticated/` — самодостаточные (запросы,
   диалоги и таблица в одном файле); при доработке сохраняй этот стиль.
+  Исключение — разделы одной сущности в разных таблицах: «Новости» и
+  «Услуги» — общая `components/showcase-page.tsx`, файлы роутов — конфиг.
+  Эталон страницы — `promocodes.tsx`.
+
+### Слой данных (React Query)
+
+- Загрузка — `useQuery` + `unwrap()` из `src/lib/query.ts` (ошибка Supabase →
+  исключение). Текст ошибки — `meta: { errorMessage: "Не удалось загрузить …" }`,
+  тост показывает общий QueryCache — свой `toast.error` на загрузку не писать.
+- queryKey: `[таблица, studioId, ...параметры]`. После записи —
+  `invalidateQueries({ queryKey: [таблица] })`; локальная правка без
+  рефетча — `setQueryData`. Кнопка «Обновить» в шапке инвалидирует весь кэш —
+  отдельной «шины обновления» нет.
+- Серверная пагинация — `useServerTable` (`src/hooks/use-server-table.ts`):
+  все фильтры в queryKey (строками, не объектами), смена фильтра сама
+  возвращает на 1-ю страницу; подвал — `<DataPagination {...table.pagination} />`.
+  Клиентская пагинация небольших списков — `usePagination`. Поиск —
+  `useDebouncedValue` + `sanitizeSearch`.
+- Студия — `useActiveStudioId()` (`src/hooks/use-active-studio.ts`), заглушка
+  без студии — `<RequireStudio>`. Текущий сотрудник — `useStaffProfile()`;
+  для записи в БД — `await ensure()` (иначе ранний клик пишет null).
+- Диалог с формой: состояние формы — в дочернем компоненте внутри
+  `<DialogContent>` с `key={item?.id ?? "new"}`, инициализация через
+  `useState(item?.x ?? "")`. Эффекты «сбросить поля при открытии» не писать:
+  Radix размонтирует содержимое при закрытии. Сначала валидация, потом
+  `setSaving(true)`, снятие — в `finally`. Удаление — `useConfirm`.
+
+### Общие модули
+
+- `src/lib/format.ts` — деньги (`formatMoney` без копеек, `formatMoneyPrecise`),
+  даты (`formatDate`, `formatDateTime`, `todayISO` — локальная дата, НЕ
+  `toISOString()`), `clientName` («Фамилия Имя»), `initials`, `genderLabel`.
+- `src/lib/payments.ts`, `src/lib/bookings.ts` (+ `BookingStatusBadge`),
+  `src/lib/client-status.ts`, `src/lib/workout-types.ts` — справочники.
+- `src/lib/storage.ts` + `components/image-upload-field.tsx` — картинки
+  Storage (`StorageImage`, `ImageUploadField`); бакеты — `STORAGE_BUCKETS`.
+- `components/client-combobox.tsx` — выбор клиента (серверный поиск);
+  `ClientNameLink` + `hooks/use-crm-links.ts` — имя клиента со ссылкой amoCRM
+  (ссылки для таблицы — одним запросом на страницу).
+- `src/lib/roles.ts` — `STAFF_ROLES`, `hasStaffRole`.
+
+### Сервер
+
+- Параметры Supabase читаются только в `src/integrations/supabase/env.ts`;
+  клиенты на сервере — `createUserClient(token)` (RLS действует) и
+  `getSupabaseAdmin()` (service-ключ) из `client.server.ts`.
+- Модули `*.server.ts` в клиентский бандл не попадают — сборка падает
+  (importProtection в vite.config). Серверное — только в таких файлах или в
+  обработчиках `createServerFn`/API-роутов.
+- AI-ассистент: роут `src/routes/api/chat.ts`, инструменты/промпт/даты —
+  `src/lib/assistant/`. Даты «сегодня» и границы суток — по Тбилиси (сервер
+  в UTC).
+
+## Известные недоработки (найдены при рефакторинге 2026-10-09, не исправлены)
+
+Нужна миграция БД:
+
+- Удаление занятия каскадом удаляет `schedule_bookings`, а строки `bookings_log`
+  остаются `booked` — потом `mark_no_show_bookings` делает их `no_show`. Нужен
+  триггер before delete на `schedule_entries` (перевести журнал в `cancelled`)
+  или удаление через RPC.
+- `handle_new_user` (client_app_fixes.sql) заводит карточку `clients` каждому
+  новому пользователю — и сотрудникам, созданным в «Доступах»: в списке
+  клиентов появляются сотрудники.
+- Во вью `sales_list` и `bookings_log_full` нет `crm_link` — ссылки amoCRM
+  догружаются отдельным запросом на страницу (`useCrmLinks`).
+- `visits_left` не уменьшается ни одной функцией в db/\*.sql — проверить на
+  живой базе, расходуются ли пакеты посещений.
+- Перестановка порядка новостей/услуг — три отдельных update (неатомарно);
+  строки с одинаковой `position` не переставляются. Нужна RPC.
+
+Решение владельца:
+
+- Промокод в продаже — свободный текст: не проверяется по `promo_codes`,
+  `usage_count` не растёт.
+- «Отправить» пуш только ставит `status='sent'`, реальной рассылки нет.
+- «Активные клиенты» на дашборде не считают замороженные абонементы, а
+  статус ЧК считает.
+- «История записей» и «Отмены автопродления» показывают «Имя Фамилия»
+  (full_name в приоритете), остальные разделы — «Фамилия Имя».
+- У новостей кнопку можно заполнить наполовину, у услуг — нет.
+- Фото тренеров и тренировок открываются по подписанным ссылкам, хотя бакеты в
+  db/ публичные; если в живой базе тоже публичные — перевести на `public` в
+  `STORAGE_BUCKETS`.
 
 ## Документы
 
