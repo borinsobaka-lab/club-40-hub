@@ -16,7 +16,7 @@ export type Studio = {
 
 const STUDIO_COLUMNS = "id, name, format, brand_color, logo_url";
 
-// Таблица studios читается публично (db/studio_formats.sql), в том числе до
+// Таблица studios читается публично (db/migrations/2026-10-09_studio_formats.sql), в том числе до
 // входа. Пока миграция не выполнена, колонки format нет и запросы падают —
 // тогда хуки отдают undefined, и приложение ведёт себя как до разделения
 // форматов (без выбора студии и без проверки формата).

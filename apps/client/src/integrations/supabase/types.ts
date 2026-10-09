@@ -280,7 +280,7 @@ export type Database = {
           },
         ];
       };
-      /* patched: db/studio_formats.sql (club-40-hub); приложению studios
+      /* patched: db/migrations/2026-10-09_studio_formats.sql (club-40-hub); приложению studios
          доступна только на чтение — Insert/Update не описаны */
       studios: {
         Row: {
