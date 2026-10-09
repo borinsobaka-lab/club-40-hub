@@ -74,14 +74,24 @@ function AuthPage() {
     // Step 2: убедиться, что это сотрудник. Клиенты живут в том же проекте
     // Supabase, и часть старых клиентских аккаунтов имеет пароль — без этой
     // проверки клиент получил бы письмо со ссылкой в админку.
-    if (!signInData.user || !(await hasStaffRole(supabase, signInData.user.id))) {
-      await supabase.auth.signOut();
+    // signOut здесь и ниже — scope local: глобальный (по умолчанию) отзывал
+    // все сессии сотрудника, и вход на ноутбуке выкидывал его с компьютера студии.
+    let isStaff = false;
+    try {
+      isStaff = !!signInData.user && (await hasStaffRole(supabase, signInData.user.id));
+    } catch (err) {
+      await supabase.auth.signOut({ scope: "local" });
+      toast.error((err as Error).message);
+      return;
+    }
+    if (!isStaff) {
+      await supabase.auth.signOut({ scope: "local" });
       toast.error("Эта учётная запись не имеет доступа к админ-панели");
       return;
     }
 
     // Пароль верный и это сотрудник — сбрасываем сессию и требуем ссылку как 2FA
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     try {
       await sendMagicLink(email);
       setStep("sent");

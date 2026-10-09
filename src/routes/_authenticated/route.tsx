@@ -15,8 +15,10 @@ export const Route = createFileRoute("/_authenticated")({
     // Одной авторизации мало: клиент мобильного приложения — тоже
     // авторизованный пользователь этого же проекта Supabase. В админку
     // пускаем только сотрудников (owner/admin/trainer в user_roles).
+    // Сбой самой проверки — исключение: страница ошибки с «Повторить», без
+    // выхода из аккаунта. scope local — не трогаем сессии на других устройствах.
     if (!(await hasStaffRole(supabase, data.user.id))) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       throw redirect({ to: "/auth" });
     }
 

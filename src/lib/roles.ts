@@ -12,6 +12,9 @@ export type StaffRole = (typeof STAFF_ROLES)[number];
  * Есть ли у пользователя роль сотрудника хоть в одной студии. Работает с
  * любым клиентом (браузерным или серверным от имени пользователя): строки
  * user_roles своего пользователя RLS отдаёт всегда.
+ *
+ * Ошибка запроса — исключение, а не false: сбой сети или рестарт PostgREST
+ * не должен выглядеть как «не сотрудник» и выкидывать из админки.
  */
 export async function hasStaffRole(supabase: SupabaseClient, userId: string): Promise<boolean> {
   const { data, error } = await supabase
@@ -20,5 +23,6 @@ export async function hasStaffRole(supabase: SupabaseClient, userId: string): Pr
     .eq("user_id", userId)
     .in("role", STAFF_ROLES)
     .limit(1);
-  return !error && !!data?.length;
+  if (error) throw new Error(`Не удалось проверить роль: ${error.message}`);
+  return !!data?.length;
 }
