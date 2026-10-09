@@ -126,13 +126,14 @@ function BookingsLogPage() {
 
   const debouncedSearch = useDebouncedValue(search);
   const pg = useServerPagination();
-  const { from, to, setTotal, setPage } = pg;
+  const { from, to, setTotal, setPage, beginRequest } = pg;
 
   useEffect(() => {
     setPage(1);
   }, [studioId, debouncedSearch, status, setPage]);
 
   const fetchRows = useCallback(async () => {
+    const isStale = beginRequest();
     if (!studioId) {
       setRows([]);
       setTotal(0);
@@ -157,6 +158,7 @@ function BookingsLogPage() {
       .order("starts_at", { ascending: false })
       .range(from, to);
 
+    if (isStale()) return;
     setLoading(false);
     if (error) {
       toast.error("Не удалось загрузить историю: " + error.message);
@@ -164,7 +166,7 @@ function BookingsLogPage() {
     }
     setRows((data as unknown as LogRow[]) ?? []);
     setTotal(count ?? 0);
-  }, [studioId, status, debouncedSearch, from, to, setTotal]);
+  }, [studioId, status, debouncedSearch, from, to, setTotal, beginRequest]);
 
   useEffect(() => {
     fetchRows();

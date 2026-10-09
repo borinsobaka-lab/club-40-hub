@@ -87,7 +87,7 @@ function CashPage() {
   const [totals, setTotals] = useState({ income: 0, expense: 0 });
   const [operators, setOperators] = useState<Operator[]>([]);
   const pg = useServerPagination();
-  const { from, to, setTotal } = pg;
+  const { from, to, setTotal, beginRequest } = pg;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -103,6 +103,7 @@ function CashPage() {
   }, [user?.id, operatorId]);
 
   const fetchAll = useCallback(async () => {
+    const isStale = beginRequest();
     if (!studioId) {
       setOps([]);
       setOperators([]);
@@ -134,6 +135,7 @@ function CashPage() {
         .eq("studio_id", studioId)
         .maybeSingle(),
     ]);
+    if (isStale()) return;
     if (opsErr) toast.error("Не удалось загрузить операции: " + opsErr.message);
     setOps((opsData as CashOp[]) ?? []);
     setTotal(count ?? 0);
@@ -149,6 +151,7 @@ function CashPage() {
           .from("profiles")
           .select("id, full_name, email")
           .in("id", ids);
+        if (isStale()) return;
         setOperators(
           ((profs as any[]) ?? []).map((p) => ({
             id: p.id,
@@ -161,7 +164,7 @@ function CashPage() {
       }
     }
     setLoading(false);
-  }, [studioId, from, to, setTotal]);
+  }, [studioId, from, to, setTotal, beginRequest]);
 
   const refreshSignal = useRefreshSignal();
   useEffect(() => {
@@ -206,6 +209,13 @@ function CashPage() {
       toast.error("Комментарий обязателен");
       return;
     }
+    // Пустое поле даты даёт Invalid Date, а toISOString() на нём бросает
+    // исключение — уже после setSaving(true), и кнопка навсегда «крутилась».
+    const occurred = new Date(occurredAt);
+    if (!occurredAt || Number.isNaN(occurred.getTime())) {
+      toast.error("Укажите дату и время операции");
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from("cash_operations").insert({
       studio_id: studioId,
@@ -214,7 +224,7 @@ function CashPage() {
       category,
       amount: amt,
       comment: comment.trim(),
-      occurred_at: new Date(occurredAt).toISOString(),
+      occurred_at: occurred.toISOString(),
     });
     setSaving(false);
     if (error) {

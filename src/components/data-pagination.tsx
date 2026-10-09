@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,7 +65,18 @@ export function useServerPagination(defaultPageSize: number = DEFAULT_PAGE_SIZE)
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Смена фильтра запускает два запроса подряд: со старой страницей (эффект
+  // загрузки) и с первой (после setPage(1)). Ответы приходят в любом порядке,
+  // и запоздавший старый перетирал свежую выдачу. Страница вызывает
+  // beginRequest() в начале загрузки и не применяет ответ, если isStale().
+  const requestSeq = useRef(0);
+  const beginRequest = useCallback(() => {
+    const id = ++requestSeq.current;
+    return () => id !== requestSeq.current;
+  }, []);
+
   return {
+    beginRequest,
     page,
     setPage,
     pageSize,

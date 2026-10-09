@@ -23,7 +23,7 @@ import {
   effectiveStatus,
 } from "@/components/membership-status-badge";
 import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
-import { formatMoney, formatDate } from "@/lib/format";
+import { formatMoney, formatDate, todayISO } from "@/lib/format";
 
 type MemberProfile = {
   user_id: string;
@@ -238,7 +238,10 @@ export function ClientCardDialog({
         setAllMemberships(
           rows.map((r) => ({ client_id: client.id, status: r.status, ends_at: r.ends_at })),
         );
-        const today = new Date().toISOString().slice(0, 10);
+        // Локальная дата, как в computeClubStatus/effectiveStatus: UTC-дата
+        // первые часы суток (Тбилиси, UTC+4) — ещё вчерашняя, и истёкший
+        // вчера абонемент показывался бы активным.
+        const today = todayISO();
         // Замороженный абонемент тоже показываем как текущий.
         const a =
           rows.find(

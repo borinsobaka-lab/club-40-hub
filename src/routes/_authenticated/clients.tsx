@@ -63,6 +63,8 @@ export const Route = createFileRoute("/_authenticated/clients")({
 type Client = {
   id: string;
   studio_id: string;
+  // Нужен карточке клиента: по нему грузятся посещения и анкета.
+  user_id: string | null;
   full_name: string;
   first_name: string | null;
   last_name: string | null;
@@ -83,7 +85,7 @@ type Client = {
 // Колонки запрашиваем поимённо: во вью есть ещё search_name, который нужен
 // только для фильтрации на сервере и незачем гонять по сети.
 const CLIENT_COLUMNS =
-  "id, studio_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
+  "id, studio_id, user_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
   "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status";
 
 function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
@@ -170,7 +172,7 @@ function ClientsPage() {
 
   const debouncedSearch = useDebouncedValue(search);
   const pg = useServerPagination();
-  const { from, to, setTotal, setPage } = pg;
+  const { from, to, setTotal, setPage, beginRequest } = pg;
 
   // DateRange — новый объект на каждый выбор, поэтому в зависимостях эффектов
   // используем строковые ключи, а не сами объекты.
@@ -187,6 +189,7 @@ function ClientsPage() {
   }, [studioId, debouncedSearch, genderFilter, statusFilter, regKey, visitKey, setPage]);
 
   const fetchClients = useCallback(async () => {
+    const isStale = beginRequest();
     if (!studioId) {
       setClients([]);
       setTotal(0);
@@ -214,6 +217,7 @@ function ClientsPage() {
       .order("created_at", { ascending: false })
       .range(from, to);
 
+    if (isStale()) return;
     setLoading(false);
     if (error) {
       toast.error("Не удалось загрузить клиентов: " + error.message);
@@ -223,7 +227,18 @@ function ClientsPage() {
     setTotal(count ?? 0);
     // regRange/visitRange намеренно заменены на regKey/visitKey — см. выше.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, debouncedSearch, genderFilter, statusFilter, regKey, visitKey, from, to, setTotal]);
+  }, [
+    studioId,
+    debouncedSearch,
+    genderFilter,
+    statusFilter,
+    regKey,
+    visitKey,
+    from,
+    to,
+    setTotal,
+    beginRequest,
+  ]);
 
   const refreshSignal = useRefreshSignal();
   useEffect(() => {

@@ -39,7 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoneyPrecise } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
@@ -67,7 +67,8 @@ type PromoCode = {
 
 function formatDiscount(type: DiscountType, value: number) {
   if (type === "percent") return `${value}%`;
-  return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
+  // Валюта студии — лари (GEL), как во всех остальных разделах.
+  return formatMoneyPrecise(value);
 }
 
 function PromoCodesPage() {
@@ -376,7 +377,7 @@ function PromoCodeDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="amount">В рублях (₽)</SelectItem>
+                    <SelectItem value="amount">В лари (₾)</SelectItem>
                     <SelectItem value="percent">В процентах (%)</SelectItem>
                   </SelectContent>
                 </Select>

@@ -155,11 +155,16 @@ function clientName(c: { first_name: string | null; last_name: string | null; fu
   return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
 }
 
+// Календарная арифметика по Y-M-D: без Date-парсинга (он читает дату как UTC)
+// и с прижатием к концу месяца — 31 января + 1 мес. = 28/29 февраля, а не 3 марта.
 function addMonthsISO(iso: string, months: number) {
-  const d = new Date(iso);
-  d.setMonth(d.getMonth() + months);
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+  const [y, m, d] = iso.split("-").map(Number);
+  const total = y * 12 + (m - 1) + months;
+  const ny = Math.floor(total / 12);
+  const nm = total % 12;
+  const lastDay = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate();
+  const nd = Math.min(d, lastDay);
+  return `${ny}-${String(nm + 1).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
 }
 
 function splitAmount(total: number, parts: number) {
@@ -182,13 +187,14 @@ function SalesPage() {
 
   const debouncedSearch = useDebouncedValue(search);
   const pg = useServerPagination();
-  const { from, to, setTotal, setPage } = pg;
+  const { from, to, setTotal, setPage, beginRequest } = pg;
 
   useEffect(() => {
     setPage(1);
   }, [studioId, debouncedSearch, setPage]);
 
   const fetchSales = useCallback(async () => {
+    const isStale = beginRequest();
     if (!studioId) {
       setSales([]);
       setTotal(0);
@@ -208,6 +214,7 @@ function SalesPage() {
       .order("sold_at", { ascending: false })
       .range(from, to);
 
+    if (isStale()) return;
     setLoading(false);
     if (error) {
       toast.error("Не удалось загрузить продажи: " + error.message);
@@ -215,7 +222,7 @@ function SalesPage() {
     }
     setSales((data as unknown as Sale[]) ?? []);
     setTotal(count ?? 0);
-  }, [studioId, debouncedSearch, from, to, setTotal]);
+  }, [studioId, debouncedSearch, from, to, setTotal, beginRequest]);
 
   const fetchClients = useCallback(async () => {
     if (!studioId) return;
@@ -525,7 +532,7 @@ function SaleDialog({
   const discount = listPrice != null ? Math.max(0, listPrice - total) : 0;
 
   const schedule = useMemo(() => {
-    if (!installmentEnabled || remaining === 0 || remainingTotal <= 0) return [];
+    if (!soldAt || !installmentEnabled || remaining === 0 || remainingTotal <= 0) return [];
     const parts = splitAmount(remainingTotal, remaining);
     return [
       { date: soldAt, amount: down, isDownPayment: true },
@@ -551,6 +558,10 @@ function SaleDialog({
       toast.error("Укажите стоимость");
       return;
     }
+    if (!soldAt) {
+      toast.error("Укажите дату продажи");
+      return;
+    }
     if (installmentEnabled) {
       if (down <= 0) {
         toast.error("Укажите первый взнос");
@@ -566,21 +577,31 @@ function SaleDialog({
       }
     }
 
-    // Confirm replacement when client already has an active membership.
-    const { data: existing } = await supabase
+    // Новая продажа вытесняет действующий абонемент — и активный, и
+    // замороженный (activate_membership_from_sale), поэтому предупреждаем о
+    // любом из них. limit(1), а не maybeSingle: при двух строках maybeSingle
+    // отдаёт ошибку, и предупреждение молча пропадало.
+    const { data: existingRows, error: existingErr } = await supabase
       .from("client_memberships")
-      .select("id, memberships(name)")
+      .select("id, status, memberships(name)")
       .eq("client_id", clientId)
-      .eq("status", "active")
-      .maybeSingle();
+      .in("status", ["active", "frozen"])
+      .limit(1);
+    if (existingErr) {
+      toast.error("Не удалось проверить абонементы клиента: " + existingErr.message);
+      return;
+    }
+    const existing = existingRows?.[0];
     if (existing) {
       const m = (
         existing as unknown as { memberships: { name: string } | { name: string }[] | null }
       ).memberships;
       const name = Array.isArray(m) ? (m[0]?.name ?? "—") : (m?.name ?? "—");
+      const kind =
+        (existing as { status?: string }).status === "frozen" ? "замороженный" : "активный";
       const ok = await confirm({
-        title: "Заменить активный абонемент?",
-        description: `У клиента уже есть активный абонемент «${name}». Новая продажа заменит его.`,
+        title: `Заменить ${kind} абонемент?`,
+        description: `У клиента уже есть ${kind} абонемент «${name}». Новая продажа заменит его.`,
         confirmLabel: "Заменить",
         destructive: false,
       });
@@ -870,9 +891,14 @@ function RefundDialog({
 
   const handleSave = async () => {
     if (!sale) return;
-    const amt = Number(String(amount).replace(",", "."));
-    if (!Number.isFinite(amt) || amt < 0) {
-      toast.error("Укажите сумму возврата");
+    const raw = String(amount).replace(",", ".").trim();
+    const amt = Number(raw);
+    if (!raw || !Number.isFinite(amt) || amt <= 0) {
+      toast.error("Укажите сумму возврата больше нуля");
+      return;
+    }
+    if (amt > Number(sale.total_amount ?? 0)) {
+      toast.error("Сумма возврата больше суммы продажи");
       return;
     }
     setSaving(true);

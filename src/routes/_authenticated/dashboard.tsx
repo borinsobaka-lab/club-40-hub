@@ -33,6 +33,19 @@ function toISO(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
 
+// Границы локальных суток как моменты времени для timestamptz-колонок.
+// Строку без смещения ("YYYY-MM-DDT00:00:00") сервер читает в своём поясе
+// (UTC), и окно периода съезжало на 4 часа относительно суток студии.
+function dayStartISO(date: string) {
+  return new Date(`${date}T00:00:00`).toISOString();
+}
+
+function nextDayStartISO(date: string) {
+  const d = new Date(`${date}T00:00:00`);
+  d.setDate(d.getDate() + 1);
+  return d.toISOString();
+}
+
 
 
 type Metrics = {
@@ -103,8 +116,8 @@ async function loadMetrics(studioId: string, from: string, to: string): Promise<
         .select("id", { count: "exact", head: true })
         .eq("studio_id", studioId)
         .eq("status", "attended")
-        .gte("starts_at", `${from}T00:00:00`)
-        .lte("starts_at", `${to}T23:59:59`),
+        .gte("starts_at", dayStartISO(from))
+        .lt("starts_at", nextDayStartISO(to)),
       // Задолженность за период — неоплаченные взносы со сроком в диапазоне
       supabase
         .from("sale_installments")
@@ -131,8 +144,8 @@ async function loadMetrics(studioId: string, from: string, to: string): Promise<
         .from("refunds")
         .select("amount")
         .eq("studio_id", studioId)
-        .gte("refunded_at", `${from}T00:00:00`)
-        .lte("refunded_at", `${to}T23:59:59`),
+        .gte("refunded_at", dayStartISO(from))
+        .lt("refunded_at", nextDayStartISO(to)),
     ]);
 
   const sales = (salesRes.data ?? []) as { total_amount: number }[];

@@ -405,9 +405,11 @@ function AddSaleDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId]);
 
-  const qty = Math.max(1, Math.floor(Number(quantity) || 0));
+  // Без прижатия к 1: иначе «0» или «-3» молча продавались как одна штука,
+  // а проверка количества ниже никогда не срабатывала.
+  const qty = Math.floor(Number(quantity) || 0);
   const price = Number(String(unitPrice).replace(",", ".")) || 0;
-  const total = qty * price;
+  const total = Math.round(Math.max(0, qty) * price * 100) / 100;
 
   const handleSave = async () => {
     if (!selectedItem) {

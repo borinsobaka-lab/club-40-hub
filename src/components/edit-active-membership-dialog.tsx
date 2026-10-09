@@ -102,12 +102,23 @@ export function EditActiveMembershipDialog({
 
   const handleSave = async () => {
     if (!membership) return;
+    // null в visits_left — это безлимит. Пустое поле при снятой галочке
+    // раньше молча превращало абонемент в безлимитный.
+    let visits: number | null = null;
+    if (!unlimitedVisits) {
+      const n = Number(visitsLeft.trim());
+      if (visitsLeft.trim() === "" || !Number.isInteger(n) || n < 0) {
+        toast.error("Укажите количество посещений (целое число от 0) или отметьте «Безлимит»");
+        return;
+      }
+      visits = n;
+    }
     setSaving(true);
     const { error } = await supabase
       .from("client_memberships")
       .update({
         ends_at: endsAt || null,
-        visits_left: unlimitedVisits ? null : visitsLeft ? Number(visitsLeft) : null,
+        visits_left: visits,
       })
       .eq("id", membership.id);
     setSaving(false);
