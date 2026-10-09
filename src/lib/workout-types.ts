@@ -51,10 +51,3 @@ export function dayTypeColor(v: string | null | undefined) {
   }
   return null;
 }
-
-// Backwards compatibility aliases (kept so existing imports keep working).
-export type WorkoutType = DayType;
-export const WORKOUT_TYPES = DAY_TYPES;
-export const WORKOUT_TYPE_COLORS = DAY_TYPE_COLORS;
-export const workoutTypeLabel = dayTypeLabel;
-export const workoutTypeColor = dayTypeColor;

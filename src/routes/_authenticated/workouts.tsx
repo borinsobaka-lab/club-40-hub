@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRefreshSignal } from "@/lib/refresh-bus";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Loader2, Pencil, Trash2, ImageIcon, Search } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, ImageIcon } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/components/studio-switcher";

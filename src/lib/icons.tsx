@@ -21,8 +21,6 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   Alert02Icon as AlertTriangleArt,
   ArrowDown as ArrowDownArt,
-  ArrowLeft as ArrowLeftArt,
-  ArrowRight as ArrowRightArt,
   ArrowUp as ArrowUpArt,
   BarChart as BarChart3Art,
   Bell as BellArt,
@@ -46,7 +44,6 @@ import {
   Dumbbell as DumbbellArt,
   Eye as EyeArt,
   Flame as FlameArt,
-  DragDropVerticalIcon as GripVerticalArt,
   History as HistoryArt,
   Image as ImageArt,
   ImageIcon as ImageIconArt,
@@ -56,7 +53,6 @@ import {
   MessageSquare as MessageSquareArt,
   Mic as MicArt,
   Minus as MinusArt,
-  MoreHorizontal as MoreHorizontalArt,
   Newspaper as NewspaperArt,
   PanelLeft as PanelLeftArt,
   PanelLeftClose as PanelLeftCloseArt,
@@ -105,8 +101,6 @@ function icon(art: IconSvgElement, displayName: string) {
 
 export const AlertTriangle = icon(AlertTriangleArt, "AlertTriangle");
 export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
-export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
-export const ArrowRight = icon(ArrowRightArt, "ArrowRight");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
 export const BarChart3 = icon(BarChart3Art, "BarChart3");
 export const Bell = icon(BellArt, "Bell");
@@ -130,7 +124,6 @@ export const Copy = icon(CopyArt, "Copy");
 export const Dumbbell = icon(DumbbellArt, "Dumbbell");
 export const Eye = icon(EyeArt, "Eye");
 export const Flame = icon(FlameArt, "Flame");
-export const GripVertical = icon(GripVerticalArt, "GripVertical");
 export const History = icon(HistoryArt, "History");
 export const Image = icon(ImageArt, "Image");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
@@ -140,7 +133,6 @@ export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
 export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
 export const Mic = icon(MicArt, "Mic");
 export const Minus = icon(MinusArt, "Minus");
-export const MoreHorizontal = icon(MoreHorizontalArt, "MoreHorizontal");
 export const Newspaper = icon(NewspaperArt, "Newspaper");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const PanelLeftClose = icon(PanelLeftCloseArt, "PanelLeftClose");

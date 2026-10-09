@@ -62,11 +62,6 @@ function loadStudios(): Promise<Studio[]> {
   return studiosPromise;
 }
 
-export function refreshStudiosCache() {
-  studiosCache = null;
-  studiosPromise = null;
-}
-
 export function StudioSwitcher() {
   const [studios, setStudios] = useState<Studio[]>(() => studiosCache ?? []);
   const [active, setActive] = useState<string | null>(() => getActiveStudioId());

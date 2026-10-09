@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { workoutTypeColor } from "@/lib/workout-types";
+import { dayTypeColor } from "@/lib/workout-types";
 import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
@@ -569,7 +569,7 @@ function SchedulePage() {
                                   ?.map((x) => x.trainer?.full_name)
                                   .filter(Boolean)
                                   .join(", ") ?? "";
-                              const color = workoutTypeColor(e.workout?.type);
+                              const color = dayTypeColor(e.workout?.type);
                               const colorClasses = color
                                 ? `${color.bg} ${color.text}`
                                 : "bg-primary text-primary-foreground";

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
-import { Plus, Loader2, Pencil, Trash2, Search, CalendarIcon, Eye } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, CalendarIcon, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
 import { cn } from "@/lib/utils";
