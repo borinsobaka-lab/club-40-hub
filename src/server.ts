@@ -1,7 +1,7 @@
-import "./lib/error-capture";
+import { errorResponse } from "./lib/error-page";
 
-import { consumeLastCapturedError } from "./lib/error-capture";
-import { renderErrorPage } from "./lib/error-page";
+// Серверная точка входа (vite.config: tanstackStart({ server: { entry: "server" } })).
+// Обёртка ловит то, что не дошло до errorMiddleware в start.ts.
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -9,32 +9,22 @@ type ServerEntry = {
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
-async function getServerEntry(): Promise<ServerEntry> {
-  if (!serverEntryPromise) {
-    serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => (m.default ?? m) as ServerEntry,
-    );
-  }
+function getServerEntry(): Promise<ServerEntry> {
+  serverEntryPromise ??= import("@tanstack/react-start/server-entry").then(
+    (m) => (m.default ?? m) as ServerEntry,
+  );
   return serverEntryPromise;
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+// h3 превращает исключение внутри обработчика в обычный 500 с телом
+// {"unhandled":true,"message":"HTTPError"} — try/catch его не видит. Сам h3
+// исключение уже залогировал; здесь только подменяем ответ на понятный.
+async function normalizeUnhandledResponse(request: Request, response: Response) {
   if (response.status < 500) return response;
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return response;
-
+  if (!(response.headers.get("content-type") ?? "").includes("application/json")) return response;
   const body = await response.clone().text();
-  if (!body.includes('"unhandled":true') || !body.includes('"message":"HTTPError"')) {
-    return response;
-  }
-
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
-  return new Response(renderErrorPage(), {
-    status: 500,
-    headers: { "content-type": "text/html; charset=utf-8" },
-  });
+  if (!body.includes('"unhandled":true')) return response;
+  return errorResponse(request);
 }
 
 export default {
@@ -42,13 +32,10 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await normalizeUnhandledResponse(request, response);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return errorResponse(request);
     }
   },
 };

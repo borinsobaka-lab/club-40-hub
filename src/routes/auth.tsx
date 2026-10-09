@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { hasStaffRole } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,13 +74,7 @@ function AuthPage() {
     // Step 2: убедиться, что это сотрудник. Клиенты живут в том же проекте
     // Supabase, и часть старых клиентских аккаунтов имеет пароль — без этой
     // проверки клиент получил бы письмо со ссылкой в админку.
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", signInData.user?.id ?? "")
-      .in("role", ["owner", "admin", "trainer"])
-      .limit(1);
-    if (!roles?.length) {
+    if (!signInData.user || !(await hasStaffRole(supabase, signInData.user.id))) {
       await supabase.auth.signOut();
       toast.error("Эта учётная запись не имеет доступа к админ-панели");
       return;

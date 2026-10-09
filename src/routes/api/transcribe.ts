@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getAiGatewayConfig } from "@/lib/ai-gateway.server";
-import { getStaffContext } from "@/lib/staff-auth.server";
+import { authenticateStaff } from "@/lib/staff-auth.server";
 
 export const Route = createFileRoute("/api/transcribe")({
   server: {
@@ -11,12 +11,8 @@ export const Route = createFileRoute("/api/transcribe")({
           // Диктовка — инструмент сотрудника и прокси к платному API распознавания.
           // Требуем роль сотрудника ДО обращения к провайдеру, иначе эндпоинт
           // становится открытым прокси, жгущим кредиты (любой из интернета).
-          const staff = await getStaffContext(request);
-          if (!staff) {
-            return new Response("Доступ только для сотрудников. Войдите в админку заново.", {
-              status: 403,
-            });
-          }
+          const auth = await authenticateStaff(request);
+          if (!auth.ok) return new Response(auth.message, { status: auth.status });
 
           const config = getAiGatewayConfig();
           const model = process.env.AI_TRANSCRIBE_MODEL;

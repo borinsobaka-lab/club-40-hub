@@ -1,9 +1,10 @@
+/** Страница «не загрузилось» для серверных сбоев (SSR и API). */
 export function renderErrorPage(): string {
   return `<!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <title>This page didn't load</title>
+    <title>Страница не загрузилась — Base40</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       body { font: 15px/1.5 system-ui, -apple-system, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
@@ -18,13 +19,30 @@ export function renderErrorPage(): string {
   </head>
   <body>
     <div class="card">
-      <h1>This page didn't load</h1>
-      <p>Something went wrong on our end. You can try refreshing or head back home.</p>
+      <h1>Страница не загрузилась</h1>
+      <p>На сервере что-то пошло не так. Обновите страницу или вернитесь на главную.</p>
       <div class="actions">
-        <button class="primary" onclick="location.reload()">Try again</button>
-        <a class="secondary" href="/">Go home</a>
+        <button class="primary" onclick="location.reload()">Обновить</button>
+        <a class="secondary" href="/">На главную</a>
       </div>
     </div>
   </body>
 </html>`;
+}
+
+/**
+ * Ответ 500: браузеру (запрос страницы) — HTML-страница, остальным (fetch
+ * из приложения, API) — короткий текст, который можно показать в тосте.
+ */
+export function errorResponse(request: Request): Response {
+  const wantsHtml = (request.headers.get("accept") ?? "").includes("text/html");
+  return wantsHtml
+    ? new Response(renderErrorPage(), {
+        status: 500,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      })
+    : new Response("Внутренняя ошибка сервера. Попробуйте ещё раз.", {
+        status: 500,
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      });
 }

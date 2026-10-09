@@ -2,6 +2,8 @@
 // src/routes/api/auth-email.ts, чтобы её можно было проверять тестом
 // (bun test src/lib/auth-email.test.ts).
 
+import { SUPABASE_URL } from "@/integrations/supabase/env";
+
 export type HookPayload = {
   user: {
     id: string;
@@ -123,12 +125,8 @@ export function buildEmail(
   fromAdminApp: boolean,
 ): { subject: string; html: string } {
   const { token, token_hash, redirect_to, email_action_type, site_url } = payload.email_data;
-  const supabaseUrl =
-    (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_URL ??
-    process.env.VITE_SUPABASE_URL ??
-    "";
   const verifyUrl =
-    `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(token_hash)}` +
+    `${SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(token_hash)}` +
     `&type=${encodeURIComponent(email_action_type)}` +
     `&redirect_to=${encodeURIComponent(redirect_to || site_url)}`;
 

@@ -40,13 +40,10 @@ export default defineConfig(({ command }) => ({
   plugins: [
     tailwindcss(),
     tanstackStart({
-      importProtection: {
-        behavior: "error",
-        client: {
-          files: ["**/server/**"],
-          specifiers: ["server-only"],
-        },
-      },
+      // Стандартные правила: модули *.server.* и @tanstack/react-start/server
+      // в клиентский бандл не попадают — сборка падает. Свои client.files
+      // здесь не задаём: они ЗАМЕНЯЮТ стандартный **/*.server.*, а не дополняют.
+      importProtection: { behavior: "error" },
       // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
       server: { entry: "server" },
     }),

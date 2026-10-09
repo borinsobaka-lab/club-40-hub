@@ -93,8 +93,12 @@ function EmployeesPage() {
 
   const deleteMut = useMutation({
     mutationFn: (user_id: string) => deleteFn({ data: { user_id } }),
-    onSuccess: () => {
-      toast.success("Сотрудник удалён");
+    onSuccess: (res) => {
+      toast.success(
+        res.accountKept
+          ? "Доступ к админке снят. Учётная запись сохранена: человек — клиент или сотрудник другой студии"
+          : "Сотрудник удалён",
+      );
       qc.invalidateQueries({ queryKey: ["employees"] });
     },
     onError: (e: Error) => toast.error(e.message),

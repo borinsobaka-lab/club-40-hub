@@ -2,28 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, tool, stepCountIs, type UIMessage } from "ai";
 import { z } from "zod";
 import { createAiProvider } from "@/lib/ai-gateway.server";
-import { getStaffContext } from "@/lib/staff-auth.server";
+import { authenticateStaff } from "@/lib/staff-auth.server";
 import { sanitizeSearch } from "@/lib/format";
 
 type Body = { messages?: unknown };
-
-// Ассистент Kate — инструмент сотрудника, а не клиента приложения. Пускаем
-// только сотрудников (owner/admin/trainer); анонимы и клиенты получают 401.
-async function getUserContext(request: Request) {
-  return await getStaffContext(request);
-}
 
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          const ctx = await getUserContext(request);
-          if (!ctx || !ctx.studioId) {
-            return new Response("Сессия истекла. Войдите заново и повторите запрос.", {
-              status: 401,
-            });
-          }
+          // Ассистент Kate — инструмент сотрудника, а не клиента приложения.
+          const auth = await authenticateStaff(request);
+          if (!auth.ok) return new Response(auth.message, { status: auth.status });
           const { messages } = (await request.json()) as Body;
           if (!Array.isArray(messages)) {
             return new Response("Messages are required", { status: 400 });
@@ -38,7 +29,7 @@ export const Route = createFileRoute("/api/chat")({
             );
           }
 
-          const { supabase, studioId } = ctx;
+          const { supabase, studioId } = auth.staff;
 
           // Универсальный селектор по студии
           const studioTable = (table: string, select: string, limit = 100) =>

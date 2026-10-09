@@ -4,15 +4,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { buildEmails, isAdminApp, type HookPayload } from "@/lib/auth-email";
 import { mailProvider, sendMail } from "@/lib/mail";
 
-// Send Email Hook для Supabase Auth: Supabase больше не шлёт письма сам, а
-// дёргает этот эндпоинт, и мы отправляем письмо с noreply@base40.fit через
+// Send Email Hook для Supabase Auth: GoTrue не шлёт письма сам, а дёргает
+// этот эндпоинт, и мы отправляем письмо с noreply@base40.fit через
 // Unisender Go (если задан UNISENDER_GO_API_KEY), иначе по-старому через
 // Resend — см. src/lib/mail.ts.
 //
 // РАЗДЕЛЕНИЕ ИДЁТ ПО ПРИЛОЖЕНИЮ, А НЕ ПО ЧЕЛОВЕКУ. Админка и клиентское
 // приложение — разные сущности: один и тот же человек может быть и
 // администратором, и клиентом. Если он вошёл в клиентское приложение, он
-// клиент и получает 4-значный код; письма админки в клиентском приложении
+// клиент и получает 6-значный код; письма админки в клиентском приложении
 // появляться не должны никогда.
 //
 // Признак приложения — хост в email_data.redirect_to (его явно задают оба
@@ -22,12 +22,12 @@ import { mailProvider, sendMail } from "@/lib/mail";
 // авто-входа — полноценный доступ, и слать её «на всякий случай» нельзя,
 // а лишний код максимум неудобен.
 //
-// Настройка: Supabase Dashboard -> Authentication -> Hooks -> Send Email ->
-// HTTPS, URL https://admin.base40.fit/api/auth-email; выданный секрет и ключ
-// почты задать в Coolify (SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_API_KEY или
-// RESEND_API_KEY).
-// Пока переменные не заданы, роут отвечает 500 и Supabase шлёт письма сам —
-// хук в дашборде стоит включать только после задания переменных.
+// Настройка (self-hosted Supabase): переменные GOTRUE_HOOK_SEND_EMAIL_* сервиса
+// auth в Coolify, URI https://admin.base40.fit/api/auth-email; тот же секрет и
+// ключ почты — в окружении админки (SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_API_KEY
+// или RESEND_API_KEY). Пока они не заданы, роут отвечает 500 и письма не
+// уходят вовсе (запасной отправки у GoTrue при включённом хуке нет) — хук
+// включать только после задания переменных.
 
 // Подпись standardized-webhooks: HMAC-SHA256(base64secret, "{id}.{ts}.{body}").
 function verifySignature(secretRaw: string, id: string, ts: string, sig: string, body: string) {
@@ -64,7 +64,8 @@ export const Route = createFileRoute("/api/auth-email")({
           return new Response("invalid signature", { status: 401 });
         }
         // Защита от повтора: подписи старше 5 минут не принимаем.
-        if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) {
+        const sentAt = Number(ts);
+        if (!Number.isFinite(sentAt) || Math.abs(Date.now() / 1000 - sentAt) > 300) {
           return new Response("stale timestamp", { status: 401 });
         }
 

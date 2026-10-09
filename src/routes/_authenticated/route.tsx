@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { hasStaffRole } from "@/lib/roles";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -14,14 +15,7 @@ export const Route = createFileRoute("/_authenticated")({
     // Одной авторизации мало: клиент мобильного приложения — тоже
     // авторизованный пользователь этого же проекта Supabase. В админку
     // пускаем только сотрудников (owner/admin/trainer в user_roles).
-    const { data: roles, error: rolesError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.user.id)
-      .in("role", ["owner", "admin", "trainer"])
-      .limit(1);
-
-    if (rolesError || !roles?.length) {
+    if (!(await hasStaffRole(supabase, data.user.id))) {
       await supabase.auth.signOut();
       throw redirect({ to: "/auth" });
     }

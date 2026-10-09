@@ -156,7 +156,7 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
 
 function formatAssistantError(error: Error) {
   const message = error.message.trim();
-  if (!message || message.startsWith("<!doctype") || message.includes("This page didn't load")) {
+  if (!message || message.startsWith("<!doctype") || message.includes("Страница не загрузилась")) {
     return "Сервис ассистента временно недоступен. Попробуйте ещё раз.";
   }
   return message;

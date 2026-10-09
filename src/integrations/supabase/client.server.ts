@@ -1,20 +1,34 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url =
-  (import.meta as any).env?.VITE_SUPABASE_URL ??
-  process.env.VITE_SUPABASE_URL ??
-  process.env.SUPABASE_URL ??
-  "";
-const serviceKey =
-  process.env.APP_SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./env";
 
-if (!url || !serviceKey) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[supabase.server] Missing VITE_SUPABASE_URL or APP_SUPABASE_SERVICE_KEY — admin operations will fail.",
-  );
+const SERVER_AUTH = { persistSession: false, autoRefreshToken: false } as const;
+
+/**
+ * Клиент от имени пользователя: запросы идут с его JWT, RLS действует.
+ * Основной клиент серверного кода.
+ */
+export function createUserClient(accessToken: string): SupabaseClient {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth: SERVER_AUTH,
+  });
 }
 
-export const supabaseAdmin = createClient(url || "http://localhost", serviceKey || "missing", {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+let admin: SupabaseClient | undefined;
+
+/**
+ * Клиент с service_role — в обход RLS. Только для того, что RLS не позволяет
+ * (auth.admin.*), и только после явной проверки вызывающего.
+ * Ключ — runtime-секрет APP_SUPABASE_SERVICE_KEY.
+ */
+export function getSupabaseAdmin(): SupabaseClient {
+  if (!admin) {
+    const serviceKey = process.env.APP_SUPABASE_SERVICE_KEY;
+    if (!SUPABASE_URL || !serviceKey) {
+      throw new Error("Сервер не настроен: не задан APP_SUPABASE_SERVICE_KEY");
+    }
+    admin = createClient(SUPABASE_URL, serviceKey, { auth: SERVER_AUTH });
+  }
+  return admin;
+}
