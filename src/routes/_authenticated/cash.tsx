@@ -71,7 +71,6 @@ function categoryLabel(v: string) {
   return ALL_CATEGORIES.find((c) => c.value === v)?.label ?? v;
 }
 
-
 function nowLocalInput() {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());

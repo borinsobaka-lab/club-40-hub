@@ -46,8 +46,6 @@ function nextDayStartISO(date: string) {
   return d.toISOString();
 }
 
-
-
 type Metrics = {
   revenue: number;
   signups: number;
@@ -87,66 +85,66 @@ async function loadMetrics(studioId: string, from: string, to: string): Promise<
     otherSalesRes,
     refundsRes,
   ] = await Promise.all([
-      supabase
-        .from("sales")
-        .select("total_amount, sold_at")
-        .eq("studio_id", studioId)
-        .gte("sold_at", from)
-        .lte("sold_at", to),
-      supabase
-        .from("clients")
-        .select("id", { count: "exact", head: true })
-        .eq("studio_id", studioId)
-        .gte("registration_date", from)
-        .lte("registration_date", to),
-      supabase
-        .from("client_memberships")
-        .select("client_id, ends_at, status")
-        .eq("studio_id", studioId)
-        .eq("status", "active"),
-      supabase
-        .from("client_memberships")
-        .select("id", { count: "exact", head: true })
-        .eq("studio_id", studioId)
-        .eq("status", "active")
-        .gte("ends_at", from)
-        .lte("ends_at", to),
-      supabase
-        .from("bookings_log")
-        .select("id", { count: "exact", head: true })
-        .eq("studio_id", studioId)
-        .eq("status", "attended")
-        .gte("starts_at", dayStartISO(from))
-        .lt("starts_at", nextDayStartISO(to)),
-      // Задолженность за период — неоплаченные взносы со сроком в диапазоне
-      supabase
-        .from("sale_installments")
-        .select("amount, sales!inner(studio_id)")
-        .eq("paid", false)
-        .eq("sales.studio_id", studioId)
-        .gte("due_date", from)
-        .lte("due_date", to),
-      // Общая задолженность — все неоплаченные взносы по студии
-      supabase
-        .from("sale_installments")
-        .select("amount, sales!inner(studio_id)")
-        .eq("paid", false)
-        .eq("sales.studio_id", studioId),
-      // Продажи услуг и товаров — отдельная таблица, но выручка общая.
-      supabase
-        .from("other_sales")
-        .select("total_amount")
-        .eq("studio_id", studioId)
-        .gte("sold_at", from)
-        .lte("sold_at", to),
-      // Возвраты уменьшают выручку за период.
-      supabase
-        .from("refunds")
-        .select("amount")
-        .eq("studio_id", studioId)
-        .gte("refunded_at", dayStartISO(from))
-        .lt("refunded_at", nextDayStartISO(to)),
-    ]);
+    supabase
+      .from("sales")
+      .select("total_amount, sold_at")
+      .eq("studio_id", studioId)
+      .gte("sold_at", from)
+      .lte("sold_at", to),
+    supabase
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .eq("studio_id", studioId)
+      .gte("registration_date", from)
+      .lte("registration_date", to),
+    supabase
+      .from("client_memberships")
+      .select("client_id, ends_at, status")
+      .eq("studio_id", studioId)
+      .eq("status", "active"),
+    supabase
+      .from("client_memberships")
+      .select("id", { count: "exact", head: true })
+      .eq("studio_id", studioId)
+      .eq("status", "active")
+      .gte("ends_at", from)
+      .lte("ends_at", to),
+    supabase
+      .from("bookings_log")
+      .select("id", { count: "exact", head: true })
+      .eq("studio_id", studioId)
+      .eq("status", "attended")
+      .gte("starts_at", dayStartISO(from))
+      .lt("starts_at", nextDayStartISO(to)),
+    // Задолженность за период — неоплаченные взносы со сроком в диапазоне
+    supabase
+      .from("sale_installments")
+      .select("amount, sales!inner(studio_id)")
+      .eq("paid", false)
+      .eq("sales.studio_id", studioId)
+      .gte("due_date", from)
+      .lte("due_date", to),
+    // Общая задолженность — все неоплаченные взносы по студии
+    supabase
+      .from("sale_installments")
+      .select("amount, sales!inner(studio_id)")
+      .eq("paid", false)
+      .eq("sales.studio_id", studioId),
+    // Продажи услуг и товаров — отдельная таблица, но выручка общая.
+    supabase
+      .from("other_sales")
+      .select("total_amount")
+      .eq("studio_id", studioId)
+      .gte("sold_at", from)
+      .lte("sold_at", to),
+    // Возвраты уменьшают выручку за период.
+    supabase
+      .from("refunds")
+      .select("amount")
+      .eq("studio_id", studioId)
+      .gte("refunded_at", dayStartISO(from))
+      .lt("refunded_at", nextDayStartISO(to)),
+  ]);
 
   const sales = (salesRes.data ?? []) as { total_amount: number }[];
   const membershipRevenue = sales.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
@@ -306,11 +304,7 @@ function Delta({
   const up = diff > 0;
   const flat = diff === 0;
   const good = flat ? null : up === goodWhenUp;
-  const color = flat
-    ? "text-muted-foreground"
-    : good
-      ? "text-emerald-600"
-      : "text-rose-600";
+  const color = flat ? "text-muted-foreground" : good ? "text-emerald-600" : "text-rose-600";
   const Icon = flat ? Minus : up ? ArrowUp : ArrowDown;
   const diffText = isMoney ? formatMoney(Math.abs(diff)) : formatNumber(Math.abs(diff));
   return (
