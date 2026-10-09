@@ -36,8 +36,7 @@ export function computeClubStatus(memberships: MembershipLite[] | null | undefin
   const today = todayISO();
   // Замороженный абонемент — тоже действующий (на паузе), клиент остаётся ЧК.
   const hasActive = list.some(
-    (m) =>
-      m.status === "frozen" || (m.status === "active" && (!m.ends_at || m.ends_at >= today)),
+    (m) => m.status === "frozen" || (m.status === "active" && (!m.ends_at || m.ends_at >= today)),
   );
   if (hasActive) return "chk";
   return "bchk";

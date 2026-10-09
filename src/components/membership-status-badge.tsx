@@ -56,9 +56,7 @@ export function AutoRenewBadge({ on }: { on: boolean | null | undefined }) {
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        on
-          ? "bg-blue-100 text-blue-700"
-          : "bg-muted text-muted-foreground",
+        on ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground",
       )}
     >
       {on ? "Автопродление: вкл" : "Автопродление: выкл"}
