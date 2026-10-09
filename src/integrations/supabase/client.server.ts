@@ -15,6 +15,16 @@ export function createUserClient(accessToken: string): SupabaseClient {
   });
 }
 
+/** Клиент без пользователя — для вызовов Auth от имени приложения (письмо со ссылкой). */
+export function createAnonClient(): SupabaseClient {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: SERVER_AUTH });
+}
+
+/** Задан ли сервис-ключ (без него недоступны операции getSupabaseAdmin). */
+export function hasSupabaseAdmin() {
+  return !!SUPABASE_URL && !!process.env.APP_SUPABASE_SERVICE_KEY;
+}
+
 let admin: SupabaseClient | undefined;
 
 /**

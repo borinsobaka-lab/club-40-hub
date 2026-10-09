@@ -74,9 +74,8 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
   });
 
 const createSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  full_name: z.string().min(1),
+  email: z.string().trim().toLowerCase().email(),
+  full_name: z.string().trim().min(1),
   role: z.enum(STAFF_ROLES),
 });
 
@@ -88,19 +87,52 @@ function authErrorText(message: string) {
   return message;
 }
 
+/**
+ * Добавить сотрудника по почте. Пароля нет: вход только по ссылке на почту
+ * (паролям сотрудников db/staff_accounts.sql не даёт существовать).
+ * Есть учётная запись (клиент приложения, сотрудник другой студии) — только
+ * выдаём роль; нет — создаём пользователя.
+ */
 export const createEmployee = createServerFn({ method: "POST" })
   .middleware([requireOwner])
   .inputValidator((data) => createSchema.parse(data))
   .handler(async ({ context, data }) => {
     const { studioId } = context;
     const admin = getSupabaseAdmin();
+
+    const pattern = data.email.replace(/[\\%_]/g, "\\$&");
+    const { data: existing, error: findErr } = await admin
+      .from("profiles")
+      .select("id")
+      .ilike("email", pattern)
+      .limit(1);
+    if (findErr) throw new Error(findErr.message);
+    const existingId = (existing?.[0]?.id as string | undefined) ?? null;
+
+    if (existingId) {
+      const { data: has, error: hasErr } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", existingId)
+        .eq("studio_id", studioId)
+        .in("role", STAFF_ROLES)
+        .limit(1);
+      if (hasErr) throw new Error(hasErr.message);
+      if (has?.length) throw new Error("Этот человек уже сотрудник студии");
+      const { error: roleErr } = await admin
+        .from("user_roles")
+        .insert({ user_id: existingId, studio_id: studioId, role: data.role });
+      if (roleErr) throw new Error(roleErr.message);
+      return { ok: true, user_id: existingId, existing: true };
+    }
+
     const { data: created, error } = await admin.auth.admin.createUser({
       email: data.email,
-      password: data.password,
       email_confirm: true,
-      // studio_id читает триггер handle_new_user (auth_trigger.sql): без него
-      // профиль и роль member создаются в самой старой студии.
-      user_metadata: { full_name: data.full_name, studio_id: studioId },
+      // studio_id читает триггер handle_new_user (без него профиль и роль member
+      // создаются в самой старой студии); staff_account — не заводить карточку
+      // клиента (db/staff_accounts.sql).
+      user_metadata: { full_name: data.full_name, studio_id: studioId, staff_account: true },
     });
     if (error || !created.user) {
       throw new Error(authErrorText(error?.message ?? "Не удалось создать пользователя"));
@@ -123,7 +155,7 @@ export const createEmployee = createServerFn({ method: "POST" })
       await admin.auth.admin.deleteUser(newId);
       throw new Error(roleErr.message);
     }
-    return { ok: true, user_id: newId };
+    return { ok: true, user_id: newId, existing: false };
   });
 
 export const deleteEmployee = createServerFn({ method: "POST" })
