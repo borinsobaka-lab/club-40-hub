@@ -20,6 +20,9 @@ export type ComboOption = { value: string; label: string; hint?: string; searchT
  * Собран на Command + Popover: клавиатура, фокус и позиционирование — из
  * примитивов, а не руками. Раньше компонент был скопирован в «Продажи» и
  * «Прочие продажи» — теперь один на оба раздела.
+ *
+ * По умолчанию фильтрует переданные options сам. С `onSearchChange` поиск
+ * серверный: строка поиска уходит наверх, options — уже найденное.
  */
 export function SearchableCombobox({
   value,
@@ -28,6 +31,8 @@ export function SearchableCombobox({
   placeholder,
   searchPlaceholder,
   emptyText,
+  onSearchChange,
+  selectedLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -35,9 +40,19 @@ export function SearchableCombobox({
   placeholder: string;
   searchPlaceholder: string;
   emptyText: string;
+  onSearchChange?: (search: string) => void;
+  /** Подпись выбранного, если его нет в текущих options (серверный поиск). */
+  selectedLabel?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  // Поле поиска при закрытии очищается (Command размонтируется) — и строку
+  // серверного поиска сбрасываем вместе с ним.
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    if (!next) onSearchChange?.("");
+  };
   const selected = options.find((o) => o.value === value);
+  const label = selected?.label ?? (value ? selectedLabel : undefined);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -47,21 +62,22 @@ export function SearchableCombobox({
           aria-expanded={open}
           className="w-full justify-between font-normal"
         >
-          <span className={cn("truncate", !selected && "text-muted-foreground")}>
-            {selected ? selected.label : placeholder}
+          <span className={cn("truncate", !label && "text-muted-foreground")}>
+            {label ?? placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command
+          shouldFilter={!onSearchChange}
           filter={(itemValue, search) => {
             const opt = options.find((o) => o.value === itemValue);
             if (!opt) return 0;
             return opt.searchText.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
           }}
         >
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput placeholder={searchPlaceholder} onValueChange={onSearchChange} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>

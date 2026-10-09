@@ -45,7 +45,6 @@ import {
   Eye as EyeArt,
   Flame as FlameArt,
   History as HistoryArt,
-  Image as ImageArt,
   ImageIcon as ImageIconArt,
   LayoutDashboard as LayoutDashboardArt,
   LoaderCircle as Loader2Art,
@@ -125,7 +124,6 @@ export const Dumbbell = icon(DumbbellArt, "Dumbbell");
 export const Eye = icon(EyeArt, "Eye");
 export const Flame = icon(FlameArt, "Flame");
 export const History = icon(HistoryArt, "History");
-export const Image = icon(ImageArt, "Image");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
 export const LayoutDashboard = icon(LayoutDashboardArt, "LayoutDashboard");
 export const Loader2 = icon(Loader2Art, "Loader2");

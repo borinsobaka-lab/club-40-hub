@@ -28,6 +28,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { toast } from "sonner";
 import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
 import { ClientNameLink } from "@/components/client-name-link";
+import { useCrmLinks } from "@/hooks/use-crm-links";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { BOOKING_STATUS_FILTER, BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
@@ -100,6 +101,11 @@ function BookingsLogPage() {
     enabled: !!studioId,
     errorMessage: "Не удалось загрузить историю",
   });
+  const crmLinkOf = useCrmLinks(
+    studioId,
+    "user_id",
+    table.rows.map((r) => r.user_id),
+  );
 
   // Раньше эта простановка вызывалась внутри загрузки страницы, то есть на
   // каждый ввод в поиске и на каждую смену страницы — а это два UPDATE'а по
@@ -192,7 +198,9 @@ function BookingsLogPage() {
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">
                           {r.user_id && name !== "—" ? (
-                            <ClientNameLink userId={r.user_id}>{name}</ClientNameLink>
+                            <ClientNameLink userId={r.user_id} crmLink={crmLinkOf(r.user_id)}>
+                              {name}
+                            </ClientNameLink>
                           ) : (
                             name
                           )}

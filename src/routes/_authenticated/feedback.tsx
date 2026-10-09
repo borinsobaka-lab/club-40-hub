@@ -492,7 +492,7 @@ function NewFeedbackForm({
 
 /** Карточка обращения в боковой панели: отметить отработанным / вернуть в работу. */
 function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void }) {
-  const { data: me } = useStaffProfile();
+  const { ensure: ensureMe } = useStaffProfile();
   const [resolutionComment, setResolutionComment] = useState(item.resolution_comment || "");
   const [busy, setBusy] = useState(false);
 
@@ -511,8 +511,9 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
     }
   };
 
-  const handleResolve = () =>
-    update(
+  const handleResolve = async () => {
+    const me = await ensureMe();
+    return update(
       {
         status: "resolved",
         resolved_by: me?.id ?? null,
@@ -522,6 +523,7 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
       },
       "Обращение отработано",
     );
+  };
 
   const handleReopen = () =>
     update(

@@ -275,7 +275,7 @@ function CashOperationForm({
   operators: Operator[];
   onSaved: () => void;
 }) {
-  const { data: me } = useStaffProfile();
+  const { data: me, ensure: ensureMe } = useStaffProfile();
   const [kind, setKind] = useState<CashKind>("income");
   const [category, setCategory] = useState(CATEGORIES.income[0].value);
   const [amount, setAmount] = useState("");
@@ -312,9 +312,12 @@ function CashOperationForm({
     }
     setSaving(true);
     try {
+      // Оператор не выбран вручную — текущий сотрудник (дожидаемся профиля,
+      // если «Сохранить» нажали раньше, чем он загрузился).
+      const operator = operatorId || (await ensureMe())?.id || null;
       const { error } = await supabase.from("cash_operations").insert({
         studio_id: studioId,
-        user_id: selectedOperatorId || null,
+        user_id: operator,
         kind,
         category,
         amount: amt,

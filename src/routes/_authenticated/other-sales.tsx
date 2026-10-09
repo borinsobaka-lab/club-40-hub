@@ -44,6 +44,7 @@ import {
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
+import { useCrmLinks } from "@/hooks/use-crm-links";
 import { ClientCombobox } from "@/components/client-combobox";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { clientName, formatMoneyPrecise, formatDate, todayISO } from "@/lib/format";
@@ -191,6 +192,11 @@ function SalesTab({ studioId }: { studioId: string }) {
   };
 
   const pg = usePagination(rows);
+  const crmLinkOf = useCrmLinks(
+    studioId,
+    "id",
+    pg.paged.map((s) => s.client_id),
+  );
 
   return (
     <>
@@ -251,7 +257,7 @@ function SalesTab({ studioId }: { studioId: string }) {
                     </TableCell>
                     <TableCell className="font-medium">
                       {s.client_id && s.clients ? (
-                        <ClientNameLink clientId={s.client_id}>
+                        <ClientNameLink clientId={s.client_id} crmLink={crmLinkOf(s.client_id)}>
                           {clientName(s.clients)}
                         </ClientNameLink>
                       ) : (
@@ -310,7 +316,7 @@ function AddSaleDialog(props: AddSaleDialogProps) {
 }
 
 function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogProps) {
-  const { data: staff } = useStaffProfile();
+  const { ensure: ensureStaff } = useStaffProfile();
   const [form, setForm] = useState(() => ({
     itemId: "",
     clientId: "",
@@ -356,8 +362,13 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
       toast.error("Цена не может быть отрицательной");
       return;
     }
+    if (!form.soldAt) {
+      toast.error("Укажите дату продажи");
+      return;
+    }
     setSaving(true);
     try {
+      const staff = await ensureStaff();
       const { error } = await supabase.from("other_sales").insert({
         studio_id: studioId,
         item_id: selectedItem.id,

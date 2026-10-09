@@ -50,6 +50,7 @@ import { toast } from "sonner";
 import { DataPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
+import { useCrmLinks } from "@/hooks/use-crm-links";
 import { ClientCombobox } from "@/components/client-combobox";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { clientName, formatMoney, formatDate, todayISO } from "@/lib/format";
@@ -185,6 +186,11 @@ function SalesPage() {
     errorMessage: "Не удалось загрузить продажи",
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["sales_list"] });
+  const crmLinkOf = useCrmLinks(
+    studioId,
+    "id",
+    table.rows.map((s) => s.client_id),
+  );
 
   const handleDelete = async (s: Sale) => {
     if (
@@ -282,7 +288,10 @@ function SalesPage() {
                         <TableRow>
                           <TableCell className="font-medium">
                             {s.clients ? (
-                              <ClientNameLink clientId={s.client_id}>
+                              <ClientNameLink
+                                clientId={s.client_id}
+                                crmLink={crmLinkOf(s.client_id)}
+                              >
                                 {clientName(s.clients)}
                               </ClientNameLink>
                             ) : (
@@ -439,7 +448,7 @@ function SaleDialog(props: SaleDialogProps) {
 
 function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
   const { confirm, confirmDialog } = useConfirm();
-  const { data: staff } = useStaffProfile();
+  const { data: staff, ensure: ensureStaff } = useStaffProfile();
   const [form, setForm] = useState<SaleFields>(() => ({
     clientId: "",
     clientLabel: "",
@@ -526,14 +535,15 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
         if (!ok) return;
       }
 
+      const admin = await ensureStaff();
       const { data: sale, error } = await supabase
         .from("sales")
         .insert({
           studio_id: studioId,
           client_id: form.clientId,
           membership_id: form.membershipId,
-          admin_id: staff?.id ?? null,
-          admin_name: staff?.displayName || null,
+          admin_id: admin?.id ?? null,
+          admin_name: admin?.displayName || null,
           sold_at: form.soldAt,
           total_amount: t.total,
           down_payment_amount: t.down,
@@ -808,8 +818,23 @@ function RefundForm({
   onOpenChange,
   onSaved,
 }: Omit<RefundDialogProps, "open"> & { sale: Sale }) {
-  const { data: staff } = useStaffProfile();
-  const [amount, setAmount] = useState(String(sale.total_amount ?? ""));
+  const { ensure: ensureStaff } = useStaffProfile();
+  // Уже оформленные возвраты по продаже: сумма всех возвратов не должна
+  // превышать сумму продажи.
+  const { data: refunded, isLoading: loadingRefunded } = useQuery({
+    queryKey: ["refunds", "by-sale", sale.id],
+    queryFn: async () => {
+      const rows = await unwrap<{ amount: number | string | null }[]>(
+        supabase.from("refunds").select("amount").eq("sale_id", sale.id),
+      );
+      return rows.reduce((s, r) => s + Number(r.amount ?? 0), 0);
+    },
+    meta: { errorMessage: "Не удалось загрузить прошлые возвраты" },
+  });
+  const available = Math.max(0, Number(sale.total_amount ?? 0) - (refunded ?? 0));
+  // По умолчанию — остаток к возврату; пока админ не ввёл своё значение.
+  const [amountInput, setAmount] = useState<string | null>(null);
+  const amount = amountInput ?? (refunded === undefined ? "" : String(available));
   const [reason, setReason] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [saving, setSaving] = useState(false);
@@ -822,12 +847,21 @@ function RefundForm({
       toast.error("Укажите сумму возврата больше нуля");
       return;
     }
-    if (amt > Number(sale.total_amount ?? 0)) {
-      toast.error("Сумма возврата больше суммы продажи");
+    if (refunded === undefined) {
+      toast.error("Не удалось проверить прошлые возвраты — обновите страницу");
+      return;
+    }
+    if (amt > available) {
+      toast.error(
+        refunded > 0
+          ? `Сумма возврата больше остатка: по продаже уже возвращено ${formatMoney(refunded)}`
+          : "Сумма возврата больше суммы продажи",
+      );
       return;
     }
     setSaving(true);
     try {
+      const staff = await ensureStaff();
       const { error } = await supabase.from("refunds").insert({
         studio_id: sale.studio_id,
         sale_id: sale.id,
@@ -869,6 +903,11 @@ function RefundForm({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
+            {!!refunded && (
+              <p className="text-xs text-muted-foreground">
+                Уже возвращено {formatMoney(refunded)}, доступно {formatMoney(available)}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Способ</Label>
@@ -900,7 +939,7 @@ function RefundForm({
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving || loadingRefunded}>
           {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
           Оформить возврат
         </Button>
