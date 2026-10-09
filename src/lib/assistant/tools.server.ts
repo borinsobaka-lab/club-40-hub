@@ -25,7 +25,13 @@ async function listResult(query: PromiseLike<QueryResult>) {
 
 const limit = (max: number, byDefault: number) =>
   z.number().int().min(1).max(max).default(byDefault);
-const isoDate = (what: string) => z.string().optional().describe(`${what}, YYYY-MM-DD`);
+// Только дата: inPeriod строит из неё границы суток, время сломало бы фильтр.
+const dateString = (what: string) =>
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Дата в формате YYYY-MM-DD, без времени")
+    .describe(`${what}, YYYY-MM-DD`);
+const isoDate = (what: string) => dateString(what).optional();
 
 /** Встроенная связь нетипизированного клиента: объект или массив из одного. */
 function one<T>(v: T | T[] | null | undefined): T | null {
@@ -126,8 +132,8 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     list_schedule: tool({
       description: "Расписание занятий за период (по дате начала занятия, обе даты включительно).",
       inputSchema: z.object({
-        from: z.string().describe("Начало периода, YYYY-MM-DD"),
-        to: z.string().describe("Конец периода включительно, YYYY-MM-DD"),
+        from: dateString("Начало периода"),
+        to: dateString("Конец периода включительно"),
         limit: limit(1000, 500),
       }),
       execute: async ({ from, to, limit }) => {

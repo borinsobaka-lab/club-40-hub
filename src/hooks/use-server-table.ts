@@ -50,10 +50,14 @@ export function useServerTable<T>(opts: {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   // После удаления строк страниц может стать меньше — не оставляем пустую.
+  // Если строк стало меньше смещения, PostgREST вообще отвечает ошибкой 416
+  // (range not satisfiable) — тогда возвращаемся на первую страницу.
   const overflow = query.data !== undefined && !query.isPlaceholderData && page > pageCount;
+  const rangeError = query.isError && page > 1;
   useEffect(() => {
     if (overflow) setPageState({ filterKey, page: pageCount });
-  }, [overflow, filterKey, pageCount]);
+    else if (rangeError) setPageState({ filterKey, page: 1 });
+  }, [overflow, rangeError, filterKey, pageCount]);
 
   return {
     rows: query.data?.rows ?? [],

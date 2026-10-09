@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth, differenceInCalendarDays, addDays } f
 import { ru } from "date-fns/locale";
 import { CalendarIcon, ArrowUp, ArrowDown, Minus, Loader2 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
+import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -15,7 +16,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { unwrap, unwrapPage } from "@/lib/query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatNumber } from "@/lib/format";
 
@@ -68,24 +68,48 @@ type SnapshotMetrics = {
 
 type Metrics = PeriodMetrics & SnapshotMetrics;
 
-function sum(values: (number | null)[]) {
-  return values.reduce<number>((s, v) => s + Number(v ?? 0), 0);
+/** Метрика, которую не удалось посчитать, — undefined: в карточке «—», а не 0. */
+type Loaded<T> = { metrics: Partial<T>; errors: string[] };
+
+type SupabaseResult = {
+  data: unknown;
+  error: { message: string; code?: string } | null;
+  count?: number | null;
+};
+
+// Таблица ещё не создана миграцией (other_sales, refunds — AGENT_TASKS,
+// Задача 6): данных нет — это 0, а не ошибка.
+const MISSING_TABLE = new Set(["PGRST205", "42P01"]);
+
+/**
+ * Запросы метрик независимы: упавший даёт undefined только своим метрикам
+ * (текст ошибки — в общий тост), соседние карточки считаются как обычно.
+ */
+function makeLoader(errors: string[]) {
+  return async function load(query: PromiseLike<SupabaseResult>) {
+    const { data, error, count } = await query;
+    if (error) {
+      if (error.code && MISSING_TABLE.has(error.code)) return { rows: [], count: 0 };
+      errors.push(error.message);
+      return undefined;
+    }
+    return { rows: (data ?? []) as Record<string, unknown>[], count: count ?? 0 };
+  };
 }
 
-/** Число строк из запроса с { count: "exact", head: true }. */
-async function count(query: Parameters<typeof unwrapPage>[0]) {
-  return (await unwrapPage(query)).count;
+function sum(rows: Record<string, unknown>[], column: string) {
+  return rows.reduce<number>((s, r) => s + Number(r[column] ?? 0), 0);
 }
 
 async function loadPeriodMetrics(
   studioId: string,
   from: string,
   to: string,
-): Promise<PeriodMetrics> {
-  // Запросы идут параллельно; ошибка любого — ошибка всего периода, иначе
-  // упавший запрос выглядел бы на дашборде честным нулём.
+): Promise<Loaded<PeriodMetrics>> {
+  const errors: string[] = [];
+  const load = makeLoader(errors);
   const [sales, signups, expiring, visits, debtRows, otherSales, refunds] = await Promise.all([
-    unwrap<{ total_amount: number | null }[]>(
+    load(
       supabase
         .from("sales")
         .select("total_amount, sold_at")
@@ -93,7 +117,7 @@ async function loadPeriodMetrics(
         .gte("sold_at", from)
         .lte("sold_at", to),
     ),
-    count(
+    load(
       supabase
         .from("clients")
         .select("id", { count: "exact", head: true })
@@ -101,7 +125,7 @@ async function loadPeriodMetrics(
         .gte("registration_date", from)
         .lte("registration_date", to),
     ),
-    count(
+    load(
       supabase
         .from("client_memberships")
         .select("id", { count: "exact", head: true })
@@ -110,7 +134,7 @@ async function loadPeriodMetrics(
         .gte("ends_at", from)
         .lte("ends_at", to),
     ),
-    count(
+    load(
       supabase
         .from("bookings_log")
         .select("id", { count: "exact", head: true })
@@ -120,7 +144,7 @@ async function loadPeriodMetrics(
         .lt("starts_at", nextDayStartISO(to)),
     ),
     // Задолженность за период — неоплаченные взносы со сроком в диапазоне
-    unwrap<{ amount: number | null }[]>(
+    load(
       supabase
         .from("sale_installments")
         .select("amount, sales!inner(studio_id)")
@@ -130,7 +154,7 @@ async function loadPeriodMetrics(
         .lte("due_date", to),
     ),
     // Продажи услуг и товаров — отдельная таблица, но выручка общая.
-    unwrap<{ total_amount: number | null }[]>(
+    load(
       supabase
         .from("other_sales")
         .select("total_amount")
@@ -139,7 +163,7 @@ async function loadPeriodMetrics(
         .lte("sold_at", to),
     ),
     // Возвраты уменьшают выручку за период.
-    unwrap<{ amount: number | null }[]>(
+    load(
       supabase
         .from("refunds")
         .select("amount")
@@ -149,26 +173,35 @@ async function loadPeriodMetrics(
     ),
   ]);
 
-  const membershipRevenue = sum(sales.map((r) => r.total_amount));
-  const servicesRevenue = sum(otherSales.map((r) => r.total_amount));
-  const dealsCount = sales.length + otherSales.length;
-
-  return {
-    // Выручка — абонементы плюс услуги и товары, минус возвраты.
-    revenue: membershipRevenue + servicesRevenue - sum(refunds.map((r) => r.amount)),
-    signups,
-    expiring,
-    visits,
-    avgMembership: sales.length ? membershipRevenue / sales.length : 0,
-    avgServices: otherSales.length ? servicesRevenue / otherSales.length : 0,
-    avgTotal: dealsCount ? (membershipRevenue + servicesRevenue) / dealsCount : 0,
-    debtPeriod: sum(debtRows.map((r) => r.amount)),
+  const metrics: Partial<PeriodMetrics> = {
+    signups: signups?.count,
+    expiring: expiring?.count,
+    visits: visits?.count,
+    debtPeriod: debtRows && sum(debtRows.rows, "amount"),
   };
+  if (sales) {
+    const revenue = sum(sales.rows, "total_amount");
+    metrics.avgMembership = sales.rows.length ? revenue / sales.rows.length : 0;
+  }
+  if (otherSales) {
+    const revenue = sum(otherSales.rows, "total_amount");
+    metrics.avgServices = otherSales.rows.length ? revenue / otherSales.rows.length : 0;
+  }
+  if (sales && otherSales) {
+    const revenue = sum(sales.rows, "total_amount") + sum(otherSales.rows, "total_amount");
+    const deals = sales.rows.length + otherSales.rows.length;
+    metrics.avgTotal = deals ? revenue / deals : 0;
+    // Выручка — абонементы плюс услуги и товары, минус возвраты.
+    if (refunds) metrics.revenue = revenue - sum(refunds.rows, "amount");
+  }
+  return { metrics, errors };
 }
 
-async function loadSnapshotMetrics(studioId: string): Promise<SnapshotMetrics> {
+async function loadSnapshotMetrics(studioId: string): Promise<Loaded<SnapshotMetrics>> {
+  const errors: string[] = [];
+  const load = makeLoader(errors);
   const [active, debtRows] = await Promise.all([
-    unwrap<{ client_id: string; ends_at: string | null }[]>(
+    load(
       supabase
         .from("client_memberships")
         .select("client_id, ends_at, status")
@@ -176,7 +209,7 @@ async function loadSnapshotMetrics(studioId: string): Promise<SnapshotMetrics> {
         .eq("status", "active"),
     ),
     // Общая задолженность — все неоплаченные взносы по студии
-    unwrap<{ amount: number | null }[]>(
+    load(
       supabase
         .from("sale_installments")
         .select("amount, sales!inner(studio_id)")
@@ -186,12 +219,19 @@ async function loadSnapshotMetrics(studioId: string): Promise<SnapshotMetrics> {
   ]);
 
   const today = toISO(new Date());
+  const current = active?.rows.filter((m) => !m.ends_at || String(m.ends_at) >= today);
   return {
-    activeClients: new Set(
-      active.filter((m) => !m.ends_at || m.ends_at >= today).map((m) => m.client_id),
-    ).size,
-    debtTotal: sum(debtRows.map((r) => r.amount)),
+    metrics: {
+      activeClients: current && new Set(current.map((m) => m.client_id)).size,
+      debtTotal: debtRows && sum(debtRows.rows, "amount"),
+    },
+    errors,
   };
+}
+
+/** Тост о метриках, которые не удалось посчитать (сами они — «—»). */
+function reportErrors(what: string, errors: string[]) {
+  if (errors.length) toast.error(`${what}: ${[...new Set(errors)].join("; ")}`);
 }
 
 /** Предыдущий период той же длины, вплотную перед выбранным. */
@@ -354,7 +394,11 @@ function DashboardPage() {
         loadPeriodMetrics(studioId!, period!.from, period!.to),
         loadPeriodMetrics(studioId!, prev!.from, prev!.to),
       ]);
-      return { current, previous };
+      reportErrors("Часть показателей за период не загрузилась", [
+        ...current.errors,
+        ...previous.errors,
+      ]);
+      return { current: current.metrics, previous: previous.metrics };
     },
     enabled: !!studioId && !!period,
     meta: { errorMessage: "Не удалось загрузить показатели за период" },
@@ -364,7 +408,11 @@ function DashboardPage() {
   // каждого из двух периодов при каждой смене дат.
   const snapshotQuery = useQuery({
     queryKey: ["dashboard", studioId, "snapshot"],
-    queryFn: () => loadSnapshotMetrics(studioId!),
+    queryFn: async () => {
+      const { metrics, errors } = await loadSnapshotMetrics(studioId!);
+      reportErrors("Часть текущих показателей не загрузилась", errors);
+      return metrics;
+    },
     enabled: !!studioId,
     meta: { errorMessage: "Не удалось загрузить текущие показатели" },
   });

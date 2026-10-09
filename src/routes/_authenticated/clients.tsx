@@ -413,8 +413,12 @@ function initialNames(client: Client | null) {
   const first = client?.first_name ?? "";
   const last = client?.last_name ?? "";
   if (first || last || !client?.full_name) return { first, last };
+  // full_name везде пишется как «Фамилия Имя» (сохранение ниже, триггер
+  // handle_new_user) — первое слово фамилия. Раньше бралось как имя, и
+  // сохранение без правок меняло имя и фамилию местами.
   const parts = client.full_name.trim().split(/\s+/);
-  return { first: parts[0] ?? "", last: parts.slice(1).join(" ") };
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts.slice(1).join(" "), last: parts[0] };
 }
 
 function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogProps) {
