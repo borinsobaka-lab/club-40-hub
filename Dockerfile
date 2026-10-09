@@ -27,4 +27,11 @@ COPY --from=build /app/scripts/migrate.ts ./scripts/migrate.ts
 COPY --from=build /app/db/migrations ./db/migrations
 
 EXPOSE 3000
+# Health check: Coolify ждёт «healthy» нового контейнера и только потом
+# убирает старый — упала миграция, контейнер не стартовал, работает прежний.
+# Проверка из панели Coolify требует curl/wget, которых в slim-образе нет,
+# поэтому она здесь, на bun (Coolify берёт HEALTHCHECK из Dockerfile).
+# start-period — запас на выполнение миграций до старта сервера.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
+  CMD bun -e "fetch('http://127.0.0.1:3000/auth').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 CMD ["sh", "-c", "bun scripts/migrate.ts && exec bun .output/server/index.mjs"]

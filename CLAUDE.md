@@ -106,8 +106,8 @@ redirect) -> 6-значный код. Env: SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_
   Мигратор `scripts/migrate.ts` запускается в контейнере перед сервером
   (Dockerfile): выполняет невыполненные файлы по порядку имён, каждый в
   транзакции, и отмечает их в `app_migrations.applied`; ошибка — откат файла и
-  сервер не стартует (Coolify оставляет прежний контейнер, если у
-  club40-admin включён health check). Правила: файл не править после
+  сервер не стартует (Coolify ждёт «healthy» нового контейнера —
+  HEALTHCHECK в Dockerfile на bun — и оставляет прежний). Правила: файл не править после
   выкатки (исправление — новый файл), без `begin/commit` и
   `create index concurrently` внутри, по-прежнему идемпотентно (create ... if
   not exists / drop policy if exists + create) — его могут выполнить и
