@@ -231,9 +231,10 @@ export function AppSidebar() {
                         >
                           <Link to={item.url} className="flex items-center gap-2">
                             {/*
-                              Свечение за иконкой при наведении — размытый круг
-                              цвета currentColor: у обычного пункта белый, у
-                              активного фирменный розовый, как и сама иконка.
+                              Свечение за иконкой — размытый круг цвета
+                              currentColor. У обычного пункта белое и только
+                              при наведении; у активного розовое, как и сама
+                              иконка, горит всегда и ярче под курсором.
                               overflow-visible! — в свёрнутом меню иконка
                               остаётся последним span, и truncate из базовых
                               стилей пункта обрезал бы свечение. Иконка 18px с
@@ -242,8 +243,10 @@ export function AppSidebar() {
                             */}
                             <span
                               className={cn(
-                                "relative isolate inline-flex shrink-0 overflow-visible! before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-current before:opacity-0 before:blur-[6px] before:transition-opacity before:duration-200 group-hover/nav:before:opacity-45",
-                                isActive(item.url) ? "text-brand" : "text-white",
+                                "relative isolate inline-flex shrink-0 overflow-visible! before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-current before:opacity-0 before:blur-[6px] before:transition-opacity before:duration-200 ",
+                                isActive(item.url)
+                                  ? "text-brand before:opacity-45 group-hover/nav:before:opacity-70"
+                                  : "text-white group-hover/nav:before:opacity-45",
                               )}
                             >
                               <item.icon
