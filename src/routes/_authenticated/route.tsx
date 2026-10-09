@@ -35,18 +35,12 @@ export const Route = createFileRoute("/_authenticated")({
  * В layout-роуте она монтируется один раз, а меняется только содержимое
  * Outlet — AdminShell рисует шапку с заголовком и тело страницы.
  */
-/**
- * shadcn пишет состояние панели в cookie при переключении, но обратно её нигде
- * не читает: без этого меню разворачивалось бы заново на каждой перезагрузке.
- */
-function sidebarOpenFromCookie() {
-  if (typeof document === "undefined") return true;
-  return !/(?:^|;\s*)sidebar_state=false(?:;|$)/.test(document.cookie);
-}
-
 function AuthenticatedLayout() {
   return (
-    <SidebarProvider defaultOpen={sidebarOpenFromCookie()}>
+    // Меню всегда развёрнуто: кнопку сворачивания убрали, а сохранённое в
+    // cookie «свёрнуто» иначе оставило бы меню свёрнутым без пути назад.
+    // На мобильном шторка управляется отдельно (openMobile) и работает как раньше.
+    <SidebarProvider open>
       <div className="flex h-screen w-full overflow-hidden bg-canvas">
         <AppSidebar />
         <div className="flex h-screen flex-1 flex-col overflow-hidden">

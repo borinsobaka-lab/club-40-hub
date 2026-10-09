@@ -22,9 +22,6 @@ import {
   Alert02Icon as AlertTriangleArt,
   ArrowDown as ArrowDownArt,
   ArrowUp as ArrowUpArt,
-  BarChart as BarChart3Art,
-  Bell as BellArt,
-  Calendar as CalendarArt,
   CalendarIcon as CalendarIconArt,
   CatIcon as CatArt,
   Check as CheckArt,
@@ -41,42 +38,27 @@ import {
   UnfoldMoreIcon as ChevronsUpDownArt,
   Circle as CircleArt,
   Copy as CopyArt,
-  Dumbbell as DumbbellArt,
   Eye as EyeArt,
-  Flame as FlameArt,
-  History as HistoryArt,
   ImageIcon as ImageIconArt,
-  LayoutDashboard as LayoutDashboardArt,
   LoaderCircle as Loader2Art,
   MessageCircle as MessageCircleArt,
   MessageSquare as MessageSquareArt,
   Mic as MicArt,
   Minus as MinusArt,
-  Newspaper as NewspaperArt,
   PanelLeft as PanelLeftArt,
-  PanelLeftClose as PanelLeftCloseArt,
-  PanelLeftOpen as PanelLeftOpenArt,
   Pencil as PencilArt,
   Phone as PhoneArt,
   Plus as PlusArt,
   Receipt as ReceiptArt,
   RefreshCw as RefreshCwArt,
-  RefreshCwOffIcon as RefreshCwOffArt,
   Save as SaveArt,
   Search as SearchArt,
   SentIcon as SendArt,
-  Settings as SettingsArt,
-  ShoppingBag as ShoppingBagArt,
-  Sparkles as SparklesArt,
   Square as SquareArt,
-  Tag as TagArt,
-  Ticket as TicketArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
   TrendingUp as TrendingUpArt,
-  UserCog as UserCogArt,
   UserPlus as UserPlusArt,
-  Users as UsersArt,
   Wallet as WalletArt,
   X as XArt,
   Zap as ZapArt,
@@ -101,9 +83,6 @@ function icon(art: IconSvgElement, displayName: string) {
 export const AlertTriangle = icon(AlertTriangleArt, "AlertTriangle");
 export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
-export const BarChart3 = icon(BarChart3Art, "BarChart3");
-export const Bell = icon(BellArt, "Bell");
-export const Calendar = icon(CalendarArt, "Calendar");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");
 export const Cat = icon(CatArt, "Cat");
 export const Check = icon(CheckArt, "Check");
@@ -120,42 +99,27 @@ export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
 export const ChevronsUpDown = icon(ChevronsUpDownArt, "ChevronsUpDown");
 export const Circle = icon(CircleArt, "Circle");
 export const Copy = icon(CopyArt, "Copy");
-export const Dumbbell = icon(DumbbellArt, "Dumbbell");
 export const Eye = icon(EyeArt, "Eye");
-export const Flame = icon(FlameArt, "Flame");
-export const History = icon(HistoryArt, "History");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
-export const LayoutDashboard = icon(LayoutDashboardArt, "LayoutDashboard");
 export const Loader2 = icon(Loader2Art, "Loader2");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
 export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
 export const Mic = icon(MicArt, "Mic");
 export const Minus = icon(MinusArt, "Minus");
-export const Newspaper = icon(NewspaperArt, "Newspaper");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
-export const PanelLeftClose = icon(PanelLeftCloseArt, "PanelLeftClose");
-export const PanelLeftOpen = icon(PanelLeftOpenArt, "PanelLeftOpen");
 export const Pencil = icon(PencilArt, "Pencil");
 export const Phone = icon(PhoneArt, "Phone");
 export const Plus = icon(PlusArt, "Plus");
 export const Receipt = icon(ReceiptArt, "Receipt");
 export const RefreshCw = icon(RefreshCwArt, "RefreshCw");
-export const RefreshCwOff = icon(RefreshCwOffArt, "RefreshCwOff");
 export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
-export const Settings = icon(SettingsArt, "Settings");
-export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
-export const Sparkles = icon(SparklesArt, "Sparkles");
 export const Square = icon(SquareArt, "Square");
-export const Tag = icon(TagArt, "Tag");
-export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");
-export const UserCog = icon(UserCogArt, "UserCog");
 export const UserPlus = icon(UserPlusArt, "UserPlus");
-export const Users = icon(UsersArt, "Users");
 export const Wallet = icon(WalletArt, "Wallet");
 export const X = icon(XArt, "X");
 export const Zap = icon(ZapArt, "Zap");
