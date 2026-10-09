@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, differenceInCalendarDays, addDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { CalendarIcon, ArrowUp, ArrowDown, Minus, Loader2 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 
 import { AdminShell } from "@/components/admin-shell";
+import { RequireStudio } from "@/components/require-studio";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useRefreshSignal } from "@/lib/refresh-bus";
+import { unwrap, unwrapPage } from "@/lib/query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatNumber } from "@/lib/format";
 
@@ -46,145 +48,158 @@ function nextDayStartISO(date: string) {
   return d.toISOString();
 }
 
-type Metrics = {
+/** Показатели за период — считаются для выбранного и для предыдущего периода. */
+type PeriodMetrics = {
   revenue: number;
   signups: number;
-  activeClients: number;
   expiring: number;
   visits: number;
   avgMembership: number;
   avgServices: number;
   avgTotal: number;
   debtPeriod: number;
+};
+
+/** Показатели «на сейчас» — от выбранного периода не зависят. */
+type SnapshotMetrics = {
+  activeClients: number;
   debtTotal: number;
 };
 
-const ZERO: Metrics = {
-  revenue: 0,
-  signups: 0,
-  activeClients: 0,
-  expiring: 0,
-  visits: 0,
-  avgMembership: 0,
-  avgServices: 0,
-  avgTotal: 0,
-  debtPeriod: 0,
-  debtTotal: 0,
-};
+type Metrics = PeriodMetrics & SnapshotMetrics;
 
-async function loadMetrics(studioId: string, from: string, to: string): Promise<Metrics> {
-  // Запускаем все запросы параллельно.
-  const [
-    salesRes,
-    signupsRes,
-    activeRes,
-    expiringRes,
-    visitsRes,
-    debtPeriodRes,
-    debtTotalRes,
-    otherSalesRes,
-    refundsRes,
-  ] = await Promise.all([
-    supabase
-      .from("sales")
-      .select("total_amount, sold_at")
-      .eq("studio_id", studioId)
-      .gte("sold_at", from)
-      .lte("sold_at", to),
-    supabase
-      .from("clients")
-      .select("id", { count: "exact", head: true })
-      .eq("studio_id", studioId)
-      .gte("registration_date", from)
-      .lte("registration_date", to),
-    supabase
-      .from("client_memberships")
-      .select("client_id, ends_at, status")
-      .eq("studio_id", studioId)
-      .eq("status", "active"),
-    supabase
-      .from("client_memberships")
-      .select("id", { count: "exact", head: true })
-      .eq("studio_id", studioId)
-      .eq("status", "active")
-      .gte("ends_at", from)
-      .lte("ends_at", to),
-    supabase
-      .from("bookings_log")
-      .select("id", { count: "exact", head: true })
-      .eq("studio_id", studioId)
-      .eq("status", "attended")
-      .gte("starts_at", dayStartISO(from))
-      .lt("starts_at", nextDayStartISO(to)),
+function sum(values: (number | null)[]) {
+  return values.reduce<number>((s, v) => s + Number(v ?? 0), 0);
+}
+
+/** Число строк из запроса с { count: "exact", head: true }. */
+async function count(query: Parameters<typeof unwrapPage>[0]) {
+  return (await unwrapPage(query)).count;
+}
+
+async function loadPeriodMetrics(
+  studioId: string,
+  from: string,
+  to: string,
+): Promise<PeriodMetrics> {
+  // Запросы идут параллельно; ошибка любого — ошибка всего периода, иначе
+  // упавший запрос выглядел бы на дашборде честным нулём.
+  const [sales, signups, expiring, visits, debtRows, otherSales, refunds] = await Promise.all([
+    unwrap<{ total_amount: number | null }[]>(
+      supabase
+        .from("sales")
+        .select("total_amount, sold_at")
+        .eq("studio_id", studioId)
+        .gte("sold_at", from)
+        .lte("sold_at", to),
+    ),
+    count(
+      supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studioId)
+        .gte("registration_date", from)
+        .lte("registration_date", to),
+    ),
+    count(
+      supabase
+        .from("client_memberships")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studioId)
+        .eq("status", "active")
+        .gte("ends_at", from)
+        .lte("ends_at", to),
+    ),
+    count(
+      supabase
+        .from("bookings_log")
+        .select("id", { count: "exact", head: true })
+        .eq("studio_id", studioId)
+        .eq("status", "attended")
+        .gte("starts_at", dayStartISO(from))
+        .lt("starts_at", nextDayStartISO(to)),
+    ),
     // Задолженность за период — неоплаченные взносы со сроком в диапазоне
-    supabase
-      .from("sale_installments")
-      .select("amount, sales!inner(studio_id)")
-      .eq("paid", false)
-      .eq("sales.studio_id", studioId)
-      .gte("due_date", from)
-      .lte("due_date", to),
-    // Общая задолженность — все неоплаченные взносы по студии
-    supabase
-      .from("sale_installments")
-      .select("amount, sales!inner(studio_id)")
-      .eq("paid", false)
-      .eq("sales.studio_id", studioId),
+    unwrap<{ amount: number | null }[]>(
+      supabase
+        .from("sale_installments")
+        .select("amount, sales!inner(studio_id)")
+        .eq("paid", false)
+        .eq("sales.studio_id", studioId)
+        .gte("due_date", from)
+        .lte("due_date", to),
+    ),
     // Продажи услуг и товаров — отдельная таблица, но выручка общая.
-    supabase
-      .from("other_sales")
-      .select("total_amount")
-      .eq("studio_id", studioId)
-      .gte("sold_at", from)
-      .lte("sold_at", to),
+    unwrap<{ total_amount: number | null }[]>(
+      supabase
+        .from("other_sales")
+        .select("total_amount")
+        .eq("studio_id", studioId)
+        .gte("sold_at", from)
+        .lte("sold_at", to),
+    ),
     // Возвраты уменьшают выручку за период.
-    supabase
-      .from("refunds")
-      .select("amount")
-      .eq("studio_id", studioId)
-      .gte("refunded_at", dayStartISO(from))
-      .lt("refunded_at", nextDayStartISO(to)),
+    unwrap<{ amount: number | null }[]>(
+      supabase
+        .from("refunds")
+        .select("amount")
+        .eq("studio_id", studioId)
+        .gte("refunded_at", dayStartISO(from))
+        .lt("refunded_at", nextDayStartISO(to)),
+    ),
   ]);
 
-  const sales = (salesRes.data ?? []) as { total_amount: number }[];
-  const membershipRevenue = sales.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
-  const avgMembership = sales.length ? membershipRevenue / sales.length : 0;
-
-  const otherSales = (otherSalesRes.data ?? []) as { total_amount: number }[];
-  const servicesRevenue = otherSales.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
-  const avgServices = otherSales.length ? servicesRevenue / otherSales.length : 0;
-
-  const refunded = ((refundsRes.data ?? []) as { amount: number }[]).reduce(
-    (s, r) => s + Number(r.amount ?? 0),
-    0,
-  );
-
-  // Выручка — абонементы плюс услуги и товары, минус возвраты.
-  const revenue = membershipRevenue + servicesRevenue - refunded;
+  const membershipRevenue = sum(sales.map((r) => r.total_amount));
+  const servicesRevenue = sum(otherSales.map((r) => r.total_amount));
   const dealsCount = sales.length + otherSales.length;
-  const avgTotal = dealsCount ? (membershipRevenue + servicesRevenue) / dealsCount : 0;
-
-  const active = (activeRes.data ?? []) as { client_id: string; ends_at: string | null }[];
-  const today = toISO(new Date());
-  const activeClients = new Set(
-    active.filter((m) => !m.ends_at || m.ends_at >= today).map((m) => m.client_id),
-  ).size;
-
-  const debtPeriodRows = (debtPeriodRes.data ?? []) as { amount: number }[];
-  const debtTotalRows = (debtTotalRes.data ?? []) as { amount: number }[];
 
   return {
-    revenue,
-    signups: signupsRes.count ?? 0,
-    activeClients,
-    expiring: expiringRes.count ?? 0,
-    visits: visitsRes.count ?? 0,
-    avgMembership,
-    avgServices,
-    avgTotal,
-    debtPeriod: debtPeriodRows.reduce((s, r) => s + Number(r.amount ?? 0), 0),
-    debtTotal: debtTotalRows.reduce((s, r) => s + Number(r.amount ?? 0), 0),
+    // Выручка — абонементы плюс услуги и товары, минус возвраты.
+    revenue: membershipRevenue + servicesRevenue - sum(refunds.map((r) => r.amount)),
+    signups,
+    expiring,
+    visits,
+    avgMembership: sales.length ? membershipRevenue / sales.length : 0,
+    avgServices: otherSales.length ? servicesRevenue / otherSales.length : 0,
+    avgTotal: dealsCount ? (membershipRevenue + servicesRevenue) / dealsCount : 0,
+    debtPeriod: sum(debtRows.map((r) => r.amount)),
   };
+}
+
+async function loadSnapshotMetrics(studioId: string): Promise<SnapshotMetrics> {
+  const [active, debtRows] = await Promise.all([
+    unwrap<{ client_id: string; ends_at: string | null }[]>(
+      supabase
+        .from("client_memberships")
+        .select("client_id, ends_at, status")
+        .eq("studio_id", studioId)
+        .eq("status", "active"),
+    ),
+    // Общая задолженность — все неоплаченные взносы по студии
+    unwrap<{ amount: number | null }[]>(
+      supabase
+        .from("sale_installments")
+        .select("amount, sales!inner(studio_id)")
+        .eq("paid", false)
+        .eq("sales.studio_id", studioId),
+    ),
+  ]);
+
+  const today = toISO(new Date());
+  return {
+    activeClients: new Set(
+      active.filter((m) => !m.ends_at || m.ends_at >= today).map((m) => m.client_id),
+    ).size,
+    debtTotal: sum(debtRows.map((r) => r.amount)),
+  };
+}
+
+/** Предыдущий период той же длины, вплотную перед выбранным. */
+function previousPeriod(from: Date, to: Date) {
+  const days = differenceInCalendarDays(to, from) + 1;
+  const prevTo = addDays(from, -1);
+  const prevFrom = addDays(prevTo, -(days - 1));
+  return { from: toISO(prevFrom), to: toISO(prevTo) };
 }
 
 type StatDef = {
@@ -318,46 +333,50 @@ function Delta({
 
 function DashboardPage() {
   const studioId = useActiveStudioId();
-  const refreshSignal = useRefreshSignal();
   const today = useMemo(() => new Date(), []);
   const [range, setRange] = useState<DateRange | undefined>({
     from: startOfMonth(today),
     to: endOfMonth(today),
   });
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState<Metrics>(ZERO);
-  const [previous, setPrevious] = useState<Metrics>(ZERO);
-  const [loading, setLoading] = useState(false);
 
-  const from = range?.from ?? null;
-  const to = range?.to ?? range?.from ?? null;
+  const fromDate = range?.from;
+  const toDate = range?.to ?? range?.from;
+  const period = fromDate && toDate ? { from: toISO(fromDate), to: toISO(toDate) } : null;
+  const prev = fromDate && toDate ? previousPeriod(fromDate, toDate) : null;
 
-  useEffect(() => {
-    if (!studioId || !from || !to) {
-      setCurrent(ZERO);
-      setPrevious(ZERO);
-      return;
-    }
-    const fromISO = toISO(from);
-    const toISOStr = toISO(to);
-    const days = differenceInCalendarDays(to, from) + 1;
-    const prevTo = addDays(from, -1);
-    const prevFrom = addDays(prevTo, -(days - 1));
+  // Выбранный и предыдущий периоды меняются вместе (по выбору дат) — один
+  // запрос; ответ на уже неактуальный период React Query отбросит сам.
+  const periodQuery = useQuery({
+    queryKey: ["dashboard", studioId, period?.from, period?.to],
+    queryFn: async () => {
+      const [current, previous] = await Promise.all([
+        loadPeriodMetrics(studioId!, period!.from, period!.to),
+        loadPeriodMetrics(studioId!, prev!.from, prev!.to),
+      ]);
+      return { current, previous };
+    },
+    enabled: !!studioId && !!period,
+    meta: { errorMessage: "Не удалось загрузить показатели за период" },
+  });
 
-    setLoading(true);
-    Promise.all([
-      loadMetrics(studioId, fromISO, toISOStr),
-      loadMetrics(studioId, toISO(prevFrom), toISO(prevTo)),
-    ])
-      .then(([cur, prev]) => {
-        setCurrent(cur);
-        setPrevious(prev);
-      })
-      .finally(() => setLoading(false));
-  }, [studioId, from?.getTime(), to?.getTime(), refreshSignal]);
+  // Метрики «на сейчас» от периода не зависят: грузим их один раз, а не для
+  // каждого из двух периодов при каждой смене дат.
+  const snapshotQuery = useQuery({
+    queryKey: ["dashboard", studioId, "snapshot"],
+    queryFn: () => loadSnapshotMetrics(studioId!),
+    enabled: !!studioId,
+    meta: { errorMessage: "Не удалось загрузить текущие показатели" },
+  });
+
+  const loading = periodQuery.isLoading || snapshotQuery.isLoading;
+  const fetching = periodQuery.isFetching || snapshotQuery.isFetching;
+  // Нет данных (ошибка загрузки, период не выбран) — в карточке «—», а не 0.
+  const current: Partial<Metrics> = { ...periodQuery.data?.current, ...snapshotQuery.data };
+  const previous: Partial<Metrics> = periodQuery.data?.previous ?? {};
 
   return (
-    <AdminShell title="Дашборд" description="Сводная статистика по студии">
+    <AdminShell title="Дашборд">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-3">
           <Popover open={open} onOpenChange={setOpen}>
@@ -393,7 +412,7 @@ function DashboardPage() {
           >
             Текущий месяц
           </Button>
-          {loading && (
+          {fetching && (
             <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               обновляем…
@@ -401,60 +420,63 @@ function DashboardPage() {
           )}
         </div>
 
-        {!studioId ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Сначала выберите студию в шапке.
-          </div>
-        ) : loading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {STATS.map((stat) => (
-              <Card key={stat.key}>
-                <CardHeader className="pb-2">
-                  <Skeleton className="h-4 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-7 w-24" />
-                  <Skeleton className="mt-2 h-3 w-20" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {STATS.map((stat) => {
-              const v = current[stat.key];
-              const p = previous[stat.key];
-              const value = stat.format === "money" ? formatMoney(v) : formatNumber(v);
-              return (
+        <RequireStudio studioId={studioId}>
+          {loading ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {STATS.map((stat) => (
                 <Card key={stat.key}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {stat.label}
-                    </CardTitle>
+                    <Skeleton className="h-4 w-32" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold tabular-nums">{value}</div>
-                    <div className="mt-1 flex items-center gap-2">
-                      {stat.hint && (
-                        <span className="text-xs text-muted-foreground">{stat.hint}</span>
-                      )}
-                    </div>
-                    {stat.compare && (
-                      <div className="mt-2">
-                        <Delta
-                          current={v}
-                          previous={p}
-                          goodWhenUp={stat.goodWhenUp}
-                          isMoney={stat.format === "money"}
-                        />
-                      </div>
-                    )}
+                    <Skeleton className="h-7 w-24" />
+                    <Skeleton className="mt-2 h-3 w-20" />
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {STATS.map((stat) => {
+                const v = current[stat.key];
+                const p = previous[stat.key];
+                const value =
+                  v === undefined
+                    ? "—"
+                    : stat.format === "money"
+                      ? formatMoney(v)
+                      : formatNumber(v);
+                return (
+                  <Card key={stat.key}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        {stat.label}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-semibold tabular-nums">{value}</div>
+                      <div className="mt-1 flex items-center gap-2">
+                        {stat.hint && (
+                          <span className="text-xs text-muted-foreground">{stat.hint}</span>
+                        )}
+                      </div>
+                      {stat.compare && v !== undefined && p !== undefined && (
+                        <div className="mt-2">
+                          <Delta
+                            current={v}
+                            previous={p}
+                            goodWhenUp={stat.goodWhenUp}
+                            isMoney={stat.format === "money"}
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </RequireStudio>
       </div>
     </AdminShell>
   );

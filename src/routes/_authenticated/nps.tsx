@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRefreshSignal } from "@/lib/refresh-bus";
-import { useActiveStudioId } from "@/hooks/use-active-studio";
-
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2, CheckCircle2, AlertTriangle, Plus, Loader2 } from "lucide-react";
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -21,7 +19,9 @@ import {
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,16 +45,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Table,
   TableBody,
   TableCell,
@@ -65,6 +55,7 @@ import {
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/nps")({
   head: () => ({ meta: [{ title: "NPS-опросы — Base40 Admin" }] }),
@@ -96,119 +87,110 @@ const TYPE_LABEL: Record<string, string> = Object.fromEntries(
   SURVEY_TYPES.map((s) => [s.type, s.label]),
 );
 
-function category(score: number) {
-  if (score >= 9)
-    return {
-      label: "Промоутер",
-      dot: "bg-emerald-500",
-      cls: "bg-emerald-500/10 text-emerald-700",
-      type: "promoter",
-    };
-  if (score >= 7)
-    return {
-      label: "Пассивный",
-      dot: "bg-amber-500",
-      cls: "bg-amber-500/10 text-amber-700",
-      type: "passive",
-    };
+type NpsBucket = "promoter" | "passive" | "detractor";
+
+/** Категория NPS по оценке 0–10: 9–10 промоутер, 7–8 пассивный, 0–6 критик. */
+function npsBucket(score: number): NpsBucket {
+  if (score >= 9) return "promoter";
+  if (score >= 7) return "passive";
+  return "detractor";
+}
+
+const BUCKET: Record<NpsBucket, { label: string; cls: string; order: number }> = {
+  // order — порядок в таблице: сначала критики, им нужно ответить первыми.
+  detractor: { label: "Критик", cls: "bg-destructive/10 text-destructive", order: 0 },
+  passive: { label: "Пассивный", cls: "bg-amber-500/10 text-amber-700", order: 1 },
+  promoter: { label: "Промоутер", cls: "bg-emerald-500/10 text-emerald-700", order: 2 },
+};
+
+/** NPS = % промоутеров − % критиков; без ответов — null. */
+function npsStats(rows: NpsResponse[]) {
+  const counts: Record<NpsBucket, number> = { promoter: 0, passive: 0, detractor: 0 };
+  for (const r of rows) counts[npsBucket(r.score)]++;
+  const total = rows.length;
+  const nps = total > 0 ? Math.round(((counts.promoter - counts.detractor) / total) * 100) : null;
   return {
-    label: "Критик",
-    dot: "bg-destructive",
-    cls: "bg-destructive/10 text-destructive",
-    type: "detractor",
+    total,
+    promoters: counts.promoter,
+    passives: counts.passive,
+    detractors: counts.detractor,
+    nps,
   };
 }
 
+const byNewest = (a: NpsResponse, b: NpsResponse) =>
+  new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+
+// Токены темы (src/styles.css) заданы в oklch, поэтому в графиках var(--…)
+// подставляется как есть: обёртка hsl(var(--…)) давала невалидный цвет —
+// линия NPS и сетка пропадали, у подсказки не было фона.
 const tooltipStyle = {
-  backgroundColor: "hsl(var(--card))",
-  border: "1px solid hsl(var(--border))",
+  backgroundColor: "var(--card)",
+  border: "1px solid var(--border)",
   borderRadius: "0.5rem",
   fontSize: "12px",
 };
 
 function NpsPage() {
   const studioId = useActiveStudioId();
-  const [responses, setResponses] = useState<NpsResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
   const [tab, setTab] = useState<"surveys" | "stats">("surveys");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [clientFilter, setClientFilter] = useState<string>("all");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-
   const [addOpen, setAddOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    score: 9,
-    client_name: "",
-    comment: "",
-    survey_type: "general" as SurveyType,
+
+  const queryKey = ["nps_responses", studioId];
+  const { data: responses = [], isLoading: loading } = useQuery({
+    queryKey,
+    queryFn: () => {
+      let q = supabase.from("nps_responses").select("*");
+      // Ответы своей студии + строки без привязки (см. db/feedback_nps_studio.sql).
+      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      return unwrap<NpsResponse[]>(q.order("created_at", { ascending: false }));
+    },
+    meta: { errorMessage: "Не удалось загрузить ответы NPS" },
   });
-
-  const fetchData = async () => {
-    let q = supabase.from("nps_responses").select("*");
-    // Ответы своей студии + строки без привязки (см. db/feedback_nps_studio.sql).
-    if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
-    const { data, error } = await q.order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
-    else setResponses((data ?? []) as NpsResponse[]);
-    setLoading(false);
-  };
-
-  const refreshSignal = useRefreshSignal();
-  useEffect(() => {
-    void fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshSignal, studioId]);
-
-  const submitNew = async () => {
-    setSaving(true);
-    const { error } = await supabase.from("nps_responses").insert({
-      studio_id: studioId ?? null,
-      score: form.score,
-      client_name: form.client_name.trim() || null,
-      comment: form.comment.trim() || null,
-      survey_type: form.survey_type,
-      language: "ru",
-    });
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Ответ добавлен");
-    setAddOpen(false);
-    setForm({ score: 9, client_name: "", comment: "", survey_type: "general" });
-    void fetchData();
-  };
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["nps_responses"] });
 
   const toggleHandled = async (id: string, current: boolean) => {
     const { error } = await supabase
       .from("nps_responses")
       .update({ handled: !current })
       .eq("id", id);
-    if (error) return toast.error(error.message);
-    setResponses((p) => p.map((r) => (r.id === id ? { ...r, handled: !current } : r)));
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    queryClient.setQueryData<NpsResponse[]>(queryKey, (prev) =>
+      prev?.map((r) => (r.id === id ? { ...r, handled: !current } : r)),
+    );
   };
 
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    const { error } = await supabase.from("nps_responses").delete().eq("id", deleteId);
-    if (error) return toast.error(error.message);
-    setResponses((p) => p.filter((r) => r.id !== deleteId));
-    setDeleteId(null);
+  const handleDelete = async (id: string) => {
+    if (
+      !(await confirm({
+        title: "Удалить ответ?",
+        description: "Это действие нельзя отменить.",
+      }))
+    )
+      return;
+    const { error } = await supabase.from("nps_responses").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    queryClient.setQueryData<NpsResponse[]>(queryKey, (prev) => prev?.filter((r) => r.id !== id));
     toast.success("Ответ удалён");
   };
 
-  const statsFor = (type: string) => {
-    const f = type === "all" ? responses : responses.filter((r) => r.survey_type === type);
-    const total = f.length;
-    const promoters = f.filter((r) => r.score >= 9).length;
-    const passives = f.filter((r) => r.score >= 7 && r.score <= 8).length;
-    const detractors = f.filter((r) => r.score <= 6).length;
-    const nps = total > 0 ? Math.round(((promoters - detractors) / total) * 100) : null;
-    return { total, promoters, passives, detractors, nps };
-  };
+  const byType = useMemo(
+    () =>
+      typeFilter === "all" ? responses : responses.filter((r) => r.survey_type === typeFilter),
+    [responses, typeFilter],
+  );
 
   const monthly = useMemo(() => {
-    const f =
-      typeFilter === "all" ? responses : responses.filter((r) => r.survey_type === typeFilter);
     const months = Array.from({ length: 6 }, (_, i) => {
       const d = subMonths(new Date(), 5 - i);
       return {
@@ -218,124 +200,56 @@ function NpsPage() {
       };
     });
     return months.map((m) => {
-      const inM = f.filter((r) =>
+      const inMonth = byType.filter((r) =>
         isWithinInterval(parseISO(r.created_at), { start: m.start, end: m.end }),
       );
-      const t = inM.length;
-      const p = inM.filter((r) => r.score >= 9).length;
-      const d = inM.filter((r) => r.score <= 6).length;
-      return { month: m.label, NPS: t > 0 ? Math.round(((p - d) / t) * 100) : null };
+      return { month: m.label, NPS: npsStats(inMonth).nps };
     });
-  }, [responses, typeFilter]);
+  }, [byType]);
 
-  const distribution = useMemo(() => {
-    const s = statsFor(typeFilter);
-    return [
-      { name: "Промоутеры", count: s.promoters, color: "hsl(142, 71%, 45%)" },
-      { name: "Пассивные", count: s.passives, color: "hsl(45, 93%, 47%)" },
-      { name: "Критики", count: s.detractors, color: "hsl(0, 84%, 60%)" },
-    ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [responses, typeFilter]);
+  const global = useMemo(() => npsStats(byType), [byType]);
+
+  const distribution = [
+    { name: "Промоутеры", count: global.promoters, color: "hsl(142, 71%, 45%)" },
+    { name: "Пассивные", count: global.passives, color: "hsl(45, 93%, 47%)" },
+    { name: "Критики", count: global.detractors, color: "hsl(0, 84%, 60%)" },
+  ];
 
   const tableData = useMemo(() => {
-    let d = responses;
-    if (typeFilter !== "all") d = d.filter((r) => r.survey_type === typeFilter);
-    if (clientFilter !== "all") d = d.filter((r) => category(r.score).type === clientFilter);
+    const d =
+      clientFilter === "all" ? byType : byType.filter((r) => npsBucket(r.score) === clientFilter);
     return [...d].sort((a, b) => {
-      const ac = a.score <= 6 ? 0 : a.score <= 8 ? 1 : 2;
-      const bc = b.score <= 6 ? 0 : b.score <= 8 ? 1 : 2;
+      const ac = BUCKET[npsBucket(a.score)].order;
+      const bc = BUCKET[npsBucket(b.score)].order;
       if (ac !== bc) return ac - bc;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return byNewest(a, b);
     });
-  }, [responses, typeFilter, clientFilter]);
+  }, [byType, clientFilter]);
 
-  const unhandled = useMemo(() => {
-    let d = responses.filter((r) => r.score <= 6 && !r.handled);
-    if (typeFilter !== "all") d = d.filter((r) => r.survey_type === typeFilter);
-    return d.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [responses, typeFilter]);
-
-  const global = statsFor(typeFilter);
+  const unhandled = useMemo(
+    () => byType.filter((r) => npsBucket(r.score) === "detractor" && !r.handled).sort(byNewest),
+    [byType],
+  );
 
   const pg = usePagination(tableData);
 
   return (
     <AdminShell
       title="NPS-опросы"
-      description="Аналитика Net Promoter Score"
       actions={
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="default">
+            <Button>
               <Plus className="mr-1 h-4 w-4" /> Добавить ответ
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Новый ответ NPS</DialogTitle>
-              <DialogDescription>Заполните данные ответа клиента.</DialogDescription>
-            </DialogHeader>
-            <DialogBody>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="survey-type">Тип опроса</Label>
-                  <Select
-                    value={form.survey_type}
-                    onValueChange={(v) => setForm({ ...form, survey_type: v as SurveyType })}
-                  >
-                    <SelectTrigger id="survey-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SURVEY_TYPES.map((s) => (
-                        <SelectItem key={s.type} value={s.type}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="score">Оценка (0–10)</Label>
-                  <Input
-                    id="score"
-                    type="number"
-                    min={0}
-                    max={10}
-                    value={form.score}
-                    onChange={(e) =>
-                      setForm({ ...form, score: Math.max(0, Math.min(10, Number(e.target.value))) })
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="client-name">Имя клиента</Label>
-                  <Input
-                    id="client-name"
-                    value={form.client_name}
-                    onChange={(e) => setForm({ ...form, client_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="comment">Комментарий</Label>
-                  <Textarea
-                    id="comment"
-                    value={form.comment}
-                    onChange={(e) => setForm({ ...form, comment: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </DialogBody>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setAddOpen(false)}>
-                Отмена
-              </Button>
-              <Button onClick={submitNew} disabled={saving}>
-                {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
-              </Button>
-            </DialogFooter>
+            {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+            <NewResponseForm
+              studioId={studioId}
+              onClose={() => setAddOpen(false)}
+              onSaved={reload}
+            />
           </DialogContent>
         </Dialog>
       }
@@ -361,7 +275,7 @@ function NpsPage() {
         ) : tab === "surveys" ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {SURVEY_TYPES.map((s) => {
-              const st = statsFor(s.type);
+              const st = npsStats(responses.filter((r) => r.survey_type === s.type));
               return (
                 <div key={s.type} className="rounded-lg border bg-background p-5">
                   <h3 className="text-base font-semibold">{s.label}</h3>
@@ -418,14 +332,14 @@ function NpsPage() {
                 <h3 className="mb-4 text-sm font-semibold">Динамика NPS по месяцам</h3>
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={monthly}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis domain={[-100, 100]} tick={{ fontSize: 11 }} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Line
                       type="monotone"
                       dataKey="NPS"
-                      stroke="hsl(var(--primary))"
+                      stroke="var(--primary)"
                       strokeWidth={2}
                       dot={{ r: 4 }}
                       connectNulls
@@ -437,7 +351,7 @@ function NpsPage() {
                 <h3 className="mb-4 text-sm font-semibold">Распределение</h3>
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={distribution} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11 }} />
                     <Tooltip contentStyle={tooltipStyle} />
@@ -515,7 +429,7 @@ function NpsPage() {
                     </TableRow>
                   ) : (
                     pg.paged.map((r) => {
-                      const c = category(r.score);
+                      const c = BUCKET[npsBucket(r.score)];
                       return (
                         <RowContextMenu
                           key={r.id}
@@ -524,7 +438,7 @@ function NpsPage() {
                               label: "Удалить",
                               icon: Trash2,
                               destructive: true,
-                              onSelect: () => setDeleteId(r.id),
+                              onSelect: () => handleDelete(r.id),
                             },
                           ]}
                         >
@@ -560,19 +474,111 @@ function NpsPage() {
         )}
       </div>
 
-      <AlertDialog open={deleteId !== null} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Удалить ответ?</AlertDialogTitle>
-            <AlertDialogDescription>Это действие нельзя отменить.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Удалить</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {confirmDialog}
     </AdminShell>
+  );
+}
+
+function NewResponseForm({
+  studioId,
+  onClose,
+  onSaved,
+}: {
+  studioId: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [surveyType, setSurveyType] = useState<SurveyType>("general");
+  const [score, setScore] = useState(9);
+  const [clientName, setClientName] = useState("");
+  const [comment, setComment] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("nps_responses").insert({
+        studio_id: studioId ?? null,
+        score,
+        client_name: clientName.trim() || null,
+        comment: comment.trim() || null,
+        survey_type: surveyType,
+        language: "ru",
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Ответ добавлен");
+      onClose();
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Новый ответ NPS</DialogTitle>
+        <DialogDescription>Заполните данные ответа клиента.</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="survey-type">Тип опроса</Label>
+            <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
+              <SelectTrigger id="survey-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SURVEY_TYPES.map((s) => (
+                  <SelectItem key={s.type} value={s.type}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="score">Оценка (0–10)</Label>
+            <Input
+              id="score"
+              type="number"
+              min={0}
+              max={10}
+              value={score}
+              onChange={(e) => setScore(Math.max(0, Math.min(10, Number(e.target.value))))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="client-name">Имя клиента</Label>
+            <Input
+              id="client-name"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="comment">Комментарий</Label>
+            <Textarea
+              id="comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>
+          Отмена
+        </Button>
+        <Button onClick={submit} disabled={saving}>
+          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
 

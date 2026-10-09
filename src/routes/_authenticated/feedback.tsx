@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRefreshSignal } from "@/lib/refresh-bus";
-import { useActiveStudioId } from "@/hooks/use-active-studio";
-
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, MessageSquare, X, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,16 +34,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Table,
   TableBody,
   TableCell,
@@ -53,6 +44,7 @@ import {
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({ meta: [{ title: "Обратная связь — Base40 Admin" }] }),
@@ -84,49 +76,51 @@ const TOPICS: Record<string, string> = {
   other: "❓ Другое",
 };
 
-const MOOD: Record<string, string> = { negative: "😞", neutral: "😐", positive: "😊" };
+const MOOD_OPTIONS = [
+  { value: "negative", emoji: "😞", label: "Плохо" },
+  { value: "neutral", emoji: "😐", label: "Нормально" },
+  { value: "positive", emoji: "😊", label: "Хорошо" },
+];
+
+const MOOD: Record<string, string> = Object.fromEntries(
+  MOOD_OPTIONS.map((m) => [m.value, m.emoji]),
+);
+
+function moodSelectItems() {
+  return MOOD_OPTIONS.map((m) => (
+    <SelectItem key={m.value} value={m.value}>
+      {m.emoji} {m.label}
+    </SelectItem>
+  ));
+}
 
 function FeedbackPage() {
   const studioId = useActiveStudioId();
-  const [items, setItems] = useState<Feedback[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [resolutionComment, setResolutionComment] = useState("");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const [topicFilter, setTopicFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [moodFilter, setMoodFilter] = useState("all");
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    topic: "other",
-    message: "",
-    mood: "" as string,
-    client_name: "",
-    client_contact: "",
+  const queryKey = ["feedback", studioId];
+  const { data: items = [], isLoading: loading } = useQuery({
+    queryKey,
+    queryFn: () => {
+      let q = supabase.from("feedback").select("*");
+      // Отзывы своей студии + строки без привязки (созданные до миграции
+      // db/feedback_nps_studio.sql при нескольких студиях) — чтобы ни один
+      // отзыв не пропал из виду.
+      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      return unwrap<Feedback[]>(
+        q.order("status", { ascending: true }).order("created_at", { ascending: false }),
+      );
+    },
+    meta: { errorMessage: "Не удалось загрузить обращения" },
   });
-
-  const fetchItems = async () => {
-    let q = supabase.from("feedback").select("*");
-    // Отзывы своей студии + строки без привязки (созданные до миграции
-    // db/feedback_nps_studio.sql при нескольких студиях) — чтобы ни один
-    // отзыв не пропал из виду.
-    if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
-    const { data, error } = await q
-      .order("status", { ascending: true })
-      .order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
-    else setItems((data ?? []) as Feedback[]);
-    setLoading(false);
-  };
-
-  const refreshSignal = useRefreshSignal();
-  useEffect(() => {
-    void fetchItems();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshSignal, studioId]);
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["feedback"] });
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -152,69 +146,20 @@ function FeedbackPage() {
   const pendingCount = items.filter((i) => i.status === "pending").length;
   const resolvedThisMonth = thisMonth.filter((i) => i.status === "resolved").length;
 
-  const submitNew = async () => {
-    if (!form.message.trim()) return toast.error("Введите сообщение");
-    setSaving(true);
-    const { error } = await supabase.from("feedback").insert({
-      studio_id: studioId ?? null,
-      topic: form.topic,
-      message: form.message.trim(),
-      mood: form.mood || null,
-      client_name: form.client_name.trim() || null,
-      client_contact: form.client_contact.trim() || null,
-    });
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Обращение добавлено");
-    setAddOpen(false);
-    setForm({ topic: "other", message: "", mood: "", client_name: "", client_contact: "" });
-    void fetchItems();
-  };
-
-  const handleResolve = async () => {
-    if (!selected) return;
-    const session = await supabase.auth.getSession();
-    const user = session.data.session?.user;
-    const { error } = await supabase
-      .from("feedback")
-      .update({
-        status: "resolved",
-        resolved_by: user?.id ?? null,
-        resolved_by_name: user?.email ?? null,
-        resolved_at: new Date().toISOString(),
-        resolution_comment: resolutionComment.trim() || null,
-      })
-      .eq("id", selected.id);
-    if (error) return toast.error(error.message);
-    toast.success("Обращение отработано");
-    setSelectedId(null);
-    void fetchItems();
-  };
-
-  const handleReopen = async () => {
-    if (!selected) return;
-    const { error } = await supabase
-      .from("feedback")
-      .update({
-        status: "pending",
-        resolved_by: null,
-        resolved_by_name: null,
-        resolved_at: null,
-        resolution_comment: null,
-      })
-      .eq("id", selected.id);
-    if (error) return toast.error(error.message);
-    toast.success("Возвращено в работу");
-    setSelectedId(null);
-    void fetchItems();
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    const { error } = await supabase.from("feedback").delete().eq("id", deleteId);
-    if (error) return toast.error(error.message);
-    setItems((p) => p.filter((i) => i.id !== deleteId));
-    setDeleteId(null);
+  const handleDelete = async (item: Feedback) => {
+    if (
+      !(await confirm({
+        title: "Удалить обращение?",
+        description: "Это действие нельзя отменить.",
+      }))
+    )
+      return;
+    const { error } = await supabase.from("feedback").delete().eq("id", item.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    queryClient.setQueryData<Feedback[]>(queryKey, (prev) => prev?.filter((i) => i.id !== item.id));
     toast.success("Удалено");
   };
 
@@ -223,90 +168,20 @@ function FeedbackPage() {
   return (
     <AdminShell
       title="Обратная связь"
-      description="Обращения клиентов и их обработка"
       actions={
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="default">
+            <Button>
               <Plus className="mr-1 h-4 w-4" /> Добавить
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Новое обращение</DialogTitle>
-              <DialogDescription>Заполните данные обращения клиента.</DialogDescription>
-            </DialogHeader>
-            <DialogBody>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="topic">Тема</Label>
-                  <Select value={form.topic} onValueChange={(v) => setForm({ ...form, topic: v })}>
-                    <SelectTrigger id="topic">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(TOPICS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>
-                          {v}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="message">Сообщение</Label>
-                  <Textarea
-                    id="message"
-                    rows={4}
-                    value={form.message}
-                    onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="mood">Оценка</Label>
-                  <Select
-                    value={form.mood || "none"}
-                    onValueChange={(v) => setForm({ ...form, mood: v === "none" ? "" : v })}
-                  >
-                    <SelectTrigger id="mood">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Без оценки</SelectItem>
-                      <SelectItem value="negative">😞 Плохо</SelectItem>
-                      <SelectItem value="neutral">😐 Нормально</SelectItem>
-                      <SelectItem value="positive">😊 Хорошо</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="cname">Имя</Label>
-                    <Input
-                      id="cname"
-                      value={form.client_name}
-                      onChange={(e) => setForm({ ...form, client_name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ccontact">Контакт</Label>
-                    <Input
-                      id="ccontact"
-                      value={form.client_contact}
-                      onChange={(e) => setForm({ ...form, client_contact: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-            </DialogBody>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setAddOpen(false)}>
-                Отмена
-              </Button>
-              <Button onClick={submitNew} disabled={saving}>
-                {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
-              </Button>
-            </DialogFooter>
+            {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+            <NewFeedbackForm
+              studioId={studioId}
+              onClose={() => setAddOpen(false)}
+              onSaved={reload}
+            />
           </DialogContent>
         </Dialog>
       }
@@ -361,9 +236,7 @@ function FeedbackPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все оценки</SelectItem>
-              <SelectItem value="negative">😞 Плохо</SelectItem>
-              <SelectItem value="neutral">😐 Нормально</SelectItem>
-              <SelectItem value="positive">😊 Хорошо</SelectItem>
+              {moodSelectItems()}
               <SelectItem value="none">Без оценки</SelectItem>
             </SelectContent>
           </Select>
@@ -413,26 +286,17 @@ function FeedbackPage() {
                       {
                         label: "Открыть обращение",
                         icon: MessageSquare,
-                        onSelect: () => {
-                          setSelectedId(i.id);
-                          setResolutionComment(i.resolution_comment || "");
-                        },
+                        onSelect: () => setSelectedId(i.id),
                       },
                       {
                         label: "Удалить",
                         icon: Trash2,
                         destructive: true,
-                        onSelect: () => setDeleteId(i.id),
+                        onSelect: () => handleDelete(i),
                       },
                     ]}
                   >
-                    <TableRow
-                      onClick={() => {
-                        setSelectedId(i.id);
-                        setResolutionComment(i.resolution_comment || "");
-                      }}
-                      className="cursor-pointer"
-                    >
+                    <TableRow onClick={() => setSelectedId(i.id)} className="cursor-pointer">
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
                       </TableCell>
@@ -490,84 +354,247 @@ function FeedbackPage() {
             <SheetTitle>{selected ? TOPICS[selected.topic] || selected.topic : ""}</SheetTitle>
           </SheetHeader>
           {selected && (
-            <div className="mt-6 space-y-4">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Дата</p>
-                <p className="text-sm">
-                  {format(new Date(selected.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Сообщение</p>
-                <p className="whitespace-pre-wrap text-sm">{selected.message}</p>
-              </div>
-              {selected.mood && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Оценка</p>
-                  <p className="text-lg">{MOOD[selected.mood]}</p>
-                </div>
-              )}
-              {(selected.client_name || selected.client_contact) && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Клиент</p>
-                  <p className="text-sm">
-                    {selected.client_name || "—"}
-                    {selected.client_contact ? ` · ${selected.client_contact}` : ""}
-                  </p>
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="resolution">Комментарий обработки</Label>
-                <Textarea
-                  id="resolution"
-                  value={resolutionComment}
-                  onChange={(e) => setResolutionComment(e.target.value)}
-                  placeholder="Что сделано?"
-                  rows={4}
-                  disabled={selected.status === "resolved"}
-                />
-              </div>
-              {selected.status === "pending" ? (
-                <Button className="w-full" onClick={handleResolve}>
-                  Отметить отработанным
-                </Button>
-              ) : (
-                <>
-                  <div className="rounded-lg border bg-muted/30 p-3">
-                    <p className="text-xs text-muted-foreground">Обработано</p>
-                    <p className="text-sm">
-                      {selected.resolved_by_name || "—"}
-                      {selected.resolved_at &&
-                        ` · ${format(new Date(selected.resolved_at), "d MMM yyyy", { locale: ru })}`}
-                    </p>
-                    {selected.resolution_comment && (
-                      <p className="mt-2 whitespace-pre-wrap text-sm">
-                        {selected.resolution_comment}
-                      </p>
-                    )}
-                  </div>
-                  <Button variant="outline" className="w-full" onClick={handleReopen}>
-                    Вернуть в работу
-                  </Button>
-                </>
-              )}
-            </div>
+            <FeedbackDetails
+              key={selected.id}
+              item={selected}
+              onDone={() => {
+                setSelectedId(null);
+                reload();
+              }}
+            />
           )}
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={deleteId !== null} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Удалить обращение?</AlertDialogTitle>
-            <AlertDialogDescription>Это действие нельзя отменить.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Удалить</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {confirmDialog}
     </AdminShell>
+  );
+}
+
+function NewFeedbackForm({
+  studioId,
+  onClose,
+  onSaved,
+}: {
+  studioId: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [topic, setTopic] = useState("other");
+  const [message, setMessage] = useState("");
+  const [mood, setMood] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientContact, setClientContact] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!message.trim()) {
+      toast.error("Введите сообщение");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("feedback").insert({
+        studio_id: studioId ?? null,
+        topic,
+        message: message.trim(),
+        mood: mood || null,
+        client_name: clientName.trim() || null,
+        client_contact: clientContact.trim() || null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Обращение добавлено");
+      onClose();
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Новое обращение</DialogTitle>
+        <DialogDescription>Заполните данные обращения клиента.</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="topic">Тема</Label>
+            <Select value={topic} onValueChange={setTopic}>
+              <SelectTrigger id="topic">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(TOPICS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="message">Сообщение</Label>
+            <Textarea
+              id="message"
+              rows={4}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="mood">Оценка</Label>
+            <Select value={mood || "none"} onValueChange={(v) => setMood(v === "none" ? "" : v)}>
+              <SelectTrigger id="mood">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Без оценки</SelectItem>
+                {moodSelectItems()}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="cname">Имя</Label>
+              <Input
+                id="cname"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ccontact">Контакт</Label>
+              <Input
+                id="ccontact"
+                value={clientContact}
+                onChange={(e) => setClientContact(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>
+          Отмена
+        </Button>
+        <Button onClick={submit} disabled={saving}>
+          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/** Карточка обращения в боковой панели: отметить отработанным / вернуть в работу. */
+function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void }) {
+  const { data: me } = useStaffProfile();
+  const [resolutionComment, setResolutionComment] = useState(item.resolution_comment || "");
+  const [busy, setBusy] = useState(false);
+
+  const update = async (patch: Partial<Feedback>, successMessage: string) => {
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("feedback").update(patch).eq("id", item.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(successMessage);
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResolve = () =>
+    update(
+      {
+        status: "resolved",
+        resolved_by: me?.id ?? null,
+        resolved_by_name: me?.email ?? null,
+        resolved_at: new Date().toISOString(),
+        resolution_comment: resolutionComment.trim() || null,
+      },
+      "Обращение отработано",
+    );
+
+  const handleReopen = () =>
+    update(
+      {
+        status: "pending",
+        resolved_by: null,
+        resolved_by_name: null,
+        resolved_at: null,
+        resolution_comment: null,
+      },
+      "Возвращено в работу",
+    );
+
+  return (
+    <div className="mt-6 space-y-4">
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">Дата</p>
+        <p className="text-sm">
+          {format(new Date(item.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
+        </p>
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">Сообщение</p>
+        <p className="whitespace-pre-wrap text-sm">{item.message}</p>
+      </div>
+      {item.mood && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Оценка</p>
+          <p className="text-lg">{MOOD[item.mood]}</p>
+        </div>
+      )}
+      {(item.client_name || item.client_contact) && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Клиент</p>
+          <p className="text-sm">
+            {item.client_name || "—"}
+            {item.client_contact ? ` · ${item.client_contact}` : ""}
+          </p>
+        </div>
+      )}
+      <div className="space-y-1.5">
+        <Label htmlFor="resolution">Комментарий обработки</Label>
+        <Textarea
+          id="resolution"
+          value={resolutionComment}
+          onChange={(e) => setResolutionComment(e.target.value)}
+          placeholder="Что сделано?"
+          rows={4}
+          disabled={item.status === "resolved"}
+        />
+      </div>
+      {item.status === "pending" ? (
+        <Button className="w-full" onClick={handleResolve} disabled={busy}>
+          Отметить отработанным
+        </Button>
+      ) : (
+        <>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Обработано</p>
+            <p className="text-sm">
+              {item.resolved_by_name || "—"}
+              {item.resolved_at &&
+                ` · ${format(new Date(item.resolved_at), "d MMM yyyy", { locale: ru })}`}
+            </p>
+            {item.resolution_comment && (
+              <p className="mt-2 whitespace-pre-wrap text-sm">{item.resolution_comment}</p>
+            )}
+          </div>
+          <Button variant="outline" className="w-full" onClick={handleReopen} disabled={busy}>
+            Вернуть в работу
+          </Button>
+        </>
+      )}
+    </div>
   );
 }

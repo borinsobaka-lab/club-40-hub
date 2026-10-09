@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Save } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { useRefreshSignal } from "@/lib/refresh-bus";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,70 +24,79 @@ type Settings = {
   cancel_booking_minutes: number;
 };
 
-function ClubSettingsPage() {
-  const refreshSignal = useRefreshSignal();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [writeUrl, setWriteUrl] = useState("");
-  const [callUrl, setCallUrl] = useState("");
-  const [feedbackUrl, setFeedbackUrl] = useState("");
-  const [cancelMinutes, setCancelMinutes] = useState<string>("180");
+type FormValues = {
+  writeUrl: string;
+  callUrl: string;
+  feedbackUrl: string;
+  cancelMinutes: string;
+};
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    supabase
-      .from("club_settings")
-      .select("*")
-      .eq("id", true)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          toast.error("Не удалось загрузить настройки", { description: error.message });
-        }
-        const s = data as Settings | null;
-        setWriteUrl(s?.write_url ?? "");
-        setCallUrl(s?.call_url ?? "");
-        setFeedbackUrl(s?.feedback_url ?? "");
-        setCancelMinutes(String(s?.cancel_booking_minutes ?? 180));
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshSignal]);
+function toFormValues(s: Settings | null | undefined): FormValues {
+  return {
+    writeUrl: s?.write_url ?? "",
+    callUrl: s?.call_url ?? "",
+    feedbackUrl: s?.feedback_url ?? "",
+    cancelMinutes: String(s?.cancel_booking_minutes ?? 180),
+  };
+}
+
+// club_settings — глобальный синглтон (id = true), не привязан к студии.
+const QUERY_KEY = ["club_settings"];
+
+function ClubSettingsPage() {
+  const queryClient = useQueryClient();
+  const { data: settings, isPending: loading } = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: () =>
+      unwrap<Settings | null>(
+        supabase.from("club_settings").select("*").eq("id", true).maybeSingle(),
+      ),
+    meta: { errorMessage: "Не удалось загрузить настройки" },
+  });
+
+  // Правки держим отдельно от загруженных настроек: пока поле не трогали,
+  // форма показывает данные с сервера (и свежие после «Обновить»), а начатые
+  // правки перезагрузка не затирает.
+  const [draft, setDraft] = useState<FormValues | null>(null);
+  const form = draft ?? toFormValues(settings);
+  const setField = (field: keyof FormValues, value: string) =>
+    setDraft({ ...form, [field]: value });
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    const minutes = Number.parseInt(cancelMinutes, 10);
+    const minutes = Number.parseInt(form.cancelMinutes, 10);
     if (Number.isNaN(minutes) || minutes < 0) {
       toast.error("Укажите корректное число минут");
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("club_settings").upsert(
-      {
+    try {
+      const saved = {
         id: true,
-        write_url: writeUrl.trim() || null,
-        call_url: callUrl.trim() || null,
-        feedback_url: feedbackUrl.trim() || null,
+        write_url: form.writeUrl.trim() || null,
+        call_url: form.callUrl.trim() || null,
+        feedback_url: form.feedbackUrl.trim() || null,
         cancel_booking_minutes: minutes,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" },
-    );
-    setSaving(false);
-    if (error) {
-      toast.error("Не удалось сохранить", { description: error.message });
-      return;
+      };
+      const { error } = await supabase
+        .from("club_settings")
+        .upsert({ ...saved, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      if (error) {
+        toast.error("Не удалось сохранить", { description: error.message });
+        return;
+      }
+      // Сохранённое становится «серверным» состоянием формы — без лишнего запроса.
+      queryClient.setQueryData<Settings | null>(QUERY_KEY, (prev) => ({ ...prev, ...saved }));
+      setDraft(null);
+      toast.success("Настройки сохранены");
+    } finally {
+      setSaving(false);
     }
-    toast.success("Настройки сохранены");
   };
 
   return (
     <AdminShell
       title="Настройки клуба"
-      description="Глобальные параметры мобильного приложения клуба"
       actions={
         <Button onClick={handleSave} disabled={saving || loading}>
           {saving ? (
@@ -116,8 +126,8 @@ function ClubSettingsPage() {
               <Input
                 id="write"
                 placeholder="https://wa.me/79991234567"
-                value={writeUrl}
-                onChange={(e) => setWriteUrl(e.target.value)}
+                value={form.writeUrl}
+                onChange={(e) => setField("writeUrl", e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
                 Например, ссылка на WhatsApp-чат клуба.
@@ -128,8 +138,8 @@ function ClubSettingsPage() {
               <Input
                 id="call"
                 placeholder="tel:+79991234567"
-                value={callUrl}
-                onChange={(e) => setCallUrl(e.target.value)}
+                value={form.callUrl}
+                onChange={(e) => setField("callUrl", e.target.value)}
               />
               <p className="text-xs text-muted-foreground">Телефонный номер в формате tel:.</p>
             </div>
@@ -138,8 +148,8 @@ function ClubSettingsPage() {
               <Input
                 id="feedback"
                 placeholder="https://forms.example.com/feedback"
-                value={feedbackUrl}
-                onChange={(e) => setFeedbackUrl(e.target.value)}
+                value={form.feedbackUrl}
+                onChange={(e) => setField("feedbackUrl", e.target.value)}
               />
             </div>
           </section>
@@ -159,8 +169,8 @@ function ClubSettingsPage() {
                 type="number"
                 min={0}
                 step={1}
-                value={cancelMinutes}
-                onChange={(e) => setCancelMinutes(e.target.value)}
+                value={form.cancelMinutes}
+                onChange={(e) => setField("cancelMinutes", e.target.value)}
                 className="max-w-[200px]"
               />
               <p className="text-xs text-muted-foreground">

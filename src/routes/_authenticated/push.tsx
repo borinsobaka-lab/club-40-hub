@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Pencil, Trash2, Send } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
+import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useRefreshSignal } from "@/lib/refresh-bus";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
+import { formatDateTime, toDateTimeLocalValue } from "@/lib/format";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -66,17 +69,6 @@ const STATUS_LABEL: Record<PushStatus, string> = {
   sent: "Отправлено",
 };
 
-function fmtDateTime(d: string | null) {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(d));
-}
-
 function renderSegments(segments: Segment[]) {
   if (!segments || segments.length === 0 || segments.includes("all")) {
     return <Badge variant="secondary">Все</Badge>;
@@ -95,35 +87,24 @@ function renderSegments(segments: Segment[]) {
 function PushPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
-  const [items, setItems] = useState<PushNotification[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PushNotification | null>(null);
 
-  const fetchAll = async () => {
-    if (!studioId) {
-      setItems([]);
-      return;
-    }
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("push_notifications")
-      .select("*")
-      .eq("studio_id", studioId)
-      .order("created_at", { ascending: false });
-    setLoading(false);
-    if (error) {
-      toast.error("Не удалось загрузить уведомления: " + error.message);
-      return;
-    }
-    setItems((data as PushNotification[]) ?? []);
-  };
-
-  const refreshSignal = useRefreshSignal();
-  useEffect(() => {
-    fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studioId, refreshSignal]);
+  const { data: items = [], isLoading: loading } = useQuery({
+    queryKey: ["push_notifications", studioId],
+    queryFn: () =>
+      unwrap<PushNotification[]>(
+        supabase
+          .from("push_notifications")
+          .select("*")
+          .eq("studio_id", studioId!)
+          .order("created_at", { ascending: false }),
+      ),
+    enabled: !!studioId,
+    meta: { errorMessage: "Не удалось загрузить уведомления" },
+  });
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["push_notifications"] });
 
   const handleDelete = async (p: PushNotification) => {
     if (
@@ -139,7 +120,12 @@ function PushPage() {
       return;
     }
     toast.success("Уведомление удалено");
-    fetchAll();
+    reload();
+  };
+
+  const openEdit = (p: PushNotification | null) => {
+    setEditing(p);
+    setOpen(true);
   };
 
   const pg = usePagination(items);
@@ -148,24 +134,14 @@ function PushPage() {
     <AdminShell
       title="Пуш-уведомления"
       actions={
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setOpen(true);
-          }}
-          disabled={!studioId}
-        >
+        <Button onClick={() => openEdit(null)} disabled={!studioId}>
           <Plus className="mr-1 h-4 w-4" />
           Добавить уведомление
         </Button>
       }
     >
       <div className="space-y-3">
-        {!studioId ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Сначала выберите студию в шапке.
-          </div>
-        ) : (
+        <RequireStudio studioId={studioId}>
           <div className="rounded-lg border bg-background">
             <Table>
               <TableHeader>
@@ -196,14 +172,7 @@ function PushPage() {
                     <RowContextMenu
                       key={p.id}
                       actions={[
-                        {
-                          label: "Редактировать",
-                          icon: Pencil,
-                          onSelect: () => {
-                            setEditing(p);
-                            setOpen(true);
-                          },
-                        },
+                        { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
                         {
                           label: "Удалить",
                           icon: Trash2,
@@ -224,9 +193,9 @@ function PushPage() {
                         <TableCell>{renderSegments(p.segments)}</TableCell>
                         <TableCell className="whitespace-nowrap text-sm">
                           {p.status === "sent"
-                            ? fmtDateTime(p.sent_at)
+                            ? formatDateTime(p.sent_at)
                             : p.status === "scheduled"
-                              ? fmtDateTime(p.scheduled_at)
+                              ? formatDateTime(p.scheduled_at)
                               : "—"}
                         </TableCell>
                         <TableCell>
@@ -253,16 +222,21 @@ function PushPage() {
             </Table>
             <DataPagination {...pg} />
           </div>
-        )}
+        </RequireStudio>
       </div>
 
-      <PushDialog
-        open={open}
-        onOpenChange={setOpen}
-        studioId={studioId}
-        item={editing}
-        onSaved={fetchAll}
-      />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-xl">
+          {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+          <PushForm
+            key={editing?.id ?? "new"}
+            onOpenChange={setOpen}
+            studioId={studioId}
+            item={editing}
+            onSaved={reload}
+          />
+        </DialogContent>
+      </Dialog>
       {confirmDialog}
     </AdminShell>
   );
@@ -270,52 +244,35 @@ function PushPage() {
 
 const ALL_SEGMENTS: ClubStatus[] = ["chk", "bchk", "pchk"];
 
-function PushDialog({
-  open,
+function PushForm({
   onOpenChange,
   studioId,
   item,
   onSaved,
 }: {
-  open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
   item: PushNotification | null;
   onSaved: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [message, setMessage] = useState("");
-  const [actionUrl, setActionUrl] = useState("");
-  const [allSelected, setAllSelected] = useState(true);
-  const [segments, setSegments] = useState<ClubStatus[]>([]);
-  const [sendMode, setSendMode] = useState<"now" | "schedule">("now");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [saving, setSaving] = useState(false);
+  const initialSegments = item?.segments ?? ["all"];
+  // Запланированное (но не отправленное) открываем в режиме планирования.
+  const scheduled = item?.scheduled_at && item.status !== "sent" ? item.scheduled_at : null;
 
-  useEffect(() => {
-    if (!open) return;
-    setTitle(item?.title ?? "");
-    setMessage(item?.message ?? "");
-    setActionUrl(item?.action_url ?? "");
-    const segs = item?.segments ?? ["all"];
-    if (segs.includes("all")) {
-      setAllSelected(true);
-      setSegments([]);
-    } else {
-      setAllSelected(false);
-      setSegments(segs.filter((s): s is ClubStatus => s !== "all"));
-    }
-    if (item?.scheduled_at && item.status !== "sent") {
-      setSendMode("schedule");
-      // local datetime input value
-      const d = new Date(item.scheduled_at);
-      const tz = d.getTimezoneOffset() * 60000;
-      setScheduledAt(new Date(d.getTime() - tz).toISOString().slice(0, 16));
-    } else {
-      setSendMode("now");
-      setScheduledAt("");
-    }
-  }, [open, item]);
+  const [title, setTitle] = useState(item?.title ?? "");
+  const [message, setMessage] = useState(item?.message ?? "");
+  const [actionUrl, setActionUrl] = useState(item?.action_url ?? "");
+  const [allSelected, setAllSelected] = useState(initialSegments.includes("all"));
+  const [segments, setSegments] = useState<ClubStatus[]>(() =>
+    initialSegments.includes("all")
+      ? []
+      : initialSegments.filter((s): s is ClubStatus => s !== "all"),
+  );
+  const [sendMode, setSendMode] = useState<"now" | "schedule">(scheduled ? "schedule" : "now");
+  const [scheduledAt, setScheduledAt] = useState(
+    scheduled ? toDateTimeLocalValue(new Date(scheduled)) : "",
+  );
+  const [saving, setSaving] = useState(false);
 
   const toggleSegment = (s: ClubStatus, checked: boolean) => {
     setSegments((prev) =>
@@ -323,176 +280,163 @@ function PushDialog({
     );
   };
 
-  const handleSave = async (sendNow = false) => {
+  const handleSave = async () => {
     if (!studioId) return;
     if (!title.trim()) {
       toast.error("Укажите заголовок");
       return;
     }
-    const finalSegments: Segment[] = allSelected ? ["all"] : segments;
     if (!allSelected && segments.length === 0) {
       toast.error("Выберите хотя бы один сегмент");
       return;
     }
-
-    const effectiveMode = sendNow ? "now" : sendMode;
-    let status: PushStatus = "draft";
-    let sentAt: string | null = null;
-    let scheduled: string | null = null;
-    if (effectiveMode === "now") {
-      status = "sent";
-      sentAt = new Date().toISOString();
-    } else {
-      if (!scheduledAt) {
-        toast.error("Укажите дату и время отправки");
-        return;
-      }
-      status = "scheduled";
-      scheduled = new Date(scheduledAt).toISOString();
+    if (sendMode === "schedule" && !scheduledAt) {
+      toast.error("Укажите дату и время отправки");
+      return;
     }
 
-    setSaving(true);
-    const payload: Record<string, unknown> = {
+    // Реальной рассылки пока нет: «Отправить» только помечает уведомление
+    // отправленным, «Запланировать» — запланированным.
+    const sendNow = sendMode === "now";
+    const status: PushStatus = sendNow ? "sent" : "scheduled";
+    const payload = {
       studio_id: studioId,
       title: title.trim(),
       message: message.trim() || null,
-      segments: finalSegments,
+      segments: allSelected ? ["all"] : segments,
       action_url: actionUrl.trim() || null,
-      scheduled_at: scheduled,
-      sent_at: sentAt,
+      scheduled_at: sendNow ? null : new Date(scheduledAt).toISOString(),
+      sent_at: sendNow ? new Date().toISOString() : null,
       status,
       updated_at: new Date().toISOString(),
     };
-    const { error } = item
-      ? await supabase.from("push_notifications").update(payload).eq("id", item.id)
-      : await supabase.from("push_notifications").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Ошибка сохранения: " + error.message);
-      return;
+
+    setSaving(true);
+    try {
+      const { error } = item
+        ? await supabase.from("push_notifications").update(payload).eq("id", item.id)
+        : await supabase.from("push_notifications").insert(payload);
+      if (error) {
+        toast.error("Ошибка сохранения: " + error.message);
+        return;
+      }
+      toast.success(sendNow ? "Уведомление отправлено" : "Уведомление запланировано");
+      onOpenChange(false);
+      onSaved();
+    } finally {
+      setSaving(false);
     }
-    toast.success(
-      status === "sent"
-        ? "Уведомление отправлено"
-        : status === "scheduled"
-          ? "Уведомление запланировано"
-          : "Уведомление сохранено",
-    );
-    onOpenChange(false);
-    onSaved();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{item ? "Редактировать уведомление" : "Новое пуш-уведомление"}</DialogTitle>
-          <DialogDescription>
-            Уведомление будет отправлено выбранным клиентам в мобильное приложение.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Заголовок</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Например: Скидка 20% на абонементы"
-              />
-            </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>{item ? "Редактировать уведомление" : "Новое пуш-уведомление"}</DialogTitle>
+        <DialogDescription>
+          Уведомление будет отправлено выбранным клиентам в мобильное приложение.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Заголовок</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Например: Скидка 20% на абонементы"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label>Сообщение</Label>
-              <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Текст пуш-уведомления"
-                rows={4}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Сообщение</Label>
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Текст пуш-уведомления"
+              rows={4}
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label>Ссылка перехода (необязательно)</Label>
-              <Input
-                value={actionUrl}
-                onChange={(e) => setActionUrl(e.target.value)}
-                placeholder="https://… или внутренний раздел"
-              />
-              <p className="text-xs text-muted-foreground">
-                Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
-              </p>
-            </div>
+          <div className="space-y-2">
+            <Label>Ссылка перехода (необязательно)</Label>
+            <Input
+              value={actionUrl}
+              onChange={(e) => setActionUrl(e.target.value)}
+              placeholder="https://… или внутренний раздел"
+            />
+            <p className="text-xs text-muted-foreground">
+              Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
+            </p>
+          </div>
 
-            <div className="space-y-2">
-              <Label>Статус клиентов</Label>
-              <div className="space-y-2 rounded-md border p-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(v) => setAllSelected(Boolean(v))}
-                  />
-                  <span>Все клиенты</span>
-                </label>
-                <div className="flex flex-wrap gap-3 pl-1">
-                  {ALL_SEGMENTS.map((s) => (
-                    <label key={s} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={!allSelected && segments.includes(s)}
-                        disabled={allSelected}
-                        onCheckedChange={(v) => toggleSegment(s, Boolean(v))}
-                      />
-                      <span>{CLUB_STATUS_LABEL[s]}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Время отправки</Label>
-              <div className="flex flex-wrap gap-3 text-sm">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={sendMode === "now"}
-                    onChange={() => setSendMode("now")}
-                  />
-                  <span>Отправить сейчас</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={sendMode === "schedule"}
-                    onChange={() => setSendMode("schedule")}
-                  />
-                  <span>Запланировать</span>
-                </label>
-              </div>
-              {sendMode === "schedule" && (
-                <Input
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
+          <div className="space-y-2">
+            <Label>Статус клиентов</Label>
+            <div className="space-y-2 rounded-md border p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(v) => setAllSelected(Boolean(v))}
                 />
-              )}
+                <span>Все клиенты</span>
+              </label>
+              <div className="flex flex-wrap gap-3 pl-1">
+                {ALL_SEGMENTS.map((s) => (
+                  <label key={s} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={!allSelected && segments.includes(s)}
+                      disabled={allSelected}
+                      onCheckedChange={(v) => toggleSegment(s, Boolean(v))}
+                    />
+                    <span>{CLUB_STATUS_LABEL[s]}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Отмена
-          </Button>
-          <Button onClick={() => handleSave(false)} disabled={saving}>
-            {saving ? (
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-1 h-4 w-4" />
+
+          <div className="space-y-2">
+            <Label>Время отправки</Label>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={sendMode === "now"}
+                  onChange={() => setSendMode("now")}
+                />
+                <span>Отправить сейчас</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={sendMode === "schedule"}
+                  onChange={() => setSendMode("schedule")}
+                />
+                <span>Запланировать</span>
+              </label>
+            </div>
+            {sendMode === "schedule" && (
+              <Input
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
             )}
-            {sendMode === "now" ? "Отправить" : "Запланировать"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          Отмена
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="mr-1 h-4 w-4" />
+          )}
+          {sendMode === "now" ? "Отправить" : "Запланировать"}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
