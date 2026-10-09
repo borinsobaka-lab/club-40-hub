@@ -1,31 +1,33 @@
 import { useCallback, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { ChevronUp, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+// Иконки пунктов меню — Solar LineDuotone (см. scripts/gen-nav-icons.ts);
+// остальной интерфейс — на Hugeicons через lucide-шим.
 import {
-  LayoutDashboard,
-  Calendar,
-  Users,
+  Bag3,
+  BellBing,
+  BillList,
+  Bolt,
+  CalendarMinimalistic,
+  ChartSquare,
+  ChatRoundDots,
+  ClipboardRemove,
+  DocumentText,
   Dumbbell,
-  Flame,
-  Tag,
-  MessageSquare,
-  BarChart3,
-  UserCog,
-  Wallet,
-  Newspaper,
-  Receipt,
-  ShoppingBag,
-  Sparkles,
   History,
-  Ticket,
-  Bell,
-  Zap,
   Settings,
-  RefreshCwOff,
-  ChevronUp,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
+  ShieldUser,
+  StarsMinimalistic,
+  TagPrice,
+  TicketSale,
+  UserId,
+  UsersGroupRounded,
+  WalletMoney,
+  Widget5,
+  type NavIcon,
+} from "@/components/nav-icons";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
@@ -41,7 +43,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
+type NavItem = { title: string; url: string; icon: NavIcon };
 type NavGroup = { key: string; label: string; items: NavItem[]; atBottom?: boolean };
 
 const GROUPS: NavGroup[] = [
@@ -49,44 +51,44 @@ const GROUPS: NavGroup[] = [
     key: "workspace",
     label: "Рабочее пространство",
     items: [
-      { title: "Дашборд", url: "/dashboard", icon: LayoutDashboard },
-      { title: "Расписание", url: "/schedule", icon: Calendar },
-      { title: "Клиенты", url: "/clients", icon: Users },
+      { title: "Дашборд", url: "/dashboard", icon: Widget5 },
+      { title: "Расписание", url: "/schedule", icon: CalendarMinimalistic },
+      { title: "Клиенты", url: "/clients", icon: UsersGroupRounded },
     ],
   },
   {
     key: "studio",
     label: "Студия",
     items: [
-      { title: "Сотрудники", url: "/trainers", icon: Dumbbell },
-      { title: "Тренировки", url: "/workouts", icon: Flame },
-      { title: "Номенклатуры", url: "/memberships", icon: Tag },
-      { title: "Промокоды", url: "/promocodes", icon: Ticket },
+      { title: "Сотрудники", url: "/trainers", icon: UserId },
+      { title: "Тренировки", url: "/workouts", icon: Dumbbell },
+      { title: "Номенклатуры", url: "/memberships", icon: TagPrice },
+      { title: "Промокоды", url: "/promocodes", icon: TicketSale },
     ],
   },
   {
     key: "stats",
     label: "Статистика",
     items: [
-      { title: "Продажи", url: "/sales", icon: Receipt },
-      { title: "Прочие продажи", url: "/other-sales", icon: ShoppingBag },
+      { title: "Продажи", url: "/sales", icon: BillList },
+      { title: "Прочие продажи", url: "/other-sales", icon: Bag3 },
       { title: "История записей", url: "/bookings-log", icon: History },
-      { title: "Отмены автопродления", url: "/autorenew-cancellations", icon: RefreshCwOff },
+      { title: "Отмены автопродления", url: "/autorenew-cancellations", icon: ClipboardRemove },
     ],
   },
   {
     key: "finance",
     label: "Финансы",
-    items: [{ title: "Касса", url: "/cash", icon: Wallet }],
+    items: [{ title: "Касса", url: "/cash", icon: WalletMoney }],
   },
   {
     key: "mobile",
     label: "Мобильное приложение",
     items: [
-      { title: "Новости", url: "/news", icon: Newspaper },
-      { title: "Услуги", url: "/services", icon: Sparkles },
-      { title: "Пуш-уведомления", url: "/push", icon: Bell },
-      { title: "Триггерные пуши", url: "/push-triggers", icon: Zap },
+      { title: "Новости", url: "/news", icon: DocumentText },
+      { title: "Услуги", url: "/services", icon: StarsMinimalistic },
+      { title: "Пуш-уведомления", url: "/push", icon: BellBing },
+      { title: "Триггерные пуши", url: "/push-triggers", icon: Bolt },
       { title: "Настройки клуба", url: "/club-settings", icon: Settings },
     ],
   },
@@ -94,14 +96,14 @@ const GROUPS: NavGroup[] = [
     key: "feedback",
     label: "Обратная связь",
     items: [
-      { title: "Обратная связь", url: "/feedback", icon: MessageSquare },
-      { title: "NPS-опросы", url: "/nps", icon: BarChart3 },
+      { title: "Обратная связь", url: "/feedback", icon: ChatRoundDots },
+      { title: "NPS-опросы", url: "/nps", icon: ChartSquare },
     ],
   },
   {
     key: "access",
     label: "Доступы",
-    items: [{ title: "Доступы", url: "/employees", icon: UserCog }],
+    items: [{ title: "Доступы", url: "/employees", icon: ShieldUser }],
     atBottom: true,
   },
 ];
@@ -148,17 +150,15 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="px-3 py-4">
         <div className="flex items-center gap-2">
-          <Link to="/" className="flex min-w-0 items-center gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-icon font-bold text-sidebar-dark">
-              40
-            </div>
-            {!collapsed && (
-              <div className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-sm font-semibold tracking-wide text-white">
-                  Base40
-                </span>
-                <span className="truncate text-xs text-white/60">Админ-панель</span>
-              </div>
+          <Link
+            to="/"
+            aria-label="На главную"
+            className={cn("flex min-w-0 items-center text-white", collapsed && "mx-auto")}
+          >
+            {collapsed ? (
+              <BrandLogo mark className="h-8 w-auto" />
+            ) : (
+              <BrandLogo className="h-auto w-36" />
             )}
           </Link>
           {!collapsed && (
@@ -227,20 +227,27 @@ export function AppSidebar() {
                             кнопка красится в `sidebar-accent`, а это почти белый: на тёмной
                             панели получалась вспышка под курсором на каждый клик.
                           */
-                          className="font-medium text-white hover:bg-white/10 hover:text-white active:bg-white/10 active:text-white data-[active=true]:bg-white/10 data-[active=true]:font-semibold data-[active=true]:text-white"
+                          className="group/nav font-medium text-white hover:bg-white/10 hover:text-white active:bg-white/10 active:text-white data-[active=true]:bg-white/10 data-[active=true]:font-semibold data-[active=true]:text-white"
                         >
                           <Link to={item.url} className="flex items-center gap-2">
                             {/*
-                              В свёрнутом меню иконка остаётся единственным
-                              содержимым пункта — фирменный жёлтый контуром
-                              читается тонко, поэтому там она белая.
+                              Свечение за иконкой при наведении — размытый круг
+                              цвета currentColor: у обычного пункта белый, у
+                              активного фирменный розовый, как и сама иконка.
+                              overflow-visible! — в свёрнутом меню иконка
+                              остаётся последним span, и truncate из базовых
+                              стилей пункта обрезал бы свечение. Иконка 18px с
+                              -m-px занимает место прежних 16px: в свёрнутом
+                              меню на неё ровно столько и отведено.
                             */}
-                            <item.icon
+                            <span
                               className={cn(
-                                "h-4 w-4",
-                                collapsed ? "text-white" : "text-sidebar-icon",
+                                "relative isolate inline-flex shrink-0 overflow-visible! before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-current before:opacity-0 before:blur-[6px] before:transition-opacity before:duration-200 group-hover/nav:before:opacity-45",
+                                isActive(item.url) ? "text-brand" : "text-white",
                               )}
-                            />
+                            >
+                              <item.icon className="-m-px size-[18px]" />
+                            </span>
                             {!collapsed && <span>{item.title}</span>}
                           </Link>
                         </SidebarMenuButton>

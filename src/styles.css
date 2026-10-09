@@ -104,8 +104,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-dark: var(--sidebar-dark);
-  --color-sidebar-icon: var(--sidebar-icon);
+  --color-brand: var(--brand);
   --color-canvas: var(--canvas);
   --color-field: var(--field);
 }
@@ -136,7 +135,7 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: #2a2b2f;
+  --sidebar: #1a2027;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: oklch(0.208 0.042 265.755);
   --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
@@ -144,21 +143,22 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
-  --sidebar-dark: #2a2b2f;
-  --sidebar-icon: #ffe500;
+
+  /* Фирменный цвет: иконка активного пункта меню и её свечение, отметка
+     «сегодня» в расписании. Кнопки и ссылки остаются на --primary. */
+  --brand: #f763fc;
 
   /* Подложка рабочей области справа от меню. Белые карточки, таблицы и шапка
      лежат на ней и должны читаться как отдельные поверхности — с muted/30
      (почти белый) всё сливалось в одно белое поле.
-     Тон холоднее muted и на ступень темнее: карточки отделяются, но лист не
-     выглядит грязным. Токен отдельный от --background: сменить тон подложки —
+     Тон — светлый серо-зелёный из гайда студии. Токен отдельный от --background: сменить тон подложки —
      одна строка здесь, разметку трогать не нужно. */
-  --canvas: oklch(0.958 0.006 254);
+  --canvas: #eff1ee;
 
   /* Заливка полей ввода внутри модальных окон. В диалоге фон белый, и поле с
      белой заливкой отличалось от него только рамкой — заполнять неудобно.
-     Тон из той же холодной серии, что и канва, но светлее. */
-  --field: oklch(0.968 0.005 254);
+     Тон из той же серии, что и канва, но светлее. */
+  --field: #f5f6f4;
 }
 
 .dark {
@@ -186,7 +186,7 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: #2a2b2f;
+  --sidebar: #1a2027;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
@@ -194,8 +194,7 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
-  --sidebar-dark: #2a2b2f;
-  --sidebar-icon: #ffe500;
+  --brand: #f763fc;
   /* Тёмной темы в приложении нет, но токен объявляем и здесь: иначе случайно
      навешенный класс .dark оставил бы светлую подложку под тёмным контентом. */
   --canvas: oklch(0.21 0.03 264);

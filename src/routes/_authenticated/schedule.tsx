@@ -544,9 +544,7 @@ function SchedulePage() {
                   <div
                     key={i}
                     className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
-                      today
-                        ? "border-b-4 border-b-yellow-400 font-semibold text-primary"
-                        : "border-b"
+                      today ? "border-b-4 border-b-brand font-semibold text-primary" : "border-b"
                     }`}
                   >
                     <div className="uppercase tracking-wide text-muted-foreground">
