@@ -1,6 +1,7 @@
 /**
- * Форматы студий (studios.format, db/studio_formats.sql). Подробно —
- * STUDIO_FORMATS.md: что общее, что у формата своё, как добавлять разделы.
+ * Форматы студий (studios.format, db/migrations/2026-10-09_studio_formats.sql).
+ * Подробно — STUDIO_FORMATS.md: что общее, что у формата своё, как добавлять
+ * разделы.
  *
  * Для каждого формата — своё клиентское приложение (одна кодовая база
  * club40-client-hub, сборка с VITE_APP_FORMAT), у каждого свой адрес.

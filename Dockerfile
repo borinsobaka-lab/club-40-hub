@@ -21,6 +21,10 @@ WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 
 COPY --from=build /app/.output ./.output
+# Мигратор схемы БД и его файлы: при старте сначала миграции (без
+# DATABASE_URL — пропускаются), упали — сервер не запускается.
+COPY --from=build /app/scripts/migrate.ts ./scripts/migrate.ts
+COPY --from=build /app/db/migrations ./db/migrations
 
 EXPOSE 3000
-CMD ["bun", ".output/server/index.mjs"]
+CMD ["sh", "-c", "bun scripts/migrate.ts && exec bun .output/server/index.mjs"]

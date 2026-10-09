@@ -22,7 +22,7 @@
 
 ## Что уже есть (общая основа)
 
-### База — `db/studio_formats.sql`
+### База — `db/migrations/2026-10-09_studio_formats.sql`
 
 - `studios.format` (`subscription` | `packages`, check-ограничение),
   `studios.brand_color` (`#rrggbb`), `studios.logo_url` (путь в бакете
@@ -69,7 +69,8 @@
 
 ## Как добавлять пакетный формат
 
-- **База**: новые файлы `db/packages_*.sql`, идемпотентные, как остальные.
+- **База**: миграции `db/migrations/ГГГГ-ММ-ДД_packages_*.sql` (выполняются
+  при деплое админки, правила — CLAUDE.md, «База данных»).
   Новые сущности формата — отдельные таблицы с `studio_id`; общие таблицы
   (clients, trainers, news, services…) расширять совместимо. RLS — по общим
   правилам CLAUDE.md («своя строка или сотрудник»).
