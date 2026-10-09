@@ -18,6 +18,7 @@ export const STORAGE_BUCKETS = {
   memberships: { id: "memberships-media", access: "public" },
   trainers: { id: "trainer-photos", access: "signed" },
   workouts: { id: "workout-photos", access: "signed" },
+  studios: { id: "studio-logos", access: "public" },
 } as const;
 
 export type StorageBucket = keyof typeof STORAGE_BUCKETS;

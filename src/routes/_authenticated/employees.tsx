@@ -9,6 +9,7 @@ import { Trash2, UserPlus, Loader2 } from "lucide-react";
 import { getEmployeesContext, createEmployee, deleteEmployee } from "@/lib/employees.functions";
 import type { StaffRole } from "@/lib/roles";
 import { AdminShell } from "@/components/admin-shell";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,9 +63,11 @@ function EmployeesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  // Студию сервер берёт из профиля сотрудника, поэтому studioId в ключе нет.
+  // Студия уходит на сервер заголовком (auth-attacher), в ключе — чтобы
+  // при переключении студии список перезапросился.
+  const studioId = useActiveStudioId();
   const { data, isLoading, error } = useQuery({
-    queryKey: ["employees"],
+    queryKey: ["employees", studioId],
     queryFn: () => getCtx(),
   });
 

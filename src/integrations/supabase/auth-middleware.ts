@@ -1,12 +1,8 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
-import {
-  authenticate,
-  bearerToken,
-  getProfileStudioId,
-  getStudioStaffRoles,
-} from "@/lib/staff-auth.server";
+import { ACTIVE_STUDIO_HEADER } from "@/hooks/use-active-studio";
+import { authenticate, bearerToken, getStaffStudio } from "@/lib/staff-auth.server";
 
 /**
  * Middleware серверных функций. Токен прикладывает attachSupabaseAuth
@@ -26,15 +22,21 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
   },
 );
 
-/** Сотрудник своей студии (profiles.studio_id): добавляет studioId и isOwner. */
+/**
+ * Сотрудник активной студии (выбор в шапке; без него — profiles.studio_id):
+ * добавляет studioId и isOwner.
+ */
 export const requireStaff = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
-    const studioId = await getProfileStudioId(context.supabase, context.userId);
-    if (!studioId) throw new Error("Студия не найдена для пользователя");
-    const roles = await getStudioStaffRoles(context.supabase, context.userId, studioId);
-    if (!roles.length) throw new Error("Доступ только для сотрудников");
-    return next({ context: { studioId, isOwner: roles.includes("owner") } });
+    const staff = await getStaffStudio(
+      context.supabase,
+      context.userId,
+      getRequestHeader(ACTIVE_STUDIO_HEADER),
+    );
+    if (!staff) throw new Error("Студия не найдена для пользователя");
+    if (!staff.roles.length) throw new Error("Доступ только для сотрудников этой студии");
+    return next({ context: { studioId: staff.studioId, isOwner: staff.roles.includes("owner") } });
   });
 
 /** Владелец студии. */

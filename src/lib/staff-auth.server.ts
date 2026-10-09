@@ -1,7 +1,8 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 import { createUserClient } from "@/integrations/supabase/client.server";
-import { STAFF_ROLES, hasStaffRole, type StaffRole } from "@/lib/roles";
+import { ACTIVE_STUDIO_HEADER } from "@/hooks/use-active-studio";
+import { STAFF_ROLES, type StaffRole } from "@/lib/roles";
 
 /** Токен из заголовка `Authorization: Bearer …`. */
 export function bearerToken(header: string | null | undefined): string | null {
@@ -49,6 +50,31 @@ export async function getStudioStaffRoles(
   return (data ?? []).map((r) => r.role as StaffRole);
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Студия, с которой работает сотрудник, и его роли в ней. Студия — из
+ * заголовка ACTIVE_STUDIO_HEADER (выбор в шапке админки), без него — из
+ * профиля. Заголовку не доверяем: роли проверяются именно в этой студии,
+ * пустой roles — не сотрудник этой студии.
+ */
+export async function getStaffStudio(
+  supabase: SupabaseClient,
+  userId: string,
+  requestedStudioId: string | null | undefined,
+): Promise<{ studioId: string; roles: StaffRole[] } | null> {
+  const requested = requestedStudioId?.trim();
+  const studioId =
+    requested && UUID_RE.test(requested) ? requested : await getProfileStudioId(supabase, userId);
+  if (!studioId) return null;
+  return { studioId, roles: await getStudioStaffRoles(supabase, userId, studioId) };
+}
+
+/** Активная студия из заголовка запроса. */
+export function requestedStudioId(headers: Headers): string | null {
+  return headers.get(ACTIVE_STUDIO_HEADER);
+}
+
 export type StaffContext = {
   supabase: SupabaseClient;
   userId: string;
@@ -75,12 +101,16 @@ export async function authenticateStaff(request: Request): Promise<StaffAuthResu
       message: "Сессия истекла. Войдите заново и повторите запрос.",
     };
   }
-  const [isStaff, studioId] = await Promise.all([
-    hasStaffRole(auth.supabase, auth.user.id),
-    getProfileStudioId(auth.supabase, auth.user.id),
-  ]);
-  if (!isStaff || !studioId) {
+  const staff = await getStaffStudio(
+    auth.supabase,
+    auth.user.id,
+    requestedStudioId(request.headers),
+  );
+  if (!staff?.roles.length) {
     return { ok: false, status: 403, message: "Доступ только для сотрудников студии." };
   }
-  return { ok: true, staff: { supabase: auth.supabase, userId: auth.user.id, studioId } };
+  return {
+    ok: true,
+    staff: { supabase: auth.supabase, userId: auth.user.id, studioId: staff.studioId },
+  };
 }

@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { activeStudioHeaders } from "@/hooks/use-active-studio";
 import { toast } from "sonner";
 
 export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass?: string }) {
@@ -22,6 +23,7 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
           const token = data.session?.access_token;
           const headers = new Headers(init?.headers);
           if (token) headers.set("Authorization", `Bearer ${token}`);
+          for (const [k, v] of Object.entries(activeStudioHeaders())) headers.set(k, v);
           const response = await fetch(url, { ...init, headers });
           if (response.ok) return response;
 
@@ -277,7 +279,10 @@ function VoiceInputButton({
         const res = await fetch("/api/transcribe", {
           method: "POST",
           body: fd,
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...activeStudioHeaders(),
+          },
         });
         if (!res.ok) throw new Error(await res.text());
         const data = (await res.json()) as { text?: string };

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { StudioBranding } from "@/components/studio-branding";
 import { hasStaffRole } from "@/lib/roles";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -41,6 +42,7 @@ function AuthenticatedLayout() {
     // cookie «свёрнуто» иначе оставило бы меню свёрнутым без пути назад.
     // На мобильном шторка управляется отдельно (openMobile) и работает как раньше.
     <SidebarProvider open>
+      <StudioBranding />
       <div className="flex h-screen w-full overflow-hidden bg-canvas">
         <AppSidebar />
         <div className="flex h-screen flex-1 flex-col overflow-hidden">

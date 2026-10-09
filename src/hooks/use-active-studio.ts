@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 
 /**
  * Активная студия админки — выбор в шапке (StudioSwitcher), хранится в
- * localStorage. Все запросы страниц фильтруются по ней.
+ * localStorage. Все запросы страниц фильтруются по ней; серверным функциям и
+ * API-роутам она уходит заголовком ACTIVE_STUDIO_HEADER (сервер сверяет его
+ * с ролями сотрудника — staff-auth.server.ts).
  */
+
+export const ACTIVE_STUDIO_HEADER = "X-Studio-Id";
 
 const STORAGE_KEY = "base40.activeStudioId";
 // Ключ переименован с club40.* на base40.*; читаем старый как запасной, чтобы
@@ -20,6 +24,12 @@ export function getActiveStudioId(): string | null {
     window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   }
   return legacy;
+}
+
+/** Заголовок с активной студией для запросов к серверу админки. */
+export function activeStudioHeaders(): Record<string, string> {
+  const id = getActiveStudioId();
+  return id ? { [ACTIVE_STUDIO_HEADER]: id } : {};
 }
 
 export function setActiveStudioId(id: string) {

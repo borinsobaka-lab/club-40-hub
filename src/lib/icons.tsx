@@ -38,9 +38,11 @@ import {
   UnfoldMoreIcon as ChevronsUpDownArt,
   Circle as CircleArt,
   Copy as CopyArt,
+  ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
   ImageIcon as ImageIconArt,
   LoaderCircle as Loader2Art,
+  LogIn as LogInArt,
   MessageCircle as MessageCircleArt,
   MessageSquare as MessageSquareArt,
   Mic as MicArt,
@@ -99,9 +101,11 @@ export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
 export const ChevronsUpDown = icon(ChevronsUpDownArt, "ChevronsUpDown");
 export const Circle = icon(CircleArt, "Circle");
 export const Copy = icon(CopyArt, "Copy");
+export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
 export const Loader2 = icon(Loader2Art, "Loader2");
+export const LogIn = icon(LogInArt, "LogIn");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
 export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
 export const Mic = icon(MicArt, "Mic");

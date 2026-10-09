@@ -8,6 +8,7 @@ import {
   BellBing,
   BillList,
   Bolt,
+  Buildings2,
   CalendarMinimalistic,
   ChartSquare,
   ChatRoundDots,
@@ -27,7 +28,9 @@ import {
   type NavIcon,
 } from "@/components/nav-icons";
 
-import { BrandLogo } from "@/components/brand-logo";
+import { useActiveStudio } from "@/hooks/use-studios";
+import { useStorageUrl } from "@/lib/storage";
+import type { StudioFormat } from "@/lib/studio-formats";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
@@ -42,7 +45,16 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-type NavItem = { title: string; url: string; icon: NavIcon };
+type NavItem = {
+  title: string;
+  url: string;
+  icon: NavIcon;
+  /**
+   * Только для студий этих форматов (STUDIO_FORMATS.md). Без поля — пункт
+   * общий. Пока студия не загружена, показываются только общие пункты.
+   */
+  formats?: StudioFormat[];
+};
 type NavGroup = { key: string; label: string; items: NavItem[]; atBottom?: boolean };
 
 const GROUPS: NavGroup[] = [
@@ -102,10 +114,21 @@ const GROUPS: NavGroup[] = [
   {
     key: "access",
     label: "Доступы",
-    items: [{ title: "Доступы", url: "/employees", icon: ShieldUser }],
+    items: [
+      { title: "Доступы", url: "/employees", icon: ShieldUser },
+      { title: "Студии", url: "/studios", icon: Buildings2 },
+    ],
     atBottom: true,
   },
 ];
+
+/** Пункты для формата активной студии; опустевшие группы не показываем. */
+function visibleGroups(format: StudioFormat | undefined) {
+  return GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => !i.formats || (!!format && i.formats.includes(format))),
+  })).filter((g) => g.items.length > 0);
+}
 
 const STORAGE_KEY = "sidebar_groups";
 
@@ -120,7 +143,27 @@ function readCollapsedGroups(): Record<string, boolean> {
   }
 }
 
+/**
+ * Логотип активной студии (studios.logo_url). Меню тёмное — логотип нужен
+ * светлый на прозрачном фоне. Без логотипа — название студии.
+ */
+function StudioLogo() {
+  const studio = useActiveStudio();
+  const src = useStorageUrl("studios", studio?.logo_url);
+  if (!studio) return <span className="block h-9" />;
+  if (src)
+    return (
+      <img
+        src={src}
+        alt={studio.name}
+        className="h-auto max-h-12 w-36 object-contain object-left"
+      />
+    );
+  return <span className="truncate text-lg font-semibold">{studio.name}</span>;
+}
+
 export function AppSidebar() {
+  const studioFormat = useActiveStudio()?.format;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
   const setGroupOpen = useCallback((key: string, open: boolean) => {
@@ -144,12 +187,12 @@ export function AppSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="px-3 py-4">
         <Link to="/" aria-label="На главную" className="flex items-center text-white">
-          <BrandLogo className="h-auto w-36" />
+          <StudioLogo />
         </Link>
       </SidebarHeader>
 
       <SidebarContent className="sidebar-scroll">
-        {GROUPS.map((group) => (
+        {visibleGroups(studioFormat).map((group) => (
           <Collapsible
             key={group.key}
             open={!closedGroups[group.key]}

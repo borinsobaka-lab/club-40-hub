@@ -19,6 +19,7 @@ const ICONS: Record<string, string> = {
   BellBing: "notifications",
   BillList: "money",
   Bolt: "ui",
+  Buildings2: "building",
   CalendarMinimalistic: "time",
   ChartSquare: "business",
   ChatRoundDots: "messages",
