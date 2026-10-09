@@ -79,3 +79,34 @@ Coolify (ресурс Supabase на coolify.base40.fit), а не через Dash
 - Скриншот или перечень пройденных пунктов смоук-теста.
 - Что НЕ делалось: Lovable не трогали (отключается отдельной командой владельца,
   как и для админки — см. шаг 9 в INFRA_SETUP.md репозитория club-40-hub).
+
+---
+
+# Второе приложение: «Зал с пакетами тренировок» (с 2026-10-09)
+
+Студии делятся на два формата (STUDIO_FORMATS.md в репозитории
+`club-40-hub`). У каждого формата своё клиентское приложение: **та же
+кодовая база и тот же репозиторий**, отличие — build-переменная
+`VITE_APP_FORMAT`. Существующее `club40-client` (app.base40.fit) — подписочный
+формат, его НЕ трогаем.
+
+Адрес нового приложения — `pack.base40.fit` (предварительный; если владелец
+выберет другой — поменять в `src/lib/app-format.ts` здесь и в
+`src/lib/studio-formats.ts` админки).
+
+1. **DNS**: A-запись `pack.base40.fit` → 62.238.104.251 (как у app.base40.fit).
+2. **Coolify** → проект **club40** → **production** → **+ New Resource** →
+   Private Repository (with GitHub App) → `borinsobaka-lab/club40-client-hub`,
+   ветка `main`. Настройки как в Шаге 2 выше, но:
+   - **Имя ресурса**: `club40-client-packages`
+   - **Domain**: `https://pack.base40.fit`
+3. **Переменные** (все три — **Build Variable**): `VITE_SUPABASE_URL` и
+   `VITE_SUPABASE_PUBLISHABLE_KEY` — те же, что у `club40-client`, плюс
+   `VITE_APP_FORMAT` = `packages`.
+4. **Supabase (auth)**: в `GOTRUE_URI_ALLOW_LIST` (`ADDITIONAL_REDIRECT_URLS`)
+   добавить `https://pack.base40.fit/**` через запятую к существующим, затем
+   Restart сервиса auth. Письма новому приложению уходят с кодом
+   автоматически (код — всё, что не admin.base40.fit).
+5. **Деплой и проверка**: экран входа открывается. Регистрация заработает,
+   когда в админке («Доступы → Студии») будет заведена студия типа «Зал с
+   пакетами тренировок» — до этого форма отвечает «Регистрация пока закрыта».

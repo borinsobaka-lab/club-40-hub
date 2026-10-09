@@ -1,10 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FloatingLabelInput } from "@/components/ui/floating-input";
+import { FloatingLabelInput, FloatingLabelSelect } from "@/components/ui/floating-input";
+import { SelectItem } from "@/components/ui/select";
 import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
+import { useFormatStudios } from "@/hooks/use-studios";
+import { APP_FORMAT } from "@/lib/app-format";
 
 function formatCooldown(sec: number) {
   const m = Math.floor(sec / 60);
@@ -68,6 +71,13 @@ function AuthPage() {
   // На какой адрес ушёл последний код: «Изменить данные» → «Получить код» с
   // тем же адресом не должен обходить паузу между отправками.
   const [sentTo, setSentTo] = useState<string | null>(null);
+  // Студии формата этого приложения: новый клиент записывается в одну из
+  // них (одна — без вопроса, несколько — выбирает сам). undefined — список не
+  // загрузился (или база ещё без форматов студий): регистрация идёт как раньше.
+  const { data: formatStudios } = useFormatStudios();
+  const [pickedStudioId, setPickedStudioId] = useState("");
+  const signupStudioId =
+    formatStudios?.length === 1 ? formatStudios[0].id : pickedStudioId || undefined;
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
@@ -94,6 +104,20 @@ function AuthPage() {
         setError("Укажите номер телефона");
         return;
       }
+      // Пакетному приложению без студии регистрироваться нельзя: триггер
+      // записал бы клиента в самую старую — подписочную — студию.
+      if (!formatStudios && APP_FORMAT === "packages") {
+        setError("Не удалось загрузить список студий. Обновите страницу.");
+        return;
+      }
+      if (formatStudios?.length === 0) {
+        setError("Регистрация пока закрыта: студия ещё не открылась.");
+        return;
+      }
+      if (formatStudios && !signupStudioId) {
+        setError("Выберите студию");
+        return;
+      }
     }
     if (!email.trim()) {
       setError("Укажите email");
@@ -112,6 +136,7 @@ function AuthPage() {
       firstName,
       lastName,
       phone,
+      studioId: signupStudioId,
     });
     setBusy(false);
     if (sendError) {
@@ -134,6 +159,7 @@ function AuthPage() {
       firstName,
       lastName,
       phone,
+      studioId: signupStudioId,
     });
     setBusy(false);
     if (sendError) {
@@ -223,6 +249,19 @@ function AuthPage() {
           <form onSubmit={requestCode} className="space-y-3 max-w-sm w-full mx-auto">
             {isSignup && (
               <>
+                {formatStudios && formatStudios.length > 1 && (
+                  <FloatingLabelSelect
+                    label="Студия"
+                    value={pickedStudioId}
+                    onValueChange={setPickedStudioId}
+                  >
+                    {formatStudios.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </FloatingLabelSelect>
+                )}
                 <FloatingLabelInput
                   label="Фамилия"
                   value={lastName}

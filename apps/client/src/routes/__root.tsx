@@ -16,6 +16,8 @@ import { resetPageScrollPosition } from "@/lib/page-scroll";
 
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useClientStudio, type Studio } from "@/hooks/use-studios";
+import { APP_FORMAT, FORMAT_APP_URL } from "@/lib/app-format";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -204,8 +206,44 @@ function useInternalNavigationScrollReset() {
   }, []);
 }
 
+/**
+ * Клиент студии другого формата: у каждого формата своё приложение
+ * (src/lib/app-format.ts), здесь его расписание и абонементы не работают.
+ */
+function OtherAppScreen({ studio }: { studio: Studio }) {
+  const { signOut } = useAuth();
+  const url = FORMAT_APP_URL[studio.format];
+  return (
+    <div className="min-h-[100dvh] bg-background text-foreground flex items-center justify-center px-6">
+      <div className="max-w-sm text-center">
+        <h1 className="text-xl font-semibold">Ваша студия — в другом приложении</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Студия «{studio.name}» работает в приложении {url.replace(/^https?:\/\//, "")}. Войдите
+          там с той же почтой.
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          <a
+            href={url}
+            className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
+          >
+            Открыть приложение студии
+          </a>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="h-12 text-sm text-muted-foreground"
+          >
+            Выйти
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppShell() {
   const { session, user, loading } = useAuth();
+  const studio = useClientStudio();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAuthRoute = pathname === "/auth";
@@ -271,6 +309,12 @@ function AppShell() {
         </div>
       </div>
     );
+  }
+
+  // Студия известна и другого формата — дальше не пускаем (ни в анкету, ни в
+  // разделы). Пока студия грузится или база без форматов — работаем как обычно.
+  if (session && studio && studio.format !== APP_FORMAT) {
+    return <OtherAppScreen studio={studio} />;
   }
 
   if (onOnboardingRoute) {

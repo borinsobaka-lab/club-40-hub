@@ -8,6 +8,28 @@ TanStack Start (SSR) + React 19 + Tailwind 4 + shadcn/radix. Пакетный
 с одной базой Supabase; **схема БД ведётся там, в `db/*.sql`** — здесь файлов
 схемы нет и быть не должно.
 
+## Два приложения — два формата студий
+
+Студии бывают двух форматов: «Зал с подписочной моделью» (`subscription`) и
+«Зал с пакетами тренировок» (`packages`, в разработке). Подробно —
+**STUDIO_FORMATS.md в club-40-hub**. Из этого репозитория собираются **два
+приложения**: app.base40.fit (подписочный, `VITE_APP_FORMAT` не задан) и
+pack.base40.fit (адрес предварительный, `VITE_APP_FORMAT=packages`) —
+`src/lib/app-format.ts` (`APP_FORMAT`, `FORMAT_APP_URL`). Деплой второго —
+DEPLOY.md, раздел «Второе приложение».
+
+- Подписочное приложение не ломаем: экраны пакетного формата — в
+  `src/formats/packages/` (появятся с первой задачей), выбор по `APP_FORMAT`;
+  общие экраны (вход, профиль, новости) — общие.
+- Регистрация передаёт `studio_id` студии своего формата (`useFormatStudios`,
+  `src/hooks/use-studios.ts`): одна студия — молча, несколько — выбор в форме.
+- Клиент студии другого формата видит экран «Ваша студия — в другом
+  приложении» (`OtherAppScreen` в `__root.tsx`, студия — `useClientStudio`).
+- Цвет и логотип студии (`studios.brand_color`/`logo_url`) приходят, но пока
+  не применяются: у приложения свой жёлтый `--primary`.
+- Пока в базе нет `db/studio_formats.sql`, запросы к `studios` падают — хуки
+  отдают undefined, и приложение работает как до разделения форматов.
+
 ## Команды
 
 - `bun install` — зависимости (только публичный npm-реестр)
@@ -30,9 +52,10 @@ TanStack Start (SSR) + React 19 + Tailwind 4 + shadcn/radix. Пакетный
 ## Деплой
 
 Coolify на Hetzner, https://app.base40.fit (инструкция агенту — `DEPLOY.md`).
-После подключения автодеплоя пуш в `main` = выкладка. Env: только две
-публичные переменные `VITE_SUPABASE_URL` и `VITE_SUPABASE_PUBLISHABLE_KEY`
-(build-time); секретов у этого приложения нет и быть не должно.
+После подключения автодеплоя пуш в `main` = выкладка. Env: публичные
+build-time переменные `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` и
+`VITE_APP_FORMAT` (только у пакетного приложения); секретов у этого
+приложения нет и быть не должно.
 
 Supabase — **self-hosted в Coolify** (с 2026-10-07): API
 `https://api.base40.fit`, ключ — anon в JWT-формате (`eyJ...`, лежит в `.env`

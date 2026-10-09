@@ -19,6 +19,11 @@ type AuthCtx = {
       firstName?: string;
       lastName?: string;
       phone?: string;
+      /**
+       * Студия нового клиента (формата этого приложения). Без неё триггер
+       * запишет клиента в самую старую студию — то есть в подписочную.
+       */
+      studioId?: string;
     },
   ) => Promise<{ error: string | null }>;
   /** Проверяет код из письма. Успех = сессия появляется через onAuthStateChange. */
@@ -86,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 last_name: lastName,
                 full_name: fullName,
                 phone: opts?.phone?.trim() ?? "",
+                ...(opts?.studioId ? { studio_id: opts.studioId } : {}),
               },
             }
           : { shouldCreateUser: false, emailRedirectTo },

@@ -280,6 +280,22 @@ export type Database = {
           },
         ];
       };
+      /* patched: db/studio_formats.sql (club-40-hub); приложению studios
+         доступна только на чтение — Insert/Update не описаны */
+      studios: {
+        Row: {
+          brand_color: string;
+          created_at: string;
+          format: "subscription" | "packages";
+          id: string;
+          logo_url: string | null;
+          name: string;
+          slug: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       workouts: {
         Row: {
           capacity: number | null;

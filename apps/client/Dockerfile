@@ -9,10 +9,14 @@ COPY . .
 
 # VITE_* переменные вшиваются в клиентский бандл на этапе сборки —
 # в Coolify отметьте их как "Build Variable".
+# VITE_APP_FORMAT — формат студий приложения (src/lib/app-format.ts):
+# пусто/subscription — app.base40.fit, packages — приложение «пакетных» залов.
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_APP_FORMAT
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
-    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
+    VITE_APP_FORMAT=$VITE_APP_FORMAT
 
 RUN bun run build
 
