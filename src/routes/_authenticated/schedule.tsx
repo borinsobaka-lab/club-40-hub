@@ -965,6 +965,7 @@ type ClientRow = {
   full_name: string;
   phone: string | null;
   email: string | null;
+  crm_link: string | null;
 };
 
 type ActiveMembershipRow = {
@@ -1000,7 +1001,7 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
   // равно показываем (с «Пользователь без анкеты»), а не ошибку на всю панель.
   const { data: cData } = await supabase
     .from("clients")
-    .select("id, user_id, first_name, last_name, full_name, phone, email")
+    .select("id, user_id, first_name, last_name, full_name, phone, email, crm_link")
     .eq("studio_id", entry.studio_id)
     .in("user_id", userIds);
   const clients: ClientRow[] = cData ?? [];
@@ -1047,7 +1048,11 @@ async function bookingRpc(
 
 function BookingClientName({ client }: { client: ClientRow | undefined }) {
   if (!client) return <span className="font-medium">Пользователь без анкеты</span>;
-  return <ClientNameLink clientId={client.id}>{clientName(client)}</ClientNameLink>;
+  return (
+    <ClientNameLink clientId={client.id} crmLink={client.crm_link}>
+      {clientName(client)}
+    </ClientNameLink>
+  );
 }
 
 function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => void }) {
