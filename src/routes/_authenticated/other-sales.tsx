@@ -1,11 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
+import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useRefreshSignal } from "@/lib/refresh-bus";
+import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
+import { PAYMENT_METHOD_LABEL, PAYMENT_METHODS, type PaymentMethod } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,8 +44,9 @@ import {
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
+import { ClientCombobox } from "@/components/client-combobox";
 import { TableSkeletonRows } from "@/components/table-skeleton";
-import { formatMoneyPrecise as formatMoney, formatDate, todayISO } from "@/lib/format";
+import { clientName, formatMoneyPrecise, formatDate, todayISO } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -55,7 +60,6 @@ export const Route = createFileRoute("/_authenticated/other-sales")({
 // Типы и справочники
 // ---------------------------------------------------------------------------
 type ItemKind = "service" | "product";
-type PaymentMethod = "cash" | "card" | "transfer" | "app";
 
 type SaleItem = {
   id: string;
@@ -82,29 +86,38 @@ type OtherSale = {
   comment: string | null;
   sold_at: string;
   created_at: string;
-  clients?: { first_name: string | null; last_name: string | null; full_name: string } | null;
-};
-
-type ClientRow = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  full_name: string;
-  phone: string | null;
-  email: string | null;
+  clients: { first_name: string | null; last_name: string | null; full_name: string } | null;
 };
 
 const KIND_LABEL: Record<ItemKind, string> = { service: "Услуга", product: "Товар" };
-const PAYMENT_LABEL: Record<PaymentMethod, string> = {
-  cash: "Наличные",
-  card: "Карта",
-  transfer: "Перевод",
-  app: "Приложение",
-};
 
-function clientName(c: { first_name: string | null; last_name: string | null; full_name: string }) {
-  const joined = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
-  return joined || c.full_name || "—";
+/** Каталог позиций нужен обеим вкладкам — запрос у них общий через кэш. */
+const saleItemsKey = (studioId: string) => ["sale_items", studioId];
+
+function useSaleItems(studioId: string) {
+  return useQuery({
+    queryKey: saleItemsKey(studioId),
+    queryFn: () =>
+      unwrap<SaleItem[]>(
+        supabase
+          .from("sale_items")
+          .select("*")
+          .eq("studio_id", studioId)
+          .order("kind", { ascending: true })
+          .order("name", { ascending: true }),
+      ),
+    meta: { errorMessage: "Не удалось загрузить позиции" },
+  });
+}
+
+/**
+ * Цена из поля ввода («12,5» тоже). Пустое поле — null, а не 0: раньше
+ * незаполненная цена молча сохранялась нулём.
+ */
+function parsePrice(raw: string) {
+  const s = raw.trim().replace(",", ".");
+  const n = Number(s);
+  return s && Number.isFinite(n) ? n : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,67 +125,10 @@ function clientName(c: { first_name: string | null; last_name: string | null; fu
 // ---------------------------------------------------------------------------
 function OtherSalesPage() {
   const studioId = useActiveStudioId();
-  const refreshSignal = useRefreshSignal();
-
-  const [items, setItems] = useState<SaleItem[]>([]);
-  const [clients, setClients] = useState<ClientRow[]>([]);
-  const [me, setMe] = useState<{ id: string; name: string } | null>(null);
-
-  const fetchItems = useCallback(async () => {
-    if (!studioId) {
-      setItems([]);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("sale_items")
-      .select("*")
-      .eq("studio_id", studioId)
-      .order("kind", { ascending: true })
-      .order("name", { ascending: true });
-    if (error) {
-      toast.error("Не удалось загрузить позиции: " + error.message);
-      return;
-    }
-    setItems((data as SaleItem[]) ?? []);
-  }, [studioId]);
-
-  const fetchClients = useCallback(async () => {
-    if (!studioId) {
-      setClients([]);
-      return;
-    }
-    const { data } = await supabase
-      .from("clients")
-      .select("id, first_name, last_name, full_name, phone, email")
-      .eq("studio_id", studioId)
-      .order("full_name", { ascending: true });
-    setClients((data as ClientRow[]) ?? []);
-  }, [studioId]);
-
-  useEffect(() => {
-    fetchItems();
-    fetchClients();
-  }, [fetchItems, fetchClients, refreshSignal]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", data.user.id)
-        .maybeSingle();
-      setMe({ id: data.user.id, name: (p?.full_name as string) || data.user.email || "" });
-    });
-  }, []);
 
   return (
-    <AdminShell title="Прочие продажи" description="Разовые продажи услуг и товаров">
-      {!studioId ? (
-        <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-          Сначала выберите студию в шапке.
-        </div>
-      ) : (
+    <AdminShell title="Прочие продажи">
+      <RequireStudio studioId={studioId}>
         <Tabs defaultValue="sales" className="space-y-3">
           <TabsList>
             <TabsTrigger value="sales">Продажи</TabsTrigger>
@@ -180,20 +136,14 @@ function OtherSalesPage() {
           </TabsList>
 
           <TabsContent value="sales" className="space-y-3">
-            <SalesTab
-              studioId={studioId}
-              items={items}
-              clients={clients}
-              me={me}
-              refreshSignal={refreshSignal}
-            />
+            <SalesTab studioId={studioId!} />
           </TabsContent>
 
           <TabsContent value="catalog" className="space-y-3">
-            <CatalogTab studioId={studioId} items={items} onChanged={fetchItems} />
+            <CatalogTab studioId={studioId!} />
           </TabsContent>
         </Tabs>
-      )}
+      </RequireStudio>
     </AdminShell>
   );
 }
@@ -201,44 +151,27 @@ function OtherSalesPage() {
 // ---------------------------------------------------------------------------
 // Вкладка «Продажи»
 // ---------------------------------------------------------------------------
-function SalesTab({
-  studioId,
-  items,
-  clients,
-  me,
-  refreshSignal,
-}: {
-  studioId: string;
-  items: SaleItem[];
-  clients: ClientRow[];
-  me: { id: string; name: string } | null;
-  refreshSignal: number;
-}) {
+function SalesTab({ studioId }: { studioId: string }) {
   const { confirm, confirmDialog } = useConfirm();
-  const [rows, setRows] = useState<OtherSale[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const { data: items = [], isLoading: itemsLoading } = useSaleItems(studioId);
 
-  const fetchSales = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("other_sales")
-      .select("*, clients(first_name, last_name, full_name)")
-      .eq("studio_id", studioId)
-      .order("sold_at", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(500);
-    setLoading(false);
-    if (error) {
-      toast.error("Не удалось загрузить продажи: " + error.message);
-      return;
-    }
-    setRows((data as OtherSale[]) ?? []);
-  }, [studioId]);
-
-  useEffect(() => {
-    fetchSales();
-  }, [fetchSales, refreshSignal]);
+  const { data: rows = [], isLoading: loading } = useQuery({
+    queryKey: ["other_sales", studioId],
+    queryFn: () =>
+      unwrap<OtherSale[]>(
+        supabase
+          .from("other_sales")
+          .select("*, clients(first_name, last_name, full_name)")
+          .eq("studio_id", studioId)
+          .order("sold_at", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(500),
+      ),
+    meta: { errorMessage: "Не удалось загрузить продажи" },
+  });
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["other_sales"] });
 
   const handleDelete = async (s: OtherSale) => {
     if (
@@ -254,7 +187,7 @@ function SalesTab({
       return;
     }
     toast.success("Продажа удалена");
-    fetchSales();
+    reload();
   };
 
   const pg = usePagination(rows);
@@ -268,7 +201,8 @@ function SalesTab({
         </Button>
       </div>
 
-      {items.length === 0 && (
+      {/* Пока каталог грузится, он пуст — подсказку показываем только по факту. */}
+      {!itemsLoading && items.length === 0 && (
         <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
           Сначала добавьте позиции во вкладке «Позиции» — их можно будет продавать.
         </div>
@@ -326,13 +260,13 @@ function SalesTab({
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{s.quantity}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMoney(Number(s.unit_price))}
+                      {formatMoneyPrecise(Number(s.unit_price))}
                     </TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
-                      {formatMoney(Number(s.total_amount))}
+                      {formatMoneyPrecise(Number(s.total_amount))}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {s.payment_method ? PAYMENT_LABEL[s.payment_method] : "—"}
+                      {s.payment_method ? PAYMENT_METHOD_LABEL[s.payment_method] : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
                   </TableRow>
@@ -349,69 +283,63 @@ function SalesTab({
         onOpenChange={setOpen}
         studioId={studioId}
         items={items}
-        clients={clients}
-        me={me}
-        onSaved={fetchSales}
+        onSaved={reload}
       />
       {confirmDialog}
     </>
   );
 }
 
-function AddSaleDialog({
-  open,
-  onOpenChange,
-  studioId,
-  items,
-  clients,
-  me,
-  onSaved,
-}: {
+type AddSaleDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string;
   items: SaleItem[];
-  clients: ClientRow[];
-  me: { id: string; name: string } | null;
   onSaved: () => void;
-}) {
-  const [itemId, setItemId] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [unitPrice, setUnitPrice] = useState("");
-  const [payment, setPayment] = useState<PaymentMethod>("cash");
-  const [soldAt, setSoldAt] = useState(todayISO());
-  const [comment, setComment] = useState("");
+};
+
+function AddSaleDialog(props: AddSaleDialogProps) {
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent className="max-w-lg">
+        {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+        <AddSaleForm {...props} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogProps) {
+  const { data: staff } = useStaffProfile();
+  const [form, setForm] = useState(() => ({
+    itemId: "",
+    clientId: "",
+    quantity: "1",
+    unitPrice: "",
+    payment: "cash" as PaymentMethod,
+    soldAt: todayISO(),
+    comment: "",
+  }));
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
   const [saving, setSaving] = useState(false);
 
-  const activeItems = useMemo(() => items.filter((i) => i.is_active), [items]);
-  const selectedItem = items.find((i) => i.id === itemId) ?? null;
+  const selectedItem = items.find((i) => i.id === form.itemId) ?? null;
 
-  useEffect(() => {
-    if (open) {
-      setItemId("");
-      setClientId("");
-      setQuantity("1");
-      setUnitPrice("");
-      setPayment("cash");
-      setSoldAt(todayISO());
-      setComment("");
-    }
-  }, [open]);
-
-  // При выборе позиции подставляем её цену
-  useEffect(() => {
-    if (selectedItem) setUnitPrice(String(selectedItem.price));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemId]);
+  // Цену позиции подставляем при выборе, а не эффектом по itemId.
+  const pickItem = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    setForm((f) => ({ ...f, itemId: id, unitPrice: item ? String(item.price) : f.unitPrice }));
+  };
 
   // Без прижатия к 1: иначе «0» или «-3» молча продавались как одна штука,
   // а проверка количества ниже никогда не срабатывала.
-  const qty = Math.floor(Number(quantity) || 0);
-  const price = Number(String(unitPrice).replace(",", ".")) || 0;
-  const total = Math.round(Math.max(0, qty) * price * 100) / 100;
+  const qty = Math.floor(Number(form.quantity) || 0);
+  const price = parsePrice(form.unitPrice);
+  const total = Math.round(Math.max(0, qty) * (price ?? 0) * 100) / 100;
 
   const handleSave = async () => {
+    if (saving) return;
     if (!selectedItem) {
       toast.error("Выберите позицию");
       return;
@@ -420,187 +348,177 @@ function AddSaleDialog({
       toast.error("Количество должно быть больше нуля");
       return;
     }
+    if (price === null) {
+      toast.error("Укажите цену");
+      return;
+    }
     if (price < 0) {
       toast.error("Цена не может быть отрицательной");
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("other_sales").insert({
-      studio_id: studioId,
-      item_id: selectedItem.id,
-      item_kind: selectedItem.kind,
-      item_name: selectedItem.name,
-      client_id: clientId || null,
-      admin_id: me?.id ?? null,
-      admin_name: me?.name ?? null,
-      quantity: qty,
-      unit_price: price,
-      total_amount: total,
-      payment_method: payment,
-      sold_at: soldAt,
-      comment: comment.trim() || null,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error("Ошибка сохранения: " + error.message);
-      return;
+    try {
+      const { error } = await supabase.from("other_sales").insert({
+        studio_id: studioId,
+        item_id: selectedItem.id,
+        item_kind: selectedItem.kind,
+        item_name: selectedItem.name,
+        client_id: form.clientId || null,
+        admin_id: staff?.id ?? null,
+        admin_name: staff?.displayName || null,
+        quantity: qty,
+        unit_price: price,
+        total_amount: total,
+        payment_method: form.payment,
+        sold_at: form.soldAt,
+        comment: form.comment.trim() || null,
+      });
+      if (error) {
+        toast.error("Ошибка сохранения: " + error.message);
+        return;
+      }
+      toast.success("Продажа добавлена");
+      onOpenChange(false);
+      onSaved();
+    } finally {
+      setSaving(false);
     }
-    toast.success("Продажа добавлена");
-    onOpenChange(false);
-    onSaved();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Новая продажа</DialogTitle>
-          <DialogDescription>
-            Выберите позицию, количество и цену. Клиент — по желанию.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Позиция</Label>
-              <SearchableCombobox
-                placeholder="Выбрать услугу или товар"
-                searchPlaceholder="Поиск по названию"
-                emptyText="Ничего не найдено"
-                value={itemId}
-                onChange={setItemId}
-                options={activeItems.map((i) => ({
+    <>
+      <DialogHeader>
+        <DialogTitle>Новая продажа</DialogTitle>
+        <DialogDescription>
+          Выберите позицию, количество и цену. Клиент — по желанию.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Позиция</Label>
+            <SearchableCombobox
+              placeholder="Выбрать услугу или товар"
+              searchPlaceholder="Поиск по названию"
+              emptyText="Ничего не найдено"
+              value={form.itemId}
+              onChange={pickItem}
+              options={items
+                .filter((i) => i.is_active)
+                .map((i) => ({
                   value: i.id,
                   label: i.name,
-                  hint: `${KIND_LABEL[i.kind]} · ${formatMoney(Number(i.price))}`,
+                  hint: `${KIND_LABEL[i.kind]} · ${formatMoneyPrecise(Number(i.price))}`,
                   searchText: `${i.name} ${KIND_LABEL[i.kind]}`,
                 }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="os-qty">Количество</Label>
+              <Input
+                id="os-qty"
+                type="number"
+                min={1}
+                step="1"
+                value={form.quantity}
+                onChange={(e) => set("quantity", e.target.value)}
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="os-qty">Количество</Label>
-                <Input
-                  id="os-qty"
-                  type="number"
-                  min={1}
-                  step="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="os-price">Цена за штуку, ₾</Label>
-                <Input
-                  id="os-price"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={unitPrice}
-                  onChange={(e) => setUnitPrice(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
-              <span className="text-muted-foreground">Итого</span>
-              <span className="font-semibold tabular-nums">{formatMoney(total)}</span>
-            </div>
-
             <div className="space-y-1.5">
-              <Label>Клиент (по желанию)</Label>
-              <SearchableCombobox
-                placeholder="Без клиента"
-                searchPlaceholder="Поиск по имени, телефону, email"
-                emptyText="Ничего не найдено"
-                value={clientId}
-                onChange={setClientId}
-                options={clients.map((c) => ({
-                  value: c.id,
-                  label: clientName(c),
-                  hint: c.phone ?? c.email ?? "",
-                  searchText: `${clientName(c)} ${c.phone ?? ""} ${c.email ?? ""}`,
-                }))}
-              />
-              {clientId && (
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                  onClick={() => setClientId("")}
-                >
-                  Убрать клиента
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Оплата</Label>
-                <Select value={payment} onValueChange={(v) => setPayment(v as PaymentMethod)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {PAYMENT_LABEL[m]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="os-date">Дата</Label>
-                <Input
-                  id="os-date"
-                  type="date"
-                  value={soldAt}
-                  onChange={(e) => setSoldAt(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Комментарий (по желанию)</Label>
-              <Textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Заметка к продаже"
-                rows={2}
+              <Label htmlFor="os-price">Цена за штуку, ₾</Label>
+              <Input
+                id="os-price"
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.unitPrice}
+                onChange={(e) => set("unitPrice", e.target.value)}
               />
             </div>
           </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Отмена
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-            Продать
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Итого</span>
+            <span className="font-semibold tabular-nums">{formatMoneyPrecise(total)}</span>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Клиент (по желанию)</Label>
+            <ClientCombobox
+              studioId={studioId}
+              value={form.clientId}
+              onChange={(id) => set("clientId", id)}
+              placeholder="Без клиента"
+              clearable
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Оплата</Label>
+              <Select
+                value={form.payment}
+                onValueChange={(v) => set("payment", v as PaymentMethod)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {PAYMENT_METHOD_LABEL[m]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="os-date">Дата</Label>
+              <Input
+                id="os-date"
+                type="date"
+                value={form.soldAt}
+                onChange={(e) => set("soldAt", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Комментарий (по желанию)</Label>
+            <Textarea
+              value={form.comment}
+              onChange={(e) => set("comment", e.target.value)}
+              placeholder="Заметка к продаже"
+              rows={2}
+            />
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          Отмена
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          Продать
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Вкладка «Позиции» (каталог услуг/товаров)
 // ---------------------------------------------------------------------------
-function CatalogTab({
-  studioId,
-  items,
-  onChanged,
-}: {
-  studioId: string;
-  items: SaleItem[];
-  onChanged: () => void;
-}) {
+function CatalogTab({ studioId }: { studioId: string }) {
   const { confirm, confirmDialog } = useConfirm();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SaleItem | null>(null);
+  const { data: items = [], isLoading: loading } = useSaleItems(studioId);
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["sale_items"] });
 
   const handleDelete = async (i: SaleItem) => {
     if (
@@ -616,7 +534,7 @@ function CatalogTab({
       return;
     }
     toast.success("Позиция удалена");
-    onChanged();
+    reload();
   };
 
   const toggleActive = async (i: SaleItem, next: boolean) => {
@@ -625,7 +543,14 @@ function CatalogTab({
       toast.error("Ошибка: " + error.message);
       return;
     }
-    onChanged();
+    queryClient.setQueryData<SaleItem[]>(saleItemsKey(studioId), (prev) =>
+      prev?.map((x) => (x.id === i.id ? { ...x, is_active: next } : x)),
+    );
+  };
+
+  const openDialog = (i: SaleItem | null) => {
+    setEditing(i);
+    setOpen(true);
   };
 
   const pg = usePagination(items);
@@ -633,13 +558,7 @@ function CatalogTab({
   return (
     <>
       <div className="flex justify-end">
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(null);
-            setOpen(true);
-          }}
-        >
+        <Button size="sm" onClick={() => openDialog(null)}>
           <Plus className="mr-1 h-4 w-4" />
           Добавить позицию
         </Button>
@@ -656,7 +575,9 @@ function CatalogTab({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.length === 0 ? (
+            {loading ? (
+              <TableSkeletonRows columns={4} />
+            ) : items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                   Пока нет позиций. Нажмите «Добавить позицию».
@@ -667,14 +588,7 @@ function CatalogTab({
                 <RowContextMenu
                   key={i.id}
                   actions={[
-                    {
-                      label: "Редактировать",
-                      icon: Pencil,
-                      onSelect: () => {
-                        setEditing(i);
-                        setOpen(true);
-                      },
-                    },
+                    { label: "Редактировать", icon: Pencil, onSelect: () => openDialog(i) },
                     {
                       label: "Удалить",
                       icon: Trash2,
@@ -689,7 +603,7 @@ function CatalogTab({
                       <Badge variant="secondary">{KIND_LABEL[i.kind]}</Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMoney(Number(i.price))}
+                      {formatMoneyPrecise(Number(i.price))}
                     </TableCell>
                     <TableCell>
                       <Switch checked={i.is_active} onCheckedChange={(v) => toggleActive(i, v)} />
@@ -708,140 +622,136 @@ function CatalogTab({
         onOpenChange={setOpen}
         studioId={studioId}
         item={editing}
-        onSaved={onChanged}
+        onSaved={reload}
       />
       {confirmDialog}
     </>
   );
 }
 
-function CatalogDialog({
-  open,
-  onOpenChange,
-  studioId,
-  item,
-  onSaved,
-}: {
+type CatalogDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string;
   item: SaleItem | null;
   onSaved: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [kind, setKind] = useState<ItemKind>("service");
-  const [price, setPrice] = useState("");
-  const [isActive, setIsActive] = useState(true);
-  const [saving, setSaving] = useState(false);
+};
 
-  useEffect(() => {
-    if (open) {
-      setName(item?.name ?? "");
-      setKind(item?.kind ?? "service");
-      setPrice(item ? String(item.price) : "");
-      setIsActive(item?.is_active ?? true);
-    }
-  }, [open, item]);
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      toast.error("Укажите название");
-      return;
-    }
-    const p = Number(String(price).replace(",", "."));
-    if (!Number.isFinite(p) || p < 0) {
-      toast.error("Укажите цену");
-      return;
-    }
-    setSaving(true);
-    const payload = {
-      studio_id: studioId,
-      kind,
-      name: name.trim(),
-      price: p,
-      is_active: isActive,
-    };
-    const { error } = item
-      ? await supabase.from("sale_items").update(payload).eq("id", item.id)
-      : await supabase.from("sale_items").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Ошибка сохранения: " + error.message);
-      return;
-    }
-    toast.success(item ? "Позиция обновлена" : "Позиция добавлена");
-    onOpenChange(false);
-    onSaved();
-  };
-
+function CatalogDialog(props: CatalogDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{item ? "Редактировать позицию" : "Новая позиция"}</DialogTitle>
-          <DialogDescription>Услуга или товар, доступные для продажи.</DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Тип</Label>
-              <Select value={kind} onValueChange={(v) => setKind(v as ItemKind)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="service">Услуга</SelectItem>
-                  <SelectItem value="product">Товар</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Название</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={kind === "product" ? "Вода 0.5 л" : "Персональная тренировка"}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Цена, ₾</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
-                <div className="text-sm font-medium">Активна</div>
-                <div className="text-xs text-muted-foreground">
-                  Неактивные позиции не показываются при продаже.
-                </div>
-              </div>
-              <Switch checked={isActive} onCheckedChange={setIsActive} />
-            </div>
-          </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Отмена
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-            Сохранить
-          </Button>
-        </DialogFooter>
+        {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+        <CatalogForm key={props.item?.id ?? "new"} {...props} />
       </DialogContent>
     </Dialog>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Комбобокс с поиском (как в разделе «Продажи»)
-// ---------------------------------------------------------------------------
+function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogProps) {
+  const [name, setName] = useState(item?.name ?? "");
+  const [kind, setKind] = useState<ItemKind>(item?.kind ?? "service");
+  const [price, setPrice] = useState(item ? String(item.price) : "");
+  const [isActive, setIsActive] = useState(item?.is_active ?? true);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (saving) return;
+    if (!name.trim()) {
+      toast.error("Укажите название");
+      return;
+    }
+    const p = parsePrice(price);
+    if (p === null || p < 0) {
+      toast.error("Укажите цену");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        studio_id: studioId,
+        kind,
+        name: name.trim(),
+        price: p,
+        is_active: isActive,
+      };
+      const { error } = item
+        ? await supabase.from("sale_items").update(payload).eq("id", item.id)
+        : await supabase.from("sale_items").insert(payload);
+      if (error) {
+        toast.error("Ошибка сохранения: " + error.message);
+        return;
+      }
+      toast.success(item ? "Позиция обновлена" : "Позиция добавлена");
+      onOpenChange(false);
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{item ? "Редактировать позицию" : "Новая позиция"}</DialogTitle>
+        <DialogDescription>Услуга или товар, доступные для продажи.</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Тип</Label>
+            <Select value={kind} onValueChange={(v) => setKind(v as ItemKind)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="service">Услуга</SelectItem>
+                <SelectItem value="product">Товар</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Название</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={kind === "product" ? "Вода 0.5 л" : "Персональная тренировка"}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Цена, ₾</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div>
+              <div className="text-sm font-medium">Активна</div>
+              <div className="text-xs text-muted-foreground">
+                Неактивные позиции не показываются при продаже.
+              </div>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          Отмена
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          Сохранить
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
