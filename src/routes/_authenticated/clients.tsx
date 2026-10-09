@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRefreshSignal } from "@/lib/refresh-bus";
-
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
@@ -11,7 +10,9 @@ import { clientNameClass } from "@/components/client-name-link";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
+import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,14 +45,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { DataPagination, useServerPagination } from "@/components/data-pagination";
+import { DataPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
-import { type ClubStatus } from "@/lib/client-status";
+import { CLUB_STATUS_FULL, CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
-import { formatDate, sanitizeSearch } from "@/lib/format";
+import { GENDER_OPTIONS, clientName, formatDate, genderLabel, sanitizeSearch } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
@@ -88,22 +89,11 @@ const CLIENT_COLUMNS =
   "id, studio_id, user_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
   "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status";
 
-function displayName(c: Pick<Client, "first_name" | "last_name" | "full_name">) {
-  const composed = [c.last_name, c.first_name].filter(Boolean).join(" ").trim();
-  return composed || c.full_name || "—";
-}
+const CLUB_STATUSES = Object.keys(CLUB_STATUS_FULL) as ClubStatus[];
 
-const GENDERS = [
-  { value: "male", label: "Мужской" },
-  { value: "female", label: "Женский" },
-];
-
-function genderLabel(v: string | null) {
-  return GENDERS.find((g) => g.value === v)?.label ?? "—";
-}
-
-function toISODate(d: Date) {
-  return format(d, "yyyy-MM-dd");
+// Локальная дата (YYYY-MM-DD): даты регистрации/визита хранятся без времени.
+function toISODate(d: Date | undefined) {
+  return d ? format(d, "yyyy-MM-dd") : null;
 }
 
 function DateRangeFilter({
@@ -153,8 +143,7 @@ function DateRangeFilter({
 function ClientsPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -170,86 +159,55 @@ function ClientsPage() {
     setCardOpen(true);
   };
 
-  const debouncedSearch = useDebouncedValue(search);
-  const pg = useServerPagination();
-  const { from, to, setTotal, setPage, beginRequest } = pg;
-
-  // DateRange — новый объект на каждый выбор, поэтому в зависимостях эффектов
-  // используем строковые ключи, а не сами объекты.
-  const regKey = `${regRange?.from?.toISOString() ?? ""}|${regRange?.to?.toISOString() ?? ""}`;
-  const visitKey = `${visitRange?.from?.toISOString() ?? ""}|${visitRange?.to?.toISOString() ?? ""}`;
+  const term = sanitizeSearch(useDebouncedValue(search));
+  // Диапазоны — строками: DateRange новый объект на каждый выбор, а строки
+  // годятся и для фильтра запроса, и для ключа кэша.
+  const regFrom = toISODate(regRange?.from);
+  const regTo = toISODate(regRange?.to);
+  const visitFrom = toISODate(visitRange?.from);
+  const visitTo = toISODate(visitRange?.to);
   const hasFilters = Boolean(
-    debouncedSearch.trim() || genderFilter || statusFilter || regKey !== "|" || visitKey !== "|",
+    term || genderFilter || statusFilter || regFrom || regTo || visitFrom || visitTo,
   );
 
-  // Смена фильтров возвращает на первую страницу: иначе можно остаться,
-  // например, на пятой странице результата, где всего одна.
-  useEffect(() => {
-    setPage(1);
-  }, [studioId, debouncedSearch, genderFilter, statusFilter, regKey, visitKey, setPage]);
-
-  const fetchClients = useCallback(async () => {
-    const isStale = beginRequest();
-    if (!studioId) {
-      setClients([]);
-      setTotal(0);
-      return;
-    }
-    setLoading(true);
-
-    let query = supabase
-      .from("clients_with_status")
-      .select(CLIENT_COLUMNS, { count: "exact" })
-      .eq("studio_id", studioId);
-
-    const term = sanitizeSearch(debouncedSearch);
-    if (term) {
-      query = query.or(`search_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`);
-    }
-    if (genderFilter) query = query.eq("gender", genderFilter);
-    if (statusFilter) query = query.eq("club_status", statusFilter);
-    if (regRange?.from) query = query.gte("registration_date", toISODate(regRange.from));
-    if (regRange?.to) query = query.lte("registration_date", toISODate(regRange.to));
-    if (visitRange?.from) query = query.gte("last_visit_date", toISODate(visitRange.from));
-    if (visitRange?.to) query = query.lte("last_visit_date", toISODate(visitRange.to));
-
-    const { data, error, count } = await query
-      .order("created_at", { ascending: false })
-      .range(from, to);
-
-    if (isStale()) return;
-    setLoading(false);
-    if (error) {
-      toast.error("Не удалось загрузить клиентов: " + error.message);
-      return;
-    }
-    setClients((data as unknown as Client[]) ?? []);
-    setTotal(count ?? 0);
-    // regRange/visitRange намеренно заменены на regKey/visitKey — см. выше.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    studioId,
-    debouncedSearch,
-    genderFilter,
-    statusFilter,
-    regKey,
-    visitKey,
-    from,
-    to,
-    setTotal,
-    beginRequest,
-  ]);
-
-  const refreshSignal = useRefreshSignal();
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients, refreshSignal]);
+  const table = useServerTable<Client>({
+    queryKey: [
+      "clients_with_status",
+      studioId,
+      term,
+      genderFilter,
+      statusFilter,
+      regFrom,
+      regTo,
+      visitFrom,
+      visitTo,
+    ],
+    queryFn: ({ from, to }) => {
+      let query = supabase
+        .from("clients_with_status")
+        .select(CLIENT_COLUMNS, { count: "exact" })
+        .eq("studio_id", studioId!);
+      if (term) {
+        query = query.or(`search_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`);
+      }
+      if (genderFilter) query = query.eq("gender", genderFilter);
+      if (statusFilter) query = query.eq("club_status", statusFilter);
+      if (regFrom) query = query.gte("registration_date", regFrom);
+      if (regTo) query = query.lte("registration_date", regTo);
+      if (visitFrom) query = query.gte("last_visit_date", visitFrom);
+      if (visitTo) query = query.lte("last_visit_date", visitTo);
+      return query.order("created_at", { ascending: false }).range(from, to);
+    },
+    enabled: !!studioId,
+    errorMessage: "Не удалось загрузить клиентов",
+  });
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["clients_with_status"] });
 
   const handleDelete = async (c: Client) => {
     if (
       !(await confirm({
         title: "Удалить клиента?",
-        description: `«${displayName(c)}» будет удалён вместе с историей. Действие необратимо.`,
+        description: `«${clientName(c)}» будет удалён вместе с историей. Действие необратимо.`,
       }))
     )
       return;
@@ -259,7 +217,7 @@ function ClientsPage() {
       return;
     }
     toast.success("Клиент удалён");
-    fetchClients();
+    reload();
   };
 
   const openCreate = () => {
@@ -282,135 +240,130 @@ function ClientsPage() {
   return (
     <AdminShell
       title="Клиенты"
-      description="База клиентов студии"
       actions={
-        <Button size="default" onClick={openCreate} disabled={!studioId}>
+        <Button onClick={openCreate} disabled={!studioId}>
           <Plus className="mr-1 h-4 w-4" />
           Добавить клиента
         </Button>
       }
     >
       <div className="space-y-3">
-        {!studioId ? (
-          <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Сначала выберите студию в шапке.
-          </div>
-        ) : (
-          <>
-            <TableToolbar>
-              <ToolbarSearch
-                value={search}
-                onChange={setSearch}
-                placeholder="Поиск по имени, телефону, email"
-              />
-              <Select value={genderFilter} onValueChange={setGenderFilter}>
-                <SelectTrigger className="w-[110px]">
-                  <SelectValue placeholder="Пол" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>
-                      {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Статус" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="chk">ЧК — Член клуба</SelectItem>
-                  <SelectItem value="pchk">ПЧК — Потенциальный</SelectItem>
-                  <SelectItem value="bchk">БЧК — Бывший</SelectItem>
-                </SelectContent>
-              </Select>
-              <DateRangeFilter label="Регистрация" value={regRange} onChange={setRegRange} />
-              <DateRangeFilter label="Визит" value={visitRange} onChange={setVisitRange} />
-              <Button variant="ghost" onClick={resetFilters} className="shrink-0">
-                Сбросить
-              </Button>
-            </TableToolbar>
+        <RequireStudio studioId={studioId}>
+          <TableToolbar>
+            <ToolbarSearch
+              value={search}
+              onChange={setSearch}
+              placeholder="Поиск по имени, телефону, email"
+            />
+            <Select value={genderFilter} onValueChange={setGenderFilter}>
+              <SelectTrigger className="w-[110px]">
+                <SelectValue placeholder="Пол" />
+              </SelectTrigger>
+              <SelectContent>
+                {GENDER_OPTIONS.map((g) => (
+                  <SelectItem key={g.value} value={g.value}>
+                    {g.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Статус" />
+              </SelectTrigger>
+              <SelectContent>
+                {CLUB_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {CLUB_STATUS_LABEL[s]} — {CLUB_STATUS_FULL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <DateRangeFilter label="Регистрация" value={regRange} onChange={setRegRange} />
+            <DateRangeFilter label="Визит" value={visitRange} onChange={setVisitRange} />
+            <Button variant="ghost" onClick={resetFilters} className="shrink-0">
+              Сбросить
+            </Button>
+          </TableToolbar>
 
-            <div className="rounded-lg border bg-background">
-              <Table>
-                <TableHeader>
+          <div className="rounded-lg border bg-background">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[240px]">Клиент</TableHead>
+                  <TableHead className="w-[80px]">Статус</TableHead>
+                  <TableHead>Телефон</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Пол</TableHead>
+                  <TableHead>Дата рождения</TableHead>
+                  <TableHead>Регистрация</TableHead>
+                  <TableHead>Последний визит</TableHead>
+                  <TableHead>Заметки</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {table.loading ? (
+                  <TableSkeletonRows columns={9} />
+                ) : table.rows.length === 0 ? (
                   <TableRow>
-                    <TableHead className="min-w-[240px]">Клиент</TableHead>
-                    <TableHead className="w-[80px]">Статус</TableHead>
-                    <TableHead>Телефон</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Пол</TableHead>
-                    <TableHead>Дата рождения</TableHead>
-                    <TableHead>Регистрация</TableHead>
-                    <TableHead>Последний визит</TableHead>
-                    <TableHead>Заметки</TableHead>
+                    <TableCell
+                      colSpan={9}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      {hasFilters
+                        ? "Ничего не найдено."
+                        : "Пока нет клиентов. Нажмите «Добавить клиента»."}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableSkeletonRows columns={9} />
-                  ) : clients.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={9}
-                        className="py-8 text-center text-sm text-muted-foreground"
-                      >
-                        {hasFilters
-                          ? "Ничего не найдено."
-                          : "Пока нет клиентов. Нажмите «Добавить клиента»."}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    clients.map((c) => (
-                      <RowContextMenu
-                        key={c.id}
-                        actions={[
-                          { label: "Открыть карточку", icon: Eye, onSelect: () => openCard(c) },
-                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(c) },
-                          {
-                            label: "Удалить",
-                            icon: Trash2,
-                            destructive: true,
-                            onSelect: () => handleDelete(c),
-                          },
-                        ]}
-                      >
-                        <TableRow>
-                          <TableCell className="font-medium">
-                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                              <button
-                                type="button"
-                                onClick={() => openCard(c)}
-                                className={clientNameClass}
-                              >
-                                {displayName(c)}
-                              </button>
-                              {c.crm_link && <AmoCrmLinkIcon href={c.crm_link} />}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <ClubStatusBadge status={c.club_status ?? "pchk"} />
-                          </TableCell>
-                          <TableCell>{c.phone ?? "—"}</TableCell>
-                          <TableCell>{c.email ?? "—"}</TableCell>
-                          <TableCell>{genderLabel(c.gender)}</TableCell>
-                          <TableCell>{formatDate(c.birthday)}</TableCell>
-                          <TableCell>{formatDate(c.registration_date)}</TableCell>
-                          <TableCell>{formatDate(c.last_visit_date)}</TableCell>
-                          <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                            {c.notes ?? "—"}
-                          </TableCell>
-                        </TableRow>
-                      </RowContextMenu>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              <DataPagination {...pg} />
-            </div>
-          </>
-        )}
+                ) : (
+                  table.rows.map((c) => (
+                    <RowContextMenu
+                      key={c.id}
+                      actions={[
+                        { label: "Открыть карточку", icon: Eye, onSelect: () => openCard(c) },
+                        { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(c) },
+                        {
+                          label: "Удалить",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => handleDelete(c),
+                        },
+                      ]}
+                    >
+                      <TableRow>
+                        <TableCell className="font-medium">
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => openCard(c)}
+                              className={clientNameClass}
+                            >
+                              {clientName(c)}
+                            </button>
+                            {c.crm_link && <AmoCrmLinkIcon href={c.crm_link} />}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <ClubStatusBadge status={c.club_status ?? "pchk"} />
+                        </TableCell>
+                        <TableCell>{c.phone ?? "—"}</TableCell>
+                        <TableCell>{c.email ?? "—"}</TableCell>
+                        <TableCell>{genderLabel(c.gender)}</TableCell>
+                        <TableCell>{formatDate(c.birthday)}</TableCell>
+                        <TableCell>{formatDate(c.registration_date)}</TableCell>
+                        <TableCell>{formatDate(c.last_visit_date)}</TableCell>
+                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                          {c.notes ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    </RowContextMenu>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <DataPagination {...table.pagination} />
+          </div>
+        </RequireStudio>
       </div>
 
       <ClientDialog
@@ -418,7 +371,7 @@ function ClientsPage() {
         onOpenChange={setOpen}
         studioId={studioId}
         client={editing}
-        onSaved={fetchClients}
+        onSaved={reload}
       />
 
       <ClientCardDialog
@@ -427,7 +380,7 @@ function ClientsPage() {
         client={cardClient}
         onEdit={(c) => {
           setCardOpen(false);
-          setEditing(c as Client);
+          setEditing(c);
           setOpen(true);
         }}
       />
@@ -436,55 +389,47 @@ function ClientsPage() {
   );
 }
 
-function ClientDialog({
-  open,
-  onOpenChange,
-  studioId,
-  client,
-  onSaved,
-}: {
+type ClientDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   studioId: string | null;
   client: Client | null;
   onSaved: () => void;
-}) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [birthday, setBirthday] = useState("");
-  const [gender, setGender] = useState<string>("");
-  const [notes, setNotes] = useState("");
-  const [registrationDate, setRegistrationDate] = useState("");
-  const [lastVisitDate, setLastVisitDate] = useState("");
-  const [crmLink, setCrmLink] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
-  const [saving, setSaving] = useState(false);
+};
 
-  useEffect(() => {
-    if (open) {
-      // Backfill from full_name when first/last are missing (legacy rows).
-      let fn = client?.first_name ?? "";
-      let ln = client?.last_name ?? "";
-      if (!fn && !ln && client?.full_name) {
-        const parts = client.full_name.trim().split(/\s+/);
-        fn = parts[0] ?? "";
-        ln = parts.slice(1).join(" ");
-      }
-      setFirstName(fn);
-      setLastName(ln);
-      setPhone(client?.phone ?? "");
-      setEmail(client?.email ?? "");
-      setBirthday(client?.birthday ?? "");
-      setGender(client?.gender ?? "");
-      setNotes(client?.notes ?? "");
-      setRegistrationDate(client?.registration_date ?? "");
-      setLastVisitDate(client?.last_visit_date ?? "");
-      setCrmLink(client?.crm_link ?? "");
-      setPhotoUrl(client?.photo_url ?? "");
-    }
-  }, [open, client]);
+function ClientDialog(props: ClientDialogProps) {
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent className="max-w-lg">
+        {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+        <ClientForm key={props.client?.id ?? "new"} {...props} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// У старых записей имя и фамилия не разнесены — есть только full_name.
+function initialNames(client: Client | null) {
+  const first = client?.first_name ?? "";
+  const last = client?.last_name ?? "";
+  if (first || last || !client?.full_name) return { first, last };
+  const parts = client.full_name.trim().split(/\s+/);
+  return { first: parts[0] ?? "", last: parts.slice(1).join(" ") };
+}
+
+function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogProps) {
+  const [firstName, setFirstName] = useState(() => initialNames(client).first);
+  const [lastName, setLastName] = useState(() => initialNames(client).last);
+  const [phone, setPhone] = useState(client?.phone ?? "");
+  const [email, setEmail] = useState(client?.email ?? "");
+  const [birthday, setBirthday] = useState(client?.birthday ?? "");
+  const [gender, setGender] = useState(client?.gender ?? "");
+  const [notes, setNotes] = useState(client?.notes ?? "");
+  const [registrationDate, setRegistrationDate] = useState(client?.registration_date ?? "");
+  const [lastVisitDate, setLastVisitDate] = useState(client?.last_visit_date ?? "");
+  const [crmLink, setCrmLink] = useState(client?.crm_link ?? "");
+  const [photoUrl, setPhotoUrl] = useState(client?.photo_url ?? "");
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!studioId) return;
@@ -495,184 +440,185 @@ function ClientDialog({
       return;
     }
     setSaving(true);
-    const fullName = [ln, fn].filter(Boolean).join(" ");
-    const payload = {
-      studio_id: studioId,
-      first_name: fn || null,
-      last_name: ln || null,
-      full_name: fullName,
-      phone: phone.trim() || null,
-      email: email.trim() || null,
-      birthday: birthday || null,
-      gender: gender || null,
-      notes: notes.trim() || null,
-      registration_date: registrationDate || null,
-      last_visit_date: lastVisitDate || null,
-      crm_link: crmLink.trim() || null,
-      photo_url: photoUrl.trim() || null,
-    };
-    const { error } = client
-      ? await supabase.from("clients").update(payload).eq("id", client.id)
-      : await supabase.from("clients").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Ошибка сохранения: " + error.message);
-      return;
+    try {
+      const fullName = [ln, fn].filter(Boolean).join(" ");
+      const payload = {
+        studio_id: studioId,
+        first_name: fn || null,
+        last_name: ln || null,
+        full_name: fullName,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        birthday: birthday || null,
+        gender: gender || null,
+        notes: notes.trim() || null,
+        registration_date: registrationDate || null,
+        last_visit_date: lastVisitDate || null,
+        crm_link: crmLink.trim() || null,
+        photo_url: photoUrl.trim() || null,
+      };
+      const { error } = client
+        ? await supabase.from("clients").update(payload).eq("id", client.id)
+        : await supabase.from("clients").insert(payload);
+      if (error) {
+        toast.error("Ошибка сохранения: " + error.message);
+        return;
+      }
+      toast.success(client ? "Клиент обновлён" : "Клиент добавлен");
+      onOpenChange(false);
+      onSaved();
+    } finally {
+      setSaving(false);
     }
-    toast.success(client ? "Клиент обновлён" : "Клиент добавлен");
-    onOpenChange(false);
-    onSaved();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
-          <DialogDescription>Контактные данные и заметки по клиенту.</DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <div className="grid gap-3 py-2">
-            <div className="flex items-center gap-4">
-              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
-                    {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div className="grid flex-1 grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="cl-last-name">Фамилия</Label>
-                  <Input
-                    id="cl-last-name"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                  />
+    <>
+      <DialogHeader>
+        <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
+        <DialogDescription>Контактные данные и заметки по клиенту.</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="grid gap-3 py-2">
+          <div className="flex items-center gap-4">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
+                  {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
                 </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="cl-first-name">Имя *</Label>
-                  <Input
-                    id="cl-first-name"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                  />
-                </div>
+              )}
+            </div>
+            <div className="grid flex-1 grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-last-name">Фамилия</Label>
+                <Input
+                  id="cl-last-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="cl-first-name">Имя *</Label>
+                <Input
+                  id="cl-first-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
             </div>
+          </div>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
-              <Input
-                id="cl-crm"
-                type="url"
-                value={crmLink}
-                onChange={(e) => setCrmLink(e.target.value)}
-                placeholder="https://your-account.amocrm.ru/contacts/detail/..."
-              />
-            </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
+            <Input
+              id="cl-crm"
+              type="url"
+              value={crmLink}
+              onChange={(e) => setCrmLink(e.target.value)}
+              placeholder="https://your-account.amocrm.ru/contacts/detail/..."
+            />
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-phone">Телефон</Label>
-                <Input id="cl-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-email">Email</Label>
-                <Input
-                  id="cl-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-bday">Дата рождения</Label>
-                <Input
-                  id="cl-bday"
-                  type="date"
-                  value={birthday}
-                  onChange={(e) => setBirthday(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Пол</Label>
-                <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GENDERS.map((g) => (
-                      <SelectItem key={g.value} value={g.value}>
-                        {g.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-reg">Дата регистрации</Label>
-                <Input
-                  id="cl-reg"
-                  type="date"
-                  value={registrationDate}
-                  onChange={(e) => setRegistrationDate(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-last">Последний визит</Label>
-                <Input
-                  id="cl-last"
-                  type="date"
-                  value={lastVisitDate}
-                  onChange={(e) => setLastVisitDate(e.target.value)}
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-phone">Телефон</Label>
+              <Input id="cl-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="cl-photo">Фото (URL)</Label>
+              <Label htmlFor="cl-email">Email</Label>
               <Input
-                id="cl-photo"
-                type="url"
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-notes">Заметки</Label>
-              <Textarea
-                id="cl-notes"
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                id="cl-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Отмена
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Сохранить
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-bday">Дата рождения</Label>
+              <Input
+                id="cl-bday"
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Пол</Label>
+              <Select value={gender} onValueChange={setGender}>
+                <SelectTrigger>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GENDER_OPTIONS.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>
+                      {g.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-reg">Дата регистрации</Label>
+              <Input
+                id="cl-reg"
+                type="date"
+                value={registrationDate}
+                onChange={(e) => setRegistrationDate(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="cl-last">Последний визит</Label>
+              <Input
+                id="cl-last"
+                type="date"
+                value={lastVisitDate}
+                onChange={(e) => setLastVisitDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cl-photo">Фото (URL)</Label>
+            <Input
+              id="cl-photo"
+              type="url"
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="cl-notes">Заметки</Label>
+            <Textarea
+              id="cl-notes"
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          Отмена
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+          Сохранить
+        </Button>
+      </DialogFooter>
+    </>
   );
 }

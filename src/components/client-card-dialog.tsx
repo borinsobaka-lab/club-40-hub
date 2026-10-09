@@ -1,5 +1,6 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,16 +15,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
+import { BookingStatusBadge } from "@/components/booking-status-badge";
 import {
   MembershipStatusBadge,
   AutoRenewBadge,
   effectiveStatus,
 } from "@/components/membership-status-badge";
-import { computeClubStatus, type ClubStatus, type MembershipLite } from "@/lib/client-status";
-import { formatMoney, formatDate, todayISO } from "@/lib/format";
+import { computeClubStatus } from "@/lib/client-status";
+import type { BookingStatus } from "@/lib/bookings";
+import {
+  clientName,
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  genderLabel,
+  initials,
+  todayISO,
+} from "@/lib/format";
+import { saleSourceLabel } from "@/lib/payments";
+import { unwrap } from "@/lib/query";
 
 type MemberProfile = {
   user_id: string;
@@ -97,7 +109,8 @@ const PROFILE_GENDER: Record<string, string> = {
   other: "Другое",
 };
 
-type ClientLike = {
+/** Поля клиента, которые нужны карточке (строка clients или clients_with_status). */
+export type ClientLike = {
   id: string;
   user_id?: string | null;
   full_name: string;
@@ -113,31 +126,6 @@ type ClientLike = {
   crm_link: string | null;
   photo_url: string | null;
 };
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((s) => s[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
-}
-
-function displayName(c: Pick<ClientLike, "first_name" | "last_name" | "full_name">) {
-  return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
-}
-
-function genderLabel(g: string | null) {
-  if (g === "male") return "Мужской";
-  if (g === "female") return "Женский";
-  return "—";
-}
-
-function sourceLabel(s: string | null | undefined) {
-  return s === "mobile" ? "Приложение" : "Портал";
-}
 
 type SaleRow = {
   id: string;
@@ -162,8 +150,9 @@ type SaleRow = {
 
 type MembershipRef = { name: string; freeze_days_allowed?: number | null };
 
-type ActiveCM = {
+type MembershipRow = {
   id: string;
+  status: string;
   source: "admin" | "mobile";
   started_at: string;
   ends_at: string | null;
@@ -176,21 +165,29 @@ type ActiveCM = {
   memberships: MembershipRef | MembershipRef[] | null;
 };
 
-type ActiveCMWithStatus = ActiveCM & { status: string };
-
-function membershipName(m: ActiveCM["memberships"] | SaleRow["memberships"]) {
+function membershipName(m: MembershipRow["memberships"] | SaleRow["memberships"]) {
   if (!m) return "—";
   if (Array.isArray(m)) return m[0]?.name ?? "—";
   return m.name;
 }
 
-function membershipFreezeAllowed(m: ActiveCM["memberships"]): number {
+function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
   if (!m) return 0;
   const ref = Array.isArray(m) ? m[0] : m;
   return ref?.freeze_days_allowed ?? 0;
 }
 
-export function ClientCardDialog({
+const SALE_COLUMNS =
+  "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)";
+
+const MEMBERSHIP_COLUMNS =
+  "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, memberships(name, freeze_days_allowed)";
+
+/**
+ * Generic по типу клиента: раздел «Клиенты» передаёт свою строку (с
+ * club_status и прочим) и в onEdit получает её же, а не урезанный ClientLike.
+ */
+export function ClientCardDialog<C extends ClientLike>({
   open,
   onOpenChange,
   client,
@@ -198,291 +195,297 @@ export function ClientCardDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  client: ClientLike | null;
-  onEdit?: (c: ClientLike) => void;
+  client: C | null;
+  onEdit?: (c: C) => void;
 }) {
-  const [sales, setSales] = useState<SaleRow[]>([]);
-  const [loadingSales, setLoadingSales] = useState(false);
-  const [active, setActive] = useState<ActiveCMWithStatus | null>(null);
-  const [loadingActive, setLoadingActive] = useState(false);
-  const [allMemberships, setAllMemberships] = useState<MembershipLite[]>([]);
-  const [editOpen, setEditOpen] = useState(false);
-  const [profile, setProfile] = useState<MemberProfile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(false);
-
-  const load = () => {
-    if (!client?.id) return;
-    setLoadingSales(true);
-    supabase
-      .from("sales")
-      .select(
-        "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)",
-      )
-      .eq("client_id", client.id)
-      .order("sold_at", { ascending: false })
-      .then(({ data, error }) => {
-        setLoadingSales(false);
-        if (!error) setSales((data as unknown as SaleRow[]) ?? []);
-      });
-    setLoadingActive(true);
-    supabase
-      .from("client_memberships")
-      .select(
-        "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, memberships(name, freeze_days_allowed)",
-      )
-      .eq("client_id", client.id)
-      .order("started_at", { ascending: false })
-      .then(({ data }) => {
-        setLoadingActive(false);
-        const rows = (data as unknown as ActiveCMWithStatus[]) ?? [];
-        setAllMemberships(
-          rows.map((r) => ({ client_id: client.id, status: r.status, ends_at: r.ends_at })),
-        );
-        // Локальная дата, как в computeClubStatus/effectiveStatus: UTC-дата
-        // первые часы суток (Тбилиси, UTC+4) — ещё вчерашняя, и истёкший
-        // вчера абонемент показывался бы активным.
-        const today = todayISO();
-        // Замороженный абонемент тоже показываем как текущий.
-        const a =
-          rows.find(
-            (r) =>
-              r.status === "frozen" ||
-              (r.status === "active" && (!r.ends_at || r.ends_at >= today)),
-          ) ?? null;
-        setActive(a);
-      });
-    if (client.user_id) {
-      setLoadingProfile(true);
-      (supabase as unknown as { from: (t: string) => any })
-        .from("member_profiles")
-        .select("*")
-        .eq("user_id", client.user_id)
-        .maybeSingle()
-        .then(({ data }: { data: MemberProfile | null }) => {
-          setLoadingProfile(false);
-          setProfile(data ?? null);
-        });
-    } else {
-      setProfile(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!open || !client?.id) {
-      setSales([]);
-      setActive(null);
-      setAllMemberships([]);
-      setProfile(null);
-      return;
-    }
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, client?.id]);
-
   if (!client) return null;
-  const name = displayName(client);
-  const photo = client.photo_url || "";
-  const clubStatus: ClubStatus = computeClubStatus(allMemberships);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="sr-only">Карточка клиента {name}</DialogTitle>
-        </DialogHeader>
-        <DialogBody>
-          <div className="space-y-5">
-            <div className="flex items-start gap-4">
-              <Avatar className="h-20 w-20">
-                {photo && <AvatarImage src={photo} alt={name} />}
-                <AvatarFallback className="text-lg">{initials(name)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-xl font-semibold">{name}</div>
-                  <ClubStatusBadge status={clubStatus} withFull />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {client.phone || "—"} {client.email ? `· ${client.email}` : ""}
-                </div>
-                {client.crm_link && (
-                  <div className="mt-2">
-                    <AmoCrmLinkIcon href={client.crm_link} size={22} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Tabs defaultValue="card" className="w-full">
-              <TabsList>
-                <TabsTrigger value="card">Карточка</TabsTrigger>
-                <TabsTrigger value="visits">Посещения</TabsTrigger>
-                <TabsTrigger value="profile">Анкета</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="card" className="mt-4 space-y-5">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
-                  <Field label="Пол" value={genderLabel(client.gender)} />
-                  <Field label="Дата рождения" value={formatDate(client.birthday)} />
-                  <Field label="Регистрация" value={formatDate(client.registration_date)} />
-                  <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
-                </div>
-
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="text-xs uppercase text-muted-foreground">
-                      Активный абонемент
-                    </div>
-                    {active && (
-                      <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                        <Pencil className="mr-1 h-3.5 w-3.5" />
-                        Редактировать
-                      </Button>
-                    )}
-                  </div>
-                  {loadingActive ? (
-                    <div className="flex justify-center py-3">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : !active ? (
-                    <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
-                      Нет активного абонемента.
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border bg-background p-3 text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium">{membershipName(active.memberships)}</div>
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          {sourceLabel(active.source)}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(active.started_at)} →{" "}
-                        {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
-                        {" · "}
-                        {active.visits_left == null
-                          ? "посещения: безлимит"
-                          : `осталось посещений: ${active.visits_left}`}
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <MembershipStatusBadge m={active} />
-                        <AutoRenewBadge on={active.auto_renew} />
-                      </div>
-                      {active.status === "frozen" && (
-                        <div className="mt-1 text-xs text-blue-700">
-                          Заморожен
-                          {active.frozen_until ? ` до ${formatDate(active.frozen_until)}` : ""}
-                        </div>
-                      )}
-                      {active.cancelled_at && (
-                        <div className="mt-1 text-xs text-rose-700">
-                          Отменён: {formatDate(active.cancelled_at)}
-                          {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {client.notes && (
-                  <div>
-                    <div className="mb-1 text-xs uppercase text-muted-foreground">Заметки</div>
-                    <div className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
-                      {client.notes}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="mb-2 text-xs uppercase text-muted-foreground">История продаж</div>
-                  {loadingSales ? (
-                    <div className="flex justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : sales.length === 0 ? (
-                    <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
-                      Продаж пока нет.
-                    </div>
-                  ) : (
-                    <ul className="divide-y rounded-lg border bg-background">
-                      {sales.map((s) => {
-                        const cm = s.client_memberships?.[0] ?? null;
-                        return (
-                          <li
-                            key={s.id}
-                            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <div className="font-medium truncate">
-                                  {membershipName(s.memberships)}
-                                </div>
-                                {cm && <MembershipStatusBadge m={cm} />}
-                                {cm && effectiveStatus(cm) === "active" && (
-                                  <AutoRenewBadge on={cm.auto_renew} />
-                                )}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatDate(s.sold_at)}
-                                {" · "}
-                                {sourceLabel(s.source)}
-                                {s.admin_name ? ` · ${s.admin_name}` : ""}
-                                {s.remaining_installments > 0
-                                  ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
-                                  : ""}
-                              </div>
-                            </div>
-                            <div className="shrink-0 font-medium tabular-nums">
-                              {formatMoney(Number(s.total_amount))}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="visits" className="mt-4">
-                <VisitsTab open={open} userId={client.user_id ?? null} />
-              </TabsContent>
-
-              <TabsContent value="profile" className="mt-4">
-                <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!client.user_id} />
-              </TabsContent>
-            </Tabs>
-          </div>
-        </DialogBody>
-        <DialogFooter>
-          {onEdit && (
-            <Button variant="outline" onClick={() => onEdit(client)}>
-              <Pencil className="mr-1 h-4 w-4" />
-              Редактировать
-            </Button>
-          )}
-          <Button onClick={() => onOpenChange(false)}>Закрыть</Button>
-        </DialogFooter>
-
-        <EditActiveMembershipDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          membership={
-            active
-              ? {
-                  id: active.id,
-                  ends_at: active.ends_at,
-                  visits_left: active.visits_left,
-                  status: active.status,
-                  freeze_days_used: active.freeze_days_used,
-                  frozen_until: active.frozen_until,
-                  freeze_days_allowed: membershipFreezeAllowed(active.memberships),
-                }
-              : null
-          }
-          onSaved={load}
+        {/*
+          Содержимое монтируется при каждом открытии, а запросы привязаны к
+          клиенту ключом: запоздавший ответ по прошлому клиенту в карточку
+          нового не попадёт.
+        */}
+        <ClientCard
+          key={client.id}
+          client={client}
+          onClose={() => onOpenChange(false)}
+          onEdit={onEdit}
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ClientCard<C extends ClientLike>({
+  client,
+  onClose,
+  onEdit,
+}: {
+  client: C;
+  onClose: () => void;
+  onEdit?: (c: C) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const userId = client.user_id ?? null;
+
+  const salesKey = ["sales", "by-client", client.id];
+  const { data: sales = [], isLoading: loadingSales } = useQuery({
+    queryKey: salesKey,
+    queryFn: () =>
+      unwrap<SaleRow[]>(
+        supabase
+          .from("sales")
+          .select(SALE_COLUMNS)
+          .eq("client_id", client.id)
+          .order("sold_at", { ascending: false }),
+      ),
+    meta: { errorMessage: "Не удалось загрузить продажи клиента" },
+  });
+
+  const membershipsKey = ["client_memberships", "by-client", client.id];
+  const { data: memberships = [], isLoading: loadingActive } = useQuery({
+    queryKey: membershipsKey,
+    queryFn: () =>
+      unwrap<MembershipRow[]>(
+        supabase
+          .from("client_memberships")
+          .select(MEMBERSHIP_COLUMNS)
+          .eq("client_id", client.id)
+          .order("started_at", { ascending: false }),
+      ),
+    meta: { errorMessage: "Не удалось загрузить абонементы клиента" },
+  });
+
+  const { data: profile = null, isLoading: loadingProfile } = useQuery({
+    queryKey: ["member_profiles", userId],
+    queryFn: () =>
+      unwrap<MemberProfile | null>(
+        supabase.from("member_profiles").select("*").eq("user_id", userId!).maybeSingle(),
+      ),
+    enabled: !!userId,
+    meta: { errorMessage: "Не удалось загрузить анкету клиента" },
+  });
+
+  // Правка абонемента меняет и его статус в истории продаж (эмбед в sales).
+  const reloadMemberships = () => {
+    queryClient.invalidateQueries({ queryKey: membershipsKey });
+    queryClient.invalidateQueries({ queryKey: salesKey });
+  };
+
+  // Локальная дата, как в computeClubStatus/effectiveStatus: UTC-дата
+  // первые часы суток (Тбилиси, UTC+4) — ещё вчерашняя, и истёкший
+  // вчера абонемент показывался бы активным.
+  const today = todayISO();
+  // Замороженный абонемент тоже показываем как текущий.
+  const active =
+    memberships.find(
+      (r) => r.status === "frozen" || (r.status === "active" && (!r.ends_at || r.ends_at >= today)),
+    ) ?? null;
+  const clubStatus = computeClubStatus(
+    memberships.map((r) => ({ client_id: client.id, status: r.status, ends_at: r.ends_at })),
+  );
+
+  const name = clientName(client);
+  const photo = client.photo_url || "";
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="sr-only">Карточка клиента {name}</DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-5">
+          <div className="flex items-start gap-4">
+            <Avatar className="h-20 w-20">
+              {photo && <AvatarImage src={photo} alt={name} />}
+              <AvatarFallback className="text-lg">{initials(name, "?")}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-xl font-semibold">{name}</div>
+                <ClubStatusBadge status={clubStatus} withFull />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {client.phone || "—"} {client.email ? `· ${client.email}` : ""}
+              </div>
+              {client.crm_link && (
+                <div className="mt-2">
+                  <AmoCrmLinkIcon href={client.crm_link} size={22} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Tabs defaultValue="card" className="w-full">
+            <TabsList>
+              <TabsTrigger value="card">Карточка</TabsTrigger>
+              <TabsTrigger value="visits">Посещения</TabsTrigger>
+              <TabsTrigger value="profile">Анкета</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="card" className="mt-4 space-y-5">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
+                <Field label="Пол" value={genderLabel(client.gender)} />
+                <Field label="Дата рождения" value={formatDate(client.birthday)} />
+                <Field label="Регистрация" value={formatDate(client.registration_date)} />
+                <Field label="Последний визит" value={formatDate(client.last_visit_date)} />
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs uppercase text-muted-foreground">Активный абонемент</div>
+                  {active && (
+                    <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                      <Pencil className="mr-1 h-3.5 w-3.5" />
+                      Редактировать
+                    </Button>
+                  )}
+                </div>
+                {loadingActive ? (
+                  <div className="flex justify-center py-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !active ? (
+                  <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
+                    Нет активного абонемента.
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-background p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium">{membershipName(active.memberships)}</div>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {saleSourceLabel(active.source)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {formatDate(active.started_at)} →{" "}
+                      {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                      {" · "}
+                      {active.visits_left == null
+                        ? "посещения: безлимит"
+                        : `осталось посещений: ${active.visits_left}`}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <MembershipStatusBadge m={active} />
+                      <AutoRenewBadge on={active.auto_renew} />
+                    </div>
+                    {active.status === "frozen" && (
+                      <div className="mt-1 text-xs text-blue-700">
+                        Заморожен
+                        {active.frozen_until ? ` до ${formatDate(active.frozen_until)}` : ""}
+                      </div>
+                    )}
+                    {active.cancelled_at && (
+                      <div className="mt-1 text-xs text-rose-700">
+                        Отменён: {formatDate(active.cancelled_at)}
+                        {active.cancel_reason ? ` · ${active.cancel_reason}` : ""}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {client.notes && (
+                <div>
+                  <div className="mb-1 text-xs uppercase text-muted-foreground">Заметки</div>
+                  <div className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
+                    {client.notes}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="mb-2 text-xs uppercase text-muted-foreground">История продаж</div>
+                {loadingSales ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : sales.length === 0 ? (
+                  <div className="rounded-lg border bg-background p-4 text-center text-sm text-muted-foreground">
+                    Продаж пока нет.
+                  </div>
+                ) : (
+                  <ul className="divide-y rounded-lg border bg-background">
+                    {sales.map((s) => {
+                      const cm = s.client_memberships?.[0] ?? null;
+                      return (
+                        <li
+                          key={s.id}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium truncate">
+                                {membershipName(s.memberships)}
+                              </div>
+                              {cm && <MembershipStatusBadge m={cm} />}
+                              {cm && effectiveStatus(cm) === "active" && (
+                                <AutoRenewBadge on={cm.auto_renew} />
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatDate(s.sold_at)}
+                              {" · "}
+                              {saleSourceLabel(s.source)}
+                              {s.admin_name ? ` · ${s.admin_name}` : ""}
+                              {s.remaining_installments > 0
+                                ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
+                                : ""}
+                            </div>
+                          </div>
+                          <div className="shrink-0 font-medium tabular-nums">
+                            {formatMoney(Number(s.total_amount))}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="visits" className="mt-4">
+              <VisitsTab userId={userId} />
+            </TabsContent>
+
+            <TabsContent value="profile" className="mt-4">
+              <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!userId} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        {onEdit && (
+          <Button variant="outline" onClick={() => onEdit(client)}>
+            <Pencil className="mr-1 h-4 w-4" />
+            Редактировать
+          </Button>
+        )}
+        <Button onClick={onClose}>Закрыть</Button>
+      </DialogFooter>
+
+      <EditActiveMembershipDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        membership={
+          active
+            ? {
+                id: active.id,
+                ends_at: active.ends_at,
+                visits_left: active.visits_left,
+                status: active.status,
+                freeze_days_used: active.freeze_days_used,
+                frozen_until: active.frozen_until,
+                freeze_days_allowed: membershipFreezeAllowed(active.memberships),
+              }
+            : null
+        }
+        onSaved={reloadMemberships}
+      />
+    </>
   );
 }
 
@@ -573,12 +576,10 @@ function ProfileTab({
       <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
         <span>
           {profile.onboarding_completed_at
-            ? `Онбординг пройден ${new Date(profile.onboarding_completed_at).toLocaleDateString("ru-RU")}`
+            ? `Онбординг пройден ${formatDate(profile.onboarding_completed_at)}`
             : "Онбординг не завершён — данные неполные"}
         </span>
-        {profile.updated_at && (
-          <span>обновлено {new Date(profile.updated_at).toLocaleDateString("ru-RU")}</span>
-        )}
+        {profile.updated_at && <span>обновлено {formatDate(profile.updated_at)}</span>}
       </div>
 
       <Section title="Цели и мотивация">
@@ -626,65 +627,25 @@ type VisitRow = {
   id: string;
   workout_name: string | null;
   starts_at: string;
-  status: "booked" | "completed" | "cancelled" | "attended" | "no_show" | "rejected";
+  status: BookingStatus;
   cancelled_at: string | null;
 };
 
-const VISIT_STATUS_LABEL: Record<VisitRow["status"], string> = {
-  booked: "Забронировано",
-  attended: "Посещено",
-  no_show: "Пропущено",
-  cancelled: "Отменено",
-  rejected: "Отклонена",
-  completed: "Проведено",
-};
-
-function visitStatusBadge(v: VisitRow["status"]) {
-  if (v === "attended" || v === "completed")
-    return <Badge variant="default">{VISIT_STATUS_LABEL[v]}</Badge>;
-  if (v === "cancelled") return <Badge variant="destructive">{VISIT_STATUS_LABEL[v]}</Badge>;
-  if (v === "rejected")
-    return (
-      <Badge variant="outline" className="text-orange-600 border-orange-600">
-        {VISIT_STATUS_LABEL[v]}
-      </Badge>
-    );
-  if (v === "no_show") return <Badge variant="outline">{VISIT_STATUS_LABEL[v]}</Badge>;
-  return <Badge variant="secondary">{VISIT_STATUS_LABEL[v]}</Badge>;
-}
-
-function fmtDateTime(v: string | null | undefined) {
-  if (!v) return "—";
-  return new Date(v).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+function VisitsTab({ userId }: { userId: string | null }) {
+  const { data: rows = [], isLoading: loading } = useQuery({
+    queryKey: ["bookings_log", "by-user", userId],
+    queryFn: () =>
+      unwrap<VisitRow[]>(
+        supabase
+          .from("bookings_log")
+          .select("id, workout_name, starts_at, status, cancelled_at")
+          .eq("user_id", userId!)
+          .order("starts_at", { ascending: false })
+          .limit(500),
+      ),
+    enabled: !!userId,
+    meta: { errorMessage: "Не удалось загрузить посещения клиента" },
   });
-}
-
-function VisitsTab({ open, userId }: { open: boolean; userId: string | null }) {
-  const [rows, setRows] = useState<VisitRow[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open || !userId) {
-      setRows([]);
-      return;
-    }
-    setLoading(true);
-    supabase
-      .from("bookings_log")
-      .select("id, workout_name, starts_at, status, cancelled_at")
-      .eq("user_id", userId)
-      .order("starts_at", { ascending: false })
-      .limit(500)
-      .then(({ data }) => {
-        setLoading(false);
-        setRows((data as unknown as VisitRow[]) ?? []);
-      });
-  }, [open, userId]);
 
   if (!userId) {
     return (
@@ -723,10 +684,12 @@ function VisitsTab({ open, userId }: { open: boolean; userId: string | null }) {
           {rows.map((r) => (
             <tr key={r.id}>
               <td className="px-3 py-2">{r.workout_name ?? "—"}</td>
-              <td className="px-3 py-2">{fmtDateTime(r.starts_at)}</td>
-              <td className="px-3 py-2">{visitStatusBadge(r.status)}</td>
+              <td className="px-3 py-2">{formatDateTime(r.starts_at)}</td>
+              <td className="px-3 py-2">
+                <BookingStatusBadge status={r.status} />
+              </td>
               <td className="px-3 py-2 text-xs text-muted-foreground">
-                {fmtDateTime(r.cancelled_at)}
+                {formatDateTime(r.cancelled_at)}
               </td>
             </tr>
           ))}

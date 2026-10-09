@@ -4,25 +4,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { ClientCardDialog } from "@/components/client-card-dialog";
+import { ClientCardDialog, type ClientLike } from "@/components/client-card-dialog";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
-
-type ClientLike = {
-  id: string;
-  user_id?: string | null;
-  full_name: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  email: string | null;
-  birthday: string | null;
-  gender: string | null;
-  notes: string | null;
-  registration_date: string | null;
-  last_visit_date: string | null;
-  crm_link: string | null;
-  photo_url: string | null;
-};
 
 /**
  * Ссылка amoCRM клиента, если её не передали сверху. Запрос кэшируется React
