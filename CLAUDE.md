@@ -79,7 +79,7 @@ Coolify на Hetzner, все приложения — из этого репоз
 | ------------------------ | ------------------------ | ------------------------- | ------------------------ |
 | `club40-admin`           | https://admin.base40.fit | `/apps/admin/Dockerfile`  | `apps/admin/**`, `db/**` |
 | `club40-client`          | https://app.base40.fit   | `/apps/client/Dockerfile` | `apps/client/**`         |
-| `club40-client-packages` | pack.base40.fit (план)   | `/apps/client/Dockerfile` | `apps/client/**`         |
+| `club40-client-packages` | https://pack.base40.fit  | `/apps/client/Dockerfile` | `apps/client/**`         |
 
 Watch Paths — чтобы правка одного приложения не пересобирала другие.
 Переменные окружения каждого приложения — в его CLAUDE.md; переключение
