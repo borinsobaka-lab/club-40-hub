@@ -91,6 +91,42 @@ GitHub → `borinsobaka-lab/club40-client-hub` → **Settings** → внизу
 **Archive this repository**. Делать только после успешной Части 2 и
 подтверждения владельца. Удалять репозиторий НЕ нужно.
 
+### Часть 4. Чистка Coolify — опись сейчас, удаление только после подтверждения
+
+Приложения остаются **отдельными ресурсами** в одном проекте `club40`: у
+каждого свой домен, переменные и секреты (клиенту ключ `service_role` давать
+нельзя). Объединять ресурсы не нужно, убирается только лишнее.
+
+Не трогать ни при каких условиях: ресурсы `club40-admin`, `club40-client`,
+`club40-client-packages` (если есть), ресурс **Supabase** с его томами и
+бэкапами, источник **club40-github**, сервер `localhost`, проект `club40` /
+окружение `production`.
+
+Нужные переменные (остальное — кандидаты на удаление):
+
+- `club40-admin`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`,
+  `APP_SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `SEND_EMAIL_HOOK_SECRET`,
+  `UNISENDER_GO_API_KEY`, `RESEND_API_KEY`, `ADMIN_APP_URL`, `AI_*`;
+- `club40-client` / `club40-client-packages`: `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_APP_FORMAT` (только у packages).
+  Секретов здесь быть не должно: `SUPABASE_SERVICE_ROLE_KEY`,
+  `APP_SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `SEND_EMAIL_HOOK_SECRET` —
+  удалить. `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` без `VITE_` — удалить,
+  если указывают на `*.supabase.co`, иначе оставить и упомянуть в отчёте.
+
+Шаг 1 (опись, ничего не меняя): таблица «что — где — предложение
+(оставить / удалить / неясно) — почему»: все проекты, окружения и ресурсы
+(включая остановленные), лишние переменные (только имена, без значений),
+включённые Preview Deployments, источники GitHub кроме club40-github, занятое
+место на диске сервера. Отдать владельцу и ждать подтверждения.
+
+Шаг 2 (после подтверждения — только перечисленное владельцем): удалить
+согласованное; у всех приложений выключить Preview Deployments; на сервере —
+очистка неиспользуемых Docker-образов (Servers → localhost → Docker Cleanup /
+Cleanup Storage). Доступ GitHub App `club40-github` к `club40-client-hub` —
+убрать после Части 3. Затем проверить, что admin.base40.fit,
+app.base40.fit и api.base40.fit работают.
+
 ### Отчёт владельцу
 
 Что изменено в каждом ресурсе (Dockerfile Location, Watch Paths, репозиторий),
