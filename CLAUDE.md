@@ -163,9 +163,11 @@ AUTH_SETUP.md.
   `clients`/`client_memberships`, закрыт IDOR в `cancel_membership*`,
   `feedback`/`nps` — чтение/правка только сотрудник. Storage: запись/удаление в
   маркетинговых бакетах (news/services/memberships/trainer/workout-media) —
-  только сотрудник (`db/storage_hardening.sql`); бакет `avatars` пишется в свою
-  папку `{uid}/`. **Прогнать оба файла в SQL Editor (см. AGENT_TASKS.md,
-  Задача 0).**
+  только сотрудник, фото тренеров — с разделом «Сотрудники», новости и услуги —
+  с «Мобильным приложением» (`db/migrations/2026-10-10_storage_media_write.sql`,
+  заменил `db/storage_hardening.sql`); бакет `avatars` пишется в свою
+  папку `{uid}/`. **`security_hardening.sql` прогнать в SQL Editor (см.
+  AGENT_TASKS.md, Задача 0).**
 - SECURITY DEFINER-функции, выданные `authenticated`, обходят RLS — обязаны
   сами проверять вызывающего (`auth.uid()` — владелец записи или `is_trainer`).
   Серверные роуты админки (chat/transcribe) — только для сотрудников через
