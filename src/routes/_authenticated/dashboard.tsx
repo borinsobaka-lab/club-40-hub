@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatNumber } from "@/lib/format";
 
@@ -363,10 +364,10 @@ function Delta({
   const Icon = flat ? Minus : up ? ArrowUp : ArrowDown;
   const diffText = isMoney ? formatMoney(Math.abs(diff)) : formatNumber(Math.abs(diff));
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs", color)}>
+    <span className={cn("inline-flex flex-wrap items-center gap-x-1 text-xs", color)}>
       <Icon className="h-3 w-3" />
       {pct === null ? diffText : `${up ? "+" : "−"}${Math.abs(pct).toFixed(0)}% · ${diffText}`}
-      <span className="text-muted-foreground">vs пред. период</span>
+      <span className="text-muted-foreground max-sm:hidden">vs пред. период</span>
     </span>
   );
 }
@@ -379,6 +380,8 @@ function DashboardPage() {
     to: endOfMonth(today),
   });
   const [open, setOpen] = useState(false);
+  // Два месяца рядом не помещаются в экран телефона.
+  const isMobile = useIsMobile();
 
   const fromDate = range?.from;
   const toDate = range?.to ?? range?.from;
@@ -432,7 +435,7 @@ function DashboardPage() {
               <Button
                 variant="outline"
                 className={cn(
-                  "min-w-[260px] justify-start text-left font-normal",
+                  "toolbar-full min-w-[260px] justify-start text-left font-normal",
                   !range?.from && "text-muted-foreground",
                 )}
               >
@@ -443,7 +446,7 @@ function DashboardPage() {
             <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
               <Calendar
                 mode="range"
-                numberOfMonths={2}
+                numberOfMonths={isMobile ? 1 : 2}
                 selected={range}
                 onSelect={setRange}
                 defaultMonth={range?.from ?? today}
@@ -469,17 +472,17 @@ function DashboardPage() {
 
         <RequireStudio studioId={studioId}>
           {loading ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
               {STATS.map((stat) => (
-                <div key={stat.key} className="rounded-lg border bg-background p-4">
-                  <Skeleton className="h-4 w-32" />
+                <div key={stat.key} className="rounded-lg border bg-background p-3 sm:p-4">
+                  <Skeleton className="h-4 w-full max-w-32" />
                   <Skeleton className="mt-3 h-7 w-24" />
                   <Skeleton className="mt-2 h-3 w-20" />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
               {STATS.map((stat) => {
                 const v = current[stat.key];
                 const p = previous[stat.key];
@@ -490,9 +493,18 @@ function DashboardPage() {
                       ? formatMoney(v)
                       : formatNumber(v);
                 return (
-                  <div key={stat.key} className="rounded-lg border bg-background p-4">
-                    <div className="text-sm font-medium text-muted-foreground">{stat.label}</div>
-                    <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
+                  // На телефоне — две карточки в ряд: по одной в столбик
+                  // одиннадцать показателей растягивались на пять экранов.
+                  <div
+                    key={stat.key}
+                    className="min-w-0 rounded-lg border bg-background p-3 sm:p-4"
+                  >
+                    <div className="text-xs font-medium text-muted-foreground sm:text-sm">
+                      {stat.label}
+                    </div>
+                    <div className="mt-1.5 text-lg font-semibold tabular-nums sm:mt-2 sm:text-2xl">
+                      {value}
+                    </div>
                     <div className="mt-1 flex items-center gap-2">
                       {stat.hint && (
                         <span className="text-xs text-muted-foreground">{stat.hint}</span>

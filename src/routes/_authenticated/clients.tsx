@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,8 @@ function DateRangeFilter({
       ? `${format(value.from, "dd.MM.yy", { locale: ru })}–${format(value.to, "dd.MM.yy", { locale: ru })}`
       : `от ${format(value.from, "dd.MM.yy", { locale: ru })}`
     : label;
+  // Два месяца рядом не помещаются в экран телефона.
+  const isMobile = useIsMobile();
 
   return (
     <Popover>
@@ -132,7 +135,7 @@ function DateRangeFilter({
           mode="range"
           selected={value}
           onSelect={onChange}
-          numberOfMonths={2}
+          numberOfMonths={isMobile ? 1 : 2}
           locale={ru}
           className="pointer-events-auto"
         />

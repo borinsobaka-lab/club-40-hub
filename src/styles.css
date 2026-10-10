@@ -266,6 +266,129 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+/* ── Мобильная вёрстка (до md, 768px) ─────────────────────────────────────
+
+   Таблицы → карточки. Таблица на 7–13 колонок на телефоне превращалась в
+   горизонтальную прокрутку, где имя клиента уезжало из виду. До md строка
+   становится карточкой: шапка скрыта, каждая ячейка — пара «подпись —
+   значение», подпись берётся из data-label (её ставит Table по тексту
+   заголовка колонки, см. ui/table.tsx). Первая ячейка — заголовок карточки,
+   без подписи. Ячейка на всю строку (пустое состояние) — по центру.
+   Правила вне слоёв Tailwind, поэтому перебивают классы ячеек (text-right,
+   whitespace-nowrap, truncate, max-w-*) без !important. Отказаться —
+   <Table mobileCards={false}>. */
+@media (width < 48rem) {
+  table[data-mobile-cards],
+  table[data-mobile-cards] > tbody {
+    display: block;
+  }
+  table[data-mobile-cards] > thead {
+    display: none;
+  }
+  table[data-mobile-cards] > tbody > tr {
+    display: block;
+    position: relative;
+    padding: 0.75rem;
+  }
+  table[data-mobile-cards] > tbody > tr > td {
+    display: block;
+    position: relative;
+    width: auto;
+    max-width: none;
+    min-height: 1.75rem;
+    padding: 0.25rem 0 0.25rem 7.75rem;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  table[data-mobile-cards] > tbody > tr > td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    top: 0.25rem;
+    width: 7rem;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Пустая ячейка («—» не пишут, ячейки нет смысла показывать). */
+  table[data-mobile-cards] > tbody > tr > td:empty {
+    display: none;
+  }
+  /* Колонка без заголовка (обложка, порядок) и заголовок карточки. */
+  table[data-mobile-cards] > tbody > tr > td[data-label=""],
+  table[data-mobile-cards] > tbody > tr > td:first-child {
+    padding-left: 0;
+  }
+  table[data-mobile-cards] > tbody > tr > td[data-label=""]::before,
+  table[data-mobile-cards] > tbody > tr > td:first-child::before {
+    display: none;
+  }
+  table[data-mobile-cards] > tbody > tr > td:first-child:not([data-full]) {
+    padding-right: 2rem;
+    padding-bottom: 0.375rem;
+    font-size: 0.9375rem;
+  }
+  table[data-mobile-cards] > tbody > tr > td[data-full] {
+    padding: 1.5rem 0;
+    text-align: center;
+  }
+
+  /* Строка с действиями: на телефоне правого клика нет — меню открывается
+     касанием строки (RowContextMenu), а «⋯» в углу карточки показывает,
+     что оно есть. Системное меню долгого нажатия iOS здесь мешает. */
+  tr[data-row-actions] {
+    -webkit-touch-callout: none;
+  }
+  table[data-mobile-cards] > tbody > tr[data-row-actions]::after {
+    content: "⋯";
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    color: var(--muted-foreground);
+    font-size: 1.25rem;
+    line-height: 1.5rem;
+    pointer-events: none;
+  }
+}
+
+/* Плашка фильтров на телефоне: поиск во всю ширину, остальные контролы —
+   по два в строку поровну. Фиксированные w-40/w-48 у селектов здесь
+   снимаются (правило вне слоёв Tailwind перебивает утилиты). */
+@media (width < 40rem) {
+  .table-toolbar > * {
+    flex: 1 1 calc(50% - 0.25rem);
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+  .table-toolbar > .toolbar-search,
+  .table-toolbar > .toolbar-full {
+    flex-basis: 100%;
+  }
+}
+
+/* Действия страницы в шапке AdminShell до lg — отдельной строкой на всю
+   ширину: кнопки делят строку поровну и переносятся, если не влезают. */
+@media (width < 64rem) {
+  .shell-actions,
+  .shell-actions > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .shell-actions > div {
+    width: 100%;
+  }
+  .shell-actions button {
+    flex: 1 1 auto;
+  }
+}
+
 /* Полоса прокрутки бокового меню. Системная на тёмной панели выглядит как
    светлый брусок во всю ширину жёлоба; здесь — узкая пилюля в тот же
    полупрозрачный белый, что и подложка активного пункта (bg-white/10).

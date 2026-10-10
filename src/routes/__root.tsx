@@ -73,7 +73,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // interactive-widget: Chrome на Android при открытой клавиатуре ужимает
+      // страницу, и шторка диалога с кнопками встаёт над клавиатурой, а не под ней.
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, interactive-widget=resizes-content",
+      },
       { title: "Base40 — Админ-панель" },
       { name: "description", content: "Админ-панель фитнес-студии Base40." },
       { property: "og:title", content: "Base40 — Админ-панель" },

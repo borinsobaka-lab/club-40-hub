@@ -67,14 +67,16 @@ export function DataPagination({
   return (
     // Подвал таблицы оформлен как шапка: белый, отделён верхней границей,
     // скруглены нижние углы под обёртку таблицы. Все контролы — общей высоты
-    // 40px, как селект «Строк на странице».
+    // 40px, как селект «Строк на странице». На телефоне — одна строка: без
+    // подписи у селекта и без кнопок «первая/последняя», иначе подвал
+    // разъезжался на две строки и съедал экран под таблицей.
     <div
-      className={`flex flex-col gap-3 rounded-b-lg border-t bg-background px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${className ?? ""}`}
+      className={`flex items-center justify-between gap-2 rounded-b-lg border-t bg-background px-2 py-2 sm:gap-3 sm:px-3 ${className ?? ""}`}
     >
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>Строк на странице</span>
+        <span className="max-sm:hidden">Строк на странице</span>
         <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-          <SelectTrigger className="w-20">
+          <SelectTrigger className="w-20" aria-label="Строк на странице">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -86,14 +88,15 @@ export function DataPagination({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <span>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground sm:gap-3">
+        <span className="whitespace-nowrap tabular-nums">
           {from}–{to} из {total}
         </span>
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="icon"
+            className="max-sm:hidden"
             onClick={() => setPage(1)}
             aria-label="Первая страница"
             disabled={page <= 1}
@@ -109,7 +112,7 @@ export function DataPagination({
           >
             <ChevronLeft />
           </Button>
-          <span className="px-2 tabular-nums">
+          <span className="whitespace-nowrap px-1 tabular-nums sm:px-2">
             {page} / {pageCount}
           </span>
           <Button
@@ -124,6 +127,7 @@ export function DataPagination({
           <Button
             variant="outline"
             size="icon"
+            className="max-sm:hidden"
             onClick={() => setPage(pageCount)}
             aria-label="Последняя страница"
             disabled={page >= pageCount}

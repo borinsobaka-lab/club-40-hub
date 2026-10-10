@@ -28,11 +28,14 @@ import {
 } from "@/components/nav-icons";
 
 import { BrandLogo } from "@/components/brand-logo";
+import { SignOutButton } from "@/components/sign-out-button";
+import { StudioSwitcher } from "@/components/studio-switcher";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -40,6 +43,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 type NavItem = { title: string; url: string; icon: NavIcon };
@@ -135,6 +139,13 @@ export function AppSidebar() {
     });
   }, []);
 
+  // Шторка на телефоне сама не закрывается по переходу: страница менялась
+  // под ней, и после каждого пункта меню шторку приходилось смахивать руками.
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
   // Точное совпадение или вложенный путь: голый startsWith подсвечивал
   // «Пуш-уведомления» (/push) ещё и на /push-triggers.
@@ -143,7 +154,12 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="px-3 py-4">
-        <Link to="/" aria-label="На главную" className="flex items-center text-white">
+        <Link
+          to="/"
+          aria-label="На главную"
+          className="flex items-center text-white"
+          onClick={closeMobile}
+        >
           <BrandLogo className="h-auto w-36" />
         </Link>
       </SidebarHeader>
@@ -178,7 +194,11 @@ export function AppSidebar() {
                           */
                           className="group/nav font-medium text-white hover:bg-white/10 hover:text-white active:bg-white/10 active:text-white data-[active=true]:bg-white/10 data-[active=true]:font-semibold data-[active=true]:text-white"
                         >
-                          <Link to={item.url} className="flex items-center gap-2">
+                          <Link
+                            to={item.url}
+                            className="flex items-center gap-2"
+                            onClick={closeMobile}
+                          >
                             {/*
                               Свечение за иконкой — размытый круг цвета
                               currentColor. У обычного пункта белое и только
@@ -207,6 +227,16 @@ export function AppSidebar() {
           </Collapsible>
         ))}
       </SidebarContent>
+
+      {/*
+        До lg выбор студии и «Выйти» не помещаются в шапку страницы рядом с
+        заголовком и действиями — они живут здесь, внизу меню (на телефоне —
+        в шторке). На широком экране они в шапке, а этот блок скрыт.
+      */}
+      <SidebarFooter className="gap-2 border-t border-white/10 p-3 lg:hidden">
+        <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white [&>svg]:text-white" />
+        <SignOutButton className="w-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" />
+      </SidebarFooter>
     </Sidebar>
   );
 }

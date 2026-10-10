@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { getActiveStudioId, setActiveStudioId } from "@/hooks/use-active-studio";
 import {
   Select,
@@ -31,7 +32,7 @@ function loadStudios(): Promise<Studio[]> {
   return studiosPromise;
 }
 
-export function StudioSwitcher() {
+export function StudioSwitcher({ triggerClassName }: { triggerClassName?: string }) {
   const [studios, setStudios] = useState<Studio[]>(() => studiosCache ?? []);
   const [active, setActive] = useState<string | null>(() => getActiveStudioId());
   const [loading, setLoading] = useState(() => studiosCache === null);
@@ -59,13 +60,13 @@ export function StudioSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       <Select
         value={active ?? undefined}
         onValueChange={onChange}
         disabled={loading || studios.length === 0}
       >
-        <SelectTrigger className="w-44">
+        <SelectTrigger aria-label="Студия" className={cn("w-44", triggerClassName)}>
           <SelectValue
             placeholder={
               loading ? "Загрузка…" : studios.length === 0 ? "Нет студий" : "Выберите студию"

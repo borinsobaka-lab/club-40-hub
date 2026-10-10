@@ -2,13 +2,73 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
+/**
+ * Подписи колонок для карточного вида на телефоне. На узком экране таблица
+ * перестраивается в стопку карточек (styles.css, `table[data-mobile-cards]`):
+ * шапка прячется, а каждая ячейка показывает подпись своей колонки из
+ * `data-label`. Подписи ставим здесь, по DOM, а не пропом в каждой из сотни
+ * ячеек: так их получают все таблицы админки сразу, и новая колонка не
+ * может остаться без подписи. React эти атрибуты не трогает — он не знает
+ * о них, — поэтому следим за изменениями строк MutationObserver-ом.
+ */
+function labelCells(table: HTMLTableElement) {
+  const heads = table.tHead?.rows[0]?.cells;
+  if (!heads) return;
+  const labels: string[] = [];
+  for (const th of Array.from(heads)) {
+    const text = th.textContent?.trim() ?? "";
+    for (let i = 0; i < th.colSpan; i++) labels.push(text);
+  }
+  for (const body of Array.from(table.tBodies)) {
+    for (const row of Array.from(body.rows)) {
+      let col = 0;
+      for (const cell of Array.from(row.cells)) {
+        // Ячейка на всю строку — «Ничего не найдено», заглушка загрузки.
+        const full = cell.colSpan >= labels.length && labels.length > 1;
+        const label = full ? "" : (labels[col] ?? "");
+        if (cell.dataset.label !== label) cell.dataset.label = label;
+        if (full) cell.dataset.full = "";
+        else delete cell.dataset.full;
+        col += cell.colSpan;
+      }
+    }
+  }
+}
+
+const Table = React.forwardRef<
+  HTMLTableElement,
+  React.HTMLAttributes<HTMLTableElement> & {
+    /**
+     * Карточки вместо строк на телефоне (по умолчанию). false — оставить
+     * таблицу с горизонтальной прокруткой: для сеток, где важно сравнение по
+     * колонкам.
+     */
+    mobileCards?: boolean;
+  }
+>(({ className, mobileCards = true, ...props }, ref) => {
+  const innerRef = React.useRef<HTMLTableElement>(null);
+  React.useImperativeHandle(ref, () => innerRef.current as HTMLTableElement);
+
+  React.useEffect(() => {
+    const table = innerRef.current;
+    if (!mobileCards || !table) return;
+    labelCells(table);
+    const observer = new MutationObserver(() => labelCells(table));
+    observer.observe(table, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [mobileCards]);
+
+  return (
     <div className="relative w-full overflow-auto">
-      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+      <table
+        ref={innerRef}
+        data-mobile-cards={mobileCards ? "" : undefined}
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props}
+      />
     </div>
-  ),
-);
+  );
+});
 Table.displayName = "Table";
 
 const TableHeader = React.forwardRef<

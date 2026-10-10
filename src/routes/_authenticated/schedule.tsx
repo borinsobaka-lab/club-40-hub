@@ -6,6 +6,8 @@ import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X } from "lucid
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
@@ -114,6 +116,10 @@ function nextFullHour() {
 }
 
 /** Ячейка сетки «день + час». */
+function todayIndex() {
+  return (new Date().getDay() + 6) % 7;
+}
+
 function cellKey(day: Date, hour: number) {
   return `${day.toDateString()}|${hour}`;
 }
@@ -204,6 +210,10 @@ function SchedulePage() {
   const [copySource, setCopySource] = useState<Entry | null>(null);
   const [pasting, setPasting] = useState(false);
   const [duplicatingWeek, setDuplicatingWeek] = useState(false);
+  // На телефоне сетка показывает один день недели (семь колонок по 1200px
+  // не помещались): выбранный день — индекс 0..6 от понедельника.
+  const isMobile = useIsMobile();
+  const [dayIndex, setDayIndex] = useState(() => todayIndex());
 
   // Справочники зависят только от студии, занятия — ещё и от недели: листание
   // недель не перезапрашивает тренировки и тренеров.
@@ -259,12 +269,17 @@ function SchedulePage() {
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
+  // Колонки сетки: на телефоне — только выбранный день. Индекс дня храним,
+  // чтобы подпись (Пн, Вт…) и ключ ячейки оставались прежними.
+  const visibleDays = isMobile ? [dayIndex] : weekDays.map((_, i) => i);
 
   // Видимые занятия раскладываем по ячейкам один раз, а не сканируем весь
   // список для каждой ячейки и каждого часа.
   const grid = useMemo(() => {
     const cells = new Map<string, Entry[]>();
     const busyHours = new Set<number>();
+    // Занятий по дням недели — точки под днями в переключателе на телефоне.
+    const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
       if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) continue;
       if (
@@ -276,8 +291,9 @@ function SchedulePage() {
       const key = cellKey(start, start.getHours());
       cells.set(key, [...(cells.get(key) ?? []), e]);
       busyHours.add(start.getHours());
+      perDay[(start.getDay() + 6) % 7]++;
     }
-    return { cells, busyHours };
+    return { cells, busyHours, perDay };
   }, [entries, filterType, filterTrainerId]);
 
   const openSlot = (day: Date, hour: number) => {
@@ -423,11 +439,12 @@ function SchedulePage() {
             disabled={!studioId || entries.length === 0 || loading || duplicatingWeek}
           >
             {duplicatingWeek ? <Loader2 className="animate-spin" /> : <Copy />}
-            Дублировать неделю
+            {/* На телефоне — коротко, чтобы обе кнопки встали в одну строку. */}
+            Дублировать<span className="max-sm:hidden"> неделю</span>
           </Button>
           <Button onClick={openAdd} disabled={!studioId || workouts.length === 0}>
             <Plus />
-            Добавить занятие
+            Добавить<span className="max-sm:hidden"> занятие</span>
           </Button>
         </div>
       }
@@ -435,7 +452,7 @@ function SchedulePage() {
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
           <TableToolbar>
-            <div className="flex items-center gap-2">
+            <div className="toolbar-full flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -444,12 +461,22 @@ function SchedulePage() {
               >
                 <ChevronLeft />
               </Button>
+              {/*
+                На телефоне кнопка между стрелками показывает саму неделю (места
+                под отдельную подпись нет) и по-прежнему возвращает к текущей —
+                вместе с сегодняшним днём.
+              */}
               <Button
                 variant="outline"
-                onClick={() => setWeekStart(startOfWeek(new Date()))}
-                disabled={isCurrentWeek}
+                className="max-sm:flex-1"
+                onClick={() => {
+                  setWeekStart(startOfWeek(new Date()));
+                  setDayIndex(todayIndex());
+                }}
+                disabled={isCurrentWeek && !isMobile}
               >
-                Текущая неделя
+                <span className="sm:hidden">{weekLabel}</span>
+                <span className="max-sm:hidden">Текущая неделя</span>
               </Button>
               <Button
                 variant="outline"
@@ -459,13 +486,15 @@ function SchedulePage() {
               >
                 <ChevronRight />
               </Button>
-              <span className="ml-1 text-sm font-medium">{weekLabel}</span>
-              {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              <span className="ml-1 text-sm font-medium max-sm:hidden">{weekLabel}</span>
+              {loading && (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+              )}
             </div>
 
-            <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="toolbar-full flex flex-wrap items-center gap-2 sm:ml-auto">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <SelectValue placeholder="Все типы" />
                 </SelectTrigger>
                 <SelectContent>
@@ -478,7 +507,7 @@ function SchedulePage() {
                 </SelectContent>
               </Select>
               <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <SelectValue placeholder="Все тренеры" />
                 </SelectTrigger>
                 <SelectContent>
@@ -525,28 +554,85 @@ function SchedulePage() {
             </div>
           )}
 
-          <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border bg-background">
-            <div
-              className="grid min-w-[1200px]"
-              style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
-            >
-              <div className="sticky top-0 z-20 border-b border-r bg-background" />
+          {/*
+            Телефон: переключатель дня вместо шапки сетки. Точка под днём —
+            в этот день есть занятия (с учётом фильтров); сегодня — розовым,
+            как отметка «сегодня» в недельной сетке.
+          */}
+          {isMobile && (
+            <div className="grid grid-cols-7 gap-1 rounded-lg border bg-background p-1">
               {weekDays.map((d, i) => {
                 const today = d.toDateString() === new Date().toDateString();
+                const selected = i === dayIndex;
                 return (
-                  <div
+                  <button
                     key={i}
-                    className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
-                      today ? "border-b-4 border-b-brand font-semibold text-primary" : "border-b"
-                    }`}
+                    type="button"
+                    aria-pressed={selected}
+                    aria-label={d.toLocaleDateString("ru-RU", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                    onClick={() => setDayIndex(i)}
+                    className={cn(
+                      "flex flex-col items-center rounded-md py-1.5 text-xs transition-colors",
+                      selected ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+                      today && !selected && "text-brand",
+                    )}
                   >
-                    <div className="uppercase tracking-wide text-muted-foreground">
+                    <span
+                      className={cn("uppercase", !selected && !today && "text-muted-foreground")}
+                    >
                       {DAY_NAMES[i]}
-                    </div>
-                    <div>{d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}</div>
-                  </div>
+                    </span>
+                    <span className="text-base font-semibold tabular-nums leading-tight">
+                      {d.getDate()}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-0.5 size-1 rounded-full",
+                        grid.perDay[i] > 0 ? "bg-current" : "bg-transparent",
+                      )}
+                    />
+                  </button>
                 );
               })}
+            </div>
+          )}
+
+          <div className="overflow-auto rounded-lg border bg-background md:max-h-[calc(100dvh-220px)]">
+            <div
+              className={cn("grid", !isMobile && "min-w-[1200px]")}
+              style={{
+                gridTemplateColumns: `${isMobile ? 52 : 60}px repeat(${visibleDays.length}, minmax(0, 1fr))`,
+              }}
+            >
+              {!isMobile && (
+                <>
+                  <div className="sticky top-0 z-20 border-b border-r bg-background" />
+                  {weekDays.map((d, i) => {
+                    const today = d.toDateString() === new Date().toDateString();
+                    return (
+                      <div
+                        key={i}
+                        className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
+                          today
+                            ? "border-b-4 border-b-brand font-semibold text-primary"
+                            : "border-b"
+                        }`}
+                      >
+                        <div className="uppercase tracking-wide text-muted-foreground">
+                          {DAY_NAMES[i]}
+                        </div>
+                        <div>
+                          {d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
 
               {HOURS.map((hour) => {
                 const rowHeight = grid.busyHours.has(hour) ? SLOT_PX_FULL : SLOT_PX_EMPTY;
@@ -558,32 +644,35 @@ function SchedulePage() {
                     >
                       {pad(hour)}:00
                     </div>
-                    {weekDays.map((day, di) => (
-                      <div
-                        key={`${hour}-${di}`}
-                        className="relative border-b border-r"
-                        style={{ height: rowHeight }}
-                      >
-                        {/*
+                    {visibleDays.map((di) => {
+                      const day = weekDays[di];
+                      return (
+                        <div
+                          key={`${hour}-${di}`}
+                          className="relative border-b border-r max-md:border-r-0"
+                          style={{ height: rowHeight }}
+                        >
+                          {/*
                           Кнопка слота лежит под карточками, а не оборачивает их:
                           кнопка внутри кнопки — невалидный HTML и ломает доступность.
                         */}
-                        <button
-                          type="button"
-                          aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
-                          onClick={() => openSlot(day, hour)}
-                          className="absolute inset-0 transition hover:bg-accent/40"
-                        />
-                        {grid.cells.get(cellKey(day, hour))?.map((e) => (
-                          <EntryCard
-                            key={e.id}
-                            entry={e}
-                            onOpen={() => openEdit(e)}
-                            onCopy={() => startCopy(e)}
+                          <button
+                            type="button"
+                            aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
+                            onClick={() => openSlot(day, hour)}
+                            className="absolute inset-0 transition hover:bg-accent/40"
                           />
-                        ))}
-                      </div>
-                    ))}
+                          {grid.cells.get(cellKey(day, hour))?.map((e) => (
+                            <EntryCard
+                              key={e.id}
+                              entry={e}
+                              onOpen={() => openEdit(e)}
+                              onCopy={() => startCopy(e)}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}

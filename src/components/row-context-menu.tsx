@@ -1,4 +1,4 @@
-import { cloneElement, type ComponentType, type ReactElement } from "react";
+import { cloneElement, type ComponentType, type MouseEvent, type ReactElement } from "react";
 
 import {
   ContextMenu,
@@ -19,8 +19,33 @@ export type RowAction = {
   disabled?: boolean;
 };
 
+/** Касание по этим элементам — их собственное действие, а не меню строки. */
+const INTERACTIVE =
+  "button, a, input, textarea, select, label, [role=switch], [role=checkbox], [role=combobox]";
+
 /**
- * Контекстное меню строки таблицы (правый клик / долгое нажатие).
+ * На телефоне и планшете правого клика нет, а долгое нажатие никто не
+ * угадает: там меню открывается обычным касанием строки. Открываем его тем же
+ * событием contextmenu в точке касания — Radix ставит меню туда же, где оно
+ * появилось бы по правому клику.
+ */
+function openMenuOnTap(e: MouseEvent<HTMLElement>) {
+  if (e.defaultPrevented) return;
+  if (!window.matchMedia("(max-width: 767px), (pointer: coarse)").matches) return;
+  if ((e.target as HTMLElement).closest(INTERACTIVE)) return;
+  e.currentTarget.dispatchEvent(
+    new window.MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    }),
+  );
+}
+
+/**
+ * Контекстное меню строки таблицы (правый клик / долгое нажатие / касание
+ * на телефоне).
  *
  * Единственное место, где живут действия со строкой: колонки с кнопками в
  * конце строки нет — на узком экране до неё пришлось бы горизонтально
@@ -40,13 +65,23 @@ export function RowContextMenu({
   children,
 }: {
   actions: RowAction[];
-  children: ReactElement<{ className?: string }>;
+  children: ReactElement<{
+    className?: string;
+    onClick?: (e: MouseEvent<HTMLElement>) => void;
+    "data-row-actions"?: string;
+  }>;
 }) {
   const items = actions.filter(Boolean);
   if (items.length === 0) return children;
 
+  // У строки бывает своё действие по клику («Открыть обращение») — тогда
+  // касание делает его, а меню остаётся на долгом нажатии.
+  const ownClick = children.props.onClick;
   const row = cloneElement(children, {
     className: cn("cursor-pointer", children.props.className),
+    // Метка для «⋯» в углу карточки на телефоне (styles.css).
+    "data-row-actions": "",
+    onClick: ownClick ?? openMenuOnTap,
   });
 
   const regular = items.filter((a) => !a.destructive);
