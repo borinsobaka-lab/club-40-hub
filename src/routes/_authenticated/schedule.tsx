@@ -412,7 +412,7 @@ function SchedulePage() {
       !(await confirm({
         title: "Удалить занятие?",
         // Брони (schedule_bookings) удаляются каскадом, а журнал переводит в
-        // «Отменено» триггер db/schedule_entry_delete.sql.
+        // «Отменено» триггер db/migrations/…_schedule_entry_delete.sql.
         description:
           "Записи клиентов на него будут отменены — в истории записей они останутся со статусом «Отменено».",
       }))

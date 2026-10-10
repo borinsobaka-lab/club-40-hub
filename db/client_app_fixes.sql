@@ -67,7 +67,7 @@ begin
      and studio_id = _studio_id;
 
   -- Сотрудника, созданного в «Доступах» (staff_account в метаданных), в
-  -- клиенты не записываем (то же в db/staff_accounts.sql — держать в синхроне).
+  -- клиенты не записываем (то же в db/migrations/2026-10-10_staff_accounts.sql — держать в синхроне).
   if not found and coalesce(new.raw_user_meta_data->>'staff_account', '') <> 'true' then
     insert into public.clients (
       studio_id, user_id, full_name, first_name, last_name, phone, email, registration_date

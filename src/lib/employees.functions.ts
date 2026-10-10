@@ -90,7 +90,7 @@ function authErrorText(message: string) {
 
 /**
  * Добавить сотрудника: имя, фамилия, почта. Пароля нет: вход только по
- * 6-значному коду из письма (паролям сотрудников db/staff_accounts.sql не даёт
+ * 6-значному коду из письма (паролям сотрудников db/migrations/…_staff_accounts.sql не даёт
  * существовать). Есть учётная запись (клиент приложения, сотрудник другой
  * студии) — только выдаём роль; нет — создаём пользователя.
  */
@@ -144,7 +144,7 @@ export const createEmployee = createServerFn({ method: "POST" })
       email_confirm: true,
       // studio_id читает триггер handle_new_user (без него профиль и роль member
       // создаются в самой старой студии); staff_account — не заводить карточку
-      // клиента (db/staff_accounts.sql).
+      // клиента (db/migrations/…_staff_accounts.sql).
       user_metadata: {
         first_name: data.first_name,
         last_name: data.last_name,
