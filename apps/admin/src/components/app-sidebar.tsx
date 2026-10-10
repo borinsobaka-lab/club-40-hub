@@ -203,16 +203,22 @@ export function AppSidebar() {
             </Link>
           </SidebarHeader>
 
-          <SidebarContent className="sidebar-scroll">
+          {/*
+            Блоки плотнее, чем в shadcn: там между последним пунктом блока и
+            заголовком следующего набегало ~33px пустоты (gap-2 + p-2 снизу +
+            p-2 сверху + высокая строка заголовка h-8). Теперь gap-1, py-1 и
+            заголовок h-7 — в меню по высоте помещается больше пунктов.
+          */}
+          <SidebarContent className="sidebar-scroll gap-1">
             {groups.map((group) => (
               <Collapsible
                 key={group.key}
                 open={!closedGroups[group.key]}
                 onOpenChange={(open) => setGroupOpen(group.key, open)}
               >
-                <SidebarGroup>
+                <SidebarGroup className="py-1">
                   <SidebarGroupLabel asChild>
-                    <CollapsibleTrigger className="group/label w-full cursor-pointer gap-2 text-[13px] text-white/50 hover:text-white/70">
+                    <CollapsibleTrigger className="group/label h-7 w-full cursor-pointer gap-2 text-[13px] text-white/50 hover:text-white/70">
                       <span className="shrink-0">{group.label}</span>
                       <span className="h-px flex-1 bg-white/15" />
                       <ChevronUp className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=closed]/label:rotate-180" />
