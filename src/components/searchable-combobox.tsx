@@ -3,6 +3,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useFieldControl } from "@/components/ui/field-context";
 import {
   Command,
   CommandEmpty,
@@ -45,6 +46,7 @@ export function SearchableCombobox({
   selectedLabel?: string;
 }) {
   const [open, setOpenState] = useState(false);
+  const field = useFieldControl({});
   // Поле поиска при закрытии очищается (Command размонтируется) — и строку
   // серверного поиска сбрасываем вместе с ним.
   const setOpen = (next: boolean) => {
@@ -57,6 +59,7 @@ export function SearchableCombobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          {...field}
           variant="outline"
           role="combobox"
           aria-expanded={open}

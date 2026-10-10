@@ -38,7 +38,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 flex max-h-[85vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 flex max-h-[min(85vh,calc(100dvh-2rem))] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -61,7 +61,7 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col space-y-1.5 border-b px-6 py-4 pr-12 text-center sm:text-left",
+      "flex shrink-0 flex-col space-y-1.5 border-b px-4 py-4 sm:px-6 pr-12 text-left",
       className,
     )}
     {...props}
@@ -75,21 +75,52 @@ DialogHeader.displayName = "DialogHeader";
  * нужно (и нельзя — тогда поедут шапка с подвалом).
  */
 const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-4", className)} {...props} />
+  <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6", className)} {...props} />
 );
 DialogBody.displayName = "DialogBody";
 
-/** Подвал с кнопками — тоже закреплён, всегда виден под прокруткой тела. */
+/**
+ * Подвал с кнопками — тоже закреплён, всегда виден под прокруткой тела.
+ * Кнопки всегда в строку (и на телефоне — столбик из трёх кнопок съедал
+ * треть экрана). Порядок: [опасное действие слева, `className="mr-auto"`] …
+ * «Отмена» (outline) и основная кнопка справа.
+ */
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:justify-end sm:space-x-2 sm:gap-0",
+      "flex shrink-0 flex-wrap items-center justify-end gap-2 border-t px-4 py-4 sm:px-6",
       className,
     )}
     {...props}
   />
 );
 DialogFooter.displayName = "DialogFooter";
+
+/**
+ * Форма диалога: оборачивает шапку, тело и подвал, не ломая их раскладку.
+ * Enter в поле отправляет форму (кнопка в подвале — `type="submit"`), как в
+ * любой нормальной форме; браузерная валидация выключена — проверяем сами.
+ */
+const DialogForm = ({
+  className,
+  onSubmit,
+  ...props
+}: Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> & { onSubmit: () => void }) => (
+  <form
+    noValidate
+    className={cn("flex min-h-0 flex-1 flex-col", className)}
+    onSubmit={(e) => {
+      e.preventDefault();
+      // Диалоги рендерятся в портале, но события React всплывают по дереву
+      // компонентов: без этого отправка вложенного диалога (абонемент из
+      // карточки клиента, открытой из формы занятия) отправила бы и внешнюю форму.
+      e.stopPropagation();
+      onSubmit();
+    }}
+    {...props}
+  />
+);
+DialogForm.displayName = "DialogForm";
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
@@ -125,6 +156,7 @@ export {
   DialogHeader,
   DialogBody,
   DialogFooter,
+  DialogForm,
   DialogTitle,
   DialogDescription,
 };

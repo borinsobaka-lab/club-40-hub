@@ -192,6 +192,33 @@ own"` оставить). Альтернатива — выдача абонем�
   Radix размонтирует содержимое при закрытии. Сначала валидация, потом
   `setSaving(true)`, снятие — в `finally`. Удаление — `useConfirm`.
 
+### UI-эталон: диалоги, шторки, формы
+
+Эталон — `PromoCodeForm` в `promocodes.tsx`. Новый экран делать так же.
+
+- **Диалог**: `<DialogForm onSubmit={handleSave}>` → `DialogHeader` (Title +
+  Description) → `DialogBody` (`<div className="space-y-4">` с полями) →
+  `DialogFooter`. Шапка и подвал закреплены, прокручивается только тело; что
+  должно быть видно всегда (имя клиента, табы) — в шапку. На `DialogContent`
+  только ширина: `max-w-md` (1–4 поля), `max-w-lg` (обычная форма),
+  `max-w-2xl` (картинки/длинный текст, карточка), `max-w-4xl` (две колонки).
+- **Подвал**: [удаление `variant="ghost-destructive"` + `mr-auto`] …
+  «Отмена» (`variant="outline"`) и основная `type="submit" loading={saving}`.
+  Enter в поле отправляет форму. `Button` по умолчанию `type="button"` — у
+  кнопки отправки тип указывать явно; у сырого `<button>` в форме — тоже.
+- **Поля** (`ui/field.tsx`): `<Field label required hint>` с одним контролом —
+  Input/Textarea/SelectTrigger/комбобоксы сами получают id подписи. В строку —
+  `FieldRow` (`cols={3}` — три), блок — `FieldGroup`, да/нет —
+  `SwitchField`, множественный выбор — `CheckboxField`, один из нескольких —
+  `RadioGroup` + `RadioOption`. Обязательное — `required` (звёздочка);
+  «(необязательно)» и пояснения в скобках в подписях не писать — пояснение в
+  `hint`. Единицы — через запятую: «Цена, ₾».
+- **Шторка**: `SheetHeader` → `SheetBody` → `SheetFooter` (кнопки — в подвал).
+- **Подтверждение**: `useConfirm`; свой AlertDialog — Header/Footer, опасное
+  действие `buttonVariants({ variant: "destructive" })`.
+- **Форма на странице**: те же примитивы, `<form noValidate onSubmit>`; кнопка
+  в шапке страницы — `type="submit" form="<id формы>"`.
+
 ### Общие модули
 
 - `src/lib/format.ts` — деньги (`formatMoney` без копеек, `formatMoneyPrecise`),

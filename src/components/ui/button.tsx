@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,9 @@ const buttonVariants = cva(
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
+        // Удаление в подвале диалога: не перетягивает внимание с основной
+        // кнопки, но читается как опасное действие.
+        "ghost-destructive": "text-destructive hover:bg-destructive/10 hover:text-destructive",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -33,13 +37,35 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Идёт сохранение: спиннер перед текстом и кнопка заблокирована. */
+  loading?: boolean;
 }
 
+/**
+ * По умолчанию `type="button"`: у голого <button> внутри <form> тип submit, и
+ * любая служебная кнопка формы («Загрузить», «+», выбор клиента) отправляла бы
+ * её. Кнопка отправки объявляется явно: `type="submit"`.
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
+  ({ className, variant, size, asChild = false, loading = false, ...rest }, ref) => {
+    if (asChild) {
+      return (
+        <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...rest} />
+      );
+    }
+    const { type, disabled, children, ...props } = rest;
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <button
+        type={type ?? "button"}
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
+        {...props}
+      >
+        {loading && <Loader2 className="animate-spin" />}
+        {children}
+      </button>
     );
   },
 );
