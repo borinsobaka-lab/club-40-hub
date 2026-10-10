@@ -12,11 +12,12 @@ import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -41,12 +42,13 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination } from "@/components/data-pagination";
-import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
+import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
@@ -111,6 +113,8 @@ function DateRangeFilter({
       ? `${format(value.from, "dd.MM.yy", { locale: ru })}–${format(value.to, "dd.MM.yy", { locale: ru })}`
       : `от ${format(value.from, "dd.MM.yy", { locale: ru })}`
     : label;
+  // Два месяца рядом не помещаются в экран телефона.
+  const isMobile = useIsMobile();
 
   return (
     <Popover>
@@ -122,7 +126,7 @@ function DateRangeFilter({
             !value?.from && "text-muted-foreground",
           )}
         >
-          <CalendarIcon className="mr-1.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <CalendarIcon className="text-muted-foreground" />
           <span className="truncate">{text}</span>
         </Button>
       </PopoverTrigger>
@@ -131,7 +135,7 @@ function DateRangeFilter({
           mode="range"
           selected={value}
           onSelect={onChange}
-          numberOfMonths={2}
+          numberOfMonths={isMobile ? 1 : 2}
           locale={ru}
           className="pointer-events-auto"
         />
@@ -231,6 +235,7 @@ function ClientsPage() {
   };
 
   const resetFilters = () => {
+    setSearch("");
     setGenderFilter("");
     setStatusFilter("");
     setRegRange(undefined);
@@ -242,7 +247,7 @@ function ClientsPage() {
       title="Клиенты"
       actions={
         <Button onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить клиента
         </Button>
       }
@@ -256,7 +261,7 @@ function ClientsPage() {
               placeholder="Поиск по имени, телефону, email"
             />
             <Select value={genderFilter} onValueChange={setGenderFilter}>
-              <SelectTrigger className="w-[110px]">
+              <SelectTrigger className="w-40">
                 <SelectValue placeholder="Пол" />
               </SelectTrigger>
               <SelectContent>
@@ -268,7 +273,7 @@ function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-48">
                 <SelectValue placeholder="Статус" />
               </SelectTrigger>
               <SelectContent>
@@ -281,9 +286,7 @@ function ClientsPage() {
             </Select>
             <DateRangeFilter label="Регистрация" value={regRange} onChange={setRegRange} />
             <DateRangeFilter label="Визит" value={visitRange} onChange={setVisitRange} />
-            <Button variant="ghost" onClick={resetFilters} className="shrink-0">
-              Сбросить
-            </Button>
+            <ToolbarReset active={hasFilters} onReset={resetFilters} />
           </TableToolbar>
 
           <div className="rounded-lg border bg-background">
@@ -482,147 +485,134 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
         <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
         <DialogDescription>Контактные данные и заметки по клиенту.</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="grid gap-3 py-2">
-          <div className="flex items-center gap-4">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
-              {photoUrl ? (
-                <img
-                  src={photoUrl}
-                  alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
-                  {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
-            <div className="grid flex-1 grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-last-name">Фамилия</Label>
-                <Input
-                  id="cl-last-name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            {/* Аватар слева от имени; на телефоне поля имени уходят в столбик рядом с ним. */}
+            <div className="flex items-start gap-4">
+              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
+                    {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-first-name">Имя *</Label>
-                <Input
-                  id="cl-first-name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
+              <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label="Фамилия">
+                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                </FormField>
+                <FormField label="Имя">
+                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                </FormField>
               </div>
             </div>
-          </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
-            <Input
-              id="cl-crm"
-              type="url"
-              value={crmLink}
-              onChange={(e) => setCrmLink(e.target.value)}
-              placeholder="https://your-account.amocrm.ru/contacts/detail/..."
-            />
-          </div>
+            <FormField
+              label="Ссылка на amoCRM"
+              tip="Карточка контакта в amoCRM. Имя клиента в таблицах станет ссылкой на неё."
+              optional
+            >
+              <Input
+                type="url"
+                value={crmLink}
+                onChange={(e) => setCrmLink(e.target.value)}
+                placeholder="https://your-account.amocrm.ru/contacts/detail/..."
+              />
+            </FormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-phone">Телефон</Label>
-              <Input id="cl-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Телефон">
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </FormField>
+              <FormField
+                label="Email"
+                tip="Когда клиент зарегистрируется в приложении с этой почтой, его аккаунт привяжется к этой карточке. Проверьте опечатки."
+              >
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </FormField>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-email">Email</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Дата рождения">
+                <Input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+              </FormField>
+              <FormField label="Пол">
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDER_OPTIONS.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                label="Дата регистрации"
+                tip="По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама."
+              >
+                <Input
+                  type="date"
+                  value={registrationDate}
+                  onChange={(e) => setRegistrationDate(e.target.value)}
+                />
+              </FormField>
+              <FormField
+                label="Последний визит"
+                tip="Обновляется сам при отметке посещения. Вручную — только для переноса старой истории."
+              >
+                <Input
+                  type="date"
+                  value={lastVisitDate}
+                  onChange={(e) => setLastVisitDate(e.target.value)}
+                />
+              </FormField>
+            </div>
+            {/* Бакета для фото клиентов нет — поле остаётся ссылкой. */}
+            <FormField
+              label="Фото (ссылка)"
+              tip="Прямая ссылка на картинку. Если аватар вверху не появился — ссылка не на изображение."
+              optional
+            >
               <Input
-                id="cl-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="url"
+                value={photoUrl}
+                onChange={(e) => setPhotoUrl(e.target.value)}
+                placeholder="https://..."
               />
-            </div>
+            </FormField>
+            <FormField
+              label="Заметки"
+              tip="Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может."
+              optional
+            >
+              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-bday">Дата рождения</Label>
-              <Input
-                id="cl-bday"
-                type="date"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Пол</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDER_OPTIONS.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>
-                      {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-reg">Дата регистрации</Label>
-              <Input
-                id="cl-reg"
-                type="date"
-                value={registrationDate}
-                onChange={(e) => setRegistrationDate(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-last">Последний визит</Label>
-              <Input
-                id="cl-last"
-                type="date"
-                value={lastVisitDate}
-                onChange={(e) => setLastVisitDate(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-photo">Фото (URL)</Label>
-            <Input
-              id="cl-photo"
-              type="url"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-notes">Заметки</Label>
-            <Textarea
-              id="cl-notes"
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-          Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }

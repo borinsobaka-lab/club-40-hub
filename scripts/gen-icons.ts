@@ -29,6 +29,7 @@ const MANUAL: Record<string, string> = {
   CheckCircle2: "CheckCircle",
   ChevronsUpDown: "UnfoldMoreIcon", // псевдоним — стрелки ↑↓, нужен «раскрыть»
   GripVertical: "DragDropVerticalIcon", // псевдоним — рука, нужны точки-ручка
+  HelpCircle: "HelpCircleIcon", // псевдонима под именем lucide нет
   Loader2: "LoaderCircle",
   RefreshCwOff: "RefreshCwOffIcon", // псевдоним не перечёркнут, не отличить от RefreshCw
   Send: "SentIcon", // псевдоним — конверт, для кнопки отправки нужен самолётик

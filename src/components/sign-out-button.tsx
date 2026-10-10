@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
-export function SignOutButton() {
+export function SignOutButton({ className }: { className?: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -22,7 +22,7 @@ export function SignOutButton() {
   };
 
   return (
-    <Button variant="outline" onClick={handleSignOut}>
+    <Button variant="outline" className={className} onClick={handleSignOut}>
       Выйти
     </Button>
   );

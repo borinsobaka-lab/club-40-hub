@@ -9,13 +9,14 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
+import { TableToolbar } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatNumber } from "@/lib/format";
 
@@ -363,10 +364,10 @@ function Delta({
   const Icon = flat ? Minus : up ? ArrowUp : ArrowDown;
   const diffText = isMoney ? formatMoney(Math.abs(diff)) : formatNumber(Math.abs(diff));
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs", color)}>
+    <span className={cn("inline-flex flex-wrap items-center gap-x-1 text-xs", color)}>
       <Icon className="h-3 w-3" />
       {pct === null ? diffText : `${up ? "+" : "−"}${Math.abs(pct).toFixed(0)}% · ${diffText}`}
-      <span className="text-muted-foreground">vs пред. период</span>
+      <span className="text-muted-foreground max-sm:hidden">vs пред. период</span>
     </span>
   );
 }
@@ -379,6 +380,8 @@ function DashboardPage() {
     to: endOfMonth(today),
   });
   const [open, setOpen] = useState(false);
+  // Два месяца рядом не помещаются в экран телефона.
+  const isMobile = useIsMobile();
 
   const fromDate = range?.from;
   const toDate = range?.to ?? range?.from;
@@ -425,25 +428,25 @@ function DashboardPage() {
 
   return (
     <AdminShell title="Дашборд">
-      <div className="space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="space-y-3">
+        <TableToolbar>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "min-w-[260px] justify-start text-left font-normal",
+                  "toolbar-full min-w-[260px] justify-start text-left font-normal",
                   !range?.from && "text-muted-foreground",
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon />
                 {formatRange(range)}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
               <Calendar
                 mode="range"
-                numberOfMonths={2}
+                numberOfMonths={isMobile ? 1 : 2}
                 selected={range}
                 onSelect={setRange}
                 defaultMonth={range?.from ?? today}
@@ -455,36 +458,31 @@ function DashboardPage() {
           </Popover>
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => setRange({ from: startOfMonth(today), to: endOfMonth(today) })}
           >
             Текущий месяц
           </Button>
           {fetching && (
             <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               обновляем…
             </div>
           )}
-        </div>
+        </TableToolbar>
 
         <RequireStudio studioId={studioId}>
           {loading ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
               {STATS.map((stat) => (
-                <Card key={stat.key}>
-                  <CardHeader className="pb-2">
-                    <Skeleton className="h-4 w-32" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-7 w-24" />
-                    <Skeleton className="mt-2 h-3 w-20" />
-                  </CardContent>
-                </Card>
+                <div key={stat.key} className="rounded-lg border bg-background p-3 sm:p-4">
+                  <Skeleton className="h-4 w-full max-w-32" />
+                  <Skeleton className="mt-3 h-7 w-24" />
+                  <Skeleton className="mt-2 h-3 w-20" />
+                </div>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
               {STATS.map((stat) => {
                 const v = current[stat.key];
                 const p = previous[stat.key];
@@ -495,31 +493,34 @@ function DashboardPage() {
                       ? formatMoney(v)
                       : formatNumber(v);
                 return (
-                  <Card key={stat.key}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {stat.label}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold tabular-nums">{value}</div>
-                      <div className="mt-1 flex items-center gap-2">
-                        {stat.hint && (
-                          <span className="text-xs text-muted-foreground">{stat.hint}</span>
-                        )}
-                      </div>
-                      {stat.compare && v !== undefined && p !== undefined && (
-                        <div className="mt-2">
-                          <Delta
-                            current={v}
-                            previous={p}
-                            goodWhenUp={stat.goodWhenUp}
-                            isMoney={stat.format === "money"}
-                          />
-                        </div>
+                  // На телефоне — две карточки в ряд: по одной в столбик
+                  // одиннадцать показателей растягивались на пять экранов.
+                  <div
+                    key={stat.key}
+                    className="min-w-0 rounded-lg border bg-background p-3 sm:p-4"
+                  >
+                    <div className="text-xs font-medium text-muted-foreground sm:text-sm">
+                      {stat.label}
+                    </div>
+                    <div className="mt-1.5 text-lg font-semibold tabular-nums sm:mt-2 sm:text-2xl">
+                      {value}
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      {stat.hint && (
+                        <span className="text-xs text-muted-foreground">{stat.hint}</span>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                    {stat.compare && v !== undefined && p !== undefined && (
+                      <div className="mt-2">
+                        <Delta
+                          current={v}
+                          previous={p}
+                          goodWhenUp={stat.goodWhenUp}
+                          isMoney={stat.format === "money"}
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

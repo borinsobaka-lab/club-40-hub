@@ -21,7 +21,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -37,16 +37,27 @@ const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      // Метка для заливки полей (styles.css): поля в окнах светло-серые.
+      data-form-surface=""
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 flex max-h-[85vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        // От sm — окно по центру. На телефоне — шторка снизу во всю ширину:
+        // кнопки подвала под большим пальцем, а поля не зажаты отступами по
+        // 16px с каждой стороны. max-w-* страниц (max-w-lg, max-w-2xl) на
+        // телефоне снимает max-sm:max-w-none: twMerge оставляет оба класса
+        // (разные варианты), а медиа-вариант в CSS идёт позже.
+        "fixed z-50 flex flex-col overflow-hidden border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "inset-x-0 bottom-0 max-h-[92dvh] w-full max-w-lg rounded-t-xl max-sm:max-w-none data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+        "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[85vh] sm:w-[calc(100%-2rem)] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      {/* Крестик — полноценная кнопка 32px (раньше голая иконка 16px, в которую
+          трудно попасть); стоит по центру строки заголовка шапки. */}
+      <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
         <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
+        <span className="sr-only">Закрыть</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
@@ -61,7 +72,9 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col space-y-1.5 border-b px-6 py-4 pr-12 text-center sm:text-left",
+      // Текст всегда слева — по центру (как в shadcn на мобильных) он
+      // отрывался от полей, которые выровнены влево.
+      "flex shrink-0 flex-col space-y-1.5 border-b px-4 py-4 pr-12 text-left sm:px-6",
       className,
     )}
     {...props}
@@ -75,15 +88,48 @@ DialogHeader.displayName = "DialogHeader";
  * нужно (и нельзя — тогда поедут шапка с подвалом).
  */
 const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-4", className)} {...props} />
+  <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6", className)} {...props} />
 );
 DialogBody.displayName = "DialogBody";
 
-/** Подвал с кнопками — тоже закреплён, всегда виден под прокруткой тела. */
+/**
+ * Форма вокруг тела и подвала: Enter в поле = нажать главную кнопку (у неё
+ * type="submit"). Сама форма — flex-колонка, иначе тело перестаёт
+ * прокручиваться. Браузерную валидацию отключаем: проверки — тостами в
+ * обработчике, как во всей админке.
+ */
+const DialogForm = ({
+  onSubmit,
+  className,
+  ...props
+}: Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> & { onSubmit: () => void }) => (
+  <form
+    noValidate
+    className={cn("flex min-h-0 flex-1 flex-col", className)}
+    onSubmit={(e) => {
+      e.preventDefault();
+      // React ведёт события по дереву компонентов, а не по DOM: submit формы
+      // из вложенного окна (портал) иначе всплыл бы до формы внешнего окна и
+      // отправил бы и её.
+      e.stopPropagation();
+      onSubmit();
+    }}
+    {...props}
+  />
+);
+DialogForm.displayName = "DialogForm";
+
+/**
+ * Подвал с кнопками — тоже закреплён, всегда виден под прокруткой тела.
+ * Порядок: слева при необходимости разрушающее действие («Удалить»), справа
+ * «Отмена» (outline) и главная кнопка. На телефоне кнопки делят строку
+ * поровну (раньше вставали столбиком и подвал занимал треть шторки); не
+ * влезают — переносятся, главная остаётся последней.
+ */
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:justify-end sm:space-x-2 sm:gap-0",
+      "flex shrink-0 flex-wrap justify-end gap-2 border-t px-4 py-3 max-sm:[&>*]:flex-1 sm:px-6 sm:py-4",
       className,
     )}
     {...props}
@@ -124,6 +170,7 @@ export {
   DialogContent,
   DialogHeader,
   DialogBody,
+  DialogForm,
   DialogFooter,
   DialogTitle,
   DialogDescription,

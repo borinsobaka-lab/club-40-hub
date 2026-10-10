@@ -10,7 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { activeStudioHeaders } from "@/hooks/use-active-studio";
 import { toast } from "sonner";
 
-export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass?: string }) {
+export function KateChat({
+  heightClass = "h-[calc(100dvh-8rem)]",
+  fullscreenOnMobile = false,
+}: {
+  heightClass?: string;
+  /** Окно во весь экран на телефоне: без скруглений и рамки, место под крестик. */
+  fullscreenOnMobile?: boolean;
+}) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -73,8 +80,13 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
     <div
       className={`relative isolate mx-auto ${heightClass} w-full max-w-3xl rounded-lg ${isLoading ? "ai-thinking-glow" : ""}`}
     >
-      <div className="relative z-10 flex h-full flex-col overflow-hidden rounded-lg border bg-background">
-        <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6">
+      <div
+        className={`relative z-10 flex h-full flex-col overflow-hidden rounded-lg border bg-background ${fullscreenOnMobile ? "max-md:rounded-none max-md:border-0" : ""}`}
+      >
+        <div
+          ref={scrollRef}
+          className={`flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 ${fullscreenOnMobile ? "max-md:pt-14" : ""}`}
+        >
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
               <div className="ai-gradient flex h-14 w-14 items-center justify-center rounded-full text-white">
@@ -149,9 +161,9 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
                 type="submit"
                 disabled={isLoading || !input.trim()}
                 size="icon"
-                className="h-10 w-10"
+                aria-label="Отправить"
               >
-                <Send className="h-4 w-4" />
+                <Send />
               </Button>
             </div>
           </div>
@@ -315,15 +327,9 @@ function VoiceInputButton({
       disabled={disabled || busy}
       onClick={recording ? stop : start}
       title={recording ? "Закончить запись" : "Голосовой ввод"}
-      className="h-10 w-10"
+      aria-label={recording ? "Закончить запись" : "Голосовой ввод"}
     >
-      {busy ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : recording ? (
-        <Square className="h-4 w-4" />
-      ) : (
-        <Mic className="h-4 w-4" />
-      )}
+      {busy ? <Loader2 className="animate-spin" /> : recording ? <Square /> : <Mic />}
     </Button>
   );
 }

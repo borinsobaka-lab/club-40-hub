@@ -35,11 +35,11 @@ import {
   ChevronUp as ChevronUpArt,
   ChevronsLeft as ChevronsLeftArt,
   ChevronsRight as ChevronsRightArt,
-  UnfoldMoreIcon as ChevronsUpDownArt,
   Circle as CircleArt,
   Copy as CopyArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
+  HelpCircleIcon as HelpCircleArt,
   ImageIcon as ImageIconArt,
   LoaderCircle as Loader2Art,
   LogIn as LogInArt,
@@ -98,11 +98,11 @@ export const ChevronRightIcon = icon(ChevronRightIconArt, "ChevronRightIcon");
 export const ChevronUp = icon(ChevronUpArt, "ChevronUp");
 export const ChevronsLeft = icon(ChevronsLeftArt, "ChevronsLeft");
 export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
-export const ChevronsUpDown = icon(ChevronsUpDownArt, "ChevronsUpDown");
 export const Circle = icon(CircleArt, "Circle");
 export const Copy = icon(CopyArt, "Copy");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
+export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
 export const Loader2 = icon(Loader2Art, "Loader2");
 export const LogIn = icon(LogInArt, "LogIn");

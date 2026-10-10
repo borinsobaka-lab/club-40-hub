@@ -3,13 +3,14 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CheckboxOption, FormField } from "@/components/ui/form-field";
 import {
   Dialog,
   DialogContent,
   DialogBody,
+  DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -43,9 +44,10 @@ export function EditActiveMembershipDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Редактировать активный абонемент</DialogTitle>
+          <DialogDescription>Срок действия, остаток посещений и заморозка.</DialogDescription>
         </DialogHeader>
         {/*
           Форма монтируется заново при каждом открытии — сбрасывать её не нужно,
@@ -73,6 +75,9 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
   const [saving, setSaving] = useState(false);
   const [freezeDaysInput, setFreezeDaysInput] = useState("");
   const [freezing, setFreezing] = useState(false);
+  // Сохранение и заморозка — разные запросы к одной записи: пока идёт один,
+  // остальные кнопки окна неактивны.
+  const busy = saving || freezing;
 
   const allowed = membership.freeze_days_allowed ?? 0;
   const used = membership.freeze_days_used ?? 0;
@@ -160,91 +165,99 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="cm-ends">Действует до</Label>
+          <FormField
+            label="Действует до"
+            tip="Последний день абонемента. На следующий день он станет истёкшим."
+          >
+            <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+          </FormField>
+          <FormField
+            label="Осталось посещений"
+            tip="Ручная правка остатка — например, вернуть занятие, отменённое по вине клуба."
+          >
             <Input
-              id="cm-ends"
-              type="date"
-              value={endsAt}
-              onChange={(e) => setEndsAt(e.target.value)}
+              type="number"
+              min={0}
+              value={visitsLeft}
+              onChange={(e) => setVisitsLeft(e.target.value)}
+              disabled={unlimitedVisits}
+              placeholder="Например, 5"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Осталось посещений</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                value={visitsLeft}
-                onChange={(e) => setVisitsLeft(e.target.value)}
-                disabled={unlimitedVisits}
-                placeholder="Например, 5"
-                className="flex-1"
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={unlimitedVisits}
-                  onCheckedChange={(v) => setUnlimitedVisits(!!v)}
-                />
-                Безлимит
-              </label>
-            </div>
-          </div>
+            <CheckboxOption checked={unlimitedVisits} onCheckedChange={setUnlimitedVisits}>
+              Безлимит
+            </CheckboxOption>
+          </FormField>
 
           {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
             иначе после обнуления «дней заморозки» в тарифе разморозить его
             стало бы нечем. */}
           {(allowed > 0 || status === "frozen") && (
-            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-              <div className="text-sm font-medium">Заморозка</div>
-              <div className="text-xs text-muted-foreground">
-                Доступно {remaining} из {allowed} дн.
-                {status === "frozen" && membership.frozen_until
-                  ? ` · заморожен до ${formatDate(membership.frozen_until)}`
-                  : ""}
-              </div>
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="text-xs font-medium uppercase text-muted-foreground">Заморозка</div>
               {status === "frozen" ? (
-                <Button variant="outline" size="sm" onClick={handleUnfreeze} disabled={freezing}>
-                  {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                  Разморозить
-                </Button>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    {membership.frozen_until
+                      ? `Заморожен до ${formatDate(membership.frozen_until)}`
+                      : "Заморожен"}
+                    {` · доступно ${remaining} из ${allowed} дн.`}
+                  </p>
+                  <Button variant="outline" onClick={handleUnfreeze} disabled={busy}>
+                    {freezing && <Loader2 className="animate-spin" />}
+                    Разморозить
+                  </Button>
+                </div>
               ) : status === "active" || status === undefined ? (
-                <div className="flex items-end gap-2">
-                  <div className="flex-1 space-y-1">
-                    <Label htmlFor="cm-freeze">Дней</Label>
+                <FormField
+                  label="Дней заморозки"
+                  tip="«Действует до» сдвинется на столько же дней."
+                  hint={`Доступно ${remaining} из ${allowed} дн.`}
+                >
+                  <div className="flex gap-2">
                     <Input
-                      id="cm-freeze"
                       type="number"
                       min={1}
                       max={remaining}
                       value={freezeDaysInput}
                       onChange={(e) => setFreezeDaysInput(e.target.value)}
+                      // Enter здесь замораживает, а не сохраняет форму целиком.
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (!busy && remaining > 0) void handleFreeze();
+                        }
+                      }}
                       placeholder={String(remaining)}
                       disabled={remaining <= 0}
+                      className="flex-1"
                     />
+                    <Button onClick={handleFreeze} disabled={busy || remaining <= 0}>
+                      {freezing && <Loader2 className="animate-spin" />}
+                      Заморозить
+                    </Button>
                   </div>
-                  <Button size="sm" onClick={handleFreeze} disabled={freezing || remaining <= 0}>
-                    {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                    Заморозить
-                  </Button>
-                </div>
-              ) : null}
+                </FormField>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Доступно {remaining} из {allowed} дн.
+                </p>
+              )}
             </div>
           )}
         </div>
       </DialogBody>
       <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+        <Button type="submit" disabled={busy}>
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

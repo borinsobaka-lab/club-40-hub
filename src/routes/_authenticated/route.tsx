@@ -43,9 +43,11 @@ function AuthenticatedLayout() {
     // На мобильном шторка управляется отдельно (openMobile) и работает как раньше.
     <SidebarProvider open>
       <StudioBranding />
-      <div className="flex h-screen w-full overflow-hidden bg-canvas">
+      {/* h-dvh, а не h-screen: в мобильном Safari 100vh выше видимой области
+          (под адресной строкой), и низ страницы с пагинацией уезжал за экран. */}
+      <div className="flex h-dvh w-full overflow-hidden bg-canvas">
         <AppSidebar />
-        <div className="flex h-screen flex-1 flex-col overflow-hidden">
+        <div className="flex h-dvh min-w-0 flex-1 flex-col overflow-hidden">
           <Outlet />
         </div>
       </div>

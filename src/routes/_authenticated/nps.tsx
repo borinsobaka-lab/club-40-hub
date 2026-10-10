@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -42,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogForm,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -54,6 +55,8 @@ import {
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
+import { cn } from "@/lib/utils";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -240,7 +243,7 @@ function NpsPage() {
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-1 h-4 w-4" /> Добавить ответ
+              <Plus /> Добавить ответ
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -280,7 +283,7 @@ function NpsPage() {
                 <div key={s.type} className="rounded-lg border bg-background p-5">
                   <h3 className="text-base font-semibold">{s.label}</h3>
                   <p className="mb-4 text-xs text-muted-foreground">{s.hint}</p>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                     <Stat label="NPS" value={st.nps ?? "—"} />
                     <Stat label="Ответов" value={st.total} />
                     <Stat label="Промо" value={st.promoters} cls="text-emerald-600" />
@@ -292,9 +295,9 @@ function NpsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
+            <TableToolbar>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="sm:w-[200px]">
+                <SelectTrigger className="w-48">
                   <SelectValue placeholder="Все опросы" />
                 </SelectTrigger>
                 <SelectContent>
@@ -307,7 +310,7 @@ function NpsPage() {
                 </SelectContent>
               </Select>
               <Select value={clientFilter} onValueChange={setClientFilter}>
-                <SelectTrigger className="sm:w-[180px]">
+                <SelectTrigger className="w-40">
                   <SelectValue placeholder="Все категории" />
                 </SelectTrigger>
                 <SelectContent>
@@ -317,7 +320,14 @@ function NpsPage() {
                   <SelectItem value="detractor">Критики</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+              <ToolbarReset
+                active={typeFilter !== "all" || clientFilter !== "all"}
+                onReset={() => {
+                  setTypeFilter("all");
+                  setClientFilter("all");
+                }}
+              />
+            </TableToolbar>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <KPI label="NPS" value={global.nps ?? "—"} />
@@ -397,7 +407,7 @@ function NpsPage() {
                         variant="outline"
                         onClick={() => toggleHandled(r.id, r.handled)}
                       >
-                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Обработан
+                        <CheckCircle2 /> Обработан
                       </Button>
                     </div>
                   ))}
@@ -489,17 +499,23 @@ function NewResponseForm({
   onSaved: () => void;
 }) {
   const [surveyType, setSurveyType] = useState<SurveyType>("general");
-  const [score, setScore] = useState(9);
+  // Строкой: поле можно очистить и набрать заново, проверка — при сохранении.
+  const [score, setScore] = useState("9");
   const [clientName, setClientName] = useState("");
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
+    const value = Number(score.trim());
+    if (!score.trim() || !Number.isInteger(value) || value < 0 || value > 10) {
+      toast.error("Укажите оценку — целое число от 0 до 10");
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await supabase.from("nps_responses").insert({
         studio_id: studioId ?? null,
-        score,
+        score: value,
         client_name: clientName.trim() || null,
         comment: comment.trim() || null,
         survey_type: surveyType,
@@ -523,61 +539,59 @@ function NewResponseForm({
         <DialogTitle>Новый ответ NPS</DialogTitle>
         <DialogDescription>Заполните данные ответа клиента.</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="survey-type">Тип опроса</Label>
-            <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
-              <SelectTrigger id="survey-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SURVEY_TYPES.map((s) => (
-                  <SelectItem key={s.type} value={s.type}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <DialogForm onSubmit={submit}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField
+              label="Тип опроса"
+              tip="Момент, когда задан вопрос: NPS считается по каждому типу отдельно."
+            >
+              <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SURVEY_TYPES.map((s) => (
+                    <SelectItem key={s.type} value={s.type}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField
+              label="Оценка"
+              tip="9–10 — промоутер, 7–8 — нейтрал, 0–6 — критик. NPS = % промоутеров − % критиков."
+              hint="От 0 до 10."
+            >
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={10}
+                step={1}
+                value={score}
+                onChange={(e) => setScore(e.target.value)}
+              />
+            </FormField>
+            <FormField label="Имя клиента" optional>
+              <Input value={clientName} onChange={(e) => setClientName(e.target.value)} />
+            </FormField>
+            <FormField label="Комментарий" optional>
+              <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} />
+            </FormField>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="score">Оценка (0–10)</Label>
-            <Input
-              id="score"
-              type="number"
-              min={0}
-              max={10}
-              value={score}
-              onChange={(e) => setScore(Math.max(0, Math.min(10, Number(e.target.value))))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="client-name">Имя клиента</Label>
-            <Input
-              id="client-name"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="comment">Комментарий</Label>
-            <Textarea
-              id="comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={3}
-            />
-          </div>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="ghost" onClick={onClose}>
-          Отмена
-        </Button>
-        <Button onClick={submit} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }
@@ -586,7 +600,7 @@ function Stat({ label, value, cls = "" }: { label: string; value: number | strin
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-xl font-bold ${cls}`}>{value}</p>
+      <p className={cn("text-xl font-semibold tabular-nums", cls)}>{value}</p>
     </div>
   );
 }
@@ -595,7 +609,7 @@ function KPI({ label, value, cls = "" }: { label: string; value: number | string
   return (
     <div className="rounded-lg border bg-background p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-2xl font-bold ${cls}`}>{value}</p>
+      <p className={cn("mt-1 text-2xl font-semibold tabular-nums", cls)}>{value}</p>
     </div>
   );
 }

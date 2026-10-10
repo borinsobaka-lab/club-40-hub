@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -26,6 +26,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -181,7 +182,7 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
       title={config.title}
       actions={
         <Button onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           {texts.add}
         </Button>
       }
@@ -233,23 +234,21 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
                             <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
+                                size="icon-sm"
                                 disabled={idx === 0 || reordering}
                                 onClick={() => move(idx, -1)}
                                 aria-label="Выше"
                               >
-                                <ArrowUp className="h-4 w-4" />
+                                <ArrowUp />
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
+                                size="icon-sm"
                                 disabled={idx === items.length - 1 || reordering}
                                 onClick={() => move(idx, 1)}
                                 aria-label="Ниже"
                               >
-                                <ArrowDown className="h-4 w-4" />
+                                <ArrowDown />
                               </Button>
                               <span className="ml-1 w-5 text-xs text-muted-foreground">
                                 {idx + 1}
@@ -390,119 +389,125 @@ function ShowcaseForm({
         <DialogTitle>{item ? texts.editTitle : texts.createTitle}</DialogTitle>
         <DialogDescription>{texts.dialogDescription}</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Картинка (превью)</Label>
-              <ImageUploadField
-                bucket={bucket}
-                folder={`${studioId}/image`}
-                value={imageUrl}
-                onChange={setImageUrl}
-                disabled={!studioId}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Баннер</Label>
-              <ImageUploadField
-                bucket={bucket}
-                folder={`${studioId}/banner`}
-                value={bannerUrl}
-                onChange={setBannerUrl}
-                preview={
-                  <StorageImage
-                    bucket={bucket}
-                    value={bannerUrl}
-                    alt="Баннер"
-                    className="h-10 w-28"
-                  />
-                }
-                disabled={!studioId}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="title">Заголовок</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Краткий заголовок для списка"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Короткое описание для превью"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="full_title">Полный заголовок</Label>
-            <Input
-              id="full_title"
-              value={fullTitle}
-              onChange={(e) => setFullTitle(e.target.value)}
-              placeholder={texts.fullTitlePlaceholder}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="full_text">Полный текст</Label>
-            <Textarea
-              id="full_text"
-              rows={8}
-              value={fullText}
-              onChange={(e) => setFullText(e.target.value)}
-              placeholder={texts.fullTextPlaceholder}
-            />
-          </div>
-
-          <div className="rounded-md border p-3 space-y-3">
-            <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
-            <div className="text-xs text-muted-foreground">
-              {texts.buttonHint} Если пусто — кнопки не будет.
-            </div>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="button_text">Текст на кнопке</Label>
-                <Input
-                  id="button_text"
-                  value={buttonText}
-                  onChange={(e) => setButtonText(e.target.value)}
-                  placeholder={texts.buttonPlaceholder}
+              <FormField
+                label="Картинка (превью)"
+                tip="В списке на главном экране приложения. Если нет баннера — и вверху открытой страницы."
+                htmlFor={null}
+                optional
+              >
+                <ImageUploadField
+                  bucket={bucket}
+                  folder={`${studioId}/image`}
+                  value={imageUrl}
+                  onChange={setImageUrl}
+                  disabled={!studioId}
                 />
+              </FormField>
+
+              <FormField
+                label="Баннер"
+                tip="Широкая картинка вверху открытой страницы. Не задан — там будет превью."
+                htmlFor={null}
+                optional
+              >
+                <ImageUploadField
+                  bucket={bucket}
+                  folder={`${studioId}/banner`}
+                  value={bannerUrl}
+                  onChange={setBannerUrl}
+                  preview={
+                    <StorageImage
+                      bucket={bucket}
+                      value={bannerUrl}
+                      alt="Баннер"
+                      className="h-16 w-40"
+                    />
+                  }
+                  disabled={!studioId}
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Заголовок">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Краткий заголовок для списка"
+              />
+            </FormField>
+
+            <FormField label="Описание" optional>
+              <Textarea
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Короткое описание для превью"
+              />
+            </FormField>
+
+            <FormField
+              label="Полный заголовок"
+              tip="Вверху открытой страницы. Пусто — возьмётся обычный заголовок."
+              optional
+            >
+              <Input
+                value={fullTitle}
+                onChange={(e) => setFullTitle(e.target.value)}
+                placeholder={texts.fullTitlePlaceholder}
+              />
+            </FormField>
+
+            <FormField label="Полный текст" optional>
+              <Textarea
+                rows={8}
+                value={fullText}
+                onChange={(e) => setFullText(e.target.value)}
+                placeholder={texts.fullTextPlaceholder}
+              />
+            </FormField>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="space-y-1">
+                <div className="text-xs font-medium uppercase text-muted-foreground">
+                  Кнопка перехода
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {texts.buttonHint} Если пусто — кнопки не будет.
+                </p>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="button_url">Ссылка</Label>
-                <Input
-                  id="button_url"
-                  value={buttonUrl}
-                  onChange={(e) => setButtonUrl(e.target.value)}
-                  placeholder="https://…"
-                />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label="Текст на кнопке">
+                  <Input
+                    value={buttonText}
+                    onChange={(e) => setButtonText(e.target.value)}
+                    placeholder={texts.buttonPlaceholder}
+                  />
+                </FormField>
+                <FormField label="Ссылка">
+                  <Input
+                    value={buttonUrl}
+                    onChange={(e) => setButtonUrl(e.target.value)}
+                    placeholder="https://…"
+                  />
+                </FormField>
               </div>
             </div>
           </div>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-          Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }
