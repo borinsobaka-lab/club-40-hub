@@ -17,7 +17,7 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
 До 2026-10-10 это были два репозитория: `club-40-hub` (админка) и
 `club40-client-hub` (клиент). История обоих перенесена сюда целиком
 (`git log -- apps/client/src/...` показывает и старые коммиты клиента).
-`club40-client-hub` — архив: в нём не работать, всё — здесь.
+`club40-client-hub` удалён 2026-10-10 — всё здесь.
 
 Приложения пока **независимы**: у каждого свой `package.json`, `bun.lock`,
 `tsconfig`, eslint/prettier и `.env`; общих пакетов (bun workspaces) нет.
