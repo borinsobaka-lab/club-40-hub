@@ -150,7 +150,7 @@
   /* Рейка разделов слева от меню (AppRail): на тон темнее --sidebar, чтобы
      читалась отдельной колонкой. Ширина входит в --sidebar-width (ui/sidebar). */
   --rail: #12161b;
-  --rail-width: 4.5rem;
+  --rail-width: 3.5rem;
 
   /* Фирменный цвет: иконка активного пункта меню и её свечение, отметка
      «сегодня» в расписании. Кнопки и ссылки — на --primary. */
@@ -203,7 +203,7 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
   --rail: #12161b;
-  --rail-width: 4.5rem;
+  --rail-width: 3.5rem;
   --brand: #f763fc;
   /* Тёмной темы в приложении нет, но токен объявляем и здесь: иначе случайно
      навешенный класс .dark оставил бы светлую подложку под тёмным контентом. */
@@ -454,11 +454,11 @@ input[type="number"]::-webkit-outer-spin-button {
   &::before {
     content: "";
     position: absolute;
-    inset: -7px;
+    inset: -6px;
     z-index: -1;
     border-radius: 9999px;
     background: conic-gradient(#ec4899, #f97316, #a855f7, #6366f1, #06b6d4, #ec4899);
-    filter: blur(8px);
+    filter: blur(7px);
     animation: rail-glow-spin 8s linear infinite;
   }
 }
