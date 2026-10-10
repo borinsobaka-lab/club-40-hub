@@ -49,6 +49,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { celebrateSale } from "@/lib/confetti";
 import { DataPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
@@ -577,6 +578,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
         }
       }
       toast.success("Продажа создана");
+      celebrateSale();
       onOpenChange(false);
       onSaved();
     } finally {

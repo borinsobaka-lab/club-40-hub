@@ -269,6 +269,8 @@ own"` оставить). Альтернатива — выдача абонем�
   `ClientNameLink` + `hooks/use-crm-links.ts` — имя клиента со ссылкой amoCRM
   (ссылки для таблицы — одним запросом на страницу).
 - `src/lib/roles.ts` — `STAFF_ROLES`, `hasStaffRole`.
+- `src/lib/confetti.ts` — `celebrateSale()`: конфетти после успешного внесения
+  продажи (абонемент и прочая продажа); canvas-confetti грузится отдельным чанком.
 
 ### Сервер
 

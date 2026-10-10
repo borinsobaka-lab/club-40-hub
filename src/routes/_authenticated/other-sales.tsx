@@ -43,6 +43,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { celebrateSale } from "@/lib/confetti";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useCrmLinks } from "@/hooks/use-crm-links";
@@ -432,6 +433,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
         return;
       }
       toast.success("Продажа добавлена");
+      celebrateSale();
       onOpenChange(false);
       onSaved();
     } finally {
