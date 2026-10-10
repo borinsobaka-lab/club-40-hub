@@ -11,13 +11,11 @@ import {
   CalendarMinimalistic,
   ChartSquare,
   ChatRoundDots,
-  City,
   ClipboardRemove,
   DocumentText,
   Dumbbell,
   History,
   Settings,
-  ShieldUser,
   StarsMinimalistic,
   TagPrice,
   TicketSale,
@@ -60,7 +58,7 @@ type NavItem = {
    */
   formats?: StudioFormat[];
 };
-type NavGroup = { key: string; label: string; items: NavItem[]; atBottom?: boolean };
+type NavGroup = { key: string; label: string; items: NavItem[] };
 
 const GROUPS: NavGroup[] = [
   {
@@ -115,15 +113,6 @@ const GROUPS: NavGroup[] = [
       { title: "Обратная связь", url: "/feedback", icon: ChatRoundDots },
       { title: "NPS-опросы", url: "/nps", icon: ChartSquare },
     ],
-  },
-  {
-    key: "access",
-    label: "Доступы",
-    items: [
-      { title: "Доступы", url: "/employees", icon: ShieldUser },
-      { title: "Студии", url: "/studios", icon: City },
-    ],
-    atBottom: true,
   },
 ];
 
@@ -198,7 +187,8 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0">
       {/*
-        Слева — рейка разделов (AppRail), справа — меню активного раздела.
+        Слева — рейка разделов (AppRail; там же «Доступы» и «Студии»),
+        справа — меню клуба.
         Ширина панели (--sidebar-width) уже включает рейку; в шторке на
         телефоне рейка тоже есть, переход по ней закрывает шторку.
       */}
@@ -223,7 +213,7 @@ export function AppSidebar() {
                 open={!closedGroups[group.key]}
                 onOpenChange={(open) => setGroupOpen(group.key, open)}
               >
-                <SidebarGroup className={group.atBottom ? "mt-auto" : undefined}>
+                <SidebarGroup>
                   <SidebarGroupLabel asChild>
                     <CollapsibleTrigger className="group/label w-full cursor-pointer gap-2 text-[13px] text-white/50 hover:text-white/70">
                       <span className="shrink-0">{group.label}</span>
