@@ -459,9 +459,7 @@ function TrainerForm({ onOpenChange, studioId, trainer, defaultRole, onSaved }: 
               folder={`${studioId}`}
               value={photoUrl}
               onChange={setPhotoUrl}
-              preview={
-                <TrainerPhoto value={photoUrl} name={fullName || "?"} className="size-16" />
-              }
+              preview={<TrainerPhoto value={photoUrl} name={fullName || "?"} className="size-16" />}
               disabled={!studioId}
             />
           </div>

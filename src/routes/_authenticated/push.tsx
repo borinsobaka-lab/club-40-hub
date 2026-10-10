@@ -426,11 +426,7 @@ function PushForm({
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Send />
-          )}
+          {saving ? <Loader2 className="animate-spin" /> : <Send />}
           {sendMode === "now" ? "Отправить" : "Запланировать"}
         </Button>
       </DialogFooter>

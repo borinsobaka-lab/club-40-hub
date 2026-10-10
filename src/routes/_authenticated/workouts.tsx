@@ -332,12 +332,7 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
               value={photoUrl}
               onChange={setPhotoUrl}
               preview={
-                <StorageImage
-                  bucket="workouts"
-                  value={photoUrl}
-                  alt="Иконка"
-                  className="size-16"
-                />
+                <StorageImage bucket="workouts" value={photoUrl} alt="Иконка" className="size-16" />
               }
               disabled={!studioId}
             />

@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { useFieldId } from "@/components/ui/form-field";
+import { useFieldId } from "@/components/ui/field-context";
 import { cn } from "@/lib/utils";
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<"textarea">>(

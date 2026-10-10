@@ -99,11 +99,7 @@ function ClubSettingsPage() {
       title="Настройки клуба"
       actions={
         <Button onClick={handleSave} disabled={saving || loading}>
-          {saving ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Save />
-          )}
+          {saving ? <Loader2 className="animate-spin" /> : <Save />}
           Сохранить
         </Button>
       }

@@ -418,11 +418,7 @@ function CashOperationForm({
       </div>
       <div className="mt-3 flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Plus />
-          )}
+          {saving ? <Loader2 className="animate-spin" /> : <Plus />}
           Сохранить
         </Button>
       </div>

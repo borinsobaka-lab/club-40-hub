@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { FieldIdContext } from "@/components/ui/field-context";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -15,14 +16,6 @@ import { cn } from "@/lib/utils";
  * форме. Если в поле несколько контролов (диапазон дат и т. п.), передай
  * `htmlFor={null}` — тогда id не раздаётся и дубликатов не будет.
  */
-
-const FieldIdContext = React.createContext<string | undefined>(undefined);
-
-/** id контрола: явный пропс важнее того, что раздаёт FormField. */
-export function useFieldId(id?: string) {
-  const fromField = React.useContext(FieldIdContext);
-  return id ?? fromField;
-}
 
 export function FormField({
   label,
