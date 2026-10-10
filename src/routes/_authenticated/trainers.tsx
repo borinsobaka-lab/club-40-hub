@@ -13,7 +13,7 @@ import { useStorageUrl } from "@/lib/storage";
 import { GENDER_OPTIONS, genderLabel, initials, isHttpUrl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -37,6 +37,7 @@ import {
   DialogContent,
   DialogBody,
   DialogDescription,
+  DialogForm,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -437,108 +438,106 @@ function TrainerForm({ onOpenChange, studioId, trainer, defaultRole, onSaved }: 
         <DialogTitle>{trainer ? text.editTitle : text.createTitle}</DialogTitle>
         <DialogDescription>{text.description}</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="role">Роль</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
-              <SelectTrigger id="role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="trainer">Тренер</SelectItem>
-                <SelectItem value="admin">Админ студии</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Роль">
+              <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trainer">Тренер</SelectItem>
+                  <SelectItem value="admin">Админ студии</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
 
-          <div className="space-y-2">
-            <Label>Фото</Label>
-            <ImageUploadField
-              bucket="trainers"
-              folder={`${studioId}`}
-              value={photoUrl}
-              onChange={setPhotoUrl}
-              preview={<TrainerPhoto value={photoUrl} name={fullName || "?"} className="size-16" />}
-              disabled={!studioId}
-            />
-          </div>
+            <FormField label="Фото" htmlFor={null} optional>
+              <ImageUploadField
+                bucket="trainers"
+                folder={`${studioId}`}
+                value={photoUrl}
+                onChange={setPhotoUrl}
+                preview={
+                  <TrainerPhoto value={photoUrl} name={fullName || "?"} className="size-16" />
+                }
+                disabled={!studioId}
+              />
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="full_name">ФИО</Label>
-            <Input
-              id="full_name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Иванов Иван Иванович"
-            />
-          </div>
+            <FormField label="ФИО">
+              <Input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Иванов Иван Иванович"
+              />
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="bio">{text.bioLabel}</Label>
-            <Textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={3}
-              placeholder={text.bioPlaceholder}
-            />
-          </div>
+            <FormField label={text.bioLabel} optional>
+              <Textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder={text.bioPlaceholder}
+              />
+            </FormField>
 
-          {!isAdmin && (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="gender">Пол</Label>
-                <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger id="gender">
-                    <SelectValue placeholder="Не указан" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GENDER_OPTIONS.map((g) => (
-                      <SelectItem key={g.value} value={g.value}>
-                        {g.label}
-                      </SelectItem>
+            {!isAdmin && (
+              <>
+                <FormField label="Пол" optional>
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Не указан" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDER_OPTIONS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>
+                          {g.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+
+                <FormField label="Специализация" optional>
+                  <Input
+                    value={specialization}
+                    onChange={(e) => setSpecialization(e.target.value)}
+                    placeholder="Силовой тренинг, кроссфит"
+                  />
+                </FormField>
+
+                {/* Соцсети необязательны все разом — пометка одна на группу. */}
+                <FormField label="Соцсети" htmlFor={null} optional>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {SOCIALS.map((s) => (
+                      <FormField key={s.key} label={s.label}>
+                        <Input
+                          value={socials[s.key]}
+                          onChange={(e) =>
+                            setSocials((prev) => ({ ...prev, [s.key]: e.target.value }))
+                          }
+                          placeholder={s.placeholder}
+                        />
+                      </FormField>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="specialization">Специализация</Label>
-                <Input
-                  id="specialization"
-                  value={specialization}
-                  onChange={(e) => setSpecialization(e.target.value)}
-                  placeholder="Силовой тренинг, кроссфит"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {SOCIALS.map((s) => (
-                  <div key={s.key} className="space-y-1.5">
-                    <Label htmlFor={s.key}>{s.label}</Label>
-                    <Input
-                      id={s.key}
-                      value={socials[s.key]}
-                      onChange={(e) => setSocials((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                      placeholder={s.placeholder}
-                    />
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="animate-spin" />}
-          Сохранить
-        </Button>
-      </DialogFooter>
+                </FormField>
+              </>
+            )}
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }

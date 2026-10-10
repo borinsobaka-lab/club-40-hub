@@ -11,7 +11,7 @@ import type { StaffRole } from "@/lib/roles";
 import { AdminShell } from "@/components/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import {
   Table,
   TableBody,
@@ -25,6 +25,7 @@ import {
   DialogContent,
   DialogBody,
   DialogDescription,
+  DialogForm,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -44,7 +45,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/employees")({
-  head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Доступы — Base40 Admin" }] }),
   component: EmployeesPage,
 });
 
@@ -87,7 +88,7 @@ function EmployeesPage() {
 
   return (
     <AdminShell
-      title="Сотрудники"
+      title="Доступы"
       actions={
         isOwner ? (
           <Dialog open={open} onOpenChange={setOpen}>
@@ -97,7 +98,7 @@ function EmployeesPage() {
                 Добавить сотрудника
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
               <NewEmployeeForm onDone={() => setOpen(false)} />
             </DialogContent>
@@ -125,7 +126,10 @@ function EmployeesPage() {
                   <TableSkeletonRows columns={3} rows={5} />
                 ) : employees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={3}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
                       Сотрудники не добавлены
                     </TableCell>
                   </TableRow>
@@ -197,6 +201,19 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Те же правила, что у серверной схемы: имя не пустое, почта похожа на почту.
+  const handleSave = () => {
+    if (!form.full_name.trim()) {
+      toast.error("Укажите полное имя");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      toast.error("Укажите корректный email");
+      return;
+    }
+    createMut.mutate(form);
+  };
+
   return (
     <>
       <DialogHeader>
@@ -206,55 +223,49 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
           запись (например, он клиент приложения), ему просто выдаётся роль.
         </DialogDescription>
       </DialogHeader>
-      <form
-        className="flex min-h-0 flex-1 flex-col"
-        onSubmit={(e) => {
-          e.preventDefault();
-          createMut.mutate(form);
-        }}
-      >
-        <DialogBody className="space-y-3">
-          <div className="space-y-1">
-            <Label>Полное имя</Label>
-            <Input
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Email</Label>
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Роль</Label>
-            <Select
-              value={form.role}
-              onValueChange={(v) => setForm({ ...form, role: v as StaffRole })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">Владелец</SelectItem>
-                <SelectItem value="admin">Администратор</SelectItem>
-                <SelectItem value="trainer">Тренер</SelectItem>
-              </SelectContent>
-            </Select>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Полное имя">
+              <Input
+                value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Email">
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Роль">
+              <Select
+                value={form.role}
+                onValueChange={(v) => setForm({ ...form, role: v as StaffRole })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="owner">Владелец</SelectItem>
+                  <SelectItem value="admin">Администратор</SelectItem>
+                  <SelectItem value="trainer">Тренер</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
           </div>
         </DialogBody>
         <DialogFooter>
+          <Button variant="outline" onClick={onDone} disabled={createMut.isPending}>
+            Отмена
+          </Button>
           <Button type="submit" disabled={createMut.isPending}>
             {createMut.isPending && <Loader2 className="animate-spin" />}
             Добавить
           </Button>
         </DialogFooter>
-      </form>
+      </DialogForm>
     </>
   );
 }

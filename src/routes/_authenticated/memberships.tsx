@@ -12,9 +12,8 @@ import { unwrap } from "@/lib/query";
 import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CheckboxOption, FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,6 +29,7 @@ import {
   DialogContent,
   DialogBody,
   DialogDescription,
+  DialogForm,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -319,7 +319,7 @@ type DialogProps = {
 function MembershipDialog(props: DialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl">
         {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
         <MembershipForm key={props.item?.id ?? "new"} {...props} />
       </DialogContent>
@@ -412,164 +412,140 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
         <DialogTitle>{item ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
         <DialogDescription>Заполните параметры номенклатуры.</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="m-name">Название</Label>
-            <Input
-              id="m-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Безлимит на месяц"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Обложка (для мобильного приложения)</Label>
-            <ImageUploadField
-              bucket="memberships"
-              folder={`${studioId}/cover`}
-              value={coverUrl}
-              onChange={setCoverUrl}
-              preview={<CoverImage value={coverUrl} alt="Обложка" className="h-16 w-24" />}
-              accept="image/svg+xml,image/png,image/jpeg,image/webp"
-              disabled={!studioId}
-            />
-            <p className="text-xs text-muted-foreground">
-              Рекомендуемые размеры: соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="m-desc">Описание</Label>
-            <Textarea
-              id="m-desc"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Преимущества</Label>
-            <BenefitsEditor value={benefits} onChange={setBenefits} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Количество посещений</Label>
-            <div className="flex items-center gap-2">
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Название">
               <Input
-                type="number"
-                min={0}
-                value={visitsCount}
-                onChange={(e) => setVisitsCount(e.target.value)}
-                disabled={unlimited}
-                placeholder="Например, 8"
-                className="flex-1"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Безлимит на месяц"
               />
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={unlimited} onCheckedChange={(v) => setUnlimited(!!v)} />
-                Безлимит
-              </label>
-            </div>
-          </div>
+            </FormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="m-dur">Срок действия (дней)</Label>
-              <Input
-                id="m-dur"
-                type="number"
-                min={0}
-                value={durationDays}
-                onChange={(e) => setDurationDays(e.target.value)}
-                placeholder="30"
+            <FormField
+              label="Обложка"
+              htmlFor={null}
+              optional
+              hint="Для мобильного приложения. Соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px."
+            >
+              <ImageUploadField
+                bucket="memberships"
+                folder={`${studioId}/cover`}
+                value={coverUrl}
+                onChange={setCoverUrl}
+                preview={<CoverImage value={coverUrl} alt="Обложка" className="h-16 w-24" />}
+                accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                disabled={!studioId}
               />
+            </FormField>
+
+            <FormField label="Описание" optional>
+              <Textarea
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </FormField>
+
+            <FormField label="Преимущества" optional>
+              <BenefitsEditor value={benefits} onChange={setBenefits} />
+            </FormField>
+
+            <FormField label="Количество посещений">
+              <div className="flex items-center gap-4">
+                <Input
+                  type="number"
+                  min={0}
+                  value={visitsCount}
+                  onChange={(e) => setVisitsCount(e.target.value)}
+                  disabled={unlimited}
+                  placeholder="Например, 8"
+                  className="flex-1"
+                />
+                <CheckboxOption checked={unlimited} onCheckedChange={setUnlimited}>
+                  Безлимит
+                </CheckboxOption>
+              </div>
+            </FormField>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Срок действия, дней" optional>
+                <Input
+                  type="number"
+                  min={0}
+                  value={durationDays}
+                  onChange={(e) => setDurationDays(e.target.value)}
+                  placeholder="30"
+                />
+              </FormField>
+              <FormField label="Цена, ₾">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0"
+                />
+              </FormField>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="m-price">Цена, ₾</Label>
+
+            <FormField
+              label="Дней заморозки"
+              optional
+              hint="Сколько дней клиент может заморозить этот абонемент суммарно. 0 — заморозка недоступна."
+            >
               <Input
-                id="m-price"
                 type="number"
                 min={0}
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                value={freezeDays}
+                onChange={(e) => setFreezeDays(e.target.value)}
                 placeholder="0"
               />
-            </div>
-          </div>
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="m-freeze">Дней заморозки (0 — заморозка недоступна)</Label>
-            <Input
-              id="m-freeze"
-              type="number"
-              min={0}
-              value={freezeDays}
-              onChange={(e) => setFreezeDays(e.target.value)}
-              placeholder="0"
-            />
-            <p className="text-xs text-muted-foreground">
-              Сколько дней клиент может заморозить этот абонемент суммарно.
-            </p>
-          </div>
+            <SwitchRow title="Автопродление" checked={autoRenew} onCheckedChange={setAutoRenew} />
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} />
-            Автопродление
-          </label>
-
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
+            <SwitchRow
+              title="Рассрочка доступна"
               checked={installmentEnabled}
-              onCheckedChange={(v) => setInstallmentEnabled(!!v)}
+              onCheckedChange={setInstallmentEnabled}
             />
-            Рассрочка доступна
-          </label>
 
-          <label className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            <Checkbox
+            <SwitchRow
+              title="Абонемент для двоих"
+              hint="Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении."
               checked={forCouple}
-              onCheckedChange={(v) => setForCouple(!!v)}
-              className="mt-0.5"
+              onCheckedChange={setForCouple}
             />
-            <div className="space-y-0.5">
-              <div className="font-medium">Абонемент для двоих</div>
-              <div className="text-xs text-muted-foreground">
-                Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении.
-              </div>
-            </div>
-          </label>
 
-          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
-            <div className="space-y-0.5">
-              <div className="text-sm font-medium">Показывать в мобильном приложении</div>
-              <div className="text-xs text-muted-foreground">
-                Выключите, чтобы новые клиенты не могли его купить. Уже купившие сохранят условия.
-              </div>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
+            <SwitchRow
+              title="Показывать в мобильном приложении"
+              hint="Выключите, чтобы новые клиенты не могли его купить. Уже купившие сохранят условия."
+              checked={isActive}
+              onCheckedChange={setIsActive}
+            />
+
+            {item && (
+              <InfoNote variant="warning">
+                Изменения цены и условий применятся ко всем будущим продажам этого абонемента. Если
+                у вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию, а
+                старую запись скройте переключателем выше.
+              </InfoNote>
+            )}
           </div>
-
-          {item && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Изменения цены и условий применятся ко всем будущим продажам этого абонемента. Если у
-              вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию, а старую
-              запись скройте переключателем выше.
-            </div>
-          )}
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="animate-spin" />}
-          Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }
@@ -605,8 +581,8 @@ function BenefitsEditor({
             }
           }}
         />
-        <Button type="button" variant="outline" onClick={add}>
-          <Plus className="h-4 w-4" />
+        <Button variant="outline" size="icon" onClick={add} aria-label="Добавить преимущество">
+          <Plus />
         </Button>
       </div>
       {value.length > 0 && (
@@ -618,13 +594,12 @@ function BenefitsEditor({
             >
               <span className="truncate">{b}</span>
               <Button
-                type="button"
                 variant="ghost"
-                size="icon"
-                className="h-6 w-6"
+                size="icon-sm"
+                aria-label="Удалить"
                 onClick={() => onChange(value.filter((_, idx) => idx !== i))}
               >
-                <X className="h-3.5 w-3.5" />
+                <X />
               </Button>
             </li>
           ))}

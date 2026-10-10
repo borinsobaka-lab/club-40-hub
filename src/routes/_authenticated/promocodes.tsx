@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -33,6 +33,7 @@ import {
   DialogContent,
   DialogBody,
   DialogDescription,
+  DialogForm,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -299,29 +300,32 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
     }
 
     setSaving(true);
-    const payload = {
-      studio_id: studioId,
-      name: name.trim(),
-      code: cleanCode,
-      expires_at: expiresAt || null,
-      discount_type: discountType,
-      discount_value: dv,
-      usage_limit: limit,
-      description: description.trim() || null,
-      is_active: isActive,
-      updated_at: new Date().toISOString(),
-    };
-    const { error } = item
-      ? await supabase.from("promo_codes").update(payload).eq("id", item.id)
-      : await supabase.from("promo_codes").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Ошибка сохранения: " + error.message);
-      return;
+    try {
+      const payload = {
+        studio_id: studioId,
+        name: name.trim(),
+        code: cleanCode,
+        expires_at: expiresAt || null,
+        discount_type: discountType,
+        discount_value: dv,
+        usage_limit: limit,
+        description: description.trim() || null,
+        is_active: isActive,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = item
+        ? await supabase.from("promo_codes").update(payload).eq("id", item.id)
+        : await supabase.from("promo_codes").insert(payload);
+      if (error) {
+        toast.error("Ошибка сохранения: " + error.message);
+        return;
+      }
+      toast.success(item ? "Промокод обновлён" : "Промокод добавлен");
+      onOpenChange(false);
+      onSaved();
+    } finally {
+      setSaving(false);
     }
-    toast.success(item ? "Промокод обновлён" : "Промокод добавлен");
-    onOpenChange(false);
-    onSaved();
   };
 
   return (
@@ -330,107 +334,103 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
         <DialogTitle>{item ? "Редактировать промокод" : "Новый промокод"}</DialogTitle>
         <DialogDescription>Промокод можно применить при покупке для скидки.</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Название</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Летняя акция"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Промокод (латиница и цифры)</Label>
-            <Input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-              placeholder="SUMMER25"
-              className="font-mono uppercase"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Тип скидки</Label>
-              <Select
-                value={discountType}
-                onValueChange={(v) => setDiscountType(v as DiscountType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="amount">В лари (₾)</SelectItem>
-                  <SelectItem value="percent">В процентах (%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Размер скидки</Label>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Название">
               <Input
-                inputMode="decimal"
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder={discountType === "percent" ? "10" : "500"}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Летняя акция"
               />
-            </div>
-          </div>
+            </FormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Срок действия</Label>
-              <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Количество применений</Label>
+            <FormField label="Промокод" hint="Только латинские буквы и цифры.">
               <Input
-                inputMode="numeric"
-                value={usageLimit}
-                onChange={(e) => setUsageLimit(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="Без ограничений"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                placeholder="SUMMER25"
+                className="font-mono uppercase"
               />
-            </div>
-          </div>
+            </FormField>
 
-          <div className="space-y-2">
-            <Label>Описание (внутреннее)</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Для чего создан промокод"
-              rows={3}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Тип скидки">
+                <Select
+                  value={discountType}
+                  onValueChange={(v) => setDiscountType(v as DiscountType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="amount">В лари (₾)</SelectItem>
+                    <SelectItem value="percent">В процентах (%)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Размер скидки">
+                <Input
+                  inputMode="decimal"
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value)}
+                  placeholder={discountType === "percent" ? "10" : "500"}
+                />
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Срок действия" optional>
+                <Input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                />
+              </FormField>
+              <FormField label="Количество применений" optional>
+                <Input
+                  inputMode="numeric"
+                  value={usageLimit}
+                  onChange={(e) => setUsageLimit(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Без ограничений"
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Описание" hint="Внутреннее, для сотрудников." optional>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Для чего создан промокод"
+                rows={3}
+              />
+            </FormField>
+
+            <SwitchRow
+              title="Активен"
+              hint="Неактивные промокоды нельзя применить."
+              checked={isActive}
+              onCheckedChange={setIsActive}
             />
-          </div>
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Активен</div>
-              <div className="text-xs text-muted-foreground">
-                Неактивные промокоды нельзя применить.
-              </div>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
+            {item && (
+              <InfoNote>
+                Применений: <span className="font-medium text-foreground">{item.usage_count}</span>
+                {item.usage_limit != null ? ` из ${item.usage_limit}` : " (без ограничений)"}
+              </InfoNote>
+            )}
           </div>
-
-          {item && (
-            <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-              Применений: <span className="font-medium text-foreground">{item.usage_count}</span>
-              {item.usage_limit != null ? ` из ${item.usage_limit}` : " (без ограничений)"}
-            </div>
-          )}
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="animate-spin" /> : null}
-          Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }

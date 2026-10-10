@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -26,6 +26,7 @@ import {
   DialogContent,
   DialogBody,
   DialogDescription,
+  DialogForm,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -322,109 +323,109 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
         <DialogTitle>{workout ? "Редактировать тренировку" : "Новая тренировка"}</DialogTitle>
         <DialogDescription>Заполните данные тренировки студии.</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Иконка</Label>
-            <ImageUploadField
-              bucket="workouts"
-              folder={`${studioId}`}
-              value={photoUrl}
-              onChange={setPhotoUrl}
-              preview={
-                <StorageImage bucket="workouts" value={photoUrl} alt="Иконка" className="size-16" />
-              }
-              disabled={!studioId}
-            />
-          </div>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Иконка" htmlFor={null} optional>
+              <ImageUploadField
+                bucket="workouts"
+                folder={`${studioId}`}
+                value={photoUrl}
+                onChange={setPhotoUrl}
+                preview={
+                  <StorageImage
+                    bucket="workouts"
+                    value={photoUrl}
+                    alt="Иконка"
+                    className="size-16"
+                  />
+                }
+                disabled={!studioId}
+              />
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Название</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Силовая базовая"
-            />
-          </div>
+            <FormField label="Название">
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Силовая базовая"
+              />
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Краткое описание тренировки"
-            />
-          </div>
+            <FormField label="Описание" optional>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Краткое описание тренировки"
+              />
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="type">Тип тренировки</Label>
-            <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
-              <SelectTrigger id="type">
-                <SelectValue placeholder="Выберите тип" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_TYPE}>
-                  <span className="text-muted-foreground">Не указан</span>
-                </SelectItem>
-                {DAY_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className={`inline-block h-2.5 w-2.5 rounded-full ${DAY_TYPE_COLORS[t.value].dot}`}
-                      />
-                      {t.label}
-                    </span>
+            <FormField label="Тип тренировки" optional>
+              <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_TYPE}>
+                    <span className="text-muted-foreground">Не указан</span>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  {DAY_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className={`inline-block h-2.5 w-2.5 rounded-full ${DAY_TYPE_COLORS[t.value].dot}`}
+                        />
+                        {t.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="capacity">Вместимость (чел.)</Label>
-            <Input
-              id="capacity"
-              type="number"
-              min={0}
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              placeholder="Например: 12"
-            />
-            <p className="text-xs text-muted-foreground">
-              Используется по умолчанию для всех занятий этой тренировки в расписании.
-            </p>
-          </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                label="Вместимость, чел."
+                optional
+                hint="По умолчанию для всех занятий этой тренировки в расписании."
+              >
+                <Input
+                  type="number"
+                  min={0}
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                  placeholder="Например: 12"
+                />
+              </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="met">MET — интенсивность</Label>
-            <Input
-              id="met"
-              type="number"
-              step="0.1"
-              min={0}
-              value={metValue}
-              onChange={(e) => setMetValue(e.target.value)}
-              placeholder="Кардио 8.5 · Силовая 7.0 · Гибрид 8.0 · Восстановление 2.8"
-            />
-            <p className="text-xs text-muted-foreground">
-              Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто —
-              берётся значение по умолчанию для типа тренировки.
-            </p>
+              <FormField
+                label="MET — интенсивность"
+                optional
+                hint="Для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто — значение по умолчанию для типа: кардио 8.5, силовая 7.0, гибрид 8.0, восстановление 2.8."
+              >
+                <Input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  value={metValue}
+                  onChange={(e) => setMetValue(e.target.value)}
+                  placeholder="Например: 8.0"
+                />
+              </FormField>
+            </div>
           </div>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="animate-spin" />}
-          Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }
