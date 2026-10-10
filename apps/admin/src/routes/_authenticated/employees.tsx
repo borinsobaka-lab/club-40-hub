@@ -4,15 +4,29 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { toast } from "sonner";
-import { Trash2, UserPlus, Loader2 } from "lucide-react";
+import { Pencil, Trash2, UserPlus, Loader2 } from "lucide-react";
 
-import { getEmployeesContext, createEmployee, deleteEmployee } from "@/lib/employees.functions";
+import {
+  getEmployeesContext,
+  createEmployee,
+  updateEmployeeAccess,
+  deleteEmployee,
+  type EmployeeRow,
+} from "@/lib/employees.functions";
 import type { StaffRole } from "@/lib/roles";
+import {
+  CLUB_SECTION_KEYS,
+  RAIL_ACCESS_KEYS,
+  RAIL_ACCESS_LABEL,
+  type ClubSectionKey,
+  type RailAccessKey,
+} from "@/lib/admin-access";
+import { CLUB_GROUPS } from "@/lib/nav-sections";
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/ui/form-field";
+import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
 import {
   Table,
   TableBody,
@@ -30,7 +44,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -57,18 +70,25 @@ const ROLE_LABEL: Record<StaffRole, string> = {
   trainer: "Тренер",
 };
 
+type StudioOption = { id: string; name: string };
+
+/**
+ * «Доступы» — учётные записи админки и их права: студии, разделы рейки
+ * («Клуб», «Сотрудники», «Мобильное приложение») и разделы клуба в каждой
+ * студии (lib/admin-access.ts). Раздел только для владельцев (guard в
+ * _authenticated/route.tsx); владелец видит и настраивает сотрудников своих
+ * студий.
+ */
 function EmployeesPage() {
   const { confirm, confirmDialog } = useConfirm();
   const getCtx = useServerFn(getEmployeesContext);
   const deleteFn = useServerFn(deleteEmployee);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<EmployeeRow | null>(null);
 
-  // Студия уходит на сервер заголовком (auth-attacher), в ключе — чтобы
-  // при переключении студии список перезапросился.
-  const studioId = useActiveStudioId();
   const { data, isLoading, error } = useQuery({
-    queryKey: ["employees", studioId],
+    queryKey: ["employees"],
     queryFn: () => getCtx(),
   });
 
@@ -85,27 +105,25 @@ function EmployeesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const isOwner = data?.isOwner ?? false;
   const employees = data?.employees ?? [];
+  const studios = data?.studios ?? [];
+  const studioName = new Map(studios.map((s) => [s.id, s.name]));
   const pg = usePagination(employees);
+
+  const openForm = (employee: EmployeeRow | null) => {
+    setEditing(employee);
+    setOpen(true);
+  };
 
   return (
     <AdminShell
       title="Доступы"
       actions={
-        isOwner ? (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus />
-                Добавить сотрудника
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
-              <NewEmployeeForm onDone={() => setOpen(false)} />
-            </DialogContent>
-          </Dialog>
+        data ? (
+          <Button onClick={() => openForm(null)}>
+            <UserPlus />
+            Добавить сотрудника
+          </Button>
         ) : null
       }
     >
@@ -122,15 +140,17 @@ function EmployeesPage() {
                   <TableHead>Имя</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Роль</TableHead>
+                  <TableHead>Студии</TableHead>
+                  <TableHead>Разделы</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableSkeletonRows columns={3} rows={5} />
+                  <TableSkeletonRows columns={5} rows={5} />
                 ) : employees.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={3}
+                      colSpan={5}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Сотрудники не добавлены
@@ -141,8 +161,15 @@ function EmployeesPage() {
                     <RowContextMenu
                       key={e.user_id}
                       actions={
-                        isOwner && e.user_id !== data?.currentUserId
+                        // Свой доступ не меняем и не удаляем — так владелец не
+                        // запрёт сам себя.
+                        e.user_id !== data?.currentUserId
                           ? [
+                              {
+                                label: "Изменить доступ",
+                                icon: Pencil,
+                                onSelect: () => openForm(e),
+                              },
                               {
                                 label: "Удалить",
                                 icon: Trash2,
@@ -151,7 +178,7 @@ function EmployeesPage() {
                                 onSelect: async () => {
                                   const ok = await confirm({
                                     title: "Удалить сотрудника?",
-                                    description: `${e.full_name ?? e.email} потеряет доступ к админке.`,
+                                    description: `${e.full_name ?? e.email} потеряет доступ к админке в ваших студиях.`,
                                   });
                                   if (ok) deleteMut.mutate(e.user_id);
                                 },
@@ -166,6 +193,29 @@ function EmployeesPage() {
                         <TableCell>
                           <Badge variant="secondary">{ROLE_LABEL[e.role]}</Badge>
                         </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {e.studios.map((s) => (
+                              <Badge key={s.studio_id} variant="outline">
+                                {studioName.get(s.studio_id) ?? "—"}
+                                {s.role !== "owner" &&
+                                  s.sections !== null &&
+                                  s.sections.length < CLUB_SECTION_KEYS.length && (
+                                    <span className="text-muted-foreground">
+                                      {" "}
+                                      · {s.sections.length}/{CLUB_SECTION_KEYS.length}
+                                    </span>
+                                  )}
+                              </Badge>
+                            ))}
+                            {e.otherStudios > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                +{e.otherStudios}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">{railSummary(e)}</TableCell>
                       </TableRow>
                     </RowContextMenu>
                   ))
@@ -176,100 +226,186 @@ function EmployeesPage() {
           </div>
         )}
       </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-xl">
+          {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+          <AccessForm
+            key={editing?.user_id ?? "new"}
+            employee={editing}
+            studios={studios}
+            onDone={() => setOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
       {confirmDialog}
     </AdminShell>
   );
 }
 
-function NewEmployeeForm({ onDone }: { onDone: () => void }) {
+function railSummary(e: EmployeeRow) {
+  if (e.role === "owner" || e.rail === null) return "Все";
+  return e.rail.map((k) => RAIL_ACCESS_LABEL[k]).join(", ") || "—";
+}
+
+const ALL_CLUB_SECTIONS = [...CLUB_SECTION_KEYS];
+
+function AccessForm({
+  employee,
+  studios,
+  onDone,
+}: {
+  employee: EmployeeRow | null;
+  studios: StudioOption[];
+  onDone: () => void;
+}) {
   const createFn = useServerFn(createEmployee);
+  const updateFn = useServerFn(updateEmployeeAccess);
   const qc = useQueryClient();
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    role: "trainer" as StaffRole,
-  });
+  const activeStudioId = useActiveStudioId();
 
-  const createMut = useMutation({
-    mutationFn: (input: typeof form) => createFn({ data: input }),
-    onSuccess: (res) => {
-      toast.success(
-        res.existing
-          ? "Роль выдана. У человека уже была учётная запись — вход по коду на ту же почту"
-          : "Сотрудник добавлен. Вход — по коду, который придёт на указанную почту",
+  const [name, setName] = useState({ first_name: "", last_name: "", email: "" });
+  const [role, setRole] = useState<StaffRole>(employee?.role ?? "trainer");
+  // Новому сотруднику по умолчанию — «Клуб» целиком в активной студии.
+  const [rail, setRail] = useState<RailAccessKey[]>(
+    employee ? (employee.rail ?? [...RAIL_ACCESS_KEYS]) : ["club"],
+  );
+  const [studioSections, setStudioSections] = useState<Record<string, ClubSectionKey[]>>(() => {
+    if (employee) {
+      return Object.fromEntries(
+        employee.studios.map((s) => [s.studio_id, s.sections ?? ALL_CLUB_SECTIONS]),
       );
-      onDone();
-      qc.invalidateQueries({ queryKey: ["employees"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
+    }
+    const initial = studios.find((s) => s.id === activeStudioId) ?? studios[0];
+    return initial ? { [initial.id]: ALL_CLUB_SECTIONS } : {};
   });
+  const [saving, setSaving] = useState(false);
 
-  // Те же правила, что у серверной схемы: имя и фамилия не пустые, почта похожа на почту.
-  const handleSave = () => {
-    if (!form.last_name.trim()) {
-      toast.error("Укажите фамилию");
+  const isOwnerRole = role === "owner";
+  const showClubSections = !isOwnerRole && rail.includes("club");
+
+  const toggleRail = (key: RailAccessKey, checked: boolean) =>
+    setRail((prev) =>
+      checked
+        ? RAIL_ACCESS_KEYS.filter((k) => k === key || prev.includes(k))
+        : prev.filter((k) => k !== key),
+    );
+  const toggleStudio = (id: string, checked: boolean) =>
+    setStudioSections((prev) => {
+      const next = { ...prev };
+      if (checked) next[id] = ALL_CLUB_SECTIONS;
+      else delete next[id];
+      return next;
+    });
+  const setSections = (id: string, sections: ClubSectionKey[]) =>
+    setStudioSections((prev) => ({ ...prev, [id]: sections }));
+
+  const handleSave = async () => {
+    if (!employee) {
+      if (!name.last_name.trim()) {
+        toast.error("Укажите фамилию");
+        return;
+      }
+      if (!name.first_name.trim()) {
+        toast.error("Укажите имя");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name.email.trim())) {
+        toast.error("Укажите корректный email");
+        return;
+      }
+    }
+    // Те же правила, что у серверной схемы.
+    const selected = studios.filter((s) => studioSections[s.id]);
+    if (selected.length === 0) {
+      toast.error("Отметьте хотя бы одну студию");
       return;
     }
-    if (!form.first_name.trim()) {
-      toast.error("Укажите имя");
+    if (!isOwnerRole && rail.length === 0) {
+      toast.error("Отметьте хотя бы один раздел админки");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      toast.error("Укажите корректный email");
+    if (showClubSections && selected.some((s) => studioSections[s.id].length === 0)) {
+      toast.error("Отметьте хотя бы один раздел клуба в каждой студии");
       return;
     }
-    createMut.mutate(form);
+
+    const access = {
+      role,
+      rail,
+      studios: selected.map((s) => ({ studio_id: s.id, sections: studioSections[s.id] })),
+    };
+    setSaving(true);
+    try {
+      if (employee) {
+        await updateFn({ data: { user_id: employee.user_id, access } });
+        toast.success("Доступ сохранён");
+      } else {
+        const res = await createFn({ data: { ...name, access } });
+        toast.success(
+          res.existing
+            ? "Доступ выдан. У человека уже была учётная запись — вход по коду на ту же почту"
+            : "Сотрудник добавлен. Вход — по коду, который придёт на указанную почту",
+        );
+      }
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Новый сотрудник</DialogTitle>
+        <DialogTitle>{employee ? "Доступ сотрудника" : "Новый сотрудник"}</DialogTitle>
         <DialogDescription>
-          Вход в админку — по 6-значному коду, который приходит на эту почту; пароля нет. Если у
-          человека уже есть учётная запись (например, он клиент приложения), ему просто выдаётся
-          роль.
+          {employee
+            ? [employee.full_name, employee.email].filter(Boolean).join(" · ")
+            : "Вход в админку — по 6-значному коду, который приходит на эту почту; пароля нет. Если у человека уже есть учётная запись (например, он клиент приложения), ему просто выдаётся доступ."}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Фамилия">
-                <Input
-                  autoComplete="off"
-                  value={form.last_name}
-                  onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                />
-              </FormField>
-              <FormField label="Имя">
-                <Input
-                  autoComplete="off"
-                  value={form.first_name}
-                  onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                />
-              </FormField>
-            </div>
-            <FormField
-              label="Email"
-              tip="При каждом входе на эту почту приходит 6-значный код — пароля нет."
-            >
-              <Input
-                type="email"
-                autoComplete="off"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </FormField>
+            {!employee && (
+              <>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FormField label="Фамилия">
+                    <Input
+                      autoComplete="off"
+                      value={name.last_name}
+                      onChange={(e) => setName({ ...name, last_name: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Имя">
+                    <Input
+                      autoComplete="off"
+                      value={name.first_name}
+                      onChange={(e) => setName({ ...name, first_name: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+                <FormField
+                  label="Email"
+                  tip="При каждом входе на эту почту приходит 6-значный код — пароля нет."
+                >
+                  <Input
+                    type="email"
+                    autoComplete="off"
+                    value={name.email}
+                    onChange={(e) => setName({ ...name, email: e.target.value })}
+                  />
+                </FormField>
+              </>
+            )}
+
             <FormField
               label="Роль"
-              tip="Владелец дополнительно управляет «Доступами»: добавляет и удаляет сотрудников."
+              tip="Владельцу открыто всё, и только он управляет «Доступами». Администратору и тренеру — разделы, отмеченные ниже."
             >
-              <Select
-                value={form.role}
-                onValueChange={(v) => setForm({ ...form, role: v as StaffRole })}
-              >
+              <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -280,18 +416,143 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
                 </SelectContent>
               </Select>
             </FormField>
+
+            {isOwnerRole ? (
+              <InfoNote>
+                Владельцу открыты все разделы админки и все разделы клуба в отмеченных студиях, а
+                также «Доступы» и «Студии».
+              </InfoNote>
+            ) : (
+              <FormField
+                label="Разделы админки"
+                htmlFor={null}
+                tip="Разделы в левой рейке. «Сотрудники» и «Мобильное приложение» общие для всех студий."
+              >
+                <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
+                  {RAIL_ACCESS_KEYS.map((key) => (
+                    <CheckboxOption
+                      key={key}
+                      checked={rail.includes(key)}
+                      onCheckedChange={(checked) => toggleRail(key, checked)}
+                    >
+                      {RAIL_ACCESS_LABEL[key]}
+                    </CheckboxOption>
+                  ))}
+                </div>
+              </FormField>
+            )}
+
+            <FormField
+              label="Студии"
+              htmlFor={null}
+              tip={
+                showClubSections
+                  ? "Где у сотрудника есть доступ к админке и какие разделы «Клуба» ему видны в каждой студии."
+                  : "Где у сотрудника есть доступ к админке: без студии в админку не войти."
+              }
+            >
+              {studios.length === 0 ? (
+                <InfoNote variant="empty">Нет студий — заведите их в разделе «Студии».</InfoNote>
+              ) : (
+                <div className="space-y-2">
+                  {studios.map((s) => (
+                    <StudioAccess
+                      key={s.id}
+                      studio={s}
+                      sections={studioSections[s.id] ?? null}
+                      showSections={showClubSections}
+                      onToggle={(checked) => toggleStudio(s.id, checked)}
+                      onSectionsChange={(sections) => setSections(s.id, sections)}
+                    />
+                  ))}
+                </div>
+              )}
+              {!!employee?.otherStudios && (
+                <InfoNote>
+                  Ещё студий с доступом: {employee.otherStudios}. Там доступ настраивает их владелец
+                  — это сохранение их не меняет.
+                </InfoNote>
+              )}
+            </FormField>
           </div>
         </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={onDone} disabled={createMut.isPending}>
+          <Button variant="outline" onClick={onDone} disabled={saving}>
             Отмена
           </Button>
-          <Button type="submit" disabled={createMut.isPending}>
-            {createMut.isPending && <Loader2 className="animate-spin" />}
-            Добавить
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            {employee ? "Сохранить" : "Добавить"}
           </Button>
         </DialogFooter>
       </DialogForm>
     </>
+  );
+}
+
+/** Студия в форме доступа: отметка и, если открыт «Клуб», его разделы. */
+function StudioAccess({
+  studio,
+  sections,
+  showSections,
+  onToggle,
+  onSectionsChange,
+}: {
+  studio: StudioOption;
+  /** null — студия не отмечена. */
+  sections: ClubSectionKey[] | null;
+  showSections: boolean;
+  onToggle: (checked: boolean) => void;
+  onSectionsChange: (sections: ClubSectionKey[]) => void;
+}) {
+  const selected = sections !== null;
+  const allChecked = selected && sections.length === CLUB_SECTION_KEYS.length;
+
+  const toggleSection = (key: ClubSectionKey, checked: boolean) => {
+    if (!sections) return;
+    // Порядок — как в меню, чтобы в базе не копились перестановки.
+    onSectionsChange(CLUB_SECTION_KEYS.filter((k) => (k === key ? checked : sections.includes(k))));
+  };
+
+  return (
+    <div className="rounded-md border">
+      <div className="flex items-center justify-between gap-3 p-3">
+        <CheckboxOption checked={selected} onCheckedChange={onToggle} className="font-medium">
+          {studio.name}
+        </CheckboxOption>
+        {selected && showSections && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={() => onSectionsChange(allChecked ? [] : ALL_CLUB_SECTIONS)}
+          >
+            {allChecked ? "Снять все" : "Выбрать все"}
+          </Button>
+        )}
+      </div>
+      {selected && showSections && (
+        <div className="space-y-3 border-t p-3">
+          {CLUB_GROUPS.map((group) => (
+            <div key={group.key} className="space-y-2">
+              <div className="text-xs font-medium text-muted-foreground uppercase">
+                {group.label}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {group.items.map((item) => (
+                  <CheckboxOption
+                    key={item.section}
+                    checked={sections.includes(item.section)}
+                    onCheckedChange={(checked) => toggleSection(item.section, checked)}
+                  >
+                    {item.fullTitle ?? item.title}
+                  </CheckboxOption>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

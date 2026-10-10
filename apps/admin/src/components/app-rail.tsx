@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ADMIN_SECTIONS, SECTIONS, railSectionKey, type RailSection } from "@/lib/nav-sections";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
+import {
+  ADMIN_SECTIONS,
+  SECTIONS,
+  canOpenPath,
+  railSectionKey,
+  type RailSection,
+} from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
 
 function RailItem({
@@ -75,16 +83,31 @@ function RailItem({
 export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (router) => router.location.pathname });
   const activeKey = railSectionKey(pathname);
+  const access = useAdminAccess();
+  const studioId = useActiveStudioId();
+
+  // Разделы, закрытые сотруднику в «Доступах», не показываем; заготовки без
+  // url — как есть. Пока права грузятся — только заготовки, чтобы закрытые
+  // разделы не мелькали. «Клуб» виден, если открыт раздел рейки, — даже когда
+  // в активной студии ему не открыт ни один пункт (студию можно сменить).
+  const visible = (section: RailSection) =>
+    !section.url ||
+    (!!access &&
+      (section.key === "club"
+        ? canOpenPath(access, null, section.url)
+        : canOpenPath(access, studioId, section.url)));
 
   const renderGroup = (sections: RailSection[]) =>
-    sections.map((section) => (
-      <RailItem
-        key={section.key}
-        section={section}
-        active={section.key === activeKey}
-        onNavigate={onNavigate}
-      />
-    ));
+    sections
+      .filter(visible)
+      .map((section) => (
+        <RailItem
+          key={section.key}
+          section={section}
+          active={section.key === activeKey}
+          onNavigate={onNavigate}
+        />
+      ));
 
   return (
     <nav

@@ -1,27 +1,11 @@
 import { useCallback, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronUp } from "lucide-react";
-// Иконки пунктов меню — Solar: Outline, у активного пункта BoldDuotone
-// (см. scripts/gen-nav-icons.ts); остальной интерфейс — Hugeicons через lucide-шим.
-import {
-  Bag3,
-  BillList,
-  CalendarMinimalistic,
-  ChartSquare,
-  ChatRoundDots,
-  ClipboardRemove,
-  Dumbbell,
-  History,
-  TagPrice,
-  TicketSale,
-  UsersGroupRounded,
-  WalletMoney,
-  Widget5,
-  type NavIcon,
-} from "@/components/nav-icons";
-
 import { AppRail } from "@/components/app-rail";
-import { MOBILE_APP_ITEMS, railSectionKey } from "@/lib/nav-sections";
+import { CLUB_GROUPS, MOBILE_APP_ITEMS, railSectionKey, type NavGroup } from "@/lib/nav-sections";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { canOpenClubSection, type AdminAccess } from "@/lib/admin-access";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio } from "@/hooks/use-studios";
@@ -43,73 +27,30 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-type NavItem = {
-  title: string;
-  url: string;
-  icon: NavIcon;
-  /**
-   * Только для студий этих форматов (STUDIO_FORMATS.md). Без поля — пункт
-   * общий. Пока студия не загружена, показываются только общие пункты.
-   */
-  formats?: StudioFormat[];
-};
-type NavGroup = { key: string; label: string; items: NavItem[] };
-
-const GROUPS: NavGroup[] = [
-  {
-    key: "workspace",
-    label: "Главное",
-    items: [
-      { title: "Дашборд", url: "/dashboard", icon: Widget5 },
-      { title: "Расписание", url: "/schedule", icon: CalendarMinimalistic },
-      { title: "Клиенты", url: "/clients", icon: UsersGroupRounded },
-    ],
-  },
-  {
-    key: "studio",
-    label: "Студия",
-    items: [
-      { title: "Тренировки", url: "/workouts", icon: Dumbbell },
-      { title: "Номенклатуры", url: "/memberships", icon: TagPrice },
-      { title: "Промокоды", url: "/promocodes", icon: TicketSale },
-    ],
-  },
-  {
-    key: "stats",
-    label: "Статистика",
-    items: [
-      { title: "Продажи", url: "/sales", icon: BillList },
-      { title: "Прочие продажи", url: "/other-sales", icon: Bag3 },
-      { title: "История записей", url: "/bookings-log", icon: History },
-      { title: "Отмены автопр.", url: "/autorenew-cancellations", icon: ClipboardRemove },
-    ],
-  },
-  {
-    key: "finance",
-    label: "Финансы",
-    items: [{ title: "Касса", url: "/cash", icon: WalletMoney }],
-  },
-  {
-    key: "feedback",
-    label: "Обратная связь",
-    items: [
-      { title: "Обратная связь", url: "/feedback", icon: ChatRoundDots },
-      { title: "NPS-опросы", url: "/nps", icon: ChartSquare },
-    ],
-  },
-];
-
 /** Меню раздела «Мобильное приложение» (рейка) — вместо меню клуба. */
 const APP_GROUPS: NavGroup[] = [
   // Название раздела — в шапке меню, группе хватит нейтральной подписи.
   { key: "mobile", label: "Разделы", items: MOBILE_APP_ITEMS },
 ];
 
-/** Пункты для формата активной студии; опустевшие группы не показываем. */
-function visibleGroups(format: StudioFormat | undefined) {
-  return GROUPS.map((g) => ({
+/**
+ * Пункты клуба для формата активной студии и прав сотрудника («Доступы»);
+ * опустевшие группы не показываем. Пока права грузятся — меню пустое, чтобы
+ * закрытые пункты не мелькали.
+ */
+function visibleGroups(
+  format: StudioFormat | undefined,
+  access: AdminAccess | null,
+  studioId: string | null,
+): NavGroup[] {
+  if (!access) return [];
+  return CLUB_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => !i.formats || (!!format && i.formats.includes(format))),
+    items: g.items.filter(
+      (i) =>
+        (!i.formats || (!!format && i.formats.includes(format))) &&
+        canOpenClubSection(access, studioId, i.section),
+    ),
   })).filter((g) => g.items.length > 0);
 }
 
@@ -147,9 +88,11 @@ function StudioLogo() {
 
 export function AppSidebar() {
   const studioFormat = useActiveStudio()?.format;
+  const studioId = useActiveStudioId();
+  const access = useAdminAccess();
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
   const isAppSection = railSectionKey(currentPath) === "app";
-  const groups = isAppSection ? APP_GROUPS : visibleGroups(studioFormat);
+  const groups = isAppSection ? APP_GROUPS : visibleGroups(studioFormat, access, studioId);
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
   const setGroupOpen = useCallback((key: string, open: boolean) => {

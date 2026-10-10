@@ -1,9 +1,19 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Navigate,
+  Outlet,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AdminShell } from "@/components/admin-shell";
 import { StudioBranding } from "@/components/studio-branding";
 import { hasStaffRole } from "@/lib/roles";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { canOpenPath, firstAllowedUrl } from "@/lib/nav-sections";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -48,9 +58,34 @@ function AuthenticatedLayout() {
       <div className="flex h-dvh w-full overflow-hidden bg-canvas">
         <AppSidebar />
         <div className="flex h-dvh min-w-0 flex-1 flex-col overflow-hidden">
-          <Outlet />
+          <AccessGate />
         </div>
       </div>
     </SidebarProvider>
+  );
+}
+
+/**
+ * Разделы, закрытые сотруднику в «Доступах»: страница не открывается, а
+ * уводит на первую доступную. Это интерфейс, не защита: данные студии
+ * ограничивает RLS (роль в студии), разделы рейки — has_admin_section.
+ */
+function AccessGate() {
+  const pathname = useRouterState({ select: (router) => router.location.pathname });
+  const studioId = useActiveStudioId();
+  const access = useAdminAccess();
+
+  // Пока права грузятся — пустая область, чтобы закрытая страница не мелькнула.
+  if (!access) return null;
+  if (canOpenPath(access, studioId, pathname)) return <Outlet />;
+
+  const fallback = firstAllowedUrl(access, studioId);
+  if (fallback && fallback !== pathname) return <Navigate to={fallback} replace />;
+  return (
+    <AdminShell title="Нет доступа">
+      <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+        Нет доступных разделов. Попросите владельца открыть их в «Доступах».
+      </div>
+    </AdminShell>
   );
 }
