@@ -30,6 +30,7 @@ const ICONS: Record<string, string> = {
   History: "time",
   Notebook: "notes",
   Settings: "settings",
+  Smartphone: "devices",
   ShieldUser: "security",
   StarsMinimalistic: "astronomy",
   TagPrice: "money",

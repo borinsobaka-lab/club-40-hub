@@ -1,33 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-// Те же Solar-иконки, что у пунктов меню: Outline, у активного раздела BoldDuotone.
-import { Buildings2, City, Notebook, ShieldUser, type NavIcon } from "@/components/nav-icons";
+import { ADMIN_SECTIONS, SECTIONS, railSectionKey, type RailSection } from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
-
-type RailSection = { key: string; title: string; url?: string; icon: NavIcon };
-
-/** Раздел без url — заготовка: виден в рейке, но не нажимается. */
-const SECTIONS: RailSection[] = [
-  { key: "club", title: "Клуб", url: "/", icon: Buildings2 },
-  { key: "scripts", title: "Скрипты", icon: Notebook },
-];
-
-/**
- * Верхнеуровневые разделы над студиями — внизу рейки. Это одиночные
- * страницы: своего меню у них нет, справа остаётся меню клуба без
- * подсвеченного пункта.
- */
-const ADMIN_SECTIONS: RailSection[] = [
-  { key: "access", title: "Доступы", url: "/employees", icon: ShieldUser },
-  { key: "studios", title: "Студии", url: "/studios", icon: City },
-];
-
-/** Раздел текущей страницы: свой url у одиночных разделов, всё остальное — «Клуб». */
-function activeSectionKey(pathname: string) {
-  const own = ADMIN_SECTIONS.find(
-    (s) => s.url && (pathname === s.url || pathname.startsWith(`${s.url}/`)),
-  );
-  return own?.key ?? "club";
-}
 
 function RailItem({
   section,
@@ -57,7 +30,7 @@ function RailItem({
       </span>
       <span
         className={cn(
-          "w-full truncate text-center text-[11px] leading-tight",
+          "line-clamp-2 w-full text-center text-[11px] leading-tight break-words hyphens-manual",
           active ? "font-semibold text-white" : "font-medium text-white/70",
         )}
       >
@@ -82,6 +55,8 @@ function RailItem({
   return (
     <Link
       to={section.url}
+      title={section.fullTitle}
+      aria-label={section.fullTitle}
       aria-current={active ? "page" : undefined}
       className={cn(itemClass, "group/rail")}
       onClick={onNavigate}
@@ -93,12 +68,13 @@ function RailItem({
 
 /**
  * Рейка разделов — узкая колонка слева от бокового меню: иконка и подпись
- * под ней. Меню справа показывает пункты клуба («Клуб» — весь текущий
- * интерфейс); «Доступы» и «Студии» — общие для всех студий разделы, внизу.
+ * под ней. Меню справа — пункты клуба («Клуб» — всё, что относится к
+ * студии) или своё меню раздела («Мобильное приложение»). «Сотрудники»,
+ * «Мобильное приложение», «Доступы» и «Студии» — общие для всех студий.
  */
 export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (router) => router.location.pathname });
-  const activeKey = activeSectionKey(pathname);
+  const activeKey = railSectionKey(pathname);
 
   const renderGroup = (sections: RailSection[]) =>
     sections.map((section) => (

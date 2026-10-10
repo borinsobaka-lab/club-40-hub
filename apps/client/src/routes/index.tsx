@@ -22,7 +22,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
-import { useClientStudioId } from "@/hooks/use-client-studio";
 
 import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
@@ -116,7 +115,6 @@ function HomePage() {
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const clubSettings = useClubSettings();
-  const { studioId, studioReady } = useClientStudioId();
 
   useEffect(() => {
     if (!user) {
@@ -219,13 +217,13 @@ function HomePage() {
   }, [user]);
 
   useEffect(() => {
-    if (!studioReady) return;
     let cancelled = false;
     const load = () => {
-      let q = supabase.from("news").select("id,title,description,image_url,position");
-      // Новости студии клиента; для гостя (studioId=null) — как раньше, все.
-      if (studioId) q = q.eq("studio_id", studioId);
-      return q
+      // Приложение общее для всех студий (решение владельца 2026-10-10):
+      // новости не фильтруются по студии клиента.
+      return supabase
+        .from("news")
+        .select("id,title,description,image_url,position")
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
         .then(({ data }) => {
@@ -244,18 +242,15 @@ function HomePage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [studioReady, studioId]);
+  }, []);
 
   useEffect(() => {
-    if (!studioReady) return;
     let cancelled = false;
     const load = () => {
-      let q = (supabase as any)
+      // Услуги общие для всех студий, как и новости.
+      return (supabase as any)
         .from("services")
-        .select("id,title,description,image_url,button_text,button_url,position");
-      // Услуги студии клиента; для гостя (studioId=null) — как раньше, все.
-      if (studioId) q = q.eq("studio_id", studioId);
-      return q
+        .select("id,title,description,image_url,button_text,button_url,position")
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
         .then(({ data }: { data: Service[] | null }) => {
@@ -271,7 +266,7 @@ function HomePage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [studioReady, studioId]);
+  }, []);
 
   return (
     <PageShell

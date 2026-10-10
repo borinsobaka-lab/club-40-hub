@@ -5,21 +5,15 @@ import { ChevronUp } from "lucide-react";
 // (см. scripts/gen-nav-icons.ts); остальной интерфейс — Hugeicons через lucide-шим.
 import {
   Bag3,
-  BellBing,
   BillList,
-  Bolt,
   CalendarMinimalistic,
   ChartSquare,
   ChatRoundDots,
   ClipboardRemove,
-  DocumentText,
   Dumbbell,
   History,
-  Settings,
-  StarsMinimalistic,
   TagPrice,
   TicketSale,
-  UserId,
   UsersGroupRounded,
   WalletMoney,
   Widget5,
@@ -27,6 +21,7 @@ import {
 } from "@/components/nav-icons";
 
 import { AppRail } from "@/components/app-rail";
+import { MOBILE_APP_ITEMS, railSectionKey } from "@/lib/nav-sections";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio } from "@/hooks/use-studios";
@@ -74,7 +69,6 @@ const GROUPS: NavGroup[] = [
     key: "studio",
     label: "Студия",
     items: [
-      { title: "Сотрудники", url: "/trainers", icon: UserId },
       { title: "Тренировки", url: "/workouts", icon: Dumbbell },
       { title: "Номенклатуры", url: "/memberships", icon: TagPrice },
       { title: "Промокоды", url: "/promocodes", icon: TicketSale },
@@ -96,17 +90,6 @@ const GROUPS: NavGroup[] = [
     items: [{ title: "Касса", url: "/cash", icon: WalletMoney }],
   },
   {
-    key: "mobile",
-    label: "Mobile App",
-    items: [
-      { title: "Новости", url: "/news", icon: DocumentText },
-      { title: "Услуги", url: "/services", icon: StarsMinimalistic },
-      { title: "Пуш-уведомления", url: "/push", icon: BellBing },
-      { title: "Триггерные пуши", url: "/push-triggers", icon: Bolt },
-      { title: "Настройки клуба", url: "/club-settings", icon: Settings },
-    ],
-  },
-  {
     key: "feedback",
     label: "Обратная связь",
     items: [
@@ -114,6 +97,12 @@ const GROUPS: NavGroup[] = [
       { title: "NPS-опросы", url: "/nps", icon: ChartSquare },
     ],
   },
+];
+
+/** Меню раздела «Мобильное приложение» (рейка) — вместо меню клуба. */
+const APP_GROUPS: NavGroup[] = [
+  // Название раздела — в шапке меню, группе хватит нейтральной подписи.
+  { key: "mobile", label: "Разделы", items: MOBILE_APP_ITEMS },
 ];
 
 /** Пункты для формата активной студии; опустевшие группы не показываем. */
@@ -158,6 +147,9 @@ function StudioLogo() {
 
 export function AppSidebar() {
   const studioFormat = useActiveStudio()?.format;
+  const currentPath = useRouterState({ select: (router) => router.location.pathname });
+  const isAppSection = railSectionKey(currentPath) === "app";
+  const groups = isAppSection ? APP_GROUPS : visibleGroups(studioFormat);
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
   const setGroupOpen = useCallback((key: string, open: boolean) => {
@@ -179,7 +171,6 @@ export function AppSidebar() {
     if (isMobile) setOpenMobile(false);
   };
 
-  const currentPath = useRouterState({ select: (router) => router.location.pathname });
   // Точное совпадение или вложенный путь: голый startsWith подсвечивал
   // «Пуш-уведомления» (/push) ещё и на /push-triggers.
   const isActive = (path: string) => currentPath === path || currentPath.startsWith(`${path}/`);
@@ -187,8 +178,9 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0">
       {/*
-        Слева — рейка разделов (AppRail; там же «Доступы» и «Студии»),
-        справа — меню клуба.
+        Слева — рейка разделов (AppRail; там же «Сотрудники», «Мобильное
+        приложение», «Доступы» и «Студии»), справа — меню клуба или меню
+        раздела «Мобильное приложение».
         Ширина панели (--sidebar-width) уже включает рейку; в шторке на
         телефоне рейка тоже есть, переход по ней закрывает шторку.
       */}
@@ -202,7 +194,12 @@ export function AppSidebar() {
               className="flex items-center text-white"
               onClick={closeMobile}
             >
-              <StudioLogo />
+              {/* Приложение общее для студий — логотип студии там не к месту. */}
+              {isAppSection ? (
+                <span className="text-lg leading-tight font-semibold">Мобильное приложение</span>
+              ) : (
+                <StudioLogo />
+              )}
             </Link>
           </SidebarHeader>
 
@@ -213,7 +210,7 @@ export function AppSidebar() {
             заголовок h-7 — в меню по высоте помещается больше пунктов.
           */}
           <SidebarContent className="sidebar-scroll gap-1">
-            {visibleGroups(studioFormat).map((group) => (
+            {groups.map((group) => (
               <Collapsible
                 key={group.key}
                 open={!closedGroups[group.key]}
