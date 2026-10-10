@@ -1,3 +1,4 @@
+import { useActiveStudio } from "@/hooks/use-studios";
 import { todayISO } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,10 @@ export function MembershipStatusBadge({ m }: { m: MembershipStatusInput }) {
   );
 }
 
+/** У пакетов тренировок автопродления нет — в пакетной студии бейдж не нужен. */
 export function AutoRenewBadge({ on }: { on: boolean | null | undefined }) {
+  const format = useActiveStudio()?.format;
+  if (format === "packages") return null;
   return (
     <span
       className={cn(

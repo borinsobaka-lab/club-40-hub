@@ -155,7 +155,8 @@ GoTrue и видит только хук писем — в браузер он �
   Клиентская пагинация небольших списков — `usePagination`. Поиск —
   `useDebouncedValue` + `sanitizeSearch`.
 - Студия — `useActiveStudioId()` (`src/hooks/use-active-studio.ts`), заглушка
-  без студии — `<RequireStudio>`. Список студий сотрудника и активная студия с
+  без студии — `<RequireStudio>`, страница одного формата студий —
+  `<RequireFormat>` (STUDIO_FORMATS.md). Список студий сотрудника и активная студия с
   форматом/цветом/логотипом — `useStudios()` / `useActiveStudio()`
   (`src/hooks/use-studios.ts`). Серверным функциям и API-роутам активная
   студия уходит заголовком `X-Studio-Id`; сервер сверяет роль именно в ней

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
+import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -31,8 +32,17 @@ import { formatDate, formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/autorenew-cancellations")({
   head: () => ({ meta: [{ title: "Отмены автопродления — Base40 Admin" }] }),
-  component: AutorenewCancellationsPage,
+  component: AutorenewCancellationsRoute,
 });
+
+/** У пакетов тренировок автопродления нет — раздел только подписочного формата. */
+function AutorenewCancellationsRoute() {
+  return (
+    <RequireFormat format="subscription" title="Отмены автопродления">
+      <AutorenewCancellationsPage />
+    </RequireFormat>
+  );
+}
 
 type Row = {
   id: string;

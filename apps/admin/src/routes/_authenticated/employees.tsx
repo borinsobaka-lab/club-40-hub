@@ -539,15 +539,18 @@ function StudioAccess({
                 {group.label}
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {group.items.map((item) => (
-                  <CheckboxOption
-                    key={item.section}
-                    checked={sections.includes(item.section)}
-                    onCheckedChange={(checked) => toggleSection(item.section, checked)}
-                  >
-                    {item.fullTitle ?? item.title}
-                  </CheckboxOption>
-                ))}
+                {/* У формата студии своя страница раздела, право одно — одна галочка. */}
+                {group.items
+                  .filter((item, i, all) => all.findIndex((x) => x.section === item.section) === i)
+                  .map((item) => (
+                    <CheckboxOption
+                      key={item.section}
+                      checked={sections.includes(item.section)}
+                      onCheckedChange={(checked) => toggleSection(item.section, checked)}
+                    >
+                      {item.fullTitle ?? item.title}
+                    </CheckboxOption>
+                  ))}
               </div>
             </div>
           ))}

@@ -124,6 +124,9 @@ AUTH_SETUP.md.
   их таблицы общие, граница там по-прежнему студия. Мобильное приложение общее для студий:
   `db/migrations/2026-10-10_app_content_shared.sql` — `news`/`services`/
   `push_notifications` без привязки к студии, правка — `is_staff`.
+  Номенклатура пакетных студий: `db/migrations/2026-10-10_packages_memberships.sql`
+  — `memberships.for_regular_clients` (цена для постоянных клиентов) и
+  триггер, выключающий автопродление в пакетных студиях.
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`).

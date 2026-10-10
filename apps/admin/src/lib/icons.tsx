@@ -49,7 +49,6 @@ import {
   Minus as MinusArt,
   PanelLeft as PanelLeftArt,
   Pencil as PencilArt,
-  Phone as PhoneArt,
   Plus as PlusArt,
   Receipt as ReceiptArt,
   RefreshCw as RefreshCwArt,
@@ -57,6 +56,7 @@ import {
   Search as SearchArt,
   SentIcon as SendArt,
   Square as SquareArt,
+  Tag as TagArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
   TrendingUp as TrendingUpArt,
@@ -112,7 +112,6 @@ export const Mic = icon(MicArt, "Mic");
 export const Minus = icon(MinusArt, "Minus");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Pencil = icon(PencilArt, "Pencil");
-export const Phone = icon(PhoneArt, "Phone");
 export const Plus = icon(PlusArt, "Plus");
 export const Receipt = icon(ReceiptArt, "Receipt");
 export const RefreshCw = icon(RefreshCwArt, "RefreshCw");
@@ -120,6 +119,7 @@ export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
 export const Square = icon(SquareArt, "Square");
+export const Tag = icon(TagArt, "Tag");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");

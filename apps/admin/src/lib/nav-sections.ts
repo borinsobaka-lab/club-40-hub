@@ -94,7 +94,22 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     label: "Студия",
     items: [
       { title: "Тренировки", url: "/workouts", icon: Dumbbell, section: "workouts" },
-      { title: "Номенклатуры", url: "/memberships", icon: TagPrice, section: "memberships" },
+      // Один раздел прав «Номенклатуры», у каждого формата своя страница:
+      // подписки с автопродлением / пакеты тренировок.
+      {
+        title: "Номенклатуры",
+        url: "/memberships",
+        icon: TagPrice,
+        section: "memberships",
+        formats: ["subscription"],
+      },
+      {
+        title: "Номенклатуры",
+        url: "/packages",
+        icon: TagPrice,
+        section: "memberships",
+        formats: ["packages"],
+      },
       { title: "Промокоды", url: "/promocodes", icon: TicketSale, section: "promocodes" },
     ],
   },
@@ -111,6 +126,8 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
         url: "/autorenew-cancellations",
         icon: ClipboardRemove,
         section: "autorenew-cancellations",
+        // У пакетов тренировок автопродления нет.
+        formats: ["subscription"],
       },
     ],
   },
