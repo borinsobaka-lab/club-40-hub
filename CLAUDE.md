@@ -109,6 +109,14 @@ AUTH_SETUP.md.
   исправление истории. Сотрудники: `db/migrations/2026-10-10_staff_accounts.sql`
   — без паролей, без карточек клиентов (`handle_new_user` — копия из
   `db/client_app_fixes.sql`, держать в синхроне).
+  Справочник сотрудников над студиями: `db/migrations/2026-10-10_staff_directory.sql`
+  — `trainers` (тренеры и администраторы, `role`) без `studio_id`, студии —
+  `trainer_studios`; реквизиты `trainer_bank_details` и зарплатные ставки
+  `trainer_pay_rates` — только сотрудникам (клиенты видят тренеров своей
+  студии в расписании, но не счёт и не ставки). Это НЕ доступ в админку —
+  тот в `user_roles` («Доступы»). Мобильное приложение общее для студий:
+  `db/migrations/2026-10-10_app_content_shared.sql` — `news`/`services`/
+  `push_notifications` без привязки к студии, правка — `is_staff`.
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`).
