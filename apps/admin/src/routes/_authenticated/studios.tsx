@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Loader2, LogIn, Pencil, Plus } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink, Loader2, LogIn, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -40,6 +40,7 @@ import {
 import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStudios, type Studio } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrapPage } from "@/lib/query";
 import { useStorageUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import {
@@ -60,7 +61,8 @@ export const Route = createFileRoute("/_authenticated/studios")({
  * Студии сети. Каждая студия — в переключателе в шапке; у студии формат
  * (STUDIO_FORMATS.md), логотип в меню и основной цвет админки.
  * Создаёт студию владелец любой студии (RPC create_studio — он же становится
- * владельцем новой), правит — владелец этой студии.
+ * владельцем новой), правит и удаляет — владелец этой студии (RPC
+ * delete_studio, db/migrations/2026-10-10_studio_delete.sql).
  */
 function StudiosPage() {
   const { data: studios = [], isLoading } = useStudios();
@@ -68,6 +70,7 @@ function StudiosPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Studio | null>(null);
+  const [deleting, setDeleting] = useState<Studio | null>(null);
 
   const isOwnerAnywhere = studios.some((s) => s.roles.includes("owner"));
   const reload = () => queryClient.invalidateQueries({ queryKey: ["studios"] });
@@ -135,6 +138,12 @@ function StudiosPage() {
                                 setOpen(true);
                               },
                             },
+                            {
+                              label: "Удалить студию",
+                              icon: Trash2,
+                              destructive: true,
+                              onSelect: () => setDeleting(s),
+                            },
                           ]
                         : []),
                     ]}
@@ -192,6 +201,23 @@ function StudiosPage() {
           />
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <DialogContent className="max-w-lg">
+          {deleting && (
+            <DeleteStudioForm
+              key={deleting.id}
+              studio={deleting}
+              onClose={() => setDeleting(null)}
+              onDeleted={() => {
+                // Данные удалённой студии лежат во многих кэшах — сбрасываем
+                // всё; активную студию StudioBranding сам переключит на другую.
+                queryClient.invalidateQueries();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }
@@ -228,6 +254,105 @@ function LogoPreview({
         <span className="truncate text-sm font-semibold">{name}</span>
       )}
     </div>
+  );
+}
+
+/**
+ * Удаление студии: каскадом уходят все её данные, поэтому — с количеством
+ * клиентов и продаж и вводом названия. Учётные записи и общий контент
+ * приложения остаются (подробно — в миграции).
+ */
+function DeleteStudioForm({
+  studio,
+  onClose,
+  onDeleted,
+}: {
+  studio: Studio;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [confirmName, setConfirmName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const matches = confirmName.trim() === studio.name.trim();
+
+  const { data: counts } = useQuery({
+    queryKey: ["studios", "delete-counts", studio.id],
+    queryFn: async () => {
+      const head = { count: "exact" as const, head: true };
+      const [clients, sales] = await Promise.all([
+        unwrapPage(supabase.from("clients").select("id", head).eq("studio_id", studio.id)),
+        unwrapPage(supabase.from("sales").select("id", head).eq("studio_id", studio.id)),
+      ]);
+      return { clients: clients.count, sales: sales.count };
+    },
+    meta: { errorMessage: "Не удалось посчитать данные студии" },
+  });
+
+  const handleDelete = async () => {
+    if (!matches) {
+      toast.error("Введите название студии точно так, как оно написано");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("delete_studio", {
+        _studio_id: studio.id,
+        _confirm_name: confirmName,
+      });
+      if (error) {
+        toast.error("Не удалось удалить студию: " + error.message);
+        return;
+      }
+      toast.success(`Студия «${studio.name}» удалена`);
+      onClose();
+      onDeleted();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Удалить студию?</DialogTitle>
+        <DialogDescription>
+          Студия «{studio.name}» будет удалена вместе со всеми её данными. Отменить это нельзя.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleDelete}>
+        <DialogBody>
+          <div className="space-y-4">
+            <InfoNote>
+              Удалятся карточки клиентов
+              {counts ? ` (${counts.clients})` : ""}, продажи
+              {counts ? ` (${counts.sales})` : ""}, абонементы, касса, расписание и записи,
+              номенклатура, промокоды, доступы сотрудников в этой студии. Останутся учётные записи
+              людей, справочник сотрудников, новости, услуги и пуши приложения.
+            </InfoNote>
+            <FormField
+              label="Название студии"
+              hint={`Введите «${studio.name}», чтобы подтвердить.`}
+            >
+              <Input
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                placeholder={studio.name}
+                autoComplete="off"
+              />
+            </FormField>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" variant="destructive" disabled={saving || !matches}>
+            {saving && <Loader2 className="animate-spin" />}
+            Удалить студию
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
   );
 }
 

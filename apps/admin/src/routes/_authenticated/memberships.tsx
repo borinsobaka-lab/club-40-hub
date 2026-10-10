@@ -5,6 +5,7 @@ import { Plus, Loader2, Pencil, Trash2, X, Copy } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
+import { RequireFormat } from "@/components/require-format";
 import { ImageUploadField, StorageImage } from "@/components/image-upload-field";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,8 +44,17 @@ import { RowContextMenu } from "@/components/row-context-menu";
 
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
-  component: MembershipsPage,
+  component: MembershipsRoute,
 });
+
+/** Номенклатура подписочного формата; у пакетных студий своя — packages.tsx. */
+function MembershipsRoute() {
+  return (
+    <RequireFormat format="subscription" title="Номенклатуры" other={{ packages: "/packages" }}>
+      <MembershipsPage />
+    </RequireFormat>
+  );
+}
 
 type Membership = {
   id: string;

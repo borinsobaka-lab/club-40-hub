@@ -8,17 +8,18 @@ import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
-import { RequireStudio } from "@/components/require-studio";
 import { TableToolbar } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useStudios, type Studio } from "@/hooks/use-studios";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatNumber } from "@/lib/format";
+import { dashboardStudioIds } from "@/lib/admin-access";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Дашборд — Base40 Admin" }] }),
@@ -372,8 +373,58 @@ function Delta({
   );
 }
 
+/**
+ * Дашборд — раздел рейки над студиями: показатели всех студий сотрудника
+ * одна за другой (название, свой период, карточки). Студия попадает сюда,
+ * только если у сотрудника есть в ней роль и открыт раздел «Дашборд»
+ * («Доступы»); данные всё равно ограничивает RLS по студии.
+ */
 function DashboardPage() {
-  const studioId = useActiveStudioId();
+  const access = useAdminAccess();
+  const { data: studios, isLoading } = useStudios();
+
+  const allowed = access ? new Set(dashboardStudioIds(access)) : null;
+  const list = allowed ? (studios ?? []).filter((s) => allowed.has(s.id)) : [];
+
+  return (
+    <AdminShell title="Дашборд">
+      {isLoading || !access ? (
+        <div className="space-y-3">
+          <Skeleton className="h-7 w-48" />
+          <StatsSkeleton />
+        </div>
+      ) : list.length === 0 ? (
+        <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+          Нет студий, где вам открыт дашборд.
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {list.map((studio) => (
+            <StudioDashboard key={studio.id} studio={studio} />
+          ))}
+        </div>
+      )}
+    </AdminShell>
+  );
+}
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
+      {STATS.map((stat) => (
+        <div key={stat.key} className="rounded-lg border bg-background p-3 sm:p-4">
+          <Skeleton className="h-4 w-full max-w-32" />
+          <Skeleton className="mt-3 h-7 w-24" />
+          <Skeleton className="mt-2 h-3 w-20" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Дашборд одной студии: свой период — у каждой студии отдельно. */
+function StudioDashboard({ studio }: { studio: Studio }) {
+  const studioId = studio.id;
   const today = useMemo(() => new Date(), []);
   const [range, setRange] = useState<DateRange | undefined>({
     from: startOfMonth(today),
@@ -394,17 +445,17 @@ function DashboardPage() {
     queryKey: ["dashboard", studioId, period?.from, period?.to],
     queryFn: async () => {
       const [current, previous] = await Promise.all([
-        loadPeriodMetrics(studioId!, period!.from, period!.to),
-        loadPeriodMetrics(studioId!, prev!.from, prev!.to),
+        loadPeriodMetrics(studioId, period!.from, period!.to),
+        loadPeriodMetrics(studioId, prev!.from, prev!.to),
       ]);
-      reportErrors("Часть показателей за период не загрузилась", [
+      reportErrors(`${studio.name}: часть показателей за период не загрузилась`, [
         ...current.errors,
         ...previous.errors,
       ]);
       return { current: current.metrics, previous: previous.metrics };
     },
-    enabled: !!studioId && !!period,
-    meta: { errorMessage: "Не удалось загрузить показатели за период" },
+    enabled: !!period,
+    meta: { errorMessage: `${studio.name}: не удалось загрузить показатели за период` },
   });
 
   // Метрики «на сейчас» от периода не зависят: грузим их один раз, а не для
@@ -412,12 +463,11 @@ function DashboardPage() {
   const snapshotQuery = useQuery({
     queryKey: ["dashboard", studioId, "snapshot"],
     queryFn: async () => {
-      const { metrics, errors } = await loadSnapshotMetrics(studioId!);
-      reportErrors("Часть текущих показателей не загрузилась", errors);
+      const { metrics, errors } = await loadSnapshotMetrics(studioId);
+      reportErrors(`${studio.name}: часть текущих показателей не загрузилась`, errors);
       return metrics;
     },
-    enabled: !!studioId,
-    meta: { errorMessage: "Не удалось загрузить текущие показатели" },
+    meta: { errorMessage: `${studio.name}: не удалось загрузить текущие показатели` },
   });
 
   const loading = periodQuery.isLoading || snapshotQuery.isLoading;
@@ -425,108 +475,97 @@ function DashboardPage() {
   // Нет данных (ошибка загрузки, период не выбран) — в карточке «—», а не 0.
   const current: Partial<Metrics> = { ...periodQuery.data?.current, ...snapshotQuery.data };
   const previous: Partial<Metrics> = periodQuery.data?.previous ?? {};
+  const headingId = `dashboard-${studioId}`;
 
   return (
-    <AdminShell title="Дашборд">
-      <div className="space-y-3">
-        <TableToolbar>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "toolbar-full min-w-[260px] justify-start text-left font-normal",
-                  !range?.from && "text-muted-foreground",
-                )}
-              >
-                <CalendarIcon />
-                {formatRange(range)}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
-              <Calendar
-                mode="range"
-                numberOfMonths={isMobile ? 1 : 2}
-                selected={range}
-                onSelect={setRange}
-                defaultMonth={range?.from ?? today}
-                initialFocus
-                locale={ru}
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-          <Button
-            variant="ghost"
-            onClick={() => setRange({ from: startOfMonth(today), to: endOfMonth(today) })}
-          >
-            Текущий месяц
-          </Button>
-          {fetching && (
-            <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              обновляем…
-            </div>
-          )}
-        </TableToolbar>
+    <section aria-labelledby={headingId} className="space-y-3">
+      {/* Точка — основной цвет студии, как в переключателе студий. */}
+      <h2 id={headingId} className="flex items-center gap-2 text-lg font-semibold">
+        <span
+          className="size-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: studio.brand_color }}
+          aria-hidden
+        />
+        <span className="min-w-0 truncate">{studio.name}</span>
+      </h2>
+      <TableToolbar>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "toolbar-full min-w-[260px] justify-start text-left font-normal",
+                !range?.from && "text-muted-foreground",
+              )}
+            >
+              <CalendarIcon />
+              {formatRange(range)}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+            <Calendar
+              mode="range"
+              numberOfMonths={isMobile ? 1 : 2}
+              selected={range}
+              onSelect={setRange}
+              defaultMonth={range?.from ?? today}
+              initialFocus
+              locale={ru}
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        <Button
+          variant="ghost"
+          onClick={() => setRange({ from: startOfMonth(today), to: endOfMonth(today) })}
+        >
+          Текущий месяц
+        </Button>
+        {fetching && (
+          <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            обновляем…
+          </div>
+        )}
+      </TableToolbar>
 
-        <RequireStudio studioId={studioId}>
-          {loading ? (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
-              {STATS.map((stat) => (
-                <div key={stat.key} className="rounded-lg border bg-background p-3 sm:p-4">
-                  <Skeleton className="h-4 w-full max-w-32" />
-                  <Skeleton className="mt-3 h-7 w-24" />
-                  <Skeleton className="mt-2 h-3 w-20" />
+      {loading ? (
+        <StatsSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
+          {STATS.map((stat) => {
+            const v = current[stat.key];
+            const p = previous[stat.key];
+            const value =
+              v === undefined ? "—" : stat.format === "money" ? formatMoney(v) : formatNumber(v);
+            return (
+              // На телефоне — две карточки в ряд: по одной в столбик
+              // одиннадцать показателей растягивались на пять экранов.
+              <div key={stat.key} className="min-w-0 rounded-lg border bg-background p-3 sm:p-4">
+                <div className="text-xs font-medium text-muted-foreground sm:text-sm">
+                  {stat.label}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
-              {STATS.map((stat) => {
-                const v = current[stat.key];
-                const p = previous[stat.key];
-                const value =
-                  v === undefined
-                    ? "—"
-                    : stat.format === "money"
-                      ? formatMoney(v)
-                      : formatNumber(v);
-                return (
-                  // На телефоне — две карточки в ряд: по одной в столбик
-                  // одиннадцать показателей растягивались на пять экранов.
-                  <div
-                    key={stat.key}
-                    className="min-w-0 rounded-lg border bg-background p-3 sm:p-4"
-                  >
-                    <div className="text-xs font-medium text-muted-foreground sm:text-sm">
-                      {stat.label}
-                    </div>
-                    <div className="mt-1.5 text-lg font-semibold tabular-nums sm:mt-2 sm:text-2xl">
-                      {value}
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      {stat.hint && (
-                        <span className="text-xs text-muted-foreground">{stat.hint}</span>
-                      )}
-                    </div>
-                    {stat.compare && v !== undefined && p !== undefined && (
-                      <div className="mt-2">
-                        <Delta
-                          current={v}
-                          previous={p}
-                          goodWhenUp={stat.goodWhenUp}
-                          isMoney={stat.format === "money"}
-                        />
-                      </div>
-                    )}
+                <div className="mt-1.5 text-lg font-semibold tabular-nums sm:mt-2 sm:text-2xl">
+                  {value}
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  {stat.hint && <span className="text-xs text-muted-foreground">{stat.hint}</span>}
+                </div>
+                {stat.compare && v !== undefined && p !== undefined && (
+                  <div className="mt-2">
+                    <Delta
+                      current={v}
+                      previous={p}
+                      goodWhenUp={stat.goodWhenUp}
+                      isMoney={stat.format === "money"}
+                    />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </RequireStudio>
-      </div>
-    </AdminShell>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

@@ -130,9 +130,15 @@ AUTH_SETUP.md.
   `scripts` / `scripts-edit` в `admin_permissions` (`has_admin_section`);
   подписи и хронологию пишут триггеры, статистика — RPC `scripts_copy_stats` /
   `scripts_call_stats`, импорт — `scripts_import`.
+  Номенклатура пакетных студий: `db/migrations/2026-10-10_packages_memberships.sql`
+  — `memberships.for_regular_clients` (цена для постоянных клиентов) и
+  триггер, выключающий автопродление в пакетных студиях.
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
-  `studio-logos`).
+  `studio-logos`). Удаление студии — RPC `delete_studio`
+  (`db/migrations/2026-10-10_studio_delete.sql`, только владелец этой студии):
+  каскадом все данные студии; профили людей переносятся в другие студии,
+  общий контент приложения отвязывается от студии.
 - **Источник правды схемы — `db/` в корне репозитория** (общая для обоих
   приложений). Новое изменение
   схемы = новый файл `db/migrations/ГГГГ-ММ-ДД_имя.sql` (с 2026-10-09).

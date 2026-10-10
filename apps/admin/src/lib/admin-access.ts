@@ -6,7 +6,8 @@
  * - Разделы рейки — admin_permissions.sections (RAIL_ACCESS_KEYS) и правка
  *   скриптов — 'scripts-edit' там же (ADMIN_SECTION_KEYS).
  * - Разделы клуба в студии — admin_studio_permissions.sections
- *   (CLUB_SECTION_KEYS — пункты меню клуба, см. CLUB_GROUPS в nav-sections.ts).
+ *   (CLUB_SECTION_KEYS — пункты меню клуба, см. CLUB_GROUPS в nav-sections.ts,
+ *   и дашборд: он в рейке над студиями, но открывается по каждой студии).
  *
  * null — строки нет, доступно всё (сотрудники, заведённые до настройки
  * разделов). Владелец видит все разделы рейки, а в своей студии — все разделы
@@ -76,4 +77,12 @@ export function canOpenClubSection(
   const studio = access.studios[studioId];
   if (!studio) return false;
   return studio.owner || studio.sections === null || studio.sections.includes(key);
+}
+
+/**
+ * Студии, чьи показатели сотрудник видит на дашборде (раздел рейки над
+ * студиями): роль в студии и открытый в ней раздел dashboard.
+ */
+export function dashboardStudioIds(access: AdminAccess): string[] {
+  return Object.keys(access.studios).filter((id) => canOpenClubSection(access, id, "dashboard"));
 }

@@ -35,12 +35,20 @@ import {
 import {
   canOpenClubSection,
   canOpenRail,
+  dashboardStudioIds,
   type AdminAccess,
   type ClubSectionKey,
 } from "@/lib/admin-access";
 import type { StudioFormat } from "@/lib/studio-formats";
 
-export type RailSectionKey = "club" | "staff" | "app" | "scripts" | "access" | "studios";
+export type RailSectionKey =
+  | "dashboard"
+  | "club"
+  | "staff"
+  | "app"
+  | "scripts"
+  | "access"
+  | "studios";
 
 export type RailSection = {
   key: RailSectionKey;
@@ -88,7 +96,6 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     key: "workspace",
     label: "Главное",
     items: [
-      { title: "Дашборд", url: "/dashboard", icon: Widget5, section: "dashboard" },
       { title: "Расписание", url: "/schedule", icon: CalendarMinimalistic, section: "schedule" },
       { title: "Клиенты", url: "/clients", icon: UsersGroupRounded, section: "clients" },
     ],
@@ -98,7 +105,22 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     label: "Студия",
     items: [
       { title: "Тренировки", url: "/workouts", icon: Dumbbell, section: "workouts" },
-      { title: "Номенклатуры", url: "/memberships", icon: TagPrice, section: "memberships" },
+      // Один раздел прав «Номенклатуры», у каждого формата своя страница:
+      // подписки с автопродлением / пакеты тренировок.
+      {
+        title: "Номенклатуры",
+        url: "/memberships",
+        icon: TagPrice,
+        section: "memberships",
+        formats: ["subscription"],
+      },
+      {
+        title: "Номенклатуры",
+        url: "/packages",
+        icon: TagPrice,
+        section: "memberships",
+        formats: ["packages"],
+      },
       { title: "Промокоды", url: "/promocodes", icon: TicketSale, section: "promocodes" },
     ],
   },
@@ -115,6 +137,8 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
         url: "/autorenew-cancellations",
         icon: ClipboardRemove,
         section: "autorenew-cancellations",
+        // У пакетов тренировок автопродления нет.
+        formats: ["subscription"],
       },
     ],
   },
@@ -131,6 +155,25 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
       { title: "NPS-опросы", url: "/nps", icon: ChartSquare, section: "nps" },
     ],
   },
+];
+
+/**
+ * Дашборд — раздел рейки над «Клубом»: на одной странице показатели всех
+ * студий сотрудника по очереди. Право на него по-прежнему отмечается в
+ * каждой студии (ключ dashboard в разделах клуба): студия попадает на
+ * дашборд, только если он ей открыт.
+ */
+export const DASHBOARD_ITEM: ClubNavItem = {
+  title: "Дашборд",
+  url: "/dashboard",
+  icon: Widget5,
+  section: "dashboard",
+};
+
+/** Разделы студии в форме «Доступов»: дашборд и меню клуба. */
+export const STUDIO_SECTION_GROUPS: NavGroup<ClubNavItem>[] = [
+  { key: "dashboard", label: "Дашборд", items: [DASHBOARD_ITEM] },
+  ...CLUB_GROUPS,
 ];
 
 /**
@@ -161,7 +204,11 @@ export const SCRIPTS_SETTINGS_URL = "/scripts/settings";
 
 /** Раздел без url — заготовка: виден в рейке, но не нажимается. */
 export const SECTIONS: RailSection[] = [
-  { key: "club", title: "Клуб", url: "/", icon: Buildings2 },
+  // Над студиями: своего меню нет, справа остаётся меню клуба.
+  { key: "dashboard", title: "Дашборд", url: DASHBOARD_ITEM.url, icon: Widget5 },
+  // Вход в клуб — первая страница его меню; закрытую в активной студии
+  // AccessGate сменит на первую доступную.
+  { key: "club", title: "Клуб", url: CLUB_GROUPS[0].items[0].url, icon: Buildings2 },
   // Сотрудники (тренеры и администраторы) общие для студий: у сотрудника
   // отмечены студии, где он работает.
   {
@@ -234,6 +281,8 @@ export function canOpenPath(
 ): boolean {
   const section = railSectionKey(pathname);
   if (section === "access") return access.isOwner;
+  // Дашборд над студиями: открыт, если открыт хоть в одной студии.
+  if (section === "dashboard") return dashboardStudioIds(access).length > 0;
   if (section === "staff" || section === "app" || section === "scripts")
     return canOpenRail(access, section);
   if (section === "club") {
@@ -245,6 +294,8 @@ export function canOpenPath(
 
 /** Первая страница, которую сотруднику можно открыть (null — ни одной). */
 export function firstAllowedUrl(access: AdminAccess, studioId: string | null): string | null {
+  // Сначала страницы клуба: «Клуб» в рейке ведёт на первую из них, и при
+  // закрытой должен попасть на другую страницу клуба, а не на дашборд.
   const urls = [
     ...CLUB_GROUPS.flatMap((g) => g.items.map((i) => i.url)),
     ...[...SECTIONS, ...ADMIN_SECTIONS].flatMap((s) => (s.url && s.key !== "club" ? [s.url] : [])),
