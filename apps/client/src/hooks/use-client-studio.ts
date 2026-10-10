@@ -1,0 +1,100 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+
+// Студия текущего клиента (clients.studio_id).
+//
+// Зачем: расписание, новости и услуги должны показывать данные студии клиента,
+// а не всех студий сразу — с открытием второй точки нефильтрованные запросы
+// начали бы смешивать контент. Паттерн тот же, что уже используется в
+// memberships.tsx (там студия берётся из загруженной карточки клиента).
+//
+// studioId === null при studioReady === true означает «гость или клиент без
+// карточки» — в этом случае страницы оставляют запросы нефильтрованными,
+// то есть поведение при одной студии не меняется.
+//
+// Кэш на модуль: значение стабильно в рамках сессии, перезапрашивается только
+// при смене пользователя.
+
+type State = { studioId: string | null; studioReady: boolean };
+
+let cacheUserId: string | null = null;
+let cacheStudioId: string | null = null;
+// Запрос в полёте храним вместе с пользователем, для которого он начат:
+// раньше промис был общий на модуль, и при смене сессии (выход/вход или
+// обновление токена) второй вызов переиспользовал чужой запрос — новый клиент
+// получал студию предыдущего и до конца сессии смотрел его расписание.
+let inflight: { userId: string; promise: Promise<string | null> } | null = null;
+
+// Ошибки запросов пробрасываем, а не превращаем в null: результат .then()
+// кэшируется на всю сессию, и разовый сбой сети навсегда отключал фильтр по
+// студии (клиент видел расписание и новости всех студий). Через .catch()
+// значение не кэшируется и при следующем монтировании запрашивается снова.
+async function fetchStudioId(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .select("studio_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.studio_id) return data.studio_id;
+
+  // Карточки клиента нет — заводим её на сервере. Так бывает у тех, кто
+  // зарегистрировался до появления автосоздания: триггер срабатывает только
+  // на нового пользователя, а повторный вход нового пользователя не создаёт.
+  const { data: ensured, error: ensureError } = await (supabase as any).rpc(
+    "ensure_client_profile",
+  );
+  if (ensureError) throw ensureError;
+  const row = Array.isArray(ensured) ? ensured[0] : ensured;
+  return row?.studio_id ?? null;
+}
+
+export function useClientStudioId(): State {
+  const { user, loading } = useAuth();
+  const [state, setState] = useState<State>(() =>
+    user && cacheUserId === user.id
+      ? { studioId: cacheStudioId, studioReady: true }
+      : { studioId: null, studioReady: false },
+  );
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      setState({ studioId: null, studioReady: true });
+      return;
+    }
+    if (cacheUserId === user.id) {
+      setState({ studioId: cacheStudioId, studioReady: true });
+      return;
+    }
+    const userId = user.id;
+    let cancelled = false;
+    // Студия прежнего пользователя не должна оставаться «готовой», пока
+    // грузится студия нового.
+    setState({ studioId: null, studioReady: false });
+    if (!inflight || inflight.userId !== userId) {
+      inflight = { userId, promise: fetchStudioId(userId) };
+    }
+    const current = inflight;
+    current.promise
+      .then((sid) => {
+        cacheUserId = userId;
+        cacheStudioId = sid;
+        if (!cancelled) setState({ studioId: sid, studioReady: true });
+      })
+      .catch(() => {
+        // Не оставляем приложение в вечном скелетоне: без карточки клиента
+        // страницы просто не фильтруют по студии — как для гостя.
+        if (!cancelled) setState({ studioId: null, studioReady: true });
+      })
+      .finally(() => {
+        if (inflight === current) inflight = null;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loading]);
+
+  return state;
+}
