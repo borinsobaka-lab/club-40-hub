@@ -191,6 +191,10 @@ own"` оставить). Альтернатива — выдача абонем�
   `useState(item?.x ?? "")`. Эффекты «сбросить поля при открытии» не писать:
   Radix размонтирует содержимое при закрытии. Сначала валидация, потом
   `setSaving(true)`, снятие — в `finally`. Удаление — `useConfirm`.
+- Разметка форм — блоки из `components/ui/form-field.tsx` (`FormField`,
+  `SwitchRow`, `CheckboxOption`, `InfoNote`) и `DialogForm` (Enter = сохранить,
+  главная кнопка `type="submit"`, у `Button` по умолчанию `type="button"`).
+  Полный стандарт — `.interface-design/system.md`, раздел «Формы».
 
 ### Общие модули
 
