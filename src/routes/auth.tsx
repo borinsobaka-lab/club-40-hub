@@ -5,10 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { requestStaffLoginLink } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -53,6 +52,8 @@ function AuthPage() {
     }
   };
 
+  // Форма без noValidate: пустую и кривую почту отсекает браузер (type=email,
+  // required) — своей проверки и текста ошибки здесь нет.
   const signIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (await sendLink()) setStep("sent");
@@ -76,18 +77,16 @@ function AuthPage() {
         <CardContent>
           {step === "credentials" ? (
             <form onSubmit={signIn} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="si-email">Электронная почта</Label>
+              <Field label="Электронная почта">
                 <Input
-                  id="si-email"
                   type="email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              </Field>
+              <Button type="submit" className="w-full" loading={loading}>
                 Получить ссылку для входа
               </Button>
               <p className="text-xs text-muted-foreground text-center">

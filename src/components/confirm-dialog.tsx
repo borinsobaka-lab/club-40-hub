@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 
 export type ConfirmOptions = {
   /** Заголовок: коротко и по делу — «Удалить клиента?». */
@@ -72,9 +72,7 @@ export function useConfirm() {
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => settle(true)}
-            className={cn(
-              destructive && "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-            )}
+            className={destructive ? buttonVariants({ variant: "destructive" }) : undefined}
           >
             {options?.confirmLabel ?? "Удалить"}
           </AlertDialogAction>

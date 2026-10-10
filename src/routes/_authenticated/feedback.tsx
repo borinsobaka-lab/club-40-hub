@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MessageSquare, X, Loader2 } from "lucide-react";
+import { Plus, Trash2, MessageSquare, X } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -13,8 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldRow } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -22,12 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
   DialogBody,
   DialogDescription,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -349,9 +358,14 @@ function FeedbackPage() {
       </div>
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <SheetContent className="w-full sm:max-w-md">
+        <SheetContent>
           <SheetHeader>
             <SheetTitle>{selected ? TOPICS[selected.topic] || selected.topic : ""}</SheetTitle>
+            <SheetDescription>
+              {selected
+                ? format(new Date(selected.created_at), "d MMMM yyyy, HH:mm", { locale: ru })
+                : ""}
+            </SheetDescription>
           </SheetHeader>
           {selected && (
             <FeedbackDetails
@@ -415,17 +429,16 @@ function NewFeedbackForm({
   };
 
   return (
-    <>
+    <DialogForm onSubmit={submit}>
       <DialogHeader>
         <DialogTitle>Новое обращение</DialogTitle>
         <DialogDescription>Заполните данные обращения клиента.</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="topic">Тема</Label>
+          <Field label="Тема">
             <Select value={topic} onValueChange={setTopic}>
-              <SelectTrigger id="topic">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -436,20 +449,13 @@ function NewFeedbackForm({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="message">Сообщение</Label>
-            <Textarea
-              id="message"
-              rows={4}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="mood">Оценка</Label>
+          </Field>
+          <Field label="Сообщение" required>
+            <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} />
+          </Field>
+          <Field label="Оценка">
             <Select value={mood || "none"} onValueChange={(v) => setMood(v === "none" ? "" : v)}>
-              <SelectTrigger id="mood">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -457,36 +463,26 @@ function NewFeedbackForm({
                 {moodSelectItems()}
               </SelectContent>
             </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="cname">Имя</Label>
-              <Input
-                id="cname"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ccontact">Контакт</Label>
-              <Input
-                id="ccontact"
-                value={clientContact}
-                onChange={(e) => setClientContact(e.target.value)}
-              />
-            </div>
-          </div>
+          </Field>
+          <FieldRow>
+            <Field label="Имя">
+              <Input value={clientName} onChange={(e) => setClientName(e.target.value)} />
+            </Field>
+            <Field label="Контакт">
+              <Input value={clientContact} onChange={(e) => setClientContact(e.target.value)} />
+            </Field>
+          </FieldRow>
         </div>
       </DialogBody>
       <DialogFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={submit} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
+        <Button type="submit" loading={saving}>
+          Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }
 
@@ -538,65 +534,63 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
     );
 
   return (
-    <div className="mt-6 space-y-4">
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Дата</p>
-        <p className="text-sm">
-          {format(new Date(item.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
-        </p>
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Сообщение</p>
-        <p className="whitespace-pre-wrap text-sm">{item.message}</p>
-      </div>
-      {item.mood && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Оценка</p>
-          <p className="text-lg">{MOOD[item.mood]}</p>
-        </div>
-      )}
-      {(item.client_name || item.client_contact) && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Клиент</p>
-          <p className="text-sm">
-            {item.client_name || "—"}
-            {item.client_contact ? ` · ${item.client_contact}` : ""}
-          </p>
-        </div>
-      )}
-      <div className="space-y-1.5">
-        <Label htmlFor="resolution">Комментарий обработки</Label>
-        <Textarea
-          id="resolution"
-          value={resolutionComment}
-          onChange={(e) => setResolutionComment(e.target.value)}
-          placeholder="Что сделано?"
-          rows={4}
-          disabled={item.status === "resolved"}
-        />
-      </div>
-      {item.status === "pending" ? (
-        <Button className="w-full" onClick={handleResolve} disabled={busy}>
-          Отметить отработанным
-        </Button>
-      ) : (
-        <>
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground">Обработано</p>
-            <p className="text-sm">
-              {item.resolved_by_name || "—"}
-              {item.resolved_at &&
-                ` · ${format(new Date(item.resolved_at), "d MMM yyyy", { locale: ru })}`}
-            </p>
-            {item.resolution_comment && (
-              <p className="mt-2 whitespace-pre-wrap text-sm">{item.resolution_comment}</p>
-            )}
+    <>
+      <SheetBody>
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Сообщение</p>
+            <p className="whitespace-pre-wrap text-sm">{item.message}</p>
           </div>
-          <Button variant="outline" className="w-full" onClick={handleReopen} disabled={busy}>
+          {item.mood && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Оценка</p>
+              <p className="text-lg">{MOOD[item.mood]}</p>
+            </div>
+          )}
+          {(item.client_name || item.client_contact) && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Клиент</p>
+              <p className="text-sm">
+                {item.client_name || "—"}
+                {item.client_contact ? ` · ${item.client_contact}` : ""}
+              </p>
+            </div>
+          )}
+          <Field label="Комментарий обработки">
+            <Textarea
+              value={resolutionComment}
+              onChange={(e) => setResolutionComment(e.target.value)}
+              placeholder="Что сделано?"
+              rows={4}
+              disabled={item.status === "resolved"}
+            />
+          </Field>
+          {item.status !== "pending" && (
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground">Обработано</p>
+              <p className="text-sm">
+                {item.resolved_by_name || "—"}
+                {item.resolved_at &&
+                  ` · ${format(new Date(item.resolved_at), "d MMM yyyy", { locale: ru })}`}
+              </p>
+              {item.resolution_comment && (
+                <p className="mt-2 whitespace-pre-wrap text-sm">{item.resolution_comment}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </SheetBody>
+      <SheetFooter>
+        {item.status === "pending" ? (
+          <Button onClick={handleResolve} loading={busy}>
+            Отметить отработанным
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={handleReopen} loading={busy}>
             Вернуть в работу
           </Button>
-        </>
-      )}
-    </div>
+        )}
+      </SheetFooter>
+    </>
   );
 }

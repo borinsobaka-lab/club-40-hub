@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -10,8 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldGroup, FieldRow } from "@/components/ui/field";
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -385,16 +386,15 @@ function ShowcaseForm({
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{item ? texts.editTitle : texts.createTitle}</DialogTitle>
         <DialogDescription>{texts.dialogDescription}</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Картинка (превью)</Label>
+          <FieldRow>
+            <Field label="Картинка" hint="Превью на карточке в списке.">
               <ImageUploadField
                 bucket={bucket}
                 folder={`${studioId}/image`}
@@ -402,10 +402,8 @@ function ShowcaseForm({
                 onChange={setImageUrl}
                 disabled={!studioId}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Баннер</Label>
+            </Field>
+            <Field label="Баннер" hint="Вверху полной страницы.">
               <ImageUploadField
                 bucket={bucket}
                 folder={`${studioId}/banner`}
@@ -416,93 +414,80 @@ function ShowcaseForm({
                     bucket={bucket}
                     value={bannerUrl}
                     alt="Баннер"
-                    className="h-10 w-28"
+                    className="h-12 w-[8.5rem]"
                   />
                 }
                 disabled={!studioId}
               />
-            </div>
-          </div>
+            </Field>
+          </FieldRow>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="title">Заголовок</Label>
+          <Field label="Заголовок" required>
             <Input
-              id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Краткий заголовок для списка"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Описание</Label>
+          <Field label="Описание">
             <Textarea
-              id="description"
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Короткое описание для превью"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="full_title">Полный заголовок</Label>
+          <Field label="Полный заголовок">
             <Input
-              id="full_title"
               value={fullTitle}
               onChange={(e) => setFullTitle(e.target.value)}
               placeholder={texts.fullTitlePlaceholder}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="full_text">Полный текст</Label>
+          <Field label="Полный текст">
             <Textarea
-              id="full_text"
               rows={8}
               value={fullText}
               onChange={(e) => setFullText(e.target.value)}
               placeholder={texts.fullTextPlaceholder}
             />
-          </div>
+          </Field>
 
-          <div className="rounded-md border p-3 space-y-3">
-            <div className="text-sm font-medium">Кнопка перехода (необязательно)</div>
-            <div className="text-xs text-muted-foreground">
-              {texts.buttonHint} Если пусто — кнопки не будет.
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="button_text">Текст на кнопке</Label>
+          <FieldGroup
+            title="Кнопка перехода"
+            description={`${texts.buttonHint} Если пусто — кнопки не будет.`}
+          >
+            <FieldRow>
+              <Field label="Текст на кнопке">
                 <Input
-                  id="button_text"
                   value={buttonText}
                   onChange={(e) => setButtonText(e.target.value)}
                   placeholder={texts.buttonPlaceholder}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="button_url">Ссылка</Label>
+              </Field>
+              <Field label="Ссылка">
                 <Input
-                  id="button_url"
+                  inputMode="url"
                   value={buttonUrl}
                   onChange={(e) => setButtonUrl(e.target.value)}
                   placeholder="https://…"
                 />
-              </div>
-            </div>
-          </div>
+              </Field>
+            </FieldRow>
+          </FieldGroup>
         </div>
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

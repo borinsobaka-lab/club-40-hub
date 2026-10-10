@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2, Send } from "lucide-react";
+import { Plus, Pencil, Trash2, Send } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -10,9 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CheckboxField, Field } from "@/components/ui/field";
+import { RadioGroup, RadioOption } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -226,7 +227,7 @@ function PushPage() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-lg">
           {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
           <PushForm
             key={editing?.id ?? "new"}
@@ -329,7 +330,7 @@ function PushForm({
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать уведомление" : "Новое пуш-уведомление"}</DialogTitle>
         <DialogDescription>
@@ -338,82 +339,67 @@ function PushForm({
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Заголовок</Label>
+          <Field label="Заголовок" required>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Например: Скидка 20% на абонементы"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label>Сообщение</Label>
+          <Field label="Сообщение">
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Текст пуш-уведомления"
               rows={4}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label>Ссылка перехода (необязательно)</Label>
+          <Field
+            label="Ссылка перехода"
+            hint="Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти»."
+          >
             <Input
               value={actionUrl}
               onChange={(e) => setActionUrl(e.target.value)}
               placeholder="https://… или внутренний раздел"
             />
-            <p className="text-xs text-muted-foreground">
-              Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
-            </p>
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label>Статус клиентов</Label>
+          <Field label="Статус клиентов" required>
             <div className="space-y-2 rounded-md border p-3">
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(v) => setAllSelected(Boolean(v))}
-                />
-                <span>Все клиенты</span>
-              </label>
-              <div className="flex flex-wrap gap-3 pl-1">
+              <CheckboxField
+                label="Все клиенты"
+                checked={allSelected}
+                onCheckedChange={setAllSelected}
+              />
+              {/* Отступ — под текст «Все клиенты»: сегменты уточняют этот выбор. */}
+              <div className="flex flex-wrap gap-x-4 gap-y-2 pl-6">
                 {ALL_SEGMENTS.map((s) => (
-                  <label key={s} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={!allSelected && segments.includes(s)}
-                      disabled={allSelected}
-                      onCheckedChange={(v) => toggleSegment(s, Boolean(v))}
-                    />
-                    <span>{CLUB_STATUS_LABEL[s]}</span>
-                  </label>
+                  <CheckboxField
+                    key={s}
+                    label={CLUB_STATUS_LABEL[s]}
+                    checked={!allSelected && segments.includes(s)}
+                    disabled={allSelected}
+                    onCheckedChange={(v) => toggleSegment(s, v)}
+                  />
                 ))}
               </div>
             </div>
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label>Время отправки</Label>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={sendMode === "now"}
-                  onChange={() => setSendMode("now")}
-                />
-                <span>Отправить сейчас</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={sendMode === "schedule"}
-                  onChange={() => setSendMode("schedule")}
-                />
-                <span>Запланировать</span>
-              </label>
-            </div>
+          {/* Подпись ведёт к полю даты; у переключателя — своя aria-label. */}
+          <Field label="Время отправки">
+            <RadioGroup
+              aria-label="Время отправки"
+              value={sendMode}
+              onValueChange={(v) => setSendMode(v as "now" | "schedule")}
+              className="flex flex-wrap gap-4"
+            >
+              <RadioOption value="now" label="Отправить сейчас" />
+              <RadioOption value="schedule" label="Запланировать" />
+            </RadioGroup>
             {sendMode === "schedule" && (
               <Input
                 type="datetime-local"
@@ -421,22 +407,18 @@ function PushForm({
                 onChange={(e) => setScheduledAt(e.target.value)}
               />
             )}
-          </div>
+          </Field>
         </div>
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="mr-1 h-4 w-4" />
-          )}
+        <Button type="submit" loading={saving}>
+          {!saving && <Send />}
           {sendMode === "now" ? "Отправить" : "Запланировать"}
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

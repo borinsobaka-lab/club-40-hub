@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
-import { Plus, Loader2, Pencil, Trash2, CalendarIcon, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarIcon, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,8 @@ import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldRow } from "@/components/ui/field";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -41,6 +41,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -477,13 +478,13 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
         <DialogDescription>Контактные данные и заметки по клиенту.</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <div className="grid gap-3 py-2">
+        <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
               {photoUrl ? (
@@ -501,64 +502,38 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
                 </div>
               )}
             </div>
-            <div className="grid flex-1 grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-last-name">Фамилия</Label>
-                <Input
-                  id="cl-last-name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="cl-first-name">Имя *</Label>
-                <Input
-                  id="cl-first-name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
-            </div>
+            <FieldRow className="flex-1">
+              <Field label="Фамилия">
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </Field>
+              <Field label="Имя" required>
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </Field>
+            </FieldRow>
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-crm">Ссылка на amoCRM</Label>
+          <Field label="Ссылка на amoCRM">
             <Input
-              id="cl-crm"
               type="url"
               value={crmLink}
               onChange={(e) => setCrmLink(e.target.value)}
               placeholder="https://your-account.amocrm.ru/contacts/detail/..."
             />
-          </div>
+          </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-phone">Телефон</Label>
-              <Input id="cl-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-email">Email</Label>
-              <Input
-                id="cl-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-bday">Дата рождения</Label>
-              <Input
-                id="cl-bday"
-                type="date"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Пол</Label>
+          <FieldRow>
+            <Field label="Телефон">
+              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </Field>
+            <Field label="Email">
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label="Дата рождения">
+              <Input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+            </Field>
+            <Field label="Пол">
               <Select value={gender} onValueChange={setGender}>
                 <SelectTrigger>
                   <SelectValue placeholder="—" />
@@ -571,58 +546,45 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-reg">Дата регистрации</Label>
+            </Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label="Дата регистрации">
               <Input
-                id="cl-reg"
                 type="date"
                 value={registrationDate}
                 onChange={(e) => setRegistrationDate(e.target.value)}
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cl-last">Последний визит</Label>
+            </Field>
+            <Field label="Последний визит">
               <Input
-                id="cl-last"
                 type="date"
                 value={lastVisitDate}
                 onChange={(e) => setLastVisitDate(e.target.value)}
               />
-            </div>
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-photo">Фото (URL)</Label>
+            </Field>
+          </FieldRow>
+          <Field label="Ссылка на фото">
             <Input
-              id="cl-photo"
               type="url"
               value={photoUrl}
               onChange={(e) => setPhotoUrl(e.target.value)}
               placeholder="https://..."
             />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="cl-notes">Заметки</Label>
-            <Textarea
-              id="cl-notes"
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
+          </Field>
+          <Field label="Заметки">
+            <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </Field>
         </div>
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

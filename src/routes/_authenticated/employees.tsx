@@ -4,14 +4,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { toast } from "sonner";
-import { Trash2, UserPlus, Loader2 } from "lucide-react";
+import { Trash2, UserPlus } from "lucide-react";
 
 import { getEmployeesContext, createEmployee, deleteEmployee } from "@/lib/employees.functions";
 import type { StaffRole } from "@/lib/roles";
 import { AdminShell } from "@/components/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import {
   Table,
   TableBody,
@@ -26,6 +26,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -97,7 +98,7 @@ function EmployeesPage() {
                 Добавить сотрудника
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
               <NewEmployeeForm onDone={() => setOpen(false)} />
             </DialogContent>
@@ -197,8 +198,22 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Браузерная проверка в DialogForm выключена (noValidate) — пустые поля
+  // ловим сами, иначе в тост ушла бы сырая ошибка валидации сервера.
+  const handleSubmit = () => {
+    if (!form.full_name.trim()) {
+      toast.error("Укажите полное имя");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      toast.error("Укажите корректный email");
+      return;
+    }
+    createMut.mutate(form);
+  };
+
   return (
-    <>
+    <DialogForm onSubmit={handleSubmit}>
       <DialogHeader>
         <DialogTitle>Новый сотрудник</DialogTitle>
         <DialogDescription>
@@ -206,33 +221,22 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
           запись (например, он клиент приложения), ему просто выдаётся роль.
         </DialogDescription>
       </DialogHeader>
-      <form
-        className="flex min-h-0 flex-1 flex-col"
-        onSubmit={(e) => {
-          e.preventDefault();
-          createMut.mutate(form);
-        }}
-      >
-        <DialogBody className="space-y-3">
-          <div className="space-y-1">
-            <Label>Полное имя</Label>
+      <DialogBody>
+        <div className="space-y-4">
+          <Field label="Полное имя" required>
             <Input
               value={form.full_name}
               onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              required
             />
-          </div>
-          <div className="space-y-1">
-            <Label>Email</Label>
+          </Field>
+          <Field label="Email" required>
             <Input
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
             />
-          </div>
-          <div className="space-y-1">
-            <Label>Роль</Label>
+          </Field>
+          <Field label="Роль">
             <Select
               value={form.role}
               onValueChange={(v) => setForm({ ...form, role: v as StaffRole })}
@@ -246,15 +250,17 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
                 <SelectItem value="trainer">Тренер</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button type="submit" disabled={createMut.isPending}>
-            {createMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Добавить
-          </Button>
-        </DialogFooter>
-      </form>
-    </>
+          </Field>
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={onDone} disabled={createMut.isPending}>
+          Отмена
+        </Button>
+        <Button type="submit" loading={createMut.isPending}>
+          Добавить
+        </Button>
+      </DialogFooter>
+    </DialogForm>
   );
 }

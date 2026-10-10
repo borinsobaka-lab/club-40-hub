@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -27,6 +27,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -317,49 +318,46 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{workout ? "Редактировать тренировку" : "Новая тренировка"}</DialogTitle>
         <DialogDescription>Заполните данные тренировки студии.</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <ImageUploadField
-            bucket="workouts"
-            folder={`${studioId}`}
-            value={photoUrl}
-            onChange={setPhotoUrl}
-            preview={<StorageImage bucket="workouts" value={photoUrl} alt="Иконка" />}
-            uploadLabel="Загрузить иконку"
-            replaceLabel="Заменить иконку"
-            disabled={!studioId}
-          />
+          <Field label="Иконка">
+            <ImageUploadField
+              bucket="workouts"
+              folder={`${studioId}`}
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              preview={<StorageImage bucket="workouts" value={photoUrl} alt="Иконка" />}
+              uploadLabel="Загрузить иконку"
+              replaceLabel="Заменить иконку"
+              disabled={!studioId}
+            />
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Название</Label>
+          <Field label="Название" required>
             <Input
-              id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Например: Силовая базовая"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Описание</Label>
+          <Field label="Описание">
             <Textarea
-              id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Краткое описание тренировки"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="type">Тип тренировки</Label>
+          <Field label="Тип тренировки">
             <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
-              <SelectTrigger id="type">
+              <SelectTrigger>
                 <SelectValue placeholder="Выберите тип" />
               </SelectTrigger>
               <SelectContent>
@@ -378,50 +376,43 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="capacity">Вместимость (чел.)</Label>
+          <Field
+            label="Вместимость, чел."
+            hint="Используется по умолчанию для всех занятий этой тренировки в расписании."
+          >
             <Input
-              id="capacity"
-              type="number"
-              min={0}
+              inputMode="numeric"
               value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
+              onChange={(e) => setCapacity(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder="Например: 12"
             />
-            <p className="text-xs text-muted-foreground">
-              Используется по умолчанию для всех занятий этой тренировки в расписании.
-            </p>
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="met">MET — интенсивность</Label>
+          <Field
+            label="MET — интенсивность"
+            hint="Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто — берётся значение по умолчанию для типа тренировки."
+          >
             <Input
-              id="met"
-              type="number"
-              step="0.1"
-              min={0}
+              inputMode="decimal"
               value={metValue}
-              onChange={(e) => setMetValue(e.target.value)}
+              onChange={(e) =>
+                setMetValue(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""))
+              }
               placeholder="Кардио 8.5 · Силовая 7.0 · Гибрид 8.0 · Восстановление 2.8"
             />
-            <p className="text-xs text-muted-foreground">
-              Используется для оценки калорий: ккал ≈ MET × 3.5 × вес / 200 × мин. Если пусто —
-              берётся значение по умолчанию для типа тренировки.
-            </p>
-          </div>
+          </Field>
         </div>
       </DialogBody>
       <DialogFooter>
-        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

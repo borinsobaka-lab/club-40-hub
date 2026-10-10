@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Trash2, Receipt } from "lucide-react";
+import { Plus, Trash2, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -20,8 +20,9 @@ import {
 } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldGroup, FieldRow } from "@/components/ui/field";
+import { RadioGroup, RadioOption } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -43,6 +44,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -584,205 +586,190 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>Новая продажа</DialogTitle>
-        <DialogDescription>
-          Выберите клиента и абонемент. Стоимость подтянется автоматически.
-        </DialogDescription>
-      </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Клиент</Label>
-            <ClientCombobox
-              studioId={studioId}
-              value={form.clientId}
-              onChange={(id, c) =>
-                setForm((f) => ({ ...f, clientId: id, clientLabel: c ? clientName(c) : "" }))
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="s-date">Дата продажи</Label>
-              <Input
-                id="s-date"
-                type="date"
-                value={form.soldAt}
-                onChange={(e) => set("soldAt", e.target.value)}
+      <DialogForm onSubmit={handleSave}>
+        <DialogHeader>
+          <DialogTitle>Новая продажа</DialogTitle>
+          <DialogDescription>
+            Выберите клиента и абонемент. Стоимость подтянется автоматически.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="space-y-4">
+            <Field label="Клиент" required>
+              <ClientCombobox
+                studioId={studioId}
+                value={form.clientId}
+                onChange={(id, c) =>
+                  setForm((f) => ({ ...f, clientId: id, clientLabel: c ? clientName(c) : "" }))
+                }
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Администратор</Label>
-              <Input value={staff?.displayName ?? ""} disabled readOnly />
-            </div>
-          </div>
+            </Field>
 
-          <div className="space-y-1.5">
-            <Label>Абонемент</Label>
-            <SearchableCombobox
-              placeholder="Выбрать абонемент"
-              searchPlaceholder="Поиск по названию"
-              emptyText="Ничего не найдено"
-              value={form.membershipId}
-              onChange={pickMembership}
-              options={memberships.map((m) => ({
-                value: m.id,
-                label: m.name,
-                hint: formatMoney(Number(m.price ?? 0)),
-                searchText: m.name,
-              }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="s-amount">Стоимость, ₾</Label>
-              <Input
-                id="s-amount"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => set("amount", e.target.value)}
-              />
-              {t.discount > 0 && t.listPrice != null && (
-                <p className="text-xs text-muted-foreground">
-                  Цена по тарифу {formatMoney(t.listPrice)}, скидка {formatMoney(t.discount)}.
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Способ оплаты</Label>
-              <Select
-                value={form.paymentMethod}
-                onValueChange={(v) => set("paymentMethod", v as PaymentMethod)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {PAYMENT_METHOD_LABEL[m]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {t.installment ? (
-            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="s-down">Первый взнос, ₾</Label>
+            <FieldRow>
+              <Field label="Дата продажи" required>
                 <Input
-                  id="s-down"
+                  type="date"
+                  value={form.soldAt}
+                  onChange={(e) => set("soldAt", e.target.value)}
+                />
+              </Field>
+              <Field label="Администратор">
+                <Input value={staff?.displayName ?? ""} disabled readOnly />
+              </Field>
+            </FieldRow>
+
+            <Field label="Абонемент" required>
+              <SearchableCombobox
+                placeholder="Выбрать абонемент"
+                searchPlaceholder="Поиск по названию"
+                emptyText="Ничего не найдено"
+                value={form.membershipId}
+                onChange={pickMembership}
+                options={memberships.map((m) => ({
+                  value: m.id,
+                  label: m.name,
+                  hint: formatMoney(Number(m.price ?? 0)),
+                  searchText: m.name,
+                }))}
+              />
+            </Field>
+
+            <FieldRow>
+              <Field
+                label="Стоимость, ₾"
+                required
+                hint={
+                  t.discount > 0 && t.listPrice != null
+                    ? `Цена по тарифу ${formatMoney(t.listPrice)}, скидка ${formatMoney(t.discount)}.`
+                    : undefined
+                }
+              >
+                <Input
                   type="number"
+                  inputMode="decimal"
                   min={0}
                   step="0.01"
-                  value={form.downPayment}
-                  onChange={(e) => set("downPayment", e.target.value)}
-                  placeholder="Сколько клиент вносит сейчас"
+                  value={form.amount}
+                  onChange={(e) => set("amount", e.target.value)}
                 />
-              </div>
+              </Field>
+              <Field label="Способ оплаты">
+                <Select
+                  value={form.paymentMethod}
+                  onValueChange={(v) => set("paymentMethod", v as PaymentMethod)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {PAYMENT_METHOD_LABEL[m]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </FieldRow>
 
-              <div className="space-y-1.5">
-                <Label>Ещё платежей</Label>
-                <div className="flex gap-2">
-                  {([2, 3] as const).map((n) => (
-                    <Button
-                      key={n}
-                      type="button"
-                      variant={form.remainingCount === n ? "default" : "outline"}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => set("remainingCount", n)}
+            {t.installment ? (
+              <FieldGroup title="Рассрочка">
+                <FieldRow>
+                  <Field label="Первый взнос, ₾" required>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step="0.01"
+                      value={form.downPayment}
+                      onChange={(e) => set("downPayment", e.target.value)}
+                      placeholder="Сколько клиент вносит сейчас"
+                    />
+                  </Field>
+                  <Field label="Ещё платежей">
+                    <RadioGroup
+                      value={String(form.remainingCount)}
+                      onValueChange={(v) => set("remainingCount", v === "3" ? 3 : 2)}
+                      className="flex h-10 flex-wrap items-center gap-4"
                     >
-                      {n} мес.
-                    </Button>
-                  ))}
-                </div>
+                      <RadioOption value="2" label="2 мес." />
+                      <RadioOption value="3" label="3 мес." />
+                    </RadioGroup>
+                  </Field>
+                </FieldRow>
+
+                {t.schedule.length > 0 && (
+                  <ul className="divide-y rounded-md border bg-background text-sm">
+                    {t.schedule.map((p, i) => (
+                      <li key={i} className="flex items-center justify-between px-3 py-1.5">
+                        <span className="text-muted-foreground">
+                          {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
+                          {formatDate(p.date)}
+                        </span>
+                        <span className="font-medium">{formatMoney(p.amount)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </FieldGroup>
+            ) : membership ? (
+              <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                Рассрочка недоступна для этого абонемента. Оплата производится сразу.
               </div>
+            ) : null}
 
-              {t.schedule.length > 0 && (
-                <ul className="divide-y rounded-md border bg-background text-sm">
-                  {t.schedule.map((p, i) => (
-                    <li key={i} className="flex items-center justify-between px-3 py-1.5">
-                      <span className="text-muted-foreground">
-                        {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
-                        {formatDate(p.date)}
-                      </span>
-                      <span className="font-medium">{formatMoney(p.amount)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : membership ? (
-            <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
-              Рассрочка недоступна для этого абонемента. Оплата производится сразу.
-            </div>
-          ) : null}
+            <FieldRow>
+              <Field label="Тип оплаты">
+                <Select
+                  value={form.paymentType}
+                  onValueChange={(v) => set("paymentType", v as PaymentType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_TYPES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PAYMENT_TYPE_LABEL[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Промо-код">
+                <Input
+                  value={form.promoCode}
+                  onChange={(e) => set("promoCode", e.target.value)}
+                  placeholder="Необязательно"
+                />
+              </Field>
+            </FieldRow>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Тип оплаты</Label>
-              <Select
-                value={form.paymentType}
-                onValueChange={(v) => set("paymentType", v as PaymentType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_TYPES.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {PAYMENT_TYPE_LABEL[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="s-promo">Промо-код</Label>
-              <Input
-                id="s-promo"
-                value={form.promoCode}
-                onChange={(e) => set("promoCode", e.target.value)}
+            <Field label="Комментарий">
+              <Textarea
+                rows={2}
+                value={form.comment}
+                onChange={(e) => set("comment", e.target.value)}
                 placeholder="Необязательно"
               />
-            </div>
-          </div>
+            </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="s-comment">Комментарий</Label>
-            <Textarea
-              id="s-comment"
-              rows={2}
-              value={form.comment}
-              onChange={(e) => set("comment", e.target.value)}
-              placeholder="Необязательно"
-            />
+            {form.clientId && membership && (
+              <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                Продажа абонемента «{membership.name}» клиенту {form.clientLabel}.
+              </div>
+            )}
           </div>
-
-          {form.clientId && membership && (
-            <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
-              Продажа абонемента «{membership.name}» клиенту {form.clientLabel}.
-            </div>
-          )}
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-          Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" loading={saving}>
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
       {confirmDialog}
     </>
   );
@@ -804,7 +791,7 @@ function RefundDialog({ open, onOpenChange, sale, onSaved }: RefundDialogProps) 
   // уезжает анимацией.
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         {sale && (
           <RefundForm key={sale.id} sale={sale} onOpenChange={onOpenChange} onSaved={onSaved} />
         )}
@@ -884,7 +871,7 @@ function RefundForm({
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>Возврат</DialogTitle>
         <DialogDescription>
@@ -893,24 +880,25 @@ function RefundForm({
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="r-amount">Сумма возврата, ₾</Label>
+          <Field
+            label="Сумма возврата, ₾"
+            required
+            hint={
+              refunded
+                ? `Уже возвращено ${formatMoney(refunded)}, доступно ${formatMoney(available)}`
+                : undefined
+            }
+          >
             <Input
-              id="r-amount"
               type="number"
+              inputMode="decimal"
               min={0}
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
-            {!!refunded && (
-              <p className="text-xs text-muted-foreground">
-                Уже возвращено {formatMoney(refunded)}, доступно {formatMoney(available)}
-              </p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label>Способ</Label>
+          </Field>
+          <Field label="Способ">
             <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
               <SelectTrigger>
                 <SelectValue />
@@ -923,27 +911,20 @@ function RefundForm({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="r-reason">Причина (по желанию)</Label>
-            <Textarea
-              id="r-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-            />
-          </div>
+          </Field>
+          <Field label="Причина">
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
+          </Field>
         </div>
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving || loadingRefunded}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+        <Button type="submit" loading={saving} disabled={loadingRefunded}>
           Оформить возврат
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

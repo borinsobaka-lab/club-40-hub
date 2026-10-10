@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2, X, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Copy } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -12,10 +12,9 @@ import { unwrap } from "@/lib/query";
 import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { CheckboxField, Field, FieldRow, SwitchField } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -31,6 +30,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -310,7 +310,7 @@ type DialogProps = {
 function MembershipDialog(props: DialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
         <MembershipForm key={props.item?.id ?? "new"} {...props} />
       </DialogContent>
@@ -398,25 +398,25 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
         <DialogDescription>Заполните параметры номенклатуры.</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="m-name">Название</Label>
+          <Field label="Название" required>
             <Input
-              id="m-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Например: Безлимит на месяц"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label>Обложка (для мобильного приложения)</Label>
+          <Field
+            label="Обложка"
+            hint="Для мобильного приложения. Рекомендуемые размеры: соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px"
+          >
             <ImageUploadField
               bucket="memberships"
               folder={`${studioId}/cover`}
@@ -426,122 +426,102 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               accept="image/svg+xml,image/png,image/jpeg,image/webp"
               disabled={!studioId}
             />
-            <p className="text-xs text-muted-foreground">
-              Рекомендуемые размеры: соотношение 3:2 (горизонтальное), оптимально 1200 × 800 px
-            </p>
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="m-desc">Описание</Label>
+          <Field label="Описание">
             <Textarea
-              id="m-desc"
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label>Преимущества</Label>
+          <Field label="Преимущества">
             <BenefitsEditor value={benefits} onChange={setBenefits} />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label>Количество посещений</Label>
-            <div className="flex items-center gap-2">
+          <FieldRow>
+            <Field label="Количество посещений" required={!unlimited}>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={visitsCount}
+                  onChange={(e) => setVisitsCount(e.target.value)}
+                  disabled={unlimited}
+                  placeholder="Например, 8"
+                  className="flex-1"
+                />
+                <CheckboxField
+                  label="Безлимит"
+                  checked={unlimited}
+                  onCheckedChange={setUnlimited}
+                  className="shrink-0"
+                />
+              </div>
+            </Field>
+            <Field label="Срок действия, дн.">
               <Input
                 type="number"
-                min={0}
-                value={visitsCount}
-                onChange={(e) => setVisitsCount(e.target.value)}
-                disabled={unlimited}
-                placeholder="Например, 8"
-                className="flex-1"
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={unlimited} onCheckedChange={(v) => setUnlimited(!!v)} />
-                Безлимит
-              </label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="m-dur">Срок действия (дней)</Label>
-              <Input
-                id="m-dur"
-                type="number"
+                inputMode="numeric"
                 min={0}
                 value={durationDays}
                 onChange={(e) => setDurationDays(e.target.value)}
                 placeholder="30"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="m-price">Цена, ₾</Label>
+            </Field>
+          </FieldRow>
+
+          <FieldRow>
+            <Field label="Цена, ₾" required>
               <Input
-                id="m-price"
                 type="number"
+                inputMode="decimal"
                 min={0}
                 step="0.01"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0"
               />
-            </div>
-          </div>
+            </Field>
+            <Field
+              label="Дней заморозки"
+              hint="Сколько дней клиент может заморозить этот абонемент суммарно. 0 — заморозка недоступна."
+            >
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={freezeDays}
+                onChange={(e) => setFreezeDays(e.target.value)}
+                placeholder="0"
+              />
+            </Field>
+          </FieldRow>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="m-freeze">Дней заморозки (0 — заморозка недоступна)</Label>
-            <Input
-              id="m-freeze"
-              type="number"
-              min={0}
-              value={freezeDays}
-              onChange={(e) => setFreezeDays(e.target.value)}
-              placeholder="0"
-            />
-            <p className="text-xs text-muted-foreground">
-              Сколько дней клиент может заморозить этот абонемент суммарно.
-            </p>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} />
-            Автопродление
-          </label>
-
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
+          <FieldRow>
+            <SwitchField label="Автопродление" checked={autoRenew} onCheckedChange={setAutoRenew} />
+            <SwitchField
+              label="Рассрочка доступна"
               checked={installmentEnabled}
-              onCheckedChange={(v) => setInstallmentEnabled(!!v)}
+              onCheckedChange={setInstallmentEnabled}
             />
-            Рассрочка доступна
-          </label>
+          </FieldRow>
 
-          <label className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            <Checkbox
-              checked={forCouple}
-              onCheckedChange={(v) => setForCouple(!!v)}
-              className="mt-0.5"
-            />
-            <div className="space-y-0.5">
-              <div className="font-medium">Абонемент для двоих</div>
-              <div className="text-xs text-muted-foreground">
-                Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении.
-              </div>
-            </div>
-          </label>
+          <SwitchField
+            label="Абонемент для двоих"
+            description="Такие абонементы попадут в отдельную вкладку «Для двоих» в мобильном приложении."
+            checked={forCouple}
+            onCheckedChange={setForCouple}
+          />
 
-          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
-            <div className="space-y-0.5">
-              <div className="text-sm font-medium">Показывать в мобильном приложении</div>
-              <div className="text-xs text-muted-foreground">
-                Выключите, чтобы новые клиенты не могли его купить. Уже купившие сохранят условия.
-              </div>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
+          <SwitchField
+            label="Показывать в мобильном приложении"
+            description="Выключите, чтобы новые клиенты не могли его купить. Уже купившие сохранят условия."
+            checked={isActive}
+            onCheckedChange={setIsActive}
+          />
 
           {item && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -556,12 +536,11 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }
 
@@ -590,32 +569,39 @@ function BenefitsEditor({
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Добавьте преимущество и нажмите +"
           onKeyDown={(e) => {
+            // Enter добавляет пункт и не отправляет форму диалога.
             if (e.key === "Enter") {
               e.preventDefault();
               add();
             }
           }}
         />
-        <Button type="button" variant="outline" onClick={add}>
-          <Plus className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="icon"
+          className="shrink-0"
+          onClick={add}
+          aria-label="Добавить"
+        >
+          <Plus />
         </Button>
       </div>
       {value.length > 0 && (
-        <ul className="space-y-1 pt-1">
+        <ul className="space-y-1">
           {value.map((b, i) => (
             <li
               key={i}
-              className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1 text-sm"
+              className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 py-1 pl-3 pr-1 text-sm"
             >
               <span className="truncate">{b}</span>
               <Button
-                type="button"
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-7 w-7 shrink-0"
+                aria-label="Удалить"
                 onClick={() => onChange(value.filter((_, idx) => idx !== i))}
               >
-                <X className="h-3.5 w-3.5" />
+                <X />
               </Button>
             </li>
           ))}

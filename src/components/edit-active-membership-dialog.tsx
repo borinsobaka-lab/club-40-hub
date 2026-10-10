@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CheckboxField, Field, FieldGroup } from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
   DialogBody,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -43,10 +42,7 @@ export function EditActiveMembershipDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Редактировать активный абонемент</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-md">
         {/*
           Форма монтируется заново при каждом открытии — сбрасывать её не нужно,
           а перезагрузка карточки под открытым окном не затирает ввод.
@@ -160,79 +156,82 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
+      <DialogHeader>
+        <DialogTitle>Редактировать активный абонемент</DialogTitle>
+      </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="cm-ends">Действует до</Label>
-            <Input
-              id="cm-ends"
-              type="date"
-              value={endsAt}
-              onChange={(e) => setEndsAt(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Осталось посещений</Label>
-            <div className="flex items-center gap-2">
+          <Field label="Действует до">
+            <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+          </Field>
+          <Field label="Осталось посещений">
+            <div className="flex items-center gap-4">
               <Input
-                type="number"
-                min={0}
+                inputMode="numeric"
                 value={visitsLeft}
-                onChange={(e) => setVisitsLeft(e.target.value)}
+                onChange={(e) => setVisitsLeft(e.target.value.replace(/[^0-9]/g, ""))}
                 disabled={unlimitedVisits}
                 placeholder="Например, 5"
                 className="flex-1"
               />
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={unlimitedVisits}
-                  onCheckedChange={(v) => setUnlimitedVisits(!!v)}
-                />
-                Безлимит
-              </label>
+              <CheckboxField
+                label="Безлимит"
+                checked={unlimitedVisits}
+                onCheckedChange={setUnlimitedVisits}
+                className="shrink-0"
+              />
             </div>
-          </div>
+          </Field>
 
           {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
             иначе после обнуления «дней заморозки» в тарифе разморозить его
             стало бы нечем. */}
           {(allowed > 0 || status === "frozen") && (
-            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-              <div className="text-sm font-medium">Заморозка</div>
-              <div className="text-xs text-muted-foreground">
-                Доступно {remaining} из {allowed} дн.
-                {status === "frozen" && membership.frozen_until
-                  ? ` · заморожен до ${formatDate(membership.frozen_until)}`
-                  : ""}
-              </div>
+            <FieldGroup
+              title="Заморозка"
+              description={
+                <>
+                  Доступно {remaining} из {allowed} дн.
+                  {status === "frozen" && membership.frozen_until
+                    ? ` · заморожен до ${formatDate(membership.frozen_until)}`
+                    : ""}
+                </>
+              }
+            >
               {status === "frozen" ? (
-                <Button variant="outline" size="sm" onClick={handleUnfreeze} disabled={freezing}>
-                  {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                <Button variant="outline" onClick={handleUnfreeze} loading={freezing}>
                   Разморозить
                 </Button>
               ) : status === "active" || status === undefined ? (
                 <div className="flex items-end gap-2">
-                  <div className="flex-1 space-y-1">
-                    <Label htmlFor="cm-freeze">Дней</Label>
+                  <Field label="Дней" className="flex-1">
                     <Input
-                      id="cm-freeze"
-                      type="number"
-                      min={1}
-                      max={remaining}
+                      inputMode="numeric"
                       value={freezeDaysInput}
-                      onChange={(e) => setFreezeDaysInput(e.target.value)}
+                      onChange={(e) => setFreezeDaysInput(e.target.value.replace(/[^0-9]/g, ""))}
+                      onKeyDown={(e) => {
+                        // Enter здесь — «Заморозить», а не сохранение формы.
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (!freezing && remaining > 0) handleFreeze();
+                        }
+                      }}
                       placeholder={String(remaining)}
                       disabled={remaining <= 0}
                     />
-                  </div>
-                  <Button size="sm" onClick={handleFreeze} disabled={freezing || remaining <= 0}>
-                    {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                  </Field>
+                  <Button
+                    variant="outline"
+                    onClick={handleFreeze}
+                    loading={freezing}
+                    disabled={remaining <= 0}
+                  >
                     Заморозить
                   </Button>
                 </div>
               ) : null}
-            </div>
+            </FieldGroup>
           )}
         </div>
       </DialogBody>
@@ -240,11 +239,10 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

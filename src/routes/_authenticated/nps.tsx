@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, CheckCircle2, AlertTriangle, Plus, Loader2 } from "lucide-react";
+import { Trash2, CheckCircle2, AlertTriangle, Plus } from "lucide-react";
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -24,8 +24,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field } from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -39,6 +39,7 @@ import {
   DialogContent,
   DialogBody,
   DialogDescription,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -518,17 +519,16 @@ function NewResponseForm({
   };
 
   return (
-    <>
+    <DialogForm onSubmit={submit}>
       <DialogHeader>
         <DialogTitle>Новый ответ NPS</DialogTitle>
         <DialogDescription>Заполните данные ответа клиента.</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="survey-type">Тип опроса</Label>
+          <Field label="Тип опроса">
             <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
-              <SelectTrigger id="survey-type">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -539,46 +539,33 @@ function NewResponseForm({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="score">Оценка (0–10)</Label>
+          </Field>
+          <Field label="Оценка" hint="От 0 до 10.">
             <Input
-              id="score"
-              type="number"
-              min={0}
-              max={10}
+              inputMode="numeric"
               value={score}
-              onChange={(e) => setScore(Math.max(0, Math.min(10, Number(e.target.value))))}
+              onChange={(e) =>
+                setScore(Math.max(0, Math.min(10, Number(e.target.value.replace(/\D/g, "")))))
+              }
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="client-name">Имя клиента</Label>
-            <Input
-              id="client-name"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="comment">Комментарий</Label>
-            <Textarea
-              id="comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={3}
-            />
-          </div>
+          </Field>
+          <Field label="Имя клиента">
+            <Input value={clientName} onChange={(e) => setClientName(e.target.value)} />
+          </Field>
+          <Field label="Комментарий">
+            <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} />
+          </Field>
         </div>
       </DialogBody>
       <DialogFooter>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="outline" onClick={onClose} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={submit} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
+        <Button type="submit" loading={saving}>
+          Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2, MessageCircle, Phone } from "lucide-react";
+import { Plus, Pencil, Trash2, MessageCircle, Phone } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -13,8 +13,8 @@ import { useStorageUrl } from "@/lib/storage";
 import { GENDER_OPTIONS, genderLabel, initials, isHttpUrl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldGroup, FieldRow } from "@/components/ui/field";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
@@ -38,6 +38,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -424,17 +425,16 @@ function TrainerForm({ onOpenChange, studioId, trainer, defaultRole, onSaved }: 
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{trainer ? text.editTitle : text.createTitle}</DialogTitle>
         <DialogDescription>{text.description}</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="role">Роль</Label>
+          <Field label="Роль">
             <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
-              <SelectTrigger id="role">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -442,94 +442,91 @@ function TrainerForm({ onOpenChange, studioId, trainer, defaultRole, onSaved }: 
                 <SelectItem value="admin">Админ студии</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </Field>
 
-          <ImageUploadField
-            bucket="trainers"
-            folder={`${studioId}`}
-            value={photoUrl}
-            onChange={setPhotoUrl}
-            preview={<TrainerPhoto value={photoUrl} name={fullName || "?"} />}
-            uploadLabel="Загрузить фото"
-            replaceLabel="Заменить фото"
-            disabled={!studioId}
-          />
+          <Field label="Фото">
+            <ImageUploadField
+              bucket="trainers"
+              folder={`${studioId}`}
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              preview={<TrainerPhoto value={photoUrl} name={fullName || "?"} />}
+              uploadLabel="Загрузить фото"
+              replaceLabel="Заменить фото"
+              disabled={!studioId}
+            />
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="full_name">ФИО</Label>
+          <Field label="ФИО" required>
             <Input
-              id="full_name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Иванов Иван Иванович"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="bio">{text.bioLabel}</Label>
+          <Field label={text.bioLabel}>
             <Textarea
-              id="bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={3}
               placeholder={text.bioPlaceholder}
             />
-          </div>
+          </Field>
 
           {!isAdmin && (
             <>
-              <div className="space-y-1.5">
-                <Label htmlFor="gender">Пол</Label>
-                <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger id="gender">
-                    <SelectValue placeholder="Не указан" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GENDER_OPTIONS.map((g) => (
-                      <SelectItem key={g.value} value={g.value}>
-                        {g.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FieldRow>
+                <Field label="Пол">
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Не указан" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDER_OPTIONS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>
+                          {g.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Специализация">
+                  <Input
+                    value={specialization}
+                    onChange={(e) => setSpecialization(e.target.value)}
+                    placeholder="Силовой тренинг, кроссфит"
+                  />
+                </Field>
+              </FieldRow>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="specialization">Специализация</Label>
-                <Input
-                  id="specialization"
-                  value={specialization}
-                  onChange={(e) => setSpecialization(e.target.value)}
-                  placeholder="Силовой тренинг, кроссфит"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {SOCIALS.map((s) => (
-                  <div key={s.key} className="space-y-1.5">
-                    <Label htmlFor={s.key}>{s.label}</Label>
-                    <Input
-                      id={s.key}
-                      value={socials[s.key]}
-                      onChange={(e) => setSocials((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                      placeholder={s.placeholder}
-                    />
-                  </div>
-                ))}
-              </div>
+              <FieldGroup title="Соцсети">
+                <FieldRow>
+                  {SOCIALS.map((s) => (
+                    <Field key={s.key} label={s.label}>
+                      <Input
+                        value={socials[s.key]}
+                        onChange={(e) =>
+                          setSocials((prev) => ({ ...prev, [s.key]: e.target.value }))
+                        }
+                        placeholder={s.placeholder}
+                      />
+                    </Field>
+                  ))}
+                </FieldRow>
+              </FieldGroup>
             </>
           )}
         </div>
       </DialogBody>
       <DialogFooter>
-        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

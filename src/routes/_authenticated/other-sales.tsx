@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -12,8 +12,8 @@ import { unwrap } from "@/lib/query";
 import { PAYMENT_METHOD_LABEL, PAYMENT_METHODS, type PaymentMethod } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldRow, SwitchField } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,6 +38,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -397,7 +398,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>Новая продажа</DialogTitle>
         <DialogDescription>
@@ -406,8 +407,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Позиция</Label>
+          <Field label="Позиция" required>
             <SearchableCombobox
               placeholder="Выбрать услугу или товар"
               searchPlaceholder="Поиск по названию"
@@ -423,40 +423,37 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                   searchText: `${i.name} ${KIND_LABEL[i.kind]}`,
                 }))}
             />
-          </div>
+          </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="os-qty">Количество</Label>
+          <FieldRow>
+            <Field label="Количество" required>
               <Input
-                id="os-qty"
                 type="number"
+                inputMode="numeric"
                 min={1}
                 step="1"
                 value={form.quantity}
                 onChange={(e) => set("quantity", e.target.value)}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="os-price">Цена за штуку, ₾</Label>
+            </Field>
+            <Field label="Цена за штуку, ₾" required>
               <Input
-                id="os-price"
                 type="number"
+                inputMode="decimal"
                 min={0}
                 step="0.01"
                 value={form.unitPrice}
                 onChange={(e) => set("unitPrice", e.target.value)}
               />
-            </div>
-          </div>
+            </Field>
+          </FieldRow>
 
-          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Итого</span>
             <span className="font-semibold tabular-nums">{formatMoneyPrecise(total)}</span>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Клиент (по желанию)</Label>
+          <Field label="Клиент">
             <ClientCombobox
               studioId={studioId}
               value={form.clientId}
@@ -464,11 +461,10 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
               placeholder="Без клиента"
               clearable
             />
-          </div>
+          </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Оплата</Label>
+          <FieldRow>
+            <Field label="Оплата">
               <Select
                 value={form.payment}
                 onValueChange={(v) => set("payment", v as PaymentMethod)}
@@ -484,39 +480,35 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="os-date">Дата</Label>
+            </Field>
+            <Field label="Дата" required>
               <Input
-                id="os-date"
                 type="date"
                 value={form.soldAt}
                 onChange={(e) => set("soldAt", e.target.value)}
               />
-            </div>
-          </div>
+            </Field>
+          </FieldRow>
 
-          <div className="space-y-1.5">
-            <Label>Комментарий (по желанию)</Label>
+          <Field label="Комментарий">
             <Textarea
               value={form.comment}
               onChange={(e) => set("comment", e.target.value)}
               placeholder="Заметка к продаже"
               rows={2}
             />
-          </div>
+          </Field>
         </div>
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+        <Button type="submit" loading={saving}>
           Продать
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }
 
@@ -651,7 +643,7 @@ type CatalogDialogProps = {
 function CatalogDialog(props: CatalogDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
         <CatalogForm key={props.item?.id ?? "new"} {...props} />
       </DialogContent>
@@ -702,15 +694,14 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать позицию" : "Новая позиция"}</DialogTitle>
         <DialogDescription>Услуга или товар, доступные для продажи.</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Тип</Label>
+          <Field label="Тип">
             <Select value={kind} onValueChange={(v) => setKind(v as ItemKind)}>
               <SelectTrigger>
                 <SelectValue />
@@ -720,49 +711,44 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
                 <SelectItem value="product">Товар</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label>Название</Label>
+          <Field label="Название" required>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={kind === "product" ? "Вода 0.5 л" : "Персональная тренировка"}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label>Цена, ₾</Label>
+          <Field label="Цена, ₾" required>
             <Input
               type="number"
+              inputMode="decimal"
               min={0}
               step="0.01"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="0"
             />
-          </div>
+          </Field>
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Активна</div>
-              <div className="text-xs text-muted-foreground">
-                Неактивные позиции не показываются при продаже.
-              </div>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
+          <SwitchField
+            label="Активна"
+            description="Неактивные позиции не показываются при продаже."
+            checked={isActive}
+            onCheckedChange={setIsActive}
+          />
         </div>
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

@@ -10,8 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ClientNameLink } from "@/components/client-name-link";
 import {
   Select,
@@ -21,13 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CheckboxField, Field, FieldRow } from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -636,16 +636,15 @@ function SchedulePage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={duplicatingWeek}>Отмена</AlertDialogCancel>
             <AlertDialogAction
+              asChild
               onClick={(ev) => {
                 // Окно закрывает сам duplicateWeek по итогу: на время копирования
                 // остаётся спиннер, при ошибке можно повторить.
                 ev.preventDefault();
                 duplicateWeek();
               }}
-              disabled={duplicatingWeek}
             >
-              {duplicatingWeek && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-              Дублировать
+              <Button loading={duplicatingWeek}>Дублировать</Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -849,7 +848,7 @@ function EntryForm({
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{entry ? "Редактировать занятие" : "Новое занятие"}</DialogTitle>
         <DialogDescription>
@@ -861,8 +860,7 @@ function EntryForm({
       <DialogBody>
         <div className={entry ? "grid gap-6 md:grid-cols-2" : ""}>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Тренировка</Label>
+            <Field label="Тренировка" required>
               <Select value={workoutId} onValueChange={setWorkoutId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите тренировку" />
@@ -875,29 +873,26 @@ function EntryForm({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Начало</Label>
+            <FieldRow>
+              <Field label="Начало" required>
                 <Input
                   type="datetime-local"
                   value={startsAt}
                   onChange={(e) => setStartsAt(e.target.value)}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Окончание</Label>
+              </Field>
+              <Field label="Окончание" required>
                 <Input
                   type="datetime-local"
                   value={endsAt}
                   onChange={(e) => setEndsAt(e.target.value)}
                 />
-              </div>
-            </div>
+              </Field>
+            </FieldRow>
 
-            <div className="space-y-1.5">
-              <Label>Тренеры</Label>
+            <Field label="Тренеры">
               {trainers.length === 0 ? (
                 <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
                   Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
@@ -905,48 +900,44 @@ function EntryForm({
               ) : (
                 <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
                   {trainers.map((t) => (
-                    <label key={t.id} className="flex cursor-pointer items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={trainerIds.includes(t.id)}
-                        onCheckedChange={() => toggleTrainer(t.id)}
-                      />
-                      <span>{t.full_name}</span>
-                    </label>
+                    <CheckboxField
+                      key={t.id}
+                      label={t.full_name}
+                      checked={trainerIds.includes(t.id)}
+                      onCheckedChange={() => toggleTrainer(t.id)}
+                    />
                   ))}
                 </div>
               )}
-            </div>
+            </Field>
           </div>
 
+          {/* Окна панели (карточка клиента и вложенные) — свои DialogForm:
+              их отправка до формы занятия не всплывает (см. DialogForm). */}
           {entry && <BookingsPanel entry={entry} onChanged={onSaved} />}
         </div>
       </DialogBody>
-      <DialogFooter className="flex sm:justify-between">
-        <div>
-          {entry && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                onOpenChange(false);
-                onDelete(entry);
-              }}
-            >
-              <Trash2 className="mr-1 h-4 w-4" /> Удалить
-            </Button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Отмена
+      <DialogFooter>
+        {entry && (
+          <Button
+            variant="ghost-destructive"
+            className="mr-auto"
+            onClick={() => {
+              onOpenChange(false);
+              onDelete(entry);
+            }}
+          >
+            <Trash2 /> Удалить
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-            Сохранить
-          </Button>
-        </div>
+        )}
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          Отмена
+        </Button>
+        <Button type="submit" loading={saving}>
+          Сохранить
+        </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }
 
@@ -1102,8 +1093,8 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label>Записанные участники</Label>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-medium leading-none">Записанные участники</h3>
         <span className="text-xs text-muted-foreground">
           {booked.length}
           {capacity != null ? ` / ${capacity}` : ""}
@@ -1142,9 +1133,8 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
                       <Button
                         size="sm"
                         onClick={() => handleAttend(b)}
-                        disabled={attendingId === b.id}
+                        loading={attendingId === b.id}
                       >
-                        {attendingId === b.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                         Посетил
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
@@ -1174,8 +1164,8 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
 
       {waitlisted.length > 0 && (
         <div className="space-y-2 pt-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-blue-700">Лист ожидания</Label>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium leading-none text-blue-700">Лист ожидания</h3>
             <span
               className="text-xs text-muted-foreground"
               title="Записались, когда свободных мест уже не было"
@@ -1265,8 +1255,7 @@ function CancelBookingForm({
           если останутся места.
         </AlertDialogDescription>
       </AlertDialogHeader>
-      <div className="space-y-1.5">
-        <Label>Причина отмены</Label>
+      <Field label="Причина отмены">
         <Select value={reason} onValueChange={setReason}>
           <SelectTrigger>
             <SelectValue placeholder="Не указана" />
@@ -1279,20 +1268,20 @@ function CancelBookingForm({
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
       <AlertDialogFooter>
         <AlertDialogCancel disabled={cancelling}>Отмена</AlertDialogCancel>
         <AlertDialogAction
+          asChild
+          className={buttonVariants({ variant: "destructive" })}
           onClick={(ev) => {
             // Окно закрывается по успеху: на время запроса виден спиннер, при
             // ошибке можно повторить.
             ev.preventDefault();
             handleCancel();
           }}
-          disabled={cancelling}
         >
-          {cancelling && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-          Отклонить
+          <Button loading={cancelling}>Отклонить</Button>
         </AlertDialogAction>
       </AlertDialogFooter>
     </>

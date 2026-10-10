@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -10,9 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Field, FieldRow, SwitchField } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -34,6 +34,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -325,35 +326,32 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
   };
 
   return (
-    <>
+    <DialogForm onSubmit={handleSave}>
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать промокод" : "Новый промокод"}</DialogTitle>
         <DialogDescription>Промокод можно применить при покупке для скидки.</DialogDescription>
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Название</Label>
+          <Field label="Название" required>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Летняя акция"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label>Промокод (латиница и цифры)</Label>
+          <Field label="Промокод" required hint="Только латинские буквы и цифры.">
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
               placeholder="SUMMER25"
               className="font-mono uppercase"
             />
-          </div>
+          </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Тип скидки</Label>
+          <FieldRow>
+            <Field label="Тип скидки">
               <Select
                 value={discountType}
                 onValueChange={(v) => setDiscountType(v as DiscountType)}
@@ -366,53 +364,46 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
                   <SelectItem value="percent">В процентах (%)</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Размер скидки</Label>
+            </Field>
+            <Field label="Размер скидки" required>
               <Input
                 inputMode="decimal"
                 value={discountValue}
                 onChange={(e) => setDiscountValue(e.target.value)}
                 placeholder={discountType === "percent" ? "10" : "500"}
               />
-            </div>
-          </div>
+            </Field>
+          </FieldRow>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Срок действия</Label>
+          <FieldRow>
+            <Field label="Срок действия">
               <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Количество применений</Label>
+            </Field>
+            <Field label="Количество применений">
               <Input
                 inputMode="numeric"
                 value={usageLimit}
                 onChange={(e) => setUsageLimit(e.target.value.replace(/[^0-9]/g, ""))}
                 placeholder="Без ограничений"
               />
-            </div>
-          </div>
+            </Field>
+          </FieldRow>
 
-          <div className="space-y-2">
-            <Label>Описание (внутреннее)</Label>
+          <Field label="Описание" hint="Видно только сотрудникам.">
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Для чего создан промокод"
               rows={3}
             />
-          </div>
+          </Field>
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <div className="text-sm font-medium">Активен</div>
-              <div className="text-xs text-muted-foreground">
-                Неактивные промокоды нельзя применить.
-              </div>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
+          <SwitchField
+            label="Активен"
+            description="Неактивные промокоды нельзя применить."
+            checked={isActive}
+            onCheckedChange={setIsActive}
+          />
 
           {item && (
             <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
@@ -426,11 +417,10 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
           Отмена
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+        <Button type="submit" loading={saving}>
           Сохранить
         </Button>
       </DialogFooter>
-    </>
+    </DialogForm>
   );
 }

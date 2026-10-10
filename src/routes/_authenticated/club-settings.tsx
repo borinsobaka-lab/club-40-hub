@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/club-settings")({
@@ -42,6 +42,8 @@ function toFormValues(s: Settings | null | undefined): FormValues {
 
 // club_settings — глобальный синглтон (id = true), не привязан к студии.
 const QUERY_KEY = ["club_settings"];
+// Кнопка «Сохранить» — в шапке страницы, вне формы: связана через form=.
+const FORM_ID = "club-settings-form";
 
 function ClubSettingsPage() {
   const queryClient = useQueryClient();
@@ -98,12 +100,8 @@ function ClubSettingsPage() {
     <AdminShell
       title="Настройки клуба"
       actions={
-        <Button onClick={handleSave} disabled={saving || loading}>
-          {saving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
+        <Button type="submit" form={FORM_ID} loading={saving} disabled={loading}>
+          {!saving && <Save />}
           Сохранить
         </Button>
       }
@@ -113,7 +111,15 @@ function ClubSettingsPage() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="max-w-2xl space-y-8">
+        <form
+          id={FORM_ID}
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="max-w-2xl space-y-8"
+        >
           <section className="space-y-4 rounded-lg border bg-card p-6">
             <div>
               <h2 className="text-lg font-semibold">Кнопки на главном экране</h2>
@@ -121,37 +127,30 @@ function ClubSettingsPage() {
                 Ссылки для кнопок «Написать», «Позвонить» и «Обратная связь» в мобильном приложении.
               </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="write">Ссылка для кнопки «Написать»</Label>
+            <Field
+              label="Ссылка для кнопки «Написать»"
+              hint="Например, ссылка на WhatsApp-чат клуба."
+            >
               <Input
-                id="write"
                 placeholder="https://wa.me/79991234567"
                 value={form.writeUrl}
                 onChange={(e) => setField("writeUrl", e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Например, ссылка на WhatsApp-чат клуба.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="call">Ссылка для кнопки «Позвонить»</Label>
+            </Field>
+            <Field label="Ссылка для кнопки «Позвонить»" hint="Телефонный номер в формате tel:.">
               <Input
-                id="call"
                 placeholder="tel:+79991234567"
                 value={form.callUrl}
                 onChange={(e) => setField("callUrl", e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Телефонный номер в формате tel:.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="feedback">Ссылка для кнопки «Обратная связь»</Label>
+            </Field>
+            <Field label="Ссылка для кнопки «Обратная связь»">
               <Input
-                id="feedback"
                 placeholder="https://forms.example.com/feedback"
                 value={form.feedbackUrl}
                 onChange={(e) => setField("feedbackUrl", e.target.value)}
               />
-            </div>
+            </Field>
           </section>
 
           <section className="space-y-4 rounded-lg border bg-card p-6">
@@ -162,23 +161,20 @@ function ClubSettingsPage() {
                 этого времени в приложении кнопка отмены недоступна.
               </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cancel">Минут до начала тренировки</Label>
+            <Field
+              label="Минут до начала тренировки"
+              required
+              hint="Например, 180 — отменить можно не позже чем за 3 часа до начала."
+            >
               <Input
-                id="cancel"
-                type="number"
-                min={0}
-                step={1}
+                inputMode="numeric"
                 value={form.cancelMinutes}
-                onChange={(e) => setField("cancelMinutes", e.target.value)}
+                onChange={(e) => setField("cancelMinutes", e.target.value.replace(/[^0-9]/g, ""))}
                 className="max-w-[200px]"
               />
-              <p className="text-xs text-muted-foreground">
-                Например, 180 — отменить можно не позже чем за 3 часа до начала.
-              </p>
-            </div>
+            </Field>
           </section>
-        </div>
+        </form>
       )}
     </AdminShell>
   );

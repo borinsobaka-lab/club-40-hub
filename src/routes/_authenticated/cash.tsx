@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -13,8 +13,8 @@ import { unwrap } from "@/lib/query";
 import { STAFF_ROLES } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -336,11 +336,17 @@ function CashOperationForm({
   };
 
   return (
-    <div className="rounded-xl border bg-background p-4">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSave();
+      }}
+      className="rounded-xl border bg-background p-4"
+    >
       <h2 className="mb-3 text-sm font-semibold">Новая операция</h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <div className="space-y-1.5">
-          <Label>Тип</Label>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <Field label="Тип">
           <Select value={kind} onValueChange={(v) => changeKind(v as CashKind)}>
             <SelectTrigger>
               <SelectValue />
@@ -350,9 +356,8 @@ function CashOperationForm({
               <SelectItem value="expense">Расход</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Категория</Label>
+        </Field>
+        <Field label="Категория">
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger>
               <SelectValue />
@@ -365,21 +370,19 @@ function CashOperationForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="amount">Сумма, ₾</Label>
+        </Field>
+        <Field label="Сумма, ₾" required>
           <Input
-            id="amount"
             type="number"
+            inputMode="decimal"
             min={0}
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Кто проводит</Label>
+        </Field>
+        <Field label="Кто проводит">
           <Select value={selectedOperatorId} onValueChange={setOperatorId}>
             <SelectTrigger>
               <SelectValue placeholder="Сотрудник" />
@@ -393,39 +396,29 @@ function CashOperationForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="occurred">Дата и время</Label>
+        </Field>
+        <Field label="Дата и время" required className="sm:col-span-2 xl:col-span-1">
           <Input
-            id="occurred"
             type="datetime-local"
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
           />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2 lg:col-span-6">
-          <Label htmlFor="comment">
-            Комментарий <span className="text-rose-600">*</span>
-          </Label>
+        </Field>
+        <Field label="Комментарий" required className="col-span-full">
           <Textarea
-            id="comment"
             rows={2}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="За что / от кого / основание"
           />
-        </div>
+        </Field>
       </div>
-      <div className="mt-3 flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="mr-1 h-4 w-4" />
-          )}
+      <div className="mt-4 flex justify-end">
+        <Button type="submit" loading={saving}>
+          {!saving && <Plus />}
           Сохранить
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
