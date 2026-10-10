@@ -1,18 +1,19 @@
 import { type ReactNode } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 // Единая плашка поиска и фильтров над таблицей — один вид во всех разделах.
 // Правила (см. .interface-design/system.md):
-//  - всегда ОДНА строка: поиск тянется, фильтры фиксированной ширины,
-//    никаких лейблов над контролами;
+//  - одна строка, на узком экране фильтры переносятся (flex-wrap); поиск
+//    тянется, фильтры фиксированной ширины, никаких лейблов над контролами;
 //  - высоту контролов НЕ задаём на месте: она одна на всю админку и приходит
 //    из Input / SelectTrigger / Button (см. .interface-design/system.md);
 //  - плашка стоит первой в контейнере страницы, сразу над таблицей;
 //  - фильтры в шапку AdminShell не выносим (слот filters удалён).
 export function TableToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-background px-3 py-2">
       {children}
     </div>
   );
@@ -37,5 +38,20 @@ export function ToolbarSearch({
         className="pl-9"
       />
     </div>
+  );
+}
+
+/**
+ * «Сбросить» фильтры — одна на все плашки: ghost с крестиком, видна только
+ * когда есть что сбрасывать (раньше в одном разделе показывалась всегда, в
+ * другом — только при фильтре, в третьем была маленькой).
+ */
+export function ToolbarReset({ active, onReset }: { active: boolean; onReset: () => void }) {
+  if (!active) return null;
+  return (
+    <Button variant="ghost" onClick={onReset}>
+      <X />
+      Сбросить
+    </Button>
   );
 }

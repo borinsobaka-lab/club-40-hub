@@ -202,7 +202,7 @@ function SalesTab({ studioId }: { studioId: string }) {
     <>
       <div className="flex justify-end">
         <Button size="sm" onClick={() => setOpen(true)} disabled={items.length === 0}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить продажу
         </Button>
       </div>
@@ -512,7 +512,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          {saving ? <Loader2 className="animate-spin" /> : null}
           Продать
         </Button>
       </DialogFooter>
@@ -570,7 +570,7 @@ function CatalogTab({ studioId }: { studioId: string }) {
     <>
       <div className="flex justify-end">
         <Button size="sm" onClick={() => openDialog(null)}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить позицию
         </Button>
       </div>
@@ -759,7 +759,7 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          {saving ? <Loader2 className="animate-spin" /> : null}
           Сохранить
         </Button>
       </DialogFooter>

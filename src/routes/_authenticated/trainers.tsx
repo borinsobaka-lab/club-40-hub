@@ -148,10 +148,18 @@ const SOCIALS = [
 
 type SocialKey = (typeof SOCIALS)[number]["key"];
 
-function TrainerPhoto({ value, name }: { value: string | null; name: string }) {
+function TrainerPhoto({
+  value,
+  name,
+  className,
+}: {
+  value: string | null;
+  name: string;
+  className?: string;
+}) {
   const src = useStorageUrl("trainers", value);
   return (
-    <Avatar>
+    <Avatar className={className}>
       {src && <AvatarImage src={src} alt={name} />}
       <AvatarFallback>{initials(name)}</AvatarFallback>
     </Avatar>
@@ -247,11 +255,11 @@ function TrainersPage() {
       actions={
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => openCreate("admin")} disabled={!studioId}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus />
             Добавить админа
           </Button>
           <Button onClick={() => openCreate("trainer")} disabled={!studioId}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus />
             Добавить тренера
           </Button>
         </div>
@@ -444,16 +452,19 @@ function TrainerForm({ onOpenChange, studioId, trainer, defaultRole, onSaved }: 
             </Select>
           </div>
 
-          <ImageUploadField
-            bucket="trainers"
-            folder={`${studioId}`}
-            value={photoUrl}
-            onChange={setPhotoUrl}
-            preview={<TrainerPhoto value={photoUrl} name={fullName || "?"} />}
-            uploadLabel="Загрузить фото"
-            replaceLabel="Заменить фото"
-            disabled={!studioId}
-          />
+          <div className="space-y-2">
+            <Label>Фото</Label>
+            <ImageUploadField
+              bucket="trainers"
+              folder={`${studioId}`}
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              preview={
+                <TrainerPhoto value={photoUrl} name={fullName || "?"} className="size-16" />
+              }
+              disabled={!studioId}
+            />
+          </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="full_name">ФИО</Label>
@@ -526,7 +537,7 @@ function TrainerForm({ onOpenChange, studioId, trainer, defaultRole, onSaved }: 
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>

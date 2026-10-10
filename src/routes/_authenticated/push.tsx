@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -135,7 +136,7 @@ function PushPage() {
       title="Пуш-уведомления"
       actions={
         <Button onClick={() => openEdit(null)} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить уведомление
         </Button>
       }
@@ -372,16 +373,16 @@ function PushForm({
           <div className="space-y-2">
             <Label>Статус клиентов</Label>
             <div className="space-y-2 rounded-md border p-3">
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <Checkbox
                   checked={allSelected}
                   onCheckedChange={(v) => setAllSelected(Boolean(v))}
                 />
                 <span>Все клиенты</span>
               </label>
-              <div className="flex flex-wrap gap-3 pl-1">
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {ALL_SEGMENTS.map((s) => (
-                  <label key={s} className="flex items-center gap-2 text-sm">
+                  <label key={s} className="flex cursor-pointer items-center gap-2 text-sm">
                     <Checkbox
                       checked={!allSelected && segments.includes(s)}
                       disabled={allSelected}
@@ -396,24 +397,20 @@ function PushForm({
 
           <div className="space-y-2">
             <Label>Время отправки</Label>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={sendMode === "now"}
-                  onChange={() => setSendMode("now")}
-                />
+            <RadioGroup
+              value={sendMode}
+              onValueChange={(v) => setSendMode(v as typeof sendMode)}
+              className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
+            >
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <RadioGroupItem value="now" />
                 <span>Отправить сейчас</span>
               </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={sendMode === "schedule"}
-                  onChange={() => setSendMode("schedule")}
-                />
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <RadioGroupItem value="schedule" />
                 <span>Запланировать</span>
               </label>
-            </div>
+            </RadioGroup>
             {sendMode === "schedule" && (
               <Input
                 type="datetime-local"
@@ -430,9 +427,9 @@ function PushForm({
         </Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            <Loader2 className="animate-spin" />
           ) : (
-            <Send className="mr-1 h-4 w-4" />
+            <Send />
           )}
           {sendMode === "now" ? "Отправить" : "Запланировать"}
         </Button>

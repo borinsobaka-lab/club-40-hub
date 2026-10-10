@@ -237,16 +237,33 @@
    Правило одно на всё приложение, а не проп у каждого поля: диалогов около
    двадцати, полей в них под сотню, и любая новая форма иначе завела бы белое
    поле мимо правила.
-   Область — только `[role="dialog"]`: фильтры и поиск на страницах остаются
-   прозрачными, как и просил владелец. Выпадающая панель Select живёт в портале
+   Область — поверхности с меткой `data-form-surface` (DialogContent,
+   AlertDialogContent, SheetContent): фильтры и поиск на страницах остаются
+   прозрачными, как и просил владелец. Раньше селектором был
+   `[role="dialog"]` — он цеплял и всплывающие панели (у Popover тоже
+   role="dialog"), и поле поиска в комбобоксе становилось серым. Выпадающая панель Select живёт в портале
    вне диалога, поэтому список остаётся белым — красится только сам триггер.
    `button[role="combobox"]` покрывает и SelectTrigger, и SearchableCombobox.
    Переключатели (Checkbox, Switch) — это button role="checkbox"/"switch",
    под правило не попадают: они не поля ввода. */
-[role="dialog"] input,
-[role="dialog"] textarea,
-[role="dialog"] button[role="combobox"] {
+[data-form-surface] input,
+[data-form-surface] textarea,
+[data-form-surface] button[role="combobox"] {
   background-color: var(--field);
+}
+
+/* Числовые поля без системных стрелок. Часть форм использует type="number",
+   часть — текстовое поле с inputMode="decimal": стрелки были только у первых,
+   и одинаковые по смыслу поля выглядели по-разному. Шаг ±1 для сумм в лари
+   и количеств всё равно бесполезен — значение вводят с клавиатуры. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 /* Полоса прокрутки бокового меню. Системная на тёмной панели выглядит как

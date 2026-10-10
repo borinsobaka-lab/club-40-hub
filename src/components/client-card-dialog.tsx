@@ -339,7 +339,7 @@ function ClientCard<C extends ClientLike>({
                   <div className="text-xs uppercase text-muted-foreground">Активный абонемент</div>
                   {active && (
                     <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                      <Pencil className="mr-1 h-3.5 w-3.5" />
+                      <Pencil />
                       Редактировать
                     </Button>
                   )}
@@ -460,7 +460,7 @@ function ClientCard<C extends ClientLike>({
       <DialogFooter>
         {onEdit && (
           <Button variant="outline" onClick={() => onEdit(client)}>
-            <Pencil className="mr-1 h-4 w-4" />
+            <Pencil />
             Редактировать
           </Button>
         )}

@@ -79,10 +79,13 @@ export function ImageUploadField({
     }
   };
 
+  // Превью в формах — одной высоты (64px), ширина по пропорции картинки;
+  // кнопки — в строку справа, «Удалить» красным текстом, как у других
+  // разрушающих действий.
   return (
     <div className="flex items-center gap-3">
-      {preview ?? <StorageImage bucket={bucket} value={value} alt="Превью" />}
-      <div className="flex flex-col gap-1">
+      {preview ?? <StorageImage bucket={bucket} value={value} alt="Превью" className="h-16 w-24" />}
+      <div className="flex flex-wrap items-center gap-2">
         <input
           ref={inputRef}
           type="file"
@@ -104,7 +107,7 @@ export function ImageUploadField({
         >
           {uploading ? (
             <>
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Загрузка…
+              <Loader2 className="animate-spin" /> Загрузка…
             </>
           ) : value ? (
             replaceLabel
@@ -113,7 +116,13 @@ export function ImageUploadField({
           )}
         </Button>
         {value && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => onChange(null)}
+          >
             Удалить
           </Button>
         )}

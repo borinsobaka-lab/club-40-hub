@@ -208,7 +208,7 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
               </div>
               {status === "frozen" ? (
                 <Button variant="outline" size="sm" onClick={handleUnfreeze} disabled={freezing}>
-                  {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                  {freezing && <Loader2 className="animate-spin" />}
                   Разморозить
                 </Button>
               ) : status === "active" || status === undefined ? (
@@ -227,7 +227,7 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
                     />
                   </div>
                   <Button size="sm" onClick={handleFreeze} disabled={freezing || remaining <= 0}>
-                    {freezing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                    {freezing && <Loader2 className="animate-spin" />}
                     Заморозить
                   </Button>
                 </div>
@@ -241,7 +241,7 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>

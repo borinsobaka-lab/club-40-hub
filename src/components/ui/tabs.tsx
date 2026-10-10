@@ -81,7 +81,7 @@ const TabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={setRefs}
       className={cn(
-        "relative inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+        "relative inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
         className,
       )}
       {...props}
@@ -89,7 +89,7 @@ const TabsList = React.forwardRef<
       {indicator && (
         <span
           aria-hidden
-          className="pointer-events-none absolute left-0 top-0 rounded-md bg-primary shadow-sm transition-[transform,width,height] duration-300 ease-out"
+          className="pointer-events-none absolute left-0 top-0 rounded-md bg-primary transition-[transform,width,height] duration-300 ease-out"
           style={{
             width: indicator.width,
             height: indicator.height,

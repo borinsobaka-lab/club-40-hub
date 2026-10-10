@@ -245,6 +245,85 @@ p-8 text-center text-sm text-muted-foreground` «Сначала выберите
 - Короткие подтверждения — `useConfirm()` на `AlertDialog`, там прокрутки нет
   и делить нечего.
 
+## Формы
+
+Строительные блоки — `src/components/ui/form-field.tsx`. Разметку поля руками
+(`div.space-y-1.5` + `Label` + контрол) больше не пишем.
+
+- **Поле — `<FormField label hint optional>`**: `space-y-2`, подпись `Label`,
+  пояснение `text-xs text-muted-foreground` под контролом. id раздаётся через
+  контекст: `Input`, `Textarea`, `SelectTrigger`, `SearchableCombobox`
+  берут его сами — подпись связана с полем без ручных `htmlFor`. Несколько
+  контролов в одном поле — `htmlFor={null}`.
+- **Необязательное поле — проп `optional`** (серое «(необязательно)» после
+  подписи). Обязательные не помечаем: звёздочек нет. Плейсхолдер
+  «Необязательно» и суффиксы «(по желанию)» не используем.
+- Поля идут колонкой `space-y-4`; два поля в ряд —
+  `grid grid-cols-1 gap-3 sm:grid-cols-2` (на телефоне — в столбик). Три и
+  больше в ряд — только короткие числа, тоже с `grid-cols-1` до `sm`.
+- **Да/нет-настройка — `<SwitchRow title hint>`**: строка в рамке,
+  переключатель справа, кликабельна целиком. Голый чекбокс для настройки не
+  ставим.
+- Выбор нескольких из списка / пометка у поля («Безлимит») —
+  `<CheckboxOption>`. Группа вариантов — в рамке `rounded-md border p-3`,
+  варианты `flex flex-wrap gap-x-4 gap-y-2`.
+- Один из нескольких: до ~4 коротких вариантов — `RadioGroup`
+  (`ui/radio-group`) в такой же рамке; больше — `Select`. Нативные
+  `<input type="radio">` и «переключатели из кнопок» не делаем.
+- **Пояснения — `<InfoNote>`**: `muted` (справка, итог), `warning`
+  (последствия действия), `empty` (пустой список внутри формы, пунктир).
+  Свои `div.bg-muted/30 px-3 py-2` не заводим.
+- Числа: `type="number"` допустим, системные стрелки скрыты глобально
+  (`styles.css`). Деньги с копейками — `inputMode="decimal"` с разбором запятой.
+- Дата — `<Input type="date">`, дата и время — `type="datetime-local"`.
+- Картинка — `ImageUploadField` в `FormField`; превью высотой 64px (`h-16`),
+  ширина по пропорции, кнопки «Заменить»/«Удалить» в строку.
+- Только для чтения — текстом, не `disabled`-полем.
+- Валидация — `toast.error` в обработчике до `setSaving(true)`; браузерные
+  `required`/всплывашки не используем (у формы `noValidate`).
+
+**Диалог с формой:**
+
+```tsx
+<DialogContent className="max-w-lg">
+  <DialogHeader>
+    <DialogTitle>Новый промокод</DialogTitle>
+    <DialogDescription>Что это и зачем — одной фразой.</DialogDescription>
+  </DialogHeader>
+  <DialogForm onSubmit={handleSave}>
+    <DialogBody>
+      <div className="space-y-4">…поля…</div>
+    </DialogBody>
+    <DialogFooter>
+      {/* слева при необходимости: <Button variant="ghost" className="mr-auto text-destructive …">Удалить</Button> */}
+      <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Отмена</Button>
+      <Button type="submit" disabled={saving}>
+        {saving && <Loader2 className="animate-spin" />}
+        Сохранить
+      </Button>
+    </DialogFooter>
+  </DialogForm>
+</DialogContent>
+```
+
+- `DialogForm` — Enter в поле нажимает главную кнопку. У `Button` по
+  умолчанию `type="button"`, поэтому вспомогательные кнопки внутри формы её
+  не отправляют; у главной `type="submit"` пишем явно.
+- «Отмена» — всегда `outline`, всегда есть, `disabled` на время сохранения.
+  Главная кнопка — справа, глагол действия («Сохранить», «Отправить»,
+  «Продать»), со спиннером `<Loader2 className="animate-spin" />`.
+- Иконкам внутри `Button` размер и отступ не задаём: `[&_svg]:size-4` и
+  `gap-2` уже в кнопке.
+- `setSaving(false)` — в `finally`.
+- Ширина: `max-w-md` — короткие (1–3 поля), `max-w-lg` — обычные формы,
+  `max-w-xl` — длинные, `max-w-2xl` — две колонки/медиа/карточка клиента.
+  Ширина одного диалога не меняется между созданием и редактированием.
+- Внутри тела нет своих `max-h`/`overflow-y-auto` — прокручивается тело.
+- Карточка «только чтение» (карточка клиента) — тот же каркас: имя в
+  `DialogTitle`, подвал «Закрыть» (outline) + главное действие справа.
+- Подписи-разделы внутри тела — `text-xs font-medium uppercase
+  text-muted-foreground`.
+
 ## Общие компоненты и хелперы (не дублировать)
 
 Перед тем как писать новый контрол или хелпер — проверь, есть ли готовый.

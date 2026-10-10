@@ -172,7 +172,7 @@ function FeedbackPage() {
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-1 h-4 w-4" /> Добавить
+              <Plus /> Добавить
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -249,7 +249,7 @@ function FeedbackPage() {
                 setMoodFilter("all");
               }}
             >
-              <X className="mr-1 h-3.5 w-3.5" /> Сбросить
+              <X /> Сбросить
             </Button>
           )}
         </div>
@@ -483,7 +483,7 @@ function NewFeedbackForm({
           Отмена
         </Button>
         <Button onClick={submit} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Сохранить
+          {saving && <Loader2 className="animate-spin" />} Сохранить
         </Button>
       </DialogFooter>
     </>

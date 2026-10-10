@@ -242,7 +242,7 @@ function ClientsPage() {
       title="Клиенты"
       actions={
         <Button onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить клиента
         </Button>
       }
@@ -619,7 +619,7 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>

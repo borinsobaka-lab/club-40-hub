@@ -181,7 +181,7 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
       title={config.title}
       actions={
         <Button onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           {texts.add}
         </Button>
       }
@@ -416,7 +416,7 @@ function ShowcaseForm({
                     bucket={bucket}
                     value={bannerUrl}
                     alt="Баннер"
-                    className="h-10 w-28"
+                    className="h-16 w-40"
                   />
                 }
                 disabled={!studioId}
@@ -499,7 +499,7 @@ function ShowcaseForm({
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>

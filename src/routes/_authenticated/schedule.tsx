@@ -421,11 +421,11 @@ function SchedulePage() {
             onClick={() => setDuplicateWeekOpen(true)}
             disabled={!studioId || entries.length === 0 || loading}
           >
-            <Copy className="mr-1 h-4 w-4" />
+            <Copy />
             Дублировать неделю
           </Button>
           <Button onClick={openAdd} disabled={!studioId || workouts.length === 0}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus />
             Добавить занятие
           </Button>
         </div>
@@ -529,7 +529,7 @@ function SchedulePage() {
                 onClick={() => setCopySource(null)}
                 disabled={pasting}
               >
-                <X className="mr-1 h-3 w-3" /> Отмена
+                <X /> Отмена
               </Button>
             </div>
           )}
@@ -644,7 +644,7 @@ function SchedulePage() {
               }}
               disabled={duplicatingWeek}
             >
-              {duplicatingWeek && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+              {duplicatingWeek && <Loader2 className="animate-spin" />}
               Дублировать
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -932,7 +932,7 @@ function EntryForm({
                 onDelete(entry);
               }}
             >
-              <Trash2 className="mr-1 h-4 w-4" /> Удалить
+              <Trash2 /> Удалить
             </Button>
           )}
         </div>
@@ -941,7 +941,7 @@ function EntryForm({
             Отмена
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+            {saving && <Loader2 className="animate-spin" />}
             Сохранить
           </Button>
         </div>
@@ -1144,7 +1144,7 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
                         onClick={() => handleAttend(b)}
                         disabled={attendingId === b.id}
                       >
-                        {attendingId === b.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                        {attendingId === b.id && <Loader2 className="animate-spin" />}
                         Посетил
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
@@ -1291,7 +1291,7 @@ function CancelBookingForm({
           }}
           disabled={cancelling}
         >
-          {cancelling && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+          {cancelling && <Loader2 className="animate-spin" />}
           Отклонить
         </AlertDialogAction>
       </AlertDialogFooter>

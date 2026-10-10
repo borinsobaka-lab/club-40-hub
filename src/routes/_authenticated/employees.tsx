@@ -93,7 +93,7 @@ function EmployeesPage() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
+                <UserPlus />
                 Добавить сотрудника
               </Button>
             </DialogTrigger>
@@ -250,7 +250,7 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
         </DialogBody>
         <DialogFooter>
           <Button type="submit" disabled={createMut.isPending}>
-            {createMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {createMut.isPending && <Loader2 className="animate-spin" />}
             Добавить
           </Button>
         </DialogFooter>

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useFieldId } from "@/components/ui/form-field";
 import {
   Command,
   CommandEmpty,
@@ -33,6 +33,9 @@ export function SearchableCombobox({
   emptyText,
   onSearchChange,
   selectedLabel,
+  onClear,
+  disabled,
+  id,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -43,7 +46,12 @@ export function SearchableCombobox({
   onSearchChange?: (search: string) => void;
   /** Подпись выбранного, если его нет в текущих options (серверный поиск). */
   selectedLabel?: string;
+  /** Если задан — у выбранного значения появляется крестик «очистить». */
+  onClear?: () => void;
+  disabled?: boolean;
+  id?: string;
 }) {
+  const fieldId = useFieldId(id);
   const [open, setOpenState] = useState(false);
   // Поле поиска при закрытии очищается (Command размонтируется) — и строку
   // серверного поиска сбрасываем вместе с ним.
@@ -55,20 +63,46 @@ export function SearchableCombobox({
   const label = selected?.label ?? (value ? selectedLabel : undefined);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
-          <span className={cn("truncate", !label && "text-muted-foreground")}>
-            {label ?? placeholder}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      {/*
+        Триггер выглядит как SelectTrigger (те же отступы, шеврон, без ховера):
+        в одной форме комбобокс и обычный выбор стоят рядом. Крестик
+        «очистить» — соседняя кнопка поверх триггера, а не внутри него:
+        кнопка в кнопке — невалидная разметка.
+      */}
+      <div className="relative">
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            id={fieldId}
+            role="combobox"
+            aria-expanded={open}
+            disabled={disabled}
+            className={cn(
+              "flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+              onClear && value && "pr-16",
+            )}
+          >
+            <span className={cn("truncate", !label && "text-muted-foreground")}>
+              {label ?? placeholder}
+            </span>
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          </button>
+        </PopoverTrigger>
+        {onClear && value && !disabled && (
+          <button
+            type="button"
+            aria-label="Очистить"
+            title="Очистить"
+            onClick={onClear}
+            className="absolute right-8 top-1/2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {/* w-(--…) — синтаксис Tailwind 4; w-[--…] из v3 компилировался в
+          невалидный CSS, и список был шириной по содержимому. */}
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
         <Command
           shouldFilter={!onSearchChange}
           filter={(itemValue, search) => {

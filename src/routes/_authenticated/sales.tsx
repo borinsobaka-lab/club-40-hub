@@ -219,7 +219,7 @@ function SalesPage() {
       title="Продажи"
       actions={
         <Button onClick={() => setSaleOpen(true)} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Новая продажа
         </Button>
       }
@@ -779,7 +779,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>
@@ -940,7 +940,7 @@ function RefundForm({
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving || loadingRefunded}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          {saving ? <Loader2 className="animate-spin" /> : null}
           Оформить возврат
         </Button>
       </DialogFooter>

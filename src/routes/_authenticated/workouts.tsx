@@ -147,7 +147,7 @@ function WorkoutsPage() {
       title="Тренировки"
       actions={
         <Button onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить тренировку
         </Button>
       }
@@ -324,16 +324,24 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
       </DialogHeader>
       <DialogBody>
         <div className="space-y-4">
-          <ImageUploadField
-            bucket="workouts"
-            folder={`${studioId}`}
-            value={photoUrl}
-            onChange={setPhotoUrl}
-            preview={<StorageImage bucket="workouts" value={photoUrl} alt="Иконка" />}
-            uploadLabel="Загрузить иконку"
-            replaceLabel="Заменить иконку"
-            disabled={!studioId}
-          />
+          <div className="space-y-2">
+            <Label>Иконка</Label>
+            <ImageUploadField
+              bucket="workouts"
+              folder={`${studioId}`}
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              preview={
+                <StorageImage
+                  bucket="workouts"
+                  value={photoUrl}
+                  alt="Иконка"
+                  className="size-16"
+                />
+              }
+              disabled={!studioId}
+            />
+          </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="name">Название</Label>
@@ -418,7 +426,7 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>

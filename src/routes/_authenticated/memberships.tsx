@@ -149,7 +149,7 @@ function MembershipsPage() {
       title="Номенклатуры"
       actions={
         <Button onClick={() => openCreate()} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить абонемент
         </Button>
       }
@@ -285,12 +285,21 @@ function MembershipsPage() {
 }
 
 /** Обложка целиком (часто это SVG-логотип), поэтому contain и рамка, а не cover. */
-function CoverImage({ value, alt }: { value: string | null; alt: string }) {
+function CoverImage({
+  value,
+  alt,
+  className,
+}: {
+  value: string | null;
+  alt: string;
+  className?: string;
+}) {
   return (
     <StorageImage
       bucket="memberships"
       value={value}
       alt={alt}
+      className={className}
       imgClassName="border bg-background object-contain"
     />
   );
@@ -422,7 +431,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               folder={`${studioId}/cover`}
               value={coverUrl}
               onChange={setCoverUrl}
-              preview={<CoverImage value={coverUrl} alt="Обложка" />}
+              preview={<CoverImage value={coverUrl} alt="Обложка" className="h-16 w-24" />}
               accept="image/svg+xml,image/png,image/jpeg,image/webp"
               disabled={!studioId}
             />
@@ -557,7 +566,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+          {saving && <Loader2 className="animate-spin" />}
           Сохранить
         </Button>
       </DialogFooter>

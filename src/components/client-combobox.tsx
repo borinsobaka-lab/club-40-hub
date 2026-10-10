@@ -74,33 +74,27 @@ export function ClientCombobox({
   }));
 
   return (
-    <>
-      <SearchableCombobox
-        placeholder={placeholder}
-        searchPlaceholder="Поиск по имени, телефону, email"
-        emptyText={isFetching ? "Загрузка…" : "Ничего не найдено"}
-        value={value}
-        selectedLabel={picked && picked.id === value ? clientName(picked) : undefined}
-        onSearchChange={setSearch}
-        onChange={(id) => {
-          const client = clients.find((c) => c.id === id) ?? null;
-          setPicked(client);
-          onChange(id, client);
-        }}
-        options={options}
-      />
-      {clearable && value && (
-        <button
-          type="button"
-          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-          onClick={() => {
-            setPicked(null);
-            onChange("", null);
-          }}
-        >
-          Убрать клиента
-        </button>
-      )}
-    </>
+    <SearchableCombobox
+      placeholder={placeholder}
+      searchPlaceholder="Поиск по имени, телефону, email"
+      emptyText={isFetching ? "Загрузка…" : "Ничего не найдено"}
+      value={value}
+      selectedLabel={picked && picked.id === value ? clientName(picked) : undefined}
+      onSearchChange={setSearch}
+      onChange={(id) => {
+        const client = clients.find((c) => c.id === id) ?? null;
+        setPicked(client);
+        onChange(id, client);
+      }}
+      options={options}
+      onClear={
+        clearable
+          ? () => {
+              setPicked(null);
+              onChange("", null);
+            }
+          : undefined
+      }
+    />
   );
 }

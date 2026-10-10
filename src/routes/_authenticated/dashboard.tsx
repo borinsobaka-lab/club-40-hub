@@ -436,7 +436,7 @@ function DashboardPage() {
                   !range?.from && "text-muted-foreground",
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon />
                 {formatRange(range)}
               </Button>
             </PopoverTrigger>

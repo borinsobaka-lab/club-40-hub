@@ -143,7 +143,7 @@ function PromoCodesPage() {
       title="Промокоды"
       actions={
         <Button onClick={openCreate} disabled={!studioId}>
-          <Plus className="mr-1 h-4 w-4" />
+          <Plus />
           Добавить промокод
         </Button>
       }
@@ -427,7 +427,7 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
           Отмена
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          {saving ? <Loader2 className="animate-spin" /> : null}
           Сохранить
         </Button>
       </DialogFooter>
