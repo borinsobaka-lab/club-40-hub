@@ -2,8 +2,6 @@
 // src/routes/api/auth-email.ts, чтобы её можно было проверять тестом
 // (bun test src/lib/auth-email.test.ts).
 
-import { SUPABASE_URL } from "@/integrations/supabase/env";
-
 export type HookPayload = {
   user: {
     id: string;
@@ -63,18 +61,6 @@ const codeEmail = (title: string, lead: string, token: string) =>
     </div>
     <p style="color:#52525b;font-size:13px">Код действует 1 час.</p>`);
 
-const linkEmail = (title: string, lead: string, url: string, cta: string) =>
-  wrap(`
-    <h2 style="margin:0;font-size:18px;color:#18181b">${title}</h2>
-    <p style="color:#52525b;font-size:14px;line-height:1.5">${lead}</p>
-    <div style="margin:24px 0;text-align:center">
-      <a href="${url}"
-         style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:14px 28px;border-radius:999px">
-        ${cta}
-      </a>
-    </div>
-    <p style="color:#52525b;font-size:13px">Ссылка действует 1 час и работает один раз.</p>`);
-
 export type OutgoingEmail = { to: string; subject: string; html: string };
 
 const EMAIL_CHANGE_SUBJECT = "Подтверждение смены почты — Base40";
@@ -124,11 +110,7 @@ export function buildEmail(
   payload: HookPayload,
   fromAdminApp: boolean,
 ): { subject: string; html: string } {
-  const { token, token_hash, redirect_to, email_action_type, site_url } = payload.email_data;
-  const verifyUrl =
-    `${SUPABASE_URL}/auth/v1/verify?token=${encodeURIComponent(token_hash)}` +
-    `&type=${encodeURIComponent(email_action_type)}` +
-    `&redirect_to=${encodeURIComponent(redirect_to || site_url)}`;
+  const { token, email_action_type } = payload.email_data;
 
   switch (email_action_type) {
     case "signup":
@@ -138,43 +120,36 @@ export function buildEmail(
         subject: "Код подтверждения — Base40",
         html: codeEmail("Добро пожаловать в Base40!", "Ваш код подтверждения:", token),
       };
+    // Вход — всегда код, в обоих приложениях. Ссылки авто-входа в письме
+    // нет: её можно переслать или открыть превью почтовика, а код вводится
+    // только вручную на странице входа. Приложение меняет лишь текст.
     case "magiclink":
       return fromAdminApp
         ? {
-            subject: "Вход в админ-панель Base40",
-            html: linkEmail(
+            subject: "Код для входа в админ-панель Base40",
+            html: codeEmail(
               "Вход в админ-панель",
-              "Нажмите кнопку, чтобы войти. Никому не пересылайте это письмо.",
-              verifyUrl,
-              "Войти в админ-панель",
+              "Введите этот код на странице входа в админ-панель. Никому его не сообщайте.",
+              token,
             ),
           }
         : {
             subject: "Код для входа — Base40",
             html: codeEmail("Вход в Base40", "Ваш код для входа в приложение:", token),
           };
-    // Восстановление пароля существует только в админке — у клиентов паролей
-    // нет, вход только по коду. Ссылка здесь обязательна: новый пароль
-    // задаётся на странице.
+    // Восстановления и приглашений ни одно приложение не запрашивает (паролей
+    // нет ни у кого, сотрудников создаёт админка), но /recover у GoTrue
+    // публичный — кто угодно может вызвать его на чужую почту. Поэтому и тут
+    // код, а не ссылка: в письмах авторизации ссылок авто-входа нет вовсе.
     case "recovery":
       return {
         subject: "Восстановление доступа — Base40",
-        html: linkEmail(
-          "Восстановление доступа",
-          "Нажмите кнопку, чтобы задать новый пароль.",
-          verifyUrl,
-          "Задать новый пароль",
-        ),
+        html: codeEmail("Восстановление доступа", "Ваш код для восстановления доступа:", token),
       };
     case "invite":
       return {
         subject: "Приглашение в Base40",
-        html: linkEmail(
-          "Вас пригласили в Base40",
-          "Нажмите кнопку, чтобы принять приглашение и создать аккаунт.",
-          verifyUrl,
-          "Принять приглашение",
-        ),
+        html: codeEmail("Вас пригласили в Base40", "Ваш код для принятия приглашения:", token),
       };
     case "email_change":
       return {

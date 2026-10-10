@@ -74,8 +74,9 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
   });
 
 const createSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
-  full_name: z.string().trim().min(1),
+  first_name: z.string().trim().min(1, "Укажите имя").max(100),
+  last_name: z.string().trim().min(1, "Укажите фамилию").max(100),
+  email: z.string().trim().toLowerCase().email("Неверный адрес почты"),
   role: z.enum(STAFF_ROLES),
 });
 
@@ -88,10 +89,10 @@ function authErrorText(message: string) {
 }
 
 /**
- * Добавить сотрудника по почте. Пароля нет: вход только по ссылке на почту
- * (паролям сотрудников db/staff_accounts.sql не даёт существовать).
- * Есть учётная запись (клиент приложения, сотрудник другой студии) — только
- * выдаём роль; нет — создаём пользователя.
+ * Добавить сотрудника: имя, фамилия, почта. Пароля нет: вход только по
+ * 6-значному коду из письма (паролям сотрудников db/staff_accounts.sql не даёт
+ * существовать). Есть учётная запись (клиент приложения, сотрудник другой
+ * студии) — только выдаём роль; нет — создаём пользователя.
  */
 export const createEmployee = createServerFn({ method: "POST" })
   .middleware([requireOwner])
@@ -99,15 +100,18 @@ export const createEmployee = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { studioId } = context;
     const admin = getSupabaseAdmin();
+    // «Фамилия Имя» — как clientName в остальных разделах.
+    const fullName = `${data.last_name} ${data.first_name}`;
 
     const pattern = data.email.replace(/[\\%_]/g, "\\$&");
     const { data: existing, error: findErr } = await admin
       .from("profiles")
-      .select("id")
+      .select("id, full_name")
       .ilike("email", pattern)
       .limit(1);
     if (findErr) throw new Error(findErr.message);
     const existingId = (existing?.[0]?.id as string | undefined) ?? null;
+    const existingName = (existing?.[0]?.full_name as string | null | undefined) ?? null;
 
     if (existingId) {
       const { data: has, error: hasErr } = await admin
@@ -123,6 +127,15 @@ export const createEmployee = createServerFn({ method: "POST" })
         .from("user_roles")
         .insert({ user_id: existingId, studio_id: studioId, role: data.role });
       if (roleErr) throw new Error(roleErr.message);
+      // Имя в профиле не перетираем: его мог задать сам человек в приложении.
+      // Заполняем, только если пусто — иначе в «Доступах» была бы одна почта.
+      if (!existingName?.trim()) {
+        const { error: nameErr } = await admin
+          .from("profiles")
+          .update({ full_name: fullName })
+          .eq("id", existingId);
+        if (nameErr) throw new Error(nameErr.message);
+      }
       return { ok: true, user_id: existingId, existing: true };
     }
 
@@ -132,7 +145,13 @@ export const createEmployee = createServerFn({ method: "POST" })
       // studio_id читает триггер handle_new_user (без него профиль и роль member
       // создаются в самой старой студии); staff_account — не заводить карточку
       // клиента (db/staff_accounts.sql).
-      user_metadata: { full_name: data.full_name, studio_id: studioId, staff_account: true },
+      user_metadata: {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        full_name: fullName,
+        studio_id: studioId,
+        staff_account: true,
+      },
     });
     if (error || !created.user) {
       throw new Error(authErrorText(error?.message ?? "Не удалось создать пользователя"));
@@ -141,7 +160,7 @@ export const createEmployee = createServerFn({ method: "POST" })
     const { error: profErr } = await admin.from("profiles").upsert({
       id: newId,
       studio_id: studioId,
-      full_name: data.full_name,
+      full_name: fullName,
       email: data.email,
     });
     if (profErr) {

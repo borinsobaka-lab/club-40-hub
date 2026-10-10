@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { requestStaffLoginLink } from "@/lib/auth.functions";
+import { requestStaffLoginCode } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
@@ -14,18 +14,26 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Step = "credentials" | "sent";
+type Step = "email" | "code";
+
+const CODE_LENGTH = 6;
 
 /**
- * Вход только по ссылке на почту: паролей у сотрудников нет (db/staff_accounts.sql
- * их стирает), поэтому доступ = доступ к рабочей почте. Ссылку отправляет
- * сервер и только сотрудникам — см. requestStaffLoginLink.
+ * Вход по 6-значному коду из письма: паролей у сотрудников нет
+ * (db/staff_accounts.sql их стирает), доступ = доступ к рабочей почте.
+ *
+ * Код создаёт GoTrue, а письмо отправляет наш сервер (/api/auth-email), и только
+ * сотрудникам — см. requestStaffLoginCode. В браузер код не приходит ни в каком
+ * ответе: он есть лишь в письме. Введённый код живёт только в состоянии этой
+ * формы — не в URL, не в localStorage, не в логах — и уходит прямо в GoTrue
+ * (verifyOtp); после попытки поле очищается.
  */
 function AuthPage() {
   const navigate = useNavigate();
-  const requestLink = useServerFn(requestStaffLoginLink);
+  const requestCode = useServerFn(requestStaffLoginCode);
   const [email, setEmail] = useState("");
-  const [step, setStep] = useState<Step>("credentials");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<Step>("email");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -38,10 +46,10 @@ function AuthPage() {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  const sendLink = async () => {
+  const sendCode = async () => {
     setLoading(true);
     try {
-      await requestLink({
+      await requestCode({
         data: { email: email.trim(), redirectTo: `${window.location.origin}/` },
       });
       return true;
@@ -53,17 +61,52 @@ function AuthPage() {
     }
   };
 
-  const signIn = async (e: React.FormEvent) => {
+  const submitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim().includes("@")) {
       toast.error("Укажите рабочую почту");
       return;
     }
-    if (await sendLink()) setStep("sent");
+    if (await sendCode()) {
+      setCode("");
+      setStep("code");
+    }
+  };
+
+  const submitCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (code.length !== CODE_LENGTH) {
+      toast.error(`Введите ${CODE_LENGTH} цифр из письма`);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: code,
+        type: "email",
+      });
+      // Успех ловит onAuthStateChange выше: переход на главную, а guard
+      // проверит роль сотрудника.
+      if (error) {
+        toast.error(
+          /rate limit|too many/i.test(error.message)
+            ? "Слишком много попыток. Подождите несколько минут."
+            : "Неверный или устаревший код. Проверьте письмо или запросите новый код.",
+        );
+      }
+    } finally {
+      // Код одноразовый — не держим его в форме ни после успеха, ни после ошибки.
+      setCode("");
+      setLoading(false);
+    }
   };
 
   const resend = async () => {
-    if (await sendLink()) toast.success("Ссылка отправлена ещё раз");
+    if (await sendCode()) {
+      setCode("");
+      toast.success("Новый код отправлен, прежний больше не действует");
+    }
   };
 
   // Белая карточка лежит на канве, как и всё в админке.
@@ -73,14 +116,14 @@ function AuthPage() {
         <CardHeader>
           <CardTitle className="text-2xl">Base40</CardTitle>
           <CardDescription>
-            {step === "credentials"
-              ? "Вход для сотрудников клуба — по ссылке на рабочую почту"
-              : "Проверьте почту и перейдите по ссылке для входа"}
+            {step === "email"
+              ? "Вход для сотрудников клуба — по коду из письма на рабочую почту"
+              : "Введите код из письма"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {step === "credentials" ? (
-            <form noValidate onSubmit={signIn} className="space-y-4">
+          {step === "email" ? (
+            <form noValidate onSubmit={submitEmail} className="space-y-4">
               <FormField label="Электронная почта">
                 <Input
                   type="email"
@@ -91,26 +134,45 @@ function AuthPage() {
               </FormField>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="animate-spin" />}
-                Получить ссылку для входа
+                Получить код для входа
               </Button>
               <p className="text-xs text-muted-foreground text-center">
                 Доступ — только для сотрудников, добавленных владельцем клуба в «Доступах».
               </p>
             </form>
           ) : (
-            <div className="space-y-4">
+            <form noValidate onSubmit={submitCode} className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Если <span className="font-medium text-foreground">{email}</span> — почта
-                сотрудника, мы отправили на неё ссылку для входа. Ссылка действует 1 час и работает
-                один раз.
+                сотрудника, мы отправили на неё {CODE_LENGTH}-значный код. Код действует 1 час и
+                работает один раз.
               </p>
+              <FormField label="Код из письма">
+                <Input
+                  // type="text", а не number: у number браузер теряет ведущие нули.
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  maxLength={CODE_LENGTH}
+                  className="text-center text-lg tracking-[0.5em] tabular-nums"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))}
+                />
+              </FormField>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="animate-spin" />}
+                Войти
+              </Button>
               <div className="flex items-center justify-between">
                 <Button
                   variant="link"
                   className="h-auto p-0 text-xs text-muted-foreground"
-                  onClick={() => setStep("credentials")}
+                  onClick={() => {
+                    setCode("");
+                    setStep("email");
+                  }}
                 >
-                  Назад
+                  Другая почта
                 </Button>
                 <Button
                   variant="link"
@@ -118,10 +180,10 @@ function AuthPage() {
                   onClick={resend}
                   disabled={loading}
                 >
-                  Отправить ссылку ещё раз
+                  Отправить код ещё раз
                 </Button>
               </div>
-            </div>
+            </form>
           )}
         </CardContent>
       </Card>
