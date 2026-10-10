@@ -3,7 +3,8 @@
  *
  * - Студии — роль сотрудника в user_roles: без неё студии нет в переключателе,
  *   а RLS не отдаёт её данные.
- * - Разделы рейки — admin_permissions.sections (RAIL_ACCESS_KEYS).
+ * - Разделы рейки — admin_permissions.sections (RAIL_ACCESS_KEYS) и правка
+ *   скриптов — 'scripts-edit' там же (ADMIN_SECTION_KEYS).
  * - Разделы клуба в студии — admin_studio_permissions.sections
  *   (CLUB_SECTION_KEYS — пункты меню клуба, см. CLUB_GROUPS в nav-sections.ts).
  *
@@ -12,13 +13,22 @@
  * клуба. Модуль без React и иконок: его читает и сервер.
  */
 
-export const RAIL_ACCESS_KEYS = ["club", "staff", "app"] as const;
+export const RAIL_ACCESS_KEYS = ["club", "staff", "app", "scripts"] as const;
 export type RailAccessKey = (typeof RAIL_ACCESS_KEYS)[number];
 
-export const RAIL_ACCESS_LABEL: Record<RailAccessKey, string> = {
+/**
+ * Всё, что хранится в admin_permissions.sections: разделы рейки и право
+ * правки «Скриптов LS» (без него скрипты только читают и копируют).
+ */
+export const ADMIN_SECTION_KEYS = [...RAIL_ACCESS_KEYS, "scripts-edit"] as const;
+export type AdminSectionKey = (typeof ADMIN_SECTION_KEYS)[number];
+
+export const RAIL_ACCESS_LABEL: Record<AdminSectionKey, string> = {
   club: "Клуб",
   staff: "Сотрудники",
   app: "Мобильное приложение",
+  scripts: "Скрипты LS",
+  "scripts-edit": "Скрипты LS: правка",
 };
 
 export const CLUB_SECTION_KEYS = [
@@ -42,8 +52,8 @@ export type ClubSectionKey = (typeof CLUB_SECTION_KEYS)[number];
 export type AdminAccess = {
   /** Владелец хоть одной студии: все разделы рейки, «Доступы». */
   isOwner: boolean;
-  /** Разделы рейки; null — все. */
-  rail: RailAccessKey[] | null;
+  /** Разделы рейки (и 'scripts-edit'); null — все. */
+  rail: AdminSectionKey[] | null;
   /** По студиям, где есть роль сотрудника. */
   studios: Record<string, { owner: boolean; sections: ClubSectionKey[] | null }>;
 };

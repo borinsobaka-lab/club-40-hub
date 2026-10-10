@@ -66,6 +66,10 @@ export type NavItem = {
    * общий. Пока студия не загружена, показываются только общие пункты.
    */
   formats?: StudioFormat[];
+  /** Подсвечивать только на самом url, не на вложенных страницах. */
+  exact?: boolean;
+  /** Счётчик справа (новые предложения в «Скриптах LS»). */
+  badge?: number;
 };
 export type ClubNavItem = NavItem & {
   /** Ключ раздела в правах сотрудника («Доступы», lib/admin-access.ts). */
@@ -151,6 +155,10 @@ export const STAFF_ITEMS: NavItem[] = [
   { title: "Зарплатные ставки", url: "/pay-rates", icon: MoneyBag },
 ];
 
+/** «Скрипты LS»: все скрипты; разделы — /scripts/<id>, настройки — /scripts/settings. */
+export const SCRIPTS_URL = "/scripts";
+export const SCRIPTS_SETTINGS_URL = "/scripts/settings";
+
 /** Раздел без url — заготовка: виден в рейке, но не нажимается. */
 export const SECTIONS: RailSection[] = [
   { key: "club", title: "Клуб", url: "/", icon: Buildings2 },
@@ -172,7 +180,15 @@ export const SECTIONS: RailSection[] = [
     icon: Smartphone,
     paths: MOBILE_APP_ITEMS.map((i) => i.url),
   },
-  { key: "scripts", title: "Скрипты", icon: Notebook },
+  // Скрипты администраторов Lady Stretch: меню раздела — его разделы
+  // (они в базе, поэтому меню собирает AppSidebar), плюс «Настройки».
+  {
+    key: "scripts",
+    title: "Скрипты LS",
+    fullTitle: "Скрипты LS — скрипты студий Lady Stretch",
+    url: SCRIPTS_URL,
+    icon: Notebook,
+  },
 ];
 
 /**
@@ -218,7 +234,8 @@ export function canOpenPath(
 ): boolean {
   const section = railSectionKey(pathname);
   if (section === "access") return access.isOwner;
-  if (section === "staff" || section === "app") return canOpenRail(access, section);
+  if (section === "staff" || section === "app" || section === "scripts")
+    return canOpenRail(access, section);
   if (section === "club") {
     const item = clubNavItemOf(pathname);
     return item ? canOpenClubSection(access, studioId, item.section) : canOpenRail(access, "club");

@@ -6,9 +6,9 @@ import { requireAccessManager } from "@/integrations/supabase/auth-middleware";
 import { getSupabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   CLUB_SECTION_KEYS,
-  RAIL_ACCESS_KEYS,
+  ADMIN_SECTION_KEYS,
   type ClubSectionKey,
-  type RailAccessKey,
+  type AdminSectionKey,
 } from "@/lib/admin-access";
 import { STAFF_ROLES, type StaffRole } from "@/lib/roles";
 
@@ -39,7 +39,7 @@ export type EmployeeRow = {
   /** Студий вне управления владельца, где у человека тоже есть доступ. */
   otherStudios: number;
   /** Разделы рейки; null — все. */
-  rail: RailAccessKey[] | null;
+  rail: AdminSectionKey[] | null;
 };
 
 const ROLE_PRIORITY: Record<StaffRole, number> = { owner: 3, admin: 2, trainer: 1 };
@@ -92,7 +92,7 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
       ).map((p) => [p.id, p]),
     );
     const railOf = new Map(
-      ((rail.data ?? []) as { user_id: string; sections: RailAccessKey[] }[]).map((r) => [
+      ((rail.data ?? []) as { user_id: string; sections: AdminSectionKey[] }[]).map((r) => [
         r.user_id,
         r.sections,
       ]),
@@ -159,10 +159,15 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
     return { employees, studios: studios ?? [], currentUserId: context.userId };
   });
 
+/** Правка скриптов без самого раздела не имеет смысла — снимаем. */
+function railSections(rail: AdminSectionKey[]): AdminSectionKey[] {
+  return [...new Set(rail)].filter((k) => k !== "scripts-edit" || rail.includes("scripts"));
+}
+
 const accessSchema = z
   .object({
     role: z.enum(STAFF_ROLES),
-    rail: z.array(z.enum(RAIL_ACCESS_KEYS)),
+    rail: z.array(z.enum(ADMIN_SECTION_KEYS)),
     studios: z
       .array(
         z.object({
@@ -273,7 +278,7 @@ async function applyAccess(
       ? await admin.from("admin_permissions").delete().eq("user_id", userId)
       : await admin
           .from("admin_permissions")
-          .upsert({ user_id: userId, sections: [...new Set(input.rail)], updated_at: now }),
+          .upsert({ user_id: userId, sections: railSections(input.rail), updated_at: now }),
   );
 }
 

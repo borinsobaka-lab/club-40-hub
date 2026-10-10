@@ -21,6 +21,7 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   Alert02Icon as AlertTriangleArt,
   ArrowDown as ArrowDownArt,
+  ArrowLeft as ArrowLeftArt,
   ArrowUp as ArrowUpArt,
   CalendarIcon as CalendarIconArt,
   CatIcon as CatArt,
@@ -37,10 +38,13 @@ import {
   ChevronsRight as ChevronsRightArt,
   Circle as CircleArt,
   Copy as CopyArt,
+  Ellipsis as EllipsisArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
+  FlaskConical as FlaskConicalArt,
   HelpCircleIcon as HelpCircleArt,
   ImageIcon as ImageIconArt,
+  Link2 as Link2Art,
   LoaderCircle as Loader2Art,
   LogIn as LogInArt,
   MessageCircle as MessageCircleArt,
@@ -49,10 +53,11 @@ import {
   Minus as MinusArt,
   PanelLeft as PanelLeftArt,
   Pencil as PencilArt,
-  Phone as PhoneArt,
+  Play as PlayArt,
   Plus as PlusArt,
   Receipt as ReceiptArt,
   RefreshCw as RefreshCwArt,
+  RotateCcw as RotateCcwArt,
   Save as SaveArt,
   Search as SearchArt,
   SentIcon as SendArt,
@@ -60,6 +65,7 @@ import {
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
   TrendingUp as TrendingUpArt,
+  Upload as UploadArt,
   UserPlus as UserPlusArt,
   Wallet as WalletArt,
   X as XArt,
@@ -84,6 +90,7 @@ function icon(art: IconSvgElement, displayName: string) {
 
 export const AlertTriangle = icon(AlertTriangleArt, "AlertTriangle");
 export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
+export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");
 export const Cat = icon(CatArt, "Cat");
@@ -100,10 +107,13 @@ export const ChevronsLeft = icon(ChevronsLeftArt, "ChevronsLeft");
 export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
 export const Circle = icon(CircleArt, "Circle");
 export const Copy = icon(CopyArt, "Copy");
+export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
+export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
+export const Link2 = icon(Link2Art, "Link2");
 export const Loader2 = icon(Loader2Art, "Loader2");
 export const LogIn = icon(LogInArt, "LogIn");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
@@ -112,10 +122,11 @@ export const Mic = icon(MicArt, "Mic");
 export const Minus = icon(MinusArt, "Minus");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Pencil = icon(PencilArt, "Pencil");
-export const Phone = icon(PhoneArt, "Phone");
+export const Play = icon(PlayArt, "Play");
 export const Plus = icon(PlusArt, "Plus");
 export const Receipt = icon(ReceiptArt, "Receipt");
 export const RefreshCw = icon(RefreshCwArt, "RefreshCw");
+export const RotateCcw = icon(RotateCcwArt, "RotateCcw");
 export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
@@ -123,6 +134,7 @@ export const Square = icon(SquareArt, "Square");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");
+export const Upload = icon(UploadArt, "Upload");
 export const UserPlus = icon(UserPlusArt, "UserPlus");
 export const Wallet = icon(WalletArt, "Wallet");
 export const X = icon(XArt, "X");

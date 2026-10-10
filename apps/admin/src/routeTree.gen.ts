@@ -38,6 +38,8 @@ import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
 import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
+import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -188,6 +190,18 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedScriptsIndexRoute =
+  AuthenticatedScriptsIndexRouteImport.update({
+    id: '/scripts/',
+    path: '/scripts/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedScriptsSectionIdRoute =
+  AuthenticatedScriptsSectionIdRouteImport.update({
+    id: '/scripts/$sectionId',
+    path: '/scripts/$sectionId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -218,6 +232,8 @@ export interface FileRoutesByFullPath {
   '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
+  '/scripts/': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -248,6 +264,8 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/': typeof AuthenticatedIndexRoute
+  '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
+  '/scripts': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -280,6 +298,8 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
+  '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -312,6 +332,8 @@ export interface FileRouteTypes {
     | '/api/auth-email'
     | '/api/chat'
     | '/api/transcribe'
+    | '/scripts/$sectionId'
+    | '/scripts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -342,6 +364,8 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/transcribe'
     | '/'
+    | '/scripts/$sectionId'
+    | '/scripts'
   id:
     | '__root__'
     | '/_authenticated'
@@ -373,6 +397,8 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/transcribe'
     | '/_authenticated/'
+    | '/_authenticated/scripts/$sectionId'
+    | '/_authenticated/scripts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -588,6 +614,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/scripts/': {
+      id: '/_authenticated/scripts/'
+      path: '/scripts'
+      fullPath: '/scripts/'
+      preLoaderRoute: typeof AuthenticatedScriptsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/scripts/$sectionId': {
+      id: '/_authenticated/scripts/$sectionId'
+      path: '/scripts/$sectionId'
+      fullPath: '/scripts/$sectionId'
+      preLoaderRoute: typeof AuthenticatedScriptsSectionIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -616,6 +656,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTrainersRoute: typeof AuthenticatedTrainersRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedScriptsSectionIdRoute: typeof AuthenticatedScriptsSectionIdRoute
+  AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -644,6 +686,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTrainersRoute: AuthenticatedTrainersRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedScriptsSectionIdRoute: AuthenticatedScriptsSectionIdRoute,
+  AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

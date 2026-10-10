@@ -124,6 +124,12 @@ AUTH_SETUP.md.
   их таблицы общие, граница там по-прежнему студия. Мобильное приложение общее для студий:
   `db/migrations/2026-10-10_app_content_shared.sql` — `news`/`services`/
   `push_notifications` без привязки к студии, правка — `is_staff`.
+  «Скрипты LS» (скрипты администраторов Lady Stretch, перенос из
+  «Аудиоаналитики»): `db/migrations/2026-10-10_scripts_ls.sql` — таблицы
+  `scripts_*` без studio_id (раздел общий для студий), доступ — разделы рейки
+  `scripts` / `scripts-edit` в `admin_permissions` (`has_admin_section`);
+  подписи и хронологию пишут триггеры, статистика — RPC `scripts_copy_stats` /
+  `scripts_call_stats`, импорт — `scripts_import`.
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`).

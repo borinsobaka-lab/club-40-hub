@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useStudios } from "@/hooks/use-studios";
 import { unwrap } from "@/lib/query";
-import type { AdminAccess, ClubSectionKey, RailAccessKey } from "@/lib/admin-access";
+import type { AdminAccess, AdminSectionKey, ClubSectionKey } from "@/lib/admin-access";
 
 type OwnPermissions = {
-  rail: RailAccessKey[] | null;
+  rail: AdminSectionKey[] | null;
   studios: Record<string, ClubSectionKey[]>;
 };
 
@@ -27,7 +27,7 @@ export function useAdminAccess(): AdminAccess | null {
       const userId = session.session?.user.id;
       if (!userId) return { rail: null, studios: {} };
       const [rail, perStudio] = await Promise.all([
-        unwrap<{ sections: RailAccessKey[] }[]>(
+        unwrap<{ sections: AdminSectionKey[] }[]>(
           supabase.from("admin_permissions").select("sections").eq("user_id", userId),
         ),
         unwrap<{ studio_id: string; sections: ClubSectionKey[] }[]>(

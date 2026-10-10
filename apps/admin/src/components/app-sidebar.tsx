@@ -1,15 +1,20 @@
 import { useCallback, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronUp } from "lucide-react";
+import { Notebook, Settings } from "@/components/nav-icons";
 import { AppRail } from "@/components/app-rail";
 import {
   CLUB_GROUPS,
   MOBILE_APP_ITEMS,
+  SCRIPTS_SETTINGS_URL,
+  SCRIPTS_URL,
   STAFF_ITEMS,
   railSectionKey,
   type NavGroup,
   type RailSectionKey,
 } from "@/lib/nav-sections";
+import { usePlaybook, useScriptAccess, useUnreadSuggestions } from "@/lib/scripts/data";
+import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenClubSection, type AdminAccess } from "@/lib/admin-access";
@@ -71,6 +76,37 @@ function visibleGroups(
   })).filter((g) => g.items.length > 0);
 }
 
+/**
+ * Меню «Скриптов LS»: разделы скриптов живут в базе (их заводят и
+ * переставляют в самом разделе), поэтому меню собирается из них. У
+ * «Настроек» — счётчик новых предложений, у каждого сотрудника свой.
+ */
+function useScriptsMenu(enabled: boolean): NavGroup[] {
+  const access = useScriptAccess();
+  const { data: sections = [] } = usePlaybook(enabled && !!access?.canRead);
+  const { data: unread = 0 } = useUnreadSuggestions(enabled && !!access?.canEdit);
+  if (!enabled) return [];
+  return [
+    {
+      key: "scripts",
+      label: "Разделы",
+      items: [
+        { title: "Все скрипты", url: SCRIPTS_URL, icon: Notebook, exact: true },
+        ...sections.map((s) => ({
+          title: s.title,
+          url: `${SCRIPTS_URL}/${s.id}`,
+          icon: sectionIcon(s.icon),
+        })),
+      ],
+    },
+    {
+      key: "scripts-settings",
+      label: "Управление",
+      items: [{ title: "Настройки", url: SCRIPTS_SETTINGS_URL, icon: Settings, badge: unread }],
+    },
+  ];
+}
+
 const STORAGE_KEY = "sidebar_groups";
 
 /** Свёрнутые блоки переживают перезагрузку — иначе меню каждый раз раскрывается заново. */
@@ -108,7 +144,10 @@ export function AppSidebar() {
   const studioId = useActiveStudioId();
   const access = useAdminAccess();
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
-  const sectionMenu = SECTION_MENUS[railSectionKey(currentPath)];
+  const railKey = railSectionKey(currentPath);
+  const scriptsGroups = useScriptsMenu(railKey === "scripts");
+  const sectionMenu =
+    railKey === "scripts" ? { title: "Скрипты LS", groups: scriptsGroups } : SECTION_MENUS[railKey];
   const groups = sectionMenu?.groups ?? visibleGroups(studioFormat, access, studioId);
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
@@ -133,7 +172,8 @@ export function AppSidebar() {
 
   // Точное совпадение или вложенный путь: голый startsWith подсвечивал
   // «Пуш-уведомления» (/push) ещё и на /push-triggers.
-  const isActive = (path: string) => currentPath === path || currentPath.startsWith(`${path}/`);
+  const isActive = (path: string, exact = false) =>
+    currentPath === path || (!exact && currentPath.startsWith(`${path}/`));
 
   return (
     <Sidebar className="border-r-0">
@@ -188,10 +228,10 @@ export function AppSidebar() {
                     <SidebarGroupContent>
                       <SidebarMenu>
                         {group.items.map((item) => (
-                          <SidebarMenuItem key={item.title}>
+                          <SidebarMenuItem key={item.url}>
                             <SidebarMenuButton
                               asChild
-                              isActive={isActive(item.url)}
+                              isActive={isActive(item.url, item.exact)}
                               /*
                             active: перекрывать обязательно — в базовых стилях shadcn нажатая
                             кнопка красится в `sidebar-accent`, а это почти белый: на тёмной
@@ -213,14 +253,22 @@ export function AppSidebar() {
                                 <span
                                   className={cn(
                                     "relative isolate inline-flex shrink-0 before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-current before:opacity-0 before:blur-[6px] before:transition-opacity before:duration-200",
-                                    isActive(item.url)
+                                    isActive(item.url, item.exact)
                                       ? "text-brand before:opacity-45 group-hover/nav:before:opacity-70"
                                       : "text-white group-hover/nav:before:opacity-45",
                                   )}
                                 >
-                                  <item.icon active={isActive(item.url)} className="size-[18px]" />
+                                  <item.icon
+                                    active={isActive(item.url, item.exact)}
+                                    className="size-[18px]"
+                                  />
                                 </span>
-                                <span>{item.title}</span>
+                                <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                                {!!item.badge && (
+                                  <span className="rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums">
+                                    {item.badge}
+                                  </span>
+                                )}
                               </Link>
                             </SidebarMenuButton>
                           </SidebarMenuItem>

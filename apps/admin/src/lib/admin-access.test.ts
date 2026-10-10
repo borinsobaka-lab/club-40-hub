@@ -55,10 +55,21 @@ describe("права в админке", () => {
     expect(firstAllowedUrl({ ...limited, rail: ["app"] }, A)).toBe("/news");
   });
 
+  test("«Скрипты LS» — по отметке раздела рейки, со всеми страницами", () => {
+    expect(canOpenPath(legacy, A, "/scripts")).toBe(true);
+    expect(canOpenPath(limited, A, "/scripts")).toBe(false);
+    expect(canOpenPath(limited, A, "/scripts/settings")).toBe(false);
+    const scripts: AdminAccess = { ...limited, rail: ["scripts"] };
+    expect(canOpenPath(scripts, A, "/scripts/0f0e0d0c-0000-0000-0000-000000000000")).toBe(true);
+    expect(canOpenPath(scripts, A, "/dashboard")).toBe(false);
+    expect(firstAllowedUrl(scripts, A)).toBe("/scripts");
+  });
+
   test("владельцу открыто всё в своей студии и «Доступы»", () => {
     expect(canOpenPath(owner, A, "/dashboard")).toBe(true);
     expect(canOpenPath(owner, A, "/trainers")).toBe(true);
     expect(canOpenPath(owner, A, "/pay-rates")).toBe(true);
     expect(canOpenPath(owner, A, "/employees")).toBe(true);
+    expect(canOpenPath(owner, A, "/scripts")).toBe(true);
   });
 });

@@ -16,10 +16,11 @@ import {
 import type { StaffRole } from "@/lib/roles";
 import {
   CLUB_SECTION_KEYS,
+  ADMIN_SECTION_KEYS,
   RAIL_ACCESS_KEYS,
   RAIL_ACCESS_LABEL,
   type ClubSectionKey,
-  type RailAccessKey,
+  type AdminSectionKey,
 } from "@/lib/admin-access";
 import { CLUB_GROUPS } from "@/lib/nav-sections";
 import { AdminShell } from "@/components/admin-shell";
@@ -266,8 +267,8 @@ function AccessForm({
   const [name, setName] = useState({ first_name: "", last_name: "", email: "" });
   const [role, setRole] = useState<StaffRole>(employee?.role ?? "trainer");
   // Новому сотруднику по умолчанию — «Клуб» целиком в активной студии.
-  const [rail, setRail] = useState<RailAccessKey[]>(
-    employee ? (employee.rail ?? [...RAIL_ACCESS_KEYS]) : ["club"],
+  const [rail, setRail] = useState<AdminSectionKey[]>(
+    employee ? (employee.rail ?? [...ADMIN_SECTION_KEYS]) : ["club"],
   );
   const [studioSections, setStudioSections] = useState<Record<string, ClubSectionKey[]>>(() => {
     if (employee) {
@@ -283,11 +284,12 @@ function AccessForm({
   const isOwnerRole = role === "owner";
   const showClubSections = !isOwnerRole && rail.includes("club");
 
-  const toggleRail = (key: RailAccessKey, checked: boolean) =>
+  // Снятые «Скрипты LS» снимают и их правку.
+  const toggleRail = (key: AdminSectionKey, checked: boolean) =>
     setRail((prev) =>
       checked
-        ? RAIL_ACCESS_KEYS.filter((k) => k === key || prev.includes(k))
-        : prev.filter((k) => k !== key),
+        ? ADMIN_SECTION_KEYS.filter((k) => k === key || prev.includes(k))
+        : prev.filter((k) => k !== key && !(key === "scripts" && k === "scripts-edit")),
     );
   const toggleStudio = (id: string, checked: boolean) =>
     setStudioSections((prev) => {
@@ -426,7 +428,7 @@ function AccessForm({
               <FormField
                 label="Разделы админки"
                 htmlFor={null}
-                tip="Разделы в левой рейке. «Сотрудники» и «Мобильное приложение» общие для всех студий."
+                tip="Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех студий. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения."
               >
                 <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
                   {RAIL_ACCESS_KEYS.map((key) => (
@@ -438,6 +440,14 @@ function AccessForm({
                       {RAIL_ACCESS_LABEL[key]}
                     </CheckboxOption>
                   ))}
+                  {rail.includes("scripts") && (
+                    <CheckboxOption
+                      checked={rail.includes("scripts-edit")}
+                      onCheckedChange={(checked) => toggleRail("scripts-edit", checked)}
+                    >
+                      Правка скриптов
+                    </CheckboxOption>
+                  )}
                 </div>
               </FormField>
             )}
