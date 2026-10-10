@@ -1176,12 +1176,8 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
       )}
 
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        {/*
-          Окно открыто из формы занятия, а React всплывает события сквозь
-          портал по дереву компонентов: без stopPropagation отправка этой формы
-          дошла бы до формы занятия и сохранила бы её.
-        */}
-        <DialogContent className="max-w-md" onSubmit={(e) => e.stopPropagation()}>
+        {/* Окно открыто из формы занятия; всплытие submit в неё гасит DialogForm. */}
+        <DialogContent className="max-w-md">
           {cancelTarget && (
             <CancelBookingForm
               key={cancelTarget.id}

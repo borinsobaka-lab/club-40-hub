@@ -100,6 +100,10 @@ const DialogForm = ({
     className={cn("flex min-h-0 flex-1 flex-col", className)}
     onSubmit={(e) => {
       e.preventDefault();
+      // React ведёт события по дереву компонентов, а не по DOM: submit формы
+      // из вложенного окна (портал) иначе всплыл бы до формы внешнего окна и
+      // отправил бы и её.
+      e.stopPropagation();
       onSubmit();
     }}
     {...props}
