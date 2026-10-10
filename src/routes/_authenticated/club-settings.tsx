@@ -153,7 +153,10 @@ function ClubSettingsPage() {
                 onChange={(e) => setField("writeUrl", e.target.value)}
               />
             </FormField>
-            <FormField label="Ссылка для кнопки «Позвонить»" hint="Телефонный номер в формате tel:.">
+            <FormField
+              label="Ссылка для кнопки «Позвонить»"
+              hint="Телефонный номер в формате tel:."
+            >
               <Input
                 placeholder="tel:+79991234567"
                 value={form.callUrl}

@@ -65,15 +65,16 @@ export function DataPagination({
   const to = Math.min(page * pageSize, total);
 
   return (
-    // Подвал таблицы оформлен как шапка: светло-серая заливка + верхний
-    // разделитель, скруглены нижние углы под обёртку таблицы.
+    // Подвал таблицы оформлен как шапка: белый, отделён верхней границей,
+    // скруглены нижние углы под обёртку таблицы. Все контролы — общей высоты
+    // 40px, как селект «Строк на странице».
     <div
-      className={`flex flex-col gap-3 rounded-b-lg border-t bg-background px-3 py-3 sm:flex-row sm:items-center sm:justify-between ${className ?? ""}`}
+      className={`flex flex-col gap-3 rounded-b-lg border-t bg-background px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${className ?? ""}`}
     >
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span>Строк на странице</span>
         <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-          <SelectTrigger className="w-[80px]">
+          <SelectTrigger className="w-20">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -93,20 +94,20 @@ export function DataPagination({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
             onClick={() => setPage(1)}
+            aria-label="Первая страница"
             disabled={page <= 1}
           >
-            <ChevronsLeft className="h-4 w-4" />
+            <ChevronsLeft />
           </Button>
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
             onClick={() => setPage(page - 1)}
+            aria-label="Предыдущая страница"
             disabled={page <= 1}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft />
           </Button>
           <span className="px-2 tabular-nums">
             {page} / {pageCount}
@@ -114,20 +115,20 @@ export function DataPagination({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
             onClick={() => setPage(page + 1)}
+            aria-label="Следующая страница"
             disabled={page >= pageCount}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight />
           </Button>
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
             onClick={() => setPage(pageCount)}
+            aria-label="Последняя страница"
             disabled={page >= pageCount}
           >
-            <ChevronsRight className="h-4 w-4" />
+            <ChevronsRight />
           </Button>
         </div>
       </div>
