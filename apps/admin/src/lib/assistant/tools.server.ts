@@ -98,18 +98,20 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
       },
     }),
 
-    // ====== ТРЕНЕРЫ / СОТРУДНИКИ ======
+    // ====== СОТРУДНИКИ ======
+    // Сотрудники общие для студий (trainer_studios); здесь — сотрудники этой
+    // студии. Банковские реквизиты и ставки ассистенту не отдаём.
     list_trainers: tool({
-      description: "Тренеры и админы студии: ФИО, фото, пол, специализация, био, соцсети, роль.",
+      description: "Сотрудники студии (тренеры и администраторы): имя, роль, фото, Telegram.",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
           supabase
             .from("trainers")
             .select(
-              "id, full_name, photo_url, gender, specialization, bio, telegram, whatsapp, instagram, facebook, tiktok, role, created_at",
+              "id, full_name, role, photo_url, telegram, created_at, trainer_studios!inner(studio_id)",
             )
-            .eq("studio_id", studioId)
+            .eq("trainer_studios.studio_id", studioId)
             .limit(limit),
         ),
     }),
@@ -399,8 +401,11 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     }),
 
     // ====== НОВОСТИ ======
+    // Мобильное приложение общее для всех студий: новости, услуги и пуши — без
+    // фильтра по студии.
     list_news: tool({
-      description: "Новости для мобильного приложения: заголовок, описание, кнопка, картинки.",
+      description:
+        "Новости мобильного приложения (общие для всех студий): заголовок, описание, кнопка, картинки.",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
@@ -409,14 +414,13 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
             .select(
               "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, created_at, updated_at",
             )
-            .eq("studio_id", studioId)
             .limit(limit),
         ),
     }),
 
     // ====== УСЛУГИ ======
     list_services: tool({
-      description: "Услуги мобильного приложения (карточки услуг).",
+      description: "Услуги мобильного приложения (карточки услуг, общие для всех студий).",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
@@ -425,7 +429,6 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
             .select(
               "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, created_at",
             )
-            .eq("studio_id", studioId)
             .limit(limit),
         ),
     }),
@@ -433,7 +436,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== ПУШ-УВЕДОМЛЕНИЯ ======
     list_push_notifications: tool({
       description:
-        "Пуш-уведомления: заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
+        "Пуш-уведомления (общие для всех студий): заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
       inputSchema: z.object({
         status: z.enum(["draft", "scheduled", "sent"]).optional(),
         limit: limit(500, 200),
@@ -444,7 +447,6 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
           .select(
             "id, title, message, action_url, segments, status, scheduled_at, sent_at, sent_count, delivered_count, read_count, created_at, updated_at",
           )
-          .eq("studio_id", studioId)
           .order("created_at", { ascending: false })
           .limit(limit);
         if (status) q = q.eq("status", status);
@@ -563,7 +565,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== СВОДКА ======
     counts_overview: tool({
       description:
-        "Сводка по студии: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, новостей, услуг, пушей, фидбэка, ответов NPS.",
+        "Сводка по студии: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, фидбэка, ответов NPS; новости, услуги и пуши — общие для всех студий.",
       inputSchema: z.object({}),
       execute: async () => {
         const head = { count: "exact" as const, head: true };
@@ -571,15 +573,18 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
           supabase.from(table).select("id", head).eq("studio_id", studioId);
         const queries = {
           clients: byStudio("clients"),
-          trainers: byStudio("trainers"),
+          trainers: supabase
+            .from("trainer_studios")
+            .select("trainer_id", head)
+            .eq("studio_id", studioId),
           workouts: byStudio("workouts"),
           membership_plans: byStudio("memberships"),
           active_client_memberships: byStudio("client_memberships").eq("status", "active"),
           sales_last_30d: byStudio("sales").gte("sold_at", addDays(studioToday(), -30)),
           cash_operations: byStudio("cash_operations"),
-          news: byStudio("news"),
-          services: byStudio("services"),
-          push_sent: byStudio("push_notifications").eq("status", "sent"),
+          news: supabase.from("news").select("id", head),
+          services: supabase.from("services").select("id", head),
+          push_sent: supabase.from("push_notifications").select("id", head).eq("status", "sent"),
           feedback_pending: supabase
             .from("feedback")
             .select("id", head)

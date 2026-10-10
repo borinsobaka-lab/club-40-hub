@@ -65,7 +65,9 @@ const ENTRY_SELECT =
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
-const TRAINER_COLS = "id, full_name";
+// Сотрудники общие для студий: на занятие ставим тренеров, привязанных к этой
+// студии (trainer_studios); администраторы занятия не ведут.
+const TRAINER_COLS = "id, full_name, trainer_studios!inner(studio_id)";
 
 const ADMIN_CANCEL_REASONS = [
   "Клиент отменил",
@@ -233,7 +235,8 @@ function SchedulePage() {
         supabase
           .from("trainers")
           .select(TRAINER_COLS)
-          .eq("studio_id", studioId!)
+          .eq("trainer_studios.studio_id", studioId!)
+          .eq("role", "trainer")
           .order("full_name"),
       ),
     enabled: !!studioId,
@@ -838,6 +841,14 @@ function EntryForm({
   const toggleTrainer = (id: string) => {
     setTrainerIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+  // Тренер, которого отвязали от студии, остаётся на прежних занятиях —
+  // показываем его в списке, чтобы его можно было снять с занятия.
+  const trainerOptions = [
+    ...trainers,
+    ...(entry?.schedule_entry_trainers ?? []).flatMap((x) =>
+      x.trainer && !trainers.some((t) => t.id === x.trainer_id) ? [x.trainer] : [],
+    ),
+  ];
 
   /** Правка занятия: строка и полный пересбор тренеров. Возвращает текст ошибки. */
   const updateEntry = async (id: string, row: Record<string, string>) => {
@@ -969,13 +980,14 @@ function EntryForm({
               optional
               htmlFor={null}
             >
-              {trainers.length === 0 ? (
+              {trainerOptions.length === 0 ? (
                 <InfoNote variant="empty">
-                  Добавьте тренеров в разделе «Сотрудники», чтобы прикрепить их к занятию.
+                  В студии нет тренеров. Добавьте их в разделе «Сотрудники» (в рейке слева) и
+                  отметьте эту студию.
                 </InfoNote>
               ) : (
                 <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
-                  {trainers.map((t) => (
+                  {trainerOptions.map((t) => (
                     <CheckboxOption
                       key={t.id}
                       checked={trainerIds.includes(t.id)}
