@@ -441,7 +441,10 @@ function TrainerForm({ onOpenChange, studioId, trainer, defaultRole, onSaved }: 
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Роль">
+            <FormField
+              label="Роль"
+              tip="Только подпись в карточке. Доступ в админку выдаётся отдельно — в «Доступах»."
+            >
               <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
                 <SelectTrigger>
                   <SelectValue />

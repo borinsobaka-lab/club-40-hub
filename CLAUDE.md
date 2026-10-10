@@ -194,6 +194,8 @@ own"` оставить). Альтернатива — выдача абонем�
 - Разметка форм — блоки из `components/ui/form-field.tsx` (`FormField`,
   `SwitchRow`, `CheckboxOption`, `InfoNote`) и `DialogForm` (Enter = сохранить,
   главная кнопка `type="submit"`, у `Button` по умолчанию `type="button"`).
+  Подсказка «?» у подписи поля — проп `tip` у `FormField`/`SwitchRow`: зачем
+  поле, 1–2 предложения; новому неочевидному полю — писать сразу.
   Полный стандарт — `.interface-design/system.md`, раздел «Формы».
 
 ### Общие модули

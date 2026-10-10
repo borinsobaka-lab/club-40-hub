@@ -232,14 +232,17 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
               />
             </FormField>
-            <FormField label="Email">
+            <FormField label="Email" tip="На эту почту придёт ссылка для входа — пароля нет.">
               <Input
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </FormField>
-            <FormField label="Роль">
+            <FormField
+              label="Роль"
+              tip="Владелец дополнительно управляет «Доступами»: добавляет и удаляет сотрудников."
+            >
               <Select
                 value={form.role}
                 onValueChange={(v) => setForm({ ...form, role: v as StaffRole })}

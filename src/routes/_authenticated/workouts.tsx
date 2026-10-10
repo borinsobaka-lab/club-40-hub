@@ -352,7 +352,11 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
               />
             </FormField>
 
-            <FormField label="Описание" optional>
+            <FormField
+              label="Описание"
+              tip="Клиенты видят его в карточке занятия в расписании приложения."
+              optional
+            >
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -361,7 +365,11 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
               />
             </FormField>
 
-            <FormField label="Тип тренировки" optional>
+            <FormField
+              label="Тип тренировки"
+              tip="Задаёт цвет метки и MET по умолчанию, если поле MET пустое."
+              optional
+            >
               <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите тип" />
@@ -387,6 +395,7 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField
                 label="Вместимость, чел."
+                tip="Когда места заняты, новые записи встают в лист ожидания."
                 optional
                 hint="По умолчанию для всех занятий этой тренировки в расписании."
               >

@@ -450,7 +450,10 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Позиция">
+            <FormField
+              label="Позиция"
+              tip="Справочник — на вкладке «Позиции». Неактивные позиции здесь не показываются."
+            >
               <SearchableCombobox
                 placeholder="Выбрать услугу или товар"
                 searchPlaceholder="Поиск по названию"
@@ -478,7 +481,10 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                   onChange={(e) => set("quantity", e.target.value)}
                 />
               </FormField>
-              <FormField label="Цена за штуку, ₾">
+              <FormField
+                label="Цена за штуку, ₾"
+                tip="Подставляется из позиции. Можно изменить — например, для скидки."
+              >
                 <Input
                   type="number"
                   min={0}
@@ -507,7 +513,10 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Оплата">
+              <FormField
+                label="Оплата"
+                tip="Как платил клиент. В «Кассу» продажа сама не попадает."
+              >
                 <Select
                   value={form.payment}
                   onValueChange={(v) => set("payment", v as PaymentMethod)}
@@ -765,7 +774,7 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
               />
             </FormField>
 
-            <FormField label="Цена, ₾">
+            <FormField label="Цена, ₾" tip="Цена по умолчанию. При продаже её можно изменить.">
               <Input
                 type="number"
                 min={0}

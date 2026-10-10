@@ -458,7 +458,11 @@ function NewFeedbackForm({
               <FormField label="Имя" optional>
                 <Input value={clientName} onChange={(e) => setClientName(e.target.value)} />
               </FormField>
-              <FormField label="Контакт" optional>
+              <FormField
+                label="Контакт"
+                tip="Телефон, почта или ник — чтобы потом связаться с клиентом."
+                optional
+              >
                 <Input value={clientContact} onChange={(e) => setClientContact(e.target.value)} />
               </FormField>
             </div>
@@ -546,7 +550,11 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
           </ReadOnlyValue>
         )}
         {item.status === "pending" ? (
-          <FormField label="Комментарий обработки" optional>
+          <FormField
+            label="Комментарий обработки"
+            tip="Что сделано. Сохранится с вашим именем при отметке «Отработано»."
+            optional
+          >
             <Textarea
               value={resolutionComment}
               onChange={(e) => setResolutionComment(e.target.value)}

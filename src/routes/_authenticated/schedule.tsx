@@ -836,7 +836,10 @@ function EntryForm({
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Тренировка">
+            <FormField
+              label="Тренировка"
+              tip="Из раздела «Тренировки»: оттуда берутся описание, фото и вместимость."
+            >
               <Select value={workoutId} onValueChange={setWorkoutId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите тренировку" />
@@ -852,7 +855,10 @@ function EntryForm({
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Начало">
+              <FormField
+                label="Начало"
+                tip="От него считается срок, до которого клиент может отменить запись сам (см. «Настройки клуба»)."
+              >
                 <Input
                   type="datetime-local"
                   value={startsAt}
@@ -868,7 +874,12 @@ function EntryForm({
               </FormField>
             </div>
 
-            <FormField label="Тренеры" optional htmlFor={null}>
+            <FormField
+              label="Тренеры"
+              tip="Клиенты видят их имена в расписании приложения. Можно выбрать нескольких."
+              optional
+              htmlFor={null}
+            >
               {trainers.length === 0 ? (
                 <InfoNote variant="empty">
                   Добавьте тренеров в разделе «Сотрудники», чтобы прикрепить их к занятию.
@@ -1237,7 +1248,11 @@ function CancelBookingForm({
       <DialogForm onSubmit={handleCancel}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Причина отмены" optional>
+            <FormField
+              label="Причина отмены"
+              tip="Сохранится в «Истории записей» — потом видно, почему бронь отклонили."
+              optional
+            >
               <Select value={reason} onValueChange={setReason}>
                 <SelectTrigger>
                   <SelectValue placeholder="Не указана" />

@@ -340,7 +340,10 @@ function PushForm({
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Заголовок">
+            <FormField
+              label="Заголовок"
+              tip="Жирная первая строка. Держите коротким — длинный обрежется на экране блокировки."
+            >
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -348,7 +351,11 @@ function PushForm({
               />
             </FormField>
 
-            <FormField label="Сообщение" optional>
+            <FormField
+              label="Сообщение"
+              tip="На экране блокировки видно 2–3 строки — главное пишите в начале."
+              optional
+            >
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -369,7 +376,11 @@ function PushForm({
               />
             </FormField>
 
-            <FormField label="Статус клиентов" htmlFor={null}>
+            <FormField
+              label="Статус клиентов"
+              tip="ЧК — есть действующий абонемент, БЧК — был, но закончился, ПЧК — ещё ни разу не покупал."
+              htmlFor={null}
+            >
               <div className="space-y-2 rounded-md border p-3">
                 <CheckboxOption checked={allSelected} onCheckedChange={setAllSelected}>
                   Все клиенты

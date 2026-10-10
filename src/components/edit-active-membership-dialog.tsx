@@ -168,10 +168,16 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
     <DialogForm onSubmit={handleSave}>
       <DialogBody>
         <div className="space-y-4">
-          <FormField label="Действует до">
+          <FormField
+            label="Действует до"
+            tip="Последний день абонемента. На следующий день он станет истёкшим."
+          >
             <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
           </FormField>
-          <FormField label="Осталось посещений">
+          <FormField
+            label="Осталось посещений"
+            tip="Ручная правка остатка — например, вернуть занятие, отменённое по вине клуба."
+          >
             <Input
               type="number"
               min={0}
@@ -205,7 +211,11 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
                   </Button>
                 </div>
               ) : status === "active" || status === undefined ? (
-                <FormField label="Дней заморозки" hint={`Доступно ${remaining} из ${allowed} дн.`}>
+                <FormField
+                  label="Дней заморозки"
+                  tip="«Действует до» сдвинется на столько же дней."
+                  hint={`Доступно ${remaining} из ${allowed} дн.`}
+                >
                   <div className="flex gap-2">
                     <Input
                       type="number"

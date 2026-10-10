@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldIdContext } from "@/components/ui/field-context";
+import { FieldHint } from "@/components/ui/field-hint";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 export function FormField({
   label,
   hint,
+  tip,
   optional,
   htmlFor,
   className,
@@ -28,6 +30,11 @@ export function FormField({
   label?: React.ReactNode;
   /** Пояснение под полем — мелким серым. */
   hint?: React.ReactNode;
+  /**
+   * Подсказка за значком «?» у подписи: зачем поле и что с ним происходит
+   * дальше. Коротко, 1–2 предложения; у очевидных полей (имя, телефон) не нужна.
+   */
+  tip?: React.ReactNode;
   /** Пометка «(необязательно)» после подписи. Обязательные поля не помечаем. */
   optional?: boolean;
   /** Свой id контрола; null — не связывать подпись (несколько контролов). */
@@ -41,12 +48,15 @@ export function FormField({
     <FieldIdContext.Provider value={id}>
       <div className={cn("space-y-2", className)}>
         {label && (
-          <Label htmlFor={id}>
-            {label}
-            {optional && (
-              <span className="ml-1 font-normal text-muted-foreground">(необязательно)</span>
-            )}
-          </Label>
+          <div className="flex items-center gap-1">
+            <Label htmlFor={id}>
+              {label}
+              {optional && (
+                <span className="ml-1 font-normal text-muted-foreground">(необязательно)</span>
+              )}
+            </Label>
+            {tip && <FieldHint>{tip}</FieldHint>}
+          </div>
         )}
         {children}
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
@@ -63,6 +73,7 @@ export function FormField({
 export function SwitchRow({
   title,
   hint,
+  tip,
   checked,
   onCheckedChange,
   disabled,
@@ -70,6 +81,8 @@ export function SwitchRow({
 }: {
   title: React.ReactNode;
   hint?: React.ReactNode;
+  /** Подсказка за значком «?» у заголовка — как у FormField. */
+  tip?: React.ReactNode;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
@@ -84,7 +97,10 @@ export function SwitchRow({
       )}
     >
       <span className="space-y-0.5">
-        <span className="block text-sm font-medium">{title}</span>
+        <span className="flex items-center gap-1 text-sm font-medium">
+          {title}
+          {tip && <FieldHint>{tip}</FieldHint>}
+        </span>
         {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
       </span>
       <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />

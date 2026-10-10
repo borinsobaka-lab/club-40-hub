@@ -440,7 +440,11 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               />
             </FormField>
 
-            <FormField label="Описание" optional>
+            <FormField
+              label="Описание"
+              tip="Видно клиентам в карточке абонемента в приложении."
+              optional
+            >
               <Textarea
                 rows={2}
                 value={description}
@@ -448,11 +452,18 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               />
             </FormField>
 
-            <FormField label="Преимущества" optional>
+            <FormField
+              label="Преимущества"
+              tip="Пункты списка в карточке в приложении. Заморозку не добавляйте — строка «Заморозка до N дней» появится сама."
+              optional
+            >
               <BenefitsEditor value={benefits} onChange={setBenefits} />
             </FormField>
 
-            <FormField label="Количество посещений">
+            <FormField
+              label="Количество посещений"
+              tip="Сколько занятий в пакете. В приложении безлимиты и пакеты — на разных вкладках."
+            >
               <div className="flex items-center gap-4">
                 <Input
                   type="number"
@@ -470,7 +481,11 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Срок действия, дней" optional>
+              <FormField
+                label="Срок действия, дней"
+                tip="Считается от даты продажи. Пусто — абонемент бессрочный."
+                optional
+              >
                 <Input
                   type="number"
                   min={0}
@@ -479,7 +494,10 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
                   placeholder="30"
                 />
               </FormField>
-              <FormField label="Цена, ₾">
+              <FormField
+                label="Цена, ₾"
+                tip="Подставляется в продажу, там её можно снизить для скидки. На уже проданные абонементы не влияет."
+              >
                 <Input
                   type="number"
                   min={0}
@@ -493,6 +511,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
 
             <FormField
               label="Дней заморозки"
+              tip="Замораживает сотрудник — в карточке клиента. Срок действия продлевается на дни заморозки."
               optional
               hint="Сколько дней клиент может заморозить этот абонемент суммарно. 0 — заморозка недоступна."
             >
@@ -505,10 +524,16 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               />
             </FormField>
 
-            <SwitchRow title="Автопродление" checked={autoRenew} onCheckedChange={setAutoRenew} />
+            <SwitchRow
+              title="Автопродление"
+              tip="Клиент может отключить продление в приложении — отказы видны в «Отменах автопродления»."
+              checked={autoRenew}
+              onCheckedChange={setAutoRenew}
+            />
 
             <SwitchRow
               title="Рассрочка доступна"
+              tip="При продаже оплату можно разбить: первый взнос + 2–3 платежа раз в месяц."
               checked={installmentEnabled}
               onCheckedChange={setInstallmentEnabled}
             />

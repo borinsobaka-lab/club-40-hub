@@ -393,7 +393,12 @@ function ShowcaseForm({
         <DialogBody>
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Картинка (превью)" htmlFor={null} optional>
+              <FormField
+                label="Картинка (превью)"
+                tip="В списке на главном экране приложения. Если нет баннера — и вверху открытой страницы."
+                htmlFor={null}
+                optional
+              >
                 <ImageUploadField
                   bucket={bucket}
                   folder={`${studioId}/image`}
@@ -403,7 +408,12 @@ function ShowcaseForm({
                 />
               </FormField>
 
-              <FormField label="Баннер" htmlFor={null} optional>
+              <FormField
+                label="Баннер"
+                tip="Широкая картинка вверху открытой страницы. Не задан — там будет превью."
+                htmlFor={null}
+                optional
+              >
                 <ImageUploadField
                   bucket={bucket}
                   folder={`${studioId}/banner`}
@@ -439,7 +449,11 @@ function ShowcaseForm({
               />
             </FormField>
 
-            <FormField label="Полный заголовок" optional>
+            <FormField
+              label="Полный заголовок"
+              tip="Вверху открытой страницы. Пусто — возьмётся обычный заголовок."
+              optional
+            >
               <Input
                 value={fullTitle}
                 onChange={(e) => setFullTitle(e.target.value)}

@@ -345,7 +345,11 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
               />
             </FormField>
 
-            <FormField label="Промокод" hint="Только латинские буквы и цифры.">
+            <FormField
+              label="Промокод"
+              tip="Код, который вы сообщаете клиенту. Сохраняется заглавными буквами."
+              hint="Только латинские буквы и цифры."
+            >
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
@@ -369,7 +373,10 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Размер скидки">
+              <FormField
+                label="Размер скидки"
+                tip="Для процентов — число до 100, для лари — сумма скидки."
+              >
                 <Input
                   inputMode="decimal"
                   value={discountValue}
@@ -380,14 +387,22 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Срок действия" optional>
+              <FormField
+                label="Срок действия"
+                tip="Последний день, когда код действует. Пусто — бессрочно."
+                optional
+              >
                 <Input
                   type="date"
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
                 />
               </FormField>
-              <FormField label="Количество применений" optional>
+              <FormField
+                label="Количество применений"
+                tip="Сколько раз всего можно использовать код. Пусто — без ограничений."
+                optional
+              >
                 <Input
                   inputMode="numeric"
                   value={usageLimit}

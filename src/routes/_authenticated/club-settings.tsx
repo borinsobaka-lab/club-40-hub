@@ -145,6 +145,7 @@ function ClubSettingsPage() {
             </div>
             <FormField
               label="Ссылка для кнопки «Написать»"
+              tip="Пусто — кнопки в приложении не будет."
               hint="Например, ссылка на WhatsApp-чат клуба."
             >
               <Input
@@ -155,6 +156,7 @@ function ClubSettingsPage() {
             </FormField>
             <FormField
               label="Ссылка для кнопки «Позвонить»"
+              tip="Пусто — кнопки в приложении не будет."
               hint="Телефонный номер в формате tel:."
             >
               <Input
@@ -163,7 +165,10 @@ function ClubSettingsPage() {
                 onChange={(e) => setField("callUrl", e.target.value)}
               />
             </FormField>
-            <FormField label="Ссылка для кнопки «Обратная связь»">
+            <FormField
+              label="Ссылка для кнопки «Обратная связь»"
+              tip="Например, Google-форма. Пусто — кнопки «Фидбэк» в приложении не будет."
+            >
               <Input
                 placeholder="https://forms.example.com/feedback"
                 value={form.feedbackUrl}
@@ -182,6 +187,7 @@ function ClubSettingsPage() {
             </div>
             <FormField
               label="Минут до начала тренировки"
+              tip="Действует для всех занятий. Позже отменить запись может только сотрудник в расписании."
               hint="Например, 180 — отменить можно не позже чем за 3 часа до начала."
             >
               <Input

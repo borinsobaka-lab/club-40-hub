@@ -542,7 +542,10 @@ function NewResponseForm({
       <DialogForm onSubmit={submit}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Тип опроса">
+            <FormField
+              label="Тип опроса"
+              tip="Момент, когда задан вопрос: NPS считается по каждому типу отдельно."
+            >
               <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -556,7 +559,11 @@ function NewResponseForm({
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField label="Оценка" hint="От 0 до 10.">
+            <FormField
+              label="Оценка"
+              tip="9–10 — промоутер, 7–8 — нейтрал, 0–6 — критик. NPS = % промоутеров − % критиков."
+              hint="От 0 до 10."
+            >
               <Input
                 type="number"
                 inputMode="numeric"

@@ -513,7 +513,11 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
               </div>
             </div>
 
-            <FormField label="Ссылка на amoCRM" optional>
+            <FormField
+              label="Ссылка на amoCRM"
+              tip="Карточка контакта в amoCRM. Имя клиента в таблицах станет ссылкой на неё."
+              optional
+            >
               <Input
                 type="url"
                 value={crmLink}
@@ -526,7 +530,10 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
               <FormField label="Телефон">
                 <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
               </FormField>
-              <FormField label="Email">
+              <FormField
+                label="Email"
+                tip="Когда клиент зарегистрируется в приложении с этой почтой, его аккаунт привяжется к этой карточке. Проверьте опечатки."
+              >
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </FormField>
             </div>
@@ -550,14 +557,20 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
               </FormField>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Дата регистрации">
+              <FormField
+                label="Дата регистрации"
+                tip="По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама."
+              >
                 <Input
                   type="date"
                   value={registrationDate}
                   onChange={(e) => setRegistrationDate(e.target.value)}
                 />
               </FormField>
-              <FormField label="Последний визит">
+              <FormField
+                label="Последний визит"
+                tip="Обновляется сам при отметке посещения. Вручную — только для переноса старой истории."
+              >
                 <Input
                   type="date"
                   value={lastVisitDate}
@@ -566,7 +579,11 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
               </FormField>
             </div>
             {/* Бакета для фото клиентов нет — поле остаётся ссылкой. */}
-            <FormField label="Фото (ссылка)" optional>
+            <FormField
+              label="Фото (ссылка)"
+              tip="Прямая ссылка на картинку. Если аватар вверху не появился — ссылка не на изображение."
+              optional
+            >
               <Input
                 type="url"
                 value={photoUrl}
@@ -574,7 +591,11 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
                 placeholder="https://..."
               />
             </FormField>
-            <FormField label="Заметки" optional>
+            <FormField
+              label="Заметки"
+              tip="Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может."
+              optional
+            >
               <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </FormField>
           </div>
