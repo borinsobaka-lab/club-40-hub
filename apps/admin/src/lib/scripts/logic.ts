@@ -9,6 +9,7 @@
 import type {
   LangText,
   ScriptItem,
+  ScriptItemDraft,
   ScriptKind,
   ScriptLang,
   ScriptMessage,
@@ -363,4 +364,41 @@ export function formatWhen(iso: string | null | undefined): string {
   if (diff === 0) return `сегодня, ${time}`;
   if (diff === 1) return `вчера, ${time}`;
   return `${d.toLocaleDateString("ru-RU")}, ${time}`;
+}
+
+/* --- Черновик скрипта для редактора ------------------------------------- */
+
+export const emptyMessage = (): ScriptMessage => ({ label: "", ru: "", en: "", ka: "" });
+
+export function emptyDraft(sectionId: string): ScriptItemDraft {
+  return {
+    section_id: sectionId,
+    title: "",
+    kind: "chat",
+    keywords: "",
+    note: "",
+    follow_up: "",
+    variants: [{ label: "", messages: [emptyMessage()] }],
+  };
+}
+
+/** Тексты без пустых краёв и виндовых переводов строк: в чат уходит то, что видно. */
+export function cleanDraft(draft: ScriptItemDraft): ScriptItemDraft {
+  const clean = (text: string) => text.replace(/\r\n/g, "\n").trim();
+  return {
+    ...draft,
+    title: draft.title.trim(),
+    keywords: draft.keywords.trim(),
+    note: clean(draft.note),
+    follow_up: clean(draft.follow_up),
+    variants: draft.variants.map((v) => ({
+      label: v.label.trim(),
+      messages: v.messages.map((m) => ({
+        label: m.label.trim(),
+        ru: clean(m.ru),
+        en: clean(m.en),
+        ka: clean(m.ka),
+      })),
+    })),
+  };
 }

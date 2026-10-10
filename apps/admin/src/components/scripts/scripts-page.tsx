@@ -31,7 +31,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { ScriptCard } from "@/components/scripts/script-card";
-import { ScriptEditor, emptyDraft } from "@/components/scripts/script-editor";
+import { ScriptEditor } from "@/components/scripts/script-editor";
 import { SectionDialogContent, type SectionFormValue } from "@/components/scripts/section-dialog";
 import { SuggestDialogContent, type SuggestTarget } from "@/components/scripts/suggest-dialog";
 import { CallRunner } from "@/components/scripts/call-runner";
@@ -45,6 +45,7 @@ import {
 } from "@/lib/scripts/data";
 import {
   BUILTIN_VARIABLES,
+  emptyDraft,
   findById,
   findByTitle,
   formatWhen,

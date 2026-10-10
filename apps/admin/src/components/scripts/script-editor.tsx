@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/confirm-dialog";
 import { FormatBar, VariableChips } from "@/components/scripts/format-bar";
-import { KIND_LABELS, LANGS } from "@/lib/scripts/logic";
+import { cleanDraft, emptyMessage, KIND_LABELS, LANGS } from "@/lib/scripts/logic";
 import type {
   ScriptItemDraft,
   ScriptKind,
@@ -41,41 +41,6 @@ import type {
   ScriptSection,
   ScriptVariant,
 } from "@/lib/scripts/types";
-
-const emptyMessage = (): ScriptMessage => ({ label: "", ru: "", en: "", ka: "" });
-
-export function emptyDraft(sectionId: string): ScriptItemDraft {
-  return {
-    section_id: sectionId,
-    title: "",
-    kind: "chat",
-    keywords: "",
-    note: "",
-    follow_up: "",
-    variants: [{ label: "", messages: [emptyMessage()] }],
-  };
-}
-
-/** Тексты без пустых краёв и виндовых переводов строк: в чат уходит то, что видно. */
-export function cleanDraft(draft: ScriptItemDraft): ScriptItemDraft {
-  const clean = (text: string) => text.replace(/\r\n/g, "\n").trim();
-  return {
-    ...draft,
-    title: draft.title.trim(),
-    keywords: draft.keywords.trim(),
-    note: clean(draft.note),
-    follow_up: clean(draft.follow_up),
-    variants: draft.variants.map((v) => ({
-      label: v.label.trim(),
-      messages: v.messages.map((m) => ({
-        label: m.label.trim(),
-        ru: clean(m.ru),
-        en: clean(m.en),
-        ka: clean(m.ka),
-      })),
-    })),
-  };
-}
 
 function rowsFor(value: string, min = 3): number {
   return Math.min(18, Math.max(min, value.split("\n").length + 1));

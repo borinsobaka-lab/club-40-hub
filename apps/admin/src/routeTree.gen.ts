@@ -39,6 +39,7 @@ import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
+import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
 import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -196,6 +197,12 @@ const AuthenticatedScriptsIndexRoute =
     path: '/scripts/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedScriptsSettingsRoute =
+  AuthenticatedScriptsSettingsRouteImport.update({
+    id: '/scripts/settings',
+    path: '/scripts/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedScriptsSectionIdRoute =
   AuthenticatedScriptsSectionIdRouteImport.update({
     id: '/scripts/$sectionId',
@@ -233,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
+  '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -265,6 +273,7 @@ export interface FileRoutesByTo {
   '/api/transcribe': typeof ApiTranscribeRoute
   '/': typeof AuthenticatedIndexRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
+  '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRoutesById {
@@ -299,6 +308,7 @@ export interface FileRoutesById {
   '/api/transcribe': typeof ApiTranscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
+  '/_authenticated/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRouteTypes {
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/transcribe'
     | '/scripts/$sectionId'
+    | '/scripts/settings'
     | '/scripts/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -365,6 +376,7 @@ export interface FileRouteTypes {
     | '/api/transcribe'
     | '/'
     | '/scripts/$sectionId'
+    | '/scripts/settings'
     | '/scripts'
   id:
     | '__root__'
@@ -398,6 +410,7 @@ export interface FileRouteTypes {
     | '/api/transcribe'
     | '/_authenticated/'
     | '/_authenticated/scripts/$sectionId'
+    | '/_authenticated/scripts/settings'
     | '/_authenticated/scripts/'
   fileRoutesById: FileRoutesById
 }
@@ -621,6 +634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScriptsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/scripts/settings': {
+      id: '/_authenticated/scripts/settings'
+      path: '/scripts/settings'
+      fullPath: '/scripts/settings'
+      preLoaderRoute: typeof AuthenticatedScriptsSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/scripts/$sectionId': {
       id: '/_authenticated/scripts/$sectionId'
       path: '/scripts/$sectionId'
@@ -657,6 +677,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedScriptsSectionIdRoute: typeof AuthenticatedScriptsSectionIdRoute
+  AuthenticatedScriptsSettingsRoute: typeof AuthenticatedScriptsSettingsRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
 }
 
@@ -687,6 +708,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedScriptsSectionIdRoute: AuthenticatedScriptsSectionIdRoute,
+  AuthenticatedScriptsSettingsRoute: AuthenticatedScriptsSettingsRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,
 }
 
