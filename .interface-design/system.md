@@ -48,7 +48,10 @@
   жёлтый на прозрачном фоне на светлой вкладке почти не читается.
 
 - Кнопка Kate (AI): `ai-gradient` — единственный градиент в приложении.
-- Логотип в меню — `components/brand-logo.tsx` (SVG, `currentColor`).
+- Логотип в меню — логотип активной студии (`studios.logo_url`, бакет
+  `studio-logos`; прежний Lady Stretch — `public/logos/lady-stretch.svg`),
+  без логотипа — название студии. Цвет `--brand` тоже свой у каждой студии
+  (`studios.brand_color`, подменяет `components/studio-branding.tsx`).
 
 ## Цвет
 

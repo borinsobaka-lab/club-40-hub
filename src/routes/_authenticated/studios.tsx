@@ -16,11 +16,12 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, InfoNote } from "@/components/ui/form-field";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio"
 import { useStudios, type Studio } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { useStorageUrl } from "@/lib/storage";
+import { cn } from "@/lib/utils";
 import {
   DEFAULT_BRAND_COLOR,
   STUDIO_FORMATS,
@@ -81,7 +83,7 @@ function StudiosPage() {
       actions={
         isOwnerAnywhere ? (
           <Button onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" />
+            <Plus />
             Добавить студию
           </Button>
         ) : null
@@ -91,8 +93,8 @@ function StudiosPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[180px]">Логотип</TableHead>
               <TableHead>Название</TableHead>
+              <TableHead className="w-[180px]">Логотип</TableHead>
               <TableHead>Тип</TableHead>
               <TableHead>Цвет</TableHead>
               <TableHead>Приложение клиентов</TableHead>
@@ -138,9 +140,6 @@ function StudiosPage() {
                     ]}
                   >
                     <TableRow>
-                      <TableCell>
-                        <LogoPreview value={s.logo_url} name={s.name} />
-                      </TableCell>
                       <TableCell className="font-medium">
                         {s.name}
                         {s.id === activeId && (
@@ -148,6 +147,9 @@ function StudiosPage() {
                             Открыта
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <LogoPreview value={s.logo_url} name={s.name} compact />
                       </TableCell>
                       <TableCell>{STUDIO_FORMAT_LABEL[s.format]}</TableCell>
                       <TableCell>
@@ -180,15 +182,13 @@ function StudiosPage() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-lg">
           {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
           <StudioForm
             key={editing?.id ?? "new"}
             item={editing}
-            onDone={() => {
-              setOpen(false);
-              reload();
-            }}
+            onClose={() => setOpen(false)}
+            onSaved={reload}
           />
         </DialogContent>
       </Dialog>
@@ -197,12 +197,33 @@ function StudiosPage() {
 }
 
 /** Логотип на подложке цвета меню — так, как он будет выглядеть в админке. */
-function LogoPreview({ value, name }: { value: string | null; name: string }) {
+function LogoPreview({
+  value,
+  name,
+  compact,
+}: {
+  value: string | null;
+  name: string;
+  /** В строке таблицы — ниже, в форме — превью h-16 по стандарту. */
+  compact?: boolean;
+}) {
   const src = useStorageUrl("studios", value);
   return (
-    <div className="flex h-12 w-40 items-center rounded-md bg-sidebar px-3 text-sidebar-foreground">
+    <div
+      className={cn(
+        "flex w-40 shrink-0 items-center rounded-md bg-sidebar px-3 text-sidebar-foreground",
+        compact ? "h-10" : "h-16",
+      )}
+    >
       {src ? (
-        <img src={src} alt={name} className="h-auto max-h-9 w-full object-contain object-left" />
+        <img
+          src={src}
+          alt={name}
+          className={cn(
+            "h-auto w-full object-contain object-left",
+            compact ? "max-h-7" : "max-h-12",
+          )}
+        />
       ) : (
         <span className="truncate text-sm font-semibold">{name}</span>
       )}
@@ -210,7 +231,15 @@ function LogoPreview({ value, name }: { value: string | null; name: string }) {
   );
 }
 
-function StudioForm({ item, onDone }: { item: Studio | null; onDone: () => void }) {
+function StudioForm({
+  item,
+  onClose,
+  onSaved,
+}: {
+  item: Studio | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [name, setName] = useState(item?.name ?? "");
   const [format, setFormat] = useState<StudioFormat>(item?.format ?? "subscription");
   const [color, setColor] = useState(item?.brand_color ?? DEFAULT_BRAND_COLOR);
@@ -247,95 +276,115 @@ function StudioForm({ item, onDone }: { item: Studio | null; onDone: () => void 
         return;
       }
       toast.success(
-        item ? "Студия сохранена" : "Студия создана — переключиться на неё можно в шапке",
+        item ? "Студия сохранена" : "Студия создана — переключиться на неё можно в выборе студии",
       );
-      onDone();
+      onClose();
+      onSaved();
     } finally {
       setSaving(false);
     }
   };
+
+  const appHost = (f: StudioFormat) => STUDIO_FORMAT_APP_URL[f].replace(/^https?:\/\//, "");
 
   return (
     <>
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать студию" : "Новая студия"}</DialogTitle>
         <DialogDescription>
-          Логотип показывается в шапке бокового меню, основной цвет — цвет иконок и акцентов
-          админки, пока открыта эта студия.
+          Логотип и основной цвет видны в админке, пока открыта эта студия.
         </DialogDescription>
       </DialogHeader>
-      <DialogBody className="space-y-4">
-        <div className="space-y-2">
-          <Label>Название</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Base40 Ваке" />
-        </div>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Название">
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Base40 Ваке"
+              />
+            </FormField>
 
-        <div className="space-y-2">
-          <Label>Тип студии</Label>
-          <Select
-            value={format}
-            onValueChange={(v) => setFormat(v as StudioFormat)}
-            disabled={!!item}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STUDIO_FORMATS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {STUDIO_FORMAT_LABEL[f]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {item
-              ? "Тип задаётся при создании и не меняется: от него зависят абонементы, тренировки и расписание студии."
-              : `Клиенты студии пользуются приложением ${STUDIO_FORMAT_APP_URL[format].replace(/^https?:\/\//, "")}. Тип после создания не меняется.`}
-          </p>
-        </div>
+            {item ? (
+              <InfoNote>
+                Тип:{" "}
+                <span className="font-medium text-foreground">{STUDIO_FORMAT_LABEL[format]}</span>.
+                Тип задаётся при создании и не меняется. Приложение клиентов — {appHost(format)}.
+              </InfoNote>
+            ) : (
+              <FormField
+                label="Тип студии"
+                tip="От типа зависят абонементы, тренировки и расписание студии, а клиенты пользуются приложением этого типа."
+                hint={`Приложение клиентов — ${appHost(format)}. После создания тип не меняется.`}
+              >
+                <Select value={format} onValueChange={(v) => setFormat(v as StudioFormat)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STUDIO_FORMATS.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {STUDIO_FORMAT_LABEL[f]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
 
-        <div className="space-y-2">
-          <Label>Основной цвет</Label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              aria-label="Выбрать цвет"
-              value={isBrandColor(color) ? color : DEFAULT_BRAND_COLOR}
-              onChange={(e) => setColor(e.target.value)}
-              className="h-9 w-12 cursor-pointer rounded-md border bg-background p-1"
-            />
-            <Input
-              value={color}
-              onChange={(e) => setColor(e.target.value.trim())}
-              className="w-32 font-mono uppercase"
-              maxLength={7}
-            />
+            <FormField
+              label="Основной цвет"
+              htmlFor={null}
+              tip="Цвет иконки активного пункта меню и акцентов админки, пока открыта эта студия."
+              hint="В формате #RRGGBB."
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label="Выбрать цвет"
+                  value={isBrandColor(color) ? color : DEFAULT_BRAND_COLOR}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="h-10 w-12 shrink-0 cursor-pointer rounded-md border bg-background p-1 lg:h-9"
+                />
+                <Input
+                  aria-label="Цвет в формате #RRGGBB"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value.trim())}
+                  className="w-32 font-mono uppercase"
+                  maxLength={7}
+                />
+              </div>
+            </FormField>
+
+            <FormField
+              label="Логотип"
+              htmlFor={null}
+              optional
+              tip="Показывается в шапке бокового меню. Без логотипа там будет название студии."
+              hint="Меню тёмное — нужен светлый логотип на прозрачном фоне, SVG или PNG."
+            >
+              <ImageUploadField
+                bucket="studios"
+                folder={item?.id ?? "new"}
+                value={logo}
+                onChange={setLogo}
+                preview={<LogoPreview value={logo} name={name || "Название"} />}
+                accept="image/svg+xml,image/png,image/webp"
+              />
+            </FormField>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Логотип</Label>
-          <ImageUploadField
-            bucket="studios"
-            folder={item?.id ?? "new"}
-            value={logo}
-            onChange={setLogo}
-            preview={<LogoPreview value={logo} name={name || "Название"} />}
-            accept="image/svg+xml,image/png,image/webp"
-          />
-          <p className="text-xs text-muted-foreground">
-            Меню тёмное: нужен светлый логотип на прозрачном фоне — SVG или PNG. Без логотипа в меню
-            будет название студии.
-          </p>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {item ? "Сохранить" : "Создать студию"}
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            {item ? "Сохранить" : "Создать студию"}
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }
