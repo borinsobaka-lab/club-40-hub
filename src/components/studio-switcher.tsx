@@ -65,7 +65,7 @@ export function StudioSwitcher() {
         onValueChange={onChange}
         disabled={loading || studios.length === 0}
       >
-        <SelectTrigger className="h-9 w-[170px] text-sm">
+        <SelectTrigger className="w-44">
           <SelectValue
             placeholder={
               loading ? "Загрузка…" : studios.length === 0 ? "Нет студий" : "Выберите студию"
@@ -74,7 +74,7 @@ export function StudioSwitcher() {
         </SelectTrigger>
         <SelectContent>
           {studios.map((s) => (
-            <SelectItem key={s.id} value={s.id} className="text-xs">
+            <SelectItem key={s.id} value={s.id}>
               {s.name}
             </SelectItem>
           ))}

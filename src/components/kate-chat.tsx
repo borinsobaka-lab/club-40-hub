@@ -147,9 +147,9 @@ export function KateChat({ heightClass = "h-[calc(100vh-8rem)]" }: { heightClass
                 type="submit"
                 disabled={isLoading || !input.trim()}
                 size="icon"
-                className="h-10 w-10"
+                aria-label="Отправить"
               >
-                <Send className="h-4 w-4" />
+                <Send />
               </Button>
             </div>
           </div>
@@ -310,15 +310,9 @@ function VoiceInputButton({
       disabled={disabled || busy}
       onClick={recording ? stop : start}
       title={recording ? "Закончить запись" : "Голосовой ввод"}
-      className="h-10 w-10"
+      aria-label={recording ? "Закончить запись" : "Голосовой ввод"}
     >
-      {busy ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : recording ? (
-        <Square className="h-4 w-4" />
-      ) : (
-        <Mic className="h-4 w-4" />
-      )}
+      {busy ? <Loader2 className="animate-spin" /> : recording ? <Square /> : <Mic />}
     </Button>
   );
 }

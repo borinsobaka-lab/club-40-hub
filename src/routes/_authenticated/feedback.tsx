@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MessageSquare, X, Loader2 } from "lucide-react";
+import { Plus, Trash2, MessageSquare, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -11,9 +11,10 @@ import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -31,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogForm,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -43,6 +45,7 @@ import {
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -190,25 +193,28 @@ function FeedbackPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">В этом месяце</p>
-            <p className="mt-1 text-2xl font-bold">{thisMonth.length}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{thisMonth.length}</p>
           </div>
-          <div
-            className={`rounded-lg border bg-background p-4 ${pendingCount > 0 ? "border-destructive/30 bg-destructive/5" : ""}`}
-          >
+          <div className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">Не отработано</p>
-            <p className={`mt-1 text-2xl font-bold ${pendingCount > 0 ? "text-destructive" : ""}`}>
+            <p
+              className={cn(
+                "mt-1 text-2xl font-semibold tabular-nums",
+                pendingCount > 0 && "text-destructive",
+              )}
+            >
               {pendingCount}
             </p>
           </div>
           <div className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">Отработано в этом месяце</p>
-            <p className="mt-1 text-2xl font-bold">{resolvedThisMonth}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{resolvedThisMonth}</p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 rounded-lg border bg-background px-3 py-2 sm:flex-row sm:items-center">
+        <TableToolbar>
           <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger className="sm:w-[180px]">
+            <SelectTrigger className="w-48">
               <SelectValue placeholder="Все темы" />
             </SelectTrigger>
             <SelectContent>
@@ -221,7 +227,7 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="sm:w-[160px]">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Все статусы" />
             </SelectTrigger>
             <SelectContent>
@@ -231,7 +237,7 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           <Select value={moodFilter} onValueChange={setMoodFilter}>
-            <SelectTrigger className="sm:w-[160px]">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Все оценки" />
             </SelectTrigger>
             <SelectContent>
@@ -240,19 +246,15 @@ function FeedbackPage() {
               <SelectItem value="none">Без оценки</SelectItem>
             </SelectContent>
           </Select>
-          {hasFilters && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setTopicFilter("all");
-                setStatusFilter("all");
-                setMoodFilter("all");
-              }}
-            >
-              <X /> Сбросить
-            </Button>
-          )}
-        </div>
+          <ToolbarReset
+            active={hasFilters}
+            onReset={() => {
+              setTopicFilter("all");
+              setStatusFilter("all");
+              setMoodFilter("all");
+            }}
+          />
+        </TableToolbar>
 
         <div className="rounded-lg border bg-background">
           <Table>
@@ -349,8 +351,9 @@ function FeedbackPage() {
       </div>
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader>
+        {/* Шапка и кнопки закреплены, прокручивается только середина. */}
+        <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+          <SheetHeader className="shrink-0 border-b px-6 py-4 pr-12">
             <SheetTitle>{selected ? TOPICS[selected.topic] || selected.topic : ""}</SheetTitle>
           </SheetHeader>
           {selected && (
@@ -420,72 +423,57 @@ function NewFeedbackForm({
         <DialogTitle>Новое обращение</DialogTitle>
         <DialogDescription>Заполните данные обращения клиента.</DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="topic">Тема</Label>
-            <Select value={topic} onValueChange={setTopic}>
-              <SelectTrigger id="topic">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(TOPICS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="message">Сообщение</Label>
-            <Textarea
-              id="message"
-              rows={4}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="mood">Оценка</Label>
-            <Select value={mood || "none"} onValueChange={(v) => setMood(v === "none" ? "" : v)}>
-              <SelectTrigger id="mood">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Без оценки</SelectItem>
-                {moodSelectItems()}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="cname">Имя</Label>
-              <Input
-                id="cname"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ccontact">Контакт</Label>
-              <Input
-                id="ccontact"
-                value={clientContact}
-                onChange={(e) => setClientContact(e.target.value)}
-              />
+      <DialogForm onSubmit={submit}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Тема">
+              <Select value={topic} onValueChange={setTopic}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TOPICS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Сообщение">
+              <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} />
+            </FormField>
+            <FormField label="Оценка">
+              <Select value={mood || "none"} onValueChange={(v) => setMood(v === "none" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Без оценки</SelectItem>
+                  {moodSelectItems()}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Имя" optional>
+                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} />
+              </FormField>
+              <FormField label="Контакт" optional>
+                <Input value={clientContact} onChange={(e) => setClientContact(e.target.value)} />
+              </FormField>
             </div>
           </div>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="ghost" onClick={onClose}>
-          Отмена
-        </Button>
-        <Button onClick={submit} disabled={saving}>
-          {saving && <Loader2 className="animate-spin" />} Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }
@@ -538,65 +526,73 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
     );
 
   return (
-    <div className="mt-6 space-y-4">
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Дата</p>
-        <p className="text-sm">
+    <>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <ReadOnlyValue label="Дата">
           {format(new Date(item.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
-        </p>
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Сообщение</p>
-        <p className="whitespace-pre-wrap text-sm">{item.message}</p>
-      </div>
-      {item.mood && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Оценка</p>
-          <p className="text-lg">{MOOD[item.mood]}</p>
-        </div>
-      )}
-      {(item.client_name || item.client_contact) && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Клиент</p>
-          <p className="text-sm">
+        </ReadOnlyValue>
+        <ReadOnlyValue label="Сообщение">
+          <span className="whitespace-pre-wrap">{item.message}</span>
+        </ReadOnlyValue>
+        {item.mood && (
+          <ReadOnlyValue label="Оценка">
+            <span className="text-lg">{MOOD[item.mood]}</span>
+          </ReadOnlyValue>
+        )}
+        {(item.client_name || item.client_contact) && (
+          <ReadOnlyValue label="Клиент">
             {item.client_name || "—"}
             {item.client_contact ? ` · ${item.client_contact}` : ""}
-          </p>
-        </div>
-      )}
-      <div className="space-y-1.5">
-        <Label htmlFor="resolution">Комментарий обработки</Label>
-        <Textarea
-          id="resolution"
-          value={resolutionComment}
-          onChange={(e) => setResolutionComment(e.target.value)}
-          placeholder="Что сделано?"
-          rows={4}
-          disabled={item.status === "resolved"}
-        />
-      </div>
-      {item.status === "pending" ? (
-        <Button className="w-full" onClick={handleResolve} disabled={busy}>
-          Отметить отработанным
-        </Button>
-      ) : (
-        <>
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground">Обработано</p>
-            <p className="text-sm">
+          </ReadOnlyValue>
+        )}
+        {item.status === "pending" ? (
+          <FormField label="Комментарий обработки" optional>
+            <Textarea
+              value={resolutionComment}
+              onChange={(e) => setResolutionComment(e.target.value)}
+              placeholder="Что сделано?"
+              rows={4}
+            />
+          </FormField>
+        ) : (
+          <InfoNote className="space-y-1">
+            <p className="font-medium">Обработано</p>
+            <p className="text-sm text-foreground">
               {item.resolved_by_name || "—"}
               {item.resolved_at &&
                 ` · ${format(new Date(item.resolved_at), "d MMM yyyy", { locale: ru })}`}
             </p>
             {item.resolution_comment && (
-              <p className="mt-2 whitespace-pre-wrap text-sm">{item.resolution_comment}</p>
+              <p className="whitespace-pre-wrap text-sm text-foreground">
+                {item.resolution_comment}
+              </p>
             )}
-          </div>
+          </InfoNote>
+        )}
+      </div>
+      <div className="shrink-0 border-t px-6 py-4">
+        {item.status === "pending" ? (
+          <Button className="w-full" onClick={handleResolve} disabled={busy}>
+            {busy && <Loader2 className="animate-spin" />}
+            Отметить отработанным
+          </Button>
+        ) : (
           <Button variant="outline" className="w-full" onClick={handleReopen} disabled={busy}>
+            {busy && <Loader2 className="animate-spin" />}
             Вернуть в работу
           </Button>
-        </>
-      )}
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Значение только для чтения: подпись мелким серым, значение обычным текстом. */
+function ReadOnlyValue({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="text-sm">{children}</div>
     </div>
   );
 }

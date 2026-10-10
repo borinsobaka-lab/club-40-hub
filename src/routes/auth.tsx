@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { requestStaffLoginLink } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -55,6 +55,10 @@ function AuthPage() {
 
   const signIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim().includes("@")) {
+      toast.error("Укажите рабочую почту");
+      return;
+    }
     if (await sendLink()) setStep("sent");
   };
 
@@ -62,8 +66,9 @@ function AuthPage() {
     if (await sendLink()) toast.success("Ссылка отправлена ещё раз");
   };
 
+  // Белая карточка лежит на канве, как и всё в админке.
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">Base40</CardTitle>
@@ -75,17 +80,15 @@ function AuthPage() {
         </CardHeader>
         <CardContent>
           {step === "credentials" ? (
-            <form onSubmit={signIn} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="si-email">Электронная почта</Label>
+            <form noValidate onSubmit={signIn} className="space-y-4">
+              <FormField label="Электронная почта">
                 <Input
-                  id="si-email"
                   type="email"
-                  required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-              </div>
+              </FormField>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="animate-spin" />}
                 Получить ссылку для входа
@@ -101,22 +104,22 @@ function AuthPage() {
                 сотрудника, мы отправили на неё ссылку для входа. Ссылка действует 1 час и работает
                 один раз.
               </p>
-              <div className="flex items-center justify-between text-xs">
-                <button
-                  type="button"
-                  className="text-muted-foreground underline-offset-2 hover:underline"
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-xs text-muted-foreground"
                   onClick={() => setStep("credentials")}
                 >
                   Назад
-                </button>
-                <button
-                  type="button"
-                  className="text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
+                </Button>
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-xs text-muted-foreground"
                   onClick={resend}
                   disabled={loading}
                 >
                   Отправить ссылку ещё раз
-                </button>
+                </Button>
               </div>
             </div>
           )}
