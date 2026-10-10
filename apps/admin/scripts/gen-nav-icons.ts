@@ -28,6 +28,7 @@ const ICONS: Record<string, string> = {
   DocumentText: "notes",
   Dumbbell: "sports",
   History: "time",
+  MoneyBag: "money",
   Notebook: "notes",
   Settings: "settings",
   Smartphone: "devices",

@@ -24,6 +24,7 @@ import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPushTriggersRouteImport } from './routes/_authenticated/push-triggers'
 import { Route as AuthenticatedPushRouteImport } from './routes/_authenticated/push'
 import { Route as AuthenticatedPromocodesRouteImport } from './routes/_authenticated/promocodes'
+import { Route as AuthenticatedPayRatesRouteImport } from './routes/_authenticated/pay-rates'
 import { Route as AuthenticatedOtherSalesRouteImport } from './routes/_authenticated/other-sales'
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
@@ -113,6 +114,11 @@ const AuthenticatedPromocodesRoute = AuthenticatedPromocodesRouteImport.update({
   path: '/promocodes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPayRatesRoute = AuthenticatedPayRatesRouteImport.update({
+  id: '/pay-rates',
+  path: '/pay-rates',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOtherSalesRoute = AuthenticatedOtherSalesRouteImport.update({
   id: '/other-sales',
   path: '/other-sales',
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
   '/other-sales': typeof AuthenticatedOtherSalesRoute
+  '/pay-rates': typeof AuthenticatedPayRatesRoute
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
   '/other-sales': typeof AuthenticatedOtherSalesRoute
+  '/pay-rates': typeof AuthenticatedPayRatesRoute
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
   '/_authenticated/other-sales': typeof AuthenticatedOtherSalesRoute
+  '/_authenticated/pay-rates': typeof AuthenticatedPayRatesRoute
   '/_authenticated/promocodes': typeof AuthenticatedPromocodesRoute
   '/_authenticated/push': typeof AuthenticatedPushRoute
   '/_authenticated/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/nps'
     | '/other-sales'
+    | '/pay-rates'
     | '/promocodes'
     | '/push'
     | '/push-triggers'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/nps'
     | '/other-sales'
+    | '/pay-rates'
     | '/promocodes'
     | '/push'
     | '/push-triggers'
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '/_authenticated/news'
     | '/_authenticated/nps'
     | '/_authenticated/other-sales'
+    | '/_authenticated/pay-rates'
     | '/_authenticated/promocodes'
     | '/_authenticated/push'
     | '/_authenticated/push-triggers'
@@ -478,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPromocodesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pay-rates': {
+      id: '/_authenticated/pay-rates'
+      path: '/pay-rates'
+      fullPath: '/pay-rates'
+      preLoaderRoute: typeof AuthenticatedPayRatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/other-sales': {
       id: '/_authenticated/other-sales'
       path: '/other-sales'
@@ -586,6 +605,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
   AuthenticatedOtherSalesRoute: typeof AuthenticatedOtherSalesRoute
+  AuthenticatedPayRatesRoute: typeof AuthenticatedPayRatesRoute
   AuthenticatedPromocodesRoute: typeof AuthenticatedPromocodesRoute
   AuthenticatedPushRoute: typeof AuthenticatedPushRoute
   AuthenticatedPushTriggersRoute: typeof AuthenticatedPushTriggersRoute
@@ -613,6 +633,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,
   AuthenticatedOtherSalesRoute: AuthenticatedOtherSalesRoute,
+  AuthenticatedPayRatesRoute: AuthenticatedPayRatesRoute,
   AuthenticatedPromocodesRoute: AuthenticatedPromocodesRoute,
   AuthenticatedPushRoute: AuthenticatedPushRoute,
   AuthenticatedPushTriggersRoute: AuthenticatedPushTriggersRoute,

@@ -42,6 +42,7 @@ describe("права в админке", () => {
     expect(canOpenPath(limited, B, "/schedule")).toBe(false);
     expect(canOpenPath(limited, B, "/cash")).toBe(true);
     expect(canOpenPath(limited, A, "/trainers")).toBe(false);
+    expect(canOpenPath(limited, A, "/pay-rates")).toBe(false);
     expect(canOpenPath(limited, A, "/news")).toBe(true);
     expect(canOpenPath(limited, A, "/push-triggers")).toBe(true);
     // Студия без доступа — ни одного раздела клуба.
@@ -57,6 +58,7 @@ describe("права в админке", () => {
   test("владельцу открыто всё в своей студии и «Доступы»", () => {
     expect(canOpenPath(owner, A, "/dashboard")).toBe(true);
     expect(canOpenPath(owner, A, "/trainers")).toBe(true);
+    expect(canOpenPath(owner, A, "/pay-rates")).toBe(true);
     expect(canOpenPath(owner, A, "/employees")).toBe(true);
   });
 });

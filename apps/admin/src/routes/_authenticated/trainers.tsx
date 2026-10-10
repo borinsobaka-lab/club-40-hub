@@ -8,15 +8,21 @@ import { ImageUploadField } from "@/components/image-upload-field";
 import { useStudios } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
-import { useStorageUrl } from "@/lib/storage";
-import { initials, isHttpUrl } from "@/lib/format";
+import { isHttpUrl } from "@/lib/format";
+import { EmployeePhoto, TrainerRoleBadge } from "@/components/employee-photo";
+import {
+  TRAINER_ROLES,
+  useEmployees,
+  type BankCode,
+  type BankDetails,
+  type Employee,
+  type TrainerRole,
+} from "@/lib/staff-directory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -54,23 +60,11 @@ export const Route = createFileRoute("/_authenticated/trainers")({
 });
 
 /**
- * Сотрудники — общий справочник над студиями (раздел в рейке): тренеры и
- * администраторы (таблица trainers, роль — trainers.role). Один сотрудник
- * может работать в нескольких студиях, они отмечаются в карточке
- * (trainer_studios); в расписании студии выбираются только её сотрудники.
- * Реквизиты (trainer_bank_details) и зарплатные ставки (trainer_pay_rates) —
- * отдельные таблицы: их читают только сотрудники, а тренеров (имя, фото)
- * видят и клиенты в приложении. Доступ в админку — отдельно, в «Доступах».
+ * «Сотрудники» — справочник тренеров и администраторов над студиями
+ * (lib/staff-directory.ts): карточка, студии, реквизиты. Ставки — соседняя
+ * страница раздела, «Зарплатные ставки» (pay-rates.tsx). Доступ в админку —
+ * отдельно, в «Доступах».
  */
-
-type StaffRole = "trainer" | "admin";
-
-const ROLES: Record<StaffRole, { label: string; badge: string }> = {
-  trainer: { label: "Тренер", badge: "bg-sky-100 text-sky-700" },
-  admin: { label: "Администратор", badge: "bg-violet-100 text-violet-700" },
-};
-
-type BankCode = "bog" | "tbc" | "credo";
 
 /** iban — код банка в грузинском IBAN (5–6-й знаки): по нему банк подставляется сам. */
 const BANKS: { value: BankCode; label: string; iban: string }[] = [
@@ -80,27 +74,6 @@ const BANKS: { value: BankCode; label: string; iban: string }[] = [
 ];
 const bankLabel = (code: string | null | undefined) =>
   BANKS.find((b) => b.value === code)?.label ?? null;
-
-type BankDetails = {
-  bank: BankCode | null;
-  account_number: string | null;
-  account_holder: string | null;
-};
-
-type Employee = {
-  id: string;
-  full_name: string;
-  role: StaffRole;
-  photo_url: string | null;
-  telegram: string | null;
-  trainer_studios: { studio_id: string; studio: { name: string } | null }[];
-  // Связь один к одному: PostgREST отдаёт объект, но на всякий случай
-  // принимаем и массив.
-  bank_details: BankDetails | BankDetails[] | null;
-};
-
-const EMPLOYEE_SELECT =
-  "id, full_name, role, photo_url, telegram, trainer_studios(studio_id, studio:studios(name)), bank_details:trainer_bank_details(bank, account_number, account_holder)";
 
 function bankOf(e: Employee | null): BankDetails | null {
   const b = e?.bank_details;
@@ -129,49 +102,12 @@ function telegramHref(value: string) {
   return isHttpUrl(value) ? value : `https://t.me/${nick}`;
 }
 
-function EmployeePhoto({
-  value,
-  name,
-  className,
-}: {
-  value: string | null;
-  name: string;
-  className?: string;
-}) {
-  const src = useStorageUrl("trainers", value);
-  return (
-    <Avatar className={className}>
-      {src && <AvatarImage src={src} alt={name} />}
-      <AvatarFallback>{initials(name)}</AvatarFallback>
-    </Avatar>
-  );
-}
-
-function RoleBadge({ role }: { role: StaffRole }) {
-  const r = ROLES[role] ?? ROLES.trainer;
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${r.badge}`}
-    >
-      {r.label}
-    </span>
-  );
-}
-
-type TabValue = "staff" | "rates";
-
 function StaffPage() {
-  const [tab, setTab] = useState<TabValue>("staff");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ["trainers", "all"],
-    queryFn: () =>
-      unwrap<Employee[]>(supabase.from("trainers").select(EMPLOYEE_SELECT).order("full_name")),
-    meta: { errorMessage: "Не удалось загрузить сотрудников" },
-  });
+  const { data: employees = [], isLoading } = useEmployees();
   const reload = () => queryClient.invalidateQueries({ queryKey: ["trainers"] });
 
   const openEdit = (e: Employee | null) => {
@@ -180,34 +116,21 @@ function StaffPage() {
   };
 
   return (
-    <AdminShell title="Сотрудники">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)} className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList>
-            <TabsTrigger value="staff">Сотрудники</TabsTrigger>
-            <TabsTrigger value="rates">Зарплатные ставки</TabsTrigger>
-          </TabsList>
-          {tab === "staff" && (
-            <Button onClick={() => openEdit(null)}>
-              <Plus />
-              Добавить сотрудника
-            </Button>
-          )}
-        </div>
-
-        <TabsContent value="staff" className="space-y-3">
-          <EmployeesTab
-            employees={employees}
-            loading={isLoading}
-            onEdit={openEdit}
-            onChanged={reload}
-          />
-        </TabsContent>
-
-        <TabsContent value="rates" className="space-y-3">
-          <PayRatesTab employees={employees} loading={isLoading} />
-        </TabsContent>
-      </Tabs>
+    <AdminShell
+      title="Сотрудники"
+      actions={
+        <Button onClick={() => openEdit(null)}>
+          <Plus />
+          Добавить сотрудника
+        </Button>
+      }
+    >
+      <EmployeesTable
+        employees={employees}
+        loading={isLoading}
+        onEdit={openEdit}
+        onChanged={reload}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
@@ -224,9 +147,7 @@ function StaffPage() {
   );
 }
 
-// ====== Вкладка «Сотрудники» ======
-
-function EmployeesTab({
+function EmployeesTable({
   employees,
   loading,
   onEdit,
@@ -303,7 +224,7 @@ function EmployeesTab({
                     </TableCell>
                     <TableCell className="font-medium">{e.full_name}</TableCell>
                     <TableCell>
-                      <RoleBadge role={e.role} />
+                      <TrainerRoleBadge role={e.role} />
                     </TableCell>
                     <TableCell>
                       {e.trainer_studios.length ? (
@@ -366,7 +287,7 @@ function EmployeeForm({
   const bank = bankOf(employee);
   const initialStudioIds = employee?.trainer_studios.map((s) => s.studio_id) ?? [];
 
-  const [role, setRole] = useState<StaffRole>(employee?.role ?? "trainer");
+  const [role, setRole] = useState<TrainerRole>(employee?.role ?? "trainer");
   const [fullName, setFullName] = useState(employee?.full_name ?? "");
   const [telegram, setTelegram] = useState(employee?.telegram ?? "");
   const [photoUrl, setPhotoUrl] = useState(employee?.photo_url ?? null);
@@ -527,14 +448,14 @@ function EmployeeForm({
                 label="Роль"
                 tip="Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах»."
               >
-                <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
+                <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(ROLES) as StaffRole[]).map((r) => (
+                    {(Object.keys(TRAINER_ROLES) as TrainerRole[]).map((r) => (
                       <SelectItem key={r} value={r}>
-                        {ROLES[r].label}
+                        {TRAINER_ROLES[r].label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -632,199 +553,5 @@ function EmployeeForm({
         </DialogFooter>
       </DialogForm>
     </>
-  );
-}
-
-// ====== Вкладка «Зарплатные ставки» ======
-
-type PayRates = {
-  trainer_id: string;
-  admin_shift_enabled: boolean;
-  admin_shift_rate: number | null;
-  group_training_enabled: boolean;
-  group_training_rate: number | null;
-  personal_training_enabled: boolean;
-  personal_training_rate: number | null;
-};
-
-/** Ставки: флаг «получает ли сейчас» + сумма в лари за единицу. */
-const RATE_KINDS = [
-  {
-    key: "admin_shift",
-    label: "Смена администратора",
-    tip: "Сколько сотрудник получает за смену администратором. Включено — он сейчас работает администратором и получает эту ставку.",
-  },
-  {
-    key: "group_training",
-    label: "Групповая тренировка",
-    tip: "Сколько сотрудник получает за проведённую групповую тренировку.",
-  },
-  {
-    key: "personal_training",
-    label: "Персональная тренировка",
-    tip: "Сколько сотрудник получает за проведённую персональную тренировку.",
-  },
-] as const;
-
-type RateKind = (typeof RATE_KINDS)[number]["key"];
-type RatePatch = Partial<Omit<PayRates, "trainer_id">>;
-
-function PayRatesTab({ employees, loading }: { employees: Employee[]; loading: boolean }) {
-  const queryClient = useQueryClient();
-  const { data: rates = [], isLoading: ratesLoading } = useQuery({
-    queryKey: ["trainer_pay_rates"],
-    queryFn: () => unwrap<PayRates[]>(supabase.from("trainer_pay_rates").select("*")),
-    meta: { errorMessage: "Не удалось загрузить зарплатные ставки" },
-  });
-  const byEmployee = new Map(rates.map((r) => [r.trainer_id, r]));
-  const pg = usePagination(employees);
-
-  /** Сохраняет одно изменённое поле; строку ставок заводит при первой правке. */
-  const save = async (trainerId: string, patch: RatePatch) => {
-    const { data, error } = await supabase
-      .from("trainer_pay_rates")
-      .upsert({ trainer_id: trainerId, ...patch, updated_at: new Date().toISOString() })
-      .select("*")
-      .single<PayRates>();
-    if (error) {
-      toast.error("Ставка не сохранена: " + error.message);
-      return false;
-    }
-    queryClient.setQueryData<PayRates[]>(["trainer_pay_rates"], (prev = []) => [
-      ...prev.filter((r) => r.trainer_id !== trainerId),
-      data,
-    ]);
-    return true;
-  };
-
-  const busy = loading || ratesLoading;
-
-  return (
-    <div className="space-y-3">
-      <InfoNote>
-        Ставки — в лари за смену или тренировку. Переключатель — получает ли сотрудник эту ставку
-        сейчас; сумма сохраняется, когда поле теряет фокус.
-      </InfoNote>
-      <div className="rounded-lg border bg-background">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Сотрудник</TableHead>
-              {RATE_KINDS.map((k) => (
-                <TableHead key={k.key} title={k.tip}>
-                  {k.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {busy ? (
-              <TableSkeletonRows columns={4} />
-            ) : employees.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                  Сначала добавьте сотрудников на вкладке «Сотрудники».
-                </TableCell>
-              </TableRow>
-            ) : (
-              pg.paged.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <EmployeePhoto value={e.photo_url} name={e.full_name} className="size-8" />
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{e.full_name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {ROLES[e.role]?.label ?? ROLES.trainer.label}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  {RATE_KINDS.map((k) => (
-                    <TableCell key={k.key}>
-                      <RateCell
-                        kind={k.key}
-                        label={`${k.label}: ${e.full_name}`}
-                        rates={byEmployee.get(e.id) ?? null}
-                        onSave={(patch) => save(e.id, patch)}
-                      />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <DataPagination {...pg} />
-      </div>
-    </div>
-  );
-}
-
-/** Ячейка ставки: переключатель «получает» и сумма (правится при включённой ставке). */
-function RateCell({
-  kind,
-  label,
-  rates,
-  onSave,
-}: {
-  kind: RateKind;
-  label: string;
-  rates: PayRates | null;
-  onSave: (patch: RatePatch) => Promise<boolean>;
-}) {
-  const enabled = rates?.[`${kind}_enabled`] ?? false;
-  const saved = rates?.[`${kind}_rate`] ?? null;
-  const [amount, setAmount] = useState(saved === null ? "" : String(saved));
-  const [pending, setPending] = useState(false);
-
-  const run = async (patch: RatePatch) => {
-    setPending(true);
-    try {
-      return await onSave(patch);
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const commitAmount = async () => {
-    const text = amount.trim().replace(",", ".");
-    const value = text === "" ? null : Number(text);
-    if (value !== null && (!Number.isFinite(value) || value < 0)) {
-      toast.error("Ставка — неотрицательное число");
-      setAmount(saved === null ? "" : String(saved));
-      return;
-    }
-    if (value === saved) return;
-    if (!(await run({ [`${kind}_rate`]: value }))) setAmount(saved === null ? "" : String(saved));
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <Switch
-        checked={enabled}
-        disabled={pending}
-        aria-label={label}
-        onCheckedChange={(checked) => run({ [`${kind}_enabled`]: checked })}
-      />
-      <div className="relative w-28">
-        <Input
-          inputMode="decimal"
-          value={amount}
-          disabled={!enabled || pending}
-          aria-label={`${label}, сумма`}
-          placeholder="0"
-          onChange={(e) => setAmount(e.target.value)}
-          onBlur={commitAmount}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
-          className="pr-7 tabular-nums"
-        />
-        <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-          ₾
-        </span>
-      </div>
-    </div>
   );
 }

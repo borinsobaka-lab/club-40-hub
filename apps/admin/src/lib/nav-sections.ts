@@ -18,6 +18,7 @@ import {
   DocumentText,
   Dumbbell,
   History,
+  MoneyBag,
   Notebook,
   Settings,
   ShieldUser,
@@ -141,6 +142,15 @@ export const MOBILE_APP_ITEMS: NavItem[] = [
   { title: "Настройки клуба", url: "/club-settings", icon: Settings },
 ];
 
+/**
+ * Меню раздела «Сотрудники»: справочник общий для всех студий, поэтому, как
+ * и у «Мобильного приложения», своё меню вместо меню клуба.
+ */
+export const STAFF_ITEMS: NavItem[] = [
+  { title: "Сотрудники", url: "/trainers", icon: UserId },
+  { title: "Зарплатные ставки", url: "/pay-rates", icon: MoneyBag },
+];
+
 /** Раздел без url — заготовка: виден в рейке, но не нажимается. */
 export const SECTIONS: RailSection[] = [
   { key: "club", title: "Клуб", url: "/", icon: Buildings2 },
@@ -150,8 +160,9 @@ export const SECTIONS: RailSection[] = [
     key: "staff",
     title: "Сотруд\u00ADники",
     fullTitle: "Сотрудники",
-    url: "/trainers",
+    url: STAFF_ITEMS[0].url,
     icon: UserId,
+    paths: STAFF_ITEMS.map((i) => i.url),
   },
   {
     key: "app",
@@ -165,9 +176,8 @@ export const SECTIONS: RailSection[] = [
 ];
 
 /**
- * Настройки над студиями — внизу рейки. Это одиночные страницы (как и
- * «Сотрудники»): своего меню у них нет, справа остаётся меню клуба без
- * подсвеченного пункта.
+ * Настройки над студиями — внизу рейки. Это одиночные страницы: своего
+ * меню у них нет, справа остаётся меню клуба без подсвеченного пункта.
  */
 export const ADMIN_SECTIONS: RailSection[] = [
   { key: "access", title: "Доступы", url: "/employees", icon: ShieldUser },

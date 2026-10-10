@@ -2,7 +2,14 @@ import { useCallback, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronUp } from "lucide-react";
 import { AppRail } from "@/components/app-rail";
-import { CLUB_GROUPS, MOBILE_APP_ITEMS, railSectionKey, type NavGroup } from "@/lib/nav-sections";
+import {
+  CLUB_GROUPS,
+  MOBILE_APP_ITEMS,
+  STAFF_ITEMS,
+  railSectionKey,
+  type NavGroup,
+  type RailSectionKey,
+} from "@/lib/nav-sections";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenClubSection, type AdminAccess } from "@/lib/admin-access";
@@ -27,11 +34,21 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-/** Меню раздела «Мобильное приложение» (рейка) — вместо меню клуба. */
-const APP_GROUPS: NavGroup[] = [
-  // Название раздела — в шапке меню, группе хватит нейтральной подписи.
-  { key: "mobile", label: "Разделы", items: MOBILE_APP_ITEMS },
-];
+/**
+ * Разделы рейки со своим меню вместо меню клуба: оно общее для всех студий,
+ * поэтому в шапке меню — название раздела, а не логотип студии. Название
+ * раздела — в шапке, группе хватит нейтральной подписи.
+ */
+const SECTION_MENUS: Partial<Record<RailSectionKey, { title: string; groups: NavGroup[] }>> = {
+  staff: {
+    title: "Сотрудники",
+    groups: [{ key: "staff", label: "Разделы", items: STAFF_ITEMS }],
+  },
+  app: {
+    title: "Мобильное приложение",
+    groups: [{ key: "mobile", label: "Разделы", items: MOBILE_APP_ITEMS }],
+  },
+};
 
 /**
  * Пункты клуба для формата активной студии и прав сотрудника («Доступы»);
@@ -91,8 +108,8 @@ export function AppSidebar() {
   const studioId = useActiveStudioId();
   const access = useAdminAccess();
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
-  const isAppSection = railSectionKey(currentPath) === "app";
-  const groups = isAppSection ? APP_GROUPS : visibleGroups(studioFormat, access, studioId);
+  const sectionMenu = SECTION_MENUS[railSectionKey(currentPath)];
+  const groups = sectionMenu?.groups ?? visibleGroups(studioFormat, access, studioId);
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
   const setGroupOpen = useCallback((key: string, open: boolean) => {
@@ -123,7 +140,7 @@ export function AppSidebar() {
       {/*
         Слева — рейка разделов (AppRail; там же «Сотрудники», «Мобильное
         приложение», «Доступы» и «Студии»), справа — меню клуба или меню
-        раздела «Мобильное приложение».
+        раздела («Сотрудники», «Мобильное приложение»).
         Ширина панели (--sidebar-width) уже включает рейку; в шторке на
         телефоне рейка тоже есть, переход по ней закрывает шторку.
       */}
@@ -137,9 +154,9 @@ export function AppSidebar() {
               className="flex items-center text-white"
               onClick={closeMobile}
             >
-              {/* Приложение общее для студий — логотип студии там не к месту. */}
-              {isAppSection ? (
-                <span className="text-lg leading-tight font-semibold">Мобильное приложение</span>
+              {/* Раздел общий для студий — логотип студии там не к месту. */}
+              {sectionMenu ? (
+                <span className="text-lg leading-tight font-semibold">{sectionMenu.title}</span>
               ) : (
                 <StudioLogo />
               )}
