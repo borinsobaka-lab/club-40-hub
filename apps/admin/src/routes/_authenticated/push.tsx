@@ -4,8 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Pencil, Trash2, Send } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { RequireStudio } from "@/components/require-studio";
-import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
@@ -50,7 +48,8 @@ type PushStatus = "draft" | "scheduled" | "sent";
 
 type PushNotification = {
   id: string;
-  studio_id: string;
+  /** Прежняя привязка к студии; приложение общее, поле не используется. */
+  studio_id: string | null;
   title: string;
   message: string | null;
   action_url: string | null;
@@ -87,22 +86,17 @@ function renderSegments(segments: Segment[]) {
 
 function PushPage() {
   const { confirm, confirmDialog } = useConfirm();
-  const studioId = useActiveStudioId();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PushNotification | null>(null);
 
   const { data: items = [], isLoading: loading } = useQuery({
-    queryKey: ["push_notifications", studioId],
+    // Мобильное приложение общее для всех студий — уведомления тоже.
+    queryKey: ["push_notifications", "all"],
     queryFn: () =>
       unwrap<PushNotification[]>(
-        supabase
-          .from("push_notifications")
-          .select("*")
-          .eq("studio_id", studioId!)
-          .order("created_at", { ascending: false }),
+        supabase.from("push_notifications").select("*").order("created_at", { ascending: false }),
       ),
-    enabled: !!studioId,
     meta: { errorMessage: "Не удалось загрузить уведомления" },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["push_notifications"] });
@@ -135,95 +129,88 @@ function PushPage() {
     <AdminShell
       title="Пуш-уведомления"
       actions={
-        <Button onClick={() => openEdit(null)} disabled={!studioId}>
+        <Button onClick={() => openEdit(null)}>
           <Plus />
           Добавить уведомление
         </Button>
       }
     >
       <div className="space-y-3">
-        <RequireStudio studioId={studioId}>
-          <div className="rounded-lg border bg-background">
-            <Table>
-              <TableHeader>
+        <div className="rounded-lg border bg-background">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Заголовок</TableHead>
+                <TableHead>Сегмент</TableHead>
+                <TableHead>Отправка</TableHead>
+                <TableHead>Статус</TableHead>
+                <TableHead>Отправлено</TableHead>
+                <TableHead>Доставлено</TableHead>
+                <TableHead>Прочитано</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableSkeletonRows columns={7} />
+              ) : items.length === 0 ? (
                 <TableRow>
-                  <TableHead>Заголовок</TableHead>
-                  <TableHead>Сегмент</TableHead>
-                  <TableHead>Отправка</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Отправлено</TableHead>
-                  <TableHead>Доставлено</TableHead>
-                  <TableHead>Прочитано</TableHead>
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                    Пока нет уведомлений. Нажмите «Добавить уведомление».
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableSkeletonRows columns={7} />
-                ) : items.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="py-8 text-center text-sm text-muted-foreground"
-                    >
-                      Пока нет уведомлений. Нажмите «Добавить уведомление».
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  pg.paged.map((p) => (
-                    <RowContextMenu
-                      key={p.id}
-                      actions={[
-                        { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
-                        {
-                          label: "Удалить",
-                          icon: Trash2,
-                          destructive: true,
-                          onSelect: () => handleDelete(p),
-                        },
-                      ]}
-                    >
-                      <TableRow>
-                        <TableCell className="font-medium max-w-[280px]">
-                          <div className="truncate">{p.title}</div>
-                          {p.message ? (
-                            <div className="truncate text-xs text-muted-foreground">
-                              {p.message}
-                            </div>
-                          ) : null}
-                        </TableCell>
-                        <TableCell>{renderSegments(p.segments)}</TableCell>
-                        <TableCell className="whitespace-nowrap text-sm">
-                          {p.status === "sent"
-                            ? formatDateTime(p.sent_at)
-                            : p.status === "scheduled"
-                              ? formatDateTime(p.scheduled_at)
-                              : "—"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              p.status === "sent"
-                                ? "default"
-                                : p.status === "scheduled"
-                                  ? "secondary"
-                                  : "outline"
-                            }
-                          >
-                            {STATUS_LABEL[p.status]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="tabular-nums">{p.sent_count}</TableCell>
-                        <TableCell className="tabular-nums">{p.delivered_count}</TableCell>
-                        <TableCell className="tabular-nums">{p.read_count}</TableCell>
-                      </TableRow>
-                    </RowContextMenu>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            <DataPagination {...pg} />
-          </div>
-        </RequireStudio>
+              ) : (
+                pg.paged.map((p) => (
+                  <RowContextMenu
+                    key={p.id}
+                    actions={[
+                      { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
+                      {
+                        label: "Удалить",
+                        icon: Trash2,
+                        destructive: true,
+                        onSelect: () => handleDelete(p),
+                      },
+                    ]}
+                  >
+                    <TableRow>
+                      <TableCell className="font-medium max-w-[280px]">
+                        <div className="truncate">{p.title}</div>
+                        {p.message ? (
+                          <div className="truncate text-xs text-muted-foreground">{p.message}</div>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>{renderSegments(p.segments)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {p.status === "sent"
+                          ? formatDateTime(p.sent_at)
+                          : p.status === "scheduled"
+                            ? formatDateTime(p.scheduled_at)
+                            : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            p.status === "sent"
+                              ? "default"
+                              : p.status === "scheduled"
+                                ? "secondary"
+                                : "outline"
+                          }
+                        >
+                          {STATUS_LABEL[p.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{p.sent_count}</TableCell>
+                      <TableCell className="tabular-nums">{p.delivered_count}</TableCell>
+                      <TableCell className="tabular-nums">{p.read_count}</TableCell>
+                    </TableRow>
+                  </RowContextMenu>
+                ))
+              )}
+            </TableBody>
+          </Table>
+          <DataPagination {...pg} />
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -232,7 +219,6 @@ function PushPage() {
           <PushForm
             key={editing?.id ?? "new"}
             onOpenChange={setOpen}
-            studioId={studioId}
             item={editing}
             onSaved={reload}
           />
@@ -247,12 +233,10 @@ const ALL_SEGMENTS: ClubStatus[] = ["chk", "bchk", "pchk"];
 
 function PushForm({
   onOpenChange,
-  studioId,
   item,
   onSaved,
 }: {
   onOpenChange: (v: boolean) => void;
-  studioId: string | null;
   item: PushNotification | null;
   onSaved: () => void;
 }) {
@@ -282,7 +266,6 @@ function PushForm({
   };
 
   const handleSave = async () => {
-    if (!studioId) return;
     if (!title.trim()) {
       toast.error("Укажите заголовок");
       return;
@@ -301,7 +284,6 @@ function PushForm({
     const sendNow = sendMode === "now";
     const status: PushStatus = sendNow ? "sent" : "scheduled";
     const payload = {
-      studio_id: studioId,
       title: title.trim(),
       message: message.trim() || null,
       segments: allSelected ? ["all"] : segments,

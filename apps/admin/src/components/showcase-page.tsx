@@ -3,9 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
-import { RequireStudio } from "@/components/require-studio";
 import { ImageUploadField, StorageImage } from "@/components/image-upload-field";
-import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
@@ -73,7 +71,8 @@ export type ShowcaseConfig = {
 
 type ShowcaseItem = {
   id: string;
-  studio_id: string;
+  /** Прежняя привязка к студии; приложение общее, поле не используется. */
+  studio_id: string | null;
   position: number;
   image_url: string | null;
   banner_url: string | null;
@@ -89,13 +88,13 @@ type ShowcaseItem = {
 export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
   const { table, bucket, texts } = config;
   const { confirm, confirmDialog } = useConfirm();
-  const studioId = useActiveStudioId();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ShowcaseItem | null>(null);
   const [reordering, setReordering] = useState(false);
 
-  const queryKey = [table, studioId];
+  // Мобильное приложение общее для всех студий — записи без фильтра по студии.
+  const queryKey = [table, "all"];
   const { data: items = [], isLoading: loading } = useQuery({
     queryKey,
     queryFn: () =>
@@ -103,11 +102,9 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
         supabase
           .from(table)
           .select("*")
-          .eq("studio_id", studioId!)
           .order("position", { ascending: true })
           .order("created_at", { ascending: false }),
       ),
-    enabled: !!studioId,
     meta: { errorMessage: texts.loadError },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: [table] });
@@ -181,118 +178,112 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
     <AdminShell
       title={config.title}
       actions={
-        <Button onClick={openCreate} disabled={!studioId}>
+        <Button onClick={openCreate}>
           <Plus />
           {texts.add}
         </Button>
       }
     >
       <div className="space-y-3">
-        <RequireStudio studioId={studioId}>
-          <div className="rounded-lg border bg-background">
-            <Table>
-              <TableHeader>
+        <div className="rounded-lg border bg-background">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[90px]">Порядок</TableHead>
+                <TableHead className="w-[100px]">Картинка</TableHead>
+                <TableHead className="w-[140px]">Баннер</TableHead>
+                <TableHead>Заголовок</TableHead>
+                <TableHead>Описание</TableHead>
+                <TableHead className="w-[140px]">Кнопка</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableSkeletonRows columns={6} />
+              ) : items.length === 0 ? (
                 <TableRow>
-                  <TableHead className="w-[90px]">Порядок</TableHead>
-                  <TableHead className="w-[100px]">Картинка</TableHead>
-                  <TableHead className="w-[140px]">Баннер</TableHead>
-                  <TableHead>Заголовок</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead className="w-[140px]">Кнопка</TableHead>
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    {texts.empty}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableSkeletonRows columns={6} />
-                ) : items.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="py-8 text-center text-sm text-muted-foreground"
+              ) : (
+                pg.paged.map((n) => {
+                  const idx = items.indexOf(n);
+                  return (
+                    <RowContextMenu
+                      key={n.id}
+                      actions={[
+                        { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(n) },
+                        {
+                          label: "Удалить",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => handleDelete(n),
+                        },
+                      ]}
                     >
-                      {texts.empty}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  pg.paged.map((n) => {
-                    const idx = items.indexOf(n);
-                    return (
-                      <RowContextMenu
-                        key={n.id}
-                        actions={[
-                          { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(n) },
-                          {
-                            label: "Удалить",
-                            icon: Trash2,
-                            destructive: true,
-                            onSelect: () => handleDelete(n),
-                          },
-                        ]}
-                      >
-                        <TableRow>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                disabled={idx === 0 || reordering}
-                                onClick={() => move(idx, -1)}
-                                aria-label="Выше"
-                              >
-                                <ArrowUp />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                disabled={idx === items.length - 1 || reordering}
-                                onClick={() => move(idx, 1)}
-                                aria-label="Ниже"
-                              >
-                                <ArrowDown />
-                              </Button>
-                              <span className="ml-1 w-5 text-xs text-muted-foreground">
-                                {idx + 1}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <StorageImage bucket={bucket} value={n.image_url} alt={n.title} />
-                          </TableCell>
-                          <TableCell>
-                            <StorageImage
-                              bucket={bucket}
-                              value={n.banner_url}
-                              alt={n.title}
-                              className="h-10 w-28"
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{n.title}</TableCell>
-                          <TableCell
-                            className="truncate text-muted-foreground"
-                            style={{ maxWidth: config.descriptionWidth }}
-                          >
-                            {n.description ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {n.button_text && n.button_url ? n.button_text : "—"}
-                          </TableCell>
-                        </TableRow>
-                      </RowContextMenu>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-            <DataPagination {...pg} />
-          </div>
-        </RequireStudio>
+                      <TableRow>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={idx === 0 || reordering}
+                              onClick={() => move(idx, -1)}
+                              aria-label="Выше"
+                            >
+                              <ArrowUp />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={idx === items.length - 1 || reordering}
+                              onClick={() => move(idx, 1)}
+                              aria-label="Ниже"
+                            >
+                              <ArrowDown />
+                            </Button>
+                            <span className="ml-1 w-5 text-xs text-muted-foreground">
+                              {idx + 1}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <StorageImage bucket={bucket} value={n.image_url} alt={n.title} />
+                        </TableCell>
+                        <TableCell>
+                          <StorageImage
+                            bucket={bucket}
+                            value={n.banner_url}
+                            alt={n.title}
+                            className="h-10 w-28"
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{n.title}</TableCell>
+                        <TableCell
+                          className="truncate text-muted-foreground"
+                          style={{ maxWidth: config.descriptionWidth }}
+                        >
+                          {n.description ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {n.button_text && n.button_url ? n.button_text : "—"}
+                        </TableCell>
+                      </TableRow>
+                    </RowContextMenu>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+          <DataPagination {...pg} />
+        </div>
       </div>
 
       <ShowcaseDialog
         config={config}
         open={open}
         onOpenChange={setOpen}
-        studioId={studioId}
         item={editing}
         nextPosition={items.length > 0 ? Math.max(...items.map((i) => i.position)) + 1 : 0}
         onSaved={reload}
@@ -306,7 +297,6 @@ type DialogProps = {
   config: ShowcaseConfig;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  studioId: string | null;
   item: ShowcaseItem | null;
   nextPosition: number;
   onSaved: () => void;
@@ -323,14 +313,7 @@ function ShowcaseDialog(props: DialogProps) {
   );
 }
 
-function ShowcaseForm({
-  config,
-  onOpenChange,
-  studioId,
-  item,
-  nextPosition,
-  onSaved,
-}: DialogProps) {
+function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: DialogProps) {
   const { table, bucket, texts } = config;
   const [title, setTitle] = useState(item?.title ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
@@ -343,7 +326,6 @@ function ShowcaseForm({
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!studioId) return;
     if (!title.trim()) {
       toast.error("Укажите заголовок");
       return;
@@ -357,7 +339,6 @@ function ShowcaseForm({
     setSaving(true);
     try {
       const payload = {
-        studio_id: studioId,
         title: title.trim(),
         description: description.trim() || null,
         full_title: fullTitle.trim() || null,
@@ -401,10 +382,9 @@ function ShowcaseForm({
               >
                 <ImageUploadField
                   bucket={bucket}
-                  folder={`${studioId}/image`}
+                  folder="app/image"
                   value={imageUrl}
                   onChange={setImageUrl}
-                  disabled={!studioId}
                 />
               </FormField>
 
@@ -416,7 +396,7 @@ function ShowcaseForm({
               >
                 <ImageUploadField
                   bucket={bucket}
-                  folder={`${studioId}/banner`}
+                  folder="app/banner"
                   value={bannerUrl}
                   onChange={setBannerUrl}
                   preview={
@@ -427,7 +407,6 @@ function ShowcaseForm({
                       className="h-16 w-40"
                     />
                   }
-                  disabled={!studioId}
                 />
               </FormField>
             </div>
