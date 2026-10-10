@@ -10,9 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { CheckboxOption, FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
@@ -28,6 +27,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -337,99 +337,96 @@ function PushForm({
           Уведомление будет отправлено выбранным клиентам в мобильное приложение.
         </DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Заголовок</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: Скидка 20% на абонементы"
-            />
-          </div>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Заголовок">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Например: Скидка 20% на абонементы"
+              />
+            </FormField>
 
-          <div className="space-y-2">
-            <Label>Сообщение</Label>
-            <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Текст пуш-уведомления"
-              rows={4}
-            />
-          </div>
+            <FormField label="Сообщение" optional>
+              <Textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Текст пуш-уведомления"
+                rows={4}
+              />
+            </FormField>
 
-          <div className="space-y-2">
-            <Label>Ссылка перехода (необязательно)</Label>
-            <Input
-              value={actionUrl}
-              onChange={(e) => setActionUrl(e.target.value)}
-              placeholder="https://… или внутренний раздел"
-            />
-            <p className="text-xs text-muted-foreground">
-              Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти».
-            </p>
-          </div>
+            <FormField
+              label="Ссылка перехода"
+              optional
+              hint="Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти»."
+            >
+              <Input
+                value={actionUrl}
+                onChange={(e) => setActionUrl(e.target.value)}
+                placeholder="https://… или внутренний раздел"
+              />
+            </FormField>
 
-          <div className="space-y-2">
-            <Label>Статус клиентов</Label>
-            <div className="space-y-2 rounded-md border p-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={(v) => setAllSelected(Boolean(v))}
-                />
-                <span>Все клиенты</span>
-              </label>
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {ALL_SEGMENTS.map((s) => (
-                  <label key={s} className="flex cursor-pointer items-center gap-2 text-sm">
-                    <Checkbox
+            <FormField label="Статус клиентов" htmlFor={null}>
+              <div className="space-y-2 rounded-md border p-3">
+                <CheckboxOption checked={allSelected} onCheckedChange={setAllSelected}>
+                  Все клиенты
+                </CheckboxOption>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {ALL_SEGMENTS.map((s) => (
+                    <CheckboxOption
+                      key={s}
                       checked={!allSelected && segments.includes(s)}
                       disabled={allSelected}
-                      onCheckedChange={(v) => toggleSegment(s, Boolean(v))}
-                    />
-                    <span>{CLUB_STATUS_LABEL[s]}</span>
-                  </label>
-                ))}
+                      onCheckedChange={(v) => toggleSegment(s, v)}
+                    >
+                      {CLUB_STATUS_LABEL[s]}
+                    </CheckboxOption>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
+            </FormField>
 
-          <div className="space-y-2">
-            <Label>Время отправки</Label>
-            <RadioGroup
-              value={sendMode}
-              onValueChange={(v) => setSendMode(v as typeof sendMode)}
-              className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
-            >
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <RadioGroupItem value="now" />
-                <span>Отправить сейчас</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <RadioGroupItem value="schedule" />
-                <span>Запланировать</span>
-              </label>
-            </RadioGroup>
+            <FormField label="Время отправки" htmlFor={null}>
+              <RadioGroup
+                value={sendMode}
+                onValueChange={(v) => setSendMode(v as typeof sendMode)}
+                className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
+              >
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <RadioGroupItem value="now" />
+                  <span>Отправить сейчас</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <RadioGroupItem value="schedule" />
+                  <span>Запланировать</span>
+                </label>
+              </RadioGroup>
+            </FormField>
+
             {sendMode === "schedule" && (
-              <Input
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-              />
+              <FormField label="Дата и время отправки">
+                <Input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                />
+              </FormField>
             )}
           </div>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="animate-spin" /> : <Send />}
-          {sendMode === "now" ? "Отправить" : "Запланировать"}
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? <Loader2 className="animate-spin" /> : <Send />}
+            {sendMode === "now" ? "Отправить" : "Запланировать"}
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }

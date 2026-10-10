@@ -13,7 +13,7 @@ import { unwrap } from "@/lib/query";
 import { STAFF_ROLES } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -160,16 +160,16 @@ function CashPage() {
         <RequireStudio studioId={studioId}>
           {/* Balance */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border bg-background p-6 sm:col-span-1">
+            <div className="rounded-lg border bg-background p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Wallet className="h-4 w-4" />
                 Баланс кассы
               </div>
-              <div className="mt-2 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+              <div className="mt-2 text-2xl font-semibold tabular-nums">
                 {formatMoneyPrecise(income - expense)}
               </div>
             </div>
-            <div className="rounded-xl border bg-background p-6">
+            <div className="rounded-lg border bg-background p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="h-4 w-4 text-emerald-600" />
                 Приход (всего)
@@ -178,7 +178,7 @@ function CashPage() {
                 {formatMoneyPrecise(income)}
               </div>
             </div>
-            <div className="rounded-xl border bg-background p-6">
+            <div className="rounded-lg border bg-background p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingDown className="h-4 w-4 text-rose-600" />
                 Расход (всего)
@@ -197,7 +197,7 @@ function CashPage() {
           />
 
           {/* History */}
-          <div className="rounded-xl border bg-background">
+          <div className="rounded-lg border bg-background">
             <div className="border-b px-4 py-2 text-sm font-semibold">История операций</div>
             <Table>
               <TableHeader>
@@ -336,11 +336,17 @@ function CashOperationForm({
   };
 
   return (
-    <div className="rounded-xl border bg-background p-4">
+    <form
+      noValidate
+      className="rounded-lg border bg-background p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!saving) void handleSave();
+      }}
+    >
       <h2 className="mb-3 text-sm font-semibold">Новая операция</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <div className="space-y-1.5">
-          <Label>Тип</Label>
+        <FormField label="Тип">
           <Select value={kind} onValueChange={(v) => changeKind(v as CashKind)}>
             <SelectTrigger>
               <SelectValue />
@@ -350,9 +356,8 @@ function CashOperationForm({
               <SelectItem value="expense">Расход</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Категория</Label>
+        </FormField>
+        <FormField label="Категория">
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger>
               <SelectValue />
@@ -365,11 +370,9 @@ function CashOperationForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="amount">Сумма, ₾</Label>
+        </FormField>
+        <FormField label="Сумма, ₾">
           <Input
-            id="amount"
             type="number"
             min={0}
             step="0.01"
@@ -377,9 +380,8 @@ function CashOperationForm({
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Кто проводит</Label>
+        </FormField>
+        <FormField label="Кто проводит">
           <Select value={selectedOperatorId} onValueChange={setOperatorId}>
             <SelectTrigger>
               <SelectValue placeholder="Сотрудник" />
@@ -393,35 +395,29 @@ function CashOperationForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="occurred">Дата и время</Label>
+        </FormField>
+        <FormField label="Дата и время" className="sm:col-span-2">
           <Input
-            id="occurred"
             type="datetime-local"
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
           />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2 lg:col-span-6">
-          <Label htmlFor="comment">
-            Комментарий <span className="text-rose-600">*</span>
-          </Label>
+        </FormField>
+        <FormField label="Комментарий" className="sm:col-span-2 lg:col-span-6">
           <Textarea
-            id="comment"
             rows={2}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="За что / от кого / основание"
           />
-        </div>
+        </FormField>
       </div>
       <div className="mt-3 flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button type="submit" disabled={saving}>
           {saving ? <Loader2 className="animate-spin" /> : <Plus />}
           Сохранить
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

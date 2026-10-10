@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/club-settings")({
@@ -42,6 +43,9 @@ function toFormValues(s: Settings | null | undefined): FormValues {
 
 // club_settings — глобальный синглтон (id = true), не привязан к студии.
 const QUERY_KEY = ["club_settings"];
+
+// Кнопка «Сохранить» живёт в шапке страницы, вне формы, — связана с ней по id.
+const FORM_ID = "club-settings-form";
 
 function ClubSettingsPage() {
   const queryClient = useQueryClient();
@@ -98,59 +102,74 @@ function ClubSettingsPage() {
     <AdminShell
       title="Настройки клуба"
       actions={
-        <Button onClick={handleSave} disabled={saving || loading}>
+        <Button type="submit" form={FORM_ID} disabled={saving || loading}>
           {saving ? <Loader2 className="animate-spin" /> : <Save />}
           Сохранить
         </Button>
       }
     >
       {loading ? (
-        <div className="flex h-40 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="max-w-2xl space-y-8">
+          {[3, 1].map((fields, i) => (
+            <div key={i} className="space-y-4 rounded-lg border bg-background p-6">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+              {Array.from({ length: fields }).map((_, f) => (
+                <div key={f} className="space-y-2">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       ) : (
-        <div className="max-w-2xl space-y-8">
-          <section className="space-y-4 rounded-lg border bg-card p-6">
+        // Форма — чтобы Enter в любом поле сохранял настройки.
+        <form
+          id={FORM_ID}
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="max-w-2xl space-y-8"
+        >
+          <section className="space-y-4 rounded-lg border bg-background p-6">
             <div>
               <h2 className="text-lg font-semibold">Кнопки на главном экране</h2>
               <p className="text-sm text-muted-foreground">
                 Ссылки для кнопок «Написать», «Позвонить» и «Обратная связь» в мобильном приложении.
               </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="write">Ссылка для кнопки «Написать»</Label>
+            <FormField
+              label="Ссылка для кнопки «Написать»"
+              hint="Например, ссылка на WhatsApp-чат клуба."
+            >
               <Input
-                id="write"
                 placeholder="https://wa.me/79991234567"
                 value={form.writeUrl}
                 onChange={(e) => setField("writeUrl", e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Например, ссылка на WhatsApp-чат клуба.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="call">Ссылка для кнопки «Позвонить»</Label>
+            </FormField>
+            <FormField label="Ссылка для кнопки «Позвонить»" hint="Телефонный номер в формате tel:.">
               <Input
-                id="call"
                 placeholder="tel:+79991234567"
                 value={form.callUrl}
                 onChange={(e) => setField("callUrl", e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Телефонный номер в формате tel:.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="feedback">Ссылка для кнопки «Обратная связь»</Label>
+            </FormField>
+            <FormField label="Ссылка для кнопки «Обратная связь»">
               <Input
-                id="feedback"
                 placeholder="https://forms.example.com/feedback"
                 value={form.feedbackUrl}
                 onChange={(e) => setField("feedbackUrl", e.target.value)}
               />
-            </div>
+            </FormField>
           </section>
 
-          <section className="space-y-4 rounded-lg border bg-card p-6">
+          <section className="space-y-4 rounded-lg border bg-background p-6">
             <div>
               <h2 className="text-lg font-semibold">Отмена бронирования тренировок</h2>
               <p className="text-sm text-muted-foreground">
@@ -158,23 +177,21 @@ function ClubSettingsPage() {
                 этого времени в приложении кнопка отмены недоступна.
               </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cancel">Минут до начала тренировки</Label>
+            <FormField
+              label="Минут до начала тренировки"
+              hint="Например, 180 — отменить можно не позже чем за 3 часа до начала."
+            >
               <Input
-                id="cancel"
                 type="number"
                 min={0}
                 step={1}
                 value={form.cancelMinutes}
                 onChange={(e) => setField("cancelMinutes", e.target.value)}
-                className="max-w-[200px]"
+                className="max-w-48"
               />
-              <p className="text-xs text-muted-foreground">
-                Например, 180 — отменить можно не позже чем за 3 часа до начала.
-              </p>
-            </div>
+            </FormField>
           </section>
-        </div>
+        </form>
       )}
     </AdminShell>
   );

@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { Loader2 } from "lucide-react";
+
 import { AdminShell } from "@/components/admin-shell";
+import { useConfirm } from "@/components/confirm-dialog";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useServerTable } from "@/hooks/use-server-table";
@@ -78,6 +81,7 @@ function formatLead(minutes: number) {
 
 function BookingsLogPage() {
   const studioId = useActiveStudioId();
+  const { confirm, confirmDialog } = useConfirm();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
   const [markingNoShows, setMarkingNoShows] = useState(false);
@@ -110,7 +114,18 @@ function BookingsLogPage() {
   // Раньше эта простановка вызывалась внутри загрузки страницы, то есть на
   // каждый ввод в поиске и на каждую смену страницы — а это два UPDATE'а по
   // всему журналу. Теперь только по явному нажатию.
+  // Правка журнала разом по всей студии — поэтому сначала подтверждение.
   const markNoShows = async () => {
+    if (
+      !(await confirm({
+        title: "Отметить пропущенные?",
+        description:
+          "Записи в статусе «Забронировано» на уже закончившиеся занятия этой студии станут «Пропущено».",
+        confirmLabel: "Отметить",
+        destructive: false,
+      }))
+    )
+      return;
     setMarkingNoShows(true);
     try {
       const { data, error } = await supabase.rpc("mark_no_show_bookings", {
@@ -129,7 +144,15 @@ function BookingsLogPage() {
   };
 
   return (
-    <AdminShell title="История записей">
+    <AdminShell
+      title="История записей"
+      actions={
+        <Button variant="outline" onClick={markNoShows} disabled={!studioId || markingNoShows}>
+          {markingNoShows && <Loader2 className="animate-spin" />}
+          Отметить пропущенные
+        </Button>
+      }
+    >
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
           <TableToolbar>
@@ -139,7 +162,7 @@ function BookingsLogPage() {
               placeholder="Поиск: имя, телефон, почта, тренировка"
             />
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -151,9 +174,6 @@ function BookingsLogPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={markNoShows} disabled={markingNoShows}>
-              {markingNoShows ? "Отмечаем…" : "Отметить пропущенные"}
-            </Button>
           </TableToolbar>
 
           <div className="rounded-lg border bg-background">
@@ -259,6 +279,7 @@ function BookingsLogPage() {
           </div>
         </RequireStudio>
       </div>
+      {confirmDialog}
     </AdminShell>
   );
 }

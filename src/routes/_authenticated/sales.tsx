@@ -20,7 +20,8 @@ import {
 } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, InfoNote } from "@/components/ui/form-field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -43,6 +44,7 @@ import {
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -590,199 +592,187 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
           Выберите клиента и абонемент. Стоимость подтянется автоматически.
         </DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Клиент</Label>
-            <ClientCombobox
-              studioId={studioId}
-              value={form.clientId}
-              onChange={(id, c) =>
-                setForm((f) => ({ ...f, clientId: id, clientLabel: c ? clientName(c) : "" }))
-              }
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="s-date">Дата продажи</Label>
-              <Input
-                id="s-date"
-                type="date"
-                value={form.soldAt}
-                onChange={(e) => set("soldAt", e.target.value)}
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Клиент">
+              <ClientCombobox
+                studioId={studioId}
+                value={form.clientId}
+                onChange={(id, c) =>
+                  setForm((f) => ({ ...f, clientId: id, clientLabel: c ? clientName(c) : "" }))
+                }
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Администратор</Label>
-              <Input value={staff?.displayName ?? ""} disabled readOnly />
-            </div>
-          </div>
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label>Абонемент</Label>
-            <SearchableCombobox
-              placeholder="Выбрать абонемент"
-              searchPlaceholder="Поиск по названию"
-              emptyText="Ничего не найдено"
-              value={form.membershipId}
-              onChange={pickMembership}
-              options={memberships.map((m) => ({
-                value: m.id,
-                label: m.name,
-                hint: formatMoney(Number(m.price ?? 0)),
-                searchText: m.name,
-              }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="s-amount">Стоимость, ₾</Label>
-              <Input
-                id="s-amount"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => set("amount", e.target.value)}
-              />
-              {t.discount > 0 && t.listPrice != null && (
-                <p className="text-xs text-muted-foreground">
-                  Цена по тарифу {formatMoney(t.listPrice)}, скидка {formatMoney(t.discount)}.
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Способ оплаты</Label>
-              <Select
-                value={form.paymentMethod}
-                onValueChange={(v) => set("paymentMethod", v as PaymentMethod)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {PAYMENT_METHOD_LABEL[m]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {t.installment ? (
-            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="s-down">Первый взнос, ₾</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Дата продажи">
                 <Input
-                  id="s-down"
+                  type="date"
+                  value={form.soldAt}
+                  onChange={(e) => set("soldAt", e.target.value)}
+                />
+              </FormField>
+              {/* Только для чтения — продажу записываем на того, кто вошёл. */}
+              <FormField label="Администратор" htmlFor={null}>
+                <div className="flex h-10 items-center text-sm">{staff?.displayName || "—"}</div>
+              </FormField>
+            </div>
+
+            <FormField label="Абонемент">
+              <SearchableCombobox
+                placeholder="Выбрать абонемент"
+                searchPlaceholder="Поиск по названию"
+                emptyText="Ничего не найдено"
+                value={form.membershipId}
+                onChange={pickMembership}
+                options={memberships.map((m) => ({
+                  value: m.id,
+                  label: m.name,
+                  hint: formatMoney(Number(m.price ?? 0)),
+                  searchText: m.name,
+                }))}
+              />
+            </FormField>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                label="Стоимость, ₾"
+                hint={
+                  t.discount > 0 && t.listPrice != null
+                    ? `Цена по тарифу ${formatMoney(t.listPrice)}, скидка ${formatMoney(t.discount)}.`
+                    : undefined
+                }
+              >
+                <Input
                   type="number"
                   min={0}
                   step="0.01"
-                  value={form.downPayment}
-                  onChange={(e) => set("downPayment", e.target.value)}
-                  placeholder="Сколько клиент вносит сейчас"
+                  value={form.amount}
+                  onChange={(e) => set("amount", e.target.value)}
                 />
-              </div>
+              </FormField>
+              <FormField label="Способ оплаты">
+                <Select
+                  value={form.paymentMethod}
+                  onValueChange={(v) => set("paymentMethod", v as PaymentMethod)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {PAYMENT_METHOD_LABEL[m]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label>Ещё платежей</Label>
-                <div className="flex gap-2">
-                  {([2, 3] as const).map((n) => (
-                    <Button
-                      key={n}
-                      type="button"
-                      variant={form.remainingCount === n ? "default" : "outline"}
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => set("remainingCount", n)}
+            {t.installment ? (
+              <div className="space-y-3">
+                <div className="text-xs font-medium uppercase text-muted-foreground">Рассрочка</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FormField label="Первый взнос, ₾">
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.downPayment}
+                      onChange={(e) => set("downPayment", e.target.value)}
+                      placeholder="Сколько вносит сейчас"
+                    />
+                  </FormField>
+                  <FormField label="Ещё платежей" htmlFor={null}>
+                    <RadioGroup
+                      value={String(form.remainingCount)}
+                      onValueChange={(v) => set("remainingCount", v === "3" ? 3 : 2)}
+                      className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
                     >
-                      {n} мес.
-                    </Button>
-                  ))}
+                      {([2, 3] as const).map((n) => (
+                        <label key={n} className="flex cursor-pointer items-center gap-2 text-sm">
+                          <RadioGroupItem value={String(n)} />
+                          <span>{n} мес.</span>
+                        </label>
+                      ))}
+                    </RadioGroup>
+                  </FormField>
                 </div>
+
+                {t.schedule.length > 0 && (
+                  <InfoNote>
+                    <ul className="space-y-1">
+                      {t.schedule.map((p, i) => (
+                        <li key={i} className="flex items-center justify-between gap-3">
+                          <span>
+                            {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
+                            {formatDate(p.date)}
+                          </span>
+                          <span className="font-medium tabular-nums text-foreground">
+                            {formatMoney(p.amount)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </InfoNote>
+                )}
               </div>
+            ) : membership ? (
+              <InfoNote>
+                Рассрочка недоступна для этого абонемента. Оплата производится сразу.
+              </InfoNote>
+            ) : null}
 
-              {t.schedule.length > 0 && (
-                <ul className="divide-y rounded-md border bg-background text-sm">
-                  {t.schedule.map((p, i) => (
-                    <li key={i} className="flex items-center justify-between px-3 py-1.5">
-                      <span className="text-muted-foreground">
-                        {p.isDownPayment ? "Первый взнос" : `Платёж ${i + 1}`} —{" "}
-                        {formatDate(p.date)}
-                      </span>
-                      <span className="font-medium">{formatMoney(p.amount)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Тип оплаты">
+                <Select
+                  value={form.paymentType}
+                  onValueChange={(v) => set("paymentType", v as PaymentType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_TYPES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PAYMENT_TYPE_LABEL[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Промокод" optional>
+                <Input value={form.promoCode} onChange={(e) => set("promoCode", e.target.value)} />
+              </FormField>
             </div>
-          ) : membership ? (
-            <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
-              Рассрочка недоступна для этого абонемента. Оплата производится сразу.
-            </div>
-          ) : null}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Тип оплаты</Label>
-              <Select
-                value={form.paymentType}
-                onValueChange={(v) => set("paymentType", v as PaymentType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_TYPES.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {PAYMENT_TYPE_LABEL[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="s-promo">Промо-код</Label>
-              <Input
-                id="s-promo"
-                value={form.promoCode}
-                onChange={(e) => set("promoCode", e.target.value)}
-                placeholder="Необязательно"
+            <FormField label="Комментарий" optional>
+              <Textarea
+                rows={2}
+                value={form.comment}
+                onChange={(e) => set("comment", e.target.value)}
               />
-            </div>
-          </div>
+            </FormField>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="s-comment">Комментарий</Label>
-            <Textarea
-              id="s-comment"
-              rows={2}
-              value={form.comment}
-              onChange={(e) => set("comment", e.target.value)}
-              placeholder="Необязательно"
-            />
+            {form.clientId && membership && (
+              <InfoNote>
+                Продажа абонемента «{membership.name}» клиенту {form.clientLabel}.
+              </InfoNote>
+            )}
           </div>
-
-          {form.clientId && membership && (
-            <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
-              Продажа абонемента «{membership.name}» клиенту {form.clientLabel}.
-            </div>
-          )}
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving && <Loader2 className="animate-spin" />}
-          Сохранить
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Продать
+          </Button>
+        </DialogFooter>
+      </DialogForm>
       {confirmDialog}
     </>
   );
@@ -804,7 +794,7 @@ function RefundDialog({ open, onOpenChange, sale, onSaved }: RefundDialogProps) 
   // уезжает анимацией.
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         {sale && (
           <RefundForm key={sale.id} sale={sale} onOpenChange={onOpenChange} onSaved={onSaved} />
         )}
@@ -891,59 +881,54 @@ function RefundForm({
           Возврат по продаже{sale.memberships?.name ? ` «${sale.memberships.name}»` : ""}.
         </DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="r-amount">Сумма возврата, ₾</Label>
-            <Input
-              id="r-amount"
-              type="number"
-              min={0}
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-            {!!refunded && (
-              <p className="text-xs text-muted-foreground">
-                Уже возвращено {formatMoney(refunded)}, доступно {formatMoney(available)}
-              </p>
-            )}
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField
+              label="Сумма возврата, ₾"
+              hint={
+                refunded
+                  ? `Уже возвращено ${formatMoney(refunded)}, доступно ${formatMoney(available)}`
+                  : undefined
+              }
+            >
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </FormField>
+            <FormField label="Способ">
+              <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {PAYMENT_METHOD_LABEL[m]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Причина" optional>
+              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
+            </FormField>
           </div>
-          <div className="space-y-1.5">
-            <Label>Способ</Label>
-            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {PAYMENT_METHOD_LABEL[m]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="r-reason">Причина (по желанию)</Label>
-            <Textarea
-              id="r-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-            />
-          </div>
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-          Отмена
-        </Button>
-        <Button onClick={handleSave} disabled={saving || loadingRefunded}>
-          {saving ? <Loader2 className="animate-spin" /> : null}
-          Оформить возврат
-        </Button>
-      </DialogFooter>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving || loadingRefunded}>
+            {saving && <Loader2 className="animate-spin" />}
+            Оформить возврат
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }

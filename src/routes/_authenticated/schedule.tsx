@@ -11,7 +11,8 @@ import { unwrap } from "@/lib/query";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
+import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
 import {
   Select,
@@ -21,26 +22,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
   DialogBody,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -69,7 +60,7 @@ type EntryDraft = { workout_id: string; starts_at: string; ends_at: string; trai
 
 const ENTRY_SELECT =
   "*, workout:workouts(name, type, capacity), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))";
-// Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Тренеры»
+// Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
 const TRAINER_COLS = "id, full_name";
@@ -212,7 +203,6 @@ function SchedulePage() {
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
   const [copySource, setCopySource] = useState<Entry | null>(null);
   const [pasting, setPasting] = useState(false);
-  const [duplicateWeekOpen, setDuplicateWeekOpen] = useState(false);
   const [duplicatingWeek, setDuplicatingWeek] = useState(false);
 
   // Справочники зависят только от студии, занятия — ещё и от недели: листание
@@ -260,6 +250,10 @@ function SchedulePage() {
   });
   const loading = workoutsFetching || trainersFetching || entriesFetching;
   const reloadEntries = () => queryClient.invalidateQueries({ queryKey: ["schedule_entries"] });
+
+  const weekLabel = `${fmtDate(weekStart)} — ${fmtDate(addDays(weekStart, 6))}`;
+  const isCurrentWeek = startOfWeek(new Date()).toDateString() === weekStart.toDateString();
+  const filtersActive = filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE;
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -328,10 +322,20 @@ function SchedulePage() {
     if (!studioId || duplicatingWeek) return;
     if (entries.length === 0) {
       toast.error("На текущей неделе нет занятий для копирования");
-      setDuplicateWeekOpen(false);
       return;
     }
     const nextWeekStart = addDays(weekStart, 7);
+    // Подтверждение — до копирования; само копирование идёт со спиннером на
+    // кнопке в шапке, при ошибке её можно нажать снова.
+    if (
+      !(await confirm({
+        title: "Дублировать неделю?",
+        description: `Все занятия с недели ${weekLabel} (${entries.length}) будут скопированы на следующую неделю (${fmtDate(nextWeekStart)} — ${fmtDate(addDays(nextWeekStart, 6))}) в те же дни и время, с теми же тренерами. Записи клиентов не копируются. Уже существующие на следующей неделе занятия (тот же тип и время) пропускаются.`,
+        confirmLabel: "Дублировать",
+        destructive: false,
+      }))
+    )
+      return;
     setDuplicatingWeek(true);
     try {
       // Уже стоящие на следующей неделе занятия (та же тренировка и время) не дублируем.
@@ -354,7 +358,6 @@ function SchedulePage() {
         .map((e) => copyDraft(e, new Date(new Date(e.starts_at).getTime() + WEEK_MS)))
         .filter((d) => !existingKeys.has(entryKey(d.workout_id, d.starts_at)));
       if (drafts.length === 0) {
-        setDuplicateWeekOpen(false);
         toast.info("Все занятия уже скопированы на следующую неделю");
         return;
       }
@@ -364,7 +367,6 @@ function SchedulePage() {
         toast.error("Ошибка копирования недели: " + res.error);
         return;
       }
-      setDuplicateWeekOpen(false);
       if (res.trainersError) {
         toast.error("Занятия скопированы, но тренеры не привязаны: " + res.trainersError);
       } else {
@@ -388,6 +390,7 @@ function SchedulePage() {
     setDialogOpen(true);
   };
 
+  /** true — занятие удалено (окно можно закрыть), false — отказ или ошибка. */
   const handleDelete = async (e: Entry) => {
     if (
       !(await confirm({
@@ -398,18 +401,16 @@ function SchedulePage() {
           "Записи клиентов на него будут отменены — в истории записей они останутся со статусом «Отменено».",
       }))
     )
-      return;
+      return false;
     const { error } = await supabase.from("schedule_entries").delete().eq("id", e.id);
     if (error) {
       toast.error("Ошибка удаления: " + error.message);
-      return;
+      return false;
     }
     toast.success("Занятие удалено");
     reloadEntries();
+    return true;
   };
-
-  const weekLabel = `${fmtDate(weekStart)} — ${fmtDate(addDays(weekStart, 6))}`;
-  const isCurrentWeek = startOfWeek(new Date()).toDateString() === weekStart.toDateString();
 
   return (
     <AdminShell
@@ -418,10 +419,10 @@ function SchedulePage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={() => setDuplicateWeekOpen(true)}
-            disabled={!studioId || entries.length === 0 || loading}
+            onClick={duplicateWeek}
+            disabled={!studioId || entries.length === 0 || loading || duplicatingWeek}
           >
-            <Copy />
+            {duplicatingWeek ? <Loader2 className="animate-spin" /> : <Copy />}
             Дублировать неделю
           </Button>
           <Button onClick={openAdd} disabled={!studioId || workouts.length === 0}>
@@ -433,18 +434,18 @@ function SchedulePage() {
     >
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2">
+          <TableToolbar>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Предыдущая неделя"
                 onClick={() => setWeekStart(addDays(weekStart, -7))}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft />
               </Button>
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => setWeekStart(startOfWeek(new Date()))}
                 disabled={isCurrentWeek}
               >
@@ -453,61 +454,51 @@ function SchedulePage() {
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Следующая неделя"
                 onClick={() => setWeekStart(addDays(weekStart, 7))}
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight />
               </Button>
               <span className="ml-1 text-sm font-medium">{weekLabel}</span>
               {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
 
-            <div className="ml-auto flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Тип:</span>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Все типы" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
-                    {DAY_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Тренер:</span>
-                <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Все тренеры" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
-                    {trainers.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {(filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setFilterType(ALL_FILTER_VALUE);
-                    setFilterTrainerId(ALL_FILTER_VALUE);
-                  }}
-                >
-                  Сбросить
-                </Button>
-              )}
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Все типы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
+                  {DAY_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Все тренеры" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
+                  {trainers.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <ToolbarReset
+                active={filtersActive}
+                onReset={() => {
+                  setFilterType(ALL_FILTER_VALUE);
+                  setFilterTrainerId(ALL_FILTER_VALUE);
+                }}
+              />
             </div>
-          </div>
+          </TableToolbar>
 
           {copySource && (
             <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
@@ -525,11 +516,11 @@ function SchedulePage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7"
                 onClick={() => setCopySource(null)}
                 disabled={pasting}
               >
-                <X /> Отмена
+                <X />
+                Отмена
               </Button>
             </div>
           )}
@@ -600,9 +591,9 @@ function SchedulePage() {
           </div>
 
           {workouts.length === 0 && (
-            <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+            <InfoNote variant="empty">
               Чтобы добавить занятие, сначала создайте тренировки в разделе «Тренировки».
-            </div>
+            </InfoNote>
           )}
         </RequireStudio>
       </div>
@@ -619,37 +610,6 @@ function SchedulePage() {
         onDelete={handleDelete}
       />
 
-      <AlertDialog
-        open={duplicateWeekOpen}
-        onOpenChange={(v) => !duplicatingWeek && setDuplicateWeekOpen(v)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Дублировать неделю?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Все занятия с недели {weekLabel} ({entries.length}) будут скопированы на следующую
-              неделю ({fmtDate(addDays(weekStart, 7))} — {fmtDate(addDays(weekStart, 13))}) в те же
-              дни и время, с теми же тренерами. Записи клиентов не копируются. Уже существующие на
-              следующей неделе занятия (тот же тип и время) пропускаются.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={duplicatingWeek}>Отмена</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(ev) => {
-                // Окно закрывает сам duplicateWeek по итогу: на время копирования
-                // остаётся спиннер, при ошибке можно повторить.
-                ev.preventDefault();
-                duplicateWeek();
-              }}
-              disabled={duplicatingWeek}
-            >
-              {duplicatingWeek && <Loader2 className="animate-spin" />}
-              Дублировать
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       {confirmDialog}
     </AdminShell>
   );
@@ -741,13 +701,15 @@ type EntryDialogProps = {
   entry: Entry | null;
   presetStart: Date | null;
   onSaved: () => void;
-  onDelete: (entry: Entry) => void;
+  /** Спрашивает подтверждение и удаляет; true — удалено. */
+  onDelete: (entry: Entry) => Promise<boolean>;
 };
 
 function EntryDialog({ open, ...formProps }: EntryDialogProps) {
   return (
     <Dialog open={open} onOpenChange={formProps.onOpenChange}>
-      <DialogContent className={formProps.entry ? "max-w-4xl" : "max-w-md"}>
+      {/* Одна ширина для создания и правки: записи идут под полями, в том же теле. */}
+      <DialogContent className="max-w-2xl">
         {/*
           Форма монтируется при каждом открытии и сбрасывать её не нужно. Раньше
           поля сбрасывал эффект по списку тренировок, и любая перезагрузка
@@ -781,6 +743,8 @@ function EntryForm({
   });
   const [trainerIds, setTrainerIds] = useState<string[]>(() => (entry ? trainerIdsOf(entry) : []));
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const busy = saving || deleting;
 
   const toggleTrainer = (id: string) => {
     setTrainerIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -848,21 +812,31 @@ function EntryForm({
     }
   };
 
+  // Сначала подтверждение, потом закрытие: при отказе окно с правками остаётся.
+  const handleDelete = async () => {
+    if (!entry) return;
+    setDeleting(true);
+    try {
+      if (await onDelete(entry)) onOpenChange(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
       <DialogHeader>
         <DialogTitle>{entry ? "Редактировать занятие" : "Новое занятие"}</DialogTitle>
         <DialogDescription>
           {entry
-            ? "Слева — настройки занятия, справа — записанные участники."
+            ? "Настройки занятия, ниже — записанные участники."
             : "Выберите тренировку, время и тренеров."}
         </DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <div className={entry ? "grid gap-6 md:grid-cols-2" : ""}>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Тренировка</Label>
+            <FormField label="Тренировка">
               <Select value={workoutId} onValueChange={setWorkoutId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите тренировку" />
@@ -875,77 +849,69 @@ function EntryForm({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Начало</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Начало">
                 <Input
                   type="datetime-local"
                   value={startsAt}
                   onChange={(e) => setStartsAt(e.target.value)}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Окончание</Label>
+              </FormField>
+              <FormField label="Окончание">
                 <Input
                   type="datetime-local"
                   value={endsAt}
                   onChange={(e) => setEndsAt(e.target.value)}
                 />
-              </div>
+              </FormField>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Тренеры</Label>
+            <FormField label="Тренеры" optional htmlFor={null}>
               {trainers.length === 0 ? (
-                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                  Добавьте тренеров в разделе «Тренеры», чтобы прикрепить их к занятию.
-                </div>
+                <InfoNote variant="empty">
+                  Добавьте тренеров в разделе «Сотрудники», чтобы прикрепить их к занятию.
+                </InfoNote>
               ) : (
-                <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
+                <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
                   {trainers.map((t) => (
-                    <label key={t.id} className="flex cursor-pointer items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={trainerIds.includes(t.id)}
-                        onCheckedChange={() => toggleTrainer(t.id)}
-                      />
-                      <span>{t.full_name}</span>
-                    </label>
+                    <CheckboxOption
+                      key={t.id}
+                      checked={trainerIds.includes(t.id)}
+                      onCheckedChange={() => toggleTrainer(t.id)}
+                    >
+                      {t.full_name}
+                    </CheckboxOption>
                   ))}
                 </div>
               )}
-            </div>
-          </div>
+            </FormField>
 
-          {entry && <BookingsPanel entry={entry} onChanged={onSaved} />}
-        </div>
-      </DialogBody>
-      <DialogFooter className="flex sm:justify-between">
-        <div>
+            {entry && <BookingsPanel entry={entry} onChanged={onSaved} />}
+          </div>
+        </DialogBody>
+        <DialogFooter>
           {entry && (
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => {
-                onOpenChange(false);
-                onDelete(entry);
-              }}
+              className="mr-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleDelete}
+              disabled={busy}
             >
-              <Trash2 /> Удалить
+              <Trash2 />
+              Удалить
             </Button>
           )}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Отмена
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button type="submit" disabled={busy}>
             {saving && <Loader2 className="animate-spin" />}
             Сохранить
           </Button>
-        </div>
-      </DialogFooter>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }
@@ -1101,81 +1067,81 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
   const capacity = entryCapacity(entry);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label>Записанные участники</Label>
-        <span className="text-xs text-muted-foreground">
-          {booked.length}
-          {capacity != null ? ` / ${capacity}` : ""}
-          {waitlisted.length > 0 && (
-            <span className="ml-2 text-blue-600">+{waitlisted.length} в очереди</span>
-          )}
-        </span>
-      </div>
+    <div className="space-y-4 border-t pt-4">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-medium uppercase text-muted-foreground">
+            Записанные участники
+          </div>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {booked.length}
+            {capacity != null ? ` / ${capacity}` : ""}
+            {waitlisted.length > 0 && ` · +${waitlisted.length} в очереди`}
+          </span>
+        </div>
 
-      {loading ? (
-        <div className="flex h-32 items-center justify-center rounded-md border">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      ) : booked.length === 0 ? (
-        <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-          Пока никто не записан.
-        </div>
-      ) : (
-        <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
-          {booked.map((b) => {
-            const c = data?.clientsByUser.get(b.user_id);
-            const m = c ? data?.membershipsByClient.get(c.id) : undefined;
-            return (
-              <div key={b.id} className="rounded-md border p-3 text-sm space-y-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-col">
-                    <BookingClientName client={c} />
-                    {b.status === "attended" && (
-                      <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
-                        Посещение зафиксировано
-                      </span>
+        {loading ? (
+          <div className="flex h-32 items-center justify-center rounded-md border">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : booked.length === 0 ? (
+          <InfoNote variant="empty">Пока никто не записан.</InfoNote>
+        ) : (
+          <div className="space-y-2">
+            {booked.map((b) => {
+              const c = data?.clientsByUser.get(b.user_id);
+              const m = c ? data?.membershipsByClient.get(c.id) : undefined;
+              const contacts = [c?.phone, c?.email].filter(Boolean).join(" · ");
+              return (
+                <div key={b.id} className="space-y-1 rounded-md border p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col items-start gap-1">
+                      <BookingClientName client={c} />
+                      {b.status === "attended" && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Посещение зафиксировано
+                        </span>
+                      )}
+                    </div>
+                    {b.status === "booked" && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleAttend(b)}
+                          disabled={attendingId === b.id}
+                        >
+                          {attendingId === b.id && <Loader2 className="animate-spin" />}
+                          Посетил
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
+                          Отклонить
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  {b.status === "booked" && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleAttend(b)}
-                        disabled={attendingId === b.id}
-                      >
-                        {attendingId === b.id && <Loader2 className="animate-spin" />}
-                        Посетил
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
-                        Отклонить
-                      </Button>
-                    </div>
-                  )}
+                  <div className="space-y-0.5 text-xs text-muted-foreground">
+                    {contacts && <div>{contacts}</div>}
+                    {m ? (
+                      <div>
+                        {m.membership?.name ?? "Абонемент"} ·{" "}
+                        {m.visits_left != null ? `осталось ${m.visits_left}` : "безлимит"} ·{" "}
+                        {formatDate(m.started_at)} – {m.ends_at ? formatDate(m.ends_at) : "∞"}
+                      </div>
+                    ) : (
+                      <div className="italic">Нет активного абонемента</div>
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  {c?.phone && <div>📞 {c.phone}</div>}
-                  {c?.email && <div>✉ {c.email}</div>}
-                  {m ? (
-                    <div>
-                      🎟 {m.membership?.name ?? "Абонемент"} ·{" "}
-                      {m.visits_left != null ? `осталось ${m.visits_left}` : "безлимит"} ·{" "}
-                      {formatDate(m.started_at)} – {m.ends_at ? formatDate(m.ends_at) : "∞"}
-                    </div>
-                  ) : (
-                    <div className="italic">Нет активного абонемента</div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {waitlisted.length > 0 && (
-        <div className="space-y-2 pt-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-blue-700">Лист ожидания</Label>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-medium uppercase text-muted-foreground">Лист ожидания</div>
             <span
               className="text-xs text-muted-foreground"
               title="Записались, когда свободных мест уже не было"
@@ -1209,8 +1175,13 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
         </div>
       )}
 
-      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <AlertDialogContent>
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        {/*
+          Окно открыто из формы занятия, а React всплывает события сквозь
+          портал по дереву компонентов: без stopPropagation отправка этой формы
+          дошла бы до формы занятия и сохранила бы её.
+        */}
+        <DialogContent className="max-w-md" onSubmit={(e) => e.stopPropagation()}>
           {cancelTarget && (
             <CancelBookingForm
               key={cancelTarget.id}
@@ -1219,8 +1190,8 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
               onDone={reload}
             />
           )}
-        </AlertDialogContent>
-      </AlertDialog>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1239,6 +1210,8 @@ function CancelBookingForm({
   const [reason, setReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
+  // Окно закрывается по успеху: на время запроса виден спиннер, при ошибке
+  // можно повторить.
   const handleCancel = async () => {
     setCancelling(true);
     try {
@@ -1258,43 +1231,42 @@ function CancelBookingForm({
 
   return (
     <>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Отклонить?</AlertDialogTitle>
-        <AlertDialogDescription>
-          Бронирование будет отменено со статусом «Отклонена». Пользователь сможет записаться снова,
-          если останутся места.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <div className="space-y-1.5">
-        <Label>Причина отмены</Label>
-        <Select value={reason} onValueChange={setReason}>
-          <SelectTrigger>
-            <SelectValue placeholder="Не указана" />
-          </SelectTrigger>
-          <SelectContent>
-            {ADMIN_CANCEL_REASONS.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <AlertDialogFooter>
-        <AlertDialogCancel disabled={cancelling}>Отмена</AlertDialogCancel>
-        <AlertDialogAction
-          onClick={(ev) => {
-            // Окно закрывается по успеху: на время запроса виден спиннер, при
-            // ошибке можно повторить.
-            ev.preventDefault();
-            handleCancel();
-          }}
-          disabled={cancelling}
-        >
-          {cancelling && <Loader2 className="animate-spin" />}
-          Отклонить
-        </AlertDialogAction>
-      </AlertDialogFooter>
+      <DialogHeader>
+        <DialogTitle>Отклонить запись?</DialogTitle>
+        <DialogDescription>
+          Бронирование будет отменено со статусом «Отклонена». Клиент сможет записаться снова, если
+          останутся места.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleCancel}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Причина отмены" optional>
+              <Select value={reason} onValueChange={setReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Не указана" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ADMIN_CANCEL_REASONS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={cancelling}>
+            Отмена
+          </Button>
+          <Button type="submit" variant="destructive" disabled={cancelling}>
+            {cancelling && <Loader2 className="animate-spin" />}
+            Отклонить запись
+          </Button>
+        </DialogFooter>
+      </DialogForm>
     </>
   );
 }

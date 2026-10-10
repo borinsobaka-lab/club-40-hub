@@ -9,9 +9,9 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
+import { TableToolbar } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -425,8 +425,8 @@ function DashboardPage() {
 
   return (
     <AdminShell title="Дашборд">
-      <div className="space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="space-y-3">
+        <TableToolbar>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -455,32 +455,27 @@ function DashboardPage() {
           </Popover>
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => setRange({ from: startOfMonth(today), to: endOfMonth(today) })}
           >
             Текущий месяц
           </Button>
           {fetching && (
             <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               обновляем…
             </div>
           )}
-        </div>
+        </TableToolbar>
 
         <RequireStudio studioId={studioId}>
           {loading ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {STATS.map((stat) => (
-                <Card key={stat.key}>
-                  <CardHeader className="pb-2">
-                    <Skeleton className="h-4 w-32" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-7 w-24" />
-                    <Skeleton className="mt-2 h-3 w-20" />
-                  </CardContent>
-                </Card>
+                <div key={stat.key} className="rounded-lg border bg-background p-4">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="mt-3 h-7 w-24" />
+                  <Skeleton className="mt-2 h-3 w-20" />
+                </div>
               ))}
             </div>
           ) : (
@@ -495,31 +490,25 @@ function DashboardPage() {
                       ? formatMoney(v)
                       : formatNumber(v);
                 return (
-                  <Card key={stat.key}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {stat.label}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-semibold tabular-nums">{value}</div>
-                      <div className="mt-1 flex items-center gap-2">
-                        {stat.hint && (
-                          <span className="text-xs text-muted-foreground">{stat.hint}</span>
-                        )}
-                      </div>
-                      {stat.compare && v !== undefined && p !== undefined && (
-                        <div className="mt-2">
-                          <Delta
-                            current={v}
-                            previous={p}
-                            goodWhenUp={stat.goodWhenUp}
-                            isMoney={stat.format === "money"}
-                          />
-                        </div>
+                  <div key={stat.key} className="rounded-lg border bg-background p-4">
+                    <div className="text-sm font-medium text-muted-foreground">{stat.label}</div>
+                    <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      {stat.hint && (
+                        <span className="text-xs text-muted-foreground">{stat.hint}</span>
                       )}
-                    </CardContent>
-                  </Card>
+                    </div>
+                    {stat.compare && v !== undefined && p !== undefined && (
+                      <div className="mt-2">
+                        <Delta
+                          current={v}
+                          previous={p}
+                          goodWhenUp={stat.goodWhenUp}
+                          isMoney={stat.format === "money"}
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

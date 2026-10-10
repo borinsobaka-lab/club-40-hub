@@ -122,7 +122,7 @@ function AutorenewCancellationsPage() {
               placeholder="Поиск: имя, телефон, почта, абонемент"
             />
             <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
