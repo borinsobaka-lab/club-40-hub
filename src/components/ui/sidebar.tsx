@@ -20,8 +20,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "12rem";
-const SIDEBAR_WIDTH_MOBILE = "18rem";
+// Ширина панели вместе с рейкой разделов слева (--rail-width в styles.css):
+// само меню — 12rem, в шторке на телефоне — 16rem.
+const SIDEBAR_WIDTH = "calc(var(--rail-width) + 12rem)";
+const SIDEBAR_WIDTH_MOBILE = "calc(var(--rail-width) + 16rem)";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 

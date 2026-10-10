@@ -105,6 +105,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-brand: var(--brand);
+  --color-rail: var(--rail);
   --color-canvas: var(--canvas);
   --color-field: var(--field);
 }
@@ -145,6 +146,11 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* Рейка разделов слева от меню (AppRail): на тон темнее --sidebar, чтобы
+     читалась отдельной колонкой. Ширина входит в --sidebar-width (ui/sidebar). */
+  --rail: #12161b;
+  --rail-width: 4.5rem;
 
   /* Фирменный цвет: иконка активного пункта меню и её свечение, отметка
      «сегодня» в расписании. Кнопки и ссылки — на --primary. */
@@ -196,6 +202,8 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --rail: #12161b;
+  --rail-width: 4.5rem;
   --brand: #f763fc;
   /* Тёмной темы в приложении нет, но токен объявляем и здесь: иначе случайно
      навешенный класс .dark оставил бы светлую подложку под тёмным контентом. */
@@ -437,6 +445,28 @@ input[type="number"]::-webkit-outer-spin-button {
   );
   background-size: 300% 300%;
   animation: var(--animate-gradient-flow);
+}
+
+/* Разноцветное свечение за иконкой активного раздела в рейке (AppRail):
+   размытое пятно в палитре Kate (ai-gradient) плюс оранжевый. Пятно медленно
+   вращается — переливается; при «меньше движения» стоит на месте. */
+@utility rail-glow {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    z-index: -1;
+    border-radius: 9999px;
+    background: conic-gradient(#ec4899, #f97316, #a855f7, #6366f1, #06b6d4, #ec4899);
+    filter: blur(8px);
+    animation: rail-glow-spin 8s linear infinite;
+  }
+}
+
+@keyframes rail-glow-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes gradient-flow {
