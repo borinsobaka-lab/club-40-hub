@@ -10,8 +10,7 @@
 ## Типографика
 
 **Шрифт — Roboto** (корпоративный, общий с клиентским приложением). Самохостится
-из `@fontsource/roboto`, подключён в `styles.css`: 400, 400 italic, 500, 600,
-700. Google Fonts не дёргаем — работает офлайн и без запросов на сторонние
+из `@fontsource/roboto`, подключён в `styles.css`: 400, 400 italic, 500, 600, 700. Google Fonts не дёргаем — работает офлайн и без запросов на сторонние
 домены. Системные шрифты остаются только фолбэком на время загрузки.
 
 **Шкала — база 14px, коэффициент ~1.25:** 14 · 18 · 22 · 28 · 34 · 44
@@ -47,7 +46,9 @@
   квадрат) — `public/favicon.svg` + растровые фолбэки. Плашка обязательна:
   жёлтый на прозрачном фоне на светлой вкладке почти не читается.
 
-- Кнопка Kate (AI): `ai-gradient` — единственный градиент в приложении.
+- Кнопка Kate (AI): `ai-gradient` — единственный градиент в приложении;
+  в той же палитре (плюс оранжевый) — только свечение активного раздела в
+  рейке (`rail-glow`).
 - Логотип в меню — логотип активной студии (`studios.logo_url`, бакет
   `studio-logos`; прежний Lady Stretch — `public/logos/lady-stretch.svg`),
   без логотипа — название студии. Цвет `--brand` тоже свой у каждой студии
@@ -170,10 +171,10 @@
 ## Каркас и боковое меню
 
 - **Каркас живёт в layout-роуте** `_authenticated/route.tsx`: `SidebarProvider`
-  + `AppSidebar` монтируются один раз, страницы меняются только внутри
-  `Outlet`. `AdminShell` рисует шапку и `<main>`, но не панель. Возвращать
-  панель в AdminShell нельзя: тогда она размонтируется на каждом переходе —
-  прокрутка меню отскакивает наверх, а сама панель на кадр перерисовывается.
+  - `AppSidebar` монтируются один раз, страницы меняются только внутри
+    `Outlet`. `AdminShell` рисует шапку и `<main>`, но не панель. Возвращать
+    панель в AdminShell нельзя: тогда она размонтируется на каждом переходе —
+    прокрутка меню отскакивает наверх, а сама панель на кадр перерисовывается.
 - Пункты меню — `font-medium`, активный `font-semibold` + `bg-white/10`;
   иконка обычного пункта белая (Solar Outline) с белым свечением при
   наведении, активного — розовая BoldDuotone с постоянным розовым свечением.
@@ -181,7 +182,12 @@
   линейка `h-px flex-1 bg-white/15` до правого края и шевron, который
   переворачивается по `data-state` (`Collapsible` из ui). Блоки сворачиваются,
   состояние лежит в `localStorage` (`sidebar_groups`).
-- **Меню всегда развёрнуто**, ширина 12rem (`SIDEBAR_WIDTH` в
+- **Рейка разделов** (`AppRail`) — колонка `--rail-width` (4.5rem) слева от
+  меню, фон `--rail` (на тон темнее `--sidebar`): иконка 24px и подпись
+  `text-xs` под ней. Обычный раздел — как пункт меню (белая Outline, белое
+  свечение при наведении), активный — белая BoldDuotone с разноцветным
+  `rail-glow`. Раздел без url — заготовка: `opacity-40`, не нажимается.
+- **Меню всегда развёрнуто**, ширина 12rem + рейка (`SIDEBAR_WIDTH` в
   `ui/sidebar.tsx`); свёрнутого режима нет. До `md` панель уходит в шторку,
   открыть её можно `SidebarTrigger`-ом в шапке страницы — он виден только на
   узком экране.
@@ -204,6 +210,7 @@
 Токен намеренно отдельный от `--background`: сменить тон подложки — одна
 строка в `styles.css`, разметку трогать не нужно. Новую страницу кладём на
 канву как есть — свой фон под контент не задаём.
+
 - В `SidebarMenuButton` из shadcn состояния `hover`/`active`/`data-[active]`
   красятся в `sidebar-accent`, а он почти белый — на тёмной панели это
   вспышка. Все три перекрыты в `AppSidebar` на `bg-white/10`; **добавляя
@@ -230,6 +237,7 @@
 - Все разделы, включая «Сотрудников», используют AdminShell (title + actions).
 - Страница без выбранной студии: карточка `rounded-lg border bg-background
 p-8 text-center text-sm text-muted-foreground` «Сначала выберите студию».
+
 ## Диалоги
 
 Ширина и устройство диалога с формой — в разделе «Формы».
@@ -238,9 +246,9 @@ p-8 text-center text-sm text-muted-foreground` «Сначала выберите
 
 ```tsx
 <DialogContent className="max-w-lg">
-  <DialogHeader>…</DialogHeader>   {/* закреплена */}
-  <DialogBody>…</DialogBody>       {/* прокручивается только она */}
-  <DialogFooter>…</DialogFooter>   {/* закреплён */}
+  <DialogHeader>…</DialogHeader> {/* закреплена */}
+  <DialogBody>…</DialogBody> {/* прокручивается только она */}
+  <DialogFooter>…</DialogFooter> {/* закреплён */}
 </DialogContent>
 ```
 
@@ -316,7 +324,9 @@ p-8 text-center text-sm text-muted-foreground` «Сначала выберите
     </DialogBody>
     <DialogFooter>
       {/* слева при необходимости: <Button variant="ghost" className="mr-auto text-destructive …">Удалить</Button> */}
-      <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Отмена</Button>
+      <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+        Отмена
+      </Button>
       <Button type="submit" disabled={saving}>
         {saving && <Loader2 className="animate-spin" />}
         Сохранить
@@ -342,7 +352,7 @@ p-8 text-center text-sm text-muted-foreground` «Сначала выберите
 - Карточка «только чтение» (карточка клиента) — тот же каркас: имя в
   `DialogTitle`, подвал «Закрыть» (outline) + главное действие справа.
 - Подписи-разделы внутри тела — `text-xs font-medium uppercase
-  text-muted-foreground`.
+text-muted-foreground`.
 
 ## Общие компоненты и хелперы (не дублировать)
 
@@ -374,7 +384,7 @@ p-8 text-center text-sm text-muted-foreground` «Сначала выберите
 - `useConfirm()` (`src/components/confirm-dialog.tsx`) — подтверждение действия.
   Системный `confirm()` в админке не используем: он выпадает из дизайна.
   Вызов остаётся линейным: `if (!(await confirm({ title: "Удалить клиента?",
-  description: "…" }))) return;`, а `{confirmDialog}` рендерится в разметке
+description: "…" }))) return;`, а `{confirmDialog}` рендерится в разметке
   страницы. По умолчанию кнопка разрушающая («Удалить»); для неразрушающих
   подтверждений — `destructive: false` и своя надпись (`confirmLabel`).
   В заголовке — вопрос, в описании — что именно произойдёт и с чем.
