@@ -217,6 +217,12 @@ own"` оставить). Альтернатива — выдача абонем�
   «Услуги» — общая `components/showcase-page.tsx`, файлы роутов — конфиг.
   Эталон страницы — `promocodes.tsx`.
 
+- PWA (устанавливается на телефон и ноутбук): `public/manifest.webmanifest`,
+  иконки `public/icon-*.png` (из `favicon.svg`; maskable — «40» в безопасной
+  зоне), мета-теги iOS в `__root.tsx`. `public/sw.js` регистрируется только в
+  прод-сборке и приложение НЕ кэширует — перехватывает лишь переходы и без сети
+  отдаёт `public/offline.html` (меняя её, поднять `VERSION` в sw.js).
+
 ### Слой данных (React Query)
 
 - Загрузка — `useQuery` + `unwrap()` из `src/lib/query.ts` (ошибка Supabase →
