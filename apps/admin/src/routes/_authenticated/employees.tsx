@@ -21,7 +21,7 @@ import {
   type ClubSectionKey,
   type RailAccessKey,
 } from "@/lib/admin-access";
-import { CLUB_GROUPS } from "@/lib/nav-sections";
+import { STUDIO_SECTION_GROUPS } from "@/lib/nav-sections";
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { Button } from "@/components/ui/button";
@@ -533,7 +533,7 @@ function StudioAccess({
       </div>
       {selected && showSections && (
         <div className="space-y-3 border-t p-3">
-          {CLUB_GROUPS.map((group) => (
+          {STUDIO_SECTION_GROUPS.map((group) => (
             <div key={group.key} className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground uppercase">
                 {group.label}

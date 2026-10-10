@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { canOpenClubSection, canOpenRail, type AdminAccess } from "./admin-access";
+import {
+  canOpenClubSection,
+  canOpenRail,
+  dashboardStudioIds,
+  type AdminAccess,
+} from "./admin-access";
 import { canOpenPath, firstAllowedUrl } from "./nav-sections";
 
 const A = "studio-a";
@@ -70,5 +75,26 @@ describe("права в админке", () => {
     expect(canOpenPath(owner, A, "/trainers")).toBe(true);
     expect(canOpenPath(owner, A, "/pay-rates")).toBe(true);
     expect(canOpenPath(owner, A, "/employees")).toBe(true);
+  });
+
+  test("дашборд над студиями — только студии, где он открыт", () => {
+    expect(dashboardStudioIds(legacy)).toEqual([A]);
+    expect(dashboardStudioIds(limited)).toEqual([]);
+    expect(dashboardStudioIds(owner)).toEqual([A]);
+    const mixed: AdminAccess = {
+      isOwner: false,
+      rail: ["club"],
+      studios: {
+        [A]: { owner: false, sections: ["dashboard"] },
+        [B]: { owner: false, sections: ["cash"] },
+      },
+    };
+    expect(dashboardStudioIds(mixed)).toEqual([A]);
+    // Раздел рейки открыт из любой студии — от активной не зависит.
+    expect(canOpenPath(mixed, B, "/dashboard")).toBe(true);
+    expect(firstAllowedUrl(mixed, B)).toBe("/cash");
+    expect(firstAllowedUrl({ ...mixed, studios: { [A]: mixed.studios[A] } }, A)).toBe("/dashboard");
+    // Без «Клуба» в рейке дашборд закрыт, как и разделы студий.
+    expect(canOpenPath({ ...mixed, rail: ["app"] }, A, "/dashboard")).toBe(false);
   });
 });
