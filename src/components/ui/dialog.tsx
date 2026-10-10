@@ -40,8 +40,10 @@ const DialogContent = React.forwardRef<
       // Метка для заливки полей (styles.css): поля в окнах светло-серые.
       data-form-surface=""
       className={cn(
-        // w-[calc(100%-2rem)] — на телефоне окно не прилипает к краям экрана.
-        "fixed left-[50%] top-[50%] z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        // На телефоне окно почти во весь экран: 8px до краёв и почти вся высота
+        // (dvh — без адресной строки), иначе в форму мало что влезает. С sm —
+        // привычные поля вокруг и 85% высоты.
+        "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-lg sm:max-h-[85vh] sm:w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -66,7 +68,9 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col space-y-1.5 border-b px-6 py-4 pr-12 text-center sm:text-left",
+      // Текст всегда слева — по центру (как в shadcn на мобильных) он
+      // отрывался от полей, которые выровнены влево.
+      "flex shrink-0 flex-col space-y-1.5 border-b px-4 py-4 pr-12 text-left sm:px-6",
       className,
     )}
     {...props}
@@ -80,7 +84,7 @@ DialogHeader.displayName = "DialogHeader";
  * нужно (и нельзя — тогда поедут шапка с подвалом).
  */
 const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-4", className)} {...props} />
+  <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6", className)} {...props} />
 );
 DialogBody.displayName = "DialogBody";
 
@@ -114,12 +118,14 @@ DialogForm.displayName = "DialogForm";
 /**
  * Подвал с кнопками — тоже закреплён, всегда виден под прокруткой тела.
  * Порядок: слева при необходимости разрушающее действие («Удалить»), справа
- * «Отмена» (outline) и главная кнопка.
+ * «Отмена» (outline) и главная кнопка. Кнопки всегда в строку — на телефоне
+ * они делят ширину поровну (столбиком две короткие кнопки только съедали
+ * высоту формы).
  */
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:justify-end",
+      "flex shrink-0 items-center justify-end gap-2 border-t px-4 py-3 sm:px-6 sm:py-4 max-sm:[&>*]:flex-1",
       className,
     )}
     {...props}
