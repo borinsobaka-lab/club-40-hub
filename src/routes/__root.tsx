@@ -86,6 +86,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       // Цвет плашки иконки — им же браузеры красят интерфейс на мобильных.
       { name: "theme-color", content: "#1B1C1F" },
+      // Установка на телефон и ноутбук (PWA): манифест + public/sw.js. Для
+      // iPhone — свои мета-теги: Safari берёт имя и иконку отсюда, а не из манифеста.
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Base40" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
     ],
     links: [
       {
@@ -98,6 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
       { rel: "icon", href: "/favicon.ico", sizes: "any" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -122,6 +129,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Service worker — только в прод-сборке: в дев-режиме он перехватывал бы
+  // переходы и мешал HMR. Сбой регистрации не ломает админку, лишь отключает
+  // установку как приложения.
+  useEffect(() => {
+    if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("[pwa] service worker не зарегистрирован", error);
+    });
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
