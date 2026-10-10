@@ -1,7 +1,8 @@
 /**
- * Мигратор схемы БД. Запускается при старте контейнера админки (Dockerfile),
- * до сервера: выполняет новые файлы db/migrations/*.sql по порядку имён и
- * записывает их в app_migrations.applied — каждый файл выполняется один раз.
+ * Мигратор схемы БД. Запускается при старте контейнера админки
+ * (apps/admin/Dockerfile), до сервера: выполняет новые файлы
+ * db/migrations/*.sql по порядку имён и записывает их в
+ * app_migrations.applied — каждый файл выполняется один раз.
  *
  * - DATABASE_URL (runtime-секрет club40-admin в Coolify) — прямое подключение
  *   к Postgres self-hosted Supabase. Не задан — миграции пропускаются, сервер
@@ -15,7 +16,7 @@
  * - Изменённый после выполнения файл повторно не выполняется — только
  *   предупреждение в лог. Исправление = новый файл.
  *
- * Вручную: DATABASE_URL=postgres://… bun scripts/migrate.ts
+ * Вручную (из корня репозитория): DATABASE_URL=postgres://… bun db/migrate.ts
  */
 import { SQL } from "bun";
 import { createHash } from "node:crypto";
@@ -120,7 +121,7 @@ if (import.meta.main) {
   }
   const db = new SQL(url, { max: 1 });
   try {
-    await runMigrations(db, readMigrations(join(import.meta.dir, "..", "db", "migrations")));
+    await runMigrations(db, readMigrations(join(import.meta.dir, "migrations")));
   } catch (e) {
     console.error(`[migrate] ОШИБКА, сервер не запущен: ${(e as Error).message}`);
     process.exit(1);

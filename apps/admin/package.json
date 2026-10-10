@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "migrate": "bun scripts/migrate.ts"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.51",

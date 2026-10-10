@@ -101,7 +101,9 @@
    Private Repository (with GitHub App)** → выбери `borinsobaka-lab/club-40-hub`,
    ветка `main`.
 2. Настройки приложения:
-   - **Build Pack**: Dockerfile (файл `Dockerfile` лежит в корне репозитория).
+   - **Build Pack**: Dockerfile. С 2026-10-10 репозиторий — монорепозиторий:
+     **Base Directory** `/`, **Dockerfile Location** `/apps/admin/Dockerfile`,
+     **Watch Paths** `apps/admin/**` и `db/**` (см. AGENT_TASKS.md, Задача 9).
    - **Port**: 3000.
    - **Domain**: `https://admin.<домен>`.
 3. **Environment Variables** — добавь три переменные:

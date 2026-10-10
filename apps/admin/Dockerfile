@@ -1,11 +1,14 @@
 # Сборка и запуск админки для Coolify (Nitro preset: node-server, порт 3000).
+# Контекст сборки — КОРЕНЬ монорепозитория (Coolify: Base Directory «/»,
+# Dockerfile Location «/apps/admin/Dockerfile»): кроме apps/admin нужен общий
+# db/ — мигратор и миграции.
 FROM oven/bun:1 AS build
 WORKDIR /app
 
-COPY package.json bun.lock bunfig.toml ./
+COPY apps/admin/package.json apps/admin/bun.lock apps/admin/bunfig.toml ./
 RUN bun install --frozen-lockfile
 
-COPY . .
+COPY apps/admin/ ./
 
 # VITE_* переменные вшиваются в клиентский бандл на этапе сборки —
 # в Coolify отметьте их как "Build Variable".
@@ -23,8 +26,8 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 COPY --from=build /app/.output ./.output
 # Мигратор схемы БД и его файлы: при старте сначала миграции (без
 # DATABASE_URL — пропускаются), упали — сервер не запускается.
-COPY --from=build /app/scripts/migrate.ts ./scripts/migrate.ts
-COPY --from=build /app/db/migrations ./db/migrations
+COPY db/migrate.ts ./db/migrate.ts
+COPY db/migrations ./db/migrations
 
 EXPOSE 3000
 # Health check: Coolify ждёт «healthy» нового контейнера и только потом
@@ -34,4 +37,4 @@ EXPOSE 3000
 # start-period — запас на выполнение миграций до старта сервера.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
   CMD bun -e "fetch('http://127.0.0.1:3000/auth').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
-CMD ["sh", "-c", "bun scripts/migrate.ts && exec bun .output/server/index.mjs"]
+CMD ["sh", "-c", "bun db/migrate.ts && exec bun .output/server/index.mjs"]

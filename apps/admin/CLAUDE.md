@@ -1,0 +1,195 @@
+# Base40 — админка (apps/admin)
+
+Админ-панель фитнес-студии Base40. TanStack Start (SSR) + React 19 +
+Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
+
+Это часть монорепозитория: общие правила (рабочий режим, деплой, форматы
+студий, **база данных и модель доступа**) — в корневом `CLAUDE.md`. Схема БД —
+`db/` в корне репозитория. Клиентское приложение — `apps/client`.
+
+## Команды (из apps/admin)
+
+- `bun install` — зависимости (только публичный npm-реестр)
+- `bun run dev` — дев-сервер на :8080
+- `bun run build` — прод-сборка (Nitro node-server → `.output/server/index.mjs`)
+- `bunx tsc --noEmit` — типы; должен быть чистым перед коммитом
+- `bun test` — тесты (логика auth-писем, отправка почты, инструменты Kate).
+  Файлы `*.test.ts` исключены из tsc: глобальные типы Bun конфликтуют с
+  DOM-типами приложения.
+- `bun run lint` — 0 ошибок (остаются 5 предупреждений react-refresh в
+  shadcn-файлах); держать так. `eslint-disable` и `as any` в коде страниц нет —
+  не добавлять. Форматирование и содержательные правки — разными коммитами.
+
+## Деплой
+
+Ресурс Coolify `club40-admin`, https://admin.base40.fit, Dockerfile —
+`apps/admin/Dockerfile` (контекст — корень репозитория: нужен `db/`).
+Env-переменные: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+(build-time), `APP_SUPABASE_SERVICE_KEY` (runtime-секрет, раздел
+«Сотрудники»), `DATABASE_URL` (runtime-секрет, прямое подключение к Postgres
+для мигратора; не задан — миграции пропускаются). AI-переменные
+(`AI_GATEWAY_*`, `AI_CHAT_MODEL`, `AI_TRANSCRIBE_MODEL`) не заданы — ассистент
+и диктовка намеренно отвечают 503 до выбора провайдера.
+
+## Auth-письма
+
+Send Email Hook (`GOTRUE_HOOK_SEND_EMAIL_*` у сервиса auth): Supabase дёргает /api/auth-email (src/routes/api/auth-email.ts),
+логика писем — src/lib/auth-email.ts (+ тест auth-email.test.ts), отправка —
+src/lib/mail.ts с noreply@base40.fit: через Unisender Go, если задан
+UNISENDER_GO_API_KEY, иначе по-старому Resend (код Resend удалим отдельным
+шагом после переключения ключа).
+
+**Во всех письмах авторизации — 6-значный код, ссылок авто-входа нет**
+(решение владельца 2026-10-10; recovery/invite — тоже код: `/recover` у GoTrue
+публичный). Текст письма зависит от ПРИЛОЖЕНИЯ, а не от человека: один
+человек может быть и админом, и клиентом. Признак — хост в redirect_to (оба
+приложения задают emailRedirectTo явно): admin.base40.fit -> «вход в
+админ-панель», всё остальное (включая нераспознанный redirect) -> клиентское
+письмо. Env: SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_API_KEY (или RESEND_API_KEY),
+опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
+в корне репозитория.
+
+**Вход в админку — только по 6-значному коду из письма, паролей у
+сотрудников нет** (решения владельца 2026-10-09, 2026-10-10). Форма /auth шлёт
+почту в серверную функцию `requestStaffLoginCode` (src/lib/auth.functions.ts):
+она сервис-ключом проверяет, что почта принадлежит сотруднику, и только тогда
+просит GoTrue отправить код; ответ одинаковый для любой почты. Код создаёт
+GoTrue и видит только хук писем — в браузер он не возвращается ни в каком
+ответе (не логировать, не класть в URL/хранилище); введённый код браузер
+отдаёт прямо в GoTrue (`verifyOtp`, type `email`). Пароли сотрудников стирает
+`db/migrations/2026-10-10_staff_accounts.sql` (разово + триггер при выдаче роли): пароль давал токен
+напрямую у GoTrue в обход письма. Сотрудники добавляются в «Доступах»: фамилия, имя, почта
+(profiles.full_name = «Фамилия Имя»; есть учётная запись — только выдаётся роль,
+имя дописывается, если пустое). Роль сотрудника проверяет и guard
+(\_authenticated/route.tsx).
+
+## Код
+
+- Клиент Supabase в браузере НЕтипизированный (без `<Database>`); свежие типы
+  генерировать пока нечем — нужен access token владельца.
+- Стиль: русские тексты UI, `@/` алиасы. Иконки — **Hugeicons** под именами
+  lucide: alias в `vite.config` + `paths` в `tsconfig` подменяют
+  `lucide-react` на шим `src/lib/icons.tsx` (сам пакет `lucide-react` из
+  зависимостей убран). Шим генерируется — `bun run scripts/gen-icons.ts`
+  пересобирает его по фактическим импортам; ручные соответствия имён лежат
+  в `MANUAL` там же. Исключение — иконки бокового меню: Solar (Outline, у
+  активного пункта — BoldDuotone) в `components/nav-icons.tsx`, генерируются `bun run scripts/gen-nav-icons.ts`
+  (пакет `@solar-icons/react` — только devDependency: в нём все 6 начертаний
+  на иконку, напрямую он раздувал бандл на ~226 kB).
+- Цвета: основной цвет — токен `--brand` (`text-brand`, `border-b-brand`);
+  в styles.css — розовый по умолчанию, при открытой студии его подменяет
+  `studios.brand_color` (`components/studio-branding.tsx`),
+  подложка рабочей области — `--canvas`, меню — `--sidebar`; всё в
+  `src/styles.css`. `--primary` (тёмные кнопки, активный таб) — тот же цвет,
+  что меню. Табы (`ui/tabs.tsx`) — общая плашка, переезжающая к активному
+  табу; фон триггерам не задавать. Логотип в меню — `studios.logo_url`
+  активной студии (бакет `studio-logos`; прежний Lady Stretch —
+  `public/logos/lady-stretch.svg`). Меню всегда развёрнуто (ширина — SIDEBAR_WIDTH в
+  `ui/sidebar.tsx`, включает рейку), свёрнутого режима нет.
+- Слева от меню — рейка разделов `components/app-rail.tsx` (иконка + подпись,
+  у активного — белая иконка с разноцветным свечением `rail-glow`): «Клуб» —
+  весь текущий интерфейс, «Скрипты» — заготовка без url (не нажимается);
+  внизу рейки — верхнеуровневые «Доступы» (/employees) и «Студии» (/studios):
+  своего меню у них нет, справа остаётся меню клуба без активного пункта.
+- Мобильная вёрстка (2026-10-10) — `.interface-design/system.md`, раздел
+  «Мобильная вёрстка»: таблицы до md сами становятся карточками (подписи из
+  заголовков колонок — колонке с данными нужен заголовок), диалоги до sm —
+  шторка снизу, действия строки на тач-экране — касанием, студия и «Выйти»
+  до lg — внизу меню. Проверять на 390 / 768 / 1024 / 1440px.
+- Файлы страниц в `src/routes/_authenticated/` — самодостаточные (запросы,
+  диалоги и таблица в одном файле); при доработке сохраняй этот стиль.
+  Исключение — разделы одной сущности в разных таблицах: «Новости» и
+  «Услуги» — общая `components/showcase-page.tsx`, файлы роутов — конфиг.
+  Эталон страницы — `promocodes.tsx`.
+
+- PWA (устанавливается на телефон и ноутбук): `public/manifest.webmanifest`,
+  иконки `public/icon-*.png` (из `favicon.svg`; maskable — «40» в безопасной
+  зоне), мета-теги iOS в `__root.tsx`. `public/sw.js` регистрируется только в
+  прод-сборке и приложение НЕ кэширует — перехватывает лишь переходы и без сети
+  отдаёт `public/offline.html` (меняя её, поднять `VERSION` в sw.js).
+
+### Слой данных (React Query)
+
+- Загрузка — `useQuery` + `unwrap()` из `src/lib/query.ts` (ошибка Supabase →
+  исключение). Текст ошибки — `meta: { errorMessage: "Не удалось загрузить …" }`,
+  тост показывает общий QueryCache — свой `toast.error` на загрузку не писать.
+- queryKey: `[таблица, studioId, ...параметры]`. После записи —
+  `invalidateQueries({ queryKey: [таблица] })`; локальная правка без
+  рефетча — `setQueryData`. Кнопка «Обновить» в шапке инвалидирует весь кэш —
+  отдельной «шины обновления» нет.
+- Серверная пагинация — `useServerTable` (`src/hooks/use-server-table.ts`):
+  все фильтры в queryKey (строками, не объектами), смена фильтра сама
+  возвращает на 1-ю страницу; подвал — `<DataPagination {...table.pagination} />`.
+  Клиентская пагинация небольших списков — `usePagination`. Поиск —
+  `useDebouncedValue` + `sanitizeSearch`.
+- Студия — `useActiveStudioId()` (`src/hooks/use-active-studio.ts`), заглушка
+  без студии — `<RequireStudio>`. Список студий сотрудника и активная студия с
+  форматом/цветом/логотипом — `useStudios()` / `useActiveStudio()`
+  (`src/hooks/use-studios.ts`). Серверным функциям и API-роутам активная
+  студия уходит заголовком `X-Studio-Id`; сервер сверяет роль именно в ней
+  (`getStaffStudio`), без заголовка — студия из профиля. Текущий сотрудник — `useStaffProfile()`;
+  для записи в БД — `await ensure()` (иначе ранний клик пишет null).
+- Диалог с формой: состояние формы — в дочернем компоненте внутри
+  `<DialogContent>` с `key={item?.id ?? "new"}`, инициализация через
+  `useState(item?.x ?? "")`. Эффекты «сбросить поля при открытии» не писать:
+  Radix размонтирует содержимое при закрытии. Сначала валидация, потом
+  `setSaving(true)`, снятие — в `finally`. Удаление — `useConfirm`.
+- Разметка форм — блоки из `components/ui/form-field.tsx` (`FormField`,
+  `SwitchRow`, `CheckboxOption`, `InfoNote`) и `DialogForm` (Enter = сохранить,
+  главная кнопка `type="submit"`, у `Button` по умолчанию `type="button"`).
+  Подсказка «?» у подписи поля — проп `tip` у `FormField`/`SwitchRow`: зачем
+  поле, 1–2 предложения; новому неочевидному полю — писать сразу.
+  Полный стандарт — `.interface-design/system.md`, раздел «Формы».
+
+### Общие модули
+
+- `src/lib/format.ts` — деньги (`formatMoney` без копеек, `formatMoneyPrecise`),
+  даты (`formatDate`, `formatDateTime`, `todayISO` — локальная дата, НЕ
+  `toISOString()`), `clientName` («Фамилия Имя»), `initials`, `genderLabel`.
+- `src/lib/payments.ts`, `src/lib/bookings.ts` (+ `BookingStatusBadge`),
+  `src/lib/client-status.ts`, `src/lib/workout-types.ts` — справочники.
+- `src/lib/storage.ts` + `components/image-upload-field.tsx` — картинки
+  Storage (`StorageImage`, `ImageUploadField`); бакеты — `STORAGE_BUCKETS`.
+- `components/client-combobox.tsx` — выбор клиента (серверный поиск);
+  `ClientNameLink` + `hooks/use-crm-links.ts` — имя клиента со ссылкой amoCRM
+  (ссылки для таблицы — одним запросом на страницу).
+- `src/lib/roles.ts` — `STAFF_ROLES`, `hasStaffRole`.
+- `src/lib/confetti.ts` — `celebrateSale()`: конфетти после успешного внесения
+  продажи (абонемент и прочая продажа); canvas-confetti грузится отдельным чанком.
+
+### Сервер
+
+- Параметры Supabase читаются только в `src/integrations/supabase/env.ts`;
+  клиенты на сервере — `createUserClient(token)` (RLS действует) и
+  `getSupabaseAdmin()` (service-ключ) из `client.server.ts`.
+- Модули `*.server.ts` в клиентский бандл не попадают — сборка падает
+  (importProtection в vite.config). Серверное — только в таких файлах или в
+  обработчиках `createServerFn`/API-роутов.
+- AI-ассистент: роут `src/routes/api/chat.ts`, инструменты/промпт/даты —
+  `src/lib/assistant/`. Даты «сегодня» и границы суток — по Тбилиси (сервер
+  в UTC).
+
+## Известные недоработки (найдены при рефакторинге 2026-10-09, не исправлены)
+
+Нужна миграция БД:
+
+- Во вью `sales_list` и `bookings_log_full` нет `crm_link` — ссылки amoCRM
+  догружаются отдельным запросом на страницу (`useCrmLinks`).
+- `visits_left` не уменьшается ни одной функцией в db/\*.sql — проверить на
+  живой базе, расходуются ли пакеты посещений.
+- Перестановка порядка новостей/услуг — три отдельных update (неатомарно);
+  строки с одинаковой `position` не переставляются. Нужна RPC.
+
+Решение владельца:
+
+- Промокод в продаже — свободный текст: не проверяется по `promo_codes`,
+  `usage_count` не растёт.
+- «Отправить» пуш только ставит `status='sent'`, реальной рассылки нет.
+- «Активные клиенты» на дашборде не считают замороженные абонементы, а
+  статус ЧК считает.
+- «История записей» и «Отмены автопродления» показывают «Имя Фамилия»
+  (full_name в приоритете), остальные разделы — «Фамилия Имя».
+- У новостей кнопку можно заполнить наполовину, у услуг — нет.
+- Фото тренеров и тренировок открываются по подписанным ссылкам, хотя бакеты в
+  db/ публичные; если в живой базе тоже публичные — перевести на `public` в
+  `STORAGE_BUCKETS`.

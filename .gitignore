@@ -1,0 +1,10 @@
+# Общее для монорепозитория; у приложений — свои .gitignore в apps/*.
+node_modules
+*.log
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Рабочие копии агентов Claude Code
+.claude/worktrees/

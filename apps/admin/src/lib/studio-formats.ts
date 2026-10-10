@@ -4,7 +4,7 @@
  * разделы.
  *
  * Для каждого формата — своё клиентское приложение (одна кодовая база
- * club40-client-hub, сборка с VITE_APP_FORMAT), у каждого свой адрес.
+ * apps/client, сборка с VITE_APP_FORMAT), у каждого свой адрес.
  */
 export const STUDIO_FORMATS = ["subscription", "packages"] as const;
 export type StudioFormat = (typeof STUDIO_FORMATS)[number];

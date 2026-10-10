@@ -9,6 +9,7 @@
 
 | Задача                                                                   | Статус                                                                                                                       |
 | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| 9. 🔴 Монорепозиторий: переключить Coolify на `apps/*/Dockerfile`        | ⏳ Часть 1 — ДО слияния ветки монорепозитория в main; Части 2–3 — после                                                      |
 | 8. 🟠 Автомиграции (`DATABASE_URL`) + форматы студий + второе приложение | ✅ Части 1–2 выполнены 2026-10-10 (миграция применилась при деплое); ⏳ Часть 3 — второе приложение                          |
 | S. 🔴 Переезд на self-hosted Supabase (env, письма, SQL)                 | ⏳ см. Задачу S — без неё вход по почте не работает                                                                          |
 | 7. Миграции: удаление занятий и вход сотрудников (2026-10-09)            | 🤖 выполнит мигратор при деплое, проверить по Задаче 7                                                                       |
@@ -30,6 +31,70 @@ Supabase — self-hosted в Coolify (Studio в ресурсе Supabase, API
 переменных `GOTRUE_*` сервиса auth), Coolify
 (https://coolify.base40.fit), Resend, GitHub (`borinsobaka-lab`),
 Hetzner Cloud. **Ничего не удаляй**, ключи и пароли никуда не пересылай.
+
+---
+
+# Задача 9. 🔴 Монорепозиторий: переключить Coolify (2026-10-10)
+
+Админка и клиентское приложение теперь в одном репозитории
+`borinsobaka-lab/club-40-hub`:
+
+- `apps/admin/` — админка (Dockerfile: `apps/admin/Dockerfile`);
+- `apps/client/` — клиентское приложение (Dockerfile: `apps/client/Dockerfile`);
+- `db/` — схема БД и мигратор.
+
+Оба Dockerfile собираются из **корня** репозитория (Base Directory `/`).
+Репозиторий `club40-client-hub` больше не развивается.
+
+Общие правила — как в Задаче 8: ничего не удаляй, ключи и пароли не
+пересылай, другие настройки не меняй. Если интерфейс Coolify выглядит не так,
+как описано, — остановись и опиши в отчёте, что видишь.
+
+### Часть 1. Админка — ДО слияния ветки в main
+
+Проверка «сделано ли уже»: у `club40-admin` Dockerfile Location уже
+`/apps/admin/Dockerfile` — переходи к Части 2.
+
+1. https://coolify.base40.fit → **club40** → **production** →
+   **club40-admin** → **Configuration** → **General**, блок **Build**:
+   - **Base Directory**: `/` (не менять, если уже так)
+   - **Dockerfile Location**: `/apps/admin/Dockerfile` (было `/Dockerfile`)
+   - **Watch Paths** (если поле есть): две строки `apps/admin/**` и `db/**`
+2. **Save**. **Deploy НЕ нажимать**: до слияния ветки в main файла
+   `apps/admin/Dockerfile` в main ещё нет — сборка упадёт (работающая
+   админка при этом не пострадает, но деплой будет красным).
+3. Сообщи владельцу: «Часть 1 готова — можно мержить монорепозиторий».
+   После слияния автодеплой соберёт админку по новому пути; убедись, что
+   деплой зелёный и https://admin.base40.fit открывает страницу входа.
+
+### Часть 2. Клиентское приложение — после слияния и зелёного деплоя админки
+
+Проверка: у `club40-client` репозиторий уже `club-40-hub` — задача сделана.
+
+1. **club40-client** → **Configuration**: в разделе источника (Source / Git)
+   смени репозиторий `borinsobaka-lab/club40-client-hub` на
+   `borinsobaka-lab/club-40-hub`, ветка `main` (источник тот же —
+   **club40-github**). Если сменить репозиторий у существующего ресурса
+   нельзя — остановись и сообщи владельцу (не создавай новый ресурс и не
+   переноси домен самостоятельно).
+2. **General → Build**: **Base Directory** `/`, **Dockerfile Location**
+   `/apps/client/Dockerfile`, **Watch Paths** `apps/client/**`.
+3. Переменные окружения не трогать (они остаются те же). **Save → Deploy**.
+4. Проверка: деплой зелёный, https://app.base40.fit показывает экран входа
+   Base40.
+5. Если ресурс **club40-client-packages** (pack.base40.fit, Задача 8, Часть 3)
+   уже создан — те же шаги 1–4 для него.
+
+### Часть 3. Архив старого репозитория — только по команде владельца
+
+GitHub → `borinsobaka-lab/club40-client-hub` → **Settings** → внизу
+**Archive this repository**. Делать только после успешной Части 2 и
+подтверждения владельца. Удалять репозиторий НЕ нужно.
+
+### Отчёт владельцу
+
+Что изменено в каждом ресурсе (Dockerfile Location, Watch Paths, репозиторий),
+статус деплоев, открываются ли admin.base40.fit и app.base40.fit.
 
 ---
 
@@ -202,9 +267,11 @@ Claude смержит ветку в `main`, Coolify сам начнёт депл
    app.base40.fit).
 2. **Coolify** → **club40** → **production** → **+ New** → **Private
    Repository (with GitHub App)** → источник **club40-github** →
-   репозиторий `borinsobaka-lab/club40-client-hub`, ветка `main`.
+   репозиторий `borinsobaka-lab/club-40-hub`, ветка `main` (монорепозиторий,
+   см. Задачу 9).
    - Имя ресурса: `club40-client-packages`
-   - Build Pack: **Dockerfile** (`/Dockerfile`)
+   - Build Pack: **Dockerfile**; Base Directory `/`; Dockerfile Location
+     `/apps/client/Dockerfile`; Watch Paths `apps/client/**`
    - Port: `3000`
    - Domain: `https://pack.base40.fit`
    - Auto Deploy: включить
@@ -414,8 +481,8 @@ GitHub под `borinsobaka-lab` → аватар → **Settings** → **Applicat
   **GPT Engineer App**) в списке НЕТ — задача уже выполнена.
 - Если есть — **Configure** → внизу **Uninstall**.
 - В любом случае убедись: приложение **club40-github** (App ID 4507927)
-  на месте и имеет доступ к обоим репозиториям (`club-40-hub`,
-  `club40-client-hub`) — через него работает автодеплой. Его не трогать.
+  на месте и имеет доступ к `club-40-hub` (монорепозиторий: и админка, и
+  клиентское приложение) — через него работает автодеплой. Его не трогать.
 
 ---
 

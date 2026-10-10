@@ -1,11 +1,13 @@
 # Сборка и запуск клиентского приложения для Coolify (Nitro node-server, порт 3000).
+# Контекст сборки — КОРЕНЬ монорепозитория (Coolify: Base Directory «/»,
+# Dockerfile Location «/apps/client/Dockerfile») — так же, как у админки.
 FROM oven/bun:1 AS build
 WORKDIR /app
 
-COPY package.json bun.lock bunfig.toml ./
+COPY apps/client/package.json apps/client/bun.lock apps/client/bunfig.toml ./
 RUN bun install --frozen-lockfile
 
-COPY . .
+COPY apps/client/ ./
 
 # VITE_* переменные вшиваются в клиентский бандл на этапе сборки —
 # в Coolify отметьте их как "Build Variable".

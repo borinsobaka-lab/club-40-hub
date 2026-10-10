@@ -1,6 +1,6 @@
 /**
  * Тесты мигратора на настоящем Postgres. Нужна пустая база, которую не жалко:
- * TEST_DATABASE_URL=postgres://postgres@localhost:54329/migtest bun test scripts
+ * TEST_DATABASE_URL=postgres://postgres@localhost:54329/migtest bun test db
  * Без переменной тесты пропускаются (обычный `bun test` базы не требует).
  */
 import { SQL } from "bun";

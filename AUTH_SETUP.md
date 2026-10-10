@@ -95,8 +95,8 @@ GOTRUE_HOOK_SEND_EMAIL_SECRETS=<секрет из шага 2, v1,whsec_...>
 
 ## Как это устроено (для справки)
 
-Роут `src/routes/api/auth-email.ts` в репозитории админки проверяет подпись
-вебхука (HMAC, standardized-webhooks); логика писем — `src/lib/auth-email.ts`,
+Роут `apps/admin/src/routes/api/auth-email.ts` проверяет подпись вебхука
+(HMAC, standardized-webhooks); логика писем — `apps/admin/src/lib/auth-email.ts`,
 покрыта тестами (`bun test`): решение принимается по хосту адреса возврата,
 роли пользователя на письмо не влияют. Типы писем: signup (код), magiclink
 (код клиенту / ссылка сотруднику), recovery (ссылка), invite (ссылка),

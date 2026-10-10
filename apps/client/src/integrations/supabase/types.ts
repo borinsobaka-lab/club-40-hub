@@ -1,5 +1,5 @@
 // ВНИМАНИЕ: файл сгенерирован из старого проекта Supabase и отстаёт от живой
-// схемы (источник правды — db/*.sql в репозитории club-40-hub). Колонки с
+// схемы (источник правды — db/*.sql в корне репозитория). Колонки с
 // пометкой /* patched */ добавлены вручную и проверены запросом к живой БД.
 // TODO: перегенерировать целиком через `supabase gen types typescript`
 // (нужен access token владельца).
@@ -280,7 +280,7 @@ export type Database = {
           },
         ];
       };
-      /* patched: db/migrations/2026-10-09_studio_formats.sql (club-40-hub); приложению studios
+      /* patched: db/migrations/2026-10-09_studio_formats.sql; приложению studios
          доступна только на чтение — Insert/Update не описаны */
       studios: {
         Row: {
