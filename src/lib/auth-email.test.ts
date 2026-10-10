@@ -16,9 +16,11 @@ const payload = (redirect_to: string, email_action_type = "magiclink"): HookPayl
 const ADMIN = "https://admin.base40.fit/";
 const CLIENT = "https://app.base40.fit/";
 
-// Письмо считаем «клиентским», если в нём есть код и нет ссылки авто-входа.
 const hasCode = (html: string) => html.includes("1234");
-const hasLoginLink = (html: string) => html.includes("/auth/v1/verify");
+// Ссылка авто-входа — любая ссылка или token_hash (из него собирается
+// /auth/v1/verify). В письмах авторизации их быть не должно.
+const hasLoginLink = (html: string) =>
+  html.includes("/auth/v1/verify") || html.includes("href") || html.includes("hash");
 
 describe("isAdminApp — признак приложения по redirect_to", () => {
   test("админка", () => expect(isAdminApp(ADMIN)).toBe(true));
@@ -29,18 +31,18 @@ describe("isAdminApp — признак приложения по redirect_to", 
   test("мусор вместо URL — считаем клиентом", () => expect(isAdminApp("не-url")).toBe(false));
 });
 
-describe("вход: письмо зависит от приложения, а не от человека", () => {
-  test("клиентское приложение — код, без ссылки авто-входа", () => {
+describe("вход: всегда код, приложение меняет только текст", () => {
+  test("клиентское приложение — код, без ссылки", () => {
     const { html, subject } = buildEmail(payload(CLIENT), isAdminApp(CLIENT));
     expect(hasCode(html)).toBe(true);
     expect(hasLoginLink(html)).toBe(false);
     expect(subject).not.toContain("админ");
   });
 
-  test("админка — ссылка, без кода", () => {
+  test("админка — код, без ссылки", () => {
     const { html, subject } = buildEmail(payload(ADMIN), isAdminApp(ADMIN));
-    expect(hasLoginLink(html)).toBe(true);
-    expect(hasCode(html)).toBe(false);
+    expect(hasCode(html)).toBe(true);
+    expect(hasLoginLink(html)).toBe(false);
     expect(subject).toContain("админ");
   });
 
@@ -48,14 +50,13 @@ describe("вход: письмо зависит от приложения, а н
     const asClient = buildEmail(payload(CLIENT), isAdminApp(CLIENT));
     const asStaff = buildEmail(payload(ADMIN), isAdminApp(ADMIN));
     expect(asClient.subject).not.toBe(asStaff.subject);
-    expect(hasCode(asClient.html)).toBe(true);
-    expect(hasCode(asStaff.html)).toBe(false);
   });
 
-  test("нераспознанный redirect — безопасный откат на код", () => {
-    const { html } = buildEmail(payload(""), isAdminApp(""));
+  test("нераспознанный redirect — клиентское письмо с кодом", () => {
+    const { html, subject } = buildEmail(payload(""), isAdminApp(""));
     expect(hasCode(html)).toBe(true);
     expect(hasLoginLink(html)).toBe(false);
+    expect(subject).not.toContain("админ");
   });
 });
 
@@ -66,14 +67,17 @@ describe("остальные типы писем", () => {
     expect(hasLoginLink(html)).toBe(false);
   });
 
-  test("восстановление пароля — ссылка (только админка, у клиентов паролей нет)", () => {
+  // /recover у GoTrue публичный: ссылка в таком письме была бы входом без кода.
+  test("восстановление доступа — код, без ссылки", () => {
     const { html } = buildEmail(payload(ADMIN, "recovery"), true);
-    expect(hasLoginLink(html)).toBe(true);
+    expect(hasCode(html)).toBe(true);
+    expect(hasLoginLink(html)).toBe(false);
   });
 
-  test("приглашение сотрудника — ссылка", () => {
+  test("приглашение — код, без ссылки", () => {
     const { html } = buildEmail(payload(ADMIN, "invite"), true);
-    expect(hasLoginLink(html)).toBe(true);
+    expect(hasCode(html)).toBe(true);
+    expect(hasLoginLink(html)).toBe(false);
   });
 
   test("смена почты — код", () => {

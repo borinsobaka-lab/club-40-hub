@@ -35,7 +35,7 @@ const AlertDialogContent = React.forwardRef<
       ref={ref}
       data-form-surface=""
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-5 shadow-lg sm:p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1rem)] max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-4 sm:w-[calc(100%-2rem)] sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -51,7 +51,7 @@ AlertDialogHeader.displayName = "AlertDialogHeader";
 
 const AlertDialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("flex flex-row justify-end gap-2 max-sm:[&>button]:flex-1", className)}
+    className={cn("flex items-center justify-end gap-2 max-sm:[&>*]:flex-1", className)}
     {...props}
   />
 );

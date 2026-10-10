@@ -72,6 +72,8 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
+      // Текст всегда слева — по центру (как в shadcn на мобильных) он
+      // отрывался от полей, которые выровнены влево.
       "flex shrink-0 flex-col space-y-1.5 border-b px-4 py-4 pr-12 text-left sm:px-6",
       className,
     )}
@@ -127,7 +129,7 @@ DialogForm.displayName = "DialogForm";
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-wrap justify-end gap-2 border-t px-4 py-3 max-sm:[&>button]:flex-1 sm:px-6 sm:py-4",
+      "flex shrink-0 flex-wrap justify-end gap-2 border-t px-4 py-3 max-sm:[&>*]:flex-1 sm:px-6 sm:py-4",
       className,
     )}
     {...props}

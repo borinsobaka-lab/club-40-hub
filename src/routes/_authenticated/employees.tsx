@@ -182,7 +182,8 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
   const createFn = useServerFn(createEmployee);
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    full_name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     role: "trainer" as StaffRole,
   });
@@ -192,8 +193,8 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
     onSuccess: (res) => {
       toast.success(
         res.existing
-          ? "Роль выдана. У человека уже была учётная запись — вход по ссылке на ту же почту"
-          : "Сотрудник добавлен. Вход — по ссылке на указанную почту",
+          ? "Роль выдана. У человека уже была учётная запись — вход по коду на ту же почту"
+          : "Сотрудник добавлен. Вход — по коду, который придёт на указанную почту",
       );
       onDone();
       qc.invalidateQueries({ queryKey: ["employees"] });
@@ -201,10 +202,14 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Те же правила, что у серверной схемы: имя не пустое, почта похожа на почту.
+  // Те же правила, что у серверной схемы: имя и фамилия не пустые, почта похожа на почту.
   const handleSave = () => {
-    if (!form.full_name.trim()) {
-      toast.error("Укажите полное имя");
+    if (!form.last_name.trim()) {
+      toast.error("Укажите фамилию");
+      return;
+    }
+    if (!form.first_name.trim()) {
+      toast.error("Укажите имя");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
@@ -219,22 +224,37 @@ function NewEmployeeForm({ onDone }: { onDone: () => void }) {
       <DialogHeader>
         <DialogTitle>Новый сотрудник</DialogTitle>
         <DialogDescription>
-          Вход в админку — по ссылке на эту почту, пароль не нужен. Если у человека уже есть учётная
-          запись (например, он клиент приложения), ему просто выдаётся роль.
+          Вход в админку — по 6-значному коду, который приходит на эту почту; пароля нет. Если у
+          человека уже есть учётная запись (например, он клиент приложения), ему просто выдаётся
+          роль.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Полное имя">
-              <Input
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              />
-            </FormField>
-            <FormField label="Email" tip="На эту почту придёт ссылка для входа — пароля нет.">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Фамилия">
+                <Input
+                  autoComplete="off"
+                  value={form.last_name}
+                  onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Имя">
+                <Input
+                  autoComplete="off"
+                  value={form.first_name}
+                  onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                />
+              </FormField>
+            </div>
+            <FormField
+              label="Email"
+              tip="При каждом входе на эту почту приходит 6-значный код — пароля нет."
+            >
               <Input
                 type="email"
+                autoComplete="off"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />

@@ -9,32 +9,38 @@ import {
 import { STAFF_ROLES } from "@/lib/roles";
 
 /**
- * Вход в админку — только по ссылке на почту, паролей у сотрудников нет.
+ * Вход в админку — только по 6-значному коду из письма, паролей у сотрудников
+ * нет.
  *
- * Ссылку отправляем, только если почта принадлежит сотруднику: клиенты
+ * Код генерирует GoTrue и передаёт только в хук писем (/api/auth-email), то
+ * есть он существует лишь на сервере и в письме: эта функция его не видит и
+ * не возвращает, ответ браузеру — всегда { ok: true }. Сотрудник вводит код
+ * на /auth, браузер отдаёт его прямо в GoTrue (verifyOtp) и получает сессию.
+ *
+ * Письмо отправляем, только если почта принадлежит сотруднику: клиенты
  * приложения живут в том же Supabase, и письмо «вход в админку» им слать
  * нельзя. Проверка роли идёт сервис-ключом, поэтому она здесь, на сервере.
  * Ответ одинаковый для любой почты — по нему нельзя узнать, кто сотрудник.
  */
-export const requestStaffLoginLink = createServerFn({ method: "POST" })
+export const requestStaffLoginCode = createServerFn({ method: "POST" })
   .inputValidator((data) =>
     z
       .object({
         email: z.string().trim().toLowerCase().email("Неверный адрес почты"),
-        // Куда вернуть после входа. GoTrue пускает только адреса из своего
-        // списка redirect URLs, а хук писем по этому хосту понимает, что письмо
-        // из админки (ссылка, а не код).
+        // По хосту этого адреса хук писем понимает, что письмо из админки
+        // (тема и текст «вход в админ-панель»). GoTrue пускает только адреса
+        // из своего списка redirect URLs.
         redirectTo: z.string().url(),
       })
       .parse(data),
   )
   .handler(async ({ data }) => {
     // Без сервис-ключа роль не проверить. Чтобы не запереть всех снаружи,
-    // шлём ссылку как есть: не-сотрудника всё равно не пустит guard
+    // шлём код как есть: не-сотрудника всё равно не пустит guard
     // (_authenticated/route.tsx), теряется лишь «письма только сотрудникам».
     if (!hasSupabaseAdmin()) {
-      console.warn("[auth] APP_SUPABASE_SERVICE_KEY не задан — ссылка без проверки роли");
-      return sendLink(data.email, data.redirectTo);
+      console.warn("[auth] APP_SUPABASE_SERVICE_KEY не задан — код без проверки роли");
+      return sendCode(data.email, data.redirectTo);
     }
     const admin = getSupabaseAdmin();
     // profiles.email заполняется при создании пользователя (handle_new_user).
@@ -56,10 +62,10 @@ export const requestStaffLoginLink = createServerFn({ method: "POST" })
     if (rolesErr) throw new Error(rolesErr.message);
     if (!roles?.length) return { ok: true };
 
-    return sendLink(data.email, data.redirectTo);
+    return sendCode(data.email, data.redirectTo);
   });
 
-async function sendLink(email: string, redirectTo: string) {
+async function sendCode(email: string, redirectTo: string) {
   const { error } = await createAnonClient().auth.signInWithOtp({
     email,
     options: { shouldCreateUser: false, emailRedirectTo: redirectTo },
@@ -74,5 +80,6 @@ async function sendLink(email: string, redirectTo: string) {
         : `Не удалось отправить письмо: ${error.message}`,
     );
   }
+  // Только признак успеха: код в ответ не попадает никогда.
   return { ok: true };
 }
