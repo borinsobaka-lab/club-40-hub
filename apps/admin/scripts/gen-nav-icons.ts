@@ -69,12 +69,24 @@ const toJsx = (markup: string) =>
     )
     .replace(/<(path|circle|rect|ellipse|line)([^>]*)><\/\1>/g, "<$1$2 />");
 
+// Координаты в d="…" у Solar — до 5 знаков после запятой; в сетке 24×24
+// сотые доли — это сотые доли пикселя, глазом не отличить, а файл (и чанк
+// меню, который грузит каждая страница) худеет на треть.
+const roundPaths = (markup: string) =>
+  markup.replace(/ d="([^"]*)"/g, (_, d: string) => {
+    const short = d.replace(/-?\d*\.\d+/g, (n) => {
+      const r = Number(Number(n).toFixed(2)).toString();
+      return r === "-0" ? "0" : r.replace(/^(-?)0\./, "$1.");
+    });
+    return ` d="${short}"`;
+  });
+
 const WEIGHTS = { outline: "Outline", active: "BoldDuotone" } as const;
 
 const render = (Icon: Parameters<typeof createElement>[0], weight: string) => {
   const svg = renderToStaticMarkup(createElement(Icon, { weight }));
   const inner = svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
-  return `<>\n      ${toJsx(inner).replace(/></g, ">\n      <")}\n    </>`;
+  return `<>\n      ${toJsx(roundPaths(inner)).replace(/></g, ">\n      <")}\n    </>`;
 };
 
 const blocks: string[] = [];
