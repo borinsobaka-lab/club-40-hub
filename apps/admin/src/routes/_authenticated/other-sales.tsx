@@ -462,7 +462,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Позиция" tip={TIPS.item}>
+            <FormField label="Позиция" tip={TIPS.item} required>
               <SearchableCombobox
                 placeholder="Выбрать услугу или товар"
                 searchPlaceholder="Поиск по названию"
@@ -481,7 +481,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Количество">
+              <FormField label="Количество" required>
                 <Input
                   type="number"
                   min={1}
@@ -490,7 +490,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                   onChange={(e) => set("quantity", e.target.value)}
                 />
               </FormField>
-              <FormField label="Цена за штуку, ₾" tip={TIPS.unitPrice}>
+              <FormField label="Цена за штуку, ₾" tip={TIPS.unitPrice} required>
                 <Input
                   type="number"
                   min={0}
@@ -519,7 +519,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Оплата" tip={TIPS.payment}>
+              <FormField label="Оплата" tip={TIPS.payment} required>
                 <Select
                   value={form.payment}
                   onValueChange={(v) => set("payment", v as PaymentMethod)}
@@ -536,7 +536,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Дата">
+              <FormField label="Дата" required>
                 <Input
                   type="date"
                   value={form.soldAt}
@@ -759,7 +759,7 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Тип">
+            <FormField label="Тип" required>
               <Select value={kind} onValueChange={(v) => setKind(v as ItemKind)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -771,7 +771,7 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
               </Select>
             </FormField>
 
-            <FormField label="Название">
+            <FormField label="Название" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -779,7 +779,7 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
               />
             </FormField>
 
-            <FormField label="Цена, ₾" tip={TIPS.catalogPrice}>
+            <FormField label="Цена, ₾" tip={TIPS.catalogPrice} required>
               <Input
                 type="number"
                 min={0}

@@ -134,7 +134,7 @@ export function ImportTab() {
         администраторов — нет: там другие учётные записи.
       </InfoNote>
 
-      <FormField label="Файл экспорта" hint="JSON, скачанный кнопкой «Экспорт».">
+      <FormField label="Файл экспорта" required hint="JSON, скачанный кнопкой «Экспорт».">
         <Input
           key={inputKey}
           type="file"

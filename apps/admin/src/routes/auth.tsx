@@ -124,7 +124,7 @@ function AuthPage() {
         <CardContent>
           {step === "email" ? (
             <form noValidate onSubmit={submitEmail} className="space-y-4">
-              <FormField label="Электронная почта">
+              <FormField label="Электронная почта" required>
                 <Input
                   type="email"
                   autoComplete="email"
@@ -147,7 +147,7 @@ function AuthPage() {
                 сотрудника, мы отправили на неё {CODE_LENGTH}-значный код. Код действует 1 час и
                 работает один раз.
               </p>
-              <FormField label="Код из письма">
+              <FormField label="Код из письма" required>
                 <Input
                   // type="text", а не number: у number браузер теряет ведущие нули.
                   inputMode="numeric"

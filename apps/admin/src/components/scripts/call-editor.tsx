@@ -351,7 +351,7 @@ export function CallEditor({
 
       <section aria-label="Блок" className="space-y-4 rounded-lg border bg-background p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
-          <FormField label="Название блока">
+          <FormField label="Название блока" required>
             <Input
               value={node.title}
               maxLength={120}
@@ -360,6 +360,7 @@ export function CallEditor({
           </FormField>
           <FormField
             label="Где показывать"
+            required
             tip="Этапы идут по порядку разговора; возражения и вопросы всегда под рукой в панели справа на экране звонка."
           >
             <Select
@@ -427,7 +428,11 @@ export function CallEditor({
           </div>
         </div>
 
-        <FormField label="Что говорит администратор (RU)" htmlFor={TEXT_ID.ru}>
+        <FormField
+          label="Что говорит администратор (RU)"
+          required={!node.text.en.trim() && !node.text.ka.trim()}
+          htmlFor={TEXT_ID.ru}
+        >
           {/* Свой контекст без id: иначе поиск скрипта в панели получил бы id поля. */}
           <FieldIdContext.Provider value={undefined}>
             <FormatBar
@@ -618,6 +623,7 @@ export function CallEditor({
             >
               <FormField
                 label="Что изменили?"
+                required
                 className="min-w-0 flex-1 basis-64"
                 tip="Пояснение попадёт в хронологию изменений — по нему видно, кто и зачем правил сценарий."
               >

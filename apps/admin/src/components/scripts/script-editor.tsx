@@ -211,6 +211,7 @@ export function ScriptEditor({
           {asking ? (
             <FormField
               label="Что изменили?"
+              required
               hint="Это увидят все на карточке скрипта и в хронологии."
             >
               <Input
@@ -223,7 +224,7 @@ export function ScriptEditor({
             </FormField>
           ) : (
             <div className="space-y-4">
-              <FormField label="Название">
+              <FormField label="Название" required>
                 <Input
                   autoFocus={isNew}
                   value={draft.title}
@@ -233,7 +234,7 @@ export function ScriptEditor({
                 />
               </FormField>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField label="Тип">
+                <FormField label="Тип" required>
                   <Select
                     value={draft.kind}
                     onValueChange={(v) => patch({ kind: v as ScriptKind })}
@@ -252,6 +253,7 @@ export function ScriptEditor({
                 </FormField>
                 <FormField
                   label="Раздел"
+                  required
                   tip="Перенесённый в другой раздел скрипт встаёт в его конец."
                 >
                   <Select value={draft.section_id} onValueChange={(v) => patch({ section_id: v })}>
@@ -296,7 +298,7 @@ export function ScriptEditor({
                 >
                   {byStudio && (
                     <div className="flex items-end gap-2">
-                      <FormField label="Студия" className="flex-1">
+                      <FormField label="Студия" required className="flex-1">
                         <Input
                           value={variant.label}
                           onChange={(e) =>

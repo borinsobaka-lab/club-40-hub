@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useActiveStudio } from "@/hooks/use-studios";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,7 +53,12 @@ import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-to
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
-import { CLUB_STATUS_FULL, CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
+import {
+  CLUB_STATUS_FULL,
+  CLUB_STATUS_LABEL,
+  CLUB_STATUS_RULE,
+  type ClubStatus,
+} from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import {
   GENDER_OPTIONS,
@@ -61,6 +67,7 @@ import {
   genderLabel,
   phoneSearchTerm,
   sanitizeSearch,
+  todayISO,
 } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -77,6 +84,18 @@ const TIPS = {
     "По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама.",
   lastVisit: "Обновляется сам при отметке посещения. Вручную — только для переноса старой истории.",
   notes: "Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может.",
+  status: (
+    <span className="block space-y-1.5">
+      {(["chk", "bchk", "pchk"] as const).map((s) => (
+        <span key={s} className="block">
+          <span className="font-semibold">
+            {CLUB_STATUS_LABEL[s]} — {CLUB_STATUS_FULL[s].toLowerCase()}:
+          </span>{" "}
+          {CLUB_STATUS_RULE[s]}
+        </span>
+      ))}
+    </span>
+  ),
 };
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -317,7 +336,9 @@ function ClientsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[240px]">Клиент</TableHead>
-                  <TableHead className="w-[80px]">Статус</TableHead>
+                  <TableHead className="w-[80px]" tip={TIPS.status}>
+                    Статус
+                  </TableHead>
                   <TableHead>Телефон</TableHead>
                   <TableHead tip={TIPS.email}>Email</TableHead>
                   <TableHead>Пол</TableHead>
@@ -457,9 +478,15 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
   // После попытки сохранить ошибки полей видны и без ухода из них.
   const [submitted, setSubmitted] = useState(false);
   const [birthday, setBirthday] = useState(client?.birthday ?? "");
-  const [gender, setGender] = useState(client?.gender ?? "");
+  // Новый клиент пакетной студии — по умолчанию женщина (решение владельца
+  // 2026-10-11, залы в основном женские); администратор может поменять.
+  const packages = useActiveStudio()?.format === "packages";
+  const [gender, setGender] = useState(client ? (client.gender ?? "") : packages ? "female" : "");
   const [notes, setNotes] = useState(client?.notes ?? "");
-  const [registrationDate, setRegistrationDate] = useState(client?.registration_date ?? "");
+  // Новому клиенту дата регистрации — сегодня (можно поменять при переносе истории).
+  const [registrationDate, setRegistrationDate] = useState(
+    client ? (client.registration_date ?? "") : todayISO(),
+  );
   const [lastVisitDate, setLastVisitDate] = useState(client?.last_visit_date ?? "");
   const [crmLink, setCrmLink] = useState(client?.crm_link ?? "");
   // Фото ставит сам клиент в приложении; здесь — только показ.
@@ -470,8 +497,8 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
     if (!studioId) return;
     const fn = firstName.trim();
     const ln = lastName.trim();
-    if (!fn && !ln) {
-      toast.error("Укажите имя или фамилию");
+    if (!fn) {
+      toast.error("Укажите имя");
       return;
     }
     setSubmitted(true);
@@ -548,22 +575,22 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
                 <FormField label="Фамилия">
                   <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
                 </FormField>
-                <FormField label="Имя">
+                <FormField label="Имя" required>
                   <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
                 </FormField>
               </div>
             </div>
 
             <FormField
-              label="Ссылка на amoCRM"
-              tip="Карточка контакта в amoCRM. Имя клиента в таблицах станет ссылкой на неё."
+              label="Сделка в amoCRM"
+              tip="Ссылка на сделку клиента в amoCRM. Имя клиента в таблицах станет ссылкой на неё."
               optional
             >
               <Input
                 type="url"
                 value={crmLink}
                 onChange={(e) => setCrmLink(e.target.value)}
-                placeholder="https://your-account.amocrm.ru/contacts/detail/..."
+                placeholder="https://your-account.amocrm.ru/leads/detail/..."
               />
             </FormField>
 

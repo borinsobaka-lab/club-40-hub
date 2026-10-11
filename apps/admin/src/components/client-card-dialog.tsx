@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,6 +28,8 @@ import {
 import { CardSkeleton, TableSkeletonRows } from "@/components/table-skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
+import { SaleDialog } from "@/components/sale-dialog";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import {
@@ -242,6 +244,9 @@ function ClientCard<C extends ClientLike>({
 }) {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const [saleOpen, setSaleOpen] = useState(false);
+  // Карточки открываются из списков активной студии — продажа идёт в неё.
+  const studioId = useActiveStudioId();
   const userId = client.user_id ?? null;
 
   const salesKey = ["sales", "by-client", client.id];
@@ -286,6 +291,13 @@ function ClientCard<C extends ClientLike>({
   const reloadMemberships = () => {
     queryClient.invalidateQueries({ queryKey: membershipsKey });
     queryClient.invalidateQueries({ queryKey: salesKey });
+  };
+
+  // Продажа из карточки меняет и историю, и абонемент, и статус клиента в списках.
+  const onSaleSaved = () => {
+    for (const key of ["sales", "sales_list", "client_memberships", "clients_with_status"]) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
   };
 
   // Локальная дата, как в computeClubStatus/effectiveStatus: UTC-дата
@@ -400,7 +412,19 @@ function ClientCard<C extends ClientLike>({
             )}
 
             <div>
-              <SectionLabel className="mb-2">История продаж</SectionLabel>
+              <div className="mb-2 flex min-h-9 items-center justify-between">
+                <SectionLabel>История продаж</SectionLabel>
+                {/* Новая продажа сразу с этим клиентом — без перехода в «Продажи». */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSaleOpen(true)}
+                  disabled={!studioId}
+                >
+                  <Plus />
+                  Добавить продажу
+                </Button>
+              </div>
               {loadingSales ? (
                 <CardSkeleton rows={2} />
               ) : sales.length === 0 ? (
@@ -483,6 +507,13 @@ function ClientCard<C extends ClientLike>({
             : null
         }
         onSaved={reloadMemberships}
+      />
+      <SaleDialog
+        open={saleOpen}
+        onOpenChange={setSaleOpen}
+        studioId={studioId}
+        initialClient={client}
+        onSaved={onSaleSaved}
       />
     </>
   );

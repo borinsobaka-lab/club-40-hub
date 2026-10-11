@@ -445,14 +445,14 @@ function EmployeeForm({
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Имя" tip={TIPS.name}>
+              <FormField label="Имя" tip={TIPS.name} required>
                 <Input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Иван Иванов"
                 />
               </FormField>
-              <FormField label="Роль" tip={TIPS.role}>
+              <FormField label="Роль" tip={TIPS.role} required>
                 <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -476,7 +476,7 @@ function EmployeeForm({
               />
             </FormField>
 
-            <FormField label="Студии" tip={TIPS.studios} htmlFor={null}>
+            <FormField label="Студии" tip={TIPS.studios} htmlFor={null} required>
               {myStudios.length === 0 && otherStudios.length === 0 ? (
                 <InfoNote variant="empty">Нет студий — заведите их в разделе «Студии».</InfoNote>
               ) : (

@@ -382,14 +382,14 @@ function AccessForm({
             {!employee && (
               <>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <FormField label="Фамилия">
+                  <FormField label="Фамилия" required>
                     <Input
                       autoComplete="off"
                       value={name.last_name}
                       onChange={(e) => setName({ ...name, last_name: e.target.value })}
                     />
                   </FormField>
-                  <FormField label="Имя">
+                  <FormField label="Имя" required>
                     <Input
                       autoComplete="off"
                       value={name.first_name}
@@ -397,7 +397,7 @@ function AccessForm({
                     />
                   </FormField>
                 </div>
-                <FormField label="Email" tip={TIPS.email}>
+                <FormField label="Email" tip={TIPS.email} required>
                   <Input
                     type="email"
                     autoComplete="off"
@@ -408,7 +408,7 @@ function AccessForm({
               </>
             )}
 
-            <FormField label="Роль" tip={TIPS.role}>
+            <FormField label="Роль" tip={TIPS.role} required>
               <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -427,7 +427,7 @@ function AccessForm({
                 также «Доступы» и «Студии».
               </InfoNote>
             ) : (
-              <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections}>
+              <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections} required>
                 <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
                   {RAIL_ACCESS_KEYS.map((key) => (
                     <CheckboxOption
@@ -453,6 +453,7 @@ function AccessForm({
             <FormField
               label="Студии"
               htmlFor={null}
+              required
               tip={
                 showClubSections
                   ? "Где у сотрудника есть доступ к админке и какие разделы «Клуба» ему видны в каждой студии."

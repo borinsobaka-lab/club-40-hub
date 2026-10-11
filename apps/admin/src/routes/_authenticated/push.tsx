@@ -329,7 +329,7 @@ function PushForm({
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Заголовок" tip={TIPS.title}>
+            <FormField label="Заголовок" tip={TIPS.title} required>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -362,7 +362,7 @@ function PushForm({
               />
             </FormField>
 
-            <FormField label="Статус клиентов" tip={TIPS.segments} htmlFor={null}>
+            <FormField label="Статус клиентов" tip={TIPS.segments} htmlFor={null} required>
               <div className="space-y-2 rounded-md border p-3">
                 <CheckboxOption checked={allSelected} onCheckedChange={setAllSelected}>
                   Все клиенты
@@ -382,7 +382,7 @@ function PushForm({
               </div>
             </FormField>
 
-            <FormField label="Время отправки" htmlFor={null}>
+            <FormField label="Время отправки" htmlFor={null} required>
               <RadioGroup
                 value={sendMode}
                 onValueChange={(v) => setSendMode(v as typeof sendMode)}
@@ -400,7 +400,7 @@ function PushForm({
             </FormField>
 
             {sendMode === "schedule" && (
-              <FormField label="Дата и время отправки">
+              <FormField label="Дата и время отправки" required>
                 <Input
                   type="datetime-local"
                   value={scheduledAt}

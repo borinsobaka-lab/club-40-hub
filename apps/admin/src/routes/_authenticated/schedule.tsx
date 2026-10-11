@@ -514,6 +514,7 @@ function SchedulePage() {
   return (
     <AdminShell
       title="Расписание"
+      canvas={packages ? "white" : "default"}
       actions={
         <div className="flex items-center gap-2">
           <Button
@@ -647,7 +648,12 @@ function SchedulePage() {
             как отметка «сегодня» в недельной сетке.
           */}
           {isMobile && (
-            <div className="grid grid-cols-7 gap-1 rounded-lg border bg-background p-1">
+            <div
+              className={cn(
+                "grid grid-cols-7 gap-1 rounded-lg border p-1",
+                packages ? "bg-muted" : "bg-background",
+              )}
+            >
               {weekDays.map((d, i) => {
                 const today = d.toDateString() === new Date().toDateString();
                 const selected = i === dayIndex;
@@ -688,7 +694,14 @@ function SchedulePage() {
             </div>
           )}
 
-          <div className="overflow-auto rounded-lg border bg-background md:max-h-[calc(100dvh-220px)]">
+          <div
+            className={cn(
+              "overflow-auto rounded-lg border md:max-h-[calc(100dvh-220px)]",
+              // Пакетные студии: подложка страницы белая, сетка светло-серая,
+              // линии сетки белые — белые карточки занятий на ней видны сразу.
+              packages ? "border-transparent bg-background" : "bg-background",
+            )}
+          >
             <div
               className={cn("grid", !isMobile && "min-w-[1200px]")}
               style={{
@@ -697,17 +710,24 @@ function SchedulePage() {
             >
               {!isMobile && (
                 <>
-                  <div className="sticky top-0 z-20 border-b border-r bg-background" />
+                  <div
+                    className={cn(
+                      "sticky top-0 z-20 border-b border-r",
+                      packages ? "border-background bg-muted" : "bg-background",
+                    )}
+                  />
                   {weekDays.map((d, i) => {
                     const today = d.toDateString() === new Date().toDateString();
                     return (
                       <div
                         key={i}
-                        className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
+                        className={cn(
+                          "sticky top-0 z-20 border-r p-2 text-center text-xs",
+                          packages ? "border-r-background bg-muted" : "bg-background",
                           today
                             ? "border-b-4 border-b-brand font-semibold text-primary"
-                            : "border-b"
-                        }`}
+                            : cn("border-b", packages && "border-b-background"),
+                        )}
                       >
                         <div className="uppercase tracking-wide text-muted-foreground">
                           {DAY_NAMES[i]}
@@ -726,7 +746,10 @@ function SchedulePage() {
                 return (
                   <div key={`row-${hour}`} className="contents">
                     <div
-                      className="border-b border-r px-2 text-right text-xs text-muted-foreground"
+                      className={cn(
+                        "border-b border-r px-2 text-right text-xs text-muted-foreground",
+                        packages && "border-background bg-muted",
+                      )}
                       style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
                     >
                       {pad(hour)}:00
@@ -736,7 +759,10 @@ function SchedulePage() {
                       return (
                         <div
                           key={`${hour}-${di}`}
-                          className="relative border-b border-r max-md:border-r-0"
+                          className={cn(
+                            "relative border-b border-r max-md:border-r-0",
+                            packages && "border-background bg-muted",
+                          )}
                           style={{ height: rowHeight }}
                         >
                           {/*
@@ -747,7 +773,10 @@ function SchedulePage() {
                             type="button"
                             aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
                             onClick={() => openSlot(day, hour)}
-                            className="absolute inset-0 transition hover:bg-accent/40"
+                            className={cn(
+                              "absolute inset-0 transition",
+                              packages ? "hover:bg-black/5" : "hover:bg-accent/40",
+                            )}
                           />
                           {grid.cells.get(cellKey(day, hour))?.map((e) => (
                             <EntryCard
@@ -1324,7 +1353,7 @@ function EntryForm({
         <DialogBody>
           <div className="space-y-4">
             {kind === "group" && (
-              <FormField label="Тренировка" tip={TIPS.workout}>
+              <FormField label="Тренировка" tip={TIPS.workout} required>
                 <Select value={workoutId} onValueChange={setWorkoutId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите тренировку" />
@@ -1344,6 +1373,7 @@ function EntryForm({
               <FormField
                 label="Тренер"
                 tip={TIPS.personalTrainer}
+                required
                 htmlFor={trainerOptions.length === 0 ? null : undefined}
               >
                 {trainerOptions.length === 0 ? (
@@ -1366,7 +1396,7 @@ function EntryForm({
             )}
 
             {kind === "other" && (
-              <FormField label="Название" tip={TIPS.title}>
+              <FormField label="Название" tip={TIPS.title} required>
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -1377,14 +1407,14 @@ function EntryForm({
             )}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Начало" tip={kind === "group" ? TIPS.starts : undefined}>
+              <FormField label="Начало" tip={kind === "group" ? TIPS.starts : undefined} required>
                 <Input
                   type="datetime-local"
                   value={startsAt}
                   onChange={(e) => setStartsAt(e.target.value)}
                 />
               </FormField>
-              <FormField label="Окончание">
+              <FormField label="Окончание" required>
                 <Input
                   type="datetime-local"
                   value={endsAt}
@@ -1413,7 +1443,13 @@ function EntryForm({
             )}
 
             {kind === "other" && (
-              <FormField label="Ставка, ₾" tip={TIPS.payRate} optional={trainerIds.length === 0}>
+              <FormField
+                label="Ставка, ₾"
+                tip={TIPS.payRate}
+                // Без ставки не сохранится, только если отмечены тренеры.
+                required={trainerIds.length > 0}
+                optional={trainerIds.length === 0}
+              >
                 <Input
                   type="number"
                   inputMode="decimal"

@@ -176,6 +176,7 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
           </FormField>
           <FormField
             label="Осталось посещений"
+            required={!unlimitedVisits}
             tip="Ручная правка остатка — например, вернуть занятие, отменённое по вине клуба."
           >
             <Input

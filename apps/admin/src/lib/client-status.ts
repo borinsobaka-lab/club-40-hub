@@ -20,6 +20,13 @@ export const CLUB_STATUS_FULL: Record<ClubStatus, string> = {
   bchk: "Бывший член клуба",
 };
 
+/** Кто попадает в статус — для подсказки у колонки «Статус» (та же логика, что ниже и во вью clients_with_status). */
+export const CLUB_STATUS_RULE: Record<ClubStatus, string> = {
+  chk: "есть действующий абонемент — в том числе замороженный.",
+  bchk: "абонементы покупал, но сейчас ни одного действующего: закончились или отменены.",
+  pchk: "ни разу не покупал абонемент — например, только зарегистрировался в приложении или заведён вручную.",
+};
+
 export type MembershipLite = {
   client_id: string;
   status: string | null;

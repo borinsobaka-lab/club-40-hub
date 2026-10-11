@@ -439,7 +439,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Название">
+            <FormField label="Название" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -476,7 +476,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               <BenefitsEditor value={benefits} onChange={setBenefits} />
             </FormField>
 
-            <FormField label="Количество посещений" tip={TIPS.visits}>
+            <FormField label="Количество посещений" tip={TIPS.visits} required={!unlimited}>
               <div className="flex items-center gap-4">
                 <Input
                   type="number"
@@ -503,7 +503,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
                   placeholder="30"
                 />
               </FormField>
-              <FormField label="Цена, ₾" tip={TIPS.price}>
+              <FormField label="Цена, ₾" tip={TIPS.price} required>
                 <Input
                   type="number"
                   min={0}
