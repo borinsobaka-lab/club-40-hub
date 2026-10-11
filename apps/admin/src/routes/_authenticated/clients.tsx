@@ -54,14 +54,25 @@ import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { CLUB_STATUS_FULL, CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
-import { GENDER_OPTIONS, clientName, formatDate, genderLabel, sanitizeSearch } from "@/lib/format";
+import {
+  GENDER_OPTIONS,
+  clientName,
+  formatDate,
+  genderLabel,
+  phoneSearchTerm,
+  sanitizeSearch,
+} from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { EmailInput, PhoneInput, type PhoneValue } from "@/components/contact-inputs";
+import { checkPhone, emailError, formatPhoneDisplay, phoneForEditing } from "@/lib/contacts";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
   email:
     "Когда клиент зарегистрируется в приложении с этой почтой, его аккаунт привяжется к этой карточке. Проверьте опечатки.",
+  phone:
+    "Сохраняется с кодом страны — по нему пойдут рассылки. Код знать не обязательно: выберите страну по названию или вставьте номер целиком с «+».",
   registration:
     "По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама.",
   lastVisit: "Обновляется сам при отметке посещения. Вручную — только для переноса старой истории.",
@@ -202,7 +213,9 @@ function ClientsPage() {
         .select(CLIENT_COLUMNS, { count: "exact" })
         .eq("studio_id", studioId!);
       if (term) {
-        query = query.or(`search_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`);
+        query = query.or(
+          `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
+        );
       }
       if (genderFilter) query = query.eq("gender", genderFilter);
       if (statusFilter) query = query.eq("club_status", statusFilter);
@@ -359,7 +372,9 @@ function ClientsPage() {
                         <TableCell>
                           <ClubStatusBadge status={c.club_status ?? "pchk"} />
                         </TableCell>
-                        <TableCell>{c.phone ?? "—"}</TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums">
+                          {formatPhoneDisplay(c.phone) || "—"}
+                        </TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>
                         <TableCell>{formatDate(c.birthday)}</TableCell>
@@ -437,15 +452,18 @@ function initialNames(client: Client | null) {
 function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogProps) {
   const [firstName, setFirstName] = useState(() => initialNames(client).first);
   const [lastName, setLastName] = useState(() => initialNames(client).last);
-  const [phone, setPhone] = useState(client?.phone ?? "");
+  const [phone, setPhone] = useState<PhoneValue>(() => phoneForEditing(client?.phone));
   const [email, setEmail] = useState(client?.email ?? "");
+  // После попытки сохранить ошибки полей видны и без ухода из них.
+  const [submitted, setSubmitted] = useState(false);
   const [birthday, setBirthday] = useState(client?.birthday ?? "");
   const [gender, setGender] = useState(client?.gender ?? "");
   const [notes, setNotes] = useState(client?.notes ?? "");
   const [registrationDate, setRegistrationDate] = useState(client?.registration_date ?? "");
   const [lastVisitDate, setLastVisitDate] = useState(client?.last_visit_date ?? "");
   const [crmLink, setCrmLink] = useState(client?.crm_link ?? "");
-  const [photoUrl, setPhotoUrl] = useState(client?.photo_url ?? "");
+  // Фото ставит сам клиент в приложении; здесь — только показ.
+  const photoUrl = client?.photo_url ?? "";
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -456,6 +474,17 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
       toast.error("Укажите имя или фамилию");
       return;
     }
+    setSubmitted(true);
+    const phoneCheck = checkPhone(phone.value, phone.country);
+    if (phoneCheck.status === "invalid") {
+      toast.error(`Телефон: ${phoneCheck.error}`);
+      return;
+    }
+    const mailError = emailError(email);
+    if (mailError) {
+      toast.error(`Email: ${mailError}`);
+      return;
+    }
     setSaving(true);
     try {
       const fullName = [ln, fn].filter(Boolean).join(" ");
@@ -464,15 +493,14 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
         first_name: fn || null,
         last_name: ln || null,
         full_name: fullName,
-        phone: phone.trim() || null,
-        email: email.trim() || null,
+        phone: phoneCheck.status === "valid" ? phoneCheck.e164 : null,
+        email: email || null,
         birthday: birthday || null,
         gender: gender || null,
         notes: notes.trim() || null,
         registration_date: registrationDate || null,
         last_visit_date: lastVisitDate || null,
         crm_link: crmLink.trim() || null,
-        photo_url: photoUrl.trim() || null,
       };
       const { error } = client
         ? await supabase.from("clients").update(payload).eq("id", client.id)
@@ -539,12 +567,13 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
               />
             </FormField>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Телефон">
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            {/* Телефон и почта — каждый на всю ширину: под полем подсказки и исправления. */}
+            <div className="grid grid-cols-1 gap-3">
+              <FormField label="Телефон" tip={TIPS.phone}>
+                <PhoneInput value={phone} onChange={setPhone} showError={submitted} />
               </FormField>
               <FormField label="Email" tip={TIPS.email}>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <EmailInput value={email} onChange={setEmail} showError={submitted} />
               </FormField>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -582,19 +611,6 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
                 />
               </FormField>
             </div>
-            {/* Бакета для фото клиентов нет — поле остаётся ссылкой. */}
-            <FormField
-              label="Фото (ссылка)"
-              tip="Прямая ссылка на картинку. Если аватар вверху не появился — ссылка не на изображение."
-              optional
-            >
-              <Input
-                type="url"
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                placeholder="https://..."
-              />
-            </FormField>
             <FormField label="Заметки" tip={TIPS.notes} optional>
               <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </FormField>

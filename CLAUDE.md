@@ -133,6 +133,8 @@ AUTH_SETUP.md.
   Номенклатура пакетных студий: `db/migrations/2026-10-10_packages_memberships.sql`
   — триггер, выключающий автопродление в пакетных студиях (добавленный там
   `for_regular_clients` убран `2026-10-11_packages_no_regular_price.sql`).
+  Цвет тренировки (пакетный формат, полоска в расписании):
+  `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`
@@ -221,7 +223,7 @@ own"` оставить). Альтернатива — выдача абонем�
   шаги в веб-панелях: миграции, ключи, хуки, Coolify). Держать в актуальном
   состоянии.
 - `STUDIO_FORMATS.md` — форматы студий, журнал решений по пакетному формату.
-- `AUTH_SETUP.md` — настройка почтовой авторизации (хук писем, Unisender Go).
+- `AUTH_SETUP.md` — настройка почтовой авторизации (хук писем, Resend).
 - `apps/client/DEPLOY.md` — деплой клиентских приложений в Coolify.
 - `MIGRATION.md` — план и статус переезда с Lovable
 - `INFRA_SETUP.md` — инструкция браузерному агенту (инфраструктура, шаг 9 —

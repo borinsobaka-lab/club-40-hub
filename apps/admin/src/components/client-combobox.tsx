@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { clientName, sanitizeSearch } from "@/lib/format";
+import { clientName, phoneSearchTerm, sanitizeSearch } from "@/lib/format";
 import { unwrap } from "@/lib/query";
 import { SearchableCombobox } from "@/components/searchable-combobox";
 
@@ -54,7 +54,9 @@ export function ClientCombobox({
         .eq("studio_id", studioId!);
       if (term) {
         q = q
-          .or(`search_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`)
+          .or(
+            `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
+          )
           .order("full_name", { ascending: true });
       } else {
         q = q.order("created_at", { ascending: false });

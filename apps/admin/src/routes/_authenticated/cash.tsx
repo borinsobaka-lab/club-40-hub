@@ -167,7 +167,7 @@ function CashPage() {
     <AdminShell title="Касса">
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
-          {/* Balance */}
+          {/* Баланс; приход и расход «за всё время» владелец убрал (2026-10-11). */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="rounded-lg border bg-background p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -176,24 +176,6 @@ function CashPage() {
               </div>
               <div className="mt-2 text-2xl font-semibold tabular-nums">
                 {formatMoneyPrecise(income - expense)}
-              </div>
-            </div>
-            <div className="rounded-lg border bg-background p-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-                Приход (всего)
-              </div>
-              <div className="mt-2 text-2xl font-semibold tabular-nums text-emerald-600">
-                {formatMoneyPrecise(income)}
-              </div>
-            </div>
-            <div className="rounded-lg border bg-background p-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <TrendingDown className="h-4 w-4 text-rose-600" />
-                Расход (всего)
-              </div>
-              <div className="mt-2 text-2xl font-semibold tabular-nums text-rose-600">
-                {formatMoneyPrecise(expense)}
               </div>
             </div>
           </div>
