@@ -327,7 +327,7 @@ function ClientsPage() {
               </SelectContent>
             </Select>
             <DateRangeFilter label="Регистрация" value={regRange} onChange={setRegRange} />
-            <DateRangeFilter label="Визит" value={visitRange} onChange={setVisitRange} />
+            <DateRangeFilter label="Последний визит" value={visitRange} onChange={setVisitRange} />
             <ToolbarReset active={hasFilters} onReset={resetFilters} />
           </TableToolbar>
 
