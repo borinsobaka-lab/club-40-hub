@@ -149,14 +149,21 @@ AUTH_SETUP.md.
   (дата внесения, ставит триггер), вью `client_packages_list` (строки раздела,
   платежи json и `payment_state` paid/overdue/pending по дате Тбилиси); там же
   снова пересоздана `sales_list` (актуальное определение — в этой миграции).
-  Списание тренировок и продление пакетных студий:
-  `db/migrations/2026-10-11_packages_renewal_queue.sql` — триггер на
-  `schedule_bookings` списывает/возвращает тренировку
-  (`client_membership_id`), продление — `client_memberships.status = 'pending'`
-  и `starts_on_first_visit` (срок от первого посещения, `started_at` теперь
-  может быть null), очередь — `packages_settle`; новая версия
-  `activate_membership_from_sale`; `sale_installments.payment_method`; вью
-  `client_packages_list` пересоздана (актуальное определение — здесь).
+  Баланс и списание пакетных студий:
+  `db/migrations/2026-10-11_zz_packages_personal_balance.sql` — третий тип
+  номенклатуры `personal`, `memberships.personal_count`,
+  `client_memberships.personal_left`/`balance_kind` (один живой абонемент на
+  клиента и вид баланса, `activate_membership_from_sale` переопределена),
+  списание при `attended` — триггер на `schedule_bookings`
+  (`charged_membership_id`), состояние `soon` в `client_packages_list`
+  (актуальное определение вью — в этой миграции).
+  Продление пакетных студий: `db/migrations/2026-10-11_zzz_packages_renewal_queue.sql`
+  — `client_memberships.status = 'pending'` и `starts_on_first_visit` (срок от
+  первого посещения, `started_at` может быть null), очередь — `packages_settle`
+  (по виду баланса); переопределены `activate_membership_from_sale` и
+  `schedule_bookings_charge_balance` (из `zz_packages_personal_balance`),
+  `sale_installments.payment_method`; вью `client_packages_list` пересоздана
+  (актуальное определение — здесь).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):

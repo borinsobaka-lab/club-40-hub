@@ -4,7 +4,7 @@ import { APP_FORMAT } from "@/lib/app-format";
 /**
  * Пакетный формат: досчитать очередь абонементов клиента перед тем, как
  * читать действующий абонемент или записываться (RPC
- * packages_settle_my_memberships, db/migrations/2026-10-11_packages_renewal_queue.sql).
+ * packages_settle_my_memberships, db/migrations/2026-10-11_zzz_packages_renewal_queue.sql).
  * Срок текущего абонемента вышел, а продление ждёт — продление становится
  * действующим. Ошибку молча пропускаем: без RPC приложение работает как
  * раньше (RPC нет в сгенерированных типах — вызов без типизации).
