@@ -172,6 +172,10 @@ AUTH_SETUP.md.
   `schedule_bookings_charge_balance` (из `zz_packages_personal_balance`),
   `sale_installments.payment_method`; вью `client_packages_list` пересоздана
   (актуальное определение — здесь).
+  Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
+  — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
+  триггер списания), `payroll_lines` — пакет персональных не идёт в продажи
+  администратора (актуальное определение — в этой миграции).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):

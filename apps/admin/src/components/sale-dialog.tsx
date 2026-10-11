@@ -476,7 +476,11 @@ function SaleForm({
                   ? isTrial
                     ? "Нет пробных посещений. Добавьте в «Номенклатурах» номенклатуру с типом «Пробное посещение»."
                     : "Нет пакетов тренировок. Добавьте их в «Номенклатурах»."
-                  : undefined
+                  : isPackages && membership?.kind === "personal"
+                    ? // Пакет персональных не идёт в продажи администратора
+                      // (payroll_lines, 2026-10-11_zzzzz_attendance_undo_personal_bonus.sql).
+                      "С пакета персональных тренировок бонус администратору не идёт."
+                    : undefined
               }
             >
               <SearchableCombobox
