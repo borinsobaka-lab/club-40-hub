@@ -3,15 +3,23 @@ import { UsersGroupRounded } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
+import { IS_PACKAGES } from "@/lib/terms";
+import { PackagesStudioPage } from "@/formats/packages/studio-page";
 
 export const Route = createFileRoute("/club")({
   head: () => ({
     meta: [
-      { title: "Клуб — Base40" },
-      { name: "description", content: "Челленджи, участники и жизнь клуба Base40." },
+      { title: IS_PACKAGES ? "Студия — Base40" : "Клуб — Base40" },
+      {
+        name: "description",
+        content: IS_PACKAGES
+          ? "О студии и её тренерах."
+          : "Челленджи, участники и жизнь клуба Base40.",
+      },
     ],
   }),
-  component: ClubPage,
+  // Пакетное приложение — раздел «Студия» (src/formats/packages/).
+  component: IS_PACKAGES ? PackagesStudioPage : ClubPage,
 });
 
 function ClubPage() {

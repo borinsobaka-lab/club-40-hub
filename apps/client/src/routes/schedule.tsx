@@ -14,15 +14,18 @@ import { useClubSettings } from "@/hooks/use-club-settings";
 import { useClientStudioId } from "@/hooks/use-client-studio";
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
+import { IS_PACKAGES, SCHEDULE_TITLE } from "@/lib/terms";
+import { PackagesSchedulePage } from "@/formats/packages/schedule-page";
 
 export const Route = createFileRoute("/schedule")({
   head: () => ({
     meta: [
-      { title: "Бронь — Base40" },
-      { name: "description", content: "Бронирование занятий Base40." },
+      { title: `${SCHEDULE_TITLE} — Base40` },
+      { name: "description", content: "Расписание и запись на занятия Base40." },
     ],
   }),
-  component: SchedulePage,
+  // Пакетное приложение — свой экран (src/formats/packages/).
+  component: IS_PACKAGES ? PackagesSchedulePage : SchedulePage,
 });
 
 const TABS = [

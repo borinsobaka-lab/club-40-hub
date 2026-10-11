@@ -1,0 +1,101 @@
+import { useState } from "react";
+import { Drawer as DrawerPrimitive } from "vaul";
+import { AltArrowDown, Buildings2, CheckCircle } from "@solar-icons/react";
+
+import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
+
+/**
+ * Плашка «какая студия выбрана» под быстрыми кнопками главной (пакетное
+ * приложение, решение владельца 2026-10-11). По нажатию — список студий
+ * формата; выбор меняет новости, услуги, контакты, расписание, тренеров и
+ * абонементы (useViewedStudioId).
+ */
+export function StudioSwitcher() {
+  const { studioId, homeStudioId } = useViewedStudioId();
+  const { data: studios = [] } = useFormatStudios();
+  const [open, setOpen] = useState(false);
+  const current = studios.find((s) => s.id === studioId);
+  const canSwitch = studios.length > 1;
+
+  if (!current) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => canSwitch && setOpen(true)}
+        className="flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2.5 text-left backdrop-blur-md transition active:scale-[0.99]"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10">
+          <Buildings2 className="h-5 w-5 text-white" weight="BoldDuotone" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold text-white/70">Студия</span>
+          <span className="block truncate text-sm font-semibold text-white">{current.name}</span>
+        </span>
+        {canSwitch && (
+          <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-white/80">
+            Сменить
+            <AltArrowDown className="h-4 w-4" />
+          </span>
+        )}
+      </button>
+
+      <DrawerPrimitive.Root open={open} onOpenChange={setOpen} shouldScaleBackground>
+        <DrawerPrimitive.Portal>
+          <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
+          <DrawerPrimitive.Content
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80vh] flex-col rounded-t-2xl border-t border-border bg-background outline-none"
+            aria-describedby={undefined}
+          >
+            <div className="mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
+            <div className="overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">
+              <DrawerPrimitive.Title className="text-xl font-semibold">
+                Выберите студию
+              </DrawerPrimitive.Title>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Новости, услуги, расписание и абонементы покажем для выбранной студии.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {studios.map((s) => {
+                  const active = s.id === studioId;
+                  return (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Своя студия — сбрасываем выбор: дальше по карточке клиента.
+                          setViewedStudioId(s.id === homeStudioId ? null : s.id);
+                          setOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99] ${
+                          active ? "border-primary bg-primary/5" : "border-border bg-card"
+                        }`}
+                      >
+                        <Buildings2
+                          className={`h-6 w-6 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`}
+                          weight="BoldDuotone"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-semibold">{s.name}</span>
+                          {s.id === homeStudioId && (
+                            <span className="block text-xs text-muted-foreground">
+                              Ваша студия — здесь можно записываться
+                            </span>
+                          )}
+                        </span>
+                        {active && (
+                          <CheckCircle className="h-6 w-6 shrink-0 text-primary" weight="Bold" />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </DrawerPrimitive.Content>
+        </DrawerPrimitive.Portal>
+      </DrawerPrimitive.Root>
+    </>
+  );
+}

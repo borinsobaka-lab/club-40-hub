@@ -22,7 +22,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
-import { useClientStudioId } from "@/hooks/use-client-studio";
+import { useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { IS_PACKAGES } from "@/lib/terms";
+import {
+  PACK_ENTRY_SELECT,
+  packEntryToDrawerData,
+  type PackEntry,
+} from "@/formats/packages/entries";
+import { PackWorkoutCard } from "@/formats/packages/workout-card";
+import { StudioSwitcher } from "@/formats/packages/studio-switcher";
 
 import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
@@ -119,8 +127,13 @@ function HomePage() {
   const [servicesError, setServicesError] = useState(false);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  // Кнопки «Написать/Позвонить/Фидбэк» — смотримой студии; срок отмены записи
+  // — своей (записи клиента всегда в своей студии).
   const clubSettings = useClubSettings();
-  const { studioId, studioReady } = useClientStudioId();
+  const homeSettings = useClubSettings("home");
+  // Новости и услуги — смотримой студии (переключатель пакетного приложения;
+  // в подписочном — всегда своя).
+  const { studioId, studioReady } = useViewedStudioId();
 
   useEffect(() => {
     if (!user) {
@@ -137,7 +150,10 @@ function HomePage() {
       const { data, error } = await (supabase as any)
         .from("schedule_bookings")
         .select(
-          "entry_id, entry:schedule_entries!inner(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))",
+          IS_PACKAGES
+            ? // Пакетное — карточка как в расписании: цвет, места, фото тренеров.
+              `entry_id, entry:schedule_entries!inner(${PACK_ENTRY_SELECT})`
+            : "entry_id, entry:schedule_entries!inner(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))",
         )
         .eq("user_id", user.id)
         .eq("status", "booked")
@@ -398,6 +414,7 @@ function HomePage() {
           </section>
 
           {/* Быстрые действия */}
+          {/* Пакетное: под кнопками — выбранная студия с переключателем. */}
           {(clubSettings.write_url || clubSettings.call_url || clubSettings.feedback_url) && (
             <section className="px-4 my-3">
               <div className="rounded-2xl bg-white/10 backdrop-blur-md p-1.5">
@@ -426,6 +443,12 @@ function HomePage() {
               </div>
             </section>
           )}
+
+          {IS_PACKAGES && (
+            <section className="px-4 my-3">
+              <StudioSwitcher />
+            </section>
+          )}
         </div>
       }
     >
@@ -447,7 +470,7 @@ function HomePage() {
                   У вас нет запланированных тренировок
                 </div>
                 <Button asChild className="text-sm font-bold">
-                  <Link to="/schedule">Забронировать</Link>
+                  <Link to="/schedule">{IS_PACKAGES ? "Записаться" : "Забронировать"}</Link>
                 </Button>
               </div>
             ) : (
@@ -466,6 +489,18 @@ function HomePage() {
                       </div>
                       {group.items.map((b) => {
                         const e = b.entry!;
+                        if (IS_PACKAGES) {
+                          const pe = e as unknown as PackEntry;
+                          return (
+                            <PackWorkoutCard
+                              key={b.entry_id}
+                              entry={pe}
+                              isBooked
+                              canBook={false}
+                              onOpen={() => setOpenEntry(packEntryToDrawerData(pe))}
+                            />
+                          );
+                        }
                         const meta = workoutTypeMeta(e.workout?.type);
                         const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
                           hour: "2-digit",
@@ -522,7 +557,7 @@ function HomePage() {
           <section className="bg-background rounded-t-[14px] pt-5 pb-0">
             <h2 className="px-4 text-2xl font-semibold">Услуги</h2>
             <p className="px-4 text-sm text-muted-foreground mb-3">
-              Дополнительные возможности для участников клуба
+              Дополнительные возможности для {IS_PACKAGES ? "клиентов студии" : "участников клуба"}
             </p>
             {services === null && servicesError ? (
               <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex items-center justify-center text-center px-4 text-sm text-destructive">
@@ -602,7 +637,7 @@ function HomePage() {
         }}
         isBooked={true}
         isPending={openEntry ? pendingId === openEntry.id : false}
-        cancelMinutes={clubSettings.cancel_booking_minutes}
+        cancelMinutes={homeSettings.cancel_booking_minutes}
         onBook={(reason) => {
           if (openEntry) cancelBooking(openEntry.id, reason);
         }}

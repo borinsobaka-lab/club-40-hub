@@ -5,6 +5,7 @@ import { FloatingLabelInput } from "@/components/ui/floating-input";
 import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
+import { CLUB, IS_PACKAGES } from "@/lib/terms";
 
 function formatCooldown(sec: number) {
   const m = Math.floor(sec / 60);
@@ -12,7 +13,9 @@ function formatCooldown(sec: number) {
   return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s} сек`;
 }
 
-const NOT_A_MEMBER = "Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.";
+const NOT_A_MEMBER = IS_PACKAGES
+  ? "Эта почта не найдена среди клиентов студии. Обратитесь к администратору студии."
+  : "Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.";
 
 function humanizeAuthError(message: string): string {
   const m = message.toLowerCase();
@@ -194,7 +197,7 @@ function AuthPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             {step === "otp"
               ? `Введите код, отправленный на ${email}`
-              : "Войдите по почте, которую вы указали в клубе"}
+              : `Войдите по почте, которую вы указали в ${CLUB.prep}`}
           </p>
         </div>
 

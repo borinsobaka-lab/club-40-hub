@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RulerPicker } from "@/components/ui/ruler-picker";
 import { Mars, Venus } from "lucide-react";
+import { CLUB } from "@/lib/terms";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -671,7 +672,7 @@ function StepBody({
     <div>
       <StepTitle
         title="Базовые параметры — чтобы правильно рассчитать статистику"
-        subtitle="Эти данные увидите только вы и тренеры клуба."
+        subtitle={`Эти данные увидите только вы и тренеры ${CLUB.gen}.`}
       />
       <div className="space-y-7">
         <div>

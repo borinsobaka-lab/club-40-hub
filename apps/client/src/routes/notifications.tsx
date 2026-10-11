@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
+import { CLUB, SCHEDULE_TITLE } from "@/lib/terms";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -26,7 +27,7 @@ const MOCK: Notification[] = [
   {
     id: "1",
     title: "🎉 Добро пожаловать в Base40!",
-    body: "Привет! Мы рады видеть тебя в клубе.\nЗагляни в раздел «Бронь» — там уже доступно расписание на ближайшие дни.",
+    body: `Привет! Мы рады видеть тебя в ${CLUB.prep}.\nЗагляни в раздел «${SCHEDULE_TITLE}» — там уже доступно расписание на ближайшие дни.`,
     receivedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
     read: false,
   },
@@ -55,14 +56,14 @@ const MOCK: Notification[] = [
   {
     id: "6",
     title: "📺 Новое видео на YouTube",
-    body: "Разбор техники приседаний от тренера клуба.\nСмотрите по ссылке ниже.",
+    body: `Разбор техники приседаний от тренера ${CLUB.gen}.\nСмотрите по ссылке ниже.`,
     receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
     read: true,
     link: "https://youtube.com",
   },
   {
     id: "4",
-    title: "📣 Новость клуба",
+    title: `📣 Новость ${CLUB.gen}`,
     body: "В эти выходные — открытая тренировка на свежем воздухе.\nПодробности в разделе новостей на главной.",
     receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
     read: true,
@@ -107,7 +108,7 @@ function NotificationsPage() {
             type="button"
             onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}
             disabled={unread === 0}
-            className="text-xs font-semibold text-primary-foreground bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition-colors"
+            className="text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition-colors"
           >
             Прочитать все
           </button>

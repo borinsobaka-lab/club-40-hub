@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useClientStudioId } from "@/hooks/use-client-studio";
+import { useViewedStudioId } from "@/hooks/use-viewed-studio";
 
 export type ClubSettings = {
   write_url: string | null;
@@ -41,8 +41,14 @@ async function fetchSettings(studioId: string | null): Promise<ClubSettings> {
   return data ? { ...DEFAULTS, ...data } : DEFAULTS;
 }
 
-export function useClubSettings(): ClubSettings {
-  const { studioId, studioReady } = useClientStudioId();
+/**
+ * which: "viewed" — смотримая студия (переключатель пакетного приложения:
+ * кнопки главной), "home" — своя студия клиента (срок отмены его записей).
+ */
+export function useClubSettings(which: "viewed" | "home" = "viewed"): ClubSettings {
+  const viewed = useViewedStudioId();
+  const studioReady = viewed.studioReady;
+  const studioId = which === "home" ? viewed.homeStudioId : viewed.studioId;
   const key = studioId ?? "";
   const [s, setS] = useState<ClubSettings>(() => cached.get(key) ?? DEFAULTS);
   useEffect(() => {

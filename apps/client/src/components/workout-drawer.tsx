@@ -26,7 +26,39 @@ export type WorkoutDrawerData = {
   trainerPhoto: string | null;
   startsAt?: string | null;
   endsAt?: string | null;
+  // Пакетное приложение (formats/packages/entries.ts): цвет тренировки вместо
+  // типа, тренеры крупно — каждый с аватаркой, свободные места.
+  color?: string | null;
+  trainers?: { id: string; name: string; photo: string | null }[];
+  spotsLabel?: string | null;
+  spotsLeft?: number | null;
 };
+
+function initialsOf(name: string) {
+  return name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+/** «Пн, 13 октября · 19:00–20:00 · 60 мин». */
+function whenLabel(startsAt: string, endsAt: string | null | undefined) {
+  const start = new Date(startsAt);
+  const raw = start.toLocaleDateString("ru-RU", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+  });
+  const day = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const time = (d: Date) => d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  if (!endsAt) return `${day} · ${time(start)}`;
+  const end = new Date(endsAt);
+  const minutes = Math.round((end.getTime() - start.getTime()) / 60_000);
+  return `${day} · ${time(start)}–${time(end)}${minutes > 0 ? ` · ${minutes} мин` : ""}`;
+}
 
 const CANCEL_REASONS = ["Заболел(а)", "Не получается прийти", "Изменились планы", "Другое"];
 
@@ -40,6 +72,7 @@ export function WorkoutDrawer({
   isFull = false,
   isPending,
   cancelMinutes,
+  bookingNote,
 }: {
   data: WorkoutDrawerData | null;
   open: boolean;
@@ -50,8 +83,11 @@ export function WorkoutDrawer({
   isFull?: boolean;
   isPending: boolean;
   cancelMinutes?: number;
+  /** Записаться нельзя (другая студия) — текст вместо кнопки «Записаться». */
+  bookingNote?: string | null;
 }) {
-  const typeMeta = data ? workoutTypeMeta(data.type) : null;
+  const isPack = !!data?.trainers;
+  const typeMeta = data && !isPack ? workoutTypeMeta(data.type) : null;
   const TypeIcon = typeMeta?.icon ?? null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
@@ -140,7 +176,46 @@ export function WorkoutDrawer({
                       </div>
                     )}
 
-                    {data.trainerName && (
+                    {isPack && data.startsAt && (
+                      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                        {data.color && (
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: data.color }}
+                          />
+                        )}
+                        {whenLabel(data.startsAt, data.endsAt)}
+                      </div>
+                    )}
+
+                    {isPack && data.spotsLabel && (
+                      <div
+                        className={`mt-1 text-sm font-semibold ${data.spotsLeft === 0 ? "text-red-500" : "text-foreground"}`}
+                      >
+                        {data.spotsLabel}
+                      </div>
+                    )}
+
+                    {isPack && data.trainers!.length > 0 && (
+                      <div className="mt-4 flex flex-col gap-3">
+                        {data.trainers!.map((t) => (
+                          <div key={t.id} className="flex items-center gap-3">
+                            <SquircleAvatar size={48}>
+                              {t.photo && <SquircleAvatarImage src={t.photo} alt={t.name} />}
+                              <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
+                                {initialsOf(t.name)}
+                              </SquircleAvatarFallback>
+                            </SquircleAvatar>
+                            <div className="min-w-0">
+                              <div className="text-xs text-muted-foreground">Тренер</div>
+                              <div className="truncate text-base font-semibold">{t.name}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {!isPack && data.trainerName && (
                       <div className="mt-3 flex items-center gap-2">
                         <SquircleAvatar size={32}>
                           {data.trainerPhoto && (
@@ -162,11 +237,13 @@ export function WorkoutDrawer({
                       </div>
                     )}
                   </div>
-                  <img
-                    src={data.photo ?? logoSrc}
-                    alt=""
-                    className={`w-28 h-28 rounded-full object-cover shrink-0 bg-muted ${data.photo ? "" : "brand-art"}`}
-                  />
+                  {(!isPack || data.photo) && (
+                    <img
+                      src={data.photo ?? logoSrc}
+                      alt=""
+                      className={`w-28 h-28 rounded-full object-cover shrink-0 bg-muted ${data.photo ? "" : "brand-art"}`}
+                    />
+                  )}
                 </div>
 
                 {data.description && (
@@ -239,6 +316,10 @@ export function WorkoutDrawer({
                       {isPending ? "..." : "Выйти из очереди"}
                     </button>
                   </>
+                ) : bookingNote ? (
+                  <div className="mt-6 rounded-2xl bg-muted p-4 text-sm text-muted-foreground">
+                    {bookingNote}
+                  </div>
                 ) : (
                   <button
                     type="button"

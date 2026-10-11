@@ -9,9 +9,10 @@ import {
 } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { resetPageScrollPosition } from "@/lib/page-scroll";
+import { IS_PACKAGES } from "@/lib/terms";
 
 type NavItem = {
-  to: "/" | "/schedule" | "/club";
+  to: "/" | "/schedule" | "/club" | "/memberships";
   label: string;
   Icon: typeof Home;
   exact: boolean;
@@ -28,7 +29,67 @@ const moreItems = [
   { to: "/memberships" as const, label: "Абонементы", Icon: Card },
 ];
 
+// Пакетное приложение (решение владельца 2026-10-11): «Расписание» вместо
+// «Брони», «Студия» вместо «Клуба», «Абонементы» — на месте «Ещё», «Профиль»
+// — правой плиткой вместо ассистента (W).
+const packagesItems: NavItem[] = [
+  { to: "/", label: "Главное", Icon: Home, exact: true },
+  { to: "/schedule", label: "Расписание", Icon: DumbbellLargeMinimalistic, exact: false },
+  { to: "/club", label: "Студия", Icon: UsersGroupRounded, exact: false },
+  { to: "/memberships", label: "Абонементы", Icon: Card, exact: false },
+];
+
 export function BottomNav() {
+  return IS_PACKAGES ? <PackagesBottomNav /> : <SubscriptionBottomNav />;
+}
+
+function PackagesBottomNav() {
+  const linkClass =
+    "flex flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5";
+  return (
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center">
+      <div className="pointer-events-auto w-full max-w-md px-3 pb-3">
+        <div className="relative flex items-end gap-2">
+          <div className="glass-dark relative flex-1 rounded-3xl px-1.5 py-1.5">
+            <ul className="grid grid-cols-4">
+              {packagesItems.map(({ to, label, Icon, exact }) => (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    activeOptions={{ exact }}
+                    onPointerDown={resetPageScrollPosition}
+                    onClick={resetPageScrollPosition}
+                    activeProps={{ className: "text-primary" }}
+                    inactiveProps={{ className: "text-white/70" }}
+                    className={`h-14 ${linkClass}`}
+                  >
+                    <Icon className="h-6 w-6" weight="BoldDuotone" />
+                    <span>{label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Link
+            to="/profile"
+            onPointerDown={resetPageScrollPosition}
+            onClick={resetPageScrollPosition}
+            activeProps={{ className: "text-primary" }}
+            inactiveProps={{ className: "text-white/70" }}
+            className={`glass-dark h-[68px] w-[68px] shrink-0 rounded-3xl ${linkClass}`}
+          >
+            <User className="h-6 w-6" weight="BoldDuotone" />
+            <span>Профиль</span>
+          </Link>
+        </div>
+        <div className="h-[env(safe-area-inset-bottom)]" />
+      </div>
+    </nav>
+  );
+}
+
+function SubscriptionBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);

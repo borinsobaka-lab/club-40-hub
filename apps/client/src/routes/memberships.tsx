@@ -34,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { mediaUrl } from "@/lib/media";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
+import { PackagesMembershipsPage } from "@/formats/packages/memberships-page";
 
 export const Route = createFileRoute("/memberships")({
   head: () => ({
@@ -42,7 +43,8 @@ export const Route = createFileRoute("/memberships")({
       { name: "description", content: "Абонементы и пакеты занятий Base40." },
     ],
   }),
-  component: MembershipsPage,
+  // Пакетное приложение — свой экран без покупки (src/formats/packages/).
+  component: APP_FORMAT === "packages" ? PackagesMembershipsPage : MembershipsPage,
 });
 
 type Membership = {
