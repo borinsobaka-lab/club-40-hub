@@ -14,7 +14,7 @@ import { unwrap } from "@/lib/query";
  */
 
 export const SELLER_TIP =
-  "Кто из администраторов студии продал — продажа идёт в его зарплату. Список — сотрудники с ролью «Администратор» в «Сотрудниках».";
+  "Кто из администраторов клуба продал — продажа идёт в его зарплату. Список — сотрудники с ролью «Администратор» в «Сотрудниках».";
 
 export type StudioStaffRow = { id: string; full_name: string; role: string };
 
@@ -34,6 +34,6 @@ export function useStudioStaff(studioId: string | null) {
           .order("full_name"),
       ),
     enabled: !!studioId,
-    meta: { errorMessage: "Не удалось загрузить сотрудников студии" },
+    meta: { errorMessage: "Не удалось загрузить сотрудников клуба" },
   });
 }

@@ -571,7 +571,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
               required
               hint={
                 !staffLoading && admins.length === 0
-                  ? "В этой студии нет администраторов — отметьте студию у сотрудника с ролью «Администратор» в «Сотрудниках»."
+                  ? "В этом клубе нет администраторов — отметьте клуб у сотрудника с ролью «Администратор» в «Сотрудниках»."
                   : undefined
               }
             >

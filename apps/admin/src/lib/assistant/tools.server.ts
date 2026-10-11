@@ -67,7 +67,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== КЛИЕНТЫ ======
     list_clients: tool({
       description:
-        "Клиенты студии со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото. Можно фильтровать по точным ID.",
+        "Клиенты клуба со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото. Можно фильтровать по точным ID.",
       inputSchema: z.object({
         ids: z
           .array(z.string().uuid())
@@ -102,7 +102,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // Сотрудники общие для студий (trainer_studios); здесь — сотрудники этой
     // студии. Банковские реквизиты и ставки ассистенту не отдаём.
     list_trainers: tool({
-      description: "Сотрудники студии (тренеры и администраторы): имя, роль, фото, Telegram.",
+      description: "Сотрудники клуба (тренеры и администраторы): имя, роль, фото, Telegram.",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
@@ -118,7 +118,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
 
     // ====== ТРЕНИРОВКИ (шаблоны) ======
     list_workouts: tool({
-      description: "Шаблоны тренировок студии (название, описание, тип, фото).",
+      description: "Шаблоны тренировок клуба (название, описание, тип, фото).",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
@@ -153,7 +153,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== АБОНЕМЕНТЫ (шаблоны) ======
     list_memberships: tool({
       description:
-        "Шаблоны абонементов студии: название, описание, бонусы, число посещений, срок, цена, активность, обложка, признак 'для двоих'. Можно фильтровать по точным ID.",
+        "Шаблоны абонементов клуба: название, описание, бонусы, число посещений, срок, цена, активность, обложка, признак 'для двоих'. Можно фильтровать по точным ID.",
       inputSchema: z.object({
         ids: z
           .array(z.string().uuid())
@@ -382,7 +382,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
 
     // ====== ПРОМОКОДЫ ======
     list_promo_codes: tool({
-      description: "Промокоды студии: имя, код, скидка, лимит, использования, срок, активность.",
+      description: "Промокоды клуба: имя, код, скидка, лимит, использования, срок, активность.",
       inputSchema: z.object({
         only_active: z.boolean().default(false),
         limit: limit(500, 200),
@@ -406,7 +406,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // фильтра по студии.
     list_news: tool({
       description:
-        "Новости мобильного приложения (общие для всех студий): заголовок, описание, кнопка, картинки.",
+        "Новости мобильного приложения (общие для всех клубов): заголовок, описание, кнопка, картинки.",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
@@ -421,7 +421,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
 
     // ====== УСЛУГИ ======
     list_services: tool({
-      description: "Услуги мобильного приложения (карточки услуг, общие для всех студий).",
+      description: "Услуги мобильного приложения (карточки услуг, общие для всех клубов).",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
@@ -437,7 +437,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== ПУШ-УВЕДОМЛЕНИЯ ======
     list_push_notifications: tool({
       description:
-        "Пуш-уведомления (общие для всех студий): заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
+        "Пуш-уведомления (общие для всех клубов): заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
       inputSchema: z.object({
         status: z.enum(["draft", "scheduled", "sent"]).optional(),
         limit: limit(500, 200),
@@ -566,7 +566,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== СВОДКА ======
     counts_overview: tool({
       description:
-        "Сводка по студии: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, фидбэка, ответов NPS; новости, услуги и пуши — общие для всех студий.",
+        "Сводка по клубу: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, фидбэка, ответов NPS; новости, услуги и пуши — общие для всех клубов.",
       inputSchema: z.object({}),
       execute: async () => {
         const head = { count: "exact" as const, head: true };

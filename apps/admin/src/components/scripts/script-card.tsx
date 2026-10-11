@@ -261,7 +261,7 @@ export function ScriptCard({
 
         {item.variants.length > 1 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className={LABEL}>Студия</span>
+            <span className={LABEL}>Клуб</span>
             <Tabs value={variant.label} onValueChange={onStudio}>
               <TabsList>
                 {item.variants.map((v) => (

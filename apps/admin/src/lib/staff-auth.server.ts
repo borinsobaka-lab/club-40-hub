@@ -107,7 +107,7 @@ export async function authenticateStaff(request: Request): Promise<StaffAuthResu
     requestedStudioId(request.headers),
   );
   if (!staff?.roles.length) {
-    return { ok: false, status: 403, message: "Доступ только для сотрудников студии." };
+    return { ok: false, status: 403, message: "Доступ только для сотрудников клуба." };
   }
   return {
     ok: true,

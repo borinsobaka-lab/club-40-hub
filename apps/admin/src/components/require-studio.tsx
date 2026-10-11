@@ -11,7 +11,7 @@ export function RequireStudio({
   if (studioId) return <>{children}</>;
   return (
     <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-      Сначала выберите студию в шапке.
+      Сначала выберите клуб в шапке.
     </div>
   );
 }

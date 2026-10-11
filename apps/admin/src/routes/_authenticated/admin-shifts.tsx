@@ -80,7 +80,7 @@ const TIPS = {
   grid: "Нажмите «+», чтобы поставить администратора на день; нажмите на администратора, чтобы заменить его или убрать. Смена оплачивается по ставке «Смена администратора».",
   adjustment:
     "Вычет или надбавка к окладу сотрудника. Попадает в зарплату за период, в который входит дата: 1–19 — аванс, с 20-го — основная часть.",
-  stats: "Смены за месяц по всем вашим студиям; «отработано» — по сегодняшний день.",
+  stats: "Смены за месяц по всем вашим клубам; «отработано» — по сегодняшний день.",
 };
 
 const WEEKDAYS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
@@ -211,8 +211,8 @@ function AdminShiftsPage() {
 
         {!scopeLoading && studios.length === 0 ? (
           <InfoNote variant="empty">
-            График ведётся в студиях с пакетами тренировок — у вас нет доступа ни к одной такой
-            студии.
+            График ведётся в клубах с пакетами тренировок — у вас нет доступа ни к одному такому
+            клубу.
           </InfoNote>
         ) : (
           <>
@@ -306,7 +306,7 @@ function ShiftGrid({
               ref={stickyRef}
               className="sticky left-0 z-20 w-28 min-w-28 border-r border-b bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground sm:w-36 sm:min-w-36"
             >
-              Студия
+              Клуб
             </th>
             {days.map((d) => {
               const weekend = isWeekend(d.weekday);
@@ -484,7 +484,7 @@ function AdminPicker({
           <CommandList>
             <CommandEmpty>
               {candidates.length === 0
-                ? "В этой студии нет администраторов — отметьте студию у сотрудника в «Сотрудниках»."
+                ? "В этом клубе нет администраторов — отметьте клуб у сотрудника в «Сотрудниках»."
                 : "Никого не найдено"}
             </CommandEmpty>
             {options.length > 0 && (
@@ -564,7 +564,7 @@ function ShiftStats({
       const s = e.trainer_studios.find((x) => x.studio_id === id);
       if (s?.studio?.name) return s.studio.name;
     }
-    return "Студия";
+    return "Клуб";
   };
 
   return (

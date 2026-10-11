@@ -55,13 +55,13 @@ import {
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
   format:
-    "От типа зависят абонементы, тренировки и расписание студии, а клиенты пользуются приложением этого типа.",
-  color: "Цвет иконки активного пункта меню и акцентов админки, пока открыта эта студия.",
-  logo: "Показывается в шапке бокового меню. Без логотипа там будет название студии.",
+    "От типа зависят абонементы, тренировки и расписание клуба, а клиенты пользуются приложением этого типа.",
+  color: "Цвет иконки активного пункта меню и акцентов админки, пока открыт этот клуб.",
+  logo: "Показывается в шапке бокового меню. Без логотипа там будет название клуба.",
 };
 
 export const Route = createFileRoute("/_authenticated/studios")({
-  head: () => ({ meta: [{ title: "Студии — Base40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Клубы — Base40 Admin" }] }),
   component: StudiosPage,
 });
 
@@ -90,12 +90,12 @@ function StudiosPage() {
 
   return (
     <AdminShell
-      title="Студии"
+      title="Клубы"
       actions={
         isOwnerAnywhere ? (
           <Button onClick={openCreate}>
             <Plus />
-            Добавить студию
+            Добавить клуб
           </Button>
         ) : null
       }
@@ -119,7 +119,7 @@ function StudiosPage() {
             ) : studios.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                  Нет студий, где вы сотрудник.
+                  Нет клубов, где вы сотрудник.
                 </TableCell>
               </TableRow>
             ) : (
@@ -132,7 +132,7 @@ function StudiosPage() {
                       ...(s.id !== activeId
                         ? [
                             {
-                              label: "Перейти в студию",
+                              label: "Перейти в клуб",
                               icon: LogIn,
                               onSelect: () => setActiveStudioId(s.id),
                             },
@@ -149,7 +149,7 @@ function StudiosPage() {
                               },
                             },
                             {
-                              label: "Удалить студию",
+                              label: "Удалить клуб",
                               icon: Trash2,
                               destructive: true,
                               onSelect: () => setDeleting(s),
@@ -295,12 +295,12 @@ function DeleteStudioForm({
       ]);
       return { clients: clients.count, sales: sales.count };
     },
-    meta: { errorMessage: "Не удалось посчитать данные студии" },
+    meta: { errorMessage: "Не удалось посчитать данные клуба" },
   });
 
   const handleDelete = async () => {
     if (!matches) {
-      toast.error("Введите название студии точно так, как оно написано");
+      toast.error("Введите название клуба точно так, как оно написано");
       return;
     }
     setSaving(true);
@@ -310,10 +310,10 @@ function DeleteStudioForm({
         _confirm_name: confirmName,
       });
       if (error) {
-        toast.error("Не удалось удалить студию: " + error.message);
+        toast.error("Не удалось удалить клуб: " + error.message);
         return;
       }
-      toast.success(`Студия «${studio.name}» удалена`);
+      toast.success(`Клуб «${studio.name}» удалён`);
       onClose();
       onDeleted();
     } finally {
@@ -324,9 +324,9 @@ function DeleteStudioForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Удалить студию?</DialogTitle>
+        <DialogTitle>Удалить клуб?</DialogTitle>
         <DialogDescription>
-          Студия «{studio.name}» будет удалена вместе со всеми её данными. Отменить это нельзя.
+          Клуб «{studio.name}» будет удалён вместе со всеми его данными. Отменить это нельзя.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleDelete}>
@@ -336,11 +336,11 @@ function DeleteStudioForm({
               Удалятся карточки клиентов
               {counts ? ` (${counts.clients})` : ""}, продажи
               {counts ? ` (${counts.sales})` : ""}, абонементы, касса, расписание и записи,
-              номенклатура, промокоды, доступы сотрудников в этой студии. Останутся учётные записи
+              номенклатура, промокоды, доступы сотрудников в этом клубе. Останутся учётные записи
               людей, справочник сотрудников, новости, услуги и пуши приложения.
             </InfoNote>
             <FormField
-              label="Название студии"
+              label="Название клуба"
               required
               hint={`Введите «${studio.name}», чтобы подтвердить.`}
             >
@@ -359,7 +359,7 @@ function DeleteStudioForm({
           </Button>
           <Button type="submit" variant="destructive" disabled={saving || !matches}>
             {saving && <Loader2 className="animate-spin" />}
-            Удалить студию
+            Удалить клуб
           </Button>
         </DialogFooter>
       </DialogForm>
@@ -384,7 +384,7 @@ function StudioForm({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error("Укажите название студии");
+      toast.error("Укажите название клуба");
       return;
     }
     if (!isBrandColor(color)) {
@@ -412,7 +412,7 @@ function StudioForm({
         return;
       }
       toast.success(
-        item ? "Студия сохранена" : "Студия создана — переключиться на неё можно в выборе студии",
+        item ? "Клуб сохранён" : "Клуб создан — переключиться на него можно в выборе клуба",
       );
       onClose();
       onSaved();
@@ -426,9 +426,9 @@ function StudioForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{item ? "Редактировать студию" : "Новая студия"}</DialogTitle>
+        <DialogTitle>{item ? "Редактировать клуб" : "Новый клуб"}</DialogTitle>
         <DialogDescription>
-          Логотип и основной цвет видны в админке, пока открыта эта студия.
+          Логотип и основной цвет видны в админке, пока открыт этот клуб.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
@@ -450,7 +450,7 @@ function StudioForm({
               </InfoNote>
             ) : (
               <FormField
-                label="Тип студии"
+                label="Тип клуба"
                 required
                 tip={TIPS.format}
                 hint={`Приложение клиентов — ${appHost(format)}. После создания тип не меняется.`}
@@ -519,7 +519,7 @@ function StudioForm({
           </Button>
           <Button type="submit" disabled={saving}>
             {saving && <Loader2 className="animate-spin" />}
-            {item ? "Сохранить" : "Создать студию"}
+            {item ? "Сохранить" : "Создать клуб"}
           </Button>
         </DialogFooter>
       </DialogForm>

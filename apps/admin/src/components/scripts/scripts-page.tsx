@@ -583,7 +583,7 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
             </Tabs>
             {studios.length > 1 && (
               <Tabs value={activeStudio} onValueChange={setStudio}>
-                <TabsList aria-label="Студия">
+                <TabsList aria-label="Клуб">
                   {studios.map((s) => (
                     <TabsTrigger key={s} value={s}>
                       {s}
