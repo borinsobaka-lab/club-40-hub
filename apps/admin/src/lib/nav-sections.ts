@@ -110,30 +110,6 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     ],
   },
   {
-    key: "studio",
-    label: "Клуб",
-    items: [
-      { title: "Тренировки", url: "/workouts", icon: Dumbbell, section: "workouts" },
-      // Один раздел прав «Номенклатуры», у каждого формата своя страница:
-      // подписки с автопродлением / пакеты тренировок.
-      {
-        title: "Номенклатуры",
-        url: "/memberships",
-        icon: TagPrice,
-        section: "memberships",
-        formats: ["subscription"],
-      },
-      {
-        title: "Номенклатуры",
-        url: "/packages",
-        icon: TagPrice,
-        section: "memberships",
-        formats: ["packages"],
-      },
-      { title: "Промокоды", url: "/promocodes", icon: TicketSale, section: "promocodes" },
-    ],
-  },
-  {
     key: "stats",
     label: "Статистика",
     items: [
@@ -162,6 +138,30 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     items: [
       { title: "Обратная связь", url: "/feedback", icon: ChatRoundDots, section: "feedback" },
       { title: "NPS-опросы", url: "/nps", icon: ChartSquare, section: "nps" },
+    ],
+  },
+  {
+    key: "studio",
+    label: "Клуб",
+    items: [
+      { title: "Тренировки", url: "/workouts", icon: Dumbbell, section: "workouts" },
+      // Один раздел прав «Номенклатуры», у каждого формата своя страница:
+      // подписки с автопродлением / пакеты тренировок.
+      {
+        title: "Номенклатуры",
+        url: "/memberships",
+        icon: TagPrice,
+        section: "memberships",
+        formats: ["subscription"],
+      },
+      {
+        title: "Номенклатуры",
+        url: "/packages",
+        icon: TagPrice,
+        section: "memberships",
+        formats: ["packages"],
+      },
+      { title: "Промокоды", url: "/promocodes", icon: TicketSale, section: "promocodes" },
     ],
   },
 ];
