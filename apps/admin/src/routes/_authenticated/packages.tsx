@@ -181,10 +181,10 @@ function PackagesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Название</TableHead>
-                  <TableHead>Описание</TableHead>
                   <TableHead>Тренировок</TableHead>
                   <TableHead>Срок действия</TableHead>
                   <TableHead>Стоимость</TableHead>
+                  <TableHead>Описание</TableHead>
                   <TableHead>Статус</TableHead>
                 </TableRow>
               </TableHeader>
@@ -224,13 +224,13 @@ function PackagesPage() {
                     >
                       <TableRow className={p.is_active ? "" : "opacity-60"}>
                         <TableCell className="font-medium">{p.name}</TableCell>
-                        <TableCell className="max-w-[300px] truncate text-muted-foreground">
-                          {p.description ?? "—"}
-                        </TableCell>
                         <TableCell>{p.visits_count ?? "—"}</TableCell>
                         <TableCell>{formatDuration(p.duration_days)}</TableCell>
                         <TableCell className="font-medium">
                           {formatMoney(Number(p.price))}
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate text-muted-foreground">
+                          {p.description ?? "—"}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -386,18 +386,6 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
               />
             </FormField>
 
-            <FormField
-              label="Описание"
-              tip="Видно клиентам в карточке пакета в приложении."
-              optional
-            >
-              <Textarea
-                rows={2}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </FormField>
-
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <FormField label="Тренировок" tip="Сколько тренировок входит в пакет.">
                 <Input
@@ -429,6 +417,18 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
                 />
               </FormField>
             </div>
+
+            <FormField
+              label="Описание"
+              tip="Видно клиентам в карточке пакета в приложении."
+              optional
+            >
+              <Textarea
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </FormField>
 
             <SwitchRow
               title="Показывать в мобильном приложении"
