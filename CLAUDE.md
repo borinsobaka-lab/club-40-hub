@@ -182,6 +182,17 @@ AUTH_SETUP.md.
   выданный по ней `client_memberships` удаляются вместе (в обе стороны,
   триггеры), прежний заменённый абонемент возвращается, очередь продлений —
   `packages_settle`.
+  Отмена занятия, «Не посетил», второй телефон:
+  `db/migrations/2026-10-11_zzzzzzz_entry_cancel_no_show.sql` —
+  `schedule_entries.cancelled_at`/`cancel_reason`, RPC `cancel_schedule_entry`
+  (записи → «Отменено», списанное возвращается) и `restore_schedule_entry`,
+  на отменённое не записывают (триггер), клиенты его не видят (RLS), в
+  зарплату не идёт (`payroll_lines` — актуальное определение здесь);
+  `schedule_bookings.no_show_excused`/`no_show_comment`, RPC
+  `mark_booking_no_show` — неуважительный пропуск списывается как посещение
+  (`schedule_bookings_charge_balance` и `packages_restart_term` переопределены
+  здесь), пропуск без причины — нет; `clients.phone2` (вью
+  `clients_with_status` пересоздана здесь).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
