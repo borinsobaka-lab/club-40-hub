@@ -25,9 +25,8 @@ import {
 import { STUDIO_SECTION_GROUPS } from "@/lib/nav-sections";
 import { AdminShell } from "@/components/admin-shell";
 import { ImageUploadField } from "@/components/image-upload-field";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { initials } from "@/lib/format";
-import { squareImage, useStorageUrl } from "@/lib/storage";
+import { StaffAvatar } from "@/components/employee-photo";
+import { squareImage } from "@/lib/storage";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,25 +86,6 @@ const ROLE_LABEL: Record<StaffRole, string> = {
 };
 
 type StudioOption = { id: string; name: string };
-
-/** Аватарка сотрудника (бакет avatars), без неё — инициалы. */
-function StaffAvatar({
-  value,
-  name,
-  className,
-}: {
-  value: string | null;
-  name: string;
-  className?: string;
-}) {
-  const src = useStorageUrl("avatars", value);
-  return (
-    <Avatar className={className}>
-      {src && <AvatarImage src={src} alt={name} className="object-cover" />}
-      <AvatarFallback>{initials(name)}</AvatarFallback>
-    </Avatar>
-  );
-}
 
 /** profiles.full_name — «Фамилия Имя»: фамилия — первое слово, имя — остальное. */
 function splitFullName(fullName: string | null) {

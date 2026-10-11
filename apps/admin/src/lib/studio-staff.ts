@@ -16,10 +16,16 @@ import { unwrap } from "@/lib/query";
 export const SELLER_TIP =
   "Кто из администраторов клуба продал — продажа идёт в его зарплату. Список — сотрудники с ролью «Администратор» в «Сотрудниках».";
 
-export type StudioStaffRow = { id: string; full_name: string; role: string };
+export type StudioStaffRow = {
+  id: string;
+  full_name: string;
+  role: string;
+  /** Фото из справочника — аватарка в выпадающих списках (StaffOption). */
+  photo_url: string | null;
+};
 
 /** Те же колонки и ключ, что у «Расписания» и поля «Тренер», — общий кэш. */
-export const STUDIO_STAFF_COLS = "id, full_name, role, trainer_studios!inner(studio_id)";
+export const STUDIO_STAFF_COLS = "id, full_name, role, photo_url, trainer_studios!inner(studio_id)";
 
 /** Сотрудники студии из справочника (тренеры и администраторы). */
 export function useStudioStaff(studioId: string | null) {

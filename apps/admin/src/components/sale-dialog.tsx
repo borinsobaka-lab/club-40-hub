@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { SellerSelect } from "@/components/seller-select";
+import { StaffOption } from "@/components/employee-photo";
 import { SELLER_TIP, useStudioStaff } from "@/lib/studio-staff";
 import { useStudios } from "@/hooks/use-studios";
 import { unwrap } from "@/lib/query";
@@ -664,8 +665,8 @@ function SaleForm({
                     <SelectContent>
                       <SelectItem value={NO_TRAINER}>Без тренера</SelectItem>
                       {trainers.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.full_name}
+                        <SelectItem key={r.id} value={r.id} textValue={r.full_name}>
+                          <StaffOption name={r.full_name} photo={r.photo_url} />
                         </SelectItem>
                       ))}
                     </SelectContent>

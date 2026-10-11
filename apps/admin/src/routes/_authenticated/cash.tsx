@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
 import { CommentCell } from "@/components/comment-cell";
+import { StaffOption } from "@/components/employee-photo";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -67,7 +68,13 @@ type CashOp = {
   created_at: string;
 };
 
-type Operator = { id: string; full_name: string | null; email: string | null };
+type Operator = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  /** Аватарка учётной записи (profiles.avatar_url) — в списке «Кто проводит». */
+  avatar_url: string | null;
+};
 
 const CATEGORIES: Record<CashKind, { value: string; label: string }[]> = {
   income: [
@@ -148,7 +155,7 @@ function CashPage() {
       const ids = Array.from(new Set(roles.map((r) => r.user_id)));
       if (ids.length === 0) return [];
       return unwrap<Operator[]>(
-        supabase.from("profiles").select("id, full_name, email").in("id", ids),
+        supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", ids),
       );
     },
     enabled: !!studioId,
@@ -388,9 +395,11 @@ function CashOperationForm({
             </SelectTrigger>
             <SelectContent>
               {operators.map((o) => (
-                <SelectItem key={o.id} value={o.id}>
-                  {operatorLabel(o)}
-                  {me?.id === o.id ? " (вы)" : ""}
+                <SelectItem key={o.id} value={o.id} textValue={operatorLabel(o)}>
+                  <StaffOption name={operatorLabel(o)} avatar={o.avatar_url}>
+                    {operatorLabel(o)}
+                    {me?.id === o.id ? " (вы)" : ""}
+                  </StaffOption>
                 </SelectItem>
               ))}
             </SelectContent>

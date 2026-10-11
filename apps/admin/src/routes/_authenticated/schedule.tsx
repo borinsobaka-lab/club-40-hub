@@ -28,6 +28,7 @@ import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
 import { ClientCombobox, type ClientOption } from "@/components/client-combobox";
 import { ClientDialog } from "@/components/client-form-dialog";
+import { StaffOption } from "@/components/employee-photo";
 import {
   Select,
   SelectContent,
@@ -64,6 +65,8 @@ type Trainer = {
   full_name: string;
   /** trainer | admin — справочник «Сотрудники». */
   role?: string;
+  /** Фото из справочника — аватарка в выпадающих списках. */
+  photo_url?: string | null;
 };
 type Entry = {
   id: string;
@@ -121,7 +124,7 @@ const WORKOUT_COLS = "id, name, type, capacity";
 // Сотрудники общие для студий: в расписание ставим тех, кто привязан к этой
 // студии (trainer_studios). Занятия ведут тренеры; на прочую активность
 // (например, фотосъёмку) можно отметить и администраторов.
-const STAFF_COLS = "id, full_name, role, trainer_studios!inner(studio_id)";
+const STAFF_COLS = "id, full_name, role, photo_url, trainer_studios!inner(studio_id)";
 
 /** Полоска на карточках персональных занятий и прочих активностей. */
 const NON_GROUP_STRIPE = "#262626";
@@ -653,8 +656,8 @@ function SchedulePage() {
                   <SelectItem value={ALL_FILTER_VALUE}>Все сотрудники</SelectItem>
                   {/* С администраторами: их отмечают на прочих активностях. */}
                   {staff.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.full_name}
+                    <SelectItem key={t.id} value={t.id} textValue={t.full_name}>
+                      <StaffOption name={t.full_name} photo={t.photo_url} />
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1464,8 +1467,8 @@ function EntryForm({
                     </SelectTrigger>
                     <SelectContent>
                       {trainerOptions.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.full_name}
+                        <SelectItem key={t.id} value={t.id} textValue={t.full_name}>
+                          <StaffOption name={t.full_name} photo={t.photo_url} />
                         </SelectItem>
                       ))}
                     </SelectContent>

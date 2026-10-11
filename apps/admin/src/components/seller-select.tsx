@@ -6,6 +6,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { StudioStaffRow } from "@/lib/studio-staff";
+import { StaffOption } from "@/components/employee-photo";
 
 /** Выбор администратора, который продал (список и правила — lib/studio-staff.ts). */
 export function SellerSelect({
@@ -34,8 +35,8 @@ export function SellerSelect({
       </SelectTrigger>
       <SelectContent>
         {admins.map((a) => (
-          <SelectItem key={a.id} value={a.id}>
-            {a.full_name}
+          <SelectItem key={a.id} value={a.id} textValue={a.full_name}>
+            <StaffOption name={a.full_name} photo={a.photo_url} />
           </SelectItem>
         ))}
       </SelectContent>
