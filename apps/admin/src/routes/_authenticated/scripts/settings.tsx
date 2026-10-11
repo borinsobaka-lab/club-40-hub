@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
-import { CardSkeleton } from "@/components/table-skeleton";
+import { CardSkeleton } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CallStatsTab } from "@/components/scripts/settings/call-stats";
 import { CopyStatsTab } from "@/components/scripts/settings/copy-stats";

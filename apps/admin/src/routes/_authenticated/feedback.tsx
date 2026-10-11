@@ -44,7 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";

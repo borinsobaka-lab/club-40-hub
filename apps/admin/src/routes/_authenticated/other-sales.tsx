@@ -48,7 +48,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { ClientCombobox } from "@/components/client-combobox";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { clientName, formatMoneyPrecise, formatDate, todayISO } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";

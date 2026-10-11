@@ -11,7 +11,7 @@ import { Check, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { CardSkeleton } from "@/components/table-skeleton";
+import { CardSkeleton } from "@/components/skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { usePlaybook } from "@/lib/scripts/data";

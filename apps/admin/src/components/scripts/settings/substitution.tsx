@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { CardSkeleton } from "@/components/table-skeleton";
+import { CardSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";

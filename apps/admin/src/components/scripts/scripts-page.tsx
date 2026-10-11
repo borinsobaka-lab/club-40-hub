@@ -26,7 +26,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TableToolbar } from "@/components/table-toolbar";
-import { CardSkeleton } from "@/components/table-skeleton";
+import { CardSkeleton } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";

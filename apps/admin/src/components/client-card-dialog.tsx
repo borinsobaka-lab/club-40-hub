@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CardSkeleton, TableSkeletonRows } from "@/components/table-skeleton";
+import { CardSkeleton, TableSkeletonRows } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { SaleDialog } from "@/components/sale-dialog";

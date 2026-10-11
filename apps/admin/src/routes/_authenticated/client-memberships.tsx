@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/table";
 import { DataPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
 import { CommentCell } from "@/components/comment-cell";
 
