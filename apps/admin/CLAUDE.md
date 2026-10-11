@@ -36,9 +36,10 @@ Env-переменные: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 Send Email Hook (`GOTRUE_HOOK_SEND_EMAIL_*` у сервиса auth): Supabase дёргает /api/auth-email (src/routes/api/auth-email.ts),
 логика писем — src/lib/auth-email.ts (+ тест auth-email.test.ts), отправка —
-src/lib/mail.ts с noreply@base40.fit через Resend (решение владельца
-2026-10-11; Unisender Go убран). Домен base40.fit подтверждён в Resend —
-письма уходят на любые адреса; лимиты тарифа — AUTH_SETUP.md, «Шаг 1».
+src/lib/mail.ts с noreply@base40.fit: через Unisender Go, если задан
+UNISENDER_GO_API_KEY, иначе по-старому Resend (код Resend удалим отдельным
+шагом после переключения ключа; решение владельца 2026-10-11 — остаёмся на
+Unisender Go, переход на Resend отменён).
 
 **Во всех письмах авторизации — 6-значный код, ссылок авто-входа нет**
 (решение владельца 2026-10-10; recovery/invite — тоже код: `/recover` у GoTrue
@@ -46,7 +47,7 @@ src/lib/mail.ts с noreply@base40.fit через Resend (решение влад
 человек может быть и админом, и клиентом. Признак — хост в redirect_to (оба
 приложения задают emailRedirectTo явно): admin.base40.fit -> «вход в
 админ-панель», всё остальное (включая нераспознанный redirect) -> клиентское
-письмо. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
+письмо. Env: SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_API_KEY (или RESEND_API_KEY),
 опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
 в корне репозитория.
 

@@ -1,10 +1,9 @@
-// Отправка писем с сервера — через Resend (RESEND_API_KEY, решение владельца
-// 2026-10-11; Unisender Go, подключавшийся раньше, убран). Ключ — только
-// runtime-переменная Coolify у club40-admin, в бандл не попадает. Адрес
-// отправителя — на домене base40.fit: он подтверждён в Resend, поэтому письма
-// уходят на любые адреса (тестовый домен resend.dev слал бы только владельцу
-// аккаунта).
+// Отправка писем с сервера. Провайдер — Unisender Go, если задан
+// UNISENDER_GO_API_KEY; иначе по-старому Resend (RESEND_API_KEY). Запасной
+// путь через Resend живёт до переключения ключа и будет удалён отдельным
+// шагом. Ключи — только runtime-переменные Coolify, в бандл не попадают.
 
+const UNISENDER_GO_ENDPOINT = "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export const MAIL_FROM_EMAIL = "noreply@base40.fit";
@@ -22,8 +21,10 @@ export type MailResult = { ok: true } | { ok: false; error: string };
 
 type Env = Record<string, string | undefined>;
 
-export function mailProvider(env: Env = process.env): "resend" | null {
-  return env.RESEND_API_KEY ? "resend" : null;
+export function mailProvider(env: Env = process.env): "unisender" | "resend" | null {
+  if (env.UNISENDER_GO_API_KEY) return "unisender";
+  if (env.RESEND_API_KEY) return "resend";
+  return null;
 }
 
 // Текстовая версия письма: HTML без тегов, ссылки — адресом в скобках.
@@ -52,41 +53,74 @@ export async function sendMail(msg: MailMessage, env: Env = process.env): Promis
   const recipients = (Array.isArray(msg.to) ? msg.to : [msg.to]).filter(Boolean);
   if (recipients.length === 0) return { ok: false, error: "no recipients" };
 
-  if (!mailProvider(env)) return { ok: false, error: "mail provider not configured" };
-
-  try {
-    const res = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: `${MAIL_FROM_NAME} <${MAIL_FROM_EMAIL}>`,
-        to: recipients,
-        subject: msg.subject,
-        html: msg.html,
-        // Текстовая версия рядом с HTML — меньше шансов попасть в спам.
-        text: msg.text ?? htmlToText(msg.html),
-        ...(msg.replyTo ? { reply_to: msg.replyTo } : {}),
-      }),
-    });
-    if (res.ok) return { ok: true };
-    // Ошибка Resend: {"statusCode":403,"name":"validation_error","message":"..."}.
-    const raw = await res.text().catch(() => "");
-    let detail = raw;
+  const provider = mailProvider(env);
+  if (provider === "unisender") {
+    const message: Record<string, unknown> = {
+      recipients: recipients.map((email) => ({ email })),
+      from_email: MAIL_FROM_EMAIL,
+      from_name: MAIL_FROM_NAME,
+      subject: msg.subject,
+      body: { html: msg.html, plaintext: msg.text ?? htmlToText(msg.html) },
+      track_links: 0,
+      track_read: 0,
+    };
+    if (msg.replyTo) message.reply_to = msg.replyTo;
     try {
-      const data = JSON.parse(raw) as { name?: string; message?: string };
-      if (data.message) detail = `${data.message}${data.name ? ` (${data.name})` : ""}`;
-    } catch {
-      // не JSON — оставляем текст как есть
+      const res = await fetch(UNISENDER_GO_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": env.UNISENDER_GO_API_KEY!,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ message }),
+      });
+      const raw = await res.text().catch(() => "");
+      let data: { status?: string; message?: string; code?: number | string } | null = null;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = null;
+      }
+      if (res.ok && data?.status === "success") return { ok: true };
+      const error = data
+        ? `Unisender Go ${res.status}: ${data.message ?? ""} (code ${data.code ?? "—"})`
+        : `Unisender Go ${res.status}: ${raw}`;
+      console.error("[mail]", error);
+      return { ok: false, error };
+    } catch (e) {
+      const error = `Unisender Go fetch failed: ${(e as Error).message}`;
+      console.error("[mail]", error);
+      return { ok: false, error };
     }
-    const error = `Resend ${res.status}: ${detail}`;
-    console.error("[mail]", error);
-    return { ok: false, error };
-  } catch (e) {
-    const error = `Resend fetch failed: ${(e as Error).message}`;
-    console.error("[mail]", error);
-    return { ok: false, error };
   }
+
+  if (provider === "resend") {
+    try {
+      const res = await fetch(RESEND_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: `${MAIL_FROM_NAME} <${MAIL_FROM_EMAIL}>`,
+          to: recipients,
+          subject: msg.subject,
+          html: msg.html,
+          ...(msg.replyTo ? { reply_to: msg.replyTo } : {}),
+        }),
+      });
+      if (res.ok) return { ok: true };
+      const error = `Resend ${res.status}: ${await res.text().catch(() => "")}`;
+      console.error("[mail]", error);
+      return { ok: false, error };
+    } catch (e) {
+      const error = `Resend fetch failed: ${(e as Error).message}`;
+      console.error("[mail]", error);
+      return { ok: false, error };
+    }
+  }
+
+  return { ok: false, error: "mail provider not configured" };
 }

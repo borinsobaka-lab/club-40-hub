@@ -10,7 +10,7 @@ afterEach(() => {
 type Call = {
   url: string;
   headers: Record<string, string>;
-  body: Record<string, unknown>;
+  body: { message?: Record<string, unknown>; from?: string };
 };
 function mockFetch(status: number, reply: unknown) {
   const calls: Call[] = [];
@@ -25,53 +25,55 @@ function mockFetch(status: number, reply: unknown) {
   return calls;
 }
 
-describe("провайдер", () => {
-  test("ключ Resend — Resend", () => expect(mailProvider({ RESEND_API_KEY: "r" })).toBe("resend"));
-  test("ключа нет — null (старый UNISENDER_GO_API_KEY не в счёт)", () =>
-    expect(mailProvider({ UNISENDER_GO_API_KEY: "u" })).toBeNull());
+describe("выбор провайдера", () => {
+  test("есть ключ Unisender Go — он", () =>
+    expect(mailProvider({ UNISENDER_GO_API_KEY: "u", RESEND_API_KEY: "r" })).toBe("unisender"));
+  test("только Resend — по-старому", () =>
+    expect(mailProvider({ RESEND_API_KEY: "r" })).toBe("resend"));
+  test("ничего — null", () => expect(mailProvider({})).toBeNull());
 });
 
 describe("sendMail", () => {
-  test("Resend: формат запроса", async () => {
-    const calls = mockFetch(200, { id: "x" });
+  test("Unisender Go: формат запроса", async () => {
+    const calls = mockFetch(200, { status: "success", job_id: "j" });
     const r = await sendMail(
-      { to: ["a@b.ru", "c@d.ru"], subject: "Тема", html: "<p>Код<br>1234</p>", replyTo: "r@b.ru" },
-      { RESEND_API_KEY: "re" },
+      { to: ["a@b.ru", "c@d.ru"], subject: "Тема", html: "<p>Код<br>1234</p>" },
+      { UNISENDER_GO_API_KEY: "key", RESEND_API_KEY: "r" },
     );
     expect(r.ok).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe("https://api.resend.com/emails");
-    expect(calls[0].headers.Authorization).toBe("Bearer re");
-    expect(calls[0].body).toEqual({
-      from: "Base40 <noreply@base40.fit>",
-      to: ["a@b.ru", "c@d.ru"],
+    expect(calls[0].url).toBe("https://go2.unisender.ru/ru/transactional/api/v1/email/send.json");
+    expect(calls[0].headers["X-API-KEY"]).toBe("key");
+    expect(calls[0].body.message).toEqual({
+      recipients: [{ email: "a@b.ru" }, { email: "c@d.ru" }],
+      from_email: "noreply@base40.fit",
+      from_name: "Base40",
       subject: "Тема",
-      html: "<p>Код<br>1234</p>",
-      text: "Код\n1234",
-      reply_to: "r@b.ru",
+      body: { html: "<p>Код<br>1234</p>", plaintext: "Код\n1234" },
+      track_links: 0,
+      track_read: 0,
     });
   });
 
-  test("Resend: ошибка — не ok, с текстом Resend", async () => {
-    mockFetch(403, {
-      statusCode: 403,
-      name: "validation_error",
-      message: "The base40.fit domain is not verified.",
-    });
+  test("Unisender Go: status error — не ok, с message и code", async () => {
+    mockFetch(200, { status: "error", message: "invalid key", code: 102 });
     const origErr = console.error;
     console.error = () => {};
-    const r = await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { RESEND_API_KEY: "k" });
+    const r = await sendMail(
+      { to: "a@b.ru", subject: "s", html: "h" },
+      { UNISENDER_GO_API_KEY: "k" },
+    );
     console.error = origErr;
     expect(r.ok).toBe(false);
-    if (!r.ok)
-      expect(r.error).toBe("Resend 403: The base40.fit domain is not verified. (validation_error)");
+    if (!r.ok) expect(r.error).toContain("invalid key (code 102)");
   });
 
-  test("без ключа — не отправляет", async () => {
-    const calls = mockFetch(200, {});
-    const r = await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, {});
-    expect(r.ok).toBe(false);
-    expect(calls).toHaveLength(0);
+  test("без ключа Unisender Go — Resend, как раньше", async () => {
+    const calls = mockFetch(200, { id: "x" });
+    const r = await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { RESEND_API_KEY: "re" });
+    expect(r.ok).toBe(true);
+    expect(calls[0].url).toBe("https://api.resend.com/emails");
+    expect(calls[0].body.from).toBe("Base40 <noreply@base40.fit>");
   });
 });
 
