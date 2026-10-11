@@ -243,10 +243,14 @@ export type Database = {
       schedule_entries: {
         Row: {
           booked_count: number;
+          /* patched: db/migrations/2026-10-11_zzzzzzz_entry_cancel_no_show.sql */
+          cancelled_at: string | null;
           capacity: number | null;
           created_at: string;
           ends_at: string;
           id: string;
+          /* patched: db/migrations/2026-10-11_schedule_activity_kinds.sql */
+          kind: "group" | "personal" | "other";
           starts_at: string;
           studio_id: string; /* patched */
           workout_id: string | null;

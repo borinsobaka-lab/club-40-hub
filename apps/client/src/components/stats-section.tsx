@@ -280,6 +280,8 @@ export function StatsSection() {
   const [mv, setMv] = useState<StatsMv | null>(null);
   const [hasWeight, setHasWeight] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  // Ошибка истории посещений — не «пока нет тренировок».
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -291,6 +293,7 @@ export function StatsSection() {
     }
     let cancelled = false;
     setLoading(true);
+    setFailed(false);
 
     (async () => {
       const [logs, stats, profile] = await Promise.all([
@@ -309,6 +312,9 @@ export function StatsSection() {
       ]);
 
       if (cancelled) return;
+      // Без истории статистика пустая — это ошибка, а не ноль тренировок.
+      // Матвью и профиль необязательны: без них карточки работают.
+      if (logs.error) throw logs.error;
       setRows((logs.data ?? []) as BookingRow[]);
       setMv((stats.data ?? null) as StatsMv | null);
       setHasWeight(profile.data?.weight_kg != null);
@@ -318,6 +324,7 @@ export function StatsSection() {
       setRows([]);
       setMv(null);
       setHasWeight(null);
+      setFailed(true);
       setLoading(false);
     });
 
@@ -364,6 +371,10 @@ export function StatsSection() {
             />
           ))}
         </div>
+      ) : failed ? (
+        <p className="px-4 text-sm text-destructive">
+          Не удалось загрузить статистику. Обновите страницу.
+        </p>
       ) : !agg || agg.total === 0 ? (
         <EmptyState />
       ) : (

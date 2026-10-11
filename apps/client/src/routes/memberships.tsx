@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
+import { APP_FORMAT } from "@/lib/app-format";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,9 @@ type ActiveMembership = {
   ends_at: string | null;
   visits_left: number | null;
   auto_renew: boolean | null;
+  // Только в пакетном приложении (db/migrations/2026-10-11_zz_packages_personal_balance.sql).
+  balance_kind?: "group" | "personal" | null;
+  personal_left?: number | null;
   memberships: {
     name: string;
     description: string | null;
@@ -96,18 +100,42 @@ const db = supabase as unknown as {
 // возвращает ошибку, и страница целиком падала в «не удалось загрузить».
 // В пакетном формате сначала досчитываем очередь: продление могло стать
 // действующим (settlePackageMemberships).
+// Статус active с прошедшим ends_at (expire_memberships ещё не прошёл) — не
+// действующий: такие не показываем; замороженный — показываем всегда.
+// В пакетном формате у клиента бывает два живых абонемента (пакет тренировок
+// и пакет персональных, balance_kind) — на карточку берём групповой
+// ('group' < 'personal' по алфавиту).
 async function fetchActiveMembership(clientId: string) {
   await settlePackageMemberships();
-  return db
+  const isPackages = APP_FORMAT === "packages";
+  let query = db
     .from("client_memberships")
     .select(
-      "id, ends_at, visits_left, auto_renew, memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)",
+      `id, ends_at, visits_left, auto_renew, ${isPackages ? "balance_kind, personal_left, " : ""}memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)`,
     )
     .eq("client_id", clientId)
     .in("status", ["active", "frozen"])
-    .order("ends_at", { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle();
+    .or(`ends_at.is.null,ends_at.gte.${tbilisiDateISO()},status.eq.frozen`);
+  if (isPackages) query = query.order("balance_kind", { ascending: true });
+  return query.order("ends_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+}
+
+/** Сегодняшняя дата YYYY-MM-DD по Тбилиси — как считает база (ends_at — date). */
+function tbilisiDateISO() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tbilisi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** «12 октября 2026». Дату без времени (YYYY-MM-DD) читаем как местную:
+ * new Date("YYYY-MM-DD") — полночь UTC, и западнее Гринвича выходил вчерашний день. */
+function formatLongDate(value: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
 }
 
 /** Локальная дата YYYY-MM-DD (toISOString() дала бы UTC — в первые часы суток вчерашнюю). */
@@ -417,12 +445,7 @@ function MembershipsPage() {
                           </div>
                           {active.ends_at && (
                             <div className="text-sm text-muted-foreground mt-0.5">
-                              Действует до{" "}
-                              {new Date(active.ends_at).toLocaleDateString("ru-RU", {
-                                day: "numeric",
-                                month: "long",
-                                year: "numeric",
-                              })}
+                              Действует до {formatLongDate(active.ends_at)}
                             </div>
                           )}
                           <div className="text-sm mt-0.5" style={{ color: accent }}>
@@ -978,10 +1001,17 @@ function ActiveMembershipDrawer({
 }) {
   const m = active.memberships;
   const autoOn = active.auto_renew !== false;
+  // Пакет персональных: visits_count = 0, остаток — в personal_left (иначе «0 из 0»).
+  const isPersonal = active.balance_kind === "personal";
   const features = [
-    m?.visits_count == null
-      ? "Безлимит посещений"
-      : `Осталось ${active.visits_left ?? m.visits_count} из ${m.visits_count} занятий`,
+    isPersonal
+      ? `Персональных тренировок осталось: ${active.personal_left ?? 0}`
+      : m?.visits_count == null
+        ? "Безлимит посещений"
+        : `Осталось ${active.visits_left ?? m.visits_count} из ${m.visits_count} занятий`,
+    !isPersonal && (active.personal_left ?? 0) > 0
+      ? `Персональных тренировок: ${active.personal_left}`
+      : null,
     m?.duration_days ? `Срок действия ${m.duration_days} дней` : null,
     m?.freeze_days_allowed ? `Заморозка до ${m.freeze_days_allowed} дней` : null,
     ...((m?.benefits ?? []).filter(Boolean) as string[]),
@@ -1047,10 +1077,10 @@ function ActiveMembershipDrawer({
               <span style={{ color: autoOn ? "#15803D" : "#B91C1C" }}>
                 {autoOn
                   ? active.ends_at
-                    ? `Автопродление включено. Следующее списание ${new Date(active.ends_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`
+                    ? `Автопродление включено. Следующее списание ${formatLongDate(active.ends_at)}`
                     : "Автопродление включено"
                   : active.ends_at
-                    ? `Автопродление выключено. Абонемент закончится ${new Date(active.ends_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`
+                    ? `Автопродление выключено. Абонемент закончится ${formatLongDate(active.ends_at)}`
                     : "Автопродление выключено"}
               </span>
             </div>

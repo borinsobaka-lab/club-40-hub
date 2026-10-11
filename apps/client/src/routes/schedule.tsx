@@ -65,8 +65,9 @@ function addDays(d: Date, n: number) {
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
+// Вместимость null или 0 — без ограничения (как в RPC записи).
 function remainingSpots(capacity: number | null, booked: number) {
-  if (capacity == null) return null;
+  if (capacity == null || capacity <= 0) return null;
   return Math.max(0, capacity - booked);
 }
 function pluralSeats(n: number) {
@@ -132,7 +133,12 @@ function SchedulePage() {
           "id, starts_at, ends_at, capacity, booked_count, workout:workouts(name, type, description, photo_url, capacity), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
         )
         .gte("starts_at", from)
-        .lt("starts_at", to);
+        .lt("starts_at", to)
+        // Клиентам RLS и так отдаёт только групповые неотменённые занятия, а
+        // сотруднику в клиентском приложении — все: персональные, прочую
+        // активность и отменённые фильтруем явно.
+        .eq("kind", "group")
+        .is("cancelled_at", null);
       if (studioId) query = query.eq("studio_id", studioId);
 
       // Брони клиента на те же дни — параллельно с занятиями. Явный фильтр по
@@ -161,6 +167,10 @@ function SchedulePage() {
       else setEntries((data as unknown as Entry[]) ?? []);
       setLoading(false);
 
+      // Ошибка броней — не «вы никуда не записаны»: говорим о ней, а не молчим.
+      if (bookings?.error) {
+        toast.error(`Не удалось загрузить ваши записи: ${bookings.error.message}`);
+      }
       const rows = bookings?.data as { entry_id: string; status: string }[] | null | undefined;
       if (rows) {
         setBookedIds(new Set(rows.filter((r) => r.status === "booked").map((r) => r.entry_id)));
@@ -651,7 +661,7 @@ function SchedulePage() {
           if (!openEntry) return false;
           const e = entries.find((x) => x.id === openEntry.id);
           const cap = e?.capacity ?? e?.workout?.capacity ?? null;
-          return cap != null && (e?.booked_count ?? 0) >= cap;
+          return cap != null && cap > 0 && (e?.booked_count ?? 0) >= cap;
         })()}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}

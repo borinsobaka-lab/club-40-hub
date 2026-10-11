@@ -112,6 +112,10 @@ function HomePage() {
   const [services, setServices] = useState<Service[] | null>(null);
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
   const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
+  // Ошибки загрузки — отдельно: иначе они выглядели как «пусто».
+  const [bookingsError, setBookingsError] = useState(false);
+  const [newsError, setNewsError] = useState(false);
+  const [servicesError, setServicesError] = useState(false);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const clubSettings = useClubSettings();
@@ -126,14 +130,25 @@ function HomePage() {
       // Явный фильтр по user_id: RLS позволяет тренеру видеть все брони студии,
       // и без него у сотрудника в клиентском приложении чужие записи выглядели
       // бы как его собственные.
-      const { data } = await (supabase as any)
+      // Только предстоящие (через !inner-связь с занятием) — без всей истории
+      // броней; групповые неотменённые — как в расписании.
+      const { data, error } = await (supabase as any)
         .from("schedule_bookings")
         .select(
-          "entry_id, entry:schedule_entries(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))",
+          "entry_id, entry:schedule_entries!inner(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))",
         )
         .eq("user_id", user.id)
-        .eq("status", "booked");
+        .eq("status", "booked")
+        .gte("entry.starts_at", new Date().toISOString())
+        .eq("entry.kind", "group")
+        .is("entry.cancelled_at", null)
+        .limit(50);
       if (cancelled) return;
+      if (error) {
+        setBookingsError(true);
+        return;
+      }
+      setBookingsError(false);
       const rows = ((data as MyBooking[] | null) ?? [])
         .filter((r) => r.entry && new Date(r.entry.starts_at).getTime() >= Date.now())
         .sort(
@@ -226,8 +241,15 @@ function HomePage() {
         .select("id,title,description,image_url,position")
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
-        .then(({ data }) => {
-          if (!cancelled) setNews((data as News[] | null) ?? []);
+        .then(({ data, error }) => {
+          if (cancelled) return;
+          // При ошибке обновления уже показанные новости не стираем.
+          if (error) {
+            setNewsError(true);
+            return;
+          }
+          setNewsError(false);
+          setNews((data as News[] | null) ?? []);
         });
     };
     load();
@@ -253,8 +275,14 @@ function HomePage() {
         .select("id,title,description,image_url,button_text,button_url,position")
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
-        .then(({ data }: { data: Service[] | null }) => {
-          if (!cancelled) setServices((data as Service[] | null) ?? []);
+        .then(({ data, error }: { data: Service[] | null; error: unknown }) => {
+          if (cancelled) return;
+          if (error) {
+            setServicesError(true);
+            return;
+          }
+          setServicesError(false);
+          setServices((data as Service[] | null) ?? []);
         });
     };
     load();
@@ -312,7 +340,11 @@ function HomePage() {
 
           {/* News */}
           <section className="mt-3">
-            {news === null ? (
+            {news === null && newsError ? (
+              <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex items-center justify-center text-center px-4 text-sm text-destructive bg-background/40">
+                Не удалось загрузить новости. Обновите страницу.
+              </div>
+            ) : news === null ? (
               <CarouselSkeleton cards={3} className="h-44 w-32" />
             ) : news.length === 0 ? (
               <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
@@ -396,7 +428,11 @@ function HomePage() {
           {/* Тренировки */}
           <section className="bg-background rounded-b-[14px] pb-5">
             <h2 className="px-4 text-2xl font-black uppercase mb-3">Тренировки</h2>
-            {myBookings === null ? (
+            {bookingsError ? (
+              <Card className="mx-4 p-4 text-sm text-destructive">
+                Не удалось загрузить ваши записи. Обновите страницу.
+              </Card>
+            ) : myBookings === null ? (
               <CarouselSkeleton cards={2} className="h-24 w-56" />
             ) : myBookings.length === 0 ? (
               <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
@@ -482,7 +518,11 @@ function HomePage() {
             <p className="px-4 text-sm text-muted-foreground mb-3">
               Дополнительные возможности для участников клуба
             </p>
-            {services === null ? (
+            {services === null && servicesError ? (
+              <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex items-center justify-center text-center px-4 text-sm text-destructive">
+                Не удалось загрузить услуги. Обновите страницу.
+              </div>
+            ) : services === null ? (
               <CarouselSkeleton cards={3} className="h-32 w-56" />
             ) : services.length === 0 ? (
               <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
