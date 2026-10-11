@@ -6,6 +6,8 @@ import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X } from "lucid
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useActiveStudio } from "@/hooks/use-studios";
+import { EmployeePhoto } from "@/components/employee-photo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/schedule")({
 });
 
 type Workout = { id: string; name: string; type?: string | null; capacity?: number | null };
-type Trainer = { id: string; full_name: string };
+type Trainer = { id: string; full_name: string; photo_url?: string | null };
 type Entry = {
   id: string;
   studio_id: string;
@@ -53,7 +55,13 @@ type Entry = {
   capacity: number | null;
   booked_count: number;
   waitlist_count?: number | null;
-  workout?: { name: string; type?: string; capacity?: number | null } | null;
+  workout?: {
+    name: string;
+    type?: string;
+    capacity?: number | null;
+    /** Пакетный формат: цвет полоски на карточке. */
+    color?: string | null;
+  } | null;
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
 };
 
@@ -61,7 +69,7 @@ type Entry = {
 type EntryDraft = { workout_id: string; starts_at: string; ends_at: string; trainerIds: string[] };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name))";
+  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, photo_url))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -202,6 +210,9 @@ async function insertEntries(studioId: string, drafts: EntryDraft[]): Promise<In
 function SchedulePage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
+  // Пакетные студии: у тренировок нет типа — фильтра по типу нет, карточка
+  // занятия светлая с полоской цвета тренировки и фото тренеров (2026-10-11).
+  const packages = useActiveStudio()?.format === "packages";
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -266,7 +277,9 @@ function SchedulePage() {
 
   const weekLabel = `${fmtDate(weekStart)} — ${fmtDate(addDays(weekStart, 6))}`;
   const isCurrentWeek = startOfWeek(new Date()).toDateString() === weekStart.toDateString();
-  const filtersActive = filterType !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE;
+  // Фильтр типа, выбранный в подписочной студии, в пакетной не действует.
+  const typeFilter = packages ? ALL_FILTER_VALUE : filterType;
+  const filtersActive = typeFilter !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE;
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -284,7 +297,7 @@ function SchedulePage() {
     // Занятий по дням недели — точки под днями в переключателе на телефоне.
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
-      if (filterType !== ALL_FILTER_VALUE && e.workout?.type !== filterType) continue;
+      if (typeFilter !== ALL_FILTER_VALUE && e.workout?.type !== typeFilter) continue;
       if (
         filterTrainerId !== ALL_FILTER_VALUE &&
         !e.schedule_entry_trainers?.some((x) => x.trainer_id === filterTrainerId)
@@ -297,7 +310,7 @@ function SchedulePage() {
       perDay[(start.getDay() + 6) % 7]++;
     }
     return { cells, busyHours, perDay };
-  }, [entries, filterType, filterTrainerId]);
+  }, [entries, typeFilter, filterTrainerId]);
 
   const openSlot = (day: Date, hour: number) => {
     const start = new Date(day);
@@ -496,19 +509,21 @@ function SchedulePage() {
             </div>
 
             <div className="toolbar-full flex flex-wrap items-center gap-2 sm:ml-auto">
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
-                  <SelectValue placeholder="Все типы" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
-                  {DAY_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!packages && (
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
+                    <SelectValue placeholder="Все типы" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER_VALUE}>Все типы</SelectItem>
+                    {DAY_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
                 <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <SelectValue placeholder="Все тренеры" />
@@ -669,6 +684,7 @@ function SchedulePage() {
                             <EntryCard
                               key={e.id}
                               entry={e}
+                              packages={packages}
                               onOpen={() => openEdit(e)}
                               onCopy={() => startCopy(e)}
                             />
@@ -708,7 +724,7 @@ function SchedulePage() {
 }
 
 /** Бейдж «записано/мест» и очередь листа ожидания на карточке занятия. */
-function CapacityBadge({ entry }: { entry: Entry }) {
+function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
   const cap = entryCapacity(entry);
   if (!cap) return null;
   const left = Math.max(0, cap - entry.booked_count);
@@ -718,7 +734,9 @@ function CapacityBadge({ entry }: { entry: Entry }) {
       ? "bg-red-500/90 text-white"
       : left <= 5
         ? "bg-amber-500/90 text-white"
-        : "bg-black/25 text-white";
+        : light
+          ? "bg-muted text-foreground"
+          : "bg-black/25 text-white";
   return (
     <span className="flex shrink-0 items-center gap-1">
       <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}>
@@ -738,18 +756,67 @@ function CapacityBadge({ entry }: { entry: Entry }) {
 
 function EntryCard({
   entry,
+  packages,
   onOpen,
   onCopy,
 }: {
   entry: Entry;
+  /** Пакетная студия: светлая карточка с полоской цвета тренировки и фото тренеров. */
+  packages: boolean;
   onOpen: () => void;
   onCopy: () => void;
 }) {
-  const names =
-    entry.schedule_entry_trainers
-      ?.map((x) => x.trainer?.full_name)
-      .filter(Boolean)
-      .join(", ") ?? "";
+  const trainers = (entry.schedule_entry_trainers ?? []).flatMap((x) =>
+    x.trainer ? [x.trainer] : [],
+  );
+  const names = trainers.map((t) => t.full_name).join(", ");
+  if (packages) {
+    return (
+      <div
+        className="absolute inset-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs"
+        // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
+        style={{ borderLeftColor: entry.workout?.color ?? "var(--muted-foreground)" }}
+      >
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex h-full w-full cursor-pointer flex-col px-1.5 py-1 text-left hover:bg-accent/40"
+        >
+          <span className="flex w-full items-start justify-between gap-1">
+            <span className="whitespace-nowrap text-muted-foreground">
+              {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
+            </span>
+            <CapacityBadge entry={entry} light />
+          </span>
+          <span className="font-medium line-clamp-2">{entry.workout?.name ?? "Занятие"}</span>
+          {trainers.length > 0 && (
+            <span className="mt-0.5 flex min-w-0 items-center gap-1 pr-5">
+              <span className="flex shrink-0 -space-x-1.5">
+                {trainers.map((t) => (
+                  <EmployeePhoto
+                    key={t.id}
+                    value={t.photo_url ?? null}
+                    name={t.full_name}
+                    className="size-4 text-[7px] ring-1 ring-background"
+                  />
+                ))}
+              </span>
+              <span className="truncate text-muted-foreground">{names}</span>
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          aria-label="Копировать занятие"
+          title="Копировать занятие"
+          onClick={onCopy}
+          className="absolute bottom-1 right-1.5 rounded bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Copy className="h-3 w-3" />
+        </button>
+      </div>
+    );
+  }
   const color = dayTypeColor(entry.workout?.type);
   const colorClasses = color ? `${color.bg} ${color.text}` : "bg-primary text-primary-foreground";
   return (
