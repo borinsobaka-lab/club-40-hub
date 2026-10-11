@@ -301,6 +301,7 @@ function SchedulePage() {
   const [kindFilter, setKindFilter] = useState<ActivityKind[]>(ACTIVITY_KIND_VALUES);
   const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
+  const [filterWorkoutId, setFilterWorkoutId] = useState<string>(ALL_FILTER_VALUE);
   const [copySource, setCopySource] = useState<Entry | null>(null);
   const [pasting, setPasting] = useState(false);
   const [duplicatingWeek, setDuplicatingWeek] = useState(false);
@@ -360,8 +361,27 @@ function SchedulePage() {
   const isCurrentWeek = startOfWeek(new Date()).toDateString() === weekStart.toDateString();
   // Фильтр типа, выбранный в подписочной студии, в пакетной не действует.
   const typeFilter = packages ? ALL_FILTER_VALUE : filterType;
+  // Тренировки этой недели — для фильтра: в списке только то, что стоит в
+  // расписании на экране, с цветом тренировки (у подписочных — цветом типа).
+  const weekWorkouts = useMemo(() => {
+    const byId = new Map<string, { id: string; name: string; color: string | null }>();
+    for (const e of entries) {
+      if (e.kind !== "group" || !e.workout_id || byId.has(e.workout_id)) continue;
+      byId.set(e.workout_id, {
+        id: e.workout_id,
+        name: e.workout?.name ?? "Тренировка",
+        color: e.workout?.color ?? dayTypeColor(e.workout?.type)?.hex ?? null,
+      });
+    }
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  }, [entries]);
+  // Выбранной тренировки нет на этой неделе — фильтр не действует.
+  const workoutFilter = weekWorkouts.some((w) => w.id === filterWorkoutId)
+    ? filterWorkoutId
+    : ALL_FILTER_VALUE;
   const filtersActive =
     typeFilter !== ALL_FILTER_VALUE ||
+    workoutFilter !== ALL_FILTER_VALUE ||
     filterTrainerId !== ALL_FILTER_VALUE ||
     kindFilter.length !== ACTIVITY_KIND_VALUES.length;
 
@@ -385,6 +405,8 @@ function SchedulePage() {
       // Тип тренировки есть только у групповых: при выбранном типе прочие скрыты.
       if (typeFilter !== ALL_FILTER_VALUE && (e.kind !== "group" || e.workout?.type !== typeFilter))
         continue;
+      // Тренировка есть только у групповых: при выбранной прочие скрыты.
+      if (workoutFilter !== ALL_FILTER_VALUE && e.workout_id !== workoutFilter) continue;
       if (
         filterTrainerId !== ALL_FILTER_VALUE &&
         !e.schedule_entry_trainers?.some((x) => x.trainer_id === filterTrainerId)
@@ -397,7 +419,7 @@ function SchedulePage() {
       perDay[(start.getDay() + 6) % 7]++;
     }
     return { cells, busyHours, perDay };
-  }, [entries, kindFilter, typeFilter, filterTrainerId]);
+  }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId]);
 
   const openSlot = (day: Date, hour: number) => {
     const start = new Date(day);
@@ -622,6 +644,25 @@ function SchedulePage() {
                 </Select>
               )}
               <KindFilter value={kindFilter} onChange={setKindFilter} />
+              <Select value={workoutFilter} onValueChange={setFilterWorkoutId}>
+                <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
+                  <SelectValue placeholder="Все тренировки" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_FILTER_VALUE}>Все тренировки</SelectItem>
+                  {weekWorkouts.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: w.color ?? "var(--muted-foreground)" }}
+                        />
+                        {w.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
                 <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <SelectValue placeholder="Все сотрудники" />
@@ -640,6 +681,7 @@ function SchedulePage() {
                 active={filtersActive}
                 onReset={() => {
                   setFilterType(ALL_FILTER_VALUE);
+                  setFilterWorkoutId(ALL_FILTER_VALUE);
                   setFilterTrainerId(ALL_FILTER_VALUE);
                   setKindFilter(ACTIVITY_KIND_VALUES);
                 }}
