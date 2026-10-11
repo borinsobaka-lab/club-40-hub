@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { SaleDialog } from "@/components/sale-dialog";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useActiveStudio } from "@/hooks/use-studios";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import {
@@ -56,6 +57,7 @@ import { noteCardClass } from "@/components/comment-cell";
 type MemberProfile = {
   user_id: string;
   primary_goal: string | null;
+  goal_other: string | null;
   goal_motivation: string | null;
   target_timeframe: string | null;
   desired_frequency: number | null;
@@ -67,6 +69,7 @@ type MemberProfile = {
   height_cm: number | null;
   weight_kg: number | null;
   birth_year: number | null;
+  birth_date: string | null;
   gender: string | null;
   preferred_times: string[] | null;
   referral_source: string | null;
@@ -81,6 +84,11 @@ const GOAL_LABELS: Record<string, string> = {
   energy_wellbeing: "Энергия и самочувствие",
   stress_habit: "Снять стресс, привычка",
   event_prep: "Подготовка к событию",
+  // Анкета пакетных студий (db/migrations/2026-10-11_packages_onboarding.sql).
+  flexibility: "Стать гибче",
+  stress_relief: "Снять напряжение и стресс",
+  body_shape: "Подтянуть фигуру",
+  other: "Другое",
 };
 const EXPERIENCE_LABELS: Record<string, string> = {
   beginner: "Новичок / большой перерыв",
@@ -568,6 +576,9 @@ function ProfileTab({
   loading: boolean;
   hasUser: boolean;
 }) {
+  // В пакетных студиях своя анкета: без мотивации, срока, группового формата,
+  // роста и пола, с датой рождения вместо года (apps/client, formats/packages).
+  const isPackages = useActiveStudio()?.format === "packages";
   if (!hasUser) {
     return (
       <InfoNote variant="empty">
@@ -581,9 +592,10 @@ function ProfileTab({
     return <InfoNote variant="empty">Клиент пока не прошёл онбординг.</InfoNote>;
   }
 
-  const goal = profile.primary_goal
+  const goalLabel = profile.primary_goal
     ? (GOAL_LABELS[profile.primary_goal] ?? profile.primary_goal)
     : null;
+  const goal = goalLabel && profile.goal_other ? `${goalLabel}: ${profile.goal_other}` : goalLabel;
   const exp = profile.experience_level
     ? (EXPERIENCE_LABELS[profile.experience_level] ?? profile.experience_level)
     : null;
@@ -626,25 +638,35 @@ function ProfileTab({
 
       <Section title="Цели и мотивация">
         <ProfileRow label="Главная цель" value={goal} />
-        <ProfileRow label="Что подтолкнуло" value={profile.goal_motivation} />
-        <ProfileRow label="Срок" value={tf} />
+        {!isPackages && (
+          <>
+            <ProfileRow label="Что подтолкнуло" value={profile.goal_motivation} />
+            <ProfileRow label="Срок" value={tf} />
+          </>
+        )}
         <ProfileRow label="Желаемая частота" value={freq} />
       </Section>
 
       <Section title="Опыт и нагрузка">
         <ProfileRow label="Опыт тренировок" value={exp} />
         <ProfileRow label="Текущая активность" value={act} />
-        <ProfileRow label="Групповой формат (HIIT)" value={hiit} />
+        {!isPackages && <ProfileRow label="Групповой формат (HIIT)" value={hiit} />}
         <ProfileRow label="Здоровье" value={flags} />
         <ProfileRow label="Комментарий по здоровью" value={profile.health_notes} />
       </Section>
 
       <Section title="Базовые параметры">
         <div className="grid grid-cols-2 gap-x-6">
-          <ProfileRow label="Рост" value={profile.height_cm ? `${profile.height_cm} см` : null} />
+          {!isPackages && (
+            <ProfileRow label="Рост" value={profile.height_cm ? `${profile.height_cm} см` : null} />
+          )}
           <ProfileRow label="Вес" value={profile.weight_kg ? `${profile.weight_kg} кг` : null} />
-          <ProfileRow label="Год рождения" value={profile.birth_year} />
-          <ProfileRow label="Пол" value={gender} />
+          {profile.birth_date ? (
+            <ProfileRow label="Дата рождения" value={formatDate(profile.birth_date)} />
+          ) : (
+            <ProfileRow label="Год рождения" value={profile.birth_year} />
+          )}
+          {!isPackages && <ProfileRow label="Пол" value={gender} />}
         </div>
       </Section>
 

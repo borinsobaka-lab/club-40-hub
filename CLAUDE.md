@@ -224,6 +224,9 @@ AUTH_SETUP.md.
   пользователя), сотрудники из «Доступов» — как прежде;
   `ensure_client_profile` ищет карточку по почте во всех студиях (актуальные
   определения обеих функций — здесь).
+  Онбординг пакетного приложения: `db/migrations/2026-10-11_packages_onboarding.sql`
+  — `member_profiles.goal_other` (текст цели «Другое»), `birth_date`, новые
+  значения enum `fitness_goal` (`flexibility`/`stress_relief`/`body_shape`/`other`).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
