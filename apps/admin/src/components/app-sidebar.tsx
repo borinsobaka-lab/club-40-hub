@@ -4,11 +4,13 @@ import { ChevronUp } from "lucide-react";
 import { Notebook, Settings } from "@/components/nav-icons";
 import { AppRail } from "@/components/app-rail";
 import {
+  ACCESS_ITEMS,
   CLUB_GROUPS,
   MOBILE_APP_ITEMS,
   SCRIPTS_SETTINGS_URL,
   SCRIPTS_URL,
   STAFF_ITEMS,
+  STUDIOS_ITEMS,
   railSectionKey,
   type NavGroup,
   type RailSectionKey,
@@ -53,6 +55,14 @@ const SECTION_MENUS: Partial<Record<RailSectionKey, { title: string; groups: Nav
   app: {
     title: "Мобильное приложение",
     groups: [{ key: "mobile", label: "Разделы", items: MOBILE_APP_ITEMS }],
+  },
+  access: {
+    title: "Доступы",
+    groups: [{ key: "access", label: "Разделы", items: ACCESS_ITEMS }],
+  },
+  studios: {
+    title: "Клубы",
+    groups: [{ key: "studios", label: "Разделы", items: STUDIOS_ITEMS }],
   },
 };
 
@@ -194,8 +204,8 @@ export function AppSidebar() {
     <Sidebar className="border-r-0 group-data-[side=left]:border-r-0">
       {/*
         Слева — рейка разделов (AppRail; там же «Сотрудники», «Мобильное
-        приложение», «Доступы» и «Студии»), справа — меню клуба или меню
-        раздела («Сотрудники», «Мобильное приложение»).
+        приложение», «Доступы» и «Клубы»), справа — меню клуба или меню
+        раздела («Сотрудники», «Мобильное приложение», «Доступы», «Клубы»).
         Ширина панели (--sidebar-width) уже включает рейку; в шторке на
         телефоне рейка тоже есть, переход по ней закрывает шторку.
       */}

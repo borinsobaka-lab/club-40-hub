@@ -9,16 +9,15 @@ import {
   BellBing,
   BillList,
   Bolt,
-  Buildings2,
   CalendarMinimalistic,
   Card,
   ChartSquare,
   ChatRoundDots,
-  City,
   ClipboardRemove,
   DocumentText,
   Dumbbell,
   History,
+  HomeSmile,
   MoneyBag,
   Notebook,
   Settings,
@@ -30,6 +29,7 @@ import {
   UserId,
   UsersGroupRounded,
   WalletMoney,
+  Widget3,
   Widget5,
   type NavIcon,
 } from "@/components/nav-icons";
@@ -219,7 +219,7 @@ export const SECTIONS: RailSection[] = [
   { key: "dashboard", title: "Дашборд", url: DASHBOARD_ITEM.url, icon: Widget5 },
   // Вход в клуб — первая страница его меню; закрытую в активной студии
   // AccessGate сменит на первую доступную.
-  { key: "club", title: "Клуб", url: CLUB_GROUPS[0].items[0].url, icon: Buildings2 },
+  { key: "club", title: "Клуб", url: CLUB_GROUPS[0].items[0].url, icon: HomeSmile },
   // Сотрудники (тренеры и администраторы) общие для студий: у сотрудника
   // отмечены студии, где он работает.
   {
@@ -250,12 +250,18 @@ export const SECTIONS: RailSection[] = [
 ];
 
 /**
- * Настройки над студиями — внизу рейки. Это одиночные страницы: своего
- * меню у них нет, справа остаётся меню клуба без подсвеченного пункта.
+ * Меню «Доступов» и «Клубов» — по одному пункту (их единственная страница):
+ * меню клуба там не к месту, разделы общие для студий.
  */
+export const ACCESS_ITEMS: NavItem[] = [
+  { title: "Администраторы", url: "/employees", icon: ShieldUser },
+];
+export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Settings }];
+
+/** Настройки над студиями — внизу рейки. */
 export const ADMIN_SECTIONS: RailSection[] = [
-  { key: "access", title: "Доступы", url: "/employees", icon: ShieldUser },
-  { key: "studios", title: "Клубы", url: "/studios", icon: City },
+  { key: "access", title: "Доступы", url: ACCESS_ITEMS[0].url, icon: ShieldUser },
+  { key: "studios", title: "Клубы", url: STUDIOS_ITEMS[0].url, icon: Widget3 },
 ];
 
 const matches = (pathname: string, path: string) =>
