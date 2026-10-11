@@ -53,7 +53,12 @@ import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-to
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientCardDialog } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
-import { CLUB_STATUS_FULL, CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
+import {
+  CLUB_STATUS_FULL,
+  CLUB_STATUS_LABEL,
+  CLUB_STATUS_RULE,
+  type ClubStatus,
+} from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import {
   GENDER_OPTIONS,
@@ -79,6 +84,18 @@ const TIPS = {
     "По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама.",
   lastVisit: "Обновляется сам при отметке посещения. Вручную — только для переноса старой истории.",
   notes: "Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может.",
+  status: (
+    <span className="block space-y-1.5">
+      {(["chk", "bchk", "pchk"] as const).map((s) => (
+        <span key={s} className="block">
+          <span className="font-semibold">
+            {CLUB_STATUS_LABEL[s]} — {CLUB_STATUS_FULL[s].toLowerCase()}:
+          </span>{" "}
+          {CLUB_STATUS_RULE[s]}
+        </span>
+      ))}
+    </span>
+  ),
 };
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -319,7 +336,9 @@ function ClientsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[240px]">Клиент</TableHead>
-                  <TableHead className="w-[80px]">Статус</TableHead>
+                  <TableHead className="w-[80px]" tip={TIPS.status}>
+                    Статус
+                  </TableHead>
                   <TableHead>Телефон</TableHead>
                   <TableHead tip={TIPS.email}>Email</TableHead>
                   <TableHead>Пол</TableHead>
