@@ -230,11 +230,16 @@ GoTrue и видит только хук писем — в браузер он �
   Storage (`StorageImage`, `ImageUploadField`); бакеты — `STORAGE_BUCKETS`.
 - `components/sale-dialog.tsx` — диалог «Новая продажа» абонемента: из
   «Продаж» и из карточки клиента («Добавить продажу», `initialClient` —
-  клиент подставлен). Карточка клиента — `components/client-card-dialog.tsx`.
+  клиент подставлен). В пакетной студии — проп `kind` (тип продажи:
+  новая / пробное / допродажа / продление, `SALE_KIND_*` в `lib/payments.ts`).
+  Карточка клиента — `components/client-card-dialog.tsx`.
 - `components/client-combobox.tsx` — выбор клиента (серверный поиск);
   `ClientNameLink` + `hooks/use-crm-links.ts` — имя клиента со ссылкой amoCRM
   (ссылки для таблицы — одним запросом на страницу).
 - `src/lib/roles.ts` — `STAFF_ROLES`, `hasStaffRole`.
+- `components/comment-cell.tsx` — `CommentCell`: комментарий в таблице (две
+  строки, по клику — весь текст во всплывающем окне); «Продажи», «Прочие
+  продажи».
 - `src/lib/confetti.ts` — `celebrateSale()`: конфетти после успешного внесения
   продажи (абонемент и прочая продажа); canvas-confetti грузится отдельным чанком.
 

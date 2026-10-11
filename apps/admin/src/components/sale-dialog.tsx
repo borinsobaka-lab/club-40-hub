@@ -12,9 +12,12 @@ import {
   PAYMENT_METHODS,
   PAYMENT_TYPE_LABEL,
   PAYMENT_TYPES,
+  SALE_KIND_HINT,
   SALE_TIPS,
+  type MembershipKind,
   type PaymentMethod,
   type PaymentType,
+  type SaleKind,
 } from "@/lib/payments";
 import { celebrateSale } from "@/lib/confetti";
 import { clientName, formatDate, formatMoney, todayISO } from "@/lib/format";
@@ -52,6 +55,11 @@ import { useConfirm } from "@/components/confirm-dialog";
 // - пакетный — у пакета max_payments («сколькими платежами можно оплатить»),
 //   администратор выбирает число платежей от 1 до него; поля «Тип оплаты» нет.
 // В обоих случаях первый платёж — в день продажи, остальные — ежемесячно.
+//
+// В пакетной студии у продажи есть тип (sales.sale_kind, кнопки в «Продажах»):
+// новая продажа, пробное, допродажа, продление. «Пробное» предлагает только
+// номенклатуры «Пробное посещение» и подставляет первую сама, остальные типы —
+// только пакеты тренировок. Подписочная студия тип не пишет.
 
 type MembershipRow = {
   id: string;
@@ -62,6 +70,16 @@ type MembershipRow = {
   installment_enabled: boolean;
   /** Пакетный формат: сколькими платежами можно оплатить (1 — только сразу). */
   max_payments: number;
+  /** Пакетный формат: пакет тренировок или пробное посещение. */
+  kind: MembershipKind;
+};
+
+/** Заголовок диалога в пакетной студии — по типу продажи. */
+const SALE_KIND_TITLE: Record<SaleKind, string> = {
+  new: "Новая продажа",
+  trial: "Пробное посещение",
+  upsell: "Допродажа",
+  renewal: "Продление",
 };
 
 // Календарная арифметика по Y-M-D: без Date-парсинга (он читает дату как UTC)
@@ -156,6 +174,8 @@ export type SaleDialogProps = {
   onSaved: () => void;
   /** Клиент, подставленный заранее (продажа из карточки клиента); сменить можно. */
   initialClient?: ClientOption | null;
+  /** Тип продажи (пакетная студия); по умолчанию — новая продажа. */
+  kind?: SaleKind;
 };
 
 export function SaleDialog(props: SaleDialogProps) {
@@ -169,11 +189,18 @@ export function SaleDialog(props: SaleDialogProps) {
   );
 }
 
-function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialogProps) {
+function SaleForm({
+  onOpenChange,
+  studioId,
+  onSaved,
+  initialClient,
+  kind = "new",
+}: SaleDialogProps) {
   const { confirm, confirmDialog } = useConfirm();
   const { data: staff, ensure: ensureStaff } = useStaffProfile();
   const { data: studios } = useStudios();
   const isPackages = studios?.find((s) => s.id === studioId)?.format === "packages";
+  const isTrial = isPackages && kind === "trial";
   const [form, setForm] = useState<SaleFields>(() => ({
     clientId: initialClient?.id ?? "",
     clientLabel: initialClient ? clientName(initialClient) : "",
@@ -192,13 +219,15 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
     setForm((f) => ({ ...f, [key]: value }));
   const [saving, setSaving] = useState(false);
 
-  const { data: memberships = [] } = useQuery({
+  const { data: memberships = [], isFetched: membershipsFetched } = useQuery({
     queryKey: ["memberships", studioId, "options"],
     queryFn: () =>
       unwrap<MembershipRow[]>(
         supabase
           .from("memberships")
-          .select("id, name, price, duration_days, visits_count, installment_enabled, max_payments")
+          .select(
+            "id, name, price, duration_days, visits_count, installment_enabled, max_payments, kind",
+          )
           .eq("studio_id", studioId!)
           .order("name"),
       ),
@@ -206,14 +235,18 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
     meta: { errorMessage: "Не удалось загрузить абонементы" },
   });
 
-  const membership = memberships.find((m) => m.id === form.membershipId) ?? null;
+  // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты.
+  const options = isPackages
+    ? memberships.filter((m) => (m.kind === "trial") === isTrial)
+    : memberships;
+  const membership = options.find((m) => m.id === form.membershipId) ?? null;
   const t = saleTotals(form, membership, isPackages);
   const maxPayments = isPackages ? Math.max(1, membership?.max_payments ?? 1) : 1;
 
   // Цена подставляется при выборе, а не эффектом по выбранному абонементу:
   // эффект срабатывал и на перезагрузку списка и затирал введённую скидку.
   const pickMembership = (id: string) => {
-    const m = memberships.find((x) => x.id === id);
+    const m = options.find((x) => x.id === id);
     setForm((f) => ({
       ...f,
       membershipId: id,
@@ -223,6 +256,13 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
       paymentsCount: 1,
     }));
   };
+
+  // «Пробное»: пробное посещение подставляется само, как только загрузится
+  // список (один раз — выбранное администратором не перетирается).
+  // Состояние правится прямо в рендере (так React советует подстраивать его
+  // под пришедшие данные): условие выполняется один раз, дальше выбор занят.
+  const firstTrialId = isTrial ? (options[0]?.id ?? "") : "";
+  if (firstTrialId && !form.membershipId) pickMembership(firstTrialId);
 
   // Пакетный формат: при выборе числа платежей первый платёж предлагается
   // равной долей — график виден сразу, администратор правит сумму, внесённую
@@ -295,8 +335,9 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
           down_payment_amount: t.down,
           remaining_installments: t.remaining,
           source: "admin",
-          // В пакетных студиях типа оплаты нет — колонка остаётся по умолчанию.
-          ...(isPackages ? {} : { payment_type: form.paymentType }),
+          // В пакетных студиях типа оплаты нет — колонка остаётся по умолчанию,
+          // зато есть тип продажи.
+          ...(isPackages ? { sale_kind: kind } : { payment_type: form.paymentType }),
           payment_method: form.paymentMethod,
           list_price: t.listPrice,
           discount_amount: t.discount,
@@ -333,9 +374,11 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Новая продажа</DialogTitle>
+        <DialogTitle>{isPackages ? SALE_KIND_TITLE[kind] : "Новая продажа"}</DialogTitle>
         <DialogDescription>
-          Выберите клиента и абонемент. Стоимость подтянется автоматически.
+          {isPackages
+            ? SALE_KIND_HINT[kind]
+            : "Выберите клиента и абонемент. Стоимость подтянется автоматически."}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
@@ -366,14 +409,25 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
               </FormField>
             </div>
 
-            <FormField label="Абонемент" tip={SALE_TIPS.membership} required>
+            <FormField
+              label="Абонемент"
+              tip={SALE_TIPS.membership}
+              required
+              hint={
+                isPackages && membershipsFetched && options.length === 0
+                  ? isTrial
+                    ? "Нет пробных посещений. Добавьте в «Номенклатурах» номенклатуру с типом «Пробное посещение»."
+                    : "Нет пакетов тренировок. Добавьте их в «Номенклатурах»."
+                  : undefined
+              }
+            >
               <SearchableCombobox
                 placeholder="Выбрать абонемент"
                 searchPlaceholder="Поиск по названию"
                 emptyText="Ничего не найдено"
                 value={form.membershipId}
                 onChange={pickMembership}
-                options={memberships.map((m) => ({
+                options={options.map((m) => ({
                   value: m.id,
                   label: m.name,
                   hint: formatMoney(Number(m.price ?? 0)),

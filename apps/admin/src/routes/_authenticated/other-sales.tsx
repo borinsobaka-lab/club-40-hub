@@ -53,6 +53,7 @@ import { clientName, formatMoneyPrecise, formatDate, todayISO } from "@/lib/form
 import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { CommentCell } from "@/components/comment-cell";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -280,14 +281,15 @@ function SalesTab({
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead tip={TIPS.payment}>Оплата</TableHead>
               <TableHead>Дата</TableHead>
+              <TableHead>Комментарий</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableSkeletonRows columns={8} />
+              <TableSkeletonRows columns={9} />
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                   Пока нет продаж. Нажмите «Добавить продажу».
                 </TableCell>
               </TableRow>
@@ -329,6 +331,9 @@ function SalesTab({
                       {s.payment_method ? PAYMENT_METHOD_LABEL[s.payment_method] : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
+                    <TableCell>
+                      <CommentCell text={s.comment} />
+                    </TableCell>
                   </TableRow>
                 </RowContextMenu>
               ))
