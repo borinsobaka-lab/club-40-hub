@@ -956,7 +956,7 @@ export function PushTriggersPageSkeleton() {
   );
 }
 
-/** Форма «Настроек клуба»: две секции, 3 и 1 поле. */
+/** Форма «Контактов и правил» (/club-settings): две секции, 3 и 1 поле. */
 export function ClubSettingsFormSkeleton() {
   return (
     <div className="max-w-2xl space-y-8">
@@ -980,8 +980,45 @@ export function ClubSettingsFormSkeleton() {
 
 export function ClubSettingsPageSkeleton() {
   return (
-    <ShellSkeleton title="Настройки клуба" actions={[{ label: "Сохранить" }]}>
+    <ShellSkeleton title="Контакты и правила" actions={[{ label: "Сохранить" }]}>
       <ClubSettingsFormSkeleton />
+    </ShellSkeleton>
+  );
+}
+
+/** Форма «Настроек приложения»: иконка, подпись, предпросмотр. */
+export function AppSettingsFormSkeleton() {
+  return (
+    <div className="max-w-2xl space-y-8">
+      <div className="space-y-4 rounded-lg border bg-background p-6">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-16 w-16 rounded-[22%]" />
+            <Skeleton className="h-8 w-24 rounded-full" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-10 w-full max-w-80" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-36 w-44 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AppSettingsPageSkeleton() {
+  return (
+    <ShellSkeleton title="Настройки приложения" actions={[{ label: "Сохранить" }]}>
+      <AppSettingsFormSkeleton />
     </ShellSkeleton>
   );
 }

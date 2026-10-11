@@ -40,6 +40,7 @@ import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
 import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app-settings'
 import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenticated/admin-shifts'
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
@@ -210,6 +211,12 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAppSettingsRoute =
+  AuthenticatedAppSettingsRouteImport.update({
+    id: '/app-settings',
+    path: '/app-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminShiftsRoute =
   AuthenticatedAdminShiftsRouteImport.update({
     id: '/admin-shifts',
@@ -269,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -309,6 +317,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -352,6 +361,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/_authenticated/app-settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/_authenticated/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin-shifts'
+    | '/app-settings'
     | '/assistant'
     | '/autorenew-cancellations'
     | '/bookings-log'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/admin-shifts'
+    | '/app-settings'
     | '/assistant'
     | '/autorenew-cancellations'
     | '/bookings-log'
@@ -478,6 +490,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin-shifts'
+    | '/_authenticated/app-settings'
     | '/_authenticated/assistant'
     | '/_authenticated/autorenew-cancellations'
     | '/_authenticated/bookings-log'
@@ -744,6 +757,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/app-settings': {
+      id: '/_authenticated/app-settings'
+      path: '/app-settings'
+      fullPath: '/app-settings'
+      preLoaderRoute: typeof AuthenticatedAppSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin-shifts': {
       id: '/_authenticated/admin-shifts'
       path: '/admin-shifts'
@@ -812,6 +832,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminShiftsRoute: typeof AuthenticatedAdminShiftsRoute
+  AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedAutorenewCancellationsRoute: typeof AuthenticatedAutorenewCancellationsRoute
   AuthenticatedBookingsLogRoute: typeof AuthenticatedBookingsLogRoute
@@ -850,6 +871,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminShiftsRoute: AuthenticatedAdminShiftsRoute,
+  AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedAutorenewCancellationsRoute:
     AuthenticatedAutorenewCancellationsRoute,

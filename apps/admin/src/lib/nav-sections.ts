@@ -13,6 +13,7 @@ import {
   Card,
   ChartSquare,
   ChatRoundDots,
+  ClipboardCheck,
   ClipboardRemove,
   DocumentText,
   Dumbbell,
@@ -211,7 +212,10 @@ export const MOBILE_APP_ITEMS: NavItem[] = [
   { title: "Услуги", url: "/services", icon: StarsMinimalistic },
   { title: "Пуш-уведомления", url: "/push", icon: BellBing },
   { title: "Триггеры", url: "/push-triggers", icon: Bolt },
-  { title: "Настройки клуба", url: "/club-settings", icon: Settings },
+  // Ссылки кнопок главного экрана и срок отмены записи (club_settings).
+  { title: "Контакты и правила", url: "/club-settings", icon: ClipboardCheck },
+  // Установка приложения: иконка и подпись под значком (PWA).
+  { title: "Настройки", url: "/app-settings", icon: Settings },
 ];
 
 /**

@@ -27,6 +27,7 @@ const ICONS: Record<string, string> = {
   ChartSquare: "business",
   ChatRoundDots: "messages",
   ChatRoundLine: "messages",
+  ClipboardCheck: "notes",
   ClipboardList: "notes",
   ClipboardRemove: "notes",
   CupStar: "ui",

@@ -554,7 +554,8 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
 
     // ====== НАСТРОЙКИ КЛУБА ======
     get_club_settings: tool({
-      description: "Глобальные настройки клуба (ссылки, минуты для отмены брони).",
+      description:
+        "Контакты и правила мобильного приложения: ссылки кнопок, минуты для отмены брони, подпись и иконка приложения.",
       inputSchema: z.object({}),
       execute: async () => {
         const { data, error } = await supabase.from("club_settings").select("*").maybeSingle();

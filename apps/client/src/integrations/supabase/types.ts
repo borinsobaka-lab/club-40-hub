@@ -63,6 +63,8 @@ export type Database = {
       };
       club_settings: {
         Row: {
+          app_icon_path: string | null; /* patched: 2026-10-11_app_install_settings.sql */
+          app_name: string | null; /* patched */
           call_url: string | null;
           cancel_booking_minutes: number;
           feedback_url: string | null;
@@ -71,6 +73,8 @@ export type Database = {
           write_url: string | null;
         };
         Insert: {
+          app_icon_path?: string | null; /* patched */
+          app_name?: string | null; /* patched */
           call_url?: string | null;
           cancel_booking_minutes?: number;
           feedback_url?: string | null;
@@ -79,6 +83,8 @@ export type Database = {
           write_url?: string | null;
         };
         Update: {
+          app_icon_path?: string | null; /* patched */
+          app_name?: string | null; /* patched */
           call_url?: string | null;
           cancel_booking_minutes?: number;
           feedback_url?: string | null;

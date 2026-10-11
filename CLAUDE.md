@@ -238,6 +238,11 @@ AUTH_SETUP.md.
   Аватарки сотрудников админки: `db/migrations/2026-10-11_staff_avatars.sql`
   — `profiles.avatar_url` (путь в бакете `avatars`, папка `staff/`, ставит
   владелец в «Доступах» серверной функцией).
+  Установка клиентского приложения (PWA):
+  `db/migrations/2026-10-11_app_install_settings.sql` — `club_settings.app_name`
+  (подпись под значком) и `app_icon_path` (папка с нарезанными PNG в
+  публичном бакете `app-icons`, запись — раздел рейки `app`); одни на обе
+  сборки клиента.
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

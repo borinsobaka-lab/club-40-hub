@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { ClubSettingsFormSkeleton, ClubSettingsPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/club-settings")({
-  head: () => ({ meta: [{ title: "Настройки клуба — Base40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Контакты и правила — Base40 Admin" }] }),
   pendingComponent: ClubSettingsPageSkeleton,
   component: ClubSettingsPage,
 });
@@ -42,7 +42,9 @@ function toFormValues(s: Settings | null | undefined): FormValues {
   };
 }
 
-// club_settings — глобальный синглтон (id = true), не привязан к студии.
+// «Контакты и правила» (раньше «Настройки клуба»; URL прежний — по таблице).
+// club_settings — глобальный синглтон (id = true), не привязан к студии; в нём
+// же иконка и подпись приложения — страница «Настройки» (/app-settings).
 const QUERY_KEY = ["club_settings"];
 
 // Кнопка «Сохранить» живёт в шапке страницы, вне формы, — связана с ней по id.
@@ -101,7 +103,7 @@ function ClubSettingsPage() {
 
   return (
     <AdminShell
-      title="Настройки клуба"
+      title="Контакты и правила"
       actions={
         <Button type="submit" form={FORM_ID} disabled={saving || loading}>
           {saving ? <Loader2 className="animate-spin" /> : <Save />}

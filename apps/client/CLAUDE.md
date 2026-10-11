@@ -103,8 +103,16 @@ OTP_LENGTH и RESEND_COOLDOWN_SEC = 60 в src/routes/auth.tsx — повторн
 memberships, sales, bookings_log, client_stats_30d_mv...). TODO: полная
 регенерация `supabase gen types typescript` (нужен access token владельца).
 
-## PWA (следующий этап)
+## PWA
 
-Манифеста и service worker пока нет. Перед PWA: самостоятельный хостинг
-шрифтов (сейчас Google Sans с CDN Google; учесть лицензию — шрифт
-проприетарный), офлайн-стратегия для расписания.
+Установка на рабочий стол (2026-10-11): манифест собирается на лету —
+`src/routes/manifest[.]webmanifest.ts`; иконка и подпись под значком —
+из админки («Приложение» → «Настройки», `club_settings.app_name` /
+`app_icon_path`, бакет `app-icons`), читает `src/lib/app-install.ts`
+(минутный кэш в памяти, при ошибке или без колонок — Base40 из `public/`).
+В `<head>` их ставит loader корня (`__root.tsx`): фавикон,
+`apple-touch-icon`, `apple-mobile-web-app-title` (подпись на iOS).
+Одни настройки на обе сборки (app. и pack.).
+
+Service worker пока нет (приложение без сети не открывается). Дальше:
+офлайн-страница, как у админки, и стратегия для расписания.
