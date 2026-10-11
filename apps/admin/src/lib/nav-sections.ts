@@ -205,6 +205,8 @@ export const MOBILE_APP_ITEMS: NavItem[] = [
 export const STAFF_ITEMS: NavItem[] = [
   { title: "Сотрудники", url: "/trainers", icon: UserId },
   { title: "Зарплатные ставки", url: "/pay-rates", icon: MoneyBag },
+  { title: "График администраторов", url: "/admin-shifts", icon: CalendarMinimalistic },
+  { title: "Зарплаты", url: "/payroll", icon: WalletMoney },
 ];
 
 /** «Скрипты LS»: все скрипты; разделы — /scripts/<id>, настройки — /scripts/settings. */

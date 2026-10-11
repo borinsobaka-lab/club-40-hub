@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -19,8 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { unwrap } from "@/lib/query";
-import { TRAINER_ROLES, useEmployees } from "@/lib/staff-directory";
+import { TRAINER_ROLES, useEmployees, usePayRates, type PayRates } from "@/lib/staff-directory";
 
 export const Route = createFileRoute("/_authenticated/pay-rates")({
   head: () => ({ meta: [{ title: "Зарплатные ставки — Base40 Admin" }] }),
@@ -33,16 +32,6 @@ export const Route = createFileRoute("/_authenticated/pay-rates")({
  * (trainer_pay_rates). Читать и править их может только сотрудник с
  * разделом «Сотрудники» (RLS, has_admin_section).
  */
-
-type PayRates = {
-  trainer_id: string;
-  admin_shift_enabled: boolean;
-  admin_shift_rate: number | null;
-  group_training_enabled: boolean;
-  group_training_rate: number | null;
-  personal_training_enabled: boolean;
-  personal_training_rate: number | null;
-};
 
 /** Ставки: флаг «получает ли сейчас» + сумма в лари за единицу. */
 const RATE_KINDS = [
@@ -69,11 +58,7 @@ type RatePatch = Partial<Omit<PayRates, "trainer_id">>;
 function PayRatesPage() {
   const queryClient = useQueryClient();
   const { data: employees = [], isLoading: loading } = useEmployees();
-  const { data: rates = [], isLoading: ratesLoading } = useQuery({
-    queryKey: ["trainer_pay_rates"],
-    queryFn: () => unwrap<PayRates[]>(supabase.from("trainer_pay_rates").select("*")),
-    meta: { errorMessage: "Не удалось загрузить зарплатные ставки" },
-  });
+  const { data: rates = [], isLoading: ratesLoading } = usePayRates();
   const byEmployee = new Map(rates.map((r) => [r.trainer_id, r]));
   const pg = usePagination(employees);
 
@@ -92,6 +77,8 @@ function PayRatesPage() {
       ...prev.filter((r) => r.trainer_id !== trainerId),
       data,
     ]);
+    // Ставки входят в расчёт «Зарплат».
+    queryClient.invalidateQueries({ queryKey: ["payroll_lines"] });
     return true;
   };
 

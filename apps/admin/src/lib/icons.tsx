@@ -48,6 +48,7 @@ import {
   FlaskConical as FlaskConicalArt,
   HelpCircleIcon as HelpCircleArt,
   ImageIcon as ImageIconArt,
+  Info as InfoArt,
   Link2 as Link2Art,
   LoaderCircle as Loader2Art,
   LogIn as LogInArt,
@@ -124,6 +125,7 @@ export const Eye = icon(EyeArt, "Eye");
 export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
+export const Info = icon(InfoArt, "Info");
 export const Link2 = icon(Link2Art, "Link2");
 export const Loader2 = icon(Loader2Art, "Loader2");
 export const LogIn = icon(LogInArt, "LogIn");

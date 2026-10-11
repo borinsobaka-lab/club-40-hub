@@ -24,6 +24,7 @@ import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPushTriggersRouteImport } from './routes/_authenticated/push-triggers'
 import { Route as AuthenticatedPushRouteImport } from './routes/_authenticated/push'
 import { Route as AuthenticatedPromocodesRouteImport } from './routes/_authenticated/promocodes'
+import { Route as AuthenticatedPayrollRouteImport } from './routes/_authenticated/payroll'
 import { Route as AuthenticatedPayRatesRouteImport } from './routes/_authenticated/pay-rates'
 import { Route as AuthenticatedPackagesRouteImport } from './routes/_authenticated/packages'
 import { Route as AuthenticatedOtherSalesRouteImport } from './routes/_authenticated/other-sales'
@@ -40,6 +41,7 @@ import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
 import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenticated/admin-shifts'
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
 import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
 import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
@@ -117,6 +119,11 @@ const AuthenticatedPushRoute = AuthenticatedPushRouteImport.update({
 const AuthenticatedPromocodesRoute = AuthenticatedPromocodesRouteImport.update({
   id: '/promocodes',
   path: '/promocodes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPayrollRoute = AuthenticatedPayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPayRatesRoute = AuthenticatedPayRatesRouteImport.update({
@@ -204,6 +211,12 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminShiftsRoute =
+  AuthenticatedAdminShiftsRouteImport.update({
+    id: '/admin-shifts',
+    path: '/admin-shifts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedScriptsIndexRoute =
   AuthenticatedScriptsIndexRouteImport.update({
     id: '/scripts/',
@@ -226,6 +239,7 @@ const AuthenticatedScriptsSectionIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -242,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/other-sales': typeof AuthenticatedOtherSalesRoute
   '/packages': typeof AuthenticatedPackagesRoute
   '/pay-rates': typeof AuthenticatedPayRatesRoute
+  '/payroll': typeof AuthenticatedPayrollRoute
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -260,6 +275,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -276,6 +292,7 @@ export interface FileRoutesByTo {
   '/other-sales': typeof AuthenticatedOtherSalesRoute
   '/packages': typeof AuthenticatedPackagesRoute
   '/pay-rates': typeof AuthenticatedPayRatesRoute
+  '/payroll': typeof AuthenticatedPayrollRoute
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -297,6 +314,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin-shifts': typeof AuthenticatedAdminShiftsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/_authenticated/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -313,6 +331,7 @@ export interface FileRoutesById {
   '/_authenticated/other-sales': typeof AuthenticatedOtherSalesRoute
   '/_authenticated/packages': typeof AuthenticatedPackagesRoute
   '/_authenticated/pay-rates': typeof AuthenticatedPayRatesRoute
+  '/_authenticated/payroll': typeof AuthenticatedPayrollRoute
   '/_authenticated/promocodes': typeof AuthenticatedPromocodesRoute
   '/_authenticated/push': typeof AuthenticatedPushRoute
   '/_authenticated/push-triggers': typeof AuthenticatedPushTriggersRoute
@@ -335,6 +354,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/admin-shifts'
     | '/assistant'
     | '/autorenew-cancellations'
     | '/bookings-log'
@@ -351,6 +371,7 @@ export interface FileRouteTypes {
     | '/other-sales'
     | '/packages'
     | '/pay-rates'
+    | '/payroll'
     | '/promocodes'
     | '/push'
     | '/push-triggers'
@@ -369,6 +390,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/admin-shifts'
     | '/assistant'
     | '/autorenew-cancellations'
     | '/bookings-log'
@@ -385,6 +407,7 @@ export interface FileRouteTypes {
     | '/other-sales'
     | '/packages'
     | '/pay-rates'
+    | '/payroll'
     | '/promocodes'
     | '/push'
     | '/push-triggers'
@@ -405,6 +428,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/admin-shifts'
     | '/_authenticated/assistant'
     | '/_authenticated/autorenew-cancellations'
     | '/_authenticated/bookings-log'
@@ -421,6 +445,7 @@ export interface FileRouteTypes {
     | '/_authenticated/other-sales'
     | '/_authenticated/packages'
     | '/_authenticated/pay-rates'
+    | '/_authenticated/payroll'
     | '/_authenticated/promocodes'
     | '/_authenticated/push'
     | '/_authenticated/push-triggers'
@@ -554,6 +579,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPromocodesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/payroll': {
+      id: '/_authenticated/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof AuthenticatedPayrollRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pay-rates': {
       id: '/_authenticated/pay-rates'
       path: '/pay-rates'
@@ -666,6 +698,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin-shifts': {
+      id: '/_authenticated/admin-shifts'
+      path: '/admin-shifts'
+      fullPath: '/admin-shifts'
+      preLoaderRoute: typeof AuthenticatedAdminShiftsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/scripts/': {
       id: '/_authenticated/scripts/'
       path: '/scripts'
@@ -691,6 +730,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminShiftsRoute: typeof AuthenticatedAdminShiftsRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedAutorenewCancellationsRoute: typeof AuthenticatedAutorenewCancellationsRoute
   AuthenticatedBookingsLogRoute: typeof AuthenticatedBookingsLogRoute
@@ -707,6 +747,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOtherSalesRoute: typeof AuthenticatedOtherSalesRoute
   AuthenticatedPackagesRoute: typeof AuthenticatedPackagesRoute
   AuthenticatedPayRatesRoute: typeof AuthenticatedPayRatesRoute
+  AuthenticatedPayrollRoute: typeof AuthenticatedPayrollRoute
   AuthenticatedPromocodesRoute: typeof AuthenticatedPromocodesRoute
   AuthenticatedPushRoute: typeof AuthenticatedPushRoute
   AuthenticatedPushTriggersRoute: typeof AuthenticatedPushTriggersRoute
@@ -723,6 +764,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminShiftsRoute: AuthenticatedAdminShiftsRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedAutorenewCancellationsRoute:
     AuthenticatedAutorenewCancellationsRoute,
@@ -740,6 +782,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOtherSalesRoute: AuthenticatedOtherSalesRoute,
   AuthenticatedPackagesRoute: AuthenticatedPackagesRoute,
   AuthenticatedPayRatesRoute: AuthenticatedPayRatesRoute,
+  AuthenticatedPayrollRoute: AuthenticatedPayrollRoute,
   AuthenticatedPromocodesRoute: AuthenticatedPromocodesRoute,
   AuthenticatedPushRoute: AuthenticatedPushRoute,
   AuthenticatedPushTriggersRoute: AuthenticatedPushTriggersRoute,
