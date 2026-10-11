@@ -52,6 +52,13 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  description: "Клиенты видят его в карточке занятия в расписании приложения.",
+  type: "Задаёт цвет метки и MET по умолчанию, если поле MET пустое.",
+  capacity: "Когда места заняты, новые записи встают в лист ожидания.",
+};
+
 export const Route = createFileRoute("/_authenticated/workouts")({
   head: () => ({ meta: [{ title: "Тренировки — Base40 Admin" }] }),
   component: WorkoutsPage,
@@ -168,9 +175,13 @@ function WorkoutsPage() {
                 <TableRow>
                   <TableHead className="w-[100px]">Иконка</TableHead>
                   <TableHead>Название</TableHead>
-                  <TableHead className="w-[160px]">Тип</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead className="w-[120px]">Вместимость</TableHead>
+                  <TableHead className="w-[160px]" tip={TIPS.type}>
+                    Тип
+                  </TableHead>
+                  <TableHead tip={TIPS.description}>Описание</TableHead>
+                  <TableHead className="w-[120px]" tip={TIPS.capacity}>
+                    Вместимость
+                  </TableHead>
                   <TableHead className="w-[90px]">MET</TableHead>
                 </TableRow>
               </TableHeader>
@@ -352,11 +363,7 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
               />
             </FormField>
 
-            <FormField
-              label="Описание"
-              tip="Клиенты видят его в карточке занятия в расписании приложения."
-              optional
-            >
+            <FormField label="Описание" tip={TIPS.description} optional>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -365,11 +372,7 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
               />
             </FormField>
 
-            <FormField
-              label="Тип тренировки"
-              tip="Задаёт цвет метки и MET по умолчанию, если поле MET пустое."
-              optional
-            >
+            <FormField label="Тип тренировки" tip={TIPS.type} optional>
               <Select value={type} onValueChange={(v) => setType(v as DayType | typeof NONE_TYPE)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите тип" />
@@ -395,7 +398,7 @@ function WorkoutForm({ onOpenChange, studioId, workout, onSaved }: DialogProps) 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField
                 label="Вместимость, чел."
-                tip="Когда места заняты, новые записи встают в лист ожидания."
+                tip={TIPS.capacity}
                 optional
                 hint="По умолчанию для всех занятий этой тренировки в расписании."
               >

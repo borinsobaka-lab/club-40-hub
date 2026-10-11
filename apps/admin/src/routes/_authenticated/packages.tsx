@@ -41,6 +41,15 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  visits: "Сколько тренировок входит в пакет.",
+  duration: "Считается от даты продажи.",
+  price:
+    "Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет.",
+  description: "Видно клиентам в карточке пакета в приложении.",
+};
+
 /**
  * Номенклатура «Зала с пакетами тренировок» (STUDIO_FORMATS.md): пакеты —
  * строки той же таблицы memberships, что и подписки, но без автопродления,
@@ -181,10 +190,10 @@ function PackagesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Название</TableHead>
-                  <TableHead>Тренировок</TableHead>
-                  <TableHead>Срок действия</TableHead>
-                  <TableHead>Стоимость</TableHead>
-                  <TableHead>Описание</TableHead>
+                  <TableHead tip={TIPS.visits}>Тренировок</TableHead>
+                  <TableHead tip={TIPS.duration}>Срок действия</TableHead>
+                  <TableHead tip={TIPS.price}>Стоимость</TableHead>
+                  <TableHead tip={TIPS.description}>Описание</TableHead>
                   <TableHead>Статус</TableHead>
                 </TableRow>
               </TableHeader>
@@ -387,7 +396,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <FormField label="Тренировок" tip="Сколько тренировок входит в пакет.">
+              <FormField label="Тренировок" tip={TIPS.visits}>
                 <Input
                   type="number"
                   min={1}
@@ -396,7 +405,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
                   placeholder="8"
                 />
               </FormField>
-              <FormField label="Срок, дней" tip="Считается от даты продажи.">
+              <FormField label="Срок, дней" tip={TIPS.duration}>
                 <Input
                   type="number"
                   min={1}
@@ -405,10 +414,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
                   placeholder="30"
                 />
               </FormField>
-              <FormField
-                label="Стоимость, ₾"
-                tip="Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет."
-              >
+              <FormField label="Стоимость, ₾" tip={TIPS.price}>
                 <Input
                   inputMode="decimal"
                   value={price}
@@ -418,11 +424,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
               </FormField>
             </div>
 
-            <FormField
-              label="Описание"
-              tip="Видно клиентам в карточке пакета в приложении."
-              optional
-            >
+            <FormField label="Описание" tip={TIPS.description} optional>
               <Textarea
                 rows={2}
                 value={description}

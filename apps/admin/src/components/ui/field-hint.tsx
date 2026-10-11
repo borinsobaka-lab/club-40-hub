@@ -6,8 +6,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * Значок «?» рядом с подписью поля: подсказка по наведению, на тач-экране —
- * по нажатию. В формах — через проп `tip` у FormField/SwitchRow. Свой
- * TooltipProvider — чтобы работать и вне SidebarProvider.
+ * по нажатию. В формах — проп `tip` у FormField/SwitchRow, в таблицах — у
+ * TableHead (тот же текст у поля и у колонки). Свой TooltipProvider — чтобы
+ * работать и вне SidebarProvider.
  */
 export function FieldHint({
   children,

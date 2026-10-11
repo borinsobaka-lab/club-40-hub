@@ -58,6 +58,16 @@ import { GENDER_OPTIONS, clientName, formatDate, genderLabel, sanitizeSearch } f
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  email:
+    "Когда клиент зарегистрируется в приложении с этой почтой, его аккаунт привяжется к этой карточке. Проверьте опечатки.",
+  registration:
+    "По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама.",
+  lastVisit: "Обновляется сам при отметке посещения. Вручную — только для переноса старой истории.",
+  notes: "Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может.",
+};
+
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — Base40 Admin" }] }),
   component: ClientsPage,
@@ -296,12 +306,12 @@ function ClientsPage() {
                   <TableHead className="min-w-[240px]">Клиент</TableHead>
                   <TableHead className="w-[80px]">Статус</TableHead>
                   <TableHead>Телефон</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead tip={TIPS.email}>Email</TableHead>
                   <TableHead>Пол</TableHead>
                   <TableHead>Дата рождения</TableHead>
-                  <TableHead>Регистрация</TableHead>
-                  <TableHead>Последний визит</TableHead>
-                  <TableHead>Заметки</TableHead>
+                  <TableHead tip={TIPS.registration}>Регистрация</TableHead>
+                  <TableHead tip={TIPS.lastVisit}>Последний визит</TableHead>
+                  <TableHead tip={TIPS.notes}>Заметки</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -533,10 +543,7 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
               <FormField label="Телефон">
                 <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
               </FormField>
-              <FormField
-                label="Email"
-                tip="Когда клиент зарегистрируется в приложении с этой почтой, его аккаунт привяжется к этой карточке. Проверьте опечатки."
-              >
+              <FormField label="Email" tip={TIPS.email}>
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </FormField>
             </div>
@@ -560,20 +567,14 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
               </FormField>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Дата регистрации"
-                tip="По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама."
-              >
+              <FormField label="Дата регистрации" tip={TIPS.registration}>
                 <Input
                   type="date"
                   value={registrationDate}
                   onChange={(e) => setRegistrationDate(e.target.value)}
                 />
               </FormField>
-              <FormField
-                label="Последний визит"
-                tip="Обновляется сам при отметке посещения. Вручную — только для переноса старой истории."
-              >
+              <FormField label="Последний визит" tip={TIPS.lastVisit}>
                 <Input
                   type="date"
                   value={lastVisitDate}
@@ -594,11 +595,7 @@ function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogPro
                 placeholder="https://..."
               />
             </FormField>
-            <FormField
-              label="Заметки"
-              tip="Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может."
-              optional
-            >
+            <FormField label="Заметки" tip={TIPS.notes} optional>
               <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </FormField>
           </div>

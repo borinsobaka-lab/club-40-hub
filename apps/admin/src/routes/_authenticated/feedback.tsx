@@ -49,6 +49,11 @@ import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  contact: "Телефон, почта или ник — чтобы потом связаться с клиентом.",
+};
+
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({ meta: [{ title: "Обратная связь — Base40 Admin" }] }),
   component: FeedbackPage,
@@ -265,7 +270,7 @@ function FeedbackPage() {
                 <TableHead>Сообщение</TableHead>
                 <TableHead className="w-[80px] text-center">Оценка</TableHead>
                 <TableHead>Имя</TableHead>
-                <TableHead>Контакт</TableHead>
+                <TableHead tip={TIPS.contact}>Контакт</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Отработал</TableHead>
               </TableRow>
@@ -458,11 +463,7 @@ function NewFeedbackForm({
               <FormField label="Имя" optional>
                 <Input value={clientName} onChange={(e) => setClientName(e.target.value)} />
               </FormField>
-              <FormField
-                label="Контакт"
-                tip="Телефон, почта или ник — чтобы потом связаться с клиентом."
-                optional
-              >
+              <FormField label="Контакт" tip={TIPS.contact} optional>
                 <Input value={clientContact} onChange={(e) => setClientContact(e.target.value)} />
               </FormField>
             </div>

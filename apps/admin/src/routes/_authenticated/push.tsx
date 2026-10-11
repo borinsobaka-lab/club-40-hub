@@ -38,6 +38,13 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  title: "Жирная первая строка. Держите коротким — длинный обрежется на экране блокировки.",
+  segments:
+    "ЧК — есть действующий абонемент, БЧК — был, но закончился, ПЧК — ещё ни разу не покупал.",
+};
+
 export const Route = createFileRoute("/_authenticated/push")({
   head: () => ({ meta: [{ title: "Пуш-уведомления — Base40 Admin" }] }),
   component: PushPage,
@@ -140,8 +147,8 @@ function PushPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Заголовок</TableHead>
-                <TableHead>Сегмент</TableHead>
+                <TableHead tip={TIPS.title}>Заголовок</TableHead>
+                <TableHead tip={TIPS.segments}>Сегмент</TableHead>
                 <TableHead>Отправка</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Отправлено</TableHead>
@@ -322,10 +329,7 @@ function PushForm({
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField
-              label="Заголовок"
-              tip="Жирная первая строка. Держите коротким — длинный обрежется на экране блокировки."
-            >
+            <FormField label="Заголовок" tip={TIPS.title}>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -358,11 +362,7 @@ function PushForm({
               />
             </FormField>
 
-            <FormField
-              label="Статус клиентов"
-              tip="ЧК — есть действующий абонемент, БЧК — был, но закончился, ПЧК — ещё ни разу не покупал."
-              htmlFor={null}
-            >
+            <FormField label="Статус клиентов" tip={TIPS.segments} htmlFor={null}>
               <div className="space-y-2 rounded-md border p-3">
                 <CheckboxOption checked={allSelected} onCheckedChange={setAllSelected}>
                   Все клиенты

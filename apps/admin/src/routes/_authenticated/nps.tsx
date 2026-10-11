@@ -60,6 +60,12 @@ import { cn } from "@/lib/utils";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  surveyType: "Момент, когда задан вопрос: NPS считается по каждому типу отдельно.",
+  score: "9–10 — промоутер, 7–8 — нейтрал, 0–6 — критик. NPS = % промоутеров − % критиков.",
+};
+
 export const Route = createFileRoute("/_authenticated/nps")({
   head: () => ({ meta: [{ title: "NPS-опросы — Base40 Admin" }] }),
   component: NpsPage,
@@ -421,10 +427,12 @@ function NpsPage() {
                   <TableRow>
                     <TableHead>Дата</TableHead>
                     <TableHead>Клиент</TableHead>
-                    <TableHead className="w-[80px]">Оценка</TableHead>
+                    <TableHead className="w-[80px]" tip={TIPS.score}>
+                      Оценка
+                    </TableHead>
                     <TableHead>Категория</TableHead>
                     <TableHead>Комментарий</TableHead>
-                    <TableHead>Опрос</TableHead>
+                    <TableHead tip={TIPS.surveyType}>Опрос</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -542,10 +550,7 @@ function NewResponseForm({
       <DialogForm onSubmit={submit}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField
-              label="Тип опроса"
-              tip="Момент, когда задан вопрос: NPS считается по каждому типу отдельно."
-            >
+            <FormField label="Тип опроса" tip={TIPS.surveyType}>
               <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -559,11 +564,7 @@ function NewResponseForm({
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField
-              label="Оценка"
-              tip="9–10 — промоутер, 7–8 — нейтрал, 0–6 — критик. NPS = % промоутеров − % критиков."
-              hint="От 0 до 10."
-            >
+            <FormField label="Оценка" tip={TIPS.score} hint="От 0 до 10.">
               <Input
                 type="number"
                 inputMode="numeric"

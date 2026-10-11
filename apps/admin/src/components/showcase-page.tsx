@@ -34,6 +34,12 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  image: "В списке на главном экране приложения. Если нет баннера — и вверху открытой страницы.",
+  banner: "Широкая картинка вверху открытой страницы. Не задан — там будет превью.",
+};
+
 /**
  * Раздел витрины мобильного приложения — карточки с картинкой, баннером,
  * текстом и кнопкой-ссылкой, в заданном порядке. «Новости» и «Услуги» —
@@ -190,8 +196,12 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[90px]">Порядок</TableHead>
-                <TableHead className="w-[100px]">Картинка</TableHead>
-                <TableHead className="w-[140px]">Баннер</TableHead>
+                <TableHead className="w-[100px]" tip={TIPS.image}>
+                  Картинка
+                </TableHead>
+                <TableHead className="w-[140px]" tip={TIPS.banner}>
+                  Баннер
+                </TableHead>
                 <TableHead>Заголовок</TableHead>
                 <TableHead>Описание</TableHead>
                 <TableHead className="w-[140px]">Кнопка</TableHead>
@@ -374,12 +384,7 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
         <DialogBody>
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Картинка (превью)"
-                tip="В списке на главном экране приложения. Если нет баннера — и вверху открытой страницы."
-                htmlFor={null}
-                optional
-              >
+              <FormField label="Картинка (превью)" tip={TIPS.image} htmlFor={null} optional>
                 <ImageUploadField
                   bucket={bucket}
                   folder="app/image"
@@ -388,12 +393,7 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
                 />
               </FormField>
 
-              <FormField
-                label="Баннер"
-                tip="Широкая картинка вверху открытой страницы. Не задан — там будет превью."
-                htmlFor={null}
-                optional
-              >
+              <FormField label="Баннер" tip={TIPS.banner} htmlFor={null} optional>
                 <ImageUploadField
                   bucket={bucket}
                   folder="app/banner"

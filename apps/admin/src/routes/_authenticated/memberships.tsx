@@ -42,6 +42,20 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  description: "Видно клиентам в карточке абонемента в приложении.",
+  benefits:
+    "Пункты списка в карточке в приложении. Заморозку не добавляйте — строка «Заморозка до N дней» появится сама.",
+  visits: "Сколько занятий в пакете. В приложении безлимиты и пакеты — на разных вкладках.",
+  duration: "Считается от даты продажи. Пусто — абонемент бессрочный.",
+  autoRenew:
+    "Клиент может отключить продление в приложении — отказы видны в «Отменах автопродления».",
+  installment: "При продаже оплату можно разбить: первый взнос + 2–3 платежа раз в месяц.",
+  price:
+    "Подставляется в продажу, там её можно снизить для скидки. На уже проданные абонементы не влияет.",
+};
+
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
   component: MembershipsRoute,
@@ -180,13 +194,13 @@ function MembershipsPage() {
                 <TableRow>
                   <TableHead className="w-[80px]">Обложка</TableHead>
                   <TableHead>Название</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead>Преимущества</TableHead>
-                  <TableHead>Посещения</TableHead>
-                  <TableHead>Срок</TableHead>
-                  <TableHead>Автопродление</TableHead>
-                  <TableHead>Рассрочка</TableHead>
-                  <TableHead>Цена</TableHead>
+                  <TableHead tip={TIPS.description}>Описание</TableHead>
+                  <TableHead tip={TIPS.benefits}>Преимущества</TableHead>
+                  <TableHead tip={TIPS.visits}>Посещения</TableHead>
+                  <TableHead tip={TIPS.duration}>Срок</TableHead>
+                  <TableHead tip={TIPS.autoRenew}>Автопродление</TableHead>
+                  <TableHead tip={TIPS.installment}>Рассрочка</TableHead>
+                  <TableHead tip={TIPS.price}>Цена</TableHead>
                   <TableHead>Статус</TableHead>
                 </TableRow>
               </TableHeader>
@@ -450,11 +464,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               />
             </FormField>
 
-            <FormField
-              label="Описание"
-              tip="Видно клиентам в карточке абонемента в приложении."
-              optional
-            >
+            <FormField label="Описание" tip={TIPS.description} optional>
               <Textarea
                 rows={2}
                 value={description}
@@ -462,18 +472,11 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               />
             </FormField>
 
-            <FormField
-              label="Преимущества"
-              tip="Пункты списка в карточке в приложении. Заморозку не добавляйте — строка «Заморозка до N дней» появится сама."
-              optional
-            >
+            <FormField label="Преимущества" tip={TIPS.benefits} optional>
               <BenefitsEditor value={benefits} onChange={setBenefits} />
             </FormField>
 
-            <FormField
-              label="Количество посещений"
-              tip="Сколько занятий в пакете. В приложении безлимиты и пакеты — на разных вкладках."
-            >
+            <FormField label="Количество посещений" tip={TIPS.visits}>
               <div className="flex items-center gap-4">
                 <Input
                   type="number"
@@ -491,11 +494,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Срок действия, дней"
-                tip="Считается от даты продажи. Пусто — абонемент бессрочный."
-                optional
-              >
+              <FormField label="Срок действия, дней" tip={TIPS.duration} optional>
                 <Input
                   type="number"
                   min={0}
@@ -504,10 +503,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
                   placeholder="30"
                 />
               </FormField>
-              <FormField
-                label="Цена, ₾"
-                tip="Подставляется в продажу, там её можно снизить для скидки. На уже проданные абонементы не влияет."
-              >
+              <FormField label="Цена, ₾" tip={TIPS.price}>
                 <Input
                   type="number"
                   min={0}
@@ -536,14 +532,14 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
 
             <SwitchRow
               title="Автопродление"
-              tip="Клиент может отключить продление в приложении — отказы видны в «Отменах автопродления»."
+              tip={TIPS.autoRenew}
               checked={autoRenew}
               onCheckedChange={setAutoRenew}
             />
 
             <SwitchRow
               title="Рассрочка доступна"
-              tip="При продаже оплату можно разбить: первый взнос + 2–3 платежа раз в месяц."
+              tip={TIPS.installment}
               checked={installmentEnabled}
               onCheckedChange={setInstallmentEnabled}
             />

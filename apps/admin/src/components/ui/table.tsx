@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { FieldHint } from "@/components/ui/field-hint";
 import { cn } from "@/lib/utils";
 
 /**
@@ -122,10 +123,15 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
 );
 TableRow.displayName = "TableRow";
 
+/**
+ * tip — подсказка «?» у заголовка колонки, тот же текст, что у поля формы
+ * (FormField tip). Значок без текста, поэтому подпись колонки для карточек
+ * на телефоне (labelCells, textContent) он не портит.
+ */
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  React.ThHTMLAttributes<HTMLTableCellElement> & { tip?: React.ReactNode }
+>(({ className, tip, children, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
@@ -133,7 +139,16 @@ const TableHead = React.forwardRef<
       className,
     )}
     {...props}
-  />
+  >
+    {tip ? (
+      <span className="inline-flex items-center gap-1">
+        {children}
+        <FieldHint>{tip}</FieldHint>
+      </span>
+    ) : (
+      children
+    )}
+  </th>
 ));
 TableHead.displayName = "TableHead";
 

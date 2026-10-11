@@ -35,6 +35,15 @@ import { DataPagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { formatDateTime, formatMoneyPrecise, toDateTimeLocalValue } from "@/lib/format";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  category: "Статья для отчёта. Продажи из «Продаж» и «Прочих продаж» сюда сами не попадают.",
+  amount: "Всегда положительная — приход это или расход, задаёт «Тип».",
+  operator: "Сотрудник, ответственный за операцию. По умолчанию — вы.",
+  occurredAt: "Когда деньги фактически прошли. Можно указать задним числом.",
+  comment: "Обязателен. Пишите так, чтобы через месяц было понятно, за что деньги.",
+};
+
 export const Route = createFileRoute("/_authenticated/cash")({
   head: () => ({ meta: [{ title: "Касса — Base40 Admin" }] }),
   component: CashPage,
@@ -202,12 +211,12 @@ function CashPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Дата</TableHead>
+                  <TableHead tip={TIPS.occurredAt}>Дата</TableHead>
                   <TableHead>Тип</TableHead>
-                  <TableHead>Категория</TableHead>
-                  <TableHead>Сумма</TableHead>
-                  <TableHead>Сотрудник</TableHead>
-                  <TableHead>Комментарий</TableHead>
+                  <TableHead tip={TIPS.category}>Категория</TableHead>
+                  <TableHead tip={TIPS.amount}>Сумма</TableHead>
+                  <TableHead tip={TIPS.operator}>Сотрудник</TableHead>
+                  <TableHead tip={TIPS.comment}>Комментарий</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -357,10 +366,7 @@ function CashOperationForm({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField
-          label="Категория"
-          tip="Статья для отчёта. Продажи из «Продаж» и «Прочих продаж» сюда сами не попадают."
-        >
+        <FormField label="Категория" tip={TIPS.category}>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger>
               <SelectValue />
@@ -374,10 +380,7 @@ function CashOperationForm({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField
-          label="Сумма, ₾"
-          tip="Всегда положительная — приход это или расход, задаёт «Тип»."
-        >
+        <FormField label="Сумма, ₾" tip={TIPS.amount}>
           <Input
             type="number"
             min={0}
@@ -387,10 +390,7 @@ function CashOperationForm({
             placeholder="0"
           />
         </FormField>
-        <FormField
-          label="Кто проводит"
-          tip="Сотрудник, ответственный за операцию. По умолчанию — вы."
-        >
+        <FormField label="Кто проводит" tip={TIPS.operator}>
           <Select value={selectedOperatorId} onValueChange={setOperatorId}>
             <SelectTrigger>
               <SelectValue placeholder="Сотрудник" />
@@ -405,22 +405,14 @@ function CashOperationForm({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField
-          label="Дата и время"
-          tip="Когда деньги фактически прошли. Можно указать задним числом."
-          className="sm:col-span-2"
-        >
+        <FormField label="Дата и время" tip={TIPS.occurredAt} className="sm:col-span-2">
           <Input
             type="datetime-local"
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
           />
         </FormField>
-        <FormField
-          label="Комментарий"
-          tip="Обязателен. Пишите так, чтобы через месяц было понятно, за что деньги."
-          className="sm:col-span-2 lg:col-span-6"
-        >
+        <FormField label="Комментарий" tip={TIPS.comment} className="sm:col-span-2 lg:col-span-6">
           <Textarea
             rows={2}
             value={comment}

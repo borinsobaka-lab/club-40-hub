@@ -110,7 +110,7 @@ function PayRatesPage() {
               <TableRow>
                 <TableHead>Сотрудник</TableHead>
                 {RATE_KINDS.map((k) => (
-                  <TableHead key={k.key} title={k.tip}>
+                  <TableHead key={k.key} tip={k.tip}>
                     {k.label}
                   </TableHead>
                 ))}

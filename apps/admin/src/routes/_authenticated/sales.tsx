@@ -66,6 +66,20 @@ import {
   effectiveStatus,
 } from "@/components/membership-status-badge";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  soldAt: "С этой даты начинается абонемент: от неё считается срок действия и график рассрочки.",
+  membership:
+    "Тарифы из «Номенклатур». Если у клиента уже есть действующий или замороженный абонемент, новый его заменит.",
+  paymentType: "Для отчётов: первая покупка, регулярное продление или прочее.",
+  promo: "Только пометка для учёта — скидку сам не считает. Уменьшите «Стоимость» вручную.",
+  amount:
+    "Подставляется цена тарифа. Уменьшите её, чтобы дать скидку, — разница сохранится как скидка.",
+  downPayment: "Сколько клиент платит сегодня. Остаток делится поровну на следующие платежи.",
+  installments: "На сколько месяцев разбить остаток. Платежи — раз в месяц от даты продажи.",
+  admin: "Подставляется сам: продажа записывается на того, кто её оформляет.",
+};
+
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({ meta: [{ title: "Продажи — Base40 Admin" }] }),
   component: SalesPage,
@@ -243,16 +257,16 @@ function SalesPage() {
                 <TableRow>
                   <TableHead className="min-w-[220px]">Клиент</TableHead>
                   <TableHead>Контакты</TableHead>
-                  <TableHead>Дата</TableHead>
+                  <TableHead tip={TIPS.soldAt}>Дата</TableHead>
                   <TableHead>Источник</TableHead>
-                  <TableHead>Абонемент</TableHead>
+                  <TableHead tip={TIPS.membership}>Абонемент</TableHead>
                   <TableHead>Статус</TableHead>
-                  <TableHead>Тип оплаты</TableHead>
-                  <TableHead>Промо-код</TableHead>
-                  <TableHead>Сумма</TableHead>
-                  <TableHead>Первый взнос</TableHead>
-                  <TableHead>Рассрочка</TableHead>
-                  <TableHead>Администратор</TableHead>
+                  <TableHead tip={TIPS.paymentType}>Тип оплаты</TableHead>
+                  <TableHead tip={TIPS.promo}>Промо-код</TableHead>
+                  <TableHead tip={TIPS.amount}>Сумма</TableHead>
+                  <TableHead tip={TIPS.downPayment}>Первый взнос</TableHead>
+                  <TableHead tip={TIPS.installments}>Рассрочка</TableHead>
+                  <TableHead tip={TIPS.admin}>Администратор</TableHead>
                   <TableHead>Комментарий</TableHead>
                 </TableRow>
               </TableHeader>
@@ -608,10 +622,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Дата продажи"
-                tip="С этой даты начинается абонемент: от неё считается срок действия и график рассрочки."
-              >
+              <FormField label="Дата продажи" tip={TIPS.soldAt}>
                 <Input
                   type="date"
                   value={form.soldAt}
@@ -619,19 +630,12 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
                 />
               </FormField>
               {/* Только для чтения — продажу записываем на того, кто вошёл. */}
-              <FormField
-                label="Администратор"
-                tip="Подставляется сам: продажа записывается на того, кто её оформляет."
-                htmlFor={null}
-              >
+              <FormField label="Администратор" tip={TIPS.admin} htmlFor={null}>
                 <div className="flex h-10 items-center text-sm">{staff?.displayName || "—"}</div>
               </FormField>
             </div>
 
-            <FormField
-              label="Абонемент"
-              tip="Тарифы из «Номенклатур». Если у клиента уже есть действующий или замороженный абонемент, новый его заменит."
-            >
+            <FormField label="Абонемент" tip={TIPS.membership}>
               <SearchableCombobox
                 placeholder="Выбрать абонемент"
                 searchPlaceholder="Поиск по названию"
@@ -650,7 +654,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField
                 label="Стоимость, ₾"
-                tip="Подставляется цена тарифа. Уменьшите её, чтобы дать скидку, — разница сохранится как скидка."
+                tip={TIPS.amount}
                 hint={
                   t.discount > 0 && t.listPrice != null
                     ? `Цена по тарифу ${formatMoney(t.listPrice)}, скидка ${formatMoney(t.discount)}.`
@@ -691,10 +695,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
               <div className="space-y-3">
                 <div className="text-xs font-medium uppercase text-muted-foreground">Рассрочка</div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <FormField
-                    label="Первый взнос, ₾"
-                    tip="Сколько клиент платит сегодня. Остаток делится поровну на следующие платежи."
-                  >
+                  <FormField label="Первый взнос, ₾" tip={TIPS.downPayment}>
                     <Input
                       type="number"
                       min={0}
@@ -704,11 +705,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
                       placeholder="Сколько вносит сейчас"
                     />
                   </FormField>
-                  <FormField
-                    label="Ещё платежей"
-                    tip="На сколько месяцев разбить остаток. Платежи — раз в месяц от даты продажи."
-                    htmlFor={null}
-                  >
+                  <FormField label="Ещё платежей" tip={TIPS.installments} htmlFor={null}>
                     <RadioGroup
                       value={String(form.remainingCount)}
                       onValueChange={(v) => set("remainingCount", v === "3" ? 3 : 2)}
@@ -749,10 +746,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
             ) : null}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Тип оплаты"
-                tip="Для отчётов: первая покупка, регулярное продление или прочее."
-              >
+              <FormField label="Тип оплаты" tip={TIPS.paymentType}>
                 <Select
                   value={form.paymentType}
                   onValueChange={(v) => set("paymentType", v as PaymentType)}
@@ -769,11 +763,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField
-                label="Промокод"
-                tip="Только пометка для учёта — скидку сам не считает. Уменьшите «Стоимость» вручную."
-                optional
-              >
+              <FormField label="Промокод" tip={TIPS.promo} optional>
                 <Input value={form.promoCode} onChange={(e) => set("promoCode", e.target.value)} />
               </FormField>
             </div>

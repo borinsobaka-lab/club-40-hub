@@ -54,6 +54,14 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  name: "Имя тренера клиенты видят в расписании приложения.",
+  role: "Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах».",
+  studios: "Где работает сотрудник. Только в этих студиях его можно поставить на занятие.",
+  bank: "Для выплат сотруднику. Видят только сотрудники, клиентам в приложении они недоступны.",
+};
+
 export const Route = createFileRoute("/_authenticated/trainers")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
   component: StaffPage,
@@ -184,13 +192,13 @@ function EmployeesTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[80px]">Фото</TableHead>
-            <TableHead>Имя</TableHead>
-            <TableHead>Роль</TableHead>
-            <TableHead>Студии</TableHead>
+            <TableHead tip={TIPS.name}>Имя</TableHead>
+            <TableHead tip={TIPS.role}>Роль</TableHead>
+            <TableHead tip={TIPS.studios}>Студии</TableHead>
             <TableHead>Telegram</TableHead>
-            <TableHead>Банк</TableHead>
-            <TableHead>Счёт</TableHead>
-            <TableHead>Владелец счёта</TableHead>
+            <TableHead tip={TIPS.bank}>Банк</TableHead>
+            <TableHead tip={TIPS.bank}>Счёт</TableHead>
+            <TableHead tip={TIPS.bank}>Владелец счёта</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -437,17 +445,14 @@ function EmployeeForm({
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Имя" tip="Имя тренера клиенты видят в расписании приложения.">
+              <FormField label="Имя" tip={TIPS.name}>
                 <Input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Иван Иванов"
                 />
               </FormField>
-              <FormField
-                label="Роль"
-                tip="Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах»."
-              >
+              <FormField label="Роль" tip={TIPS.role}>
                 <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -471,11 +476,7 @@ function EmployeeForm({
               />
             </FormField>
 
-            <FormField
-              label="Студии"
-              tip="Где работает сотрудник. Только в этих студиях его можно поставить на занятие."
-              htmlFor={null}
-            >
+            <FormField label="Студии" tip={TIPS.studios} htmlFor={null}>
               {myStudios.length === 0 && otherStudios.length === 0 ? (
                 <InfoNote variant="empty">Нет студий — заведите их в разделе «Студии».</InfoNote>
               ) : (
@@ -498,12 +499,7 @@ function EmployeeForm({
               )}
             </FormField>
 
-            <FormField
-              label="Банковские реквизиты"
-              htmlFor={null}
-              optional
-              tip="Для выплат сотруднику. Видят только сотрудники, клиентам в приложении они недоступны."
-            >
+            <FormField label="Банковские реквизиты" htmlFor={null} optional tip={TIPS.bank}>
               <div className="space-y-3 rounded-md border p-3">
                 <FormField label="Номер счёта" hint="Грузинский IBAN: GE и 20 знаков">
                   <Input

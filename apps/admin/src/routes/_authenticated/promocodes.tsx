@@ -46,6 +46,14 @@ import { formatDate, formatMoneyPrecise } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  code: "Код, который вы сообщаете клиенту. Сохраняется заглавными буквами.",
+  discount: "Для процентов — число до 100, для лари — сумма скидки.",
+  expires: "Последний день, когда код действует. Пусто — бессрочно.",
+  usageLimit: "Сколько раз всего можно использовать код. Пусто — без ограничений.",
+};
+
 export const Route = createFileRoute("/_authenticated/promocodes")({
   head: () => ({ meta: [{ title: "Промокоды — Base40 Admin" }] }),
   component: PromoCodesPage,
@@ -156,10 +164,10 @@ function PromoCodesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Название</TableHead>
-                  <TableHead>Промокод</TableHead>
-                  <TableHead>Скидка</TableHead>
-                  <TableHead>Действует до</TableHead>
-                  <TableHead>Применений</TableHead>
+                  <TableHead tip={TIPS.code}>Промокод</TableHead>
+                  <TableHead tip={TIPS.discount}>Скидка</TableHead>
+                  <TableHead tip={TIPS.expires}>Действует до</TableHead>
+                  <TableHead tip={TIPS.usageLimit}>Применений</TableHead>
                   <TableHead>Описание</TableHead>
                   <TableHead className="w-[100px]">Активен</TableHead>
                 </TableRow>
@@ -345,11 +353,7 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
               />
             </FormField>
 
-            <FormField
-              label="Промокод"
-              tip="Код, который вы сообщаете клиенту. Сохраняется заглавными буквами."
-              hint="Только латинские буквы и цифры."
-            >
+            <FormField label="Промокод" tip={TIPS.code} hint="Только латинские буквы и цифры.">
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
@@ -373,10 +377,7 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField
-                label="Размер скидки"
-                tip="Для процентов — число до 100, для лари — сумма скидки."
-              >
+              <FormField label="Размер скидки" tip={TIPS.discount}>
                 <Input
                   inputMode="decimal"
                   value={discountValue}
@@ -387,22 +388,14 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Срок действия"
-                tip="Последний день, когда код действует. Пусто — бессрочно."
-                optional
-              >
+              <FormField label="Срок действия" tip={TIPS.expires} optional>
                 <Input
                   type="date"
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
                 />
               </FormField>
-              <FormField
-                label="Количество применений"
-                tip="Сколько раз всего можно использовать код. Пусто — без ограничений."
-                optional
-              >
+              <FormField label="Количество применений" tip={TIPS.usageLimit} optional>
                 <Input
                   inputMode="numeric"
                   value={usageLimit}

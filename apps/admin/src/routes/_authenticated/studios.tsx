@@ -52,6 +52,14 @@ import {
   type StudioFormat,
 } from "@/lib/studio-formats";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  format:
+    "От типа зависят абонементы, тренировки и расписание студии, а клиенты пользуются приложением этого типа.",
+  color: "Цвет иконки активного пункта меню и акцентов админки, пока открыта эта студия.",
+  logo: "Показывается в шапке бокового меню. Без логотипа там будет название студии.",
+};
+
 export const Route = createFileRoute("/_authenticated/studios")({
   head: () => ({ meta: [{ title: "Студии — Base40 Admin" }] }),
   component: StudiosPage,
@@ -97,9 +105,11 @@ function StudiosPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Название</TableHead>
-              <TableHead className="w-[180px]">Логотип</TableHead>
-              <TableHead>Тип</TableHead>
-              <TableHead>Цвет</TableHead>
+              <TableHead className="w-[180px]" tip={TIPS.logo}>
+                Логотип
+              </TableHead>
+              <TableHead tip={TIPS.format}>Тип</TableHead>
+              <TableHead tip={TIPS.color}>Цвет</TableHead>
               <TableHead>Приложение клиентов</TableHead>
             </TableRow>
           </TableHeader>
@@ -440,7 +450,7 @@ function StudioForm({
             ) : (
               <FormField
                 label="Тип студии"
-                tip="От типа зависят абонементы, тренировки и расписание студии, а клиенты пользуются приложением этого типа."
+                tip={TIPS.format}
                 hint={`Приложение клиентов — ${appHost(format)}. После создания тип не меняется.`}
               >
                 <Select value={format} onValueChange={(v) => setFormat(v as StudioFormat)}>
@@ -461,7 +471,7 @@ function StudioForm({
             <FormField
               label="Основной цвет"
               htmlFor={null}
-              tip="Цвет иконки активного пункта меню и акцентов админки, пока открыта эта студия."
+              tip={TIPS.color}
               hint="В формате #RRGGBB."
             >
               <div className="flex items-center gap-2">
@@ -486,7 +496,7 @@ function StudioForm({
               label="Логотип"
               htmlFor={null}
               optional
-              tip="Показывается в шапке бокового меню. Без логотипа там будет название студии."
+              tip={TIPS.logo}
               hint="Меню тёмное — нужен светлый логотип на прозрачном фоне, SVG или PNG."
             >
               <ImageUploadField

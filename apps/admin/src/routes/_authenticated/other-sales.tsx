@@ -54,6 +54,14 @@ import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  item: "Справочник — на вкладке «Позиции». Неактивные позиции здесь не показываются.",
+  unitPrice: "Подставляется из позиции. Можно изменить — например, для скидки.",
+  payment: "Как платил клиент. В «Кассу» продажа сама не попадает.",
+  catalogPrice: "Цена по умолчанию. При продаже её можно изменить.",
+};
+
 export const Route = createFileRoute("/_authenticated/other-sales")({
   head: () => ({ meta: [{ title: "Прочие продажи — Base40 Admin" }] }),
   component: OtherSalesPage,
@@ -262,13 +270,15 @@ function SalesTab({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Позиция</TableHead>
+              <TableHead tip={TIPS.item}>Позиция</TableHead>
               <TableHead>Тип</TableHead>
               <TableHead>Клиент</TableHead>
               <TableHead className="text-right">Кол-во</TableHead>
-              <TableHead className="text-right">Цена</TableHead>
+              <TableHead className="text-right" tip={TIPS.unitPrice}>
+                Цена
+              </TableHead>
               <TableHead className="text-right">Сумма</TableHead>
-              <TableHead>Оплата</TableHead>
+              <TableHead tip={TIPS.payment}>Оплата</TableHead>
               <TableHead>Дата</TableHead>
             </TableRow>
           </TableHeader>
@@ -452,10 +462,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField
-              label="Позиция"
-              tip="Справочник — на вкладке «Позиции». Неактивные позиции здесь не показываются."
-            >
+            <FormField label="Позиция" tip={TIPS.item}>
               <SearchableCombobox
                 placeholder="Выбрать услугу или товар"
                 searchPlaceholder="Поиск по названию"
@@ -483,10 +490,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                   onChange={(e) => set("quantity", e.target.value)}
                 />
               </FormField>
-              <FormField
-                label="Цена за штуку, ₾"
-                tip="Подставляется из позиции. Можно изменить — например, для скидки."
-              >
+              <FormField label="Цена за штуку, ₾" tip={TIPS.unitPrice}>
                 <Input
                   type="number"
                   min={0}
@@ -515,10 +519,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Оплата"
-                tip="Как платил клиент. В «Кассу» продажа сама не попадает."
-              >
+              <FormField label="Оплата" tip={TIPS.payment}>
                 <Select
                   value={form.payment}
                   onValueChange={(v) => set("payment", v as PaymentMethod)}
@@ -627,7 +628,9 @@ function CatalogTab({
             <TableRow>
               <TableHead>Название</TableHead>
               <TableHead>Тип</TableHead>
-              <TableHead className="text-right">Цена</TableHead>
+              <TableHead className="text-right" tip={TIPS.catalogPrice}>
+                Цена
+              </TableHead>
               <TableHead className="w-[100px]">Активна</TableHead>
             </TableRow>
           </TableHeader>
@@ -776,7 +779,7 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
               />
             </FormField>
 
-            <FormField label="Цена, ₾" tip="Цена по умолчанию. При продаже её можно изменить.">
+            <FormField label="Цена, ₾" tip={TIPS.catalogPrice}>
               <Input
                 type="number"
                 min={0}

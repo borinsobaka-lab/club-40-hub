@@ -59,6 +59,14 @@ import { TableSkeletonRows } from "@/components/table-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
+/** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
+const TIPS = {
+  email: "При каждом входе на эту почту приходит 6-значный код — пароля нет.",
+  role: "Владельцу открыто всё, и только он управляет «Доступами». Администратору и тренеру — разделы, отмеченные ниже.",
+  sections:
+    "Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех студий. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения.",
+};
+
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Доступы — Base40 Admin" }] }),
   component: EmployeesPage,
@@ -139,10 +147,10 @@ function EmployeesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Имя</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Роль</TableHead>
+                  <TableHead tip={TIPS.email}>Email</TableHead>
+                  <TableHead tip={TIPS.role}>Роль</TableHead>
                   <TableHead>Студии</TableHead>
-                  <TableHead>Разделы</TableHead>
+                  <TableHead tip={TIPS.sections}>Разделы</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -389,10 +397,7 @@ function AccessForm({
                     />
                   </FormField>
                 </div>
-                <FormField
-                  label="Email"
-                  tip="При каждом входе на эту почту приходит 6-значный код — пароля нет."
-                >
+                <FormField label="Email" tip={TIPS.email}>
                   <Input
                     type="email"
                     autoComplete="off"
@@ -403,10 +408,7 @@ function AccessForm({
               </>
             )}
 
-            <FormField
-              label="Роль"
-              tip="Владельцу открыто всё, и только он управляет «Доступами». Администратору и тренеру — разделы, отмеченные ниже."
-            >
+            <FormField label="Роль" tip={TIPS.role}>
               <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -425,11 +427,7 @@ function AccessForm({
                 также «Доступы» и «Студии».
               </InfoNote>
             ) : (
-              <FormField
-                label="Разделы админки"
-                htmlFor={null}
-                tip="Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех студий. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения."
-              >
+              <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections}>
                 <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
                   {RAIL_ACCESS_KEYS.map((key) => (
                     <CheckboxOption
