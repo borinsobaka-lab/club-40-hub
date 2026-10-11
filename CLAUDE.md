@@ -272,6 +272,13 @@ AUTH_SETUP.md.
   `… client browse` + `client_can_browse_studio`: клиент читает расписание,
   тренировки, тренеров и показываемые абонементы другой студии того же
   формата (переключатель студий; записаться — только в своей).
+  Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
+  — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
+  читает и правит свою, ставит — тренеру, которого видит в приложении,
+  `client_can_rate_trainer`), `trainers.rating_base_avg/rating_base_count`
+  (прежний сервис), итог `trainers.rating_avg/rating_count` — считает
+  триггер `trainers_rating_calc` при любой записи строки (руками не пишется),
+  `trainers.tip_url` (ссылка на чаевые).
   Адрес студии: `db/migrations/2026-10-11_zzzzzzzzzzzz_studio_address.sql` —
   `studios.address` (публичное чтение колонки, правит владелец; плашка
   студии в приложении пакетов).
