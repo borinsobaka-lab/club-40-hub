@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
-import { Plus, Loader2, Pencil, Trash2, CalendarIcon, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarIcon, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
 import { cn } from "@/lib/utils";
@@ -12,14 +12,10 @@ import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useActiveStudio } from "@/hooks/use-studios";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/ui/form-field";
-import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -37,16 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogBody,
-  DialogDescription,
-  DialogFooter,
-  DialogForm,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
@@ -67,23 +53,16 @@ import {
   genderLabel,
   phoneSearchTerm,
   sanitizeSearch,
-  todayISO,
 } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
-import { EmailInput, PhoneInput, type PhoneValue } from "@/components/contact-inputs";
-import { checkPhone, emailError, formatPhoneDisplay, phoneForEditing } from "@/lib/contacts";
+import { ClientDialog } from "@/components/client-form-dialog";
+import { CLIENT_TIPS } from "@/lib/client-fields";
+import { formatPhoneDisplay } from "@/lib/contacts";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
-  email:
-    "Когда клиент зарегистрируется в приложении с этой почтой, его аккаунт привяжется к этой карточке. Проверьте опечатки.",
-  phone:
-    "Сохраняется с кодом страны — по нему пойдут рассылки. Код знать не обязательно: выберите страну по названию или вставьте номер целиком с «+».",
-  registration:
-    "По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама.",
-  lastVisit: "Обновляется сам при отметке посещения. Вручную — только для переноса старой истории.",
-  notes: "Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может.",
+  ...CLIENT_TIPS,
   status: (
     <span className="block space-y-1.5">
       {(["chk", "bchk", "pchk"] as const).map((s) => (
@@ -435,224 +414,5 @@ function ClientsPage() {
       />
       {confirmDialog}
     </AdminShell>
-  );
-}
-
-type ClientDialogProps = {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  studioId: string | null;
-  client: Client | null;
-  onSaved: () => void;
-};
-
-function ClientDialog(props: ClientDialogProps) {
-  return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-lg">
-        {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
-        <ClientForm key={props.client?.id ?? "new"} {...props} />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// У старых записей имя и фамилия не разнесены — есть только full_name.
-function initialNames(client: Client | null) {
-  const first = client?.first_name ?? "";
-  const last = client?.last_name ?? "";
-  if (first || last || !client?.full_name) return { first, last };
-  // full_name везде пишется как «Фамилия Имя» (сохранение ниже, триггер
-  // handle_new_user) — первое слово фамилия. Раньше бралось как имя, и
-  // сохранение без правок меняло имя и фамилию местами.
-  const parts = client.full_name.trim().split(/\s+/);
-  if (parts.length === 1) return { first: parts[0], last: "" };
-  return { first: parts.slice(1).join(" "), last: parts[0] };
-}
-
-function ClientForm({ onOpenChange, studioId, client, onSaved }: ClientDialogProps) {
-  const [firstName, setFirstName] = useState(() => initialNames(client).first);
-  const [lastName, setLastName] = useState(() => initialNames(client).last);
-  const [phone, setPhone] = useState<PhoneValue>(() => phoneForEditing(client?.phone));
-  const [email, setEmail] = useState(client?.email ?? "");
-  // После попытки сохранить ошибки полей видны и без ухода из них.
-  const [submitted, setSubmitted] = useState(false);
-  const [birthday, setBirthday] = useState(client?.birthday ?? "");
-  // Новый клиент пакетной студии — по умолчанию женщина (решение владельца
-  // 2026-10-11, залы в основном женские); администратор может поменять.
-  const packages = useActiveStudio()?.format === "packages";
-  const [gender, setGender] = useState(client ? (client.gender ?? "") : packages ? "female" : "");
-  const [notes, setNotes] = useState(client?.notes ?? "");
-  // Новому клиенту дата регистрации — сегодня (можно поменять при переносе истории).
-  const [registrationDate, setRegistrationDate] = useState(
-    client ? (client.registration_date ?? "") : todayISO(),
-  );
-  const [lastVisitDate, setLastVisitDate] = useState(client?.last_visit_date ?? "");
-  const [crmLink, setCrmLink] = useState(client?.crm_link ?? "");
-  // Фото ставит сам клиент в приложении; здесь — только показ.
-  const photoUrl = client?.photo_url ?? "";
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!studioId) return;
-    const fn = firstName.trim();
-    const ln = lastName.trim();
-    if (!fn) {
-      toast.error("Укажите имя");
-      return;
-    }
-    setSubmitted(true);
-    const phoneCheck = checkPhone(phone.value, phone.country);
-    if (phoneCheck.status === "invalid") {
-      toast.error(`Телефон: ${phoneCheck.error}`);
-      return;
-    }
-    const mailError = emailError(email);
-    if (mailError) {
-      toast.error(`Email: ${mailError}`);
-      return;
-    }
-    setSaving(true);
-    try {
-      const fullName = [ln, fn].filter(Boolean).join(" ");
-      const payload = {
-        studio_id: studioId,
-        first_name: fn || null,
-        last_name: ln || null,
-        full_name: fullName,
-        phone: phoneCheck.status === "valid" ? phoneCheck.e164 : null,
-        email: email || null,
-        birthday: birthday || null,
-        gender: gender || null,
-        notes: notes.trim() || null,
-        registration_date: registrationDate || null,
-        last_visit_date: lastVisitDate || null,
-        crm_link: crmLink.trim() || null,
-      };
-      const { error } = client
-        ? await supabase.from("clients").update(payload).eq("id", client.id)
-        : await supabase.from("clients").insert(payload);
-      if (error) {
-        toast.error("Ошибка сохранения: " + error.message);
-        return;
-      }
-      toast.success(client ? "Клиент обновлён" : "Клиент добавлен");
-      onOpenChange(false);
-      onSaved();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>{client ? "Редактировать клиента" : "Новый клиент"}</DialogTitle>
-        <DialogDescription>Контактные данные и заметки по клиенту.</DialogDescription>
-      </DialogHeader>
-      <DialogForm onSubmit={handleSave}>
-        <DialogBody>
-          <div className="space-y-4">
-            {/* Аватар слева от имени; на телефоне поля имени уходят в столбик рядом с ним. */}
-            <div className="flex items-start gap-4">
-              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt={`${lastName} ${firstName}`.trim() || "Фото клиента"}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xl font-medium text-muted-foreground">
-                    {(firstName || lastName || "?").trim().charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField label="Фамилия">
-                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                </FormField>
-                <FormField label="Имя" required>
-                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                </FormField>
-              </div>
-            </div>
-
-            <FormField
-              label="Сделка в amoCRM"
-              tip="Ссылка на сделку клиента в amoCRM. Имя клиента в таблицах станет ссылкой на неё."
-              optional
-            >
-              <Input
-                type="url"
-                value={crmLink}
-                onChange={(e) => setCrmLink(e.target.value)}
-                placeholder="https://your-account.amocrm.ru/leads/detail/..."
-              />
-            </FormField>
-
-            {/* Телефон и почта — каждый на всю ширину: под полем подсказки и исправления. */}
-            <div className="grid grid-cols-1 gap-3">
-              <FormField label="Телефон" tip={TIPS.phone}>
-                <PhoneInput value={phone} onChange={setPhone} showError={submitted} />
-              </FormField>
-              <FormField label="Email" tip={TIPS.email}>
-                <EmailInput value={email} onChange={setEmail} showError={submitted} />
-              </FormField>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Дата рождения">
-                <Input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
-              </FormField>
-              <FormField label="Пол">
-                <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GENDER_OPTIONS.map((g) => (
-                      <SelectItem key={g.value} value={g.value}>
-                        {g.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Дата регистрации" tip={TIPS.registration}>
-                <Input
-                  type="date"
-                  value={registrationDate}
-                  onChange={(e) => setRegistrationDate(e.target.value)}
-                />
-              </FormField>
-              <FormField label="Последний визит" tip={TIPS.lastVisit}>
-                <Input
-                  type="date"
-                  value={lastVisitDate}
-                  onChange={(e) => setLastVisitDate(e.target.value)}
-                />
-              </FormField>
-            </div>
-            <FormField label="Заметки" tip={TIPS.notes} optional>
-              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </FormField>
-          </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Отмена
-          </Button>
-          <Button type="submit" disabled={saving}>
-            {saving && <Loader2 className="animate-spin" />}
-            Сохранить
-          </Button>
-        </DialogFooter>
-      </DialogForm>
-    </>
   );
 }
