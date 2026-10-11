@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, ChevronDown, Loader2, Trash2, Copy, UserPlus, X } from "lucide-react";
+import { Ban, Plus, ChevronDown, Loader2, Trash2, Copy, Undo2, UserPlus, X } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -37,6 +37,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+import { noteChipClass } from "@/components/comment-cell";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -83,6 +86,9 @@ type Entry = {
   capacity: number | null;
   booked_count: number;
   waitlist_count?: number | null;
+  /** Отменено (cancel_schedule_entry): клиенты не видят, записаться нельзя. */
+  cancelled_at: string | null;
+  cancel_reason: string | null;
   workout?: {
     name: string;
     type?: string;
@@ -128,6 +134,18 @@ const STAFF_COLS = "id, full_name, role, photo_url, trainer_studios!inner(studio
 
 /** Полоска на карточках персональных занятий и прочих активностей. */
 const NON_GROUP_STRIPE = "#262626";
+
+/**
+ * Причины отмены занятия (решение владельца 2026-10-11: не больше четырёх,
+ * пятая — «Другое» со своим текстом). Первая — самая частая, выбрана сразу.
+ */
+const ENTRY_CANCEL_REASONS = [
+  "Мало записавшихся",
+  "Заболел тренер",
+  "Технические проблемы в зале",
+  "Праздник или нерабочий день",
+];
+const OTHER_REASON = "other";
 
 const ADMIN_CANCEL_REASONS = [
   "Клиент отменил",
@@ -299,6 +317,8 @@ function SchedulePage() {
   const [formKind, setFormKind] = useState<ActivityKind>("group");
   // Фильтр типов занятий не запоминается: при входе в раздел видны все типы.
   const [kindFilter, setKindFilter] = useState<ActivityKind[]>(ACTIVITY_KIND_VALUES);
+  // Отменённые занятия по умолчанию скрыты и тоже не запоминаются.
+  const [showCancelled, setShowCancelled] = useState(false);
   const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
   const [filterWorkoutId, setFilterWorkoutId] = useState<string>(ALL_FILTER_VALUE);
@@ -391,7 +411,8 @@ function SchedulePage() {
     typeFilter !== ALL_FILTER_VALUE ||
     workoutFilter !== ALL_FILTER_VALUE ||
     filterTrainerId !== ALL_FILTER_VALUE ||
-    kindFilter.length !== ACTIVITY_KIND_VALUES.length;
+    kindFilter.length !== ACTIVITY_KIND_VALUES.length ||
+    showCancelled;
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -409,6 +430,7 @@ function SchedulePage() {
     // Занятий по дням недели — точки под днями в переключателе на телефоне.
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
+      if (e.cancelled_at && !showCancelled) continue;
       if (!kindFilter.includes(e.kind)) continue;
       // Тип тренировки есть только у групповых: при выбранном типе прочие скрыты.
       if (typeFilter !== ALL_FILTER_VALUE && (e.kind !== "group" || e.workout?.type !== typeFilter))
@@ -427,7 +449,7 @@ function SchedulePage() {
       perDay[(start.getDay() + 6) % 7]++;
     }
     return { cells, busyHours, perDay };
-  }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId]);
+  }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   const openSlot = (day: Date, hour: number) => {
     const start = new Date(day);
@@ -628,7 +650,13 @@ function SchedulePage() {
                   </SelectContent>
                 </Select>
               )}
-              <KindFilter value={kindFilter} onChange={setKindFilter} />
+              <KindFilter
+                value={kindFilter}
+                onChange={setKindFilter}
+                cancelled={
+                  packages ? { value: showCancelled, onChange: setShowCancelled } : undefined
+                }
+              />
               <Select value={workoutFilter} onValueChange={setFilterWorkoutId}>
                 <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <SelectValue placeholder="Все тренировки" />
@@ -669,6 +697,7 @@ function SchedulePage() {
                   setFilterWorkoutId(ALL_FILTER_VALUE);
                   setFilterTrainerId(ALL_FILTER_VALUE);
                   setKindFilter(ACTIVITY_KIND_VALUES);
+                  setShowCancelled(false);
                 }}
               />
             </div>
@@ -864,6 +893,7 @@ function SchedulePage() {
         workouts={workouts}
         trainers={trainers}
         staff={staff}
+        packages={packages}
         entry={editing}
         presetStart={presetStart}
         onSaved={reloadEntries}
@@ -879,14 +909,17 @@ function SchedulePage() {
  * Фильтр по типам занятий — галочки прямо в панели фильтров (решение
  * владельца 2026-10-11: на клик меньше, чем выпадающий список). По умолчанию
  * отмечены все; последний отмеченный тип снять нельзя — пустая сетка только
- * путает.
+ * путает. `cancelled` (пакетные студии) — галочка «Отменённые», по умолчанию
+ * снята: отменённые занятия показываются, только если их включить.
  */
 function KindFilter({
   value,
   onChange,
+  cancelled,
 }: {
   value: ActivityKind[];
   onChange: (v: ActivityKind[]) => void;
+  cancelled?: { value: boolean; onChange: (v: boolean) => void };
 }) {
   const toggle = (kind: ActivityKind, checked: boolean) => {
     onChange(ACTIVITY_KIND_VALUES.filter((k) => (k === kind ? checked : value.includes(k))));
@@ -911,6 +944,15 @@ function KindFilter({
           </CheckboxOption>
         );
       })}
+      {cancelled && (
+        <CheckboxOption
+          checked={cancelled.value}
+          onCheckedChange={cancelled.onChange}
+          className="whitespace-nowrap border-l pl-4"
+        >
+          Отменённые
+        </CheckboxOption>
+      )}
     </div>
   );
 }
@@ -1020,10 +1062,16 @@ function EntryCard({
   // Персональные и прочие в обоих форматах — светлая карточка с тёмной
   // полоской: так они не путаются с групповыми.
   const group = entry.kind === "group";
-  if (packages || !group) {
+  // Отменённое — белое в наклонную серую полоску, перед временем красный знак.
+  const cancelled = !!entry.cancelled_at;
+  if (packages || !group || cancelled) {
     return (
       <div
-        className="absolute inset-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs"
+        className={cn(
+          "absolute inset-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs",
+          cancelled && "schedule-cancelled",
+        )}
+        title={cancelled ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}` : undefined}
         // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
         style={{
           borderLeftColor: group
@@ -1037,10 +1085,11 @@ function EntryCard({
           className="flex h-full w-full cursor-pointer flex-col px-1.5 py-0.5 text-left hover:bg-accent/40"
         >
           <span className="flex w-full items-start justify-between gap-1">
-            <span className="whitespace-nowrap text-muted-foreground">
+            <span className="flex items-center gap-1 whitespace-nowrap text-muted-foreground">
+              {cancelled && <Ban className="size-3 shrink-0 text-rose-600" aria-label="Отменено" />}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
-            <CapacityBadge entry={entry} light />
+            {!cancelled && <CapacityBadge entry={entry} light />}
           </span>
           <span
             className={cn(
@@ -1125,6 +1174,8 @@ type EntryDialogProps = {
   trainers: Trainer[];
   /** Все сотрудники студии (и администраторы) — для прочей активности. */
   staff: Trainer[];
+  /** Пакетная студия: отмена занятия и «Не посетил» у записанных. */
+  packages: boolean;
   entry: Entry | null;
   presetStart: Date | null;
   onSaved: () => void;
@@ -1261,6 +1312,7 @@ function EntryForm({
   workouts,
   trainers,
   staff,
+  packages,
   entry,
   presetStart,
   onSaved,
@@ -1287,7 +1339,10 @@ function EntryForm({
   const [pending, setPending] = useState<PickedClient[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const busy = saving || deleting;
+  const [restoring, setRestoring] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const busy = saving || deleting || restoring;
+  const cancelled = !!entry?.cancelled_at;
 
   const toggleTrainer = (id: string) => {
     setTrainerIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -1360,8 +1415,9 @@ function EntryForm({
     };
     setSaving(true);
     try {
-      if (entry && kind === "personal") {
+      if (entry && kind === "personal" && !cancelled) {
         // Персональное без клиента не сохраняем: клиент записан в панели ниже.
+        // У отменённого записей уже нет — его можно править и так.
         const { count } = await supabase
           .from("schedule_bookings")
           .select("id", { count: "exact", head: true })
@@ -1418,7 +1474,28 @@ function EntryForm({
     }
   };
 
+  // Отменили по ошибке — занятие снова в расписании; снятые записи не
+  // возвращаются (клиентам записываться заново).
+  const handleRestore = async () => {
+    if (!entry) return;
+    setRestoring(true);
+    try {
+      const ok = await entryRpc(
+        "restore_schedule_entry",
+        { p_entry_id: entry.id },
+        "Не удалось вернуть занятие",
+      );
+      if (!ok) return;
+      toast.success("Занятие снова в расписании");
+      onOpenChange(false);
+      onSaved();
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const KindIcon = activityKind(kind).icon;
+  const cancelLabel = kind === "group" ? "Отменить тренировку" : "Отменить занятие";
 
   return (
     <>
@@ -1434,6 +1511,25 @@ function EntryForm({
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
+            {entry && cancelled && (
+              <InfoNote variant="warning" className="flex flex-wrap items-center gap-3">
+                <span className="flex min-w-0 flex-1 items-start gap-2 text-sm">
+                  <Ban className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                  <span>
+                    <span className="font-medium">
+                      Отменено {entry.cancelled_at && formatDate(entry.cancelled_at)}
+                    </span>
+                    {entry.cancel_reason && <> — {entry.cancel_reason}</>}. Клиенты его не видят и
+                    записаться не могут.
+                  </span>
+                </span>
+                <Button variant="outline" size="sm" onClick={handleRestore} disabled={busy}>
+                  {restoring ? <Loader2 className="animate-spin" /> : <Undo2 />}
+                  Вернуть в расписание
+                </Button>
+              </InfoNote>
+            )}
+
             {kind === "group" && (
               <FormField label="Тренировка" tip={TIPS.workout} required>
                 <Select value={workoutId} onValueChange={setWorkoutId}>
@@ -1585,22 +1681,42 @@ function EntryForm({
               </FormField>
             )}
 
-            {entry && kind !== "other" && (
-              <BookingsPanel entry={entry} trial={kind === "group"} onChanged={onSaved} />
+            {entry && kind !== "other" && !cancelled && (
+              <BookingsPanel
+                entry={entry}
+                trial={kind === "group"}
+                packages={packages}
+                onChanged={onSaved}
+              />
             )}
           </div>
         </DialogBody>
         <DialogFooter>
           {entry && (
-            <Button
-              variant="ghost"
-              className="mr-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={handleDelete}
-              disabled={busy}
-            >
-              <Trash2 />
-              Удалить
-            </Button>
+            // Удалить — занятие добавили по ошибке; отменить — оно было, но не
+            // состоится (остаётся в расписании с причиной).
+            <div className="mr-auto flex flex-wrap gap-1">
+              <Button
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={handleDelete}
+                disabled={busy}
+              >
+                <Trash2 />
+                Удалить
+              </Button>
+              {packages && !cancelled && (
+                <Button
+                  variant="ghost"
+                  className="text-rose-700 hover:bg-rose-50 hover:text-rose-700"
+                  onClick={() => setCancelOpen(true)}
+                  disabled={busy}
+                >
+                  <Ban />
+                  {cancelLabel}
+                </Button>
+              )}
+            </div>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Отмена
@@ -1608,6 +1724,147 @@ function EntryForm({
           <Button type="submit" disabled={busy}>
             {saving && <Loader2 className="animate-spin" />}
             Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+      {entry && packages && (
+        <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+          <DialogContent className="max-w-md">
+            <CancelEntryForm
+              entry={entry}
+              title={cancelLabel}
+              onClose={() => setCancelOpen(false)}
+              onDone={() => {
+                setCancelOpen(false);
+                onOpenChange(false);
+                onSaved();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+const ENTRY_RPC_REASONS: Record<string, string> = {
+  already_cancelled: "уже отменено",
+  not_cancelled: "занятие не отменено",
+  reason_required: "укажите причину",
+  forbidden: "нет прав в этом клубе",
+  not_found: "занятие не найдено",
+};
+
+/** RPC отмены и возврата занятия: { ok, reason }; тост об ошибке — здесь. */
+async function entryRpc(
+  fn: "cancel_schedule_entry" | "restore_schedule_entry",
+  args: Record<string, string>,
+  failed: string,
+) {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) {
+    toast.error(`${failed}: ${error.message}`);
+    return null;
+  }
+  const result = data as { ok?: boolean; reason?: string; cancelled_bookings?: number } | null;
+  if (!result?.ok) {
+    const reason = result?.reason ?? "";
+    toast.error(`${failed}: ${ENTRY_RPC_REASONS[reason] ?? (reason || "неизвестно")}`);
+    return null;
+  }
+  return result;
+}
+
+/**
+ * Отмена занятия с причиной (пакетные студии): записанные снимаются, списанные
+ * тренировки возвращаются на абонементы, в сетке занятие остаётся
+ * заштрихованным (db/migrations/2026-10-11_zzzzzzz_entry_cancel_no_show.sql).
+ */
+function CancelEntryForm({
+  entry,
+  title,
+  onClose,
+  onDone,
+}: {
+  entry: Entry;
+  title: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState(ENTRY_CANCEL_REASONS[0]);
+  const [other, setOther] = useState("");
+  const [saving, setSaving] = useState(false);
+  const booked = entry.booked_count + (entry.waitlist_count ?? 0);
+
+  const handleSubmit = async () => {
+    const text = reason === OTHER_REASON ? other.trim() : reason;
+    if (!text) {
+      toast.error("Напишите причину отмены");
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await entryRpc(
+        "cancel_schedule_entry",
+        { p_entry_id: entry.id, p_reason: text },
+        "Не удалось отменить",
+      );
+      if (!result) return;
+      const n = result.cancelled_bookings ?? 0;
+      toast.success(n > 0 ? `Отменено, снято записей: ${n}` : "Отменено");
+      // Списанные тренировки вернулись — баланс в «Абонементах» изменился.
+      queryClient.invalidateQueries({ queryKey: ["schedule_bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
+      onDone();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{title}?</DialogTitle>
+        <DialogDescription>
+          {booked > 0
+            ? `Записанные клиенты (${booked}) будут сняты, списанные тренировки вернутся на абонементы. `
+            : ""}
+          Занятие останется в расписании отменённым — клиенты его не увидят и не смогут записаться.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleSubmit}>
+        <DialogBody>
+          <FormField label="Причина отмены" required htmlFor={null}>
+            <RadioGroup value={reason} onValueChange={setReason} className="space-y-1">
+              {[...ENTRY_CANCEL_REASONS, OTHER_REASON].map((r) => (
+                <label
+                  key={r}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1.5 text-sm"
+                >
+                  <RadioGroupItem value={r} />
+                  {r === OTHER_REASON ? "Другое" : r}
+                </label>
+              ))}
+            </RadioGroup>
+            {reason === OTHER_REASON && (
+              <Input
+                value={other}
+                onChange={(e) => setOther(e.target.value)}
+                placeholder="Что случилось"
+                aria-label="Своя причина отмены"
+                autoFocus
+              />
+            )}
+          </FormField>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Не отменять
+          </Button>
+          <Button type="submit" variant="destructive" disabled={saving}>
+            {saving ? <Loader2 className="animate-spin" /> : <Ban />}
+            {title}
           </Button>
         </DialogFooter>
       </DialogForm>
@@ -1622,6 +1879,9 @@ type BookingRow = {
   client_id: string | null;
   status: string;
   created_at: string;
+  /** «Не посетил»: true — уважительная (не списано), false — неуважительная (списано). */
+  no_show_excused: boolean | null;
+  no_show_comment: string | null;
 };
 
 type ClientRow = {
@@ -1666,7 +1926,7 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
   const bookings = await unwrap<BookingRow[]>(
     supabase
       .from("schedule_bookings")
-      .select("id, user_id, client_id, status, created_at")
+      .select("id, user_id, client_id, status, created_at, no_show_excused, no_show_comment")
       .eq("entry_id", entry.id)
       // no_show — «Отметить пропущенные» в «Истории записей»: у прошедшего
       // занятия посещение можно зафиксировать и после этого.
@@ -1880,8 +2140,12 @@ function PickClientForm({
  * true — успех.
  */
 async function bookingRpc(
-  fn: "mark_booking_attended" | "unmark_booking_attended" | "cancel_schedule_booking_admin",
-  args: Record<string, string | null>,
+  fn:
+    | "mark_booking_attended"
+    | "unmark_booking_attended"
+    | "cancel_schedule_booking_admin"
+    | "mark_booking_no_show",
+  args: Record<string, string | boolean | null>,
   messages: { error: string; failed: string },
 ) {
   const { data, error } = await supabase.rpc(fn, args);
@@ -1906,24 +2170,62 @@ function BookingClientName({ client }: { client: ClientRow | undefined }) {
   );
 }
 
+/** Отметка «Не посетил» у записи: с причиной — уважительная или нет. */
+function NoShowBadge({ booking }: { booking: BookingRow }) {
+  if (booking.no_show_excused === true)
+    return (
+      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+        Не посетил · уважительная
+      </span>
+    );
+  if (booking.no_show_excused === false)
+    return (
+      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+        Не посетил · списано
+      </span>
+    );
+  return (
+    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+      Пропущено
+    </span>
+  );
+}
+
+/** Абонемент клиента одной строкой: «Пакет 8 · осталось 3 · до 12.11.2026». */
+function membershipSummary(m: ActiveMembershipRow, personal: boolean) {
+  const left = personal
+    ? `персональных ${m.personal_left}`
+    : m.visits_left != null
+      ? `осталось ${m.visits_left}`
+      : "безлимит";
+  return [m.membership?.name ?? "Абонемент", left, m.ends_at ? `до ${formatDate(m.ends_at)}` : null]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 function BookingsPanel({
   entry,
   trial,
+  packages,
   onChanged,
 }: {
   entry: Entry;
   /** Групповое: можно записать на пробное посещение нового клиента. */
   trial: boolean;
+  /** Пакетная студия: «Не посетил» с причиной вместо «Отклонить». */
+  packages: boolean;
   onChanged: () => void;
 }) {
   const queryClient = useQueryClient();
   // Пакетная студия: на персональном занятии посещение списывается с баланса
   // персональных — его и показываем у клиента.
-  const personalBalance = useActiveStudio()?.format === "packages" && entry.kind === "personal";
+  const personalBalance = packages && entry.kind === "personal";
   const [booking, setBooking] = useState(false);
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<BookingRow | null>(null);
+  const [noShowOpen, setNoShowOpen] = useState(false);
+  const [noShowTarget, setNoShowTarget] = useState<BookingRow | null>(null);
 
   const queryKey = ["schedule_bookings", entry.id];
   const { data, isLoading: loading } = useQuery({
@@ -1957,6 +2259,11 @@ function BookingsPanel({
   const askCancel = (b: BookingRow) => {
     setCancelTarget(b);
     setCancelOpen(true);
+  };
+
+  const askNoShow = (b: BookingRow) => {
+    setNoShowTarget(b);
+    setNoShowOpen(true);
   };
 
   const handleAttend = async (b: BookingRow) => {
@@ -2002,28 +2309,27 @@ function BookingsPanel({
   return (
     <div className="space-y-4 border-t pt-4">
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-xs font-medium uppercase text-muted-foreground">
-            Записанные клиенты
+            Записанные клиенты{" "}
+            <span className="tabular-nums normal-case">
+              · {booked.length}
+              {capacity != null ? ` / ${capacity}` : ""}
+              {waitlisted.length > 0 && ` · +${waitlisted.length} в очереди`}
+            </span>
           </div>
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {booked.length}
-            {capacity != null ? ` / ${capacity}` : ""}
-            {waitlisted.length > 0 && ` · +${waitlisted.length} в очереди`}
-          </span>
+          <ParticipantActions
+            studioId={entry.studio_id}
+            trial={trial}
+            onPick={addParticipant}
+            disabled={booking}
+          />
         </div>
 
-        <ParticipantActions
-          studioId={entry.studio_id}
-          trial={trial}
-          onPick={addParticipant}
-          disabled={booking}
-        />
-
         {loading ? (
-          <div className="space-y-2">
+          <div className="divide-y rounded-md border">
             {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="space-y-2 rounded-md border p-3">
+              <div key={i} className="space-y-1.5 px-3 py-2">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-3 w-56" />
               </div>
@@ -2036,45 +2342,73 @@ function BookingsPanel({
               : "Пока никто не записан."}
           </InfoNote>
         ) : (
-          <div className="space-y-2">
+          // Строка клиента — компактно (решение владельца 2026-10-11: в окне
+          // занятия приходилось долго листать): имя и отметка, ниже одной
+          // строкой телефон и абонемент; кнопки справа.
+          <ul className="divide-y rounded-md border">
             {booked.map((b) => {
               const c = bookingClient(data, b);
               const m = c
                 ? pickMembership(data?.membershipsByClient.get(c.id), personalBalance)
                 : undefined;
-              const contacts = [c?.phone, c?.email].filter(Boolean).join(" · ");
+              const busy = attendingId === b.id;
               return (
-                <div key={b.id} className="space-y-1 rounded-md border p-3 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex flex-col items-start gap-1">
+                <li key={b.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <BookingClientName client={c} />
                       {b.status === "attended" && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                          Посещение зафиксировано
-                        </span>
-                      )}
-                      {b.status === "no_show" && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                          Пропущено
-                        </span>
-                      )}
-                    </div>
-                    {(b.status === "booked" || b.status === "no_show") && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleAttend(b)}
-                          disabled={attendingId === b.id}
-                        >
-                          {attendingId === b.id && <Loader2 className="animate-spin" />}
                           Посетил
-                        </Button>
-                        {b.status === "booked" && (
-                          <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
-                            Отклонить
-                          </Button>
+                        </span>
+                      )}
+                      {b.status === "no_show" && <NoShowBadge booking={b} />}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {[
+                        c?.phone,
+                        m ? membershipSummary(m, personalBalance) : "Нет активного абонемента",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
+                    {b.status === "no_show" && b.no_show_comment && (
+                      <div
+                        className={cn(
+                          noteChipClass,
+                          "mt-1 inline-block max-w-full px-1.5 py-0.5 text-xs",
                         )}
+                      >
+                        {b.no_show_comment}
                       </div>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {(b.status === "booked" || b.status === "no_show") && (
+                      <Button size="sm" onClick={() => handleAttend(b)} disabled={busy}>
+                        {busy && <Loader2 className="animate-spin" />}
+                        Посетил
+                      </Button>
+                    )}
+                    {packages && b.status === "booked" && (
+                      <Button variant="outline" size="sm" onClick={() => askNoShow(b)}>
+                        Не посетил
+                      </Button>
+                    )}
+                    {packages && b.status === "no_show" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title="Изменить причину или комментарий"
+                        onClick={() => askNoShow(b)}
+                      >
+                        Причина
+                      </Button>
+                    )}
+                    {!packages && b.status === "booked" && (
+                      <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
+                        Отклонить
+                      </Button>
                     )}
                     {b.status === "attended" && (
                       <Button
@@ -2082,33 +2416,30 @@ function BookingsPanel({
                         size="sm"
                         title="Отметили по ошибке? Тренировка вернётся на баланс клиента"
                         onClick={() => handleUnattend(b)}
-                        disabled={attendingId === b.id}
+                        disabled={busy}
                       >
-                        {attendingId === b.id && <Loader2 className="animate-spin" />}
+                        {busy && <Loader2 className="animate-spin" />}
                         Отменить посещение
                       </Button>
                     )}
-                  </div>
-                  <div className="space-y-0.5 text-xs text-muted-foreground">
-                    {contacts && <div>{contacts}</div>}
-                    {m ? (
-                      <div>
-                        {m.membership?.name ?? "Абонемент"} ·{" "}
-                        {personalBalance
-                          ? `персональных осталось ${m.personal_left}`
-                          : m.visits_left != null
-                            ? `осталось ${m.visits_left}`
-                            : "безлимит"}{" "}
-                        · {formatDate(m.started_at)} – {m.ends_at ? formatDate(m.ends_at) : "∞"}
-                      </div>
-                    ) : (
-                      <div className="italic">Нет активного абонемента</div>
+                    {/* Пакетные: отписать (записали по ошибке, клиент отменил
+                        заранее) — тихой кнопкой, главная — «Не посетил». */}
+                    {packages && b.status === "booked" && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Отписать клиента"
+                        title="Отписать клиента"
+                        onClick={() => askCancel(b)}
+                      >
+                        <X />
+                      </Button>
                     )}
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
 
@@ -2123,29 +2454,24 @@ function BookingsPanel({
               {waitlisted.length} ждут места
             </span>
           </div>
-          <div className="space-y-2">
+          <ul className="divide-y divide-blue-200 rounded-md border border-blue-200 bg-blue-50/60">
             {waitlisted.map((b) => {
               const c = bookingClient(data, b);
               return (
-                <div
-                  key={b.id}
-                  className="rounded-md border border-blue-200 bg-blue-50/60 p-3 text-sm"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex flex-col">
-                      <BookingClientName client={c} />
-                      <span className="mt-0.5 text-xs text-muted-foreground">
-                        {c?.phone ?? c?.email ?? "—"}
-                      </span>
+                <li key={b.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <BookingClientName client={c} />
+                    <div className="truncate text-xs text-muted-foreground">
+                      {c?.phone ?? c?.email ?? "—"}
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
-                      Убрать
-                    </Button>
                   </div>
-                </div>
+                  <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
+                    Убрать
+                  </Button>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </div>
       )}
 
@@ -2156,7 +2482,25 @@ function BookingsPanel({
             <CancelBookingForm
               key={cancelTarget.id}
               booking={cancelTarget}
+              packages={packages}
               onClose={() => setCancelOpen(false)}
+              onDone={reload}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={noShowOpen} onOpenChange={setNoShowOpen}>
+        <DialogContent className="max-w-md">
+          {noShowTarget && (
+            <NoShowForm
+              key={noShowTarget.id}
+              booking={noShowTarget}
+              clientName={(() => {
+                const c = bookingClient(data, noShowTarget);
+                return c ? clientName(c) : null;
+              })()}
+              onClose={() => setNoShowOpen(false)}
               onDone={reload}
             />
           )}
@@ -2166,15 +2510,145 @@ function BookingsPanel({
   );
 }
 
-function CancelBookingForm({
+/** Причины «Не посетил»: уважительная — тренировка остаётся, нет — списывается. */
+const NO_SHOW_OPTIONS = [
+  {
+    value: "excused",
+    title: "Уважительная причина",
+    description:
+      "Клиент отписался больше чем за 3 часа до начала или у него форс-мажор. Тренировка останется на абонементе.",
+  },
+  {
+    value: "unexcused",
+    title: "Неуважительная причина",
+    description:
+      "Не пришёл без предупреждения или отписался меньше чем за 3 часа. Тренировка спишется с абонемента.",
+  },
+] as const;
+
+/**
+ * «Не посетил» (пакетные студии): причина и короткий комментарий —
+ * RPC mark_booking_no_show; списание и возврат тренировки делает база.
+ */
+function NoShowForm({
   booking,
+  clientName: name,
   onClose,
   onDone,
 }: {
   booking: BookingRow;
+  clientName: string | null;
   onClose: () => void;
   onDone: () => void;
 }) {
+  const [kind, setKind] = useState<string>(
+    booking.no_show_excused === true
+      ? "excused"
+      : booking.no_show_excused === false
+        ? "unexcused"
+        : "",
+  );
+  const [comment, setComment] = useState(booking.no_show_comment ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!kind) {
+      toast.error("Выберите причину: уважительная или нет");
+      return;
+    }
+    if (!comment.trim()) {
+      toast.error("Напишите короткий комментарий");
+      return;
+    }
+    setSaving(true);
+    try {
+      const excused = kind === "excused";
+      const ok = await bookingRpc(
+        "mark_booking_no_show",
+        { p_booking_id: booking.id, p_excused: excused, p_comment: comment.trim() },
+        { error: "Ошибка", failed: "Не удалось отметить" },
+      );
+      if (!ok) return;
+      toast.success(
+        excused
+          ? "Не посетил по уважительной причине — тренировка на абонементе"
+          : "Не посетил — тренировка списана с абонемента",
+      );
+      onClose();
+      onDone();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Не посетил</DialogTitle>
+        <DialogDescription>
+          {name ? `${name}: ` : ""}почему клиента не было на занятии?
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleSubmit}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Причина" required htmlFor={null}>
+              <RadioGroup value={kind} onValueChange={setKind} className="space-y-2">
+                {NO_SHOW_OPTIONS.map((o) => (
+                  <label
+                    key={o.value}
+                    className={cn(
+                      "flex cursor-pointer items-start gap-3 rounded-md border p-3",
+                      kind === o.value && "border-foreground/40 bg-muted/40",
+                    )}
+                  >
+                    <RadioGroupItem value={o.value} className="mt-0.5" />
+                    <span className="space-y-0.5">
+                      <span className="block text-sm font-medium">{o.title}</span>
+                      <span className="block text-xs text-muted-foreground">{o.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </FormField>
+            <FormField label="Комментарий" required>
+              <Textarea
+                note
+                rows={2}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Например: заболела, предупредила утром"
+              />
+            </FormField>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
+  );
+}
+
+function CancelBookingForm({
+  booking,
+  packages,
+  onClose,
+  onDone,
+}: {
+  booking: BookingRow;
+  /** Пакетная студия: «Отписать» (кнопка «Отклонить» заменена на «Не посетил»). */
+  packages: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const verb = packages ? "Отписать клиента" : "Отклонить запись";
   // Причина живёт в форме, а форма монтируется при каждом открытии окна:
   // «Отклонить» у другого клиента не наследует прошлую причину.
   const [reason, setReason] = useState("");
@@ -2191,7 +2665,7 @@ function CancelBookingForm({
         { error: "Ошибка отмены", failed: "Не удалось отписать" },
       );
       if (!ok) return;
-      toast.success("Запись отклонена");
+      toast.success(packages ? "Клиент отписан" : "Запись отклонена");
       onClose();
       onDone();
     } finally {
@@ -2202,10 +2676,10 @@ function CancelBookingForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Отклонить запись?</DialogTitle>
+        <DialogTitle>{verb}?</DialogTitle>
         <DialogDescription>
-          Бронирование будет отменено со статусом «Отклонена». Клиент сможет записаться снова, если
-          останутся места.
+          Запись будет отменена (в «Истории записей» — «Отменено» с причиной), тренировка с
+          абонемента не спишется. Клиент сможет записаться снова, если останутся места.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleCancel}>
@@ -2237,7 +2711,7 @@ function CancelBookingForm({
           </Button>
           <Button type="submit" variant="destructive" disabled={cancelling}>
             {cancelling && <Loader2 className="animate-spin" />}
-            Отклонить запись
+            {verb}
           </Button>
         </DialogFooter>
       </DialogForm>

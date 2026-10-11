@@ -24,6 +24,7 @@ for (const f of walk("src")) {
 // удачные — эти подобраны глазами по сетке всех кандидатов.
 const MANUAL: Record<string, string> = {
   AlertTriangle: "Alert02Icon", // псевдоним AlertTriangle — кружок, а не треугольник
+  Ban: "BanIcon", // псевдонима под именем lucide нет; знак «отменено» в расписании
   BarChart3: "BarChart",
   Cat: "CatIcon",
   // Вид графика на дашборде: псевдонимы ChartColumn/ChartArea — не те фигуры,

@@ -24,6 +24,7 @@ import {
   ArrowLeft as ArrowLeftArt,
   ArrowUp as ArrowUpArt,
   ArrowUpRight as ArrowUpRightArt,
+  BanIcon as BanArt,
   CalendarIcon as CalendarIconArt,
   CatIcon as CatArt,
   ChartAreaIcon as ChartAreaArt,
@@ -71,6 +72,7 @@ import {
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
   TrendingUp as TrendingUpArt,
+  Undo2 as Undo2Art,
   Upload as UploadArt,
   UserPlus as UserPlusArt,
   UserRound as UserRoundArt,
@@ -101,6 +103,7 @@ export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
 export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
 export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
+export const Ban = icon(BanArt, "Ban");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");
 export const Cat = icon(CatArt, "Cat");
 export const ChartArea = icon(ChartAreaArt, "ChartArea");
@@ -148,6 +151,7 @@ export const Square = icon(SquareArt, "Square");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");
+export const Undo2 = icon(Undo2Art, "Undo2");
 export const Upload = icon(UploadArt, "Upload");
 export const UserPlus = icon(UserPlusArt, "UserPlus");
 export const UserRound = icon(UserRoundArt, "UserRound");

@@ -178,9 +178,7 @@
   --note: #fbf3de;
   --note-border: #e9d8ad;
   --note-foreground: #4a3f26;
-  --note-shadow:
-    0 1px 2px rgb(120 90 30 / 0.12),
-    0 6px 14px -8px rgb(120 90 30 / 0.35);
+  --note-shadow: 0 1px 2px rgb(120 90 30 / 0.12), 0 6px 14px -8px rgb(120 90 30 / 0.35);
 }
 
 .dark {
@@ -289,6 +287,13 @@ textarea[data-note],
 }
 textarea[data-note]::placeholder {
   color: rgb(120 100 60 / 0.6);
+}
+
+/* Отменённое занятие в расписании — белая карточка в наклонную светло-серую
+   полоску (решение владельца 2026-10-11): видно, что занятие не состоится,
+   но оно остаётся на своём месте в сетке. */
+.schedule-cancelled {
+  background-image: repeating-linear-gradient(-45deg, #ffffff 0 4px, #ebedef 4px 8px);
 }
 
 /* Числовые поля без системных стрелок. Часть форм использует type="number",
