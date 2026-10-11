@@ -17,7 +17,7 @@ import { formatNumber } from "@/lib/format";
 
 /**
  * Сам график из окна показателя на дашборде (MetricChart в
- * routes/_authenticated/dashboard.tsx). Вынесен в свой файл ради отдельного
+ * components/dashboard/stat-cards.tsx). Вынесен в свой файл ради отдельного
  * чанка: recharts (~100 kB gzip) грузится, только когда окно открыли.
  */
 
