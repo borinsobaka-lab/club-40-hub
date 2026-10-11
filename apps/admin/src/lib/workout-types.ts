@@ -54,19 +54,31 @@ export function dayTypeColor(v: string | null | undefined) {
 
 /**
  * Палитра цветов тренировок пакетного формата (полоска на карточке занятия).
+ * `basic` — 10 самых непохожих: новой тренировке предлагается первый свободный
+ * из них, чтобы соседние тренировки не получали почти одинаковые оттенки.
  * Можно выбрать и свой цвет — `workouts.color`, #rrggbb.
  */
-export const WORKOUT_COLORS: { hex: string; label: string }[] = [
-  { hex: "#ef4444", label: "Красный" },
-  { hex: "#f97316", label: "Оранжевый" },
-  { hex: "#eab308", label: "Жёлтый" },
-  { hex: "#22c55e", label: "Зелёный" },
-  { hex: "#14b8a6", label: "Бирюзовый" },
-  { hex: "#0ea5e9", label: "Голубой" },
-  { hex: "#3b82f6", label: "Синий" },
-  { hex: "#8b5cf6", label: "Фиолетовый" },
-  { hex: "#ec4899", label: "Розовый" },
-  { hex: "#78716c", label: "Серый" },
+export const WORKOUT_COLORS: { hex: string; label: string; basic?: true }[] = [
+  { hex: "#ef4444", label: "Красный", basic: true },
+  { hex: "#b91c1c", label: "Тёмно-красный" },
+  { hex: "#f43f5e", label: "Малиновый" },
+  { hex: "#f97316", label: "Оранжевый", basic: true },
+  { hex: "#f59e0b", label: "Янтарный" },
+  { hex: "#eab308", label: "Жёлтый", basic: true },
+  { hex: "#84cc16", label: "Салатовый" },
+  { hex: "#22c55e", label: "Зелёный", basic: true },
+  { hex: "#15803d", label: "Тёмно-зелёный" },
+  { hex: "#14b8a6", label: "Бирюзовый", basic: true },
+  { hex: "#06b6d4", label: "Циан" },
+  { hex: "#0ea5e9", label: "Голубой", basic: true },
+  { hex: "#3b82f6", label: "Синий", basic: true },
+  { hex: "#1e40af", label: "Тёмно-синий" },
+  { hex: "#6366f1", label: "Индиго" },
+  { hex: "#8b5cf6", label: "Фиолетовый", basic: true },
+  { hex: "#a855f7", label: "Пурпурный" },
+  { hex: "#ec4899", label: "Розовый", basic: true },
+  { hex: "#92400e", label: "Коричневый" },
+  { hex: "#78716c", label: "Серый", basic: true },
 ];
 
 export const isWorkoutColor = (v: string) => /^#[0-9a-f]{6}$/i.test(v);

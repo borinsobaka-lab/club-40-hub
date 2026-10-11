@@ -339,7 +339,9 @@ function WorkoutForm({
   const [color, setColor] = useState(
     () =>
       workout?.color ??
-      WORKOUT_COLORS.find((c) => !usedColors.includes(c.hex))?.hex ??
+      [...WORKOUT_COLORS.filter((c) => c.basic), ...WORKOUT_COLORS.filter((c) => !c.basic)].find(
+        (c) => !usedColors.includes(c.hex),
+      )?.hex ??
       WORKOUT_COLORS[0].hex,
   );
   const [saving, setSaving] = useState(false);
