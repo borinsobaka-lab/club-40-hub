@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
-import { CLUB, SCHEDULE_TITLE } from "@/lib/terms";
+import { useNotifications } from "@/lib/notifications";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -13,62 +12,6 @@ export const Route = createFileRoute("/notifications")({
   }),
   component: NotificationsPage,
 });
-
-type Notification = {
-  id: string;
-  title: string;
-  body: string;
-  receivedAt: string; // ISO
-  read: boolean;
-  link?: string;
-};
-
-const MOCK: Notification[] = [
-  {
-    id: "1",
-    title: "🎉 Добро пожаловать в Base40!",
-    body: `Привет! Мы рады видеть тебя в ${CLUB.prep}.\nЗагляни в раздел «${SCHEDULE_TITLE}» — там уже доступно расписание на ближайшие дни.`,
-    receivedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    read: false,
-  },
-  {
-    id: "2",
-    title: "🔥 Новая тренировка в расписании",
-    body: "В среду в 19:00 — функциональная тренировка с Анной.\nОсталось 4 места, успей записаться!",
-    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    read: false,
-  },
-  {
-    id: "5",
-    title: "🎁 Партнёрская акция",
-    body: "Скидка 20% на спортивное питание для участников Base40.\nПодробности и промокод — на сайте партнёра.",
-    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-    read: false,
-    link: "https://example.com/promo",
-  },
-  {
-    id: "3",
-    title: "💳 Абонемент скоро закончится",
-    body: "Осталось 3 занятия по текущему абонементу.\nПродли его в разделе «Абонементы», чтобы не прерывать тренировки.",
-    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-    read: true,
-  },
-  {
-    id: "6",
-    title: "📺 Новое видео на YouTube",
-    body: `Разбор техники приседаний от тренера ${CLUB.gen}.\nСмотрите по ссылке ниже.`,
-    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
-    read: true,
-    link: "https://youtube.com",
-  },
-  {
-    id: "4",
-    title: `📣 Новость ${CLUB.gen}`,
-    body: "В эти выходные — открытая тренировка на свежем воздухе.\nПодробности в разделе новостей на главной.",
-    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-    read: true,
-  },
-];
 
 function formatReceivedAt(iso: string) {
   const d = new Date(iso);
@@ -88,7 +31,7 @@ function formatReceivedAt(iso: string) {
 }
 
 function NotificationsPage() {
-  const [items, setItems] = useState<Notification[]>(MOCK);
+  const { items, markRead, markAllRead } = useNotifications();
   const unread = items.filter((i) => !i.read).length;
 
   return (
@@ -106,7 +49,7 @@ function NotificationsPage() {
         <div className="flex justify-end py-2">
           <button
             type="button"
-            onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}
+            onClick={markAllRead}
             disabled={unread === 0}
             className="text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 active:bg-muted/70 disabled:opacity-60 disabled:cursor-not-allowed rounded-full px-3 py-2.5 transition-colors"
           >
@@ -125,9 +68,7 @@ function NotificationsPage() {
                 <Card
                   onClick={() => {
                     if (!n.read) {
-                      setItems((prev) =>
-                        prev.map((it) => (it.id === n.id ? { ...it, read: true } : it)),
-                      );
+                      markRead(n.id);
                     }
                   }}
                   className={`p-4 transition-colors ${
@@ -155,9 +96,7 @@ function NotificationsPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!n.read) {
-                                setItems((prev) =>
-                                  prev.map((it) => (it.id === n.id ? { ...it, read: true } : it)),
-                                );
+                                markRead(n.id);
                               }
                             }}
                             className="shrink-0 text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/80 rounded-full px-3 py-1.5 transition-colors"

@@ -56,11 +56,11 @@ export function useFormatStudios() {
     queryFn: async (): Promise<Studio[]> => {
       const { data, error } = await supabase
         .from("studios")
-        .select("id, name, format, brand_color, logo_url")
+        .select("id, name, format, brand_color, logo_url, address")
         .eq("format", APP_FORMAT)
         .order("name");
       if (error) throw error;
-      return (data as Studio[] | null) ?? [];
+      return (data as unknown as Studio[] | null) ?? [];
     },
     enabled: IS_PACKAGES,
     staleTime: 5 * 60_000,

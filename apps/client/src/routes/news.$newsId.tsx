@@ -58,7 +58,7 @@ function NewsDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col bg-background">
         <div className="flex-1 overflow-y-auto pb-24">
           <div className="px-4 pt-4">
             <Skeleton className="w-full aspect-[4/3] rounded-xl" />

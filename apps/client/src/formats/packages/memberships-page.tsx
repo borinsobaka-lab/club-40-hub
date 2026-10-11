@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle, Ticket } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
+import { UnderlineTabs } from "@/components/underline-tabs";
 import { Card } from "@/components/ui/card";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
 import { untypedDb } from "@/lib/untyped-db";
@@ -13,7 +14,7 @@ import { settlePackageMemberships } from "@/lib/packages-memberships";
 
 /**
  * «Абонементы» пакетного приложения (решение владельца 2026-10-11): вкладки
- * «Абонементы» (пакеты тренировок и пробное) и «Персональные занятия»
+ * «Абонементы» (пакеты тренировок; пробное не показывается) и «Персональные занятия»
  * (номенклатура типа personal), в порядке из админки (memberships.sort_order,
  * перетаскивание в «Номенклатурах»), описание — с разметкой. Покупки в
  * приложении пока нет — только витрина и свои действующие абонементы.
@@ -139,7 +140,8 @@ export function PackagesMembershipsPage() {
   });
 
   const items = (catalog.data ?? []).filter((m) =>
-    tab === "personal" ? m.kind === "personal" : m.kind !== "personal",
+    // Пробное посещение в приложении не показываем (решение владельца 2026-10-11).
+    tab === "personal" ? m.kind === "personal" : (m.kind ?? "package") === "package",
   );
 
   return (
@@ -161,26 +163,13 @@ export function PackagesMembershipsPage() {
         </div>
       }
     >
-      <div className="flex gap-6 overflow-x-auto no-scrollbar px-4 pt-4">
-        {TABS.map((t) => {
-          const active = tab === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`relative shrink-0 pt-3 pb-1 text-base font-semibold transition-colors ${
-                active ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {t.label}
-              {active && (
-                <span className="absolute -bottom-px left-0 right-0 h-1 rounded-full bg-primary" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <UnderlineTabs
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        className="px-4 pt-4"
+        gapClass="gap-6"
+      />
 
       <div className="space-y-3 p-4 pb-24">
         {!user && !authLoading ? (

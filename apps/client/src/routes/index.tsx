@@ -23,6 +23,7 @@ import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { useNotifications } from "@/lib/notifications";
 import { IS_PACKAGES } from "@/lib/terms";
 import {
   PACK_ENTRY_SELECT,
@@ -131,6 +132,7 @@ function HomePage() {
   // — своей (записи клиента всегда в своей студии).
   const clubSettings = useClubSettings();
   const homeSettings = useClubSettings("home");
+  const { unread } = useNotifications();
   // Новости и услуги — смотримой студии (переключатель пакетного приложения;
   // в подписочном — всегда своя).
   const { studioId, studioReady } = useViewedStudioId();
@@ -352,10 +354,15 @@ function HomePage() {
               </button>
               <Link
                 to="/notifications"
-                aria-label="Уведомления"
-                className="h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
+                aria-label={unread > 0 ? `Уведомления: непрочитанных ${unread}` : "Уведомления"}
+                className="relative h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
               >
                 <Bell className="h-5 w-5 text-white" />
+                {unread > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-[#2A2B2F] tabular-nums">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </Link>
             </div>
           </div>

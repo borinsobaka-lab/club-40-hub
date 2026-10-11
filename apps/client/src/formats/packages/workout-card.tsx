@@ -96,7 +96,7 @@ export function PackWorkoutCard({
                       {trainerInitials(t.full_name)}
                     </SquircleAvatarFallback>
                   </SquircleAvatar>
-                  <span className="truncate text-sm font-medium">{t.full_name}</span>
+                  <span className={`truncate text-sm font-medium ${muted}`}>{t.full_name}</span>
                 </div>
               ))}
             </div>

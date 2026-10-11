@@ -12,6 +12,7 @@ import {
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { Refresh, SolarProvider } from "@solar-icons/react";
 import { BottomNav } from "@/components/bottom-nav";
+import { HeaderBackdrop } from "@/components/page-shell";
 import { resetPageScrollPosition } from "@/lib/page-scroll";
 
 import appCss from "../styles.css?url";
@@ -358,6 +359,8 @@ function AppShell() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
       <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
+        {/* Шапка с огоньками — одна на все разделы (не пересоздаётся при переходе). */}
+        <HeaderBackdrop />
         <main key={pathname} className="flex-1 min-h-0 overflow-hidden relative">
           {!showAppLoading && <Outlet />}
           {showAppLoading && <LoadingOverlay />}

@@ -12,6 +12,8 @@ export type Studio = {
   brand_color: string;
   /** Путь в бакете studio-logos или полный URL. */
   logo_url: string | null;
+  /** Адрес одной строкой (db/migrations/…_studio_address.sql) — только в useFormatStudios. */
+  address?: string | null;
 };
 
 const STUDIO_COLUMNS = "id, name, format, brand_color, logo_url";

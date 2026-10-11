@@ -6,6 +6,7 @@ import {
   MenuDots,
   Card,
   UsersGroupRounded,
+  MapPointFavourite,
 } from "@solar-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { resetPageScrollPosition } from "@/lib/page-scroll";
@@ -35,7 +36,7 @@ const moreItems = [
 const packagesItems: NavItem[] = [
   { to: "/", label: "Главное", Icon: Home, exact: true },
   { to: "/schedule", label: "Расписание", Icon: DumbbellLargeMinimalistic, exact: false },
-  { to: "/club", label: "Студия", Icon: UsersGroupRounded, exact: false },
+  { to: "/club", label: "Студия", Icon: MapPointFavourite, exact: false },
   { to: "/memberships", label: "Абонементы", Icon: Card, exact: false },
 ];
 
@@ -44,13 +45,13 @@ export function BottomNav() {
 }
 
 function PackagesBottomNav() {
-  const linkClass =
-    "flex flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5";
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center">
       <div className="pointer-events-auto w-full max-w-md px-3 pb-3">
-        <div className="relative flex items-end gap-2">
-          <div className="glass-dark relative flex-1 rounded-3xl px-1.5 py-1.5">
+        {/* items-stretch: плитка «Профиль» той же высоты, что плашка разделов,
+            и с тем же скруглением. */}
+        <div className="relative flex items-stretch gap-2">
+          <div className="glass-dark relative flex-1 rounded-[26px] px-1.5 py-1.5">
             <ul className="grid grid-cols-4">
               {packagesItems.map(({ to, label, Icon, exact }) => (
                 <li key={to}>
@@ -59,12 +60,9 @@ function PackagesBottomNav() {
                     activeOptions={{ exact }}
                     onPointerDown={resetPageScrollPosition}
                     onClick={resetPageScrollPosition}
-                    activeProps={{ className: "text-primary" }}
-                    inactiveProps={{ className: "text-white/70" }}
-                    className={`h-14 ${linkClass}`}
+                    className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl active:bg-white/5"
                   >
-                    <Icon className="h-6 w-6" weight="BoldDuotone" />
-                    <span>{label}</span>
+                    {({ isActive }) => <NavItemBody Icon={Icon} label={label} active={isActive} />}
                   </Link>
                 </li>
               ))}
@@ -75,17 +73,48 @@ function PackagesBottomNav() {
             to="/profile"
             onPointerDown={resetPageScrollPosition}
             onClick={resetPageScrollPosition}
-            activeProps={{ className: "text-primary" }}
-            inactiveProps={{ className: "text-white/70" }}
-            className={`glass-dark h-[68px] w-[68px] shrink-0 rounded-3xl ${linkClass}`}
+            className="glass-dark flex w-[72px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[26px] active:bg-white/5"
           >
-            <User className="h-6 w-6" weight="BoldDuotone" />
-            <span>Профиль</span>
+            {({ isActive }) => <NavItemBody Icon={User} label="Профиль" active={isActive} />}
           </Link>
         </div>
         <div className="h-[env(safe-area-inset-bottom)]" />
       </div>
     </nav>
+  );
+}
+
+/**
+ * Иконка и подпись раздела. Активный — белая иконка на «пилюле» основного
+ * цвета и белая подпись: розовый текст на тёмном стекле читался плохо
+ * (решение владельца 2026-10-11).
+ */
+function NavItemBody({
+  Icon,
+  label,
+  active,
+}: {
+  Icon: typeof Home;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <>
+      <span
+        className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200 ${
+          active ? "bg-primary text-primary-foreground" : "text-white/70"
+        }`}
+      >
+        <Icon className="h-[22px] w-[22px]" weight="BoldDuotone" />
+      </span>
+      <span
+        className={`text-[11px] transition-colors duration-200 ${
+          active ? "font-semibold text-white" : "font-medium text-white/70"
+        }`}
+      >
+        {label}
+      </span>
+    </>
   );
 }
 

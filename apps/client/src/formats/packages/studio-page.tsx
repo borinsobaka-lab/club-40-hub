@@ -4,6 +4,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { AltArrowRight, MapPoint, UsersGroupRounded } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
+import { UnderlineTabs } from "@/components/underline-tabs";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -61,26 +62,13 @@ export function PackagesStudioPage() {
         </div>
       }
     >
-      <div className="flex gap-6 overflow-x-auto no-scrollbar px-4 pt-4">
-        {TABS.map((t) => {
-          const active = tab === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`relative shrink-0 pt-3 pb-1 text-base font-semibold transition-colors ${
-                active ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {t.label}
-              {active && (
-                <span className="absolute -bottom-px left-0 right-0 h-1 rounded-full bg-primary" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <UnderlineTabs
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        className="px-4 pt-4"
+        gapClass="gap-6"
+      />
       <div className="p-4">{tab === "info" ? <StudioInfoTab /> : <TrainersTab />}</div>
     </PageShell>
   );

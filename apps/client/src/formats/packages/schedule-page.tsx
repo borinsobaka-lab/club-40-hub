@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { untypedDb } from "@/lib/untyped-db";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
 import { PageShell } from "@/components/page-shell";
+import { UnderlineTabs } from "@/components/underline-tabs";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useHomeStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio";
@@ -338,25 +339,13 @@ export function PackagesSchedulePage() {
         </div>
       }
     >
-      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pt-4 pb-0">
-        {TABS.map((t) => {
-          const active = activeTab === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
-                active ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {t.label}
-              {active && (
-                <span className="absolute left-0 right-0 -bottom-px h-1 bg-primary rounded-full" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <UnderlineTabs
+        tabs={TABS}
+        value={activeTab}
+        onChange={setActiveTab}
+        className="px-4 pt-4"
+        gapClass="gap-3"
+      />
 
       {activeTab === "personal" ? (
         <div className="p-4">
