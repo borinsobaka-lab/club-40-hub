@@ -52,6 +52,7 @@ export function ImageUploadField({
   uploadLabel = "Загрузить",
   replaceLabel = "Заменить",
   disabled,
+  prepare,
 }: {
   bucket: StorageBucket;
   /** Папка внутри бакета, обычно `${studioId}` или `${studioId}/cover`. */
@@ -64,6 +65,8 @@ export function ImageUploadField({
   uploadLabel?: string;
   replaceLabel?: string;
   disabled?: boolean;
+  /** Обработать файл перед загрузкой (например, squareImage для аватарок). */
+  prepare?: (file: File) => Promise<File>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -71,7 +74,7 @@ export function ImageUploadField({
   const upload = async (file: File) => {
     setUploading(true);
     try {
-      onChange(await uploadToStorage(bucket, folder, file));
+      onChange(await uploadToStorage(bucket, folder, prepare ? await prepare(file) : file));
     } catch (err) {
       toast.error("Ошибка загрузки: " + (err as Error).message);
     } finally {

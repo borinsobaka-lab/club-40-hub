@@ -18,7 +18,6 @@ import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenClubSection, type AdminAccess } from "@/lib/admin-access";
-import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
 import { MenuSkeleton } from "@/components/skeletons";
@@ -299,13 +298,13 @@ export function AppSidebar() {
           </SidebarContent>
 
           {/*
-        До lg выбор студии и «Выйти» не помещаются в шапку страницы рядом с
-        заголовком и действиями — они живут здесь, внизу меню (на телефоне —
-        в шторке). На широком экране они в шапке, а этот блок скрыт.
+        До lg выбор студии не помещается в шапку страницы рядом с заголовком
+        и действиями — он живёт здесь, внизу меню (на телефоне — в шторке).
+        На широком экране он в шапке, а этот блок скрыт. «Выход» — в рейке
+        (RailAccount).
       */}
           <SidebarFooter className="gap-2 border-t border-white/10 p-3 lg:hidden">
             <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white [&>svg]:text-white" />
-            <SignOutButton className="w-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" />
           </SidebarFooter>
         </div>
       </div>

@@ -205,6 +205,9 @@ AUTH_SETUP.md.
   переопределена (актуальное определение — здесь): продажи в зарплату —
   поступившие за период платежи (`sale_installments.paid_at`, без графика —
   вся сумма в день продажи).
+  Аватарки сотрудников админки: `db/migrations/2026-10-11_staff_avatars.sql`
+  — `profiles.avatar_url` (путь в бакете `avatars`, папка `staff/`, ставит
+  владелец в «Доступах» серверной функцией).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

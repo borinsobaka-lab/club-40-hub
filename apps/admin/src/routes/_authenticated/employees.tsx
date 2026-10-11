@@ -9,7 +9,7 @@ import { Pencil, Trash2, UserPlus, Loader2 } from "lucide-react";
 import {
   getEmployeesContext,
   createEmployee,
-  updateEmployeeAccess,
+  updateEmployee,
   deleteEmployee,
   type EmployeeRow,
 } from "@/lib/employees.functions";
@@ -24,6 +24,10 @@ import {
 } from "@/lib/admin-access";
 import { STUDIO_SECTION_GROUPS } from "@/lib/nav-sections";
 import { AdminShell } from "@/components/admin-shell";
+import { ImageUploadField } from "@/components/image-upload-field";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { initials } from "@/lib/format";
+import { squareImage, useStorageUrl } from "@/lib/storage";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +66,7 @@ import { RowContextMenu } from "@/components/row-context-menu";
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
   email: "При каждом входе на эту почту приходит 6-значный код — пароля нет.",
+  avatar: "Видна в списке «Доступов» и самому сотруднику — в меню слева, над «Доступами».",
   role: "Владельцу открыто всё, и только он управляет «Доступами». Администратору и тренеру — разделы, отмеченные ниже.",
   sections:
     "Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех клубов. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения.",
@@ -80,6 +85,31 @@ const ROLE_LABEL: Record<StaffRole, string> = {
 };
 
 type StudioOption = { id: string; name: string };
+
+/** Аватарка сотрудника (бакет avatars), без неё — инициалы. */
+function StaffAvatar({
+  value,
+  name,
+  className,
+}: {
+  value: string | null;
+  name: string;
+  className?: string;
+}) {
+  const src = useStorageUrl("avatars", value);
+  return (
+    <Avatar className={className}>
+      {src && <AvatarImage src={src} alt={name} className="object-cover" />}
+      <AvatarFallback>{initials(name)}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+/** profiles.full_name — «Фамилия Имя»: фамилия — первое слово, имя — остальное. */
+function splitFullName(fullName: string | null) {
+  const [last = "", ...rest] = (fullName ?? "").trim().split(/\s+/);
+  return { last_name: last, first_name: rest.join(" ") };
+}
 
 /**
  * «Доступы» — учётные записи админки и их права: студии, разделы рейки
@@ -169,16 +199,16 @@ function EmployeesPage() {
                   pg.paged.map((e) => (
                     <RowContextMenu
                       key={e.user_id}
-                      actions={
+                      actions={[
+                        {
+                          label: "Изменить",
+                          icon: Pencil,
+                          onSelect: () => openForm(e),
+                        },
                         // Свой доступ не меняем и не удаляем — так владелец не
-                        // запрёт сам себя.
-                        e.user_id !== data?.currentUserId
+                        // запрёт сам себя; имя, почту и аватарку — можно.
+                        ...(e.user_id !== data?.currentUserId
                           ? [
-                              {
-                                label: "Изменить доступ",
-                                icon: Pencil,
-                                onSelect: () => openForm(e),
-                              },
                               {
                                 label: "Удалить",
                                 icon: Trash2,
@@ -193,11 +223,20 @@ function EmployeesPage() {
                                 },
                               },
                             ]
-                          : []
-                      }
+                          : []),
+                      ]}
                     >
                       <TableRow>
-                        <TableCell className="font-medium">{e.full_name ?? "—"}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <StaffAvatar
+                              value={e.avatar_url}
+                              name={e.full_name ?? e.email ?? ""}
+                              className="size-8 text-xs"
+                            />
+                            <span>{e.full_name ?? "—"}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>{e.email ?? "—"}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">{ROLE_LABEL[e.role]}</Badge>
@@ -242,6 +281,7 @@ function EmployeesPage() {
             key={editing?.user_id ?? "new"}
             employee={editing}
             studios={studios}
+            isSelf={!!editing && editing.user_id === data?.currentUserId}
             onDone={() => setOpen(false)}
           />
         </DialogContent>
@@ -261,18 +301,25 @@ const ALL_CLUB_SECTIONS = [...CLUB_SECTION_KEYS];
 function AccessForm({
   employee,
   studios,
+  isSelf,
   onDone,
 }: {
   employee: EmployeeRow | null;
   studios: StudioOption[];
+  /** Своя запись владельца: данные меняются, доступ — нет. */
+  isSelf: boolean;
   onDone: () => void;
 }) {
   const createFn = useServerFn(createEmployee);
-  const updateFn = useServerFn(updateEmployeeAccess);
+  const updateFn = useServerFn(updateEmployee);
   const qc = useQueryClient();
   const activeStudioId = useActiveStudioId();
 
-  const [name, setName] = useState({ first_name: "", last_name: "", email: "" });
+  const [name, setName] = useState(() => ({
+    ...splitFullName(employee?.full_name ?? null),
+    email: employee?.email ?? "",
+  }));
+  const [avatar, setAvatar] = useState<string | null>(employee?.avatar_url ?? null);
   const [role, setRole] = useState<StaffRole>(employee?.role ?? "trainer");
   // Новому сотруднику по умолчанию — «Клуб» целиком в активной студии.
   const [rail, setRail] = useState<AdminSectionKey[]>(
@@ -290,6 +337,8 @@ function AccessForm({
   const [saving, setSaving] = useState(false);
 
   const isOwnerRole = role === "owner";
+  const emailChanged =
+    !!employee?.email && name.email.trim().toLowerCase() !== employee.email.toLowerCase();
   const showClubSections = !isOwnerRole && rail.includes("club");
 
   // Снятые «Скрипты LS» снимают и их правку.
@@ -310,19 +359,33 @@ function AccessForm({
     setStudioSections((prev) => ({ ...prev, [id]: sections }));
 
   const handleSave = async () => {
-    if (!employee) {
-      if (!name.last_name.trim()) {
-        toast.error("Укажите фамилию");
-        return;
+    if (!name.last_name.trim()) {
+      toast.error("Укажите фамилию");
+      return;
+    }
+    if (!name.first_name.trim()) {
+      toast.error("Укажите имя");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name.email.trim())) {
+      toast.error("Укажите корректный email");
+      return;
+    }
+    const profile = { ...name, avatar_url: avatar };
+    if (isSelf && employee) {
+      setSaving(true);
+      try {
+        await updateFn({ data: { user_id: employee.user_id, profile } });
+        toast.success("Данные сохранены");
+        qc.invalidateQueries({ queryKey: ["employees"] });
+        qc.invalidateQueries({ queryKey: ["staff-profile"] });
+        onDone();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Не удалось сохранить");
+      } finally {
+        setSaving(false);
       }
-      if (!name.first_name.trim()) {
-        toast.error("Укажите имя");
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(name.email.trim())) {
-        toast.error("Укажите корректный email");
-        return;
-      }
+      return;
     }
     // Те же правила, что у серверной схемы.
     const selected = studios.filter((s) => studioSections[s.id]);
@@ -347,10 +410,10 @@ function AccessForm({
     setSaving(true);
     try {
       if (employee) {
-        await updateFn({ data: { user_id: employee.user_id, access } });
-        toast.success("Доступ сохранён");
+        await updateFn({ data: { user_id: employee.user_id, profile, access } });
+        toast.success("Сотрудник сохранён");
       } else {
-        const res = await createFn({ data: { ...name, access } });
+        const res = await createFn({ data: { ...profile, access } });
         toast.success(
           res.existing
             ? "Доступ выдан. У человека уже была учётная запись — вход по коду на ту же почту"
@@ -369,120 +432,148 @@ function AccessForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{employee ? "Доступ сотрудника" : "Новый сотрудник"}</DialogTitle>
+        <DialogTitle>{employee ? "Сотрудник" : "Новый сотрудник"}</DialogTitle>
         <DialogDescription>
           {employee
-            ? [employee.full_name, employee.email].filter(Boolean).join(" · ")
+            ? "Данные для входа в админку и права. Вход — по 6-значному коду, который приходит на почту."
             : "Вход в админку — по 6-значному коду, который приходит на эту почту; пароля нет. Если у человека уже есть учётная запись (например, он клиент приложения), ему просто выдаётся доступ."}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            {!employee && (
-              <>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <FormField label="Фамилия" required>
-                    <Input
-                      autoComplete="off"
-                      value={name.last_name}
-                      onChange={(e) => setName({ ...name, last_name: e.target.value })}
-                    />
-                  </FormField>
-                  <FormField label="Имя" required>
-                    <Input
-                      autoComplete="off"
-                      value={name.first_name}
-                      onChange={(e) => setName({ ...name, first_name: e.target.value })}
-                    />
-                  </FormField>
-                </div>
-                <FormField label="Email" tip={TIPS.email} required>
-                  <Input
-                    type="email"
-                    autoComplete="off"
-                    value={name.email}
-                    onChange={(e) => setName({ ...name, email: e.target.value })}
+            <FormField label="Аватарка" htmlFor={null} tip={TIPS.avatar}>
+              <ImageUploadField
+                bucket="avatars"
+                folder="staff"
+                value={avatar}
+                onChange={setAvatar}
+                prepare={(file) => squareImage(file)}
+                preview={
+                  <StaffAvatar
+                    value={avatar}
+                    name={`${name.last_name} ${name.first_name}`}
+                    className="size-16 text-base"
                   />
+                }
+                disabled={saving}
+              />
+            </FormField>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Фамилия" required>
+                <Input
+                  autoComplete="off"
+                  value={name.last_name}
+                  onChange={(e) => setName({ ...name, last_name: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Имя" required>
+                <Input
+                  autoComplete="off"
+                  value={name.first_name}
+                  onChange={(e) => setName({ ...name, first_name: e.target.value })}
+                />
+              </FormField>
+            </div>
+            <FormField label="Email" tip={TIPS.email} required>
+              <Input
+                type="email"
+                autoComplete="off"
+                value={name.email}
+                onChange={(e) => setName({ ...name, email: e.target.value })}
+              />
+            </FormField>
+            {emailChanged && (
+              <InfoNote>
+                Почта — это логин: коды входа будут приходить на новую почту, на старую войти больше
+                нельзя. Если человек — ещё и клиент приложения, там он тоже входит по новой почте.
+              </InfoNote>
+            )}
+
+            {isSelf ? (
+              <InfoNote>
+                Свой доступ изменить нельзя — его меняет другой владелец. Имя, почту и аватарку
+                можно.
+              </InfoNote>
+            ) : (
+              <>
+                <FormField label="Роль" tip={TIPS.role} required>
+                  <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">Владелец</SelectItem>
+                      <SelectItem value="admin">Администратор</SelectItem>
+                      <SelectItem value="trainer">Тренер</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+
+                {isOwnerRole ? (
+                  <InfoNote>
+                    Владельцу открыты все разделы админки и все разделы клуба в отмеченных клубах, а
+                    также «Доступы» и «Клубы».
+                  </InfoNote>
+                ) : (
+                  <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections} required>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
+                      {RAIL_ACCESS_KEYS.map((key) => (
+                        <CheckboxOption
+                          key={key}
+                          checked={rail.includes(key)}
+                          onCheckedChange={(checked) => toggleRail(key, checked)}
+                        >
+                          {RAIL_ACCESS_LABEL[key]}
+                        </CheckboxOption>
+                      ))}
+                      {rail.includes("scripts") && (
+                        <CheckboxOption
+                          checked={rail.includes("scripts-edit")}
+                          onCheckedChange={(checked) => toggleRail("scripts-edit", checked)}
+                        >
+                          Правка скриптов
+                        </CheckboxOption>
+                      )}
+                    </div>
+                  </FormField>
+                )}
+
+                <FormField
+                  label="Клубы"
+                  htmlFor={null}
+                  required
+                  tip={
+                    showClubSections
+                      ? "Где у сотрудника есть доступ к админке и какие разделы «Клуба» ему видны в каждом клубе."
+                      : "Где у сотрудника есть доступ к админке: без клуба в админку не войти."
+                  }
+                >
+                  {studios.length === 0 ? (
+                    <InfoNote variant="empty">Нет клубов — заведите их в разделе «Клубы».</InfoNote>
+                  ) : (
+                    <div className="space-y-2">
+                      {studios.map((s) => (
+                        <StudioAccess
+                          key={s.id}
+                          studio={s}
+                          sections={studioSections[s.id] ?? null}
+                          showSections={showClubSections}
+                          onToggle={(checked) => toggleStudio(s.id, checked)}
+                          onSectionsChange={(sections) => setSections(s.id, sections)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!!employee?.otherStudios && (
+                    <InfoNote>
+                      Ещё клубов с доступом: {employee.otherStudios}. Там доступ настраивает их
+                      владелец — это сохранение их не меняет.
+                    </InfoNote>
+                  )}
                 </FormField>
               </>
             )}
-
-            <FormField label="Роль" tip={TIPS.role} required>
-              <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owner">Владелец</SelectItem>
-                  <SelectItem value="admin">Администратор</SelectItem>
-                  <SelectItem value="trainer">Тренер</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormField>
-
-            {isOwnerRole ? (
-              <InfoNote>
-                Владельцу открыты все разделы админки и все разделы клуба в отмеченных клубах, а
-                также «Доступы» и «Клубы».
-              </InfoNote>
-            ) : (
-              <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections} required>
-                <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
-                  {RAIL_ACCESS_KEYS.map((key) => (
-                    <CheckboxOption
-                      key={key}
-                      checked={rail.includes(key)}
-                      onCheckedChange={(checked) => toggleRail(key, checked)}
-                    >
-                      {RAIL_ACCESS_LABEL[key]}
-                    </CheckboxOption>
-                  ))}
-                  {rail.includes("scripts") && (
-                    <CheckboxOption
-                      checked={rail.includes("scripts-edit")}
-                      onCheckedChange={(checked) => toggleRail("scripts-edit", checked)}
-                    >
-                      Правка скриптов
-                    </CheckboxOption>
-                  )}
-                </div>
-              </FormField>
-            )}
-
-            <FormField
-              label="Клубы"
-              htmlFor={null}
-              required
-              tip={
-                showClubSections
-                  ? "Где у сотрудника есть доступ к админке и какие разделы «Клуба» ему видны в каждом клубе."
-                  : "Где у сотрудника есть доступ к админке: без клуба в админку не войти."
-              }
-            >
-              {studios.length === 0 ? (
-                <InfoNote variant="empty">Нет клубов — заведите их в разделе «Клубы».</InfoNote>
-              ) : (
-                <div className="space-y-2">
-                  {studios.map((s) => (
-                    <StudioAccess
-                      key={s.id}
-                      studio={s}
-                      sections={studioSections[s.id] ?? null}
-                      showSections={showClubSections}
-                      onToggle={(checked) => toggleStudio(s.id, checked)}
-                      onSectionsChange={(sections) => setSections(s.id, sections)}
-                    />
-                  ))}
-                </div>
-              )}
-              {!!employee?.otherStudios && (
-                <InfoNote>
-                  Ещё клубов с доступом: {employee.otherStudios}. Там доступ настраивает их владелец
-                  — это сохранение их не меняет.
-                </InfoNote>
-              )}
-            </FormField>
           </div>
         </DialogBody>
         <DialogFooter>

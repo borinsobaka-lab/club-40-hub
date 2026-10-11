@@ -4,7 +4,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cat, RefreshCw, X } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
 import { KateChat } from "@/components/kate-chat";
@@ -31,7 +30,7 @@ export function AdminShell({
 
         Узкий экран (до lg): первая строка — меню, заголовок, «Обновить», Kate;
         действия страницы уходят второй строкой на всю ширину (order-last +
-        w-full), а выбор студии и «Выйти» — в низ бокового меню (AppSidebar).
+        w-full), а выбор студии — в низ бокового меню (AppSidebar).
         Действия рендерятся один раз и только переезжают: внутри них бывают
         диалоги со своим состоянием, второй экземпляр открыл бы окно дважды.
       */}
@@ -81,9 +80,9 @@ export function AdminShell({
           <Cat className="h-4 w-4" />
           <span className="max-sm:hidden">Kate</span>
         </button>
+        {/* «Выход» — в рейке слева, под аватаркой сотрудника (RailAccount). */}
         <div className="hidden items-center gap-2 lg:flex">
           <StudioSwitcher />
-          <SignOutButton />
         </div>
       </header>
       {/* На телефоне поля рабочей области уже: p-6 съедал 48px из 390. */}
