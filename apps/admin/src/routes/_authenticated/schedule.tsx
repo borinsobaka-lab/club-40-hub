@@ -7,7 +7,6 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
-import { EmployeePhoto } from "@/components/employee-photo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { PeriodStepper } from "@/components/period-stepper";
@@ -63,7 +62,6 @@ type Workout = { id: string; name: string; type?: string | null; capacity?: numb
 type Trainer = {
   id: string;
   full_name: string;
-  photo_url?: string | null;
   /** trainer | admin — справочник «Сотрудники». */
   role?: string;
 };
@@ -116,7 +114,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, photo_url)), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name))";
+  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name)), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -137,7 +135,10 @@ const ADMIN_CANCEL_REASONS = [
 ];
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
-const SLOT_PX_FULL = 88;
+// Высота часа с занятиями — по самой высокой карточке (две строки названия +
+// строка тренеров или «тренер + клиент» в две строки). Меняешь вёрстку
+// EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
+const SLOT_PX_FULL = 80;
 const SLOT_PX_EMPTY = 28;
 const ALL_FILTER_VALUE = "all";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -283,7 +284,7 @@ function SchedulePage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   // Пакетные студии: у тренировок нет типа — фильтра по типу нет, карточка
-  // занятия светлая с полоской цвета тренировки и фото тренеров (2026-10-11).
+  // занятия светлая с полоской цвета тренировки (2026-10-11).
   const packages = useActiveStudio()?.format === "packages";
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
@@ -979,13 +980,13 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
           : "bg-black/25 text-white";
   return (
     <span className="flex shrink-0 items-center gap-1">
-      <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tone}`}>
+      <span className={`rounded px-1 py-px text-[10px] font-semibold tabular-nums ${tone}`}>
         {entry.booked_count}/{cap}
       </span>
       {waiting > 0 && (
         <span
           title="Люди в листе ожидания — записались, когда мест уже не было"
-          className="rounded bg-blue-500/90 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-white"
+          className="rounded bg-blue-500/90 px-1 py-px text-[10px] font-semibold tabular-nums text-white"
         >
           +{waiting}
         </span>
@@ -1001,7 +1002,7 @@ function EntryCard({
   onCopy,
 }: {
   entry: Entry;
-  /** Пакетная студия: светлая карточка с полоской цвета тренировки и фото тренеров. */
+  /** Пакетная студия: светлая карточка с полоской цвета тренировки. */
   packages: boolean;
   onOpen: () => void;
   onCopy: () => void;
@@ -1030,7 +1031,7 @@ function EntryCard({
         <button
           type="button"
           onClick={onOpen}
-          className="flex h-full w-full cursor-pointer flex-col px-1.5 py-1 text-left hover:bg-accent/40"
+          className="flex h-full w-full cursor-pointer flex-col px-1.5 py-0.5 text-left hover:bg-accent/40"
         >
           <span className="flex w-full items-start justify-between gap-1">
             <span className="whitespace-nowrap text-muted-foreground">
@@ -1040,34 +1041,24 @@ function EntryCard({
           </span>
           <span
             className={cn(
-              "mt-0.5 text-[13px] font-semibold leading-snug",
+              "mt-0.5 text-[13px] font-semibold leading-tight",
               // Персональному название в одну строку — место под клиента.
               clients ? "truncate" : "line-clamp-2",
             )}
           >
             {entryTitle(entry)}
           </span>
+          {/* Фото тренеров на карточке нет (решение владельца 2026-10-11) —
+              только имена: карточка ниже. У персонального «тренер + клиент» —
+              до двух строк, имя клиента не режем. pr-5 — место под «Копировать». */}
           {people && (
-            <span className="mt-0.5 flex min-w-0 items-center gap-1 pr-5">
-              <span className="flex shrink-0 -space-x-1.5">
-                {trainers.map((t) => (
-                  <EmployeePhoto
-                    key={t.id}
-                    value={t.photo_url ?? null}
-                    name={t.full_name}
-                    className="size-4 text-[7px] ring-1 ring-background"
-                  />
-                ))}
-              </span>
-              {/* У персонального «тренер + клиент» — до двух строк, имя клиента не режем. */}
-              <span
-                className={cn(
-                  "text-muted-foreground",
-                  clients ? "line-clamp-2 break-words" : "truncate",
-                )}
-              >
-                {people}
-              </span>
+            <span
+              className={cn(
+                "mt-0.5 min-w-0 pr-5 text-muted-foreground",
+                clients ? "line-clamp-2 break-words" : "truncate",
+              )}
+            >
+              {people}
             </span>
           )}
         </button>
@@ -1092,7 +1083,7 @@ function EntryCard({
       <button
         type="button"
         onClick={onOpen}
-        className="flex h-full w-full cursor-pointer flex-col px-2 py-1 text-left hover:opacity-90"
+        className="flex h-full w-full cursor-pointer flex-col px-2 py-0.5 text-left hover:opacity-90"
       >
         <span className="flex w-full items-start justify-between gap-1">
           <span className="whitespace-nowrap opacity-80">
@@ -1100,10 +1091,11 @@ function EntryCard({
           </span>
           <CapacityBadge entry={entry} />
         </span>
-        <span className="mt-0.5 text-[13px] font-semibold leading-snug line-clamp-2">
+        <span className="mt-0.5 text-[13px] font-semibold leading-tight line-clamp-2">
           {entryTitle(entry)}
         </span>
-        {names && <span className="block truncate opacity-80">{names}</span>}
+        {/* pr-5 — место под «Копировать» в углу. */}
+        {names && <span className="block truncate pr-5 opacity-80">{names}</span>}
       </button>
       {/* Соседняя кнопка поверх карточки, а не вложенная в неё — там же, где была. */}
       <button
