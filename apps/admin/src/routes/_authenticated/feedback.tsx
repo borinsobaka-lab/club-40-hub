@@ -48,6 +48,7 @@ import { TableSkeletonRows } from "@/components/skeletons";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
+import { FeedbackPageSkeleton, FeedbackStatsSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -56,6 +57,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({ meta: [{ title: "Обратная связь — Base40 Admin" }] }),
+  pendingComponent: FeedbackPageSkeleton,
   component: FeedbackPage,
 });
 
@@ -195,27 +197,32 @@ function FeedbackPage() {
       }
     >
       <div className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border bg-background p-4">
-            <p className="text-xs text-muted-foreground">В этом месяце</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">{thisMonth.length}</p>
+        {/* Пока отзывы грузятся — болванки значений, а не нули. */}
+        {loading ? (
+          <FeedbackStatsSkeleton />
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border bg-background p-4">
+              <p className="text-xs text-muted-foreground">В этом месяце</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{thisMonth.length}</p>
+            </div>
+            <div className="rounded-lg border bg-background p-4">
+              <p className="text-xs text-muted-foreground">Не отработано</p>
+              <p
+                className={cn(
+                  "mt-1 text-2xl font-semibold tabular-nums",
+                  pendingCount > 0 && "text-destructive",
+                )}
+              >
+                {pendingCount}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-background p-4">
+              <p className="text-xs text-muted-foreground">Отработано в этом месяце</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{resolvedThisMonth}</p>
+            </div>
           </div>
-          <div className="rounded-lg border bg-background p-4">
-            <p className="text-xs text-muted-foreground">Не отработано</p>
-            <p
-              className={cn(
-                "mt-1 text-2xl font-semibold tabular-nums",
-                pendingCount > 0 && "text-destructive",
-              )}
-            >
-              {pendingCount}
-            </p>
-          </div>
-          <div className="rounded-lg border bg-background p-4">
-            <p className="text-xs text-muted-foreground">Отработано в этом месяце</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">{resolvedThisMonth}</p>
-          </div>
-        </div>
+        )}
 
         <TableToolbar>
           <Select value={topicFilter} onValueChange={setTopicFilter}>
@@ -351,7 +358,7 @@ function FeedbackPage() {
               )}
             </TableBody>
           </Table>
-          <DataPagination {...pg} />
+          <DataPagination {...pg} loading={loading} />
         </div>
       </div>
 

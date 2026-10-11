@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus } from "lucide-react";
+import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -16,6 +16,7 @@ import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHODS,
   SALE_TIPS,
+  saleDeleteDescription,
   type MembershipKind,
   type PaymentMethod,
 } from "@/lib/payments";
@@ -53,6 +54,9 @@ import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-to
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
 import { CommentCell } from "@/components/comment-cell";
+import { RowContextMenu } from "@/components/row-context-menu";
+import { useConfirm } from "@/components/confirm-dialog";
+import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
 
 // «Абонементы» пакетной студии (STUDIO_FORMATS.md): проданные клиентам
 // абонементы, одна строка — одна продажа. Здесь администраторы собирают деньги
@@ -186,6 +190,7 @@ const BASE_COLUMNS = 5;
 
 export const Route = createFileRoute("/_authenticated/client-memberships")({
   head: () => ({ meta: [{ title: "Абонементы — Base40 Admin" }] }),
+  pendingComponent: ClientMembershipsPageSkeleton,
   component: ClientMembershipsRoute,
 });
 
@@ -207,6 +212,7 @@ function daysUntil(iso: string) {
 }
 
 function ClientMembershipsPage() {
+  const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -239,6 +245,34 @@ function ClientMembershipsPage() {
     errorMessage: "Не удалось загрузить абонементы",
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
+
+  // Строка — продажа: удаляем её, абонемент клиента база удаляет вместе с ней
+  // (db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql).
+  const handleDelete = async (r: Row) => {
+    if (
+      !(await confirm({
+        title: "Удалить абонемент?",
+        description: saleDeleteDescription(
+          r.clients ? clientName(r.clients) : null,
+          r.memberships?.name ?? null,
+        ),
+      }))
+    )
+      return;
+    const { error } = await supabase.from("sales").delete().eq("id", r.id);
+    if (error) {
+      toast.error("Ошибка удаления: " + error.message);
+      return;
+    }
+    toast.success("Абонемент и продажа удалены");
+    for (const key of [
+      "client_packages_list",
+      "sales_list",
+      "client_memberships",
+      "clients_with_status",
+    ])
+      queryClient.invalidateQueries({ queryKey: [key] });
+  };
   const crmLinkOf = useCrmLinks(
     studioId,
     "id",
@@ -319,72 +353,84 @@ function ClientMembershipsPage() {
                   </TableRow>
                 ) : (
                   table.rows.map((r) => (
-                    <TableRow key={r.id} className={cn(PAYMENT_STATES[r.payment_state].mobile)}>
-                      <TableCell className="relative font-medium">
-                        {PAYMENT_STATES[r.payment_state].stripe && (
-                          <span
-                            aria-hidden
-                            className={cn(
-                              "absolute inset-y-0 left-0 w-1 max-md:hidden",
-                              PAYMENT_STATES[r.payment_state].stripe,
-                            )}
-                          />
-                        )}
-                        <span className="sr-only">{PAYMENT_STATES[r.payment_state].label}. </span>
-                        {r.clients ? (
-                          <ClientNameLink clientId={r.client_id} crmLink={crmLinkOf(r.client_id)}>
-                            {clientName(r.clients)}
-                          </ClientNameLink>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                        {r.clients?.phone && (
-                          <div className="text-xs font-normal text-muted-foreground">
-                            {r.clients.phone}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="min-w-[130px]">
-                        <div>{r.memberships?.name ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {r.memberships?.kind === "trial" && "Пробное · "}
-                          {r.memberships?.kind === "personal" && "Персональные · "}
-                          {formatDate(r.sold_at)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap tabular-nums">
-                        <Balance row={r} />
-                        <div className="text-xs">
-                          <DaysLeft
-                            status={r.membership_status}
-                            endsAt={r.ends_at}
-                            notStarted={r.starts_on_first_visit && !r.membership_started_at}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>{r.admin_name ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[200px] space-y-1">
-                          {r.comment?.trim() && (
-                            <div className="text-xs">
-                              <div className="text-muted-foreground/70">При продаже</div>
-                              <CommentCell text={r.comment} />
+                    <RowContextMenu
+                      key={r.id}
+                      actions={[
+                        {
+                          label: "Удалить",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => handleDelete(r),
+                        },
+                      ]}
+                    >
+                      <TableRow className={cn(PAYMENT_STATES[r.payment_state].mobile)}>
+                        <TableCell className="relative font-medium">
+                          {PAYMENT_STATES[r.payment_state].stripe && (
+                            <span
+                              aria-hidden
+                              className={cn(
+                                "absolute inset-y-0 left-0 w-1 max-md:hidden",
+                                PAYMENT_STATES[r.payment_state].stripe,
+                              )}
+                            />
+                          )}
+                          <span className="sr-only">{PAYMENT_STATES[r.payment_state].label}. </span>
+                          {r.clients ? (
+                            <ClientNameLink clientId={r.client_id} crmLink={crmLinkOf(r.client_id)}>
+                              {clientName(r.clients)}
+                            </ClientNameLink>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                          {r.clients?.phone && (
+                            <div className="text-xs font-normal text-muted-foreground">
+                              {r.clients.phone}
                             </div>
                           )}
-                          <NoteCell saleId={r.id} note={r.membership_note} onSaved={reload} />
-                        </div>
-                      </TableCell>
-                      {Array.from({ length: paymentColumns }, (_, i) => (
-                        <TableCell key={i}>
-                          <PaymentCell payment={r.payments?.[i]} onSaved={reload} />
                         </TableCell>
-                      ))}
-                    </TableRow>
+                        <TableCell className="min-w-[130px]">
+                          <div>{r.memberships?.name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {r.memberships?.kind === "trial" && "Пробное · "}
+                            {r.memberships?.kind === "personal" && "Персональные · "}
+                            {formatDate(r.sold_at)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums">
+                          <Balance row={r} />
+                          <div className="text-xs">
+                            <DaysLeft
+                              status={r.membership_status}
+                              endsAt={r.ends_at}
+                              notStarted={r.starts_on_first_visit && !r.membership_started_at}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>{r.admin_name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[200px] space-y-1">
+                            {r.comment?.trim() && (
+                              <div className="text-xs">
+                                <div className="text-muted-foreground/70">При продаже</div>
+                                <CommentCell text={r.comment} />
+                              </div>
+                            )}
+                            <NoteCell saleId={r.id} note={r.membership_note} onSaved={reload} />
+                          </div>
+                        </TableCell>
+                        {Array.from({ length: paymentColumns }, (_, i) => (
+                          <TableCell key={i}>
+                            <PaymentCell payment={r.payments?.[i]} onSaved={reload} />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </RowContextMenu>
                   ))
                 )}
               </TableBody>
@@ -394,6 +440,7 @@ function ClientMembershipsPage() {
           </div>
         </RequireStudio>
       </div>
+      {confirmDialog}
     </AdminShell>
   );
 }

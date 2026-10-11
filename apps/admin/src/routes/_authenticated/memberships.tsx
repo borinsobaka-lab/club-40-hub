@@ -41,6 +41,7 @@ import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { MembershipsPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -58,6 +59,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/memberships")({
   head: () => ({ meta: [{ title: "Номенклатуры — Base40 Admin" }] }),
+  pendingComponent: MembershipsPageSkeleton,
   component: MembershipsRoute,
 });
 
@@ -290,7 +292,7 @@ function MembershipsPage() {
                 )}
               </TableBody>
             </Table>
-            <DataPagination {...pg} />
+            <DataPagination {...pg} loading={loading} />
           </div>
         </RequireStudio>
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -49,6 +50,8 @@ type Props = {
   total: number;
   setPage: (p: number) => void;
   setPageSize: (s: number) => void;
+  /** Первая загрузка: вместо «0–0 из 0» и «1 / 1» — болванки, стрелки выключены. */
+  loading?: boolean;
   className?: string;
 };
 
@@ -59,6 +62,7 @@ export function DataPagination({
   total,
   setPage,
   setPageSize,
+  loading = false,
   className,
 }: Props) {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -89,9 +93,13 @@ export function DataPagination({
         </Select>
       </div>
       <div className="flex items-center gap-2 text-sm text-muted-foreground sm:gap-3">
-        <span className="whitespace-nowrap tabular-nums">
-          {from}–{to} из {total}
-        </span>
+        {loading ? (
+          <Skeleton className="h-4 w-20" />
+        ) : (
+          <span className="whitespace-nowrap tabular-nums">
+            {from}–{to} из {total}
+          </span>
+        )}
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
@@ -99,7 +107,7 @@ export function DataPagination({
             className="max-sm:hidden"
             onClick={() => setPage(1)}
             aria-label="Первая страница"
-            disabled={page <= 1}
+            disabled={loading || page <= 1}
           >
             <ChevronsLeft />
           </Button>
@@ -108,19 +116,23 @@ export function DataPagination({
             size="icon"
             onClick={() => setPage(page - 1)}
             aria-label="Предыдущая страница"
-            disabled={page <= 1}
+            disabled={loading || page <= 1}
           >
             <ChevronLeft />
           </Button>
-          <span className="whitespace-nowrap px-1 tabular-nums sm:px-2">
-            {page} / {pageCount}
-          </span>
+          {loading ? (
+            <Skeleton className="mx-1 h-4 w-8 sm:mx-2" />
+          ) : (
+            <span className="whitespace-nowrap px-1 tabular-nums sm:px-2">
+              {page} / {pageCount}
+            </span>
+          )}
           <Button
             variant="outline"
             size="icon"
             onClick={() => setPage(page + 1)}
             aria-label="Следующая страница"
-            disabled={page >= pageCount}
+            disabled={loading || page >= pageCount}
           >
             <ChevronRight />
           </Button>
@@ -130,7 +142,7 @@ export function DataPagination({
             className="max-sm:hidden"
             onClick={() => setPage(pageCount)}
             aria-label="Последняя страница"
-            disabled={page >= pageCount}
+            disabled={loading || page >= pageCount}
           >
             <ChevronsRight />
           </Button>

@@ -37,9 +37,11 @@ import { TableSkeletonRows } from "@/components/skeletons";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { BOOKING_STATUS_FILTER, BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
 import { formatDateTime } from "@/lib/format";
+import { BookingsLogPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/bookings-log")({
   head: () => ({ meta: [{ title: "История записей — Base40 Admin" }] }),
+  pendingComponent: BookingsLogPageSkeleton,
   component: BookingsLogPage,
 });
 

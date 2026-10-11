@@ -14,7 +14,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { CardSkeleton } from "@/components/skeletons";
+import { ScriptsSubstitutionSkeleton } from "@/components/page-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -116,7 +117,7 @@ export function SubstitutionTab({ canEdit }: { canEdit: boolean }) {
   );
   const problem = useMemo(() => (form ? findProblem(form) : ""), [form]);
 
-  if (isPending || !form || !settings) return <CardSkeleton rows={3} />;
+  if (isPending || !form || !settings) return <ScriptsSubstitutionSkeleton />;
 
   const update = (patch: Partial<Draft>) => setDraft({ ...form, ...patch });
   const setStudio = (i: number, patch: Partial<StudioNames>) =>
@@ -235,7 +236,15 @@ export function SubstitutionTab({ canEdit }: { canEdit: boolean }) {
           hint="{админ} — имя того, кто вошёл; так, как его пишут клиенту. Пусто по-русски — имя из профиля."
         >
           {staffLoading ? (
-            <CardSkeleton rows={2} />
+            // Строки сотрудников той же сетки: имя + три языка.
+            Array.from({ length: 2 }, (_, i) => (
+              <div key={i} className={ROW}>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))
           ) : staff.length ? (
             <>
               <GridHead first="Сотрудник" />

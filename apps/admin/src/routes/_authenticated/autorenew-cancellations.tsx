@@ -29,9 +29,11 @@ import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { AutorenewPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/autorenew-cancellations")({
   head: () => ({ meta: [{ title: "Отмены автопродления — Base40 Admin" }] }),
+  pendingComponent: AutorenewPageSkeleton,
   component: AutorenewCancellationsRoute,
 });
 
@@ -199,7 +201,7 @@ function AutorenewCancellationsPage() {
                 )}
               </TableBody>
             </Table>
-            <DataPagination {...pg} />
+            <DataPagination {...pg} loading={loading} />
           </div>
         </RequireStudio>
       </div>

@@ -62,6 +62,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { EmployeesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -74,6 +75,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Доступы — Base40 Admin" }] }),
+  pendingComponent: EmployeesPageSkeleton,
   component: EmployeesPage,
 });
 

@@ -61,9 +61,15 @@ import {
   type SeriesKind,
   type SeriesPoint,
 } from "@/lib/dashboard-series";
+import {
+  DashboardPageSkeleton,
+  DashboardStatsSkeleton,
+  DashboardStudioSkeleton,
+} from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Дашборд — Base40 Admin" }] }),
+  pendingComponent: DashboardPageSkeleton,
   component: DashboardPage,
 });
 
@@ -639,10 +645,7 @@ function DashboardPage() {
   return (
     <AdminShell title="Дашборд">
       {isLoading || !access ? (
-        <div className="space-y-3">
-          <Skeleton className="h-7 w-48" />
-          <StatsSkeleton />
-        </div>
+        <DashboardStudioSkeleton />
       ) : list.length === 0 ? (
         <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
           Нет клубов, где вам открыт дашборд.
@@ -655,20 +658,6 @@ function DashboardPage() {
         </div>
       )}
     </AdminShell>
-  );
-}
-
-function StatsSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
-      {STATS.map((stat) => (
-        <div key={stat.key} className="rounded-lg border bg-background p-3 sm:p-4">
-          <Skeleton className="h-4 w-full max-w-32" />
-          <Skeleton className="mt-3 h-7 w-24" />
-          <Skeleton className="mt-2 h-3 w-20" />
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -788,7 +777,7 @@ function StudioDashboard({ studio }: { studio: Studio }) {
       </TableToolbar>
 
       {loading ? (
-        <StatsSkeleton />
+        <DashboardStatsSkeleton />
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
           {STATS.map((stat) => {

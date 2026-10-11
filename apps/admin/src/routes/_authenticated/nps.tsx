@@ -54,11 +54,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
-import { Skeleton } from "@/components/ui/skeleton";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { cn } from "@/lib/utils";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
+import { NpsPageSkeleton, NpsStatsSkeleton, NpsSurveysSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -68,6 +68,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/nps")({
   head: () => ({ meta: [{ title: "NPS-опросы — Base40 Admin" }] }),
+  pendingComponent: NpsPageSkeleton,
   component: NpsPage,
 });
 
@@ -271,16 +272,13 @@ function NpsPage() {
           </TabsList>
         </Tabs>
 
+        {/* Болванка своей вкладки: у «Опросов» и «Статистики» разная раскладка. */}
         {loading ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-lg border bg-background p-4">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="mt-2 h-3 w-2/3" />
-                <Skeleton className="mt-4 h-8 w-24" />
-              </div>
-            ))}
-          </div>
+          tab === "surveys" ? (
+            <NpsSurveysSkeleton />
+          ) : (
+            <NpsStatsSkeleton />
+          )
         ) : tab === "surveys" ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {SURVEY_TYPES.map((s) => {
@@ -486,7 +484,7 @@ function NpsPage() {
                   )}
                 </TableBody>
               </Table>
-              <DataPagination {...pg} />
+              <DataPagination {...pg} loading={loading} />
             </div>
           </div>
         )}

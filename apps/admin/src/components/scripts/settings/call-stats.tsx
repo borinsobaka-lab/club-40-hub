@@ -15,7 +15,8 @@
 import { Fragment, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { CardSkeleton, TableSkeletonRows } from "@/components/skeletons";
+import { TableCardSkeleton, TableSkeletonRows } from "@/components/skeletons";
+import { CallStatsSummarySkeleton } from "@/components/page-skeletons";
 import { TableToolbar } from "@/components/table-toolbar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -142,7 +143,14 @@ export function CallStatsTab() {
       </div>
 
       {isPending ? (
-        <CardSkeleton rows={3} />
+        view === "summary" ? (
+          <CallStatsSummarySkeleton />
+        ) : (
+          <TableCardSkeleton
+            rows={5}
+            headers={["Когда", "Кто", "Дошёл до этапа", "Закончил на", "Шаги"]}
+          />
+        )
       ) : !data ? (
         <EmptyCard title="Статистика не загрузилась">Нажмите «Обновить» в шапке.</EmptyCard>
       ) : !data.sections.length ? (

@@ -11,7 +11,7 @@ import { Check, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { CardSkeleton } from "@/components/skeletons";
+import { ScriptsFeedSkeleton } from "@/components/page-skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { usePlaybook } from "@/lib/scripts/data";
@@ -55,7 +55,7 @@ export function SuggestionsTab({
     errorMessage: "Не удалось загрузить предложения",
   });
 
-  if (loading) return <CardSkeleton rows={3} />;
+  if (loading) return <ScriptsFeedSkeleton />;
   if (!items.length)
     return (
       <EmptyCard title="Предложений пока нет">

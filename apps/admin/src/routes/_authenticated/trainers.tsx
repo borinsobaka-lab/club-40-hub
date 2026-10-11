@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { TrainersPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -66,6 +67,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/trainers")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
+  pendingComponent: TrainersPageSkeleton,
   component: StaffPage,
 });
 
@@ -263,7 +265,7 @@ function EmployeesTable({
           )}
         </TableBody>
       </Table>
-      <DataPagination {...pg} />
+      <DataPagination {...pg} loading={loading} />
       {confirmDialog}
     </div>
   );

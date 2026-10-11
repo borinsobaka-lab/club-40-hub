@@ -35,6 +35,7 @@ import { DataPagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime, formatMoneyPrecise, toDateTimeLocalValue } from "@/lib/format";
+import { CashPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -47,6 +48,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/cash")({
   head: () => ({ meta: [{ title: "Касса — Base40 Admin" }] }),
+  pendingComponent: CashPageSkeleton,
   component: CashPage,
 });
 

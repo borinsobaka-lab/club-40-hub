@@ -59,6 +59,7 @@ import { RowContextMenu } from "@/components/row-context-menu";
 import { ClientDialog } from "@/components/client-form-dialog";
 import { CLIENT_TIPS } from "@/lib/client-fields";
 import { formatPhoneDisplay } from "@/lib/contacts";
+import { ClientsPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -79,6 +80,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Клиенты — Base40 Admin" }] }),
+  pendingComponent: ClientsPageSkeleton,
   component: ClientsPage,
 });
 

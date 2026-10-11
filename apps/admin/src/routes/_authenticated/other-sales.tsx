@@ -56,6 +56,7 @@ import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { CommentCell } from "@/components/comment-cell";
+import { OtherSalesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -68,6 +69,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/other-sales")({
   head: () => ({ meta: [{ title: "Прочие продажи — Base40 Admin" }] }),
+  pendingComponent: OtherSalesPageSkeleton,
   component: OtherSalesPage,
 });
 
@@ -345,7 +347,7 @@ function SalesTab({
             )}
           </TableBody>
         </Table>
-        <DataPagination {...pg} />
+        <DataPagination {...pg} loading={loading} />
       </div>
 
       <AddSaleDialog
@@ -712,7 +714,7 @@ function CatalogTab({
             )}
           </TableBody>
         </Table>
-        <DataPagination {...pg} />
+        <DataPagination {...pg} loading={loading} />
       </div>
 
       <CatalogDialog

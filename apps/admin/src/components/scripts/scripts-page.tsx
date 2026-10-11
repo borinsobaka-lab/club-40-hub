@@ -26,7 +26,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TableToolbar } from "@/components/table-toolbar";
-import { CardSkeleton } from "@/components/skeletons";
+import { ScriptsListSkeleton } from "@/components/page-skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
@@ -422,7 +423,8 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
 
   let content: React.ReactNode;
   if (isLoading || !access) {
-    content = <CardSkeleton />;
+    // Болванки карточек скриптов: в «Все скрипты» — по разделам.
+    content = <ScriptsListSkeleton grouped={!sectionId} />;
   } else if (searching) {
     content = hits.length ? (
       <div className="space-y-3">
@@ -594,7 +596,11 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
             )}
           </TableToolbar>
         </div>
-        {!isLoading && access && <p className="text-sm text-muted-foreground">{hint}</p>}
+        {!isLoading && access ? (
+          <p className="text-sm text-muted-foreground">{hint}</p>
+        ) : (
+          <Skeleton className="h-4 w-48" />
+        )}
         {content}
       </div>
 
