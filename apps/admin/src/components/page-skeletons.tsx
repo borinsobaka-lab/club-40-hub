@@ -382,7 +382,7 @@ export function ClientMembershipsPageSkeleton() {
   return (
     <TablePage
       title="Абонементы"
-      toolbar={{ controls: ["w-48"] }}
+      toolbar={{ controls: ["w-48", "w-48"] }}
       headers={[
         { label: "Клиент", className: "min-w-[170px]" },
         "Абонемент",

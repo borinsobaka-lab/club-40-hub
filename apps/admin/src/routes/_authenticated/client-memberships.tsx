@@ -50,6 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination } from "@/components/data-pagination";
+import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
@@ -69,7 +70,8 @@ import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
 /** Подсказки «?» колонок и полей. */
 const TIPS = {
   client: "Кому продан абонемент. Нажмите на имя — откроется карточка клиента.",
-  membership: "Что продано (из «Номенклатур») и дата продажи.",
+  membership:
+    "Что продано (из «Номенклатур»): «С» — дата продажи, «До» — последний день срока абонемента. У продления срок появится после первого посещения по нему.",
   balance:
     "Тренировок на балансе (из скольких в пакете), ниже — персональных, если они входят, и сколько дней осталось до конца срока. Групповые списываются, когда отмечено посещение группового занятия, персональные — персонального. Срок задан в «Номенклатурах» и считается от даты продажи.",
   soldBy: `Кто продал — администратор, оформивший продажу. Ниже — тренер при продаже. ${SALE_TIPS.trainer}`,
@@ -86,6 +88,8 @@ const TIPS = {
   paymentMethod: "Как заплатил клиент — для отчётов, как способ оплаты в «Продажах».",
   renewal:
     "Продление: тренировки списываются после текущего абонемента, срок идёт с первого посещения по нему.",
+  nextPayment:
+    "Абонементы, у которых ближайший невнесённый платёж приходится на выбранные даты. Одна дата — платежи за этот день, две — за период.",
 };
 
 /**
@@ -211,16 +215,26 @@ function daysUntil(iso: string) {
   return Math.round((toUtc(iso) - toUtc(todayISO())) / 86_400_000);
 }
 
+/** Дата календаря как YYYY-MM-DD (локальная, без перевода в UTC). */
+function isoDay(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function ClientMembershipsPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [state, setState] = useState<PaymentState | typeof ALL>(ALL);
+  // Ближайший платёж: одна дата (выбран только день) — платежи за этот день.
+  const [nextPayment, setNextPayment] = useState<DateRange | undefined>();
+  const payFrom = nextPayment?.from ? isoDay(nextPayment.from) : "";
+  // Выбран только первый день диапазона — это и есть «одно число».
+  const payTo = nextPayment?.to ? isoDay(nextPayment.to) : payFrom;
 
   const term = sanitizeSearch(useDebouncedValue(search));
   const table = useServerTable<Row>({
-    queryKey: ["client_packages_list", studioId, term, state],
+    queryKey: ["client_packages_list", studioId, term, state, payFrom, payTo],
     queryFn: async ({ from, to }) => {
       // Досчитать очередь продлений: у кого срок текущего абонемента вышел без
       // записей, продление становится действующим (packages_settle_studio).
@@ -232,9 +246,11 @@ function ClientMembershipsPage() {
         .eq("studio_id", studioId!);
       if (term) q = q.ilike("search_text", `%${phoneSearchTerm(term)}%`);
       if (state !== ALL) q = q.eq("payment_state", state);
+      // next_due_date во вью — ближайший невнесённый платёж (у оплаченных — null).
+      if (payFrom) q = q.gte("next_due_date", payFrom).lte("next_due_date", payTo);
       // Ждут платежа и просроченные — по ближайшему платежу: сверху те, с кем
       // разбираться первыми. Остальное — новые продажи сверху.
-      if (state === "overdue" || state === "soon" || state === "pending")
+      if (payFrom || state === "overdue" || state === "soon" || state === "pending")
         q = q.order("next_due_date", { ascending: true });
       return q
         .order("sold_at", { ascending: false })
@@ -284,7 +300,7 @@ function ClientMembershipsPage() {
     ...table.rows.map((r) => r.payments?.length ?? 0),
   );
   const columns = BASE_COLUMNS + paymentColumns;
-  const filtered = !!term || state !== ALL;
+  const filtered = !!term || state !== ALL || !!payFrom;
 
   return (
     <AdminShell title="Абонементы">
@@ -309,11 +325,18 @@ function ClientMembershipsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <DateRangeFilter
+              value={nextPayment}
+              onChange={setNextPayment}
+              placeholder="Ближайший платёж"
+              title={TIPS.nextPayment}
+            />
             <ToolbarReset
               active={filtered}
               onReset={() => {
                 setSearch("");
                 setState(ALL);
+                setNextPayment(undefined);
               }}
             />
             <StripeLegend />
@@ -391,10 +414,21 @@ function ClientMembershipsPage() {
                         </TableCell>
                         <TableCell className="min-w-[130px]">
                           <div>{r.memberships?.name ?? "—"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {r.memberships?.kind === "trial" && "Пробное · "}
-                            {r.memberships?.kind === "personal" && "Персональные · "}
-                            {formatDate(r.sold_at)}
+                          {r.memberships?.kind !== "package" && r.memberships?.kind && (
+                            <div className="text-xs text-muted-foreground">
+                              {r.memberships.kind === "trial" ? "Пробное" : "Персональные"}
+                            </div>
+                          )}
+                          <div className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                            С {formatDate(r.sold_at)}
+                          </div>
+                          <div className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                            До{" "}
+                            {r.ends_at
+                              ? formatDate(r.ends_at)
+                              : r.starts_on_first_visit
+                                ? "— с 1-го посещения"
+                                : "—"}
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap tabular-nums">

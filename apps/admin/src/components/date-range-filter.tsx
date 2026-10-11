@@ -20,6 +20,8 @@ const short = (d: Date) => format(d, "dd.MM.yy", { locale: ru });
  */
 function formatDateRange(value: DateRange | undefined): string | null {
   if (value?.from && value.to) {
+    // Выбран один день («Абонементы»: платежи за число) — одна дата.
+    if (value.from.toDateString() === value.to.toDateString()) return short(value.from);
     const sameYear = value.from.getFullYear() === value.to.getFullYear();
     const from = sameYear ? format(value.from, "dd.MM", { locale: ru }) : short(value.from);
     return `${from}–${short(value.to)}`;
@@ -40,11 +42,14 @@ export function DateRangeFilter({
   value,
   onChange,
   placeholder,
+  title,
   className,
 }: {
   value: DateRange | undefined;
   onChange: (value: DateRange | undefined) => void;
   placeholder: string;
+  /** Всплывающая подсказка: что именно фильтрует период. */
+  title?: string;
   className?: string;
 }) {
   const isMobile = useIsMobile();
@@ -57,6 +62,7 @@ export function DateRangeFilter({
           type="button"
           data-field=""
           aria-label={text ? `${placeholder}: ${text}` : placeholder}
+          title={title}
           className={cn(fieldTriggerClass, "w-48 tabular-nums", className)}
         >
           <span className="flex min-w-0 items-center gap-2">
