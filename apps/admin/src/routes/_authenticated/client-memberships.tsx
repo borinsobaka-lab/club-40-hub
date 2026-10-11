@@ -53,7 +53,7 @@ import { DataPagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
-import { CommentCell } from "@/components/comment-cell";
+import { CommentCell, noteChipClass } from "@/components/comment-cell";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
@@ -542,8 +542,10 @@ function NoteCell({
           type="button"
           title={value ? "Изменить комментарий" : "Добавить комментарий"}
           className={cn(
-            "line-clamp-2 min-w-[140px] max-w-[200px] cursor-pointer whitespace-pre-wrap break-words text-left hover:text-foreground",
-            value ? "text-foreground" : "text-muted-foreground",
+            "line-clamp-2 min-w-[140px] max-w-[200px] cursor-pointer whitespace-pre-wrap break-words text-left",
+            value
+              ? cn(noteChipClass, "hover:border-note-foreground/40")
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {value || (
@@ -607,7 +609,7 @@ function NoteForm({
   return (
     <form onSubmit={handleSave} className="space-y-3">
       <FormField label="Комментарий" tip={TIPS.note}>
-        <Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} autoFocus />
+        <Textarea note rows={4} value={text} onChange={(e) => setText(e.target.value)} autoFocus />
       </FormField>
       <PopoverButtons saving={saving} onCancel={onCancel} />
     </form>

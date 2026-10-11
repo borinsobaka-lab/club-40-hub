@@ -12,6 +12,7 @@ import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { cn } from "@/lib/utils";
+import { noteChipClass } from "@/components/comment-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
@@ -564,6 +565,7 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
             optional
           >
             <Textarea
+              note
               value={resolutionComment}
               onChange={(e) => setResolutionComment(e.target.value)}
               placeholder="Что сделано?"
@@ -579,7 +581,7 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
                 ` · ${format(new Date(item.resolved_at), "d MMM yyyy", { locale: ru })}`}
             </p>
             {item.resolution_comment && (
-              <p className="whitespace-pre-wrap text-sm text-foreground">
+              <p className={cn(noteChipClass, "whitespace-pre-wrap text-sm")}>
                 {item.resolution_comment}
               </p>
             )}

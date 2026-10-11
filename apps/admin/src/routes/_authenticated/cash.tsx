@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
+import { CommentCell } from "@/components/comment-cell";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -249,8 +250,8 @@ function CashPage() {
                         {formatMoneyPrecise(Number(o.amount))}
                       </TableCell>
                       <TableCell className="text-sm">{operatorName(o.user_id)}</TableCell>
-                      <TableCell className="max-w-[320px] truncate text-sm text-muted-foreground">
-                        {o.comment}
+                      <TableCell>
+                        <CommentCell text={o.comment} />
                       </TableCell>
                     </TableRow>
                   ))
@@ -409,6 +410,7 @@ function CashOperationForm({
           className="sm:col-span-2 lg:col-span-6"
         >
           <Textarea
+            note
             rows={2}
             value={comment}
             onChange={(e) => setComment(e.target.value)}

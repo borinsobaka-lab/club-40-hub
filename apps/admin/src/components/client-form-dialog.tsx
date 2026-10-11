@@ -272,7 +272,7 @@ function ClientForm({
               </FormField>
             </div>
             <FormField label="Заметки" tip={CLIENT_TIPS.notes} optional>
-              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Textarea note rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </FormField>
           </div>
         </DialogBody>

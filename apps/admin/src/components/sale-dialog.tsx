@@ -697,6 +697,7 @@ function SaleForm({
 
             <FormField label="Комментарий" optional>
               <Textarea
+                note
                 rows={2}
                 value={form.comment}
                 onChange={(e) => set("comment", e.target.value)}

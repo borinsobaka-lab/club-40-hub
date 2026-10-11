@@ -51,6 +51,7 @@ import {
 import { saleSourceLabel } from "@/lib/payments";
 import { unwrap } from "@/lib/query";
 import { cn } from "@/lib/utils";
+import { noteCardClass } from "@/components/comment-cell";
 
 type MemberProfile = {
   user_id: string;
@@ -412,7 +413,7 @@ function ClientCard<C extends ClientLike>({
             {client.notes && (
               <div>
                 <SectionLabel className="mb-2">Заметки</SectionLabel>
-                <div className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-sm">
+                <div className={cn(noteCardClass, "whitespace-pre-wrap text-sm")}>
                   {client.notes}
                 </div>
               </div>

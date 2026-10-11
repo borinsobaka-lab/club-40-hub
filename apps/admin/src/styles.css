@@ -108,6 +108,9 @@
   --color-rail: var(--rail);
   --color-canvas: var(--canvas);
   --color-field: var(--field);
+  --color-note: var(--note);
+  --color-note-border: var(--note-border);
+  --color-note-foreground: var(--note-foreground);
 }
 
 :root {
@@ -167,6 +170,17 @@
      белой заливкой отличалось от него только рамкой — заполнять неудобно.
      Тон из той же серии, что и канва, но светлее. */
   --field: #f5f6f4;
+
+  /* Заметки и комментарии — «бумажка» (решение владельца 2026-10-11): тёплый
+     тон старой бумаги, чтобы заметку о клиенте было видно сразу, а не искать
+     среди обычных полей. Поле ввода — с тенью (`Textarea note`), в таблицах
+     и карточках — тот же цвет без тени (`noteChipClass`, comment-cell.tsx). */
+  --note: #fbf3de;
+  --note-border: #e9d8ad;
+  --note-foreground: #4a3f26;
+  --note-shadow:
+    0 1px 2px rgb(120 90 30 / 0.12),
+    0 6px 14px -8px rgb(120 90 30 / 0.35);
 }
 
 .dark {
@@ -261,6 +275,20 @@
 [data-form-surface] button[role="combobox"],
 [data-form-surface] [data-field] {
   background-color: var(--field);
+}
+
+/* Поле заметки — «записка»: бумажный тон и тень, как у листка поверх
+   формы. Селектор с атрибутом сильнее `[data-form-surface] textarea`, иначе
+   в диалоге заметка получила бы серую заливку обычного поля. */
+textarea[data-note],
+[data-form-surface] textarea[data-note] {
+  background-color: var(--note);
+  border-color: var(--note-border);
+  color: var(--note-foreground);
+  box-shadow: var(--note-shadow);
+}
+textarea[data-note]::placeholder {
+  color: rgb(120 100 60 / 0.6);
 }
 
 /* Числовые поля без системных стрелок. Часть форм использует type="number",

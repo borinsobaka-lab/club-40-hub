@@ -587,6 +587,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
 
             <FormField label="Комментарий" optional>
               <Textarea
+                note
                 value={form.comment}
                 onChange={(e) => set("comment", e.target.value)}
                 placeholder="Заметка к продаже"

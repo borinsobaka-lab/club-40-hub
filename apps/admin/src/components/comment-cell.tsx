@@ -1,4 +1,16 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+
+/**
+ * Заметка или комментарий в таблице, списке, карточке — тот же тёплый
+ * «бумажный» тон, что у поля заметки (`Textarea note`), но без тени
+ * (решение владельца 2026-10-11): так заметки сразу видно.
+ */
+export const noteChipClass =
+  "rounded-md border border-note-border bg-note px-2 py-1 text-note-foreground";
+
+/** Заметка, которую ищут глазами (карточка клиента), — «записка» с тенью, как поле. */
+export const noteCardClass = `${noteChipClass} px-3 py-2.5 shadow-[var(--note-shadow)]`;
 
 /**
  * Комментарий в ячейке таблицы: в строке — первые две строки текста, по
@@ -15,14 +27,24 @@ export function CommentCell({ text }: { text: string | null | undefined }) {
         <button
           type="button"
           title="Показать комментарий целиком"
-          className="line-clamp-2 min-w-[160px] max-w-[260px] cursor-pointer whitespace-pre-wrap break-words text-left text-muted-foreground hover:text-foreground"
+          className={cn(
+            noteChipClass,
+            "line-clamp-2 min-w-[160px] max-w-[260px] cursor-pointer whitespace-pre-wrap break-words text-left hover:border-note-foreground/40",
+          )}
         >
           {value}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)]">
         <div className="mb-1 text-xs font-medium text-muted-foreground">Комментарий</div>
-        <p className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-sm">{value}</p>
+        <p
+          className={cn(
+            noteChipClass,
+            "max-h-72 overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-sm",
+          )}
+        >
+          {value}
+        </p>
       </PopoverContent>
     </Popover>
   );

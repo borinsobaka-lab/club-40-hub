@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
 
+import { CommentCell } from "@/components/comment-cell";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -335,8 +336,8 @@ function ClientsPage() {
                         <TableCell>{formatDate(c.birthday)}</TableCell>
                         <TableCell>{formatDate(c.registration_date)}</TableCell>
                         <TableCell>{formatDate(c.last_visit_date)}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                          {c.notes ?? "—"}
+                        <TableCell>
+                          <CommentCell text={c.notes} />
                         </TableCell>
                       </TableRow>
                     </RowContextMenu>
