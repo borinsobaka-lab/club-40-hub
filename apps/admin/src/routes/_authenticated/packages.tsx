@@ -10,10 +10,12 @@ import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { formatMoney } from "@/lib/format";
+import { MEMBERSHIP_KIND_LABEL, MEMBERSHIP_KINDS, type MembershipKind } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,6 +45,7 @@ import { RowContextMenu } from "@/components/row-context-menu";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
+  kind: "Пакет тренировок продаётся кнопками «Новая продажа», «Допродажа», «Продление». Пробное посещение — кнопкой «Пробное» в «Продажах».",
   visits: "Сколько тренировок входит в пакет.",
   duration: "Считается от даты продажи.",
   price:
@@ -78,6 +81,8 @@ type Package = {
   price: number;
   /** Сколькими платежами можно оплатить (1 — только сразу). */
   max_payments: number;
+  /** Пакет тренировок или пробное посещение. */
+  kind: MembershipKind;
   is_active: boolean;
 };
 
@@ -85,7 +90,7 @@ type Package = {
 type PackageDraft = Omit<Package, "id" | "studio_id">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, is_active";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, is_active";
 
 function formatDuration(days: number | null) {
   if (!days) return "—";
@@ -199,6 +204,7 @@ function PackagesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Название</TableHead>
+                  <TableHead tip={TIPS.kind}>Тип</TableHead>
                   <TableHead tip={TIPS.visits}>Тренировок</TableHead>
                   <TableHead tip={TIPS.duration}>Срок действия</TableHead>
                   <TableHead tip={TIPS.price}>Стоимость</TableHead>
@@ -209,11 +215,11 @@ function PackagesPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeletonRows columns={7} />
+                  <TableSkeletonRows columns={8} />
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       {items.length === 0
@@ -243,6 +249,15 @@ function PackagesPage() {
                     >
                       <TableRow className={p.is_active ? "" : "opacity-60"}>
                         <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell>
+                          {p.kind === "trial" ? (
+                            <Badge variant="outline">{MEMBERSHIP_KIND_LABEL.trial}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              {MEMBERSHIP_KIND_LABEL.package}
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell>{p.visits_count ?? "—"}</TableCell>
                         <TableCell>{formatDuration(p.duration_days)}</TableCell>
                         <TableCell className="font-medium">
@@ -328,6 +343,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
     init?.duration_days != null ? String(init.duration_days) : "",
   );
   const [price, setPrice] = useState(init?.price != null ? String(init.price) : "");
+  const [kind, setKind] = useState<MembershipKind>(init?.kind ?? "package");
   const [maxPayments, setMaxPayments] = useState(String(init?.max_payments ?? 1));
   const [isActive, setIsActive] = useState(init?.is_active ?? true);
   const [saving, setSaving] = useState(false);
@@ -353,7 +369,8 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
       toast.error("Укажите стоимость");
       return;
     }
-    const payments = positiveInt(maxPayments);
+    // У пробного посещения рассрочки нет — всегда один платёж.
+    const payments = kind === "trial" ? 1 : positiveInt(maxPayments);
     if (payments == null || payments > MAX_PAYMENTS_LIMIT) {
       toast.error(`Укажите число платежей — целое от 1 до ${MAX_PAYMENTS_LIMIT}`);
       return;
@@ -372,6 +389,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
         duration_days: days,
         price: priceNum,
         max_payments: payments,
+        kind,
         is_active: isActive,
         auto_renew: false,
         installment_enabled: false,
@@ -397,19 +415,37 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{item ? "Редактировать пакет" : "Новый пакет тренировок"}</DialogTitle>
+        <DialogTitle>{item ? "Редактировать номенклатуру" : "Новая номенклатура"}</DialogTitle>
         <DialogDescription>
-          Пакет — несколько тренировок за фиксированную цену на ограниченный срок.
+          Пакет — несколько тренировок за фиксированную цену на ограниченный срок. Пробное посещение
+          продаётся отдельной кнопкой «Пробное» в «Продажах».
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
+            <FormField label="Тип" tip={TIPS.kind} htmlFor={null} required>
+              <RadioGroup
+                value={kind}
+                onValueChange={(v) => setKind(v as MembershipKind)}
+                className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
+              >
+                {MEMBERSHIP_KINDS.map((k) => (
+                  <label key={k} className="flex cursor-pointer items-center gap-2 text-sm">
+                    <RadioGroupItem value={k} />
+                    <span>{MEMBERSHIP_KIND_LABEL[k]}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </FormField>
+
             <FormField label="Название" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Например: 8 тренировок"
+                placeholder={
+                  kind === "trial" ? "Например: Пробное занятие" : "Например: 8 тренировок"
+                }
               />
             </FormField>
 
@@ -442,21 +478,23 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
               </FormField>
             </div>
 
-            <FormField
-              label="Сколькими платежами можно оплатить"
-              tip={TIPS.payments}
-              hint="Платежи ежемесячные: первый — в день продажи, остаток делится на следующие."
-              required
-            >
-              <Input
-                type="number"
-                min={1}
-                max={MAX_PAYMENTS_LIMIT}
-                value={maxPayments}
-                onChange={(e) => setMaxPayments(e.target.value)}
-                className="sm:w-32"
-              />
-            </FormField>
+            {kind === "package" && (
+              <FormField
+                label="Сколькими платежами можно оплатить"
+                tip={TIPS.payments}
+                hint="Платежи ежемесячные: первый — в день продажи, остаток делится на следующие."
+                required
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={MAX_PAYMENTS_LIMIT}
+                  value={maxPayments}
+                  onChange={(e) => setMaxPayments(e.target.value)}
+                  className="sm:w-32"
+                />
+              </FormField>
+            )}
 
             <FormField label="Описание" tip={TIPS.description} optional>
               <Textarea
