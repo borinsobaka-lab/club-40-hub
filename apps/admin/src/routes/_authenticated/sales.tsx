@@ -17,6 +17,7 @@ import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHODS,
   PAYMENT_TYPE_LABEL,
+  SALE_KIND_DOT,
   SALE_KIND_LABEL,
   SALE_KINDS,
   SALE_TIPS,
@@ -128,6 +129,15 @@ type Sale = {
     | null;
 };
 
+function SaleKindDot({ kind }: { kind: SaleKind }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("size-2.5 shrink-0 rounded-full", SALE_KIND_DOT[kind])}
+    />
+  );
+}
+
 function SourceBadge({ source }: { source: Sale["source"] | null }) {
   return (
     <span
@@ -207,19 +217,16 @@ function SalesPage() {
       title="Продажи"
       actions={
         isPackages ? (
-          <>
+          // Обёртка с отступами: на широком экране .shell-actions — не flex,
+          // и кнопки без неё слипались; до lg её раскладывает .shell-actions > div.
+          <div className="flex flex-wrap gap-2">
             {SALE_KINDS.map((k) => (
-              <Button
-                key={k}
-                variant={k === "new" ? "default" : "outline"}
-                onClick={() => openSale(k)}
-                disabled={!studioId}
-              >
-                {k === "new" && <Plus />}
+              <Button key={k} onClick={() => openSale(k)} disabled={!studioId}>
+                <SaleKindDot kind={k} />
                 {SALE_KIND_LABEL[k]}
               </Button>
             ))}
-          </>
+          </div>
         ) : (
           <Button onClick={() => openSale("new")} disabled={!studioId}>
             <Plus />
@@ -328,11 +335,18 @@ function SalesPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {isPackages
-                              ? s.sale_kind
-                                ? SALE_KIND_LABEL[s.sale_kind]
-                                : "—"
-                              : PAYMENT_TYPE_LABEL[s.payment_type ?? "other"]}
+                            {isPackages ? (
+                              s.sale_kind ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <SaleKindDot kind={s.sale_kind} />
+                                  {SALE_KIND_LABEL[s.sale_kind]}
+                                </span>
+                              ) : (
+                                "—"
+                              )
+                            ) : (
+                              PAYMENT_TYPE_LABEL[s.payment_type ?? "other"]
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {s.promo_code ?? "—"}
