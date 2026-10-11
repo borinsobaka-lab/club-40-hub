@@ -20,7 +20,7 @@ import { ru } from "date-fns/locale";
  * Перерыв, после которого покупка — уже не продление, а возвращение: новый
  * абонемент куплен позже чем через столько дней после окончания прежнего.
  */
-export const RENEWAL_GRACE_DAYS = 30;
+export const RENEWAL_GRACE_DAYS = 14;
 
 /** Продажа абонемента со всем, что нужно аналитике (sales + связанные строки). */
 export type SaleRecord = {

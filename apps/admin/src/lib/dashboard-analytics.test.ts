@@ -65,8 +65,10 @@ describe("membershipPayments", () => {
 describe("classifySales", () => {
   test("первая покупка — новый, без перерыва — продление, после перерыва — возврат", () => {
     const first = sale({ clientId: "a", soldAt: "2026-01-01", endsAt: "2026-01-31" });
-    const renewal = sale({ clientId: "a", soldAt: "2026-02-20", endsAt: "2026-03-20" });
-    const back = sale({ clientId: "a", soldAt: "2026-06-01", endsAt: "2026-06-30" });
+    // через 14 дней после окончания — ещё продление
+    const renewal = sale({ clientId: "a", soldAt: "2026-02-14", endsAt: "2026-03-14" });
+    // через 15 дней — уже возврат
+    const back = sale({ clientId: "a", soldAt: "2026-03-29", endsAt: "2026-04-28" });
     const other = sale({ clientId: "b", soldAt: "2026-06-01" });
     const r = classifySales([back, other, renewal, first]);
     expect(r.get(first.id)).toBe("new");
@@ -111,13 +113,14 @@ describe("renewalRates", () => {
     ]);
     const march = rates[0];
     expect([march.renewed, march.renewalBase, march.renewal]).toEqual([1, 2, 50]);
-    // На начало июня больше 30 дней без абонемента все трое (a — с 20 апреля),
+    // На начало июня больше 14 дней без абонемента все трое (a — с 20 апреля),
     // вернулся только b.
     const june = rates[3];
     expect([june.returned, june.returnBase]).toEqual([1, 3]);
     expect(june.returnRate).toBeCloseTo(33.33, 1);
-    // В апреле с окончания у b прошёл всего 31 день — уже ушедший, c — 27 дней ещё нет.
-    expect(rates[1].returnBase).toBe(1);
+    // На начало апреля больше 14 дней без абонемента b и c (с 1 и 5 марта),
+    // у a абонемент действует до 20 апреля.
+    expect(rates[1].returnBase).toBe(2);
   });
 });
 
