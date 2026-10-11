@@ -3,20 +3,20 @@ import { AltArrowLeft, Refresh } from "@solar-icons/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  FREQUENCY_LABEL,
+  HEALTH_NOTES_LABEL,
+  STEP_TITLES,
+  TIMES_LABEL,
+  hasHealthIssues,
+  type Experience,
+  type HealthFlag,
+  type PrefTime,
+  type Referral,
+} from "@/lib/onboarding";
 
 // Общее для анкет обоих приложений: подписочного (src/routes/onboarding.tsx)
 // и пакетного (src/formats/packages/onboarding.tsx). Ответы — member_profiles.
-
-export type Experience = "beginner" | "occasional" | "regular" | "advanced";
-export type HealthFlag =
-  | "back_joints"
-  | "cardio_pressure"
-  | "recent_injury"
-  | "pregnancy"
-  | "chronic"
-  | "none";
-export type PrefTime = "morning" | "day" | "evening";
-export type Referral = "instagram" | "referral" | "walk_by" | "search" | "other";
 
 export function OnboardingLoading() {
   return (
@@ -134,58 +134,212 @@ export function StepTitle({ title, subtitle }: { title: string; subtitle?: strin
   );
 }
 
-/* ===== Steps ===== */
+/* ===== Вопросы =====
+   Заголовки (STEP_TITLES, lib/onboarding.ts) и варианты ответов (…Options) — отдельно: в
+   подписочной анкете они идут одним блоком (Step…), в пакетной заголовок —
+   в тёмной шапке, варианты — в белой панели. */
 
-export function StepExperience({
+function ChoiceList<T extends string | number>({
+  opts,
+  isActive,
+  onPick,
+}: {
+  opts: { v: T; label: string }[];
+  isActive: (v: T) => boolean;
+  onPick: (v: T) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {opts.map((o) => (
+        <OptionButton key={o.v} active={isActive(o.v)} onClick={() => onPick(o.v)}>
+          {o.label}
+        </OptionButton>
+      ))}
+    </div>
+  );
+}
+
+const EXPERIENCE_OPTS: { v: Experience; label: string }[] = [
+  { v: "beginner", label: "Новичок или большой перерыв" },
+  { v: "occasional", label: "Тренируюсь время от времени" },
+  { v: "regular", label: "Регулярно, 2–3 раза в неделю" },
+  { v: "advanced", label: "Опытный, тренируюсь интенсивно" },
+];
+
+export function ExperienceOptions({
   value,
   onChange,
 }: {
   value: Experience | null;
   onChange: (v: Experience) => void;
 }) {
-  const opts: { v: Experience; label: string }[] = [
-    { v: "beginner", label: "Новичок или большой перерыв" },
-    { v: "occasional", label: "Тренируюсь время от времени" },
-    { v: "regular", label: "Регулярно, 2–3 раза в неделю" },
-    { v: "advanced", label: "Опытный, тренируюсь интенсивно" },
-  ];
-  return (
-    <div>
-      <StepTitle title="Какой у вас опыт тренировок?" />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
-      </div>
-    </div>
-  );
+  return <ChoiceList opts={EXPERIENCE_OPTS} isActive={(v) => value === v} onPick={onChange} />;
 }
 
-export function StepActivity({
+const ACTIVITY_OPTS: { v: number; label: string }[] = [
+  { v: 0, label: "Почти не двигаюсь" },
+  { v: 1, label: "1 раз в неделю" },
+  { v: 3, label: "2–3 раза в неделю" },
+  { v: 5, label: "4 и больше" },
+];
+
+export function ActivityOptions({
   value,
   onChange,
 }: {
   value: number | null;
   onChange: (v: number) => void;
 }) {
-  const opts = [
-    { v: 0, label: "Почти не двигаюсь" },
-    { v: 1, label: "1 раз в неделю" },
-    { v: 3, label: "2–3 раза в неделю" },
-    { v: 5, label: "4 и больше" },
-  ];
+  return <ChoiceList opts={ACTIVITY_OPTS} isActive={(v) => value === v} onPick={onChange} />;
+}
+
+const HEALTH_OPTS: { v: HealthFlag; label: string }[] = [
+  { v: "back_joints", label: "Спина или суставы" },
+  { v: "cardio_pressure", label: "Сердце или давление" },
+  { v: "recent_injury", label: "Недавняя травма или операция" },
+  { v: "pregnancy", label: "Беременность" },
+  { v: "chronic", label: "Хроническое заболевание" },
+  { v: "none", label: "Ничего из перечисленного" },
+];
+
+export function HealthOptions({
+  flags,
+  onChange,
+}: {
+  flags: HealthFlag[];
+  onChange: (v: HealthFlag[]) => void;
+}) {
+  const toggle = (f: HealthFlag) => {
+    if (f === "none") {
+      onChange(["none"]);
+      return;
+    }
+    const next = flags.includes(f)
+      ? flags.filter((x) => x !== f)
+      : [...flags.filter((x) => x !== "none"), f];
+    onChange(next);
+  };
+  return <ChoiceList opts={HEALTH_OPTS} isActive={(v) => flags.includes(v)} onPick={toggle} />;
+}
+
+export function HealthNotesInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <Textarea
+      id="health_notes"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Необязательно"
+      rows={3}
+      className="resize-none"
+    />
+  );
+}
+
+function tileClass(active: boolean) {
+  return `h-12 rounded-xl border font-semibold transition-colors ${
+    active
+      ? "bg-primary text-primary-foreground border-primary"
+      : "bg-card border-border hover:border-foreground/30"
+  }`;
+}
+
+export function FrequencyPicker({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {[1, 2, 3, 4].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          className={tileClass(value === n)}
+        >
+          {n === 4 ? "4+" : n}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const TIME_OPTS: { v: PrefTime; label: string }[] = [
+  { v: "morning", label: "Утро" },
+  { v: "day", label: "День" },
+  { v: "evening", label: "Вечер" },
+];
+
+export function TimesPicker({
+  value,
+  onChange,
+}: {
+  value: PrefTime[];
+  onChange: (v: PrefTime[]) => void;
+}) {
+  const toggle = (t: PrefTime) =>
+    onChange(value.includes(t) ? value.filter((x) => x !== t) : [...value, t]);
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {TIME_OPTS.map((t) => (
+        <button
+          key={t.v}
+          type="button"
+          onClick={() => toggle(t.v)}
+          className={tileClass(value.includes(t.v))}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const REFERRAL_OPTS: { v: Referral; label: string }[] = [
+  { v: "instagram", label: "Instagram / соцсети" },
+  { v: "referral", label: "Рекомендация друга" },
+  { v: "walk_by", label: "Проходил(а) мимо" },
+  { v: "search", label: "Поиск / карты" },
+  { v: "other", label: "Другое" },
+];
+
+export function ReferralOptions({
+  value,
+  onChange,
+}: {
+  value: Referral | null;
+  onChange: (v: Referral) => void;
+}) {
+  return <ChoiceList opts={REFERRAL_OPTS} isActive={(v) => value === v} onPick={onChange} />;
+}
+
+/* ===== Шаги подписочной анкеты: заголовок + варианты ===== */
+
+export function StepExperience(props: {
+  value: Experience | null;
+  onChange: (v: Experience) => void;
+}) {
   return (
     <div>
-      <StepTitle title="Сколько раз в неделю вы сейчас двигаетесь или тренируетесь?" />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
-      </div>
+      <StepTitle {...STEP_TITLES.experience} />
+      <ExperienceOptions {...props} />
+    </div>
+  );
+}
+
+export function StepActivity(props: { value: number | null; onChange: (v: number) => void }) {
+  return (
+    <div>
+      <StepTitle {...STEP_TITLES.activity} />
+      <ActivityOptions {...props} />
     </div>
   );
 }
@@ -201,54 +355,14 @@ export function StepHealth({
   onFlagsChange: (v: HealthFlag[]) => void;
   onNotesChange: (v: string) => void;
 }) {
-  const opts: { v: HealthFlag; label: string }[] = [
-    { v: "back_joints", label: "Спина или суставы" },
-    { v: "cardio_pressure", label: "Сердце или давление" },
-    { v: "recent_injury", label: "Недавняя травма или операция" },
-    { v: "pregnancy", label: "Беременность" },
-    { v: "chronic", label: "Хроническое заболевание" },
-  ];
-
-  const toggle = (f: HealthFlag) => {
-    if (f === "none") {
-      onFlagsChange(["none"]);
-      return;
-    }
-    const next = flags.includes(f)
-      ? flags.filter((x) => x !== f)
-      : [...flags.filter((x) => x !== "none"), f];
-    onFlagsChange(next);
-  };
-
-  const hasReal = flags.some((f) => f !== "none");
-
   return (
     <div>
-      <StepTitle
-        title="Есть что-то, о чём стоит знать тренеру?"
-        subtitle="Отметьте, если актуально — тренер скорректирует нагрузку. Это не заменяет консультацию врача."
-      />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={flags.includes(o.v)} onClick={() => toggle(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
-        <OptionButton active={flags.includes("none")} onClick={() => toggle("none")}>
-          Ничего из перечисленного
-        </OptionButton>
-      </div>
-      {hasReal && (
+      <StepTitle {...STEP_TITLES.health} />
+      <HealthOptions flags={flags} onChange={onFlagsChange} />
+      {hasHealthIssues(flags) && (
         <div className="mt-5 space-y-2">
-          <Label htmlFor="health_notes">Кратко опишите, что важно учесть</Label>
-          <Textarea
-            id="health_notes"
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            placeholder="Необязательно"
-            rows={3}
-            className="resize-none"
-          />
+          <Label htmlFor="health_notes">{HEALTH_NOTES_LABEL}</Label>
+          <HealthNotesInput value={notes} onChange={onNotesChange} />
         </div>
       )}
     </div>
@@ -266,83 +380,30 @@ export function StepLogistics({
   onFreqChange: (v: number) => void;
   onTimesChange: (v: PrefTime[]) => void;
 }) {
-  const timeOpts: { v: PrefTime; label: string }[] = [
-    { v: "morning", label: "Утро" },
-    { v: "day", label: "День" },
-    { v: "evening", label: "Вечер" },
-  ];
-  const toggleTime = (t: PrefTime) =>
-    onTimesChange(times.includes(t) ? times.filter((x) => x !== t) : [...times, t]);
-
   return (
     <div className="space-y-6">
-      <StepTitle title="Как планируете заниматься?" />
+      <StepTitle {...STEP_TITLES.logistics} />
       <div>
-        <Label className="text-sm">Сколько раз в неделю хотите ходить?</Label>
-        <div className="mt-2 grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onFreqChange(n)}
-              className={`h-12 rounded-xl border font-semibold transition-colors ${
-                frequency === n
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card border-border hover:border-foreground/30"
-              }`}
-            >
-              {n === 4 ? "4+" : n}
-            </button>
-          ))}
+        <Label className="text-sm">{FREQUENCY_LABEL}</Label>
+        <div className="mt-2">
+          <FrequencyPicker value={frequency} onChange={onFreqChange} />
         </div>
       </div>
       <div>
-        <Label className="text-sm">Удобное время</Label>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {timeOpts.map((t) => (
-            <button
-              key={t.v}
-              type="button"
-              onClick={() => toggleTime(t.v)}
-              className={`h-12 rounded-xl border font-semibold transition-colors ${
-                times.includes(t.v)
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card border-border hover:border-foreground/30"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <Label className="text-sm">{TIMES_LABEL}</Label>
+        <div className="mt-2">
+          <TimesPicker value={times} onChange={onTimesChange} />
         </div>
       </div>
     </div>
   );
 }
 
-export function StepReferral({
-  value,
-  onChange,
-}: {
-  value: Referral | null;
-  onChange: (v: Referral) => void;
-}) {
-  const opts: { v: Referral; label: string }[] = [
-    { v: "instagram", label: "Instagram / соцсети" },
-    { v: "referral", label: "Рекомендация друга" },
-    { v: "walk_by", label: "Проходил(а) мимо" },
-    { v: "search", label: "Поиск / карты" },
-    { v: "other", label: "Другое" },
-  ];
+export function StepReferral(props: { value: Referral | null; onChange: (v: Referral) => void }) {
   return (
     <div>
-      <StepTitle title="Откуда вы о нас узнали?" />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
-      </div>
+      <StepTitle {...STEP_TITLES.referral} />
+      <ReferralOptions {...props} />
     </div>
   );
 }

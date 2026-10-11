@@ -102,9 +102,11 @@ saving new user», экран показывает «почта не найде�
 `false`, иначе впервые войти нельзя. После входа — онбординг (`/onboarding`,
 `member_profiles`): ответы видны на портале в карточке клиента, вкладка
 «Анкета». У пакетного приложения анкета своя —
-`src/formats/packages/onboarding.tsx` (общие шаги —
-`src/components/onboarding.tsx`, выбор — по `APP_FORMAT` в
-`src/routes/onboarding.tsx`); подробно — STUDIO_FORMATS.md.
+`src/formats/packages/onboarding.tsx` (общие варианты ответов —
+`src/components/onboarding.tsx`, тексты и типы — `src/lib/onboarding.ts`,
+выбор — по `IS_PACKAGES` в `src/routes/onboarding.tsx`); оформлена как
+разделы приложения (тёмная шапка с огоньками, белая панель, разделители
+блоков); подробно — STUDIO_FORMATS.md.
 
 Паролей у клиентов НЕТ; настройка писем и длины кода в Supabase — см.
 AUTH_SETUP.md в корне репозитория. Письма уходят с noreply@base40.fit через

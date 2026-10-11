@@ -21,11 +21,8 @@ import {
   StepLogistics,
   StepReferral,
   StepTitle,
-  type Experience,
-  type HealthFlag,
-  type PrefTime,
-  type Referral,
 } from "@/components/onboarding";
+import { type Experience, type HealthFlag, type PrefTime, type Referral } from "@/lib/onboarding";
 import { fireConfetti } from "@/lib/confetti";
 import { PackagesOnboardingPage } from "@/formats/packages/onboarding";
 import { Mars, Venus } from "lucide-react";

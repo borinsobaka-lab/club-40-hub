@@ -1,32 +1,37 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { Refresh, CheckCircle } from "@solar-icons/react";
+import { Children, useEffect, useMemo, useState, type ReactNode } from "react";
+import { AltArrowLeft, CheckCircle, Refresh } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { RulerPicker } from "@/components/ui/ruler-picker";
 import { Textarea } from "@/components/ui/textarea";
+import { HeaderBackdrop } from "@/components/page-shell";
 import {
+  ActivityOptions,
+  ExperienceOptions,
+  FrequencyPicker,
+  HealthNotesInput,
+  HealthOptions,
   OnboardingLoading,
   OptionButton,
-  Shell,
-  StepActivity,
-  StepExperience,
-  StepFooter,
-  StepHeader,
-  StepHealth,
-  StepLogistics,
-  StepReferral,
-  StepTitle,
+  ReferralOptions,
+  TimesPicker,
+} from "@/components/onboarding";
+import {
+  FREQUENCY_LABEL,
+  HEALTH_NOTES_LABEL,
+  STEP_TITLES,
+  TIMES_LABEL,
+  hasHealthIssues,
   type Experience,
   type HealthFlag,
   type PrefTime,
   type Referral,
-} from "@/components/onboarding";
+} from "@/lib/onboarding";
 import { fireConfetti } from "@/lib/confetti";
 import { CLUB } from "@/lib/terms";
 
@@ -244,207 +249,335 @@ export function PackagesOnboardingPage() {
 
   if (step === 0) {
     return (
-      <Shell>
-        <div className="flex-1 flex flex-col justify-center px-6 text-center">
-          <h1 className="text-3xl font-semibold leading-tight">
-            Пара вопросов — и вы сможете следить за своим прогрессом
-          </h1>
-          <p className="mt-4 text-base text-muted-foreground">
-            Это займёт около 2 минут. Ответы помогут отслеживать ваш прогресс, а нашим тренерам —
-            давать вам рекомендации.
-          </p>
-        </div>
-        <div className="px-6 pb-8 pt-4">
-          <Button className="w-full h-12 text-base font-semibold" onClick={() => setStep(1)}>
-            Начать
-          </Button>
-        </div>
-      </Shell>
+      <Frame
+        tall
+        header={
+          <div className="px-6 pb-10">
+            <h1 className="text-3xl font-semibold leading-tight">
+              Пара вопросов — и вы сможете следить за своим прогрессом
+            </h1>
+          </div>
+        }
+        footer={<PrimaryButton onClick={() => setStep(1)}>Начать</PrimaryButton>}
+      >
+        <p className="px-6 pt-6 text-base text-muted-foreground">
+          Это займёт около 2 минут. Ответы помогут отслеживать ваш прогресс, а нашим тренерам —
+          давать вам рекомендации.
+        </p>
+      </Frame>
     );
   }
 
   if (step > TOTAL_STEPS) {
     return (
-      <Shell>
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center mb-6">
-            <CheckCircle className="h-9 w-9 text-primary-foreground" weight="BoldDuotone" />
+      <Frame
+        tall
+        header={
+          <div className="px-6 pb-10">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
+              <CheckCircle className="h-9 w-9 text-primary-foreground" weight="BoldDuotone" />
+            </div>
+            <h1 className="text-3xl font-semibold leading-tight">
+              Спасибо, что поделились с нами!
+            </h1>
           </div>
-          <h1 className="text-2xl font-semibold leading-tight">Спасибо, что поделились с нами!</h1>
-          <p className="mt-3 text-base text-muted-foreground">До встречи в студии.</p>
-        </div>
-        <div className="px-6 pb-8 pt-4">
-          <Button
-            className="w-full h-12 text-base font-semibold"
-            onClick={finish}
-            disabled={saving}
-          >
-            {saving ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : "Начать"}
-          </Button>
-        </div>
-      </Shell>
+        }
+        footer={
+          <PrimaryButton onClick={finish} disabled={saving} saving={saving}>
+            Начать
+          </PrimaryButton>
+        }
+      >
+        <p className="px-6 pt-6 text-base text-muted-foreground">До встречи в студии.</p>
+      </Frame>
     );
   }
 
+  const titles = STEP_HEADERS[step];
+
   return (
-    <Shell>
-      <StepHeader
-        step={step}
-        total={TOTAL_STEPS}
-        onBack={() => setStep((s) => Math.max(0, s - 1))}
-      />
-
-      <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col justify-center [&>*]:w-full">
-        {step === 1 && (
-          <StepGoal
-            value={form.primary_goal}
-            other={form.goal_other}
-            onChange={(v) => update("primary_goal", v)}
-            onOtherChange={(v) => update("goal_other", v)}
-          />
-        )}
-        {step === 2 && (
-          <StepExperience
-            value={form.experience_level}
-            onChange={(v) => update("experience_level", v)}
-          />
-        )}
-        {step === 3 && (
-          <StepActivity
-            value={form.current_weekly_activity}
-            onChange={(v) => update("current_weekly_activity", v)}
-          />
-        )}
-        {step === 4 && (
-          <StepHealth
-            flags={form.health_flags}
-            notes={form.health_notes}
-            onFlagsChange={(v) => update("health_flags", v)}
-            onNotesChange={(v) => update("health_notes", v)}
-          />
-        )}
-        {step === 5 && (
-          <StepBody
-            weight={form.weight_kg}
-            birthDate={form.birth_date}
-            onWeightChange={(v) => update("weight_kg", v)}
-            onBirthDateChange={(v) => update("birth_date", v)}
-          />
-        )}
-        {step === 6 && (
-          <StepLogistics
-            frequency={form.desired_frequency}
-            times={form.preferred_times}
-            onFreqChange={(v) => update("desired_frequency", v)}
-            onTimesChange={(v) => update("preferred_times", v)}
-          />
-        )}
-        {step === 7 && (
-          <StepReferral
-            value={form.referral_source}
-            onChange={(v) => update("referral_source", v)}
-          />
-        )}
-      </div>
-
-      <StepFooter
-        disabled={!stepValid}
-        saving={saving}
-        last={step === TOTAL_STEPS}
-        onNext={() => goNext(step + 1)}
-      />
-    </Shell>
+    <Frame
+      header={
+        <div className="px-4 pb-8">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors active:bg-white/20"
+              aria-label="Назад"
+            >
+              <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
+            </button>
+            <Progress step={step} total={TOTAL_STEPS} />
+          </div>
+          <h1 className="mt-5 text-2xl font-semibold leading-tight">{titles.title}</h1>
+          {titles.subtitle && <p className="mt-2 text-sm text-white/70">{titles.subtitle}</p>}
+        </div>
+      }
+      footer={
+        <PrimaryButton
+          onClick={() => goNext(step + 1)}
+          disabled={!stepValid || saving}
+          saving={saving}
+        >
+          {step === TOTAL_STEPS ? "Завершить" : "Далее"}
+        </PrimaryButton>
+      }
+    >
+      {step === 1 && (
+        <Blocks>
+          <Block>
+            <GoalOptions value={form.primary_goal} onChange={(v) => update("primary_goal", v)} />
+          </Block>
+          {form.primary_goal === "other" && (
+            <Block title="Расскажите, чего хотите добиться">
+              <Textarea
+                value={form.goal_other}
+                onChange={(e) => update("goal_other", e.target.value)}
+                maxLength={GOAL_OTHER_MAX}
+                rows={3}
+                className="resize-none"
+                aria-label="Расскажите, чего хотите добиться"
+                autoFocus
+              />
+            </Block>
+          )}
+        </Blocks>
+      )}
+      {step === 2 && (
+        <Blocks>
+          <Block>
+            <ExperienceOptions
+              value={form.experience_level}
+              onChange={(v) => update("experience_level", v)}
+            />
+          </Block>
+        </Blocks>
+      )}
+      {step === 3 && (
+        <Blocks>
+          <Block>
+            <ActivityOptions
+              value={form.current_weekly_activity}
+              onChange={(v) => update("current_weekly_activity", v)}
+            />
+          </Block>
+        </Blocks>
+      )}
+      {step === 4 && (
+        <Blocks>
+          <Block>
+            <HealthOptions flags={form.health_flags} onChange={(v) => update("health_flags", v)} />
+          </Block>
+          {hasHealthIssues(form.health_flags) && (
+            <Block title={HEALTH_NOTES_LABEL}>
+              <HealthNotesInput
+                value={form.health_notes}
+                onChange={(v) => update("health_notes", v)}
+              />
+            </Block>
+          )}
+        </Blocks>
+      )}
+      {step === 5 && (
+        <Blocks>
+          <Block title="Вес">
+            <RulerPicker
+              min={30}
+              max={200}
+              value={form.weight_kg ? Number(form.weight_kg.replace(",", ".")) : null}
+              onChange={(v) => update("weight_kg", String(v))}
+              unit="кг"
+            />
+          </Block>
+          <Block title="Дата рождения">
+            <BirthDateInput value={form.birth_date} onChange={(v) => update("birth_date", v)} />
+          </Block>
+        </Blocks>
+      )}
+      {step === 6 && (
+        <Blocks>
+          <Block title={FREQUENCY_LABEL}>
+            <FrequencyPicker
+              value={form.desired_frequency}
+              onChange={(v) => update("desired_frequency", v)}
+            />
+          </Block>
+          <Block title={TIMES_LABEL}>
+            <TimesPicker
+              value={form.preferred_times}
+              onChange={(v) => update("preferred_times", v)}
+            />
+          </Block>
+        </Blocks>
+      )}
+      {step === 7 && (
+        <Blocks>
+          <Block>
+            <ReferralOptions
+              value={form.referral_source}
+              onChange={(v) => update("referral_source", v)}
+            />
+          </Block>
+        </Blocks>
+      )}
+    </Frame>
   );
 }
 
-function StepGoal({
-  value,
-  other,
-  onChange,
-  onOtherChange,
+/** Вопрос шага — в тёмной шапке. */
+const STEP_HEADERS: Record<number, { title: string; subtitle?: string }> = {
+  1: { title: "Что для вас главное прямо сейчас?" },
+  2: STEP_TITLES.experience,
+  3: STEP_TITLES.activity,
+  4: STEP_TITLES.health,
+  5: {
+    title: "Базовые параметры — чтобы правильно рассчитать статистику",
+    subtitle: `Эти данные увидите только вы и тренеры ${CLUB.gen}.`,
+  },
+  6: STEP_TITLES.logistics,
+  7: STEP_TITLES.referral,
+};
+
+/* ===== Оформление — как у страниц приложения (PageShell) =====
+   Сверху тёмная зона с огоньками, под ней белая скруглённая панель с
+   ответами; кнопка — внизу панели. tall — вступление и финал: заголовок
+   внизу тёмной зоны высотой 300px — огоньки HeaderBackdrop рисуются только
+   в верхних 320px, выше тёмная зона обрезала бы их видимой границей. */
+
+function Frame({
+  tall = false,
+  header,
+  footer,
+  children,
 }: {
-  value: Goal | null;
-  other: string;
-  onChange: (v: Goal) => void;
-  onOtherChange: (v: string) => void;
+  tall?: boolean;
+  header: ReactNode;
+  footer: ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <div>
-      <StepTitle title="Что для вас главное прямо сейчас?" />
-      <div className="space-y-2">
-        {GOALS.map((o) => (
-          <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden">
+      {/* Фон и огоньки — те же, что у разделов приложения. */}
+      <HeaderBackdrop />
+      <div
+        className={`relative z-10 shrink-0 text-white pt-[max(env(safe-area-inset-top),0.75rem)] ${
+          tall ? "flex min-h-[300px] flex-col justify-end" : ""
+        }`}
+      >
+        {header}
       </div>
-      {value === "other" && (
-        <div className="mt-5 space-y-2">
-          <Label htmlFor="goal_other">Расскажите, чего хотите добиться</Label>
-          <Textarea
-            id="goal_other"
-            value={other}
-            onChange={(e) => onOtherChange(e.target.value)}
-            maxLength={GOAL_OTHER_MAX}
-            rows={3}
-            className="resize-none"
-            autoFocus
-          />
+      <div className="relative z-10 -mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]">
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {children}
         </div>
-      )}
+        <div className="px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1.5rem)]">{footer}</div>
+      </div>
     </div>
   );
 }
 
-function StepBody({
-  weight,
-  birthDate,
-  onWeightChange,
-  onBirthDateChange,
+/** Прогресс анкеты: «Шаг N из M» и полоска по шагам. */
+function Progress({ step, total }: { step: number; total: number }) {
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="mb-1.5 text-xs font-semibold text-white/70 tabular-nums">
+        Шаг {step} из {total}
+      </div>
+      <div className="flex gap-1">
+        {Array.from({ length: total }, (_, i) => (
+          <span
+            key={i}
+            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+              i < step ? "bg-white" : "bg-white/20"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Смысловые блоки шага с разделителями, как на главной: серая полоса между
+ * белыми блоками со скруглёнными краями. Первый блок примыкает к верху
+ * панели, последний — к кнопке.
+ */
+function Blocks({ children }: { children: ReactNode }) {
+  const items = Children.toArray(children);
+  return (
+    <div className="bg-muted">
+      {items.map((child, i) => {
+        const first = i === 0;
+        const last = i === items.length - 1;
+        return (
+          <div
+            key={i}
+            className={`bg-background ${first ? "" : "mt-3 rounded-t-[14px]"} ${
+              last ? "" : "rounded-b-[14px]"
+            }`}
+          >
+            {child}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Block({ title, children }: { title?: string; children: ReactNode }) {
+  return (
+    <section className="px-4 pt-5 pb-5">
+      {title && <h2 className="mb-3 text-lg font-semibold leading-tight">{title}</h2>}
+      {children}
+    </section>
+  );
+}
+
+function PrimaryButton({
+  onClick,
+  disabled,
+  saving,
+  children,
 }: {
-  weight: string;
-  birthDate: string;
-  onWeightChange: (v: string) => void;
-  onBirthDateChange: (v: string) => void;
+  onClick: () => void;
+  disabled?: boolean;
+  saving?: boolean;
+  children: ReactNode;
 }) {
-  const weightNum = weight ? Number(weight.replace(",", ".")) : null;
-  const invalidDate = birthDate !== "" && !validBirthDate(birthDate);
+  return (
+    <Button className="h-12 w-full text-base font-semibold" onClick={onClick} disabled={disabled}>
+      {saving ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : children}
+    </Button>
+  );
+}
+
+function GoalOptions({ value, onChange }: { value: Goal | null; onChange: (v: Goal) => void }) {
+  return (
+    <div className="space-y-2">
+      {GOALS.map((o) => (
+        <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
+          {o.label}
+        </OptionButton>
+      ))}
+    </div>
+  );
+}
+
+function BirthDateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const invalid = value !== "" && !validBirthDate(value);
   return (
     <div>
-      <StepTitle
-        title="Базовые параметры — чтобы правильно рассчитать статистику"
-        subtitle={`Эти данные увидите только вы и тренеры ${CLUB.gen}.`}
+      <Input
+        type="date"
+        value={value}
+        min={BIRTH_MIN}
+        max={birthMax()}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Дата рождения"
+        className="text-base font-semibold"
       />
-      <div className="space-y-7">
-        <div>
-          <Label className="text-sm block text-center mb-3">Вес</Label>
-          <RulerPicker
-            min={30}
-            max={200}
-            value={weightNum}
-            onChange={(v) => onWeightChange(String(v))}
-            unit="кг"
-          />
-        </div>
-
-        <div className="max-w-[320px] mx-auto">
-          <Label htmlFor="birth_date" className="text-sm block text-center mb-3">
-            Дата рождения
-          </Label>
-          <Input
-            id="birth_date"
-            type="date"
-            value={birthDate}
-            min={BIRTH_MIN}
-            max={birthMax()}
-            onChange={(e) => onBirthDateChange(e.target.value)}
-            className="text-center text-base font-semibold"
-          />
-          {invalidDate && (
-            <p className="mt-2 text-center text-xs text-destructive">Проверьте дату рождения</p>
-          )}
-        </div>
-      </div>
+      {invalid && <p className="mt-2 text-xs text-destructive">Проверьте дату рождения</p>}
     </div>
   );
 }
