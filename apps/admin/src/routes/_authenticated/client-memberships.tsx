@@ -12,7 +12,13 @@ import { useServerTable } from "@/hooks/use-server-table";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { supabase } from "@/integrations/supabase/client";
-import { SALE_TIPS, type MembershipKind } from "@/lib/payments";
+import {
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_METHODS,
+  SALE_TIPS,
+  type MembershipKind,
+  type PaymentMethod,
+} from "@/lib/payments";
 import {
   clientName,
   formatDate,
@@ -72,6 +78,9 @@ const TIPS = {
     "До какого числа клиент должен внести платёж. Дата прошла, а платёж не внесён, — строка помечается красным.",
   paid: "Отметьте, когда клиент заплатил. Внесены все платежи — строка станет зелёной.",
   paidAt: "Когда клиент фактически заплатил.",
+  paymentMethod: "Как заплатил клиент — для отчётов, как способ оплаты в «Продажах».",
+  renewal:
+    "Продление: тренировки списываются после текущего абонемента, срок идёт с первого посещения по нему.",
 };
 
 /** Состояние оплаты (client_packages_list.payment_state) — цвет полоски строки. */
@@ -98,6 +107,8 @@ type Payment = {
   due_date: string;
   paid: boolean;
   paid_at: string | null;
+  /** Способ оплаты внесённого платежа; null — не указан (старые платежи). */
+  payment_method: PaymentMethod | null;
 };
 
 type Row = {
@@ -126,11 +137,16 @@ type Row = {
   ends_at: string | null;
   payments: Payment[];
   payment_state: PaymentState;
+  /** Начало срока; у продления — дата первого посещения (null — ещё не было). */
+  membership_started_at: string | null;
+  /** Продление: срок считается от первого посещения. */
+  starts_on_first_visit: boolean;
 };
 
 const COLUMNS =
   "id, client_id, admin_name, trainer_name, sold_at, comment, membership_note, clients, " +
-  "memberships, membership_status, visits_left, ends_at, payments, payment_state";
+  "memberships, membership_status, visits_left, ends_at, payments, payment_state, " +
+  "membership_started_at, starts_on_first_visit";
 
 /** Платёжных колонок не меньше трёх: обычная рассрочка — до трёх платежей. */
 const MIN_PAYMENT_COLUMNS = 3;
@@ -168,7 +184,11 @@ function ClientMembershipsPage() {
   const term = sanitizeSearch(useDebouncedValue(search));
   const table = useServerTable<Row>({
     queryKey: ["client_packages_list", studioId, term, state],
-    queryFn: ({ from, to }) => {
+    queryFn: async ({ from, to }) => {
+      // Досчитать очередь продлений: у кого срок текущего абонемента вышел без
+      // записей, продление становится действующим (packages_settle_studio).
+      // Ошибку не показываем — список грузится и без этого.
+      await supabase.rpc("packages_settle_studio", { p_studio_id: studioId! });
       let q = supabase
         .from("client_packages_list")
         .select(COLUMNS, { count: "exact" })
@@ -313,7 +333,11 @@ function ClientMembershipsPage() {
                           <span className="text-muted-foreground">трен.</span>
                         </div>
                         <div className="text-xs">
-                          <DaysLeft status={r.membership_status} endsAt={r.ends_at} />
+                          <DaysLeft
+                            status={r.membership_status}
+                            endsAt={r.ends_at}
+                            notStarted={r.starts_on_first_visit && !r.membership_started_at}
+                          />
                         </div>
                       </TableCell>
                       <TableCell>
@@ -373,9 +397,24 @@ const ENDED_STATUS: Record<string, string> = {
   frozen: "Заморожен",
 };
 
-function DaysLeft({ status, endsAt }: { status: string | null; endsAt: string | null }) {
+function DaysLeft({
+  status,
+  endsAt,
+  notStarted,
+}: {
+  status: string | null;
+  endsAt: string | null;
+  /** Продление, по которому ещё не было посещений: срок пока не идёт. */
+  notStarted: boolean;
+}) {
   if (status && ENDED_STATUS[status])
     return <span className="text-muted-foreground">{ENDED_STATUS[status]}</span>;
+  if (notStarted)
+    return (
+      <span className="text-muted-foreground" title={TIPS.renewal}>
+        {status === "pending" ? "Ждёт окончания текущего" : "Срок — с 1-го посещения"}
+      </span>
+    );
   if (!endsAt) return <span className="text-muted-foreground">Без срока</span>;
   const days = daysUntil(endsAt);
   if (days < 0) return <span className="text-rose-600">Истёк {formatDate(endsAt)}</span>;
@@ -502,6 +541,7 @@ function PaymentCell({ payment, onSaved }: { payment?: Payment; onSaved: () => v
           <>
             <Check className="h-3.5 w-3.5" />
             {formatDate(payment.paid_at ?? payment.due_date)}
+            {payment.payment_method && ` · ${PAYMENT_METHOD_LABEL[payment.payment_method]}`}
           </>
         ) : (
           <>
@@ -560,6 +600,7 @@ function PaymentForm({
   const [paid, setPaid] = useState(payment.paid);
   // Отмечают оплату обычно в день, когда клиент заплатил, — сегодня.
   const [paidAt, setPaidAt] = useState(payment.paid_at ?? todayISO());
+  const [method, setMethod] = useState<PaymentMethod>(payment.payment_method ?? "cash");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async (e: FormEvent) => {
@@ -587,6 +628,7 @@ function PaymentForm({
           due_date: dueDate,
           paid,
           paid_at: paid ? paidAt : null,
+          payment_method: paid ? method : null,
         })
         .eq("id", payment.id);
       if (error) {
@@ -618,9 +660,25 @@ function PaymentForm({
       </div>
       <SwitchRow title="Платёж внесён" tip={TIPS.paid} checked={paid} onCheckedChange={setPaid} />
       {paid && (
-        <FormField label="Когда внесён" tip={TIPS.paidAt} required>
-          <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
-        </FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Когда внесён" tip={TIPS.paidAt} required>
+            <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
+          </FormField>
+          <FormField label="Способ оплаты" tip={TIPS.paymentMethod} required>
+            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAYMENT_METHODS.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {PAYMENT_METHOD_LABEL[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        </div>
       )}
       <PopoverButtons saving={saving} onCancel={onCancel} />
     </form>

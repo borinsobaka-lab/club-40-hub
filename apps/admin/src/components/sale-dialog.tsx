@@ -207,6 +207,7 @@ function SaleForm({
   const { data: studios } = useStudios();
   const isPackages = studios?.find((s) => s.id === studioId)?.format === "packages";
   const isTrial = isPackages && kind === "trial";
+  const isRenewal = isPackages && kind === "renewal";
   const [form, setForm] = useState<SaleFields>(() => ({
     clientId: initialClient?.id ?? "",
     clientLabel: initialClient ? clientName(initialClient) : "",
@@ -332,7 +333,9 @@ function SaleForm({
         return;
       }
       const current = (currentRows as CurrentMembership[] | null)?.[0];
-      if (current) {
+      // Продление в пакетной студии ничего не заменяет — встаёт в очередь
+      // после текущего (db/migrations/2026-10-11_packages_renewal_queue.sql).
+      if (current && !isRenewal) {
         const m = current.memberships;
         const name = (Array.isArray(m) ? m[0]?.name : m?.name) ?? "—";
         const kind = current.status === "frozen" ? "замороженный" : "активный";
@@ -388,6 +391,7 @@ function SaleForm({
           paid: p.isDownPayment,
           // Первый платёж внесён в день продажи (а не в день оформления).
           paid_at: p.isDownPayment ? p.date : null,
+          payment_method: p.isDownPayment ? form.paymentMethod : null,
         }));
         const { error: instErr } = await supabase.from("sale_installments").insert(rows);
         if (instErr) {
@@ -672,6 +676,14 @@ function SaleForm({
                 onChange={(e) => set("comment", e.target.value)}
               />
             </FormField>
+
+            {isRenewal && (
+              <InfoNote>
+                Продление не заменяет текущий абонемент клиента: тренировки сначала списываются с
+                текущего, пока он не истечёт или на нём не закончатся тренировки. Срок нового
+                абонемента пойдёт с первого посещения по нему.
+              </InfoNote>
+            )}
 
             {form.clientId && membership && (
               <InfoNote>

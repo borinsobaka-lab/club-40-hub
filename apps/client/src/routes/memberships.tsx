@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { settlePackageMemberships } from "@/lib/packages-memberships";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,10 @@ const db = supabase as unknown as {
 // Действующий абонемент клиента. Не maybeSingle() по статусу: при двух
 // строках active/frozen (переход на новый тариф, заморозка) PostgREST
 // возвращает ошибку, и страница целиком падала в «не удалось загрузить».
-function fetchActiveMembership(clientId: string) {
+// В пакетном формате сначала досчитываем очередь: продление могло стать
+// действующим (settlePackageMemberships).
+async function fetchActiveMembership(clientId: string) {
+  await settlePackageMemberships();
   return db
     .from("client_memberships")
     .select(

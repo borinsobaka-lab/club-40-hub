@@ -149,6 +149,14 @@ AUTH_SETUP.md.
   (дата внесения, ставит триггер), вью `client_packages_list` (строки раздела,
   платежи json и `payment_state` paid/overdue/pending по дате Тбилиси); там же
   снова пересоздана `sales_list` (актуальное определение — в этой миграции).
+  Списание тренировок и продление пакетных студий:
+  `db/migrations/2026-10-11_packages_renewal_queue.sql` — триггер на
+  `schedule_bookings` списывает/возвращает тренировку
+  (`client_membership_id`), продление — `client_memberships.status = 'pending'`
+  и `starts_on_first_visit` (срок от первого посещения, `started_at` теперь
+  может быть null), очередь — `packages_settle`; новая версия
+  `activate_membership_from_sale`; `sale_installments.payment_method`; вью
+  `client_packages_list` пересоздана (актуальное определение — здесь).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
