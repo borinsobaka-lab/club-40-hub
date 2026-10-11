@@ -175,7 +175,8 @@ AUTH_SETUP.md.
   Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
   — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
   триггер списания), `payroll_lines` — пакет персональных не идёт в продажи
-  администратора (актуальное определение — в этой миграции).
+  администратора. `db/migrations/2026-10-11_zzzzzz_personal_no_trainer_bonus.sql`
+  — и тренера при продаже (актуальное определение `payroll_lines` — здесь).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):

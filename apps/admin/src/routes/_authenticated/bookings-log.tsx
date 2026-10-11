@@ -7,6 +7,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useActiveStudio } from "@/hooks/use-studios";
 import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,9 @@ function BookingsLogPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
   const [markingNoShows, setMarkingNoShows] = useState(false);
+  // В пакетных клубах приход фиксируют только в «Расписании» (решение
+  // владельца 2026-10-11) — массовой отметки пропусков здесь нет.
+  const isPackages = useActiveStudio()?.format === "packages";
 
   const term = useDebouncedValue(search).trim();
 
@@ -147,10 +151,12 @@ function BookingsLogPage() {
     <AdminShell
       title="История записей"
       actions={
-        <Button variant="outline" onClick={markNoShows} disabled={!studioId || markingNoShows}>
-          {markingNoShows && <Loader2 className="animate-spin" />}
-          Отметить пропущенные
-        </Button>
+        isPackages ? undefined : (
+          <Button variant="outline" onClick={markNoShows} disabled={!studioId || markingNoShows}>
+            {markingNoShows && <Loader2 className="animate-spin" />}
+            Отметить пропущенные
+          </Button>
+        )
       }
     >
       <div className="space-y-3">
