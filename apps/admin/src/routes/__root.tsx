@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -139,6 +140,21 @@ function RootComponent() {
       console.warn("[pwa] service worker не зарегистрирован", error);
     });
   }, []);
+
+  // Сменился вошедший человек (выход, вход, другой сотрудник) — кэш запросов
+  // целиком в мусор. Иначе «Выход» оставлял пустой список клубов: меню ещё
+  // на экране перезапрашивает студии уже без сессии, получает [] и держит
+  // его (staleTime: Infinity) — после входа клубов нет до перезагрузки.
+  // Сверяем id, а не событие: SIGNED_IN приходит и при возврате во вкладку.
+  useEffect(() => {
+    let userId: string | null | undefined;
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const next = session?.user.id ?? null;
+      if (userId !== undefined && next !== userId) queryClient.clear();
+      userId = next;
+    });
+    return () => data.subscription.unsubscribe();
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
