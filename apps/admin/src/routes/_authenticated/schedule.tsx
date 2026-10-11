@@ -524,7 +524,6 @@ function SchedulePage() {
   return (
     <AdminShell
       title="Расписание"
-      canvas={packages ? "white" : "default"}
       actions={
         <div className="flex items-center gap-2">
           <Button
@@ -659,12 +658,7 @@ function SchedulePage() {
             как отметка «сегодня» в недельной сетке.
           */}
           {isMobile && (
-            <div
-              className={cn(
-                "grid grid-cols-7 gap-1 rounded-lg border p-1",
-                packages ? "bg-muted" : "bg-background",
-              )}
-            >
+            <div className="grid grid-cols-7 gap-1 rounded-lg border bg-background p-1">
               {weekDays.map((d, i) => {
                 const today = d.toDateString() === new Date().toDateString();
                 const selected = i === dayIndex;
@@ -705,14 +699,7 @@ function SchedulePage() {
             </div>
           )}
 
-          <div
-            className={cn(
-              "overflow-auto rounded-lg border md:max-h-[calc(100dvh-220px)]",
-              // Пакетные студии: подложка страницы белая, сетка светло-серая,
-              // линии сетки белые — белые карточки занятий на ней видны сразу.
-              packages ? "border-transparent bg-background" : "bg-background",
-            )}
-          >
+          <div className="overflow-auto rounded-lg border bg-background md:max-h-[calc(100dvh-220px)]">
             <div
               className={cn("grid", !isMobile && "min-w-[1200px]")}
               style={{
@@ -721,24 +708,17 @@ function SchedulePage() {
             >
               {!isMobile && (
                 <>
-                  <div
-                    className={cn(
-                      "sticky top-0 z-20 border-b border-r",
-                      packages ? "border-background bg-muted" : "bg-background",
-                    )}
-                  />
+                  <div className="sticky top-0 z-20 border-b border-r bg-background" />
                   {weekDays.map((d, i) => {
                     const today = d.toDateString() === new Date().toDateString();
                     return (
                       <div
                         key={i}
-                        className={cn(
-                          "sticky top-0 z-20 border-r p-2 text-center text-xs",
-                          packages ? "border-r-background bg-muted" : "bg-background",
+                        className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
                           today
                             ? "border-b-4 border-b-brand font-semibold text-primary"
-                            : cn("border-b", packages && "border-b-background"),
-                        )}
+                            : "border-b"
+                        }`}
                       >
                         <div className="uppercase tracking-wide text-muted-foreground">
                           {DAY_NAMES[i]}
@@ -757,10 +737,7 @@ function SchedulePage() {
                 return (
                   <div key={`row-${hour}`} className="contents">
                     <div
-                      className={cn(
-                        "border-b border-r px-2 text-right text-xs text-muted-foreground",
-                        packages && "border-background bg-muted",
-                      )}
+                      className="border-b border-r px-2 text-right text-xs text-muted-foreground"
                       style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
                     >
                       {pad(hour)}:00
@@ -772,7 +749,10 @@ function SchedulePage() {
                           key={`${hour}-${di}`}
                           className={cn(
                             "relative border-b border-r max-md:border-r-0",
-                            packages && "border-background bg-muted",
+                            // Пакетные студии: слоты цвета подложки раздела, линии
+                            // белые; шапка дней и столбец времени — белые, белые
+                            // карточки занятий на слотах видны сразу.
+                            packages && "border-background bg-canvas",
                           )}
                           style={{ height: rowHeight }}
                         >
