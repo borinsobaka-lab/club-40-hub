@@ -37,12 +37,23 @@ import type {
 } from "@/lib/scripts/types";
 import { cn } from "@/lib/utils";
 
+/** Метки типа на тёмной шапке — светлые оттенки семантических цветов. */
 const KIND_CHIP: Record<ScriptKind, string> = {
-  chat: "bg-blue-100 text-blue-700",
-  call: "bg-emerald-100 text-emerald-700",
-  task: "bg-amber-100 text-amber-800",
-  info: "bg-muted text-muted-foreground",
+  chat: "bg-blue-400/25 text-blue-200",
+  call: "bg-emerald-400/25 text-emerald-200",
+  task: "bg-amber-400/25 text-amber-200",
+  info: "bg-white/10 text-white/75",
 };
+
+/** Подзаголовки внутри карточки — чёрным и крупнее, без капса: их ищут глазами. */
+const LABEL = "text-sm font-semibold text-foreground";
+
+/**
+ * Поле с текстом скрипта — «вдавленное» (как в «Аудиоаналитике»): цвет
+ * канвы и тень внутрь, чтобы то, что уйдёт клиенту, сразу бросалось в глаза.
+ */
+const TEXT_WELL =
+  "rounded-md bg-canvas px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap shadow-[inset_0_0_0_1px_rgba(11,13,22,0.05),inset_0_0_8px_rgba(11,13,22,0.11),inset_0_1px_3px_rgba(11,13,22,0.06)]";
 
 /** Кнопка, которая на пару секунд отвечает на себе: «Скопировано». */
 function useFlash() {
@@ -131,7 +142,7 @@ function MessageBlock({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-muted-foreground uppercase">
+        <span className={LABEL}>
           {message.label || (total > 1 ? `Сообщение ${index + 1}` : "Текст")}
         </span>
         <span className="flex shrink-0 items-center gap-1">
@@ -147,10 +158,7 @@ function MessageBlock({
           Текста на {langInfo(lang).inName} нет — показан {langInfo(shown.lang).name}.
         </p>
       )}
-      <div
-        className="rounded-md bg-muted/50 px-3 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap"
-        lang={shown.lang}
-      >
+      <div className={TEXT_WELL} lang={shown.lang}>
         <RichText text={shown.text} terms={terms} resolveVar={resolveVar} />
       </div>
     </div>
@@ -210,7 +218,8 @@ export function ScriptCard({
         flash && "ring-2 ring-brand",
       )}
     >
-      <header className="flex items-start gap-2 border-b px-4 py-3">
+      {/* Тёмная шапка цвета меню — видно, где начинается следующий скрипт. */}
+      <header className="flex items-start gap-2 bg-sidebar px-4 py-3 text-white">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="text-base leading-snug font-semibold">
             <Highlight text={item.title} terms={terms} />
@@ -223,13 +232,17 @@ export function ScriptCard({
           >
             {KIND_LABELS[item.kind] ?? item.kind}
           </span>
-          {showSection && <Badge variant="outline">{section.title}</Badge>}
+          {showSection && (
+            <Badge variant="outline" className="border-white/20 text-white/75">
+              {section.title}
+            </Badge>
+          )}
         </div>
         {/* Тихая кнопка: нужна редко и не должна спорить с названием. */}
         <Button
           variant="ghost"
           size="sm"
-          className="-my-1 shrink-0 text-muted-foreground"
+          className="-my-1 shrink-0 text-white/70 hover:bg-white/10 hover:text-white"
           title={`Предложить изменения в «${item.title}»`}
           onClick={onSuggest}
         >
@@ -241,16 +254,14 @@ export function ScriptCard({
       <div className="space-y-4 px-4 py-3">
         {item.note && (
           <div className="space-y-1 rounded-md border bg-muted/30 px-3 py-2.5 text-sm">
-            <span className="text-xs font-medium text-muted-foreground uppercase">
-              Как использовать
-            </span>
+            <span className={LABEL}>Как использовать</span>
             <Formatted text={item.note} {...format} />
           </div>
         )}
 
         {item.variants.length > 1 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase">Студия</span>
+            <span className={LABEL}>Студия</span>
             <Tabs value={variant.label} onValueChange={onStudio}>
               <TabsList>
                 {item.variants.map((v) => (
@@ -279,7 +290,7 @@ export function ScriptCard({
 
         {item.follow_up && (
           <div className="space-y-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm">
-            <span className="text-xs font-medium text-blue-700 uppercase">❗ Дальше</span>
+            <span className={LABEL}>❗ Дальше</span>
             <Formatted text={item.follow_up} {...format} />
           </div>
         )}
