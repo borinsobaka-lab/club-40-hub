@@ -149,6 +149,14 @@ AUTH_SETUP.md.
   (дата внесения, ставит триггер), вью `client_packages_list` (строки раздела,
   платежи json и `payment_state` paid/overdue/pending по дате Тбилиси); там же
   снова пересоздана `sales_list` (актуальное определение — в этой миграции).
+  Баланс и списание пакетных студий:
+  `db/migrations/2026-10-11_zz_packages_personal_balance.sql` — третий тип
+  номенклатуры `personal`, `memberships.personal_count`,
+  `client_memberships.personal_left`/`balance_kind` (один живой абонемент на
+  клиента и вид баланса, `activate_membership_from_sale` переопределена),
+  списание при `attended` — триггер на `schedule_bookings`
+  (`charged_membership_id`), состояние `soon` в `client_packages_list`
+  (актуальное определение вью — в этой миграции).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):

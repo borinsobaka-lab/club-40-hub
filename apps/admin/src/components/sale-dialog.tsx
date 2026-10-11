@@ -60,7 +60,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 // В пакетной студии у продажи есть тип (sales.sale_kind, кнопки в «Продажах»):
 // новая продажа, пробное, допродажа, продление. «Пробное» предлагает только
 // номенклатуры «Пробное посещение» и подставляет первую сама, остальные типы —
-// только пакеты тренировок. Подписочная студия тип не пишет.
+// пакеты тренировок и пакеты персональных. Подписочная студия тип не пишет.
 //
 // Ещё в пакетной студии — «Тренер» (sales.trainer_id + снимок имени
 // trainer_name): кто был тренером при продаже, ему начисляется бонус. Продажи
@@ -321,12 +321,19 @@ function SaleForm({
       // замороженный (activate_membership_from_sale), поэтому предупреждаем о
       // любом из них. limit(1), а не maybeSingle: при двух строках maybeSingle
       // отдаёт ошибку, и предупреждение молча пропадало.
-      const { data: currentRows, error: currentErr } = await supabase
+      // Пакетная студия: пакет персональных и пакет тренировок — разные
+      // балансы, вытесняется только абонемент того же вида (balance_kind).
+      let currentQuery = supabase
         .from("client_memberships")
         .select("id, status, memberships(name)")
         .eq("client_id", form.clientId)
-        .in("status", ["active", "frozen"])
-        .limit(1);
+        .in("status", ["active", "frozen"]);
+      if (isPackages)
+        currentQuery = currentQuery.eq(
+          "balance_kind",
+          membership?.kind === "personal" ? "personal" : "group",
+        );
+      const { data: currentRows, error: currentErr } = await currentQuery.limit(1);
       if (currentErr) {
         toast.error("Не удалось проверить абонементы клиента: " + currentErr.message);
         return;
@@ -465,7 +472,10 @@ function SaleForm({
                 options={options.map((m) => ({
                   value: m.id,
                   label: m.name,
-                  hint: formatMoney(Number(m.price ?? 0)),
+                  hint:
+                    isPackages && m.kind === "personal"
+                      ? `Персональные · ${formatMoney(Number(m.price ?? 0))}`
+                      : formatMoney(Number(m.price ?? 0)),
                   searchText: m.name,
                 }))}
               />

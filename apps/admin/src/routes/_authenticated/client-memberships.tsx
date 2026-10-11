@@ -52,15 +52,16 @@ import { CommentCell } from "@/components/comment-cell";
 // абонементы, одна строка — одна продажа. Здесь администраторы собирают деньги
 // по рассрочкам: отмечают внесённые платежи, правят суммы и даты, пишут свой
 // комментарий. Строки — вью client_packages_list
-// (db/migrations/2026-10-11_packages_client_memberships.sql): платежи и
-// состояние оплаты (полоска слева) считает база, фильтр по нему — на сервере.
+// (db/migrations/2026-10-11_packages_client_memberships.sql, последняя версия —
+// 2026-10-11_zz_packages_personal_balance.sql): платежи и состояние оплаты
+// (полоска слева) считает база, фильтр по нему — на сервере.
 
 /** Подсказки «?» колонок и полей. */
 const TIPS = {
   client: "Кому продан абонемент. Нажмите на имя — откроется карточка клиента.",
   membership: "Что продано (из «Номенклатур») и дата продажи.",
   balance:
-    "Тренировок на балансе (из скольких в пакете) и сколько дней осталось до конца срока действия. Срок задан в «Номенклатурах» и считается от даты продажи.",
+    "Тренировок на балансе (из скольких в пакете), ниже — персональных, если они входят, и сколько дней осталось до конца срока. Групповые списываются, когда отмечено посещение группового занятия, персональные — персонального. Срок задан в «Номенклатурах» и считается от даты продажи.",
   soldBy: `Кто продал — администратор, оформивший продажу. Ниже — тренер при продаже. ${SALE_TIPS.trainer}`,
   comments:
     "«При продаже» — комментарий из «Продаж», здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
@@ -69,26 +70,52 @@ const TIPS = {
     "Сумма и дата платежа. Галочка — внесён (дата, когда заплатили), без неё — сколько и до какого числа клиент должен внести. Нажмите, чтобы отметить оплату или поправить сумму и дату.",
   amount: "Сколько клиент внёс или должен внести этим платежом.",
   dueDate:
-    "До какого числа клиент должен внести платёж. Дата прошла, а платёж не внесён, — строка помечается красным.",
+    "До какого числа клиент должен внести платёж. За два дня до даты и в сам день невнесённый платёж помечает строку синим, дата прошла — красным.",
   paid: "Отметьте, когда клиент заплатил. Внесены все платежи — строка станет зелёной.",
   paidAt: "Когда клиент фактически заплатил.",
 };
 
-/** Состояние оплаты (client_packages_list.payment_state) — цвет полоски строки. */
-type PaymentState = "paid" | "overdue" | "pending";
+/**
+ * Состояние оплаты (client_packages_list.payment_state) — цвет полоски строки:
+ * всё внесено, просрочка, невнесённый платёж сегодня или в ближайшие 2 дня.
+ * Платёж позже (pending) не подсвечивается (решение владельца 2026-10-11).
+ */
+type PaymentState = "paid" | "overdue" | "soon" | "pending";
 
-const PAYMENT_STATES: Record<PaymentState, { label: string; filter: string; stripe: string }> = {
-  paid: { label: "Оплачен полностью", filter: "Оплачены полностью", stripe: "bg-emerald-500" },
-  overdue: { label: "Просрочен платёж", filter: "С просрочкой", stripe: "bg-rose-500" },
-  pending: { label: "Следующий платёж впереди", filter: "Ждут платежа", stripe: "bg-blue-500" },
+const PAYMENT_STATES: Record<
+  PaymentState,
+  {
+    label: string;
+    filter: string;
+    /** Полоска слева; null — без полоски. */
+    stripe: string | null;
+    /** Тот же цвет — рамкой карточки на телефоне (там строка — блок). */
+    mobile: string | null;
+  }
+> = {
+  paid: {
+    label: "Оплачен полностью",
+    filter: "Оплачены полностью",
+    stripe: "bg-emerald-500",
+    mobile: "max-md:border-l-4 max-md:border-l-emerald-500",
+  },
+  overdue: {
+    label: "Просрочен платёж",
+    filter: "С просрочкой",
+    stripe: "bg-rose-500",
+    mobile: "max-md:border-l-4 max-md:border-l-rose-500",
+  },
+  soon: {
+    label: "Платёж в ближайшие 3 дня",
+    filter: "Платёж в ближайшие 3 дня",
+    stripe: "bg-blue-500",
+    mobile: "max-md:border-l-4 max-md:border-l-blue-500",
+  },
+  pending: { label: "Следующий платёж позже", filter: "Платёж позже", stripe: null, mobile: null },
 };
-const PAYMENT_STATE_ORDER: PaymentState[] = ["overdue", "pending", "paid"];
-/** Тот же цвет — рамкой карточки на телефоне (там строка — блок, а не ряд таблицы). */
-const MOBILE_STRIPE: Record<PaymentState, string> = {
-  paid: "max-md:border-l-emerald-500",
-  overdue: "max-md:border-l-rose-500",
-  pending: "max-md:border-l-blue-500",
-};
+const PAYMENT_STATE_ORDER: PaymentState[] = ["overdue", "soon", "pending", "paid"];
+/** Цвета расшифровки на плашке фильтров. */
+const STRIPED_STATES: PaymentState[] = ["paid", "overdue", "soon"];
 const ALL = "all";
 
 type Payment = {
@@ -120,9 +147,13 @@ type Row = {
     name: string;
     kind: MembershipKind;
     visits_count: number | null;
+    /** Персональных в номенклатуре: подарочные или количество у пакета персональных. */
+    personal_count: number | null;
   } | null;
   membership_status: string | null;
   visits_left: number | null;
+  /** Остаток персональных (пакетный формат). */
+  personal_left: number | null;
   ends_at: string | null;
   payments: Payment[];
   payment_state: PaymentState;
@@ -130,7 +161,7 @@ type Row = {
 
 const COLUMNS =
   "id, client_id, admin_name, trainer_name, sold_at, comment, membership_note, clients, " +
-  "memberships, membership_status, visits_left, ends_at, payments, payment_state";
+  "memberships, membership_status, visits_left, personal_left, ends_at, payments, payment_state";
 
 /** Платёжных колонок не меньше трёх: обычная рассрочка — до трёх платежей. */
 const MIN_PAYMENT_COLUMNS = 3;
@@ -177,7 +208,7 @@ function ClientMembershipsPage() {
       if (state !== ALL) q = q.eq("payment_state", state);
       // Ждут платежа и просроченные — по ближайшему платежу: сверху те, с кем
       // разбираться первыми. Остальное — новые продажи сверху.
-      if (state === "overdue" || state === "pending")
+      if (state === "overdue" || state === "soon" || state === "pending")
         q = q.order("next_due_date", { ascending: true });
       return q
         .order("sold_at", { ascending: false })
@@ -268,18 +299,17 @@ function ClientMembershipsPage() {
                   </TableRow>
                 ) : (
                   table.rows.map((r) => (
-                    <TableRow
-                      key={r.id}
-                      className={cn("max-md:border-l-4", MOBILE_STRIPE[r.payment_state])}
-                    >
+                    <TableRow key={r.id} className={cn(PAYMENT_STATES[r.payment_state].mobile)}>
                       <TableCell className="relative font-medium">
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "absolute inset-y-0 left-0 w-1 max-md:hidden",
-                            PAYMENT_STATES[r.payment_state].stripe,
-                          )}
-                        />
+                        {PAYMENT_STATES[r.payment_state].stripe && (
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "absolute inset-y-0 left-0 w-1 max-md:hidden",
+                              PAYMENT_STATES[r.payment_state].stripe,
+                            )}
+                          />
+                        )}
                         <span className="sr-only">{PAYMENT_STATES[r.payment_state].label}. </span>
                         {r.clients ? (
                           <ClientNameLink clientId={r.client_id} crmLink={crmLinkOf(r.client_id)}>
@@ -298,20 +328,12 @@ function ClientMembershipsPage() {
                         <div>{r.memberships?.name ?? "—"}</div>
                         <div className="text-xs text-muted-foreground">
                           {r.memberships?.kind === "trial" && "Пробное · "}
+                          {r.memberships?.kind === "personal" && "Персональные · "}
                           {formatDate(r.sold_at)}
                         </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap tabular-nums">
-                        <div>
-                          {r.visits_left ?? "—"}
-                          {r.visits_left != null && r.memberships?.visits_count != null && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              из {r.memberships.visits_count}
-                            </span>
-                          )}{" "}
-                          <span className="text-muted-foreground">трен.</span>
-                        </div>
+                        <Balance row={r} />
                         <div className="text-xs">
                           <DaysLeft status={r.membership_status} endsAt={r.ends_at} />
                         </div>
@@ -356,13 +378,39 @@ function ClientMembershipsPage() {
 function StripeLegend() {
   return (
     <div className="toolbar-full ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-      {(["paid", "overdue", "pending"] as const).map((s) => (
+      {STRIPED_STATES.map((s) => (
         <span key={s} className="flex items-center gap-1.5">
           <span aria-hidden className={cn("h-3.5 w-1 rounded-full", PAYMENT_STATES[s].stripe)} />
           {PAYMENT_STATES[s].label}
         </span>
       ))}
     </div>
+  );
+}
+
+/**
+ * Баланс абонемента: групповые тренировки (у пакета персональных их нет) и
+ * отдельной строкой персональные — у пакета персональных и у пакета
+ * тренировок с подарочными.
+ */
+function Balance({ row }: { row: Row }) {
+  const m = row.memberships;
+  const isPersonal = m?.kind === "personal";
+  const personalTotal = m?.personal_count ?? 0;
+  const line = (left: number | null, total: number | null, unit: string) => (
+    <div>
+      {left ?? "—"}
+      {left != null && total != null && (
+        <span className="text-muted-foreground"> из {total}</span>
+      )}{" "}
+      <span className="text-muted-foreground">{unit}</span>
+    </div>
+  );
+  return (
+    <>
+      {!isPersonal && line(row.visits_left, m?.visits_count ?? null, "трен.")}
+      {(isPersonal || personalTotal > 0) && line(row.personal_left, personalTotal || null, "перс.")}
+    </>
   );
 }
 

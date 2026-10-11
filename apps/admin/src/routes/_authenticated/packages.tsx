@@ -45,8 +45,15 @@ import { RowContextMenu } from "@/components/row-context-menu";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
-  kind: "Пакет тренировок продаётся кнопками «Новая продажа», «Допродажа», «Продление». Пробное посещение — кнопкой «Пробное» в «Продажах».",
-  visits: "Сколько тренировок входит в пакет.",
+  kind: "Пакет тренировок расходуется на групповых занятиях, пакет персональных — на персональных с тренером. Пробное посещение продаётся типом «Пробное» в «Продажах».",
+  visits:
+    "Сколько тренировок входит в пакет. С баланса списывается одна, когда администратор отмечает посещение группового занятия.",
+  trainings:
+    "Групповых тренировок в номенклатуре и через «+» — персональных (у пакета тренировок — в подарок). «перс.» — персональные с тренером, у них отдельный баланс.",
+  giftPersonal:
+    "Сколько персональных тренировок входит в пакет в подарок. Это отдельный баланс: списывается, когда отмечено посещение персонального занятия. 0 — нет.",
+  personal:
+    "Сколько персональных тренировок в пакете. С баланса списывается одна, когда администратор отмечает посещение персонального занятия.",
   duration: "Считается от даты продажи.",
   price:
     "Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет.",
@@ -81,8 +88,10 @@ type Package = {
   price: number;
   /** Сколькими платежами можно оплатить (1 — только сразу). */
   max_payments: number;
-  /** Пакет тренировок или пробное посещение. */
+  /** Пакет тренировок, пакет персональных или пробное посещение. */
   kind: MembershipKind;
+  /** Персональных: у пакета тренировок — подарочные, у пакета персональных — количество. */
+  personal_count: number;
   is_active: boolean;
 };
 
@@ -90,7 +99,14 @@ type Package = {
 type PackageDraft = Omit<Package, "id" | "studio_id">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, is_active";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active";
+
+/** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
+function trainingsLabel(p: Package) {
+  if (p.kind === "personal") return `${p.personal_count} перс.`;
+  const visits = p.visits_count ?? "—";
+  return p.personal_count > 0 ? `${visits} + ${p.personal_count} перс.` : String(visits);
+}
 
 function formatDuration(days: number | null) {
   if (!days) return "—";
@@ -205,7 +221,7 @@ function PackagesPage() {
                 <TableRow>
                   <TableHead>Название</TableHead>
                   <TableHead tip={TIPS.kind}>Тип</TableHead>
-                  <TableHead tip={TIPS.visits}>Тренировок</TableHead>
+                  <TableHead tip={TIPS.trainings}>Тренировок</TableHead>
                   <TableHead tip={TIPS.duration}>Срок действия</TableHead>
                   <TableHead tip={TIPS.price}>Стоимость</TableHead>
                   <TableHead tip={TIPS.payments}>Платежей</TableHead>
@@ -250,15 +266,17 @@ function PackagesPage() {
                       <TableRow className={p.is_active ? "" : "opacity-60"}>
                         <TableCell className="font-medium">{p.name}</TableCell>
                         <TableCell>
-                          {p.kind === "trial" ? (
-                            <Badge variant="outline">{MEMBERSHIP_KIND_LABEL.trial}</Badge>
+                          {p.kind !== "package" ? (
+                            <Badge variant="outline">{MEMBERSHIP_KIND_LABEL[p.kind]}</Badge>
                           ) : (
                             <span className="text-muted-foreground">
                               {MEMBERSHIP_KIND_LABEL.package}
                             </span>
                           )}
                         </TableCell>
-                        <TableCell>{p.visits_count ?? "—"}</TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums">
+                          {trainingsLabel(p)}
+                        </TableCell>
                         <TableCell>{formatDuration(p.duration_days)}</TableCell>
                         <TableCell className="font-medium">
                           {formatMoney(Number(p.price))}
@@ -337,7 +355,15 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
   const [name, setName] = useState(init?.name ?? "");
   const [description, setDescription] = useState(init?.description ?? "");
   const [visitsCount, setVisitsCount] = useState(
-    init?.visits_count != null ? String(init.visits_count) : "",
+    init?.visits_count != null && init.kind !== "personal" ? String(init.visits_count) : "",
+  );
+  // У пакета тренировок — подарочные персональные, у пакета персональных —
+  // их количество (одно поле в БД: personal_count).
+  const [giftPersonal, setGiftPersonal] = useState(
+    init?.kind === "package" && init.personal_count ? String(init.personal_count) : "",
+  );
+  const [personalCount, setPersonalCount] = useState(
+    init?.kind === "personal" ? String(init.personal_count) : "",
   );
   const [durationDays, setDurationDays] = useState(
     init?.duration_days != null ? String(init.duration_days) : "",
@@ -354,9 +380,27 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
       toast.error("Укажите название");
       return;
     }
-    const visits = positiveInt(visitsCount);
+    const isPersonal = kind === "personal";
+    // У пакета персональных обычных тренировок нет (0): по нему нельзя
+    // записаться на групповое.
+    const visits = isPersonal ? 0 : positiveInt(visitsCount);
     if (visits == null) {
       toast.error("Укажите количество тренировок (целое число больше 0)");
+      return;
+    }
+    const personal = isPersonal
+      ? positiveInt(personalCount)
+      : kind === "package"
+        ? giftPersonal.trim() === ""
+          ? 0
+          : positiveInt(giftPersonal)
+        : 0;
+    if (personal == null) {
+      toast.error(
+        isPersonal
+          ? "Укажите количество персональных тренировок (целое число больше 0)"
+          : "Персональных в подарок — целое число (0 — нет)",
+      );
       return;
     }
     const days = positiveInt(durationDays);
@@ -386,6 +430,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
         name: name.trim(),
         description: description.trim() || null,
         visits_count: visits,
+        personal_count: personal,
         duration_days: days,
         price: priceNum,
         max_payments: payments,
@@ -417,8 +462,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать номенклатуру" : "Новая номенклатура"}</DialogTitle>
         <DialogDescription>
-          Пакет — несколько тренировок за фиксированную цену на ограниченный срок. Пробное посещение
-          продаётся отдельной кнопкой «Пробное» в «Продажах».
+          Пакет — несколько тренировок за фиксированную цену на ограниченный срок: групповых (пакет
+          тренировок) или персональных с тренером (пакет персональных). Пробное посещение продаётся
+          типом «Пробное» в «Продажах».
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
@@ -444,21 +490,37 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={
-                  kind === "trial" ? "Например: Пробное занятие" : "Например: 8 тренировок"
+                  kind === "trial"
+                    ? "Например: Пробное занятие"
+                    : kind === "personal"
+                      ? "Например: 5 персональных"
+                      : "Например: 8 тренировок"
                 }
               />
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <FormField label="Тренировок" tip={TIPS.visits} required>
-                <Input
-                  type="number"
-                  min={1}
-                  value={visitsCount}
-                  onChange={(e) => setVisitsCount(e.target.value)}
-                  placeholder="8"
-                />
-              </FormField>
+              {kind === "personal" ? (
+                <FormField label="Персональных" tip={TIPS.personal} required>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={personalCount}
+                    onChange={(e) => setPersonalCount(e.target.value)}
+                    placeholder="5"
+                  />
+                </FormField>
+              ) : (
+                <FormField label="Тренировок" tip={TIPS.visits} required>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={visitsCount}
+                    onChange={(e) => setVisitsCount(e.target.value)}
+                    placeholder="8"
+                  />
+                </FormField>
+              )}
               <FormField label="Срок, дней" tip={TIPS.duration} required>
                 <Input
                   type="number"
@@ -479,6 +541,19 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
             </div>
 
             {kind === "package" && (
+              <FormField label="Персональных в подарок" tip={TIPS.giftPersonal} optional>
+                <Input
+                  type="number"
+                  min={0}
+                  value={giftPersonal}
+                  onChange={(e) => setGiftPersonal(e.target.value)}
+                  placeholder="0"
+                  className="sm:w-32"
+                />
+              </FormField>
+            )}
+
+            {kind !== "trial" && (
               <FormField
                 label="Сколькими платежами можно оплатить"
                 tip={TIPS.payments}

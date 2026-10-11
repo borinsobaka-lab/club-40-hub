@@ -28,16 +28,20 @@ export const PAYMENT_TYPE_LABEL: Record<PaymentType, string> = {
 export const PAYMENT_TYPES: PaymentType[] = ["first", "recurring", "other"];
 
 /**
- * Номенклатура пакетной студии (memberships.kind): пакет тренировок или
- * пробное посещение. Подписочный формат тип не использует.
+ * Номенклатура пакетной студии (memberships.kind): пакет тренировок, пакет
+ * персональных тренировок или пробное посещение. Пакет тренировок и пробное
+ * расходуются на групповых занятиях (visits_left), пакет персональных — на
+ * персональных (personal_left; туда же — подарочные персональные пакета
+ * тренировок, memberships.personal_count). Подписочный формат тип не использует.
  */
-export type MembershipKind = "package" | "trial";
+export type MembershipKind = "package" | "personal" | "trial";
 
 export const MEMBERSHIP_KIND_LABEL: Record<MembershipKind, string> = {
   package: "Пакет тренировок",
+  personal: "Пакет персональных тренировок",
   trial: "Пробное посещение",
 };
-export const MEMBERSHIP_KINDS: MembershipKind[] = ["package", "trial"];
+export const MEMBERSHIP_KINDS: MembershipKind[] = ["package", "personal", "trial"];
 
 /**
  * Тип продажи пакетной студии (sales.sale_kind) — для аналитики: сколько
@@ -92,7 +96,7 @@ export const SALE_KIND_HINT: Record<SaleKind, string> = {
 export const SALE_TIPS = {
   soldAt: "С этой даты начинается абонемент: от неё считается срок действия и график рассрочки.",
   membership:
-    "Тарифы из «Номенклатур». Если у клиента уже есть действующий или замороженный абонемент, новый его заменит.",
+    "Тарифы из «Номенклатур». Если у клиента уже есть действующий или замороженный абонемент, новый его заменит. В пакетной студии пакет персональных заменяет только пакет персональных, пакет тренировок — только пакет тренировок.",
   paymentType: "Для отчётов: первая покупка, регулярное продление или прочее.",
   promo: "Только пометка для учёта — скидку сам не считает. Уменьшите «Стоимость» вручную.",
   amount:
