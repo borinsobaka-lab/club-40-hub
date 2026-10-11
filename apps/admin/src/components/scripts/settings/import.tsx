@@ -92,7 +92,7 @@ export function ImportTab() {
     if (
       !(await confirm({
         title: "Заменить все скрипты?",
-        description: `Текущие разделы и скрипты удалятся, вместо них будут ${parsed.sections} ${plural(parsed.sections, "раздел", "раздела", "разделов")} из файла. Хронология правок останется; названия студий и свои переменные тоже заменятся, имена администраторов — нет.`,
+        description: `Текущие разделы и скрипты удалятся, вместо них будут ${parsed.sections} ${plural(parsed.sections, "раздел", "раздела", "разделов")} из файла. Хронология правок останется; названия клубов и свои переменные тоже заменятся, имена администраторов — нет.`,
         confirmLabel: "Заменить",
       }))
     )
@@ -130,7 +130,7 @@ export function ImportTab() {
 
       <InfoNote variant="warning">
         Все разделы и скрипты здесь заменятся содержимым файла. Хронология правок останется, импорт
-        ляжет в неё одной записью. Из настроек переносятся названия студий и свои переменные; имена
+        ляжет в неё одной записью. Из настроек переносятся названия клубов и свои переменные; имена
         администраторов — нет: там другие учётные записи.
       </InfoNote>
 
@@ -170,7 +170,7 @@ export function ImportTab() {
             {parsed.fileName}
             {parsed.exportedAt ? ` · выгружен ${formatWhen(parsed.exportedAt)}` : ""}
             {parsed.studios
-              ? ` · ${parsed.studios} ${plural(parsed.studios, "студия", "студии", "студий")}`
+              ? ` · ${parsed.studios} ${plural(parsed.studios, "клуб", "клуба", "клубов")}`
               : ""}
           </p>
           <Button onClick={handleImport} disabled={importing}>

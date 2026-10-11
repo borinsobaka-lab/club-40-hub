@@ -404,7 +404,7 @@ function WorkoutForm({
     <>
       <DialogHeader>
         <DialogTitle>{workout ? "Редактировать тренировку" : "Новая тренировка"}</DialogTitle>
-        <DialogDescription>Заполните данные тренировки студии.</DialogDescription>
+        <DialogDescription>Заполните данные тренировки клуба.</DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>

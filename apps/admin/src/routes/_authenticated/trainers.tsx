@@ -60,7 +60,7 @@ import { RowContextMenu } from "@/components/row-context-menu";
 const TIPS = {
   name: "Имя тренера клиенты видят в расписании приложения.",
   role: "Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах».",
-  studios: "Где работает сотрудник. Только в этих студиях его можно поставить на занятие.",
+  studios: "Где работает сотрудник. Только в этих клубах его можно поставить на занятие.",
   bank: "Для выплат сотруднику. Видят только сотрудники, клиентам в приложении они недоступны.",
   account:
     "С какой учётной записи сотрудник входит в админку. Продажи, которые он вносит в «Продажи», идут ему в зарплату (бонус 5 %).",
@@ -171,7 +171,7 @@ function EmployeesTable({
     if (
       !(await confirm({
         title: "Удалить сотрудника?",
-        description: `«${e.full_name}» будет удалён из всех студий и из расписания вместе с реквизитами и ставками, без возможности восстановления.`,
+        description: `«${e.full_name}» будет удалён из всех клубов и из расписания вместе с реквизитами и ставками, без возможности восстановления.`,
       }))
     )
       return;
@@ -192,7 +192,7 @@ function EmployeesTable({
             <TableHead className="w-[80px]">Фото</TableHead>
             <TableHead tip={TIPS.name}>Имя</TableHead>
             <TableHead tip={TIPS.role}>Роль</TableHead>
-            <TableHead tip={TIPS.studios}>Студии</TableHead>
+            <TableHead tip={TIPS.studios}>Клубы</TableHead>
             <TableHead>Telegram</TableHead>
             <TableHead tip={TIPS.bank}>Банк</TableHead>
             <TableHead tip={TIPS.bank}>Счёт</TableHead>
@@ -339,7 +339,7 @@ function EmployeeForm({
       return;
     }
     if (studioIds.length === 0) {
-      toast.error("Отметьте хотя бы одну студию");
+      toast.error("Отметьте хотя бы один клуб");
       return;
     }
     if (iban && !isValidGeIban(iban)) {
@@ -400,7 +400,7 @@ function EmployeeForm({
       const { error } = await supabase
         .from("trainer_studios")
         .insert(toAdd.map((studio_id) => ({ trainer_id: id, studio_id })));
-      if (error) return "студии не привязаны: " + error.message;
+      if (error) return "клубы не привязаны: " + error.message;
     }
     if (toRemove.length) {
       const { error } = await supabase
@@ -408,7 +408,7 @@ function EmployeeForm({
         .delete()
         .eq("trainer_id", id)
         .in("studio_id", toRemove);
-      if (error) return "студии не отвязаны: " + error.message;
+      if (error) return "клубы не отвязаны: " + error.message;
     }
 
     // Реквизиты: все поля пустые — строку удаляем, иначе upsert.
@@ -432,8 +432,8 @@ function EmployeeForm({
       <DialogHeader>
         <DialogTitle>{employee ? "Редактировать сотрудника" : "Новый сотрудник"}</DialogTitle>
         <DialogDescription>
-          Сотрудник общий для студий: отметьте, где он работает, — в расписании студии можно выбрать
-          только её сотрудников.
+          Сотрудник общий для клубов: отметьте, где он работает, — в расписании клуба можно выбрать
+          только его сотрудников.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
@@ -500,15 +500,15 @@ function EmployeeForm({
                   ))}
                   {/* Привязана учётная запись не из ваших студий — показываем как есть. */}
                   {userId !== NO_ACCOUNT && !accounts.some((a) => a.user_id === userId) && (
-                    <SelectItem value={userId}>Учётная запись другой студии</SelectItem>
+                    <SelectItem value={userId}>Учётная запись другого клуба</SelectItem>
                   )}
                 </SelectContent>
               </Select>
             </FormField>
 
-            <FormField label="Студии" tip={TIPS.studios} htmlFor={null} required>
+            <FormField label="Клубы" tip={TIPS.studios} htmlFor={null} required>
               {myStudios.length === 0 && otherStudios.length === 0 ? (
-                <InfoNote variant="empty">Нет студий — заведите их в разделе «Студии».</InfoNote>
+                <InfoNote variant="empty">Нет клубов — заведите их в разделе «Клубы».</InfoNote>
               ) : (
                 <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
                   {myStudios.map((s) => (
@@ -522,7 +522,7 @@ function EmployeeForm({
                   ))}
                   {otherStudios.map((s) => (
                     <CheckboxOption key={s.studio_id} checked disabled onCheckedChange={() => {}}>
-                      {s.studio?.name ?? "Другая студия"}
+                      {s.studio?.name ?? "Другой клуб"}
                     </CheckboxOption>
                   ))}
                 </div>

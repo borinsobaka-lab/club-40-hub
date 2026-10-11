@@ -80,9 +80,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "width=device-width, initial-scale=1, interactive-widget=resizes-content",
       },
       { title: "Base40 — Админ-панель" },
-      { name: "description", content: "Админ-панель фитнес-студии Base40." },
+      { name: "description", content: "Админ-панель фитнес-клуба Base40." },
       { property: "og:title", content: "Base40 — Админ-панель" },
-      { property: "og:description", content: "Админ-панель фитнес-студии Base40." },
+      { property: "og:description", content: "Админ-панель фитнес-клуба Base40." },
       { property: "og:type", content: "website" },
       // Цвет плашки иконки — им же браузеры красят интерфейс на мобильных.
       { name: "theme-color", content: "#1B1C1F" },

@@ -1303,8 +1303,8 @@ function TrainerChecks({
 function NoTrainersNote({ staff }: { staff?: boolean }) {
   return (
     <InfoNote variant="empty">
-      В студии нет {staff ? "сотрудников" : "тренеров"}. Добавьте их в разделе «Сотрудники» (в рейке
-      слева) и отметьте эту студию.
+      В клубе нет {staff ? "сотрудников" : "тренеров"}. Добавьте их в разделе «Сотрудники» (в рейке
+      слева) и отметьте этот клуб.
     </InfoNote>
   );
 }
@@ -1796,9 +1796,9 @@ function pickMembership(rows: ActiveMembershipRow[] | undefined, personal: boole
 const BOOK_REASONS: Record<string, string> = {
   full: "мест нет",
   already_booked: "уже записан",
-  forbidden: "нет прав в этой студии",
+  forbidden: "нет прав в этом клубе",
   not_bookable: "на прочую активность не записывают",
-  client_not_found: "клиент не из этой студии",
+  client_not_found: "клиент не из этого клуба",
   not_found: "занятие не найдено",
 };
 
@@ -1904,7 +1904,7 @@ function PickClientForm({
     <>
       <DialogHeader>
         <DialogTitle>Записать клиента</DialogTitle>
-        <DialogDescription>Клиент студии — поиск по имени, телефону или почте.</DialogDescription>
+        <DialogDescription>Клиент клуба — поиск по имени, телефону или почте.</DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSubmit}>
         <DialogBody>

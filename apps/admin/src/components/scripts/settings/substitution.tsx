@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SETTINGS_KEY, useScriptSettings, useScriptStaff } from "@/lib/scripts/data";
 import {
   BUILTIN_VARIABLES,
+  LEGACY_CLUB_VARIABLE,
   dateAfter,
   dateAfterLabel,
   defaultFirstName,
@@ -79,9 +80,9 @@ function findProblem(d: Draft): string {
   const names = new Set<string>();
   for (const s of d.studios) {
     const name = s.name.trim();
-    if (!name && hasText(s)) return "У студии не указано название — как в вариантах скриптов";
+    if (!name && hasText(s)) return "У клуба не указано название — как в вариантах скриптов";
     if (!name) continue;
-    if (names.has(name.toLowerCase())) return `Студия «${name}» указана дважды`;
+    if (names.has(name.toLowerCase())) return `Клуб «${name}» указан дважды`;
     names.add(name.toLowerCase());
   }
   const keys = new Set<string>();
@@ -89,7 +90,7 @@ function findProblem(d: Draft): string {
     if (!VARIABLE_KEY_RE.test(v.key))
       return `Имя переменной «${v.key || "без имени"}» — только буквы, цифры и _, без пробелов`;
     const k = v.key.toLowerCase();
-    if (BUILTIN_VARIABLES.some((b) => b.key === k))
+    if (k === LEGACY_CLUB_VARIABLE || BUILTIN_VARIABLES.some((b) => b.key === k))
       return `{${v.key}} подставляется автоматически — выберите другое имя`;
     if (keys.has(k)) return `Переменная {${v.key}} задана дважды`;
     keys.add(k);
@@ -181,8 +182,8 @@ export function SubstitutionTab({ canEdit }: { canEdit: boolean }) {
       className="space-y-4"
     >
       <p className="text-sm text-muted-foreground">
-        В тексте скрипта пишут {"{админ}"}, {"{студия}"} или свою {"{переменную}"} — администратор
-        видит и копирует уже готовый текст: своё имя, свою студию, нужные значения, на языке
+        В тексте скрипта пишут {"{админ}"}, {"{клуб}"} или свою {"{переменную}"} — администратор
+        видит и копирует уже готовый текст: своё имя, свой клуб, нужные значения, на языке
         переписки.
       </p>
 
@@ -190,15 +191,15 @@ export function SubstitutionTab({ canEdit }: { canEdit: boolean }) {
           fieldset отключает разом все поля и кнопки внутри. */}
       <fieldset disabled={!canEdit} className="min-w-0 space-y-4">
         <Block
-          title="Студии"
-          hint="{студия} — студия, выбранная над скриптами. Название — как в вариантах скриптов и переключателе студии."
+          title="Клубы"
+          hint="{клуб} — клуб, выбранный над скриптами. Название — как в вариантах скриптов и переключателе клуба."
         >
           {form.studios.length > 0 && <GridHead first="Название" />}
           {form.studios.map((s, i) => (
             <div key={i} className={ROW}>
               <Input
                 value={s.name}
-                aria-label="Название студии"
+                aria-label="Название клуба"
                 placeholder="Как в вариантах скриптов"
                 onChange={(e) => setStudio(i, { name: e.target.value })}
               />
@@ -208,13 +209,13 @@ export function SubstitutionTab({ canEdit }: { canEdit: boolean }) {
                 onChange={(v) => setStudio(i, v)}
               />
               <RemoveButton
-                label="Удалить студию"
+                label="Удалить клуб"
                 onClick={() => update({ studios: form.studios.filter((_, j) => j !== i) })}
               />
             </div>
           ))}
           {!form.studios.length && (
-            <InfoNote variant="empty">Студий пока нет — {"{студия}"} не подставится.</InfoNote>
+            <InfoNote variant="empty">Клубов пока нет — {"{клуб}"} не подставится.</InfoNote>
           )}
           {canEdit && (
             <div>
@@ -223,7 +224,7 @@ export function SubstitutionTab({ canEdit }: { canEdit: boolean }) {
                 onClick={() => update({ studios: [...form.studios, { name: "", ...EMPTY_LANG }] })}
               >
                 <Plus />
-                Добавить студию
+                Добавить клуб
               </Button>
             </div>
           )}

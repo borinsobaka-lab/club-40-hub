@@ -45,12 +45,12 @@ export function RequireFormat({
     <AdminShell title={title}>
       <div className="space-y-3 rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
         <p>
-          Этот раздел — для студий формата «{STUDIO_FORMAT_LABEL[format]}». Студия «{studio.name}» —
-          «{STUDIO_FORMAT_LABEL[studio.format]}».
+          Этот раздел — для клубов формата «{STUDIO_FORMAT_LABEL[format]}». Клуб «{studio.name}» — «
+          {STUDIO_FORMAT_LABEL[studio.format]}».
         </p>
         {otherUrl && (
           <Button asChild variant="outline">
-            <Link to={otherUrl}>Открыть раздел этой студии</Link>
+            <Link to={otherUrl}>Открыть раздел этого клуба</Link>
           </Button>
         )}
       </div>

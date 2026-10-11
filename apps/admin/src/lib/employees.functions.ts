@@ -175,7 +175,7 @@ const accessSchema = z
           sections: z.array(z.enum(CLUB_SECTION_KEYS)),
         }),
       )
-      .min(1, "Отметьте хотя бы одну студию"),
+      .min(1, "Отметьте хотя бы один клуб"),
   })
   .superRefine((v, ctx) => {
     if (v.role === "owner") return;
@@ -185,7 +185,7 @@ const accessSchema = z
     if (v.rail.includes("club") && v.studios.some((s) => s.sections.length === 0)) {
       ctx.addIssue({
         code: "custom",
-        message: "Отметьте хотя бы один раздел клуба в каждой студии",
+        message: "Отметьте хотя бы один раздел клуба в каждом клубе",
       });
     }
   });
@@ -213,7 +213,7 @@ async function applyAccess(
   const studios = [...new Map(input.studios.map((s) => [s.studio_id, s])).values()];
   const selected = studios.map((s) => s.studio_id);
   const foreign = selected.filter((id) => !ownedStudioIds.includes(id));
-  if (foreign.length) throw new Error("Выдавать доступ можно только в своих студиях");
+  if (foreign.length) throw new Error("Выдавать доступ можно только в своих клубах");
   const unselected = ownedStudioIds.filter((id) => !selected.includes(id));
   const isOwnerRole = input.role === "owner";
   const now = new Date().toISOString();
@@ -328,7 +328,7 @@ export const createEmployee = createServerFn({ method: "POST" })
     const fullName = `${data.last_name} ${data.first_name}`;
     const homeStudioId = data.access.studios[0].studio_id;
     if (!ownedStudioIds.includes(homeStudioId)) {
-      throw new Error("Выдавать доступ можно только в своих студиях");
+      throw new Error("Выдавать доступ можно только в своих клубах");
     }
 
     const pattern = data.email.replace(/[\\%_]/g, "\\$&");
@@ -407,7 +407,7 @@ export const updateEmployeeAccess = createServerFn({ method: "POST" })
     // Запись идёт сервис-ключом в обход RLS — цель проверяем явно: иначе
     // владелец мог бы выдать роль любому пользователю проекта по его id.
     if (!(await isManagedEmployee(admin, data.user_id, context.ownedStudioIds))) {
-      throw new Error("Этот пользователь не является сотрудником ваших студий");
+      throw new Error("Этот пользователь не является сотрудником ваших клубов");
     }
     await applyAccess(admin, data.user_id, context.ownedStudioIds, data.access);
     return { ok: true };
@@ -428,7 +428,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     // проверена явно: без этого владелец одной студии мог удалить любого
     // пользователя проекта — сотрудника чужой студии или клиента приложения.
     if (!(await isManagedEmployee(admin, data.user_id, ownedStudioIds))) {
-      throw new Error("Этот пользователь не является сотрудником ваших студий");
+      throw new Error("Этот пользователь не является сотрудником ваших клубов");
     }
 
     // Один человек может быть и сотрудником, и клиентом (или сотрудником

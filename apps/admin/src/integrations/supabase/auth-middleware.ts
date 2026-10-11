@@ -34,8 +34,8 @@ export const requireStaff = createMiddleware({ type: "function" })
       context.userId,
       getRequestHeader(ACTIVE_STUDIO_HEADER),
     );
-    if (!staff) throw new Error("Студия не найдена для пользователя");
-    if (!staff.roles.length) throw new Error("Доступ только для сотрудников этой студии");
+    if (!staff) throw new Error("Клуб не найден для пользователя");
+    if (!staff.roles.length) throw new Error("Доступ только для сотрудников этого клуба");
     return next({ context: { studioId: staff.studioId, isOwner: staff.roles.includes("owner") } });
   });
 
@@ -55,7 +55,7 @@ export const requireAccessManager = createMiddleware({ type: "function" })
     if (error) throw new Error(error.message);
     const ownedStudioIds = [...new Set((data ?? []).map((r) => r.studio_id as string))];
     if (ownedStudioIds.length === 0) {
-      throw new Error("Управлять доступами может только владелец студии");
+      throw new Error("Управлять доступами может только владелец клуба");
     }
     return next({ context: { ownedStudioIds } });
   });

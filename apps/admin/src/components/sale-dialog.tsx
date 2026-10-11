@@ -566,7 +566,7 @@ function SaleForm({
                           <li key={i} className="flex items-center justify-between gap-3">
                             <span>
                               Платёж {i + 1} — {formatDate(p.date)}
-                              {p.isDownPayment && " (сегодня, в студии)"}
+                              {p.isDownPayment && " (сегодня, в клубе)"}
                             </span>
                             <span className="font-medium tabular-nums text-foreground">
                               {formatMoney(p.amount)}

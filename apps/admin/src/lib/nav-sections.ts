@@ -111,7 +111,7 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
   },
   {
     key: "studio",
-    label: "Студия",
+    label: "Клуб",
     items: [
       { title: "Тренировки", url: "/workouts", icon: Dumbbell, section: "workouts" },
       // Один раздел прав «Номенклатуры», у каждого формата своя страница:
@@ -243,7 +243,7 @@ export const SECTIONS: RailSection[] = [
   {
     key: "scripts",
     title: "Скрипты LS",
-    fullTitle: "Скрипты LS — скрипты студий Lady Stretch",
+    fullTitle: "Скрипты LS — скрипты клубов Lady Stretch",
     url: SCRIPTS_URL,
     icon: Notebook,
   },
@@ -255,7 +255,7 @@ export const SECTIONS: RailSection[] = [
  */
 export const ADMIN_SECTIONS: RailSection[] = [
   { key: "access", title: "Доступы", url: "/employees", icon: ShieldUser },
-  { key: "studios", title: "Студии", url: "/studios", icon: City },
+  { key: "studios", title: "Клубы", url: "/studios", icon: City },
 ];
 
 const matches = (pathname: string, path: string) =>

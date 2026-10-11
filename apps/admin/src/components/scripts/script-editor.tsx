@@ -101,10 +101,10 @@ export function ScriptEditor({
       return vs;
     });
 
-  /** Разделить по студиям: обычно отличается только адрес и дорога — тексты копируются. */
+  /** Разделить по клубам: обычно отличается только адрес и дорога — тексты копируются. */
   const splitByStudio = () =>
     setVariants((vs) => {
-      const labels = studios.length >= 2 ? studios : ["Студия 1", "Студия 2"];
+      const labels = studios.length >= 2 ? studios : ["Клуб 1", "Клуб 2"];
       return labels.map((label) => ({ label, messages: clone(vs[0].messages) }));
     });
 
@@ -132,7 +132,7 @@ export function ScriptEditor({
   function validate(): string | null {
     if (!draft.title.trim()) return "Дайте скрипту название — по нему его будут искать";
     const labels = draft.variants.map((v) => v.label.trim());
-    if (byStudio && labels.some((l) => !l)) return "У каждого варианта должно быть название студии";
+    if (byStudio && labels.some((l) => !l)) return "У каждого варианта должно быть название клуба";
     if (new Set(labels).size !== labels.length) return "Названия вариантов повторяются";
     for (const v of draft.variants) {
       if (!v.messages.some((m) => LANGS.some((l) => m[l.key].trim())))
@@ -298,7 +298,7 @@ export function ScriptEditor({
                 >
                   {byStudio && (
                     <div className="flex items-end gap-2">
-                      <FormField label="Студия" required className="flex-1">
+                      <FormField label="Клуб" required className="flex-1">
                         <Input
                           value={variant.label}
                           onChange={(e) =>
@@ -409,11 +409,11 @@ export function ScriptEditor({
                     }
                   >
                     <Plus />
-                    Вариант для студии
+                    Вариант для клуба
                   </Button>
                 ) : (
                   <Button variant="ghost" size="sm" onClick={splitByStudio}>
-                    Разделить по студиям
+                    Разделить по клубам
                   </Button>
                 )}
               </div>
@@ -428,7 +428,7 @@ export function ScriptEditor({
                   }
                 />
                 <InfoNote>
-                  {"{переменные}"} в фигурных скобках подставляются сами — имя вошедшего, студия,
+                  {"{переменные}"} в фигурных скобках подставляются сами — имя вошедшего, клуб,
                   значения из настроек — на языке текста. [день], [время] в квадратных скобках —
                   места, которые администратор заполняет руками.
                 </InfoNote>

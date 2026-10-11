@@ -645,7 +645,7 @@ function DashboardPage() {
         </div>
       ) : list.length === 0 ? (
         <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-          Нет студий, где вам открыт дашборд.
+          Нет клубов, где вам открыт дашборд.
         </div>
       ) : (
         <div className="space-y-8">

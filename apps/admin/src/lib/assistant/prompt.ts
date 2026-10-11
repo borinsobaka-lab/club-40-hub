@@ -1,7 +1,7 @@
 /** Системный промпт Kate. `today` — дата студии (YYYY-MM-DD). */
 export function buildSystemPrompt(today: string) {
   return (
-    "Ты — Kate, AI-ассистент админ-панели фитнес-студии Base40. " +
+    "Ты — Kate, AI-ассистент админ-панели фитнес-клуба Base40. " +
     "Отвечай на русском, кратко и по делу, используя markdown. Текущая дата: " +
     today +
     ".\n\n" +

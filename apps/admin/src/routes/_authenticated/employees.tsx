@@ -64,7 +64,7 @@ const TIPS = {
   email: "При каждом входе на эту почту приходит 6-значный код — пароля нет.",
   role: "Владельцу открыто всё, и только он управляет «Доступами». Администратору и тренеру — разделы, отмеченные ниже.",
   sections:
-    "Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех студий. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения.",
+    "Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех клубов. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения.",
 };
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -106,7 +106,7 @@ function EmployeesPage() {
     onSuccess: (res) => {
       toast.success(
         res.accountKept
-          ? "Доступ к админке снят. Учётная запись сохранена: человек — клиент или сотрудник другой студии"
+          ? "Доступ к админке снят. Учётная запись сохранена: человек — клиент или сотрудник другого клуба"
           : "Сотрудник удалён",
       );
       qc.invalidateQueries({ queryKey: ["employees"] });
@@ -149,7 +149,7 @@ function EmployeesPage() {
                   <TableHead>Имя</TableHead>
                   <TableHead tip={TIPS.email}>Email</TableHead>
                   <TableHead tip={TIPS.role}>Роль</TableHead>
-                  <TableHead>Студии</TableHead>
+                  <TableHead>Клубы</TableHead>
                   <TableHead tip={TIPS.sections}>Разделы</TableHead>
                 </TableRow>
               </TableHeader>
@@ -187,7 +187,7 @@ function EmployeesPage() {
                                 onSelect: async () => {
                                   const ok = await confirm({
                                     title: "Удалить сотрудника?",
-                                    description: `${e.full_name ?? e.email} потеряет доступ к админке в ваших студиях.`,
+                                    description: `${e.full_name ?? e.email} потеряет доступ к админке в ваших клубах.`,
                                   });
                                   if (ok) deleteMut.mutate(e.user_id);
                                 },
@@ -327,7 +327,7 @@ function AccessForm({
     // Те же правила, что у серверной схемы.
     const selected = studios.filter((s) => studioSections[s.id]);
     if (selected.length === 0) {
-      toast.error("Отметьте хотя бы одну студию");
+      toast.error("Отметьте хотя бы один клуб");
       return;
     }
     if (!isOwnerRole && rail.length === 0) {
@@ -335,7 +335,7 @@ function AccessForm({
       return;
     }
     if (showClubSections && selected.some((s) => studioSections[s.id].length === 0)) {
-      toast.error("Отметьте хотя бы один раздел клуба в каждой студии");
+      toast.error("Отметьте хотя бы один раздел клуба в каждом клубе");
       return;
     }
 
@@ -423,8 +423,8 @@ function AccessForm({
 
             {isOwnerRole ? (
               <InfoNote>
-                Владельцу открыты все разделы админки и все разделы клуба в отмеченных студиях, а
-                также «Доступы» и «Студии».
+                Владельцу открыты все разделы админки и все разделы клуба в отмеченных клубах, а
+                также «Доступы» и «Клубы».
               </InfoNote>
             ) : (
               <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections} required>
@@ -451,17 +451,17 @@ function AccessForm({
             )}
 
             <FormField
-              label="Студии"
+              label="Клубы"
               htmlFor={null}
               required
               tip={
                 showClubSections
-                  ? "Где у сотрудника есть доступ к админке и какие разделы «Клуба» ему видны в каждой студии."
-                  : "Где у сотрудника есть доступ к админке: без студии в админку не войти."
+                  ? "Где у сотрудника есть доступ к админке и какие разделы «Клуба» ему видны в каждом клубе."
+                  : "Где у сотрудника есть доступ к админке: без клуба в админку не войти."
               }
             >
               {studios.length === 0 ? (
-                <InfoNote variant="empty">Нет студий — заведите их в разделе «Студии».</InfoNote>
+                <InfoNote variant="empty">Нет клубов — заведите их в разделе «Клубы».</InfoNote>
               ) : (
                 <div className="space-y-2">
                   {studios.map((s) => (
@@ -478,7 +478,7 @@ function AccessForm({
               )}
               {!!employee?.otherStudios && (
                 <InfoNote>
-                  Ещё студий с доступом: {employee.otherStudios}. Там доступ настраивает их владелец
+                  Ещё клубов с доступом: {employee.otherStudios}. Там доступ настраивает их владелец
                   — это сохранение их не меняет.
                 </InfoNote>
               )}

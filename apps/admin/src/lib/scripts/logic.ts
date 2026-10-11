@@ -197,7 +197,7 @@ export function scriptUrl(sectionId: string, itemId: string): string {
   return `${window.location.origin}/scripts/${sectionId}?item=${itemId}`;
 }
 
-/* --- Переменные: {админ}, {студия}, свои -------------------------------- */
+/* --- Переменные: {админ}, {клуб}, свои ---------------------------------- */
 
 /**
  * {ключ}: буквы, цифры, подчёркивание. Квадратные скобки [день] — другое:
@@ -206,9 +206,16 @@ export function scriptUrl(sectionId: string, itemId: string): string {
 export const VARIABLE_RE = /\{([0-9A-Za-zА-Яа-яЁё_]{1,40})\}/g;
 export const VARIABLE_KEY_RE = /^[0-9A-Za-zА-Яа-яЁё_]{1,40}$/;
 
+/**
+ * Прежнее имя {клуб}: так переменная называлась, пока в админке был термин
+ * «студия». В старых текстах скриптов она осталась — подставляется так же,
+ * но в списках для вставки не показывается.
+ */
+export const LEGACY_CLUB_VARIABLE = "студия";
+
 export const BUILTIN_VARIABLES: { key: string; description: string }[] = [
   { key: "админ", description: "имя того, кто вошёл, — из настроек скриптов" },
-  { key: "студия", description: "выбранная студия — название на языке текста" },
+  { key: "клуб", description: "выбранный клуб — название на языке текста" },
 ];
 
 export type VarValue = {
@@ -277,16 +284,16 @@ export function makeResolver({
         ? { value }
         : { value: null, why: `Нет имени на ${inLang} — задайте в «Настройках» → «Подстановка»` };
     }
-    if (key === "студия") {
+    if (key === "клуб" || key === LEGACY_CLUB_VARIABLE) {
       const studios = settings?.studios ?? [];
       const names =
         studios.find((s) => s.name === studio || s.ru === studio) ??
         (studios.length === 1 ? studios[0] : undefined);
-      if (!names) return { value: null, why: "Выберите студию над скриптами" };
+      if (!names) return { value: null, why: "Выберите клуб над скриптами" };
       const value = pick(names, lang);
       return value
         ? { value }
-        : { value: null, why: `Нет названия студии на ${inLang} — задайте в настройках` };
+        : { value: null, why: `Нет названия клуба на ${inLang} — задайте в настройках` };
     }
     const custom = settings?.variables.find((v) => v.key.toLowerCase() === key);
     if (!custom) {

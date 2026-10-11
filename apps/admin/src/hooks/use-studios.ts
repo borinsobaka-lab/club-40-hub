@@ -53,7 +53,7 @@ export function useStudios() {
     },
     // Студии меняются редко; после правки в «Студиях» кэш инвалидируется.
     staleTime: Infinity,
-    meta: { errorMessage: "Не удалось загрузить студии" },
+    meta: { errorMessage: "Не удалось загрузить клубы" },
   });
 }
 

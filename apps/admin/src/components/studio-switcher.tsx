@@ -32,10 +32,10 @@ export function StudioSwitcher({ triggerClassName }: { triggerClassName?: string
       >
         {/* Тип студии — только в выпадающем списке, в поле хватает названия. */}
         <SelectTrigger
-          aria-label="Студия"
+          aria-label="Клуб"
           className={cn("w-44 [&_.studio-format]:hidden", triggerClassName)}
         >
-          <SelectValue placeholder={studios.length === 0 ? "Нет студий" : "Выберите студию"} />
+          <SelectValue placeholder={studios.length === 0 ? "Нет клубов" : "Выберите клуб"} />
         </SelectTrigger>
         <SelectContent>
           {studios.map((s) => (
