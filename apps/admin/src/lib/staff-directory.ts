@@ -54,6 +54,18 @@ export type Employee = {
   telegram: string | null;
   /** Биография для приложения (текст с разметкой, lib/formatted-text.tsx). */
   bio: string | null;
+  /** Ссылка на внешний сервис чаевых — кнопка «Поблагодарить тренера» в приложении. */
+  tip_url: string | null;
+  /**
+   * Рейтинг до сотых и число отзывов: прежний сервис (rating_base_*) +
+   * оценки клиентов в приложении (trainer_reviews). Итог считает база —
+   * db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql; numeric
+   * приходит строкой.
+   */
+  rating_avg: number | string | null;
+  rating_count: number;
+  rating_base_avg: number | string | null;
+  rating_base_count: number;
   trainer_studios: { studio_id: string; studio: { name: string } | null }[];
   // Связь один к одному: PostgREST отдаёт объект, но на всякий случай
   // принимаем и массив.
@@ -61,7 +73,7 @@ export type Employee = {
 };
 
 const EMPLOYEE_SELECT =
-  "id, full_name, role, photo_url, telegram, bio, trainer_studios(studio_id, studio:studios(name)), bank_details:trainer_bank_details(bank, account_number, account_holder)";
+  "id, full_name, role, photo_url, telegram, bio, tip_url, rating_avg, rating_count, rating_base_avg, rating_base_count, trainer_studios(studio_id, studio:studios(name)), bank_details:trainer_bank_details(bank, account_number, account_holder)";
 
 /** Все сотрудники справочника — общий кэш обеих страниц раздела. */
 export function useEmployees() {

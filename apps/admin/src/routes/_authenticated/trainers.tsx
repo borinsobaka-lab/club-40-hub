@@ -64,6 +64,11 @@ const TIPS = {
   role: "Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах».",
   studios: "Где работает сотрудник. Только в этих клубах его можно поставить на занятие.",
   bio: "Биография — клиенты читают её в приложении: «Студия» → «Тренеры». Можно выделять жирным, делать списки и ссылки.",
+  rating:
+    "Средняя оценка до сотых и число отзывов: отзывы из прежнего сервиса и оценки клиентов в приложении («Студия» → «Тренеры»).",
+  ratingBase:
+    "Рейтинг из прежнего сервиса — считается как уже оставленные отзывы, к нему добавляются оценки клиентов в приложении.",
+  tip: "Ссылка на сервис чаевых — в карточке тренера в приложении появится кнопка «Поблагодарить тренера».",
   bank: "Для выплат сотруднику. Видят только сотрудники, клиентам в приложении они недоступны.",
 };
 
@@ -91,6 +96,25 @@ function isValidGeIban(iban: string) {
   let rest = 0;
   for (const d of digits) rest = (rest * 10 + Number(d)) % 97;
   return rest === 1;
+}
+
+const ratingFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
+
+/** Оценка и отзывы: 4,99 · 56. */
+function RatingCell({ e }: { e: Employee }) {
+  if (e.role !== "trainer") return <span className="text-muted-foreground">—</span>;
+  if (e.rating_avg == null || e.rating_count === 0) {
+    return <span className="text-sm text-muted-foreground">Нет отзывов</span>;
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
+      <svg viewBox="0 0 24 24" className="size-4 fill-amber-400" aria-hidden="true">
+        <path d="M12 2.5l2.94 5.96 6.56.95-4.75 4.63 1.12 6.54L12 17.5l-5.87 3.08 1.12-6.54L2.5 9.41l6.56-.95z" />
+      </svg>
+      <span className="font-medium tabular-nums">{ratingFormat.format(Number(e.rating_avg))}</span>
+      <span className="text-muted-foreground tabular-nums">· {e.rating_count}</span>
+    </span>
+  );
 }
 
 /** В поле — ссылка целиком или ник (с @ или без). */
@@ -188,6 +212,7 @@ function EmployeesTable({
             <TableHead tip={TIPS.name}>Имя</TableHead>
             <TableHead tip={TIPS.role}>Роль</TableHead>
             <TableHead tip={TIPS.studios}>Клубы</TableHead>
+            <TableHead tip={TIPS.rating}>Рейтинг</TableHead>
             <TableHead>Telegram</TableHead>
             <TableHead tip={TIPS.bank}>Банк</TableHead>
             <TableHead tip={TIPS.bank}>Счёт</TableHead>
@@ -196,10 +221,10 @@ function EmployeesTable({
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableSkeletonRows columns={8} />
+            <TableSkeletonRows columns={9} />
           ) : employees.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+              <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                 Пока нет сотрудников. Нажмите «Добавить сотрудника».
               </TableCell>
             </TableRow>
@@ -239,6 +264,9 @@ function EmployeesTable({
                       ) : (
                         <span className="text-sm text-muted-foreground">Не выбраны</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <RatingCell e={e} />
                     </TableCell>
                     <TableCell>
                       {e.telegram ? (
@@ -293,6 +321,13 @@ function EmployeeForm({
   const [telegram, setTelegram] = useState(employee?.telegram ?? "");
   const [photoUrl, setPhotoUrl] = useState(employee?.photo_url ?? null);
   const [bio, setBio] = useState(employee?.bio ?? "");
+  const [tipUrl, setTipUrl] = useState(employee?.tip_url ?? "");
+  const [baseAvg, setBaseAvg] = useState(
+    employee?.rating_base_count ? String(employee.rating_base_avg ?? "").replace(".", ",") : "",
+  );
+  const [baseCount, setBaseCount] = useState(
+    employee?.rating_base_count ? String(employee.rating_base_count) : "",
+  );
   const [studioIds, setStudioIds] = useState<string[]>(initialStudioIds);
   const [bankCode, setBankCode] = useState<string>(bank?.bank ?? "");
   const [accountNumber, setAccountNumber] = useState(
@@ -330,6 +365,26 @@ function EmployeeForm({
       toast.error("Отметьте хотя бы один клуб");
       return;
     }
+    const tip = tipUrl.trim();
+    if (tip && !isHttpUrl(tip)) {
+      toast.error("Ссылка на чаевые должна начинаться с https://");
+      return;
+    }
+    // Прежний рейтинг: оба поля или ни одного.
+    const avg = baseAvg.trim() ? Number(baseAvg.trim().replace(",", ".")) : null;
+    const count = baseCount.trim() ? Number(baseCount.trim()) : 0;
+    if (avg != null && !(avg >= 1 && avg <= 5)) {
+      toast.error("Прежняя оценка — число от 1 до 5, например 4,98");
+      return;
+    }
+    if (!Number.isInteger(count) || count < 0) {
+      toast.error("Число прежних отзывов — целое, от 0");
+      return;
+    }
+    if ((avg == null) !== (count === 0)) {
+      toast.error("Для прежнего рейтинга укажите и оценку, и число отзывов");
+      return;
+    }
     if (iban && !isValidGeIban(iban)) {
       toast.error(
         "Номер счёта — грузинский IBAN: GE и 20 знаков, например GE29 NB00 0000 0101 9049 17",
@@ -345,6 +400,9 @@ function EmployeeForm({
         telegram: telegram.trim() || null,
         photo_url: photoUrl,
         bio: bio.trim() || null,
+        tip_url: tip || null,
+        rating_base_avg: avg == null ? null : Math.round(avg * 100) / 100,
+        rating_base_count: count,
       };
       let id = employee?.id;
       if (id) {
@@ -478,6 +536,48 @@ function EmployeeForm({
                   onChange={setBio}
                   placeholder="Опыт, специализация, достижения…"
                 />
+              </FormField>
+            )}
+
+            {role === "trainer" && (
+              <FormField label="Ссылка на чаевые" tip={TIPS.tip} optional>
+                <Input
+                  value={tipUrl}
+                  onChange={(e) => setTipUrl(e.target.value)}
+                  placeholder="https://…"
+                  inputMode="url"
+                />
+              </FormField>
+            )}
+
+            {role === "trainer" && (
+              <FormField
+                label="Рейтинг из прежнего сервиса"
+                tip={TIPS.ratingBase}
+                htmlFor={null}
+                optional
+                hint={
+                  employee && employee.rating_count > 0
+                    ? `Сейчас в приложении: ${ratingFormat.format(Number(employee.rating_avg))} · ${employee.rating_count} отз. (вместе с оценками клиентов)`
+                    : undefined
+                }
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    value={baseAvg}
+                    onChange={(e) => setBaseAvg(e.target.value)}
+                    placeholder="Оценка, 4,98"
+                    inputMode="decimal"
+                    aria-label="Прежняя оценка"
+                  />
+                  <Input
+                    value={baseCount}
+                    onChange={(e) => setBaseCount(e.target.value)}
+                    placeholder="Отзывов, 56"
+                    inputMode="numeric"
+                    aria-label="Число прежних отзывов"
+                  />
+                </div>
               </FormField>
             )}
 
