@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FormattedText } from "@/lib/formatted-text";
 
 export const Route = createFileRoute("/news/$newsId")({
   head: () => ({
@@ -123,10 +124,12 @@ function NewsDetailPage() {
           {item.description && (
             <p className="text-muted-foreground text-base">{item.description}</p>
           )}
-          {item.full_text && (
-            <div className="text-foreground text-[15px] whitespace-pre-wrap leading-relaxed pt-2">
-              {item.full_text}
-            </div>
+          {item.full_text?.trim() && (
+            <FormattedText
+              text={item.full_text}
+              className="text-foreground text-[15px] leading-relaxed pt-2"
+              linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
+            />
           )}
         </div>
       </div>

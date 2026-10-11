@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import googleCalIcon from "@/assets/google-calendar.png.asset.json";
 import appleCalIcon from "@/assets/apple-calendar.png.asset.json";
 import outlookIcon from "@/assets/outlook.png.asset.json";
+import { FormattedText } from "@/lib/formatted-text";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -248,10 +249,12 @@ export function WorkoutDrawer({
                   )}
                 </div>
 
-                {data.description && (
-                  <p className="mt-4 text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                    {data.description}
-                  </p>
+                {data.description?.trim() && (
+                  <FormattedText
+                    text={data.description}
+                    className="mt-4 text-[15px] leading-relaxed text-foreground/90"
+                    linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
+                  />
                 )}
 
                 {isBooked ? (

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
+import { FormattedTextarea } from "@/components/formatted-textarea";
 import {
   Table,
   TableBody,
@@ -456,7 +457,11 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
               />
             </FormField>
 
-            <FormField label="Описание" optional>
+            <FormField
+              label="Описание"
+              tip="Строка под заголовком в списке на главном экране — без форматирования."
+              optional
+            >
               <Textarea
                 rows={2}
                 value={description}
@@ -477,11 +482,15 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
               />
             </FormField>
 
-            <FormField label="Полный текст" optional>
-              <Textarea
+            <FormField
+              label="Полный текст"
+              tip="На открытой странице. Можно выделять жирным, делать списки и ссылки."
+              optional
+            >
+              <FormattedTextarea
                 rows={8}
                 value={fullText}
-                onChange={(e) => setFullText(e.target.value)}
+                onChange={setFullText}
                 placeholder={texts.fullTextPlaceholder}
               />
             </FormField>

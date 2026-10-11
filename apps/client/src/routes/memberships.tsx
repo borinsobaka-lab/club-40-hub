@@ -35,6 +35,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { mediaUrl } from "@/lib/media";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
 import { PackagesMembershipsPage } from "@/formats/packages/memberships-page";
+import { FormattedText } from "@/lib/formatted-text";
 
 export const Route = createFileRoute("/memberships")({
   head: () => ({
@@ -748,8 +749,12 @@ function MembershipCard({
               {formatPeriod(membership.duration_days)}
             </span>
           </div>
-          {membership.description && (
-            <p className="mt-3 text-sm text-muted-foreground">{membership.description}</p>
+          {membership.description?.trim() && (
+            <FormattedText
+              text={membership.description}
+              className="mt-3 text-sm text-muted-foreground"
+              linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
+            />
           )}
         </div>
         <Button
@@ -1030,8 +1035,12 @@ function ActiveMembershipDrawer({
                 <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
                   {m?.name ?? "Ваш абонемент"}
                 </DrawerPrimitive.Title>
-                {m?.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{m.description}</p>
+                {m?.description?.trim() && (
+                  <FormattedText
+                    text={m.description}
+                    className="text-sm text-muted-foreground mt-1"
+                    linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
+                  />
                 )}
               </div>
               <div

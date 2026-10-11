@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ColorInput } from "@/components/ui/color-input";
 import { FormField } from "@/components/ui/form-field";
-import { Textarea } from "@/components/ui/textarea";
+import { FormattedTextarea } from "@/components/formatted-textarea";
+import { stripFormatting } from "@/lib/formatted-text";
 import {
   Table,
   TableBody,
@@ -59,7 +60,8 @@ import { WorkoutsPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
-  description: "Клиенты видят его в карточке занятия в расписании приложения.",
+  description:
+    "Клиенты видят его в карточке занятия в расписании приложения. Можно выделять жирным, делать списки и ссылки.",
   type: "Задаёт цвет метки и MET по умолчанию, если поле MET пустое.",
   capacity: "Когда места заняты, новые записи встают в лист ожидания.",
   color:
@@ -264,7 +266,7 @@ function WorkoutsPage() {
                           </TableCell>
                         )}
                         <TableCell className="max-w-[420px] truncate text-muted-foreground">
-                          {w.description ?? "—"}
+                          {w.description ? stripFormatting(w.description) : "—"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {w.capacity ?? "—"}
@@ -440,10 +442,10 @@ function WorkoutForm({
             </FormField>
 
             <FormField label="Описание" tip={TIPS.description} optional>
-              <Textarea
+              <FormattedTextarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                onChange={setDescription}
+                rows={4}
                 placeholder="Краткое описание тренировки"
               />
             </FormField>

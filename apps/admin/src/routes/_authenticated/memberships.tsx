@@ -13,7 +13,8 @@ import { unwrap } from "@/lib/query";
 import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FormattedTextarea } from "@/components/formatted-textarea";
+import { stripFormatting } from "@/lib/formatted-text";
 import { CheckboxOption, FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,8 @@ import { MembershipsPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
-  description: "Видно клиентам в карточке абонемента в приложении.",
+  description:
+    "Видно клиентам в карточке абонемента в приложении. Можно выделять жирным, делать списки и ссылки.",
   benefits:
     "Пункты списка в карточке в приложении. Заморозку не добавляйте — строка «Заморозка до N дней» появится сама.",
   visits: "Сколько занятий в пакете. В приложении безлимиты и пакеты — на разных вкладках.",
@@ -257,7 +259,7 @@ function MembershipsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="max-w-[260px] truncate text-muted-foreground">
-                          {m.description ?? "—"}
+                          {m.description ? stripFormatting(m.description) : "—"}
                         </TableCell>
                         <TableCell>
                           {m.benefits?.length ? (
@@ -473,11 +475,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
             </FormField>
 
             <FormField label="Описание" tip={TIPS.description} optional>
-              <Textarea
-                rows={2}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              <FormattedTextarea rows={4} value={description} onChange={setDescription} />
             </FormField>
 
             <FormField label="Преимущества" tip={TIPS.benefits} optional>

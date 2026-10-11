@@ -6,6 +6,7 @@ import { mediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FormattedText } from "@/lib/formatted-text";
 
 type ContentItem = {
   id: string;
@@ -127,10 +128,12 @@ export function ContentDrawer({
                   <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
                     {title}
                   </DrawerPrimitive.Title>
-                  {item.full_text && (
-                    <div className="text-foreground text-[15px] whitespace-pre-wrap leading-relaxed pt-2">
-                      {item.full_text}
-                    </div>
+                  {item.full_text?.trim() && (
+                    <FormattedText
+                      text={item.full_text}
+                      className="text-foreground text-[15px] leading-relaxed pt-2"
+                      linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
+                    />
                   )}
                 </div>
               </>
