@@ -7,6 +7,8 @@ export type StaffProfile = {
   id: string;
   email: string | null;
   fullName: string | null;
+  /** Аватарка — путь в бакете avatars (ставит владелец в «Доступах»). */
+  avatarUrl: string | null;
   /** Как подписывать действия сотрудника: ФИО, иначе почта. */
   displayName: string;
 };
@@ -19,12 +21,13 @@ const staffProfileQuery = queryOptions({
     if (!user) return null;
     const { data: prof } = await supabase
       .from("profiles")
-      .select("full_name, email")
+      .select("full_name, email, avatar_url")
       .eq("id", user.id)
       .maybeSingle();
     const fullName = (prof?.full_name as string | null | undefined) || null;
     const email = (prof?.email as string | null | undefined) || user.email || null;
-    return { id: user.id, email, fullName, displayName: fullName || email || "" };
+    const avatarUrl = (prof?.avatar_url as string | null | undefined) || null;
+    return { id: user.id, email, fullName, avatarUrl, displayName: fullName || email || "" };
   },
   staleTime: Infinity,
 });

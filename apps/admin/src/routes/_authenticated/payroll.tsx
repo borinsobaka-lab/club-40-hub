@@ -96,8 +96,8 @@ export const Route = createFileRoute("/_authenticated/payroll")({
 const TIPS = {
   base: "Смены администратора и проведённые занятия по «Зарплатным ставкам»: групповые, персональные, прочие активности (по ставке занятия). Будущие смены и занятия не считаются.",
   sales:
-    "Продажи абонементов за период: администратору — внесённые им в «Продажи» (нужна учётная запись в карточке сотрудника), тренеру — где он указан тренером при продаже.",
-  bonus: "5 % от продаж.",
+    "Деньги по абонементам, поступившие за период: первые платежи и доплаты по рассрочкам, в том числе по абонементам, проданным раньше. Администратору — по продажам, где он выбран администратором, тренеру — где он тренер при продаже. Пакеты персональных тренировок не считаются.",
+  bonus: "5 % от поступивших платежей.",
   adjustments: "Вычеты и надбавки из «Графика администраторов» с датой в этом периоде.",
   total: "Оклад + бонус 5 % + корректировки.",
   status:
@@ -441,15 +441,7 @@ function PayrollPage() {
                             {s.salesCount > 0 && (
                               <div className="text-xs text-muted-foreground">
                                 {s.salesCount}{" "}
-                                {plural(s.salesCount, ["продажа", "продажи", "продаж"])}
-                              </div>
-                            )}
-                            {e.role === "admin" && !e.user_id && (
-                              <div
-                                className="text-xs text-amber-600"
-                                title="Выберите учётную запись в карточке сотрудника («Сотрудники»), чтобы его продажи подтягивались."
-                              >
-                                нет учётной записи
+                                {plural(s.salesCount, ["платёж", "платежа", "платежей"])}
                               </div>
                             )}
                           </TableCell>
@@ -805,19 +797,16 @@ function EmployeePayroll({
 
         <section className="space-y-3 rounded-xl border p-4">
           <div>
-            <div className="text-sm text-muted-foreground">Продажи абонементов</div>
+            <div className="text-sm text-muted-foreground">Поступило по абонементам</div>
             <div className="mt-1 flex items-baseline justify-between rounded-md bg-muted/60 px-3 py-2">
               <span className="font-semibold tabular-nums">{formatPay(summary.sales)}</span>
               <span className="text-xs text-muted-foreground">
-                {summary.salesCount} {plural(summary.salesCount, ["продажа", "продажи", "продаж"])}
+                {summary.salesCount} {plural(summary.salesCount, ["платёж", "платежа", "платежей"])}
               </span>
             </div>
-            {employee.role === "admin" && !employee.user_id && (
-              <InfoNote variant="warning" className="mt-2">
-                В карточке сотрудника не выбрана учётная запись в админке — продажи, которые он
-                вносит, сюда не попадают.
-              </InfoNote>
-            )}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Первые платежи и доплаты по рассрочкам за период.
+            </p>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Бонус {BONUS_RATE * 100}%</span>

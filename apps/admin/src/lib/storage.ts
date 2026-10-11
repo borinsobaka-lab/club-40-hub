@@ -19,6 +19,9 @@ export const STORAGE_BUCKETS = {
   trainers: { id: "trainer-photos", access: "signed" },
   workouts: { id: "workout-photos", access: "signed" },
   studios: { id: "studio-logos", access: "public" },
+  // Аватарки сотрудников — папка staff/ (db/migrations/…_staff_avatars.sql);
+  // в остальных папках — фото клиентов из приложения.
+  avatars: { id: "avatars", access: "public" },
 } as const;
 
 export type StorageBucket = keyof typeof STORAGE_BUCKETS;
@@ -63,4 +66,37 @@ export async function uploadToStorage(bucket: StorageBucket, folder: string, fil
   });
   if (error) throw new Error(error.message);
   return path;
+}
+
+/**
+ * Квадратная уменьшенная копия картинки (центр, WebP) — для аватарок: в
+ * меню и таблице они размером с иконку, оригинал с телефона весил бы мегабайты.
+ */
+export async function squareImage(file: File, size = 256): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = Math.min(size, side);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Браузер не умеет обрабатывать картинки");
+  ctx.drawImage(
+    bitmap,
+    (bitmap.width - side) / 2,
+    (bitmap.height - side) / 2,
+    side,
+    side,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/webp", 0.85),
+  );
+  if (!blob) throw new Error("Не удалось обработать картинку");
+  // Без поддержки WebP браузер отдаёт PNG — расширение по факту.
+  return new File([blob], blob.type === "image/webp" ? "avatar.webp" : "avatar.png", {
+    type: blob.type,
+  });
 }

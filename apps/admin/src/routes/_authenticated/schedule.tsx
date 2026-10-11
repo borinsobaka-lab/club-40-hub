@@ -1709,7 +1709,9 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
       .from("schedule_bookings")
       .select("id, user_id, client_id, status, created_at")
       .eq("entry_id", entry.id)
-      .in("status", ["booked", "attended", "waitlist"])
+      // no_show — «Отметить пропущенные» в «Истории записей»: у прошедшего
+      // занятия посещение можно зафиксировать и после этого.
+      .in("status", ["booked", "attended", "no_show", "waitlist"])
       .order("created_at"),
   );
   const clientsById = new Map<string, ClientRow>();
@@ -1919,7 +1921,7 @@ function PickClientForm({
  * true — успех.
  */
 async function bookingRpc(
-  fn: "mark_booking_attended" | "cancel_schedule_booking_admin",
+  fn: "mark_booking_attended" | "unmark_booking_attended" | "cancel_schedule_booking_admin",
   args: Record<string, string | null>,
   messages: { error: string; failed: string },
 ) {
@@ -2014,6 +2016,24 @@ function BookingsPanel({
     }
   };
 
+  // Отметка по ошибке: запись снова «Записан», тренировка возвращается на
+  // баланс (триггер списания в БД). В любой момент, и у прошедших занятий.
+  const handleUnattend = async (b: BookingRow) => {
+    setAttendingId(b.id);
+    try {
+      const ok = await bookingRpc(
+        "unmark_booking_attended",
+        { p_booking_id: b.id },
+        { error: "Ошибка", failed: "Не удалось отменить посещение" },
+      );
+      if (!ok) return;
+      toast.success("Посещение отменено, тренировка возвращена на баланс");
+      reload();
+    } finally {
+      setAttendingId(null);
+    }
+  };
+
   // Лист ожидания держим отдельно от записанных: он не занимает мест и не
   // должен путаться со счётчиком заполненности.
   const booked = bookings.filter((b) => b.status !== "waitlist");
@@ -2074,8 +2094,13 @@ function BookingsPanel({
                           Посещение зафиксировано
                         </span>
                       )}
+                      {b.status === "no_show" && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          Пропущено
+                        </span>
+                      )}
                     </div>
-                    {b.status === "booked" && (
+                    {(b.status === "booked" || b.status === "no_show") && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -2085,10 +2110,24 @@ function BookingsPanel({
                           {attendingId === b.id && <Loader2 className="animate-spin" />}
                           Посетил
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
-                          Отклонить
-                        </Button>
+                        {b.status === "booked" && (
+                          <Button variant="outline" size="sm" onClick={() => askCancel(b)}>
+                            Отклонить
+                          </Button>
+                        )}
                       </div>
+                    )}
+                    {b.status === "attended" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title="Отметили по ошибке? Тренировка вернётся на баланс клиента"
+                        onClick={() => handleUnattend(b)}
+                        disabled={attendingId === b.id}
+                      >
+                        {attendingId === b.id && <Loader2 className="animate-spin" />}
+                        Отменить посещение
+                      </Button>
                     )}
                   </div>
                   <div className="space-y-0.5 text-xs text-muted-foreground">

@@ -143,9 +143,9 @@ export function ShellSkeleton({
         <Skeleton
           className={cn("h-10 w-10 shrink-0 sm:w-20 lg:h-9", actions.length === 0 && "lg:ml-auto")}
         />
+        {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
         <div className="hidden items-center gap-2 lg:flex">
           <Skeleton className="h-10 w-44" />
-          <Skeleton className="h-10 w-20" />
         </div>
       </header>
       <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6" aria-busy="true">
@@ -345,6 +345,11 @@ export function AppShellSkeleton() {
             <RailSkeleton items={5} />
           </div>
           <div className="flex w-full flex-col gap-1 border-t border-white/10 pt-2">
+            {/* Аватарка сотрудника (RailAccount), «Доступы», «Клубы». */}
+            <div className="flex w-full flex-col items-center gap-1 py-2">
+              <Skeleton className="size-8 rounded-full bg-white/10" />
+              <Skeleton className="h-2.5 w-10 bg-white/10" />
+            </div>
             <RailSkeleton items={2} />
           </div>
         </div>

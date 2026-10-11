@@ -172,6 +172,16 @@ AUTH_SETUP.md.
   `schedule_bookings_charge_balance` (из `zz_packages_personal_balance`),
   `sale_installments.payment_method`; вью `client_packages_list` пересоздана
   (актуальное определение — здесь).
+  Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
+  — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
+  триггер списания), `payroll_lines` — пакет персональных не идёт в продажи
+  администратора. `db/migrations/2026-10-11_zzzzzz_personal_no_trainer_bonus.sql`
+  — и тренера при продаже (актуальное определение `payroll_lines` — здесь).
+  Удаление продажи абонемента (оба формата):
+  `db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql` — продажа и
+  выданный по ней `client_memberships` удаляются вместе (в обе стороны,
+  триггеры), прежний заменённый абонемент возвращается, очередь продлений —
+  `packages_settle`.
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
@@ -190,12 +200,20 @@ AUTH_SETUP.md.
   Зарплаты пакетных студий (раздел «Сотрудники»):
   `db/migrations/2026-10-11_zzz_staff_payroll.sql` — `admin_shifts` (график
   администраторов по студиям), `payroll_adjustments` (вычеты/надбавки),
-  `payroll_payouts` (отметка «выплачено» за половину месяца), `trainers.user_id`
-  (учётная запись админки сотрудника — по ней его продажи `sales.admin_id` идут
-  в зарплату; список для выбора — RPC `staff_accounts_for_link`), расчёт — RPC
+  `payroll_payouts` (отметка «выплачено» за половину месяца), расчёт — RPC
   `payroll_lines` (security definer: оклад общий по всем пакетным студиям
   сотрудника, отдаёт только сотрудников студий вызывающего). Доступ — раздел
   рейки `staff` + роль в студии сотрудника (`can_manage_employee`).
+  Продавец в продажах: `db/migrations/2026-10-11_zzzz_sales_seller.sql` —
+  `sales.seller_id` / `other_sales.seller_id` (администратор из справочника,
+  выбирается в форме; `admin_name` — снимок имени, `admin_id` — кто внёс);
+  `trainers.user_id` и `staff_accounts_for_link` удалены; `payroll_lines`
+  переопределена (актуальное определение — здесь): продажи в зарплату —
+  поступившие за период платежи (`sale_installments.paid_at`, без графика —
+  вся сумма в день продажи).
+  Аватарки сотрудников админки: `db/migrations/2026-10-11_staff_avatars.sql`
+  — `profiles.avatar_url` (путь в бакете `avatars`, папка `staff/`, ставит
+  владелец в «Доступах» серверной функцией).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

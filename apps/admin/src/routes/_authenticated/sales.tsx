@@ -5,6 +5,7 @@ import { Plus, Loader2, Trash2, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
+import { SELLER_TIP } from "@/lib/studio-staff";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
@@ -23,6 +24,7 @@ import {
   SALE_KIND_TINT,
   SALE_KINDS,
   SALE_TIPS,
+  saleDeleteDescription,
   saleSourceLabel,
   type PaymentMethod,
   type PaymentType,
@@ -79,7 +81,7 @@ import {
 import { SalesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?» колонок — те же, что у полей формы продажи. */
-const TIPS = SALE_TIPS;
+const TIPS = { ...SALE_TIPS, admin: SELLER_TIP };
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({ meta: [{ title: "Продажи — Base40 Admin" }] }),
@@ -251,7 +253,10 @@ function SalesPage() {
     if (
       !(await confirm({
         title: "Удалить продажу?",
-        description: "Продажа будет удалена. Выданный по ней абонемент останется у клиента.",
+        description: saleDeleteDescription(
+          s.clients ? clientName(s.clients) : null,
+          s.memberships?.name ?? null,
+        ),
       }))
     )
       return;
@@ -260,8 +265,15 @@ function SalesPage() {
       toast.error("Ошибка удаления: " + error.message);
       return;
     }
-    toast.success("Продажа удалена");
-    reload();
+    toast.success(s.client_memberships?.length ? "Продажа и абонемент удалены" : "Продажа удалена");
+    // Вместе с продажей удалился абонемент клиента (триггер в базе).
+    for (const key of [
+      "sales_list",
+      "client_packages_list",
+      "client_memberships",
+      "clients_with_status",
+    ])
+      queryClient.invalidateQueries({ queryKey: [key] });
   };
 
   const openSale = (k: SaleKind) => {

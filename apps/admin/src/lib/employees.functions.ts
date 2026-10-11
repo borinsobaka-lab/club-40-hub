@@ -32,6 +32,8 @@ export type EmployeeRow = {
   user_id: string;
   email: string | null;
   full_name: string | null;
+  /** Аватарка — путь в бакете avatars (папка staff/). */
+  avatar_url: string | null;
   /** Старшая роль в студиях владельца. */
   role: StaffRole;
   /** Доступ в студиях владельца (вызывающего). */
@@ -74,7 +76,7 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
         .select("user_id, studio_id, role")
         .in("user_id", userIds)
         .in("role", STAFF_ROLES),
-      admin.from("profiles").select("id, email, full_name").in("id", userIds),
+      admin.from("profiles").select("id, email, full_name, avatar_url").in("id", userIds),
       admin.from("admin_permissions").select("user_id, sections").in("user_id", userIds),
       admin
         .from("admin_studio_permissions")
@@ -88,7 +90,12 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
     const owned = new Set(ownedStudioIds);
     const profileOf = new Map(
       (
-        (profiles.data ?? []) as { id: string; email: string | null; full_name: string | null }[]
+        (profiles.data ?? []) as {
+          id: string;
+          email: string | null;
+          full_name: string | null;
+          avatar_url: string | null;
+        }[]
       ).map((p) => [p.id, p]),
     );
     const railOf = new Map(
@@ -120,6 +127,7 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
           user_id: r.user_id,
           email: p?.email ?? null,
           full_name: p?.full_name ?? null,
+          avatar_url: p?.avatar_url ?? null,
           role: r.role,
           studios: [],
           otherStudios: 0,
@@ -295,14 +303,23 @@ async function isManagedEmployee(admin: SupabaseClient, userId: string, ownedStu
   return !!data?.length;
 }
 
-const createSchema = z
+/** Только загруженная в «Доступах» картинка (папка staff/ бакета avatars). */
+const avatarSchema = z
+  .string()
+  .regex(/^staff\/[\w-]+\.(webp|png|jpe?g)$/, "Неверная аватарка")
+  .nullable();
+
+/** Данные человека: в форме добавления и в «Изменить». */
+const profileSchema = z
   .object({
     first_name: z.string().trim().min(1, "Укажите имя").max(100),
     last_name: z.string().trim().min(1, "Укажите фамилию").max(100),
     email: z.string().trim().toLowerCase().email("Неверный адрес почты"),
-    access: accessSchema,
+    avatar_url: avatarSchema,
   })
   .strict();
+
+const createSchema = profileSchema.extend({ access: accessSchema }).strict();
 
 /** Сообщения GoTrue приходят по-английски — частые переводим для тоста. */
 function authErrorText(message: string) {
@@ -348,11 +365,13 @@ export const createEmployee = createServerFn({ method: "POST" })
       await applyAccess(admin, existingId, ownedStudioIds, data.access);
       // Имя в профиле не перетираем: его мог задать сам человек в приложении.
       // Заполняем, только если пусто — иначе в «Доступах» была бы одна почта.
-      if (!existingName?.trim()) {
-        const { error: nameErr } = await admin
-          .from("profiles")
-          .update({ full_name: fullName })
-          .eq("id", existingId);
+      // Поправить имя потом можно в «Изменить».
+      const patch = {
+        ...(existingName?.trim() ? {} : { full_name: fullName }),
+        ...(data.avatar_url ? { avatar_url: data.avatar_url } : {}),
+      };
+      if (Object.keys(patch).length) {
+        const { error: nameErr } = await admin.from("profiles").update(patch).eq("id", existingId);
         if (nameErr) throw new Error(nameErr.message);
       }
       return { ok: true, user_id: existingId, existing: true };
@@ -382,6 +401,7 @@ export const createEmployee = createServerFn({ method: "POST" })
         studio_id: homeStudioId,
         full_name: fullName,
         email: data.email,
+        avatar_url: data.avatar_url,
       });
       if (profErr) throw new Error(profErr.message);
       await applyAccess(admin, newId, ownedStudioIds, data.access);
@@ -393,23 +413,91 @@ export const createEmployee = createServerFn({ method: "POST" })
     return { ok: true, user_id: newId, existing: false };
   });
 
-/** Изменить права сотрудника (студии, роль, разделы). */
-export const updateEmployeeAccess = createServerFn({ method: "POST" })
+/**
+ * Изменить сотрудника: фамилию, имя, почту, аватарку и права. Свои права
+ * владелец не меняет (access не передаётся), свои данные — может.
+ */
+export const updateEmployee = createServerFn({ method: "POST" })
   .middleware([requireAccessManager])
   .inputValidator((data) =>
-    parseOrThrow(z.object({ user_id: z.string().uuid(), access: accessSchema }).strict(), data),
+    parseOrThrow(
+      z
+        .object({
+          user_id: z.string().uuid(),
+          profile: profileSchema,
+          access: accessSchema.optional(),
+        })
+        .strict(),
+      data,
+    ),
   )
   .handler(async ({ context, data }) => {
-    if (data.user_id === context.userId) {
+    const { ownedStudioIds } = context;
+    const isSelf = data.user_id === context.userId;
+    if (isSelf && data.access) {
       throw new Error("Свой доступ изменить нельзя — попросите другого владельца");
     }
     const admin = getSupabaseAdmin();
     // Запись идёт сервис-ключом в обход RLS — цель проверяем явно: иначе
-    // владелец мог бы выдать роль любому пользователю проекта по его id.
-    if (!(await isManagedEmployee(admin, data.user_id, context.ownedStudioIds))) {
+    // владелец мог бы выдать роль или сменить почту любому пользователю
+    // проекта по его id.
+    if (!(await isManagedEmployee(admin, data.user_id, ownedStudioIds))) {
       throw new Error("Этот пользователь не является сотрудником ваших клубов");
     }
-    await applyAccess(admin, data.user_id, context.ownedStudioIds, data.access);
+
+    const { profile } = data;
+    const { data: current, error: curErr } = await admin.auth.admin.getUserById(data.user_id);
+    if (curErr || !current.user) {
+      throw new Error(curErr?.message ?? "Учётная запись не найдена");
+    }
+    const emailChanged = (current.user.email ?? "").toLowerCase() !== profile.email;
+
+    if (emailChanged) {
+      // Почта — это логин: коды входа приходят на неё. Сменить её сотруднику,
+      // у которого есть доступ в чужих клубах, значило бы забрать его вход и
+      // туда — такое меняет только сам человек или владелец того клуба.
+      const { data: foreign, error: foreignErr } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user_id)
+        .not("studio_id", "in", `(${ownedStudioIds.join(",")})`)
+        .in("role", STAFF_ROLES)
+        .limit(1);
+      if (foreignErr) throw new Error(foreignErr.message);
+      if (foreign?.length) {
+        throw new Error(
+          "Почту не изменить: у сотрудника есть доступ в других клубах — её меняет их владелец",
+        );
+      }
+      const pattern = profile.email.replace(/[\\%_]/g, "\\$&");
+      const { data: taken, error: takenErr } = await admin
+        .from("profiles")
+        .select("id")
+        .ilike("email", pattern)
+        .neq("id", data.user_id)
+        .limit(1);
+      if (takenErr) throw new Error(takenErr.message);
+      if (taken?.length) throw new Error("Пользователь с такой почтой уже зарегистрирован");
+
+      const { error: authErr } = await admin.auth.admin.updateUserById(data.user_id, {
+        email: profile.email,
+        email_confirm: true,
+      });
+      if (authErr) throw new Error(authErrorText(authErr.message));
+    }
+
+    // «Фамилия Имя» — как clientName в остальных разделах.
+    const { error: profErr } = await admin
+      .from("profiles")
+      .update({
+        full_name: `${profile.last_name} ${profile.first_name}`,
+        email: profile.email,
+        avatar_url: profile.avatar_url,
+      })
+      .eq("id", data.user_id);
+    if (profErr) throw new Error(profErr.message);
+
+    if (data.access) await applyAccess(admin, data.user_id, ownedStudioIds, data.access);
     return { ok: true };
   });
 

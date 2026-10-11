@@ -421,11 +421,12 @@ export function OtherSalesPageSkeleton() {
             "Позиция",
             "Тип",
             "Клиент",
-            "Кол-во",
-            "Цена",
-            "Сумма",
+            { label: "Кол-во", className: "text-right" },
+            { label: "Цена", className: "text-right" },
+            { label: "Сумма", className: "text-right" },
             "Оплата",
             "Дата",
+            "Администратор",
             "Комментарий",
           ]}
         />
@@ -435,10 +436,12 @@ export function OtherSalesPageSkeleton() {
 }
 
 export function BookingsLogPageSkeleton() {
+  // «Отметить пропущенные» — только у подписочных клубов.
+  const packages = useSkeletonFormat() === "packages";
   return (
     <TablePage
       title="История записей"
-      actions={[{ label: "Отметить пропущенные", icon: false }]}
+      actions={packages ? [] : [{ label: "Отметить пропущенные", icon: false }]}
       toolbar={{ controls: ["w-48"] }}
       headers={[
         { label: "Клиент", className: "min-w-[220px]" },
