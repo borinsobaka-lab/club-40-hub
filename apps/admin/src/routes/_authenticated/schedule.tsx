@@ -823,9 +823,10 @@ function SchedulePage() {
 }
 
 /**
- * Фильтр по типам занятий: по умолчанию отмечены все, можно оставить,
- * например, только персональные. Последний отмеченный тип снять нельзя —
- * пустая сетка только путает.
+ * Фильтр по типам занятий — галочки прямо в панели фильтров (решение
+ * владельца 2026-10-11: на клик меньше, чем выпадающий список). По умолчанию
+ * отмечены все; последний отмеченный тип снять нельзя — пустая сетка только
+ * путает.
  */
 function KindFilter({
   value,
@@ -834,45 +835,30 @@ function KindFilter({
   value: ActivityKind[];
   onChange: (v: ActivityKind[]) => void;
 }) {
-  const label =
-    value.length === ACTIVITY_KIND_VALUES.length
-      ? "Все активности"
-      : value.length === 1
-        ? activityKind(value[0]).plural
-        : value.map((k) => activityKind(k).plural).join(", ");
   const toggle = (kind: ActivityKind, checked: boolean) => {
-    // Порядок — как в справочнике, а не порядок кликов: от него зависит подпись.
     onChange(ACTIVITY_KIND_VALUES.filter((k) => (k === kind ? checked : value.includes(k))));
   };
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-48 justify-between px-3 font-normal max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
-        >
-          <span className="truncate">{label}</span>
-          <ChevronDown className="opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-1.5">
-        {ACTIVITY_KINDS.map((k) => {
-          const checked = value.includes(k.value);
-          return (
-            <CheckboxOption
-              key={k.value}
-              checked={checked}
-              disabled={checked && value.length === 1}
-              onCheckedChange={(v) => toggle(k.value, v)}
-              className="rounded-md px-2 py-2 hover:bg-muted"
-            >
-              <k.icon className="size-4 shrink-0" style={{ color: k.color }} />
-              {k.plural}
-            </CheckboxOption>
-          );
-        })}
-      </PopoverContent>
-    </Popover>
+    <div
+      role="group"
+      aria-label="Какие занятия показывать"
+      className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-1.5 max-sm:w-full lg:min-h-9"
+    >
+      {ACTIVITY_KINDS.map((k) => {
+        const checked = value.includes(k.value);
+        return (
+          <CheckboxOption
+            key={k.value}
+            checked={checked}
+            disabled={checked && value.length === 1}
+            onCheckedChange={(v) => toggle(k.value, v)}
+            className="whitespace-nowrap"
+          >
+            {k.plural}
+          </CheckboxOption>
+        );
+      })}
+    </div>
   );
 }
 
