@@ -6,6 +6,7 @@ import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { CLUB, IS_PACKAGES } from "@/lib/terms";
+import { DarkFrame } from "@/formats/packages/dark-frame";
 
 function formatCooldown(sec: number) {
   const m = Math.floor(sec / 60);
@@ -171,6 +172,138 @@ function AuthPage() {
     otpRefs.current[last]?.focus();
   };
 
+  const subtitle =
+    step === "otp"
+      ? `Введите код, отправленный на ${email}`
+      : `Войдите по почте, которую вы указали в ${CLUB.prep}`;
+
+  const emailInput = (
+    <FloatingLabelInput
+      label="Email"
+      type="email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      autoComplete="email"
+      required
+    />
+  );
+
+  const otpInputs = (
+    <div className="flex justify-center gap-2">
+      {otp.map((d, i) => (
+        <input
+          key={i}
+          ref={(el) => {
+            otpRefs.current[i] = el;
+          }}
+          inputMode="numeric"
+          autoComplete={i === 0 ? "one-time-code" : "off"}
+          // Первая ячейка принимает автоподстановку кода целиком
+          // (one-time-code): maxLength=1 обрезал бы её до одной цифры
+          // ещё до onChange. Разбор по ячейкам делает setOtpDigit.
+          maxLength={i === 0 ? OTP_LENGTH : 1}
+          value={d}
+          onChange={(e) => setOtpDigit(i, e.target.value)}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
+            if (!pasted) return;
+            e.preventDefault();
+            fillOtpFrom(i, pasted);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace" && !otp[i] && i > 0) {
+              otpRefs.current[i - 1]?.focus();
+            }
+          }}
+          className="h-14 w-11 text-center text-xl font-bold rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      ))}
+    </div>
+  );
+
+  const otpLinks = (
+    <>
+      <button
+        type="button"
+        onClick={resendCode}
+        disabled={busy || cooldown > 0}
+        className="w-full text-center text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {cooldown > 0
+          ? `Отправить код ещё раз можно через ${formatCooldown(cooldown)}`
+          : "Отправить код ещё раз"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setStep("form");
+          setError(null);
+        }}
+        className="w-full text-center text-sm text-muted-foreground"
+      >
+        Изменить почту
+      </button>
+    </>
+  );
+
+  const errorText = error && <p className="text-sm text-destructive text-center">{error}</p>;
+
+  const spinner = <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />;
+
+  // Пакетное приложение — в оформлении разделов (тёмная шапка с огоньками и
+  // белая панель), как онбординг; подписочное — как было.
+  if (IS_PACKAGES) {
+    return (
+      <DarkFrame
+        tall
+        header={
+          <div className="flex flex-1 flex-col px-6 pb-10">
+            <div className="text-2xl font-black tracking-widest">
+              Base<span className="text-primary">40</span>
+            </div>
+            <h1 className="mt-auto pt-6 text-3xl font-semibold leading-tight">Добро пожаловать</h1>
+            <p className="mt-2 text-sm text-white/70">{subtitle}</p>
+          </div>
+        }
+        footer={
+          step === "form" ? (
+            <Button
+              type="submit"
+              form="auth-email-form"
+              disabled={busy}
+              className="h-12 w-full text-base font-semibold"
+            >
+              {busy ? spinner : "Получить код"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={submitOtp}
+              disabled={busy}
+              className="h-12 w-full text-base font-semibold"
+            >
+              {busy ? spinner : "Подтвердить"}
+            </Button>
+          )
+        }
+      >
+        {step === "form" ? (
+          <form id="auth-email-form" onSubmit={requestCode} className="space-y-3 px-4 pt-6">
+            {emailInput}
+            {errorText}
+          </form>
+        ) : (
+          <div className="space-y-4 px-4 pt-6">
+            {otpInputs}
+            {errorText}
+            {otpLinks}
+          </div>
+        )}
+      </DarkFrame>
+    );
+  }
+
   return (
     <div className="relative min-h-[100dvh] bg-background overflow-hidden">
       {/* Top brand glow */}
@@ -194,23 +327,12 @@ function AuthPage() {
         {/* Heading */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-semibold leading-tight">Добро пожаловать</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {step === "otp"
-              ? `Введите код, отправленный на ${email}`
-              : `Войдите по почте, которую вы указали в ${CLUB.prep}`}
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         </div>
 
         {step === "form" ? (
           <form onSubmit={requestCode} className="space-y-3 max-w-sm w-full mx-auto">
-            <FloatingLabelInput
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
+            {emailInput}
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
@@ -228,36 +350,7 @@ function AuthPage() {
           </form>
         ) : (
           <div className="space-y-4 max-w-sm w-full mx-auto">
-            <div className="flex justify-center gap-2">
-              {otp.map((d, i) => (
-                <input
-                  key={i}
-                  ref={(el) => {
-                    otpRefs.current[i] = el;
-                  }}
-                  inputMode="numeric"
-                  autoComplete={i === 0 ? "one-time-code" : "off"}
-                  // Первая ячейка принимает автоподстановку кода целиком
-                  // (one-time-code): maxLength=1 обрезал бы её до одной цифры
-                  // ещё до onChange. Разбор по ячейкам делает setOtpDigit.
-                  maxLength={i === 0 ? OTP_LENGTH : 1}
-                  value={d}
-                  onChange={(e) => setOtpDigit(i, e.target.value)}
-                  onPaste={(e) => {
-                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
-                    if (!pasted) return;
-                    e.preventDefault();
-                    fillOtpFrom(i, pasted);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Backspace" && !otp[i] && i > 0) {
-                      otpRefs.current[i - 1]?.focus();
-                    }
-                  }}
-                  className="h-14 w-11 text-center text-xl font-bold rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              ))}
-            </div>
+            {otpInputs}
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
@@ -274,27 +367,7 @@ function AuthPage() {
               )}
             </Button>
 
-            <button
-              type="button"
-              onClick={resendCode}
-              disabled={busy || cooldown > 0}
-              className="w-full text-center text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {cooldown > 0
-                ? `Отправить код ещё раз можно через ${formatCooldown(cooldown)}`
-                : "Отправить код ещё раз"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setStep("form");
-                setError(null);
-              }}
-              className="w-full text-center text-sm text-muted-foreground"
-            >
-              Изменить почту
-            </button>
+            {otpLinks}
           </div>
         )}
       </div>

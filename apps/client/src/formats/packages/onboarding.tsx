@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RulerPicker } from "@/components/ui/ruler-picker";
 import { Textarea } from "@/components/ui/textarea";
-import { HeaderBackdrop } from "@/components/page-shell";
+import { DarkFrame as Frame } from "@/formats/packages/dark-frame";
 import {
   ActivityOptions,
   ExperienceOptions,
@@ -438,44 +438,6 @@ const STEP_HEADERS: Record<number, { title: string; subtitle?: string }> = {
   6: STEP_TITLES.logistics,
   7: STEP_TITLES.referral,
 };
-
-/* ===== Оформление — как у страниц приложения (PageShell) =====
-   Сверху тёмная зона с огоньками, под ней белая скруглённая панель с
-   ответами; кнопка — внизу панели. tall — вступление и финал: заголовок
-   внизу тёмной зоны высотой 300px — огоньки HeaderBackdrop рисуются только
-   в верхних 320px, выше тёмная зона обрезала бы их видимой границей. */
-
-function Frame({
-  tall = false,
-  header,
-  footer,
-  children,
-}: {
-  tall?: boolean;
-  header: ReactNode;
-  footer: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden">
-      {/* Фон и огоньки — те же, что у разделов приложения. */}
-      <HeaderBackdrop />
-      <div
-        className={`relative z-10 shrink-0 text-white pt-[max(env(safe-area-inset-top),0.75rem)] ${
-          tall ? "flex min-h-[300px] flex-col justify-end" : ""
-        }`}
-      >
-        {header}
-      </div>
-      <div className="relative z-10 -mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]">
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {children}
-        </div>
-        <div className="px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1.5rem)]">{footer}</div>
-      </div>
-    </div>
-  );
-}
 
 /** Прогресс анкеты: «Шаг N из M» и полоска по шагам. */
 function Progress({ step, total }: { step: number; total: number }) {

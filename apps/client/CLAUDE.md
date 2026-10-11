@@ -106,7 +106,9 @@ saving new user», экран показывает «почта не найде�
 `src/components/onboarding.tsx`, тексты и типы — `src/lib/onboarding.ts`,
 выбор — по `IS_PACKAGES` в `src/routes/onboarding.tsx`); оформлена как
 разделы приложения (тёмная шапка с огоньками, белая панель, разделители
-блоков); подробно — STUDIO_FORMATS.md.
+блоков) — каркас `src/formats/packages/dark-frame.tsx`, в нём же экран входа
+пакетного приложения (`src/routes/auth.tsx`, ветка `IS_PACKAGES`);
+подробно — STUDIO_FORMATS.md.
 
 Паролей у клиентов НЕТ; настройка писем и длины кода в Supabase — см.
 AUTH_SETUP.md в корне репозитория. Письма уходят с noreply@base40.fit через
