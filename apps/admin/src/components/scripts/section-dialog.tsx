@@ -124,7 +124,7 @@ export function SectionDialogContent({
                     aria-label={label}
                     title={label}
                     className={cn(
-                      "flex aspect-square cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
+                      "flex aspect-square cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground",
                       icon === key &&
                         "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
                     )}

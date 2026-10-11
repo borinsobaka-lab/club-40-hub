@@ -25,6 +25,7 @@ import {
   type CountryCode,
 } from "@/lib/contacts";
 import { cn } from "@/lib/utils";
+import { fieldTriggerClass } from "@/components/ui/field-styles";
 
 export type PhoneValue = { value: string; country: CountryCode };
 
@@ -149,7 +150,8 @@ function CountryPicker({
           type="button"
           aria-label={`Страна: ${current?.name ?? value}`}
           title={current?.name}
-          className="flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-transparent px-2.5 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          data-field=""
+          className={cn(fieldTriggerClass, "w-auto shrink-0 gap-1.5 px-2.5 tabular-nums")}
         >
           <span className="text-base leading-none">{countryFlag(value)}</span>
           <span>{current?.dial}</span>

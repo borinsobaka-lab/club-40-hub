@@ -95,7 +95,7 @@ export function AdminShell({
             type="button"
             onClick={() => setKateOpen(true)}
             aria-label="Kate — AI ассистент"
-            className="ai-gradient group relative inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white transition lg:h-9"
+            className="ai-gradient group relative inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full px-4 text-sm font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-sm:w-10 max-sm:justify-center max-sm:px-0"
           >
             <Cat className="h-4 w-4" />
             <span className="max-sm:hidden">Kate</span>

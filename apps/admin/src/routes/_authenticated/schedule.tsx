@@ -1,17 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  Loader2,
-  Trash2,
-  Copy,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { Plus, ChevronDown, Loader2, Trash2, Copy, UserPlus, X } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -20,6 +10,8 @@ import { useActiveStudio } from "@/hooks/use-studios";
 import { EmployeePhoto } from "@/components/employee-photo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { PeriodStepper } from "@/components/period-stepper";
+import { ChoiceCard } from "@/components/ui/choice-card";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
@@ -599,46 +591,22 @@ function SchedulePage() {
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
           <TableToolbar>
-            <div className="toolbar-full flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Предыдущая неделя"
-                onClick={() => setWeekStart(addDays(weekStart, -7))}
-              >
-                <ChevronLeft />
-              </Button>
-              {/*
-                На телефоне кнопка между стрелками показывает саму неделю (места
-                под отдельную подпись нет) и по-прежнему возвращает к текущей —
-                вместе с сегодняшним днём.
-              */}
-              <Button
-                variant="outline"
-                className="max-sm:flex-1"
-                onClick={() => {
-                  setWeekStart(startOfWeek(new Date()));
-                  setDayIndex(todayIndex());
-                }}
-                disabled={isCurrentWeek && !isMobile}
-              >
-                <span className="sm:hidden">{weekLabel}</span>
-                <span className="max-sm:hidden">Текущая неделя</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Следующая неделя"
-                onClick={() => setWeekStart(addDays(weekStart, 7))}
-              >
-                <ChevronRight />
-              </Button>
-              <span className="ml-1 text-sm font-medium max-sm:hidden">{weekLabel}</span>
+            <PeriodStepper
+              unit="week"
+              label={weekLabel}
+              onPrev={() => setWeekStart(addDays(weekStart, -7))}
+              onNext={() => setWeekStart(addDays(weekStart, 7))}
+              onCurrent={() => {
+                setWeekStart(startOfWeek(new Date()));
+                setDayIndex(todayIndex());
+              }}
+              isCurrent={isCurrentWeek}
+            >
               {/* Первая загрузка недели — скелетон в сетке, спиннер — только для обновления. */}
               {loading && !entriesPending && (
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
               )}
-            </div>
+            </PeriodStepper>
 
             <div className="toolbar-full flex flex-wrap items-center gap-2 sm:ml-auto">
               {!packages && (
@@ -923,7 +891,7 @@ function KindFilter({
     <div
       role="group"
       aria-label="Какие занятия показывать"
-      className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-1.5 max-sm:w-full lg:min-h-9"
+      className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-input px-3 py-1.5 max-sm:w-full"
     >
       {ACTIVITY_KINDS.map((k) => {
         const checked = value.includes(k.value);
@@ -968,28 +936,24 @@ function KindPickerDialog({
             {ACTIVITY_KINDS.map((k) => {
               const disabled = k.value === "group" && !hasWorkouts;
               return (
-                <button
+                <ChoiceCard
                   key={k.value}
-                  type="button"
+                  stacked
                   disabled={disabled}
                   onClick={() => onPick(k.value)}
-                  className="group flex items-center gap-3 rounded-lg border p-3 text-left transition hover:border-foreground/30 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent sm:flex-col sm:items-start sm:p-4"
-                >
-                  <span
-                    className="flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-12"
-                    style={{ backgroundColor: `${k.color}1f`, color: k.color }}
-                  >
-                    <k.icon className="size-6" />
-                  </span>
-                  <span className="space-y-1">
-                    <span className="block text-sm font-semibold">{k.label}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {disabled
-                        ? "Сначала создайте тренировки в разделе «Тренировки»"
-                        : k.description}
+                  media={
+                    <span
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-12"
+                      style={{ backgroundColor: `${k.color}1f`, color: k.color }}
+                    >
+                      <k.icon className="size-6" />
                     </span>
-                  </span>
-                </button>
+                  }
+                  title={k.label}
+                  description={
+                    disabled ? "Сначала создайте тренировки в разделе «Тренировки»" : k.description
+                  }
+                />
               );
             })}
           </div>
@@ -1112,7 +1076,7 @@ function EntryCard({
           aria-label="Копировать занятие"
           title="Копировать занятие"
           onClick={onCopy}
-          className="absolute bottom-1 right-1.5 rounded bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="absolute bottom-1 right-1.5 rounded-full bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <Copy className="h-3 w-3" />
         </button>
@@ -1147,7 +1111,7 @@ function EntryCard({
         aria-label="Копировать занятие"
         title="Копировать занятие"
         onClick={onCopy}
-        className="absolute bottom-1 right-2 rounded bg-black/25 p-0.5 text-white hover:bg-black/40"
+        className="absolute bottom-1 right-2 rounded-full bg-black/25 p-0.5 text-white hover:bg-black/40"
       >
         <Copy className="h-3 w-3" />
       </button>

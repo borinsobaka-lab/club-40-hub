@@ -16,15 +16,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Ellipsis, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Ellipsis, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ListItemButton } from "@/components/ui/list-item-button";
+import { SearchInput } from "@/components/ui/search-input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TableToolbar } from "@/components/table-toolbar";
 import { ScriptsListSkeleton } from "@/components/page-skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,13 +59,7 @@ import {
   studioLabels,
   totalScripts,
 } from "@/lib/scripts/logic";
-import type {
-  CallFlow,
-  ScriptItem,
-  ScriptItemDraft,
-  ScriptLang,
-  ScriptSection,
-} from "@/lib/scripts/types";
+import type { CallFlow, ScriptItem, ScriptItemDraft, ScriptSection } from "@/lib/scripts/types";
 
 /** Новый раздел-звонок начинается с одного блока — дальше его строят в редакторе. */
 const BLANK_FLOW: CallFlow = {
@@ -538,33 +533,14 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
             просвечивали над панелью. */}
         <div className="sticky -top-3 z-20 -mx-1 sm:-top-4 lg:-top-6 -mt-3 bg-canvas px-1 pt-3 pb-2 sm:-mt-4 sm:pt-4 lg:-mt-6 lg:pt-6">
           <TableToolbar>
-            <div className="toolbar-search relative w-full max-w-96">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={searchRef}
-                inputMode="search"
-                value={query}
-                placeholder="Поиск: «дорого», «адрес», «шпагат»…"
-                aria-label="Поиск по скриптам"
-                className="pr-9 pl-9"
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") setQuery("");
-                }}
-              />
-              {query ? (
-                <button
-                  type="button"
-                  aria-label="Очистить поиск"
-                  className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setQuery("");
-                    searchRef.current?.focus();
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : (
+            <SearchInput
+              ref={searchRef}
+              value={query}
+              onChange={setQuery}
+              placeholder="Поиск: «дорого», «адрес», «шпагат»…"
+              aria-label="Поиск по скриптам"
+              wrapperClassName="toolbar-search w-full max-w-96"
+              emptyHint={
                 // Одна клавиша «/» быстрее, чем дотянуться до поля мышью.
                 <kbd
                   aria-hidden="true"
@@ -572,27 +548,21 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
                 >
                   /
                 </kbd>
-              )}
-            </div>
-            <Tabs value={lang} onValueChange={(v) => setLang(v as ScriptLang)}>
-              <TabsList aria-label="Язык текста">
-                {LANGS.map((l) => (
-                  <TabsTrigger key={l.key} value={l.key} title={l.name}>
-                    {l.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+              }
+            />
+            <SegmentedControl
+              aria-label="Язык текста"
+              value={lang}
+              onChange={setLang}
+              options={LANGS.map((l) => ({ value: l.key, label: l.label }))}
+            />
             {studios.length > 1 && (
-              <Tabs value={activeStudio} onValueChange={setStudio}>
-                <TabsList aria-label="Клуб">
-                  {studios.map((s) => (
-                    <TabsTrigger key={s} value={s}>
-                      {s}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+              <SegmentedControl
+                aria-label="Клуб"
+                value={activeStudio}
+                onChange={setStudio}
+                options={studios.map((s) => ({ value: s, label: s }))}
+              />
             )}
           </TableToolbar>
         </div>
@@ -686,7 +656,6 @@ function SectionMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const item = "w-full justify-start";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -695,9 +664,7 @@ function SectionMenu({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1">
-        <Button
-          variant="ghost"
-          className={item}
+        <ListItemButton
           onClick={() => {
             setOpen(false);
             onEdit();
@@ -705,21 +672,20 @@ function SectionMenu({
         >
           <Pencil className="text-muted-foreground" />
           Название и иконка
-        </Button>
-        <Button variant="ghost" className={item} disabled={isFirst} onClick={() => onMove(-1)}>
+        </ListItemButton>
+        <ListItemButton disabled={isFirst} onClick={() => onMove(-1)}>
           <ArrowUp className="text-muted-foreground" />
           Выше в меню
-        </Button>
-        <Button variant="ghost" className={item} disabled={isLast} onClick={() => onMove(1)}>
+        </ListItemButton>
+        <ListItemButton disabled={isLast} onClick={() => onMove(1)}>
           <ArrowDown className="text-muted-foreground" />
           Ниже в меню
-        </Button>
+        </ListItemButton>
         {/* Раздел со скриптами не удаляется вовсе: вместе с ним ушли бы
             скрипты, которые кто-то писал и переводил на три языка. */}
         {canDelete && (
-          <Button
-            variant="ghost"
-            className={`${item} text-destructive hover:text-destructive`}
+          <ListItemButton
+            className="text-destructive hover:text-destructive"
             onClick={() => {
               setOpen(false);
               onDelete();
@@ -727,7 +693,7 @@ function SectionMenu({
           >
             <Trash2 />
             Удалить раздел
-          </Button>
+          </ListItemButton>
         )}
       </PopoverContent>
     </Popover>

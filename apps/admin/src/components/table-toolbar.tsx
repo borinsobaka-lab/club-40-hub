@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 
 // Единая плашка поиска и фильтров над таблицей — один вид во всех разделах.
 // Правила (см. .interface-design/system.md):
@@ -32,15 +32,13 @@ export function ToolbarSearch({
   placeholder: string;
 }) {
   return (
-    <div className="toolbar-search relative w-full max-w-96">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="pl-9"
-      />
-    </div>
+    <SearchInput
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      aria-label={placeholder}
+      wrapperClassName="toolbar-search w-full max-w-96"
+    />
   );
 }
 

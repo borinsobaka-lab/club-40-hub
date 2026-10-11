@@ -5,6 +5,7 @@ import { Cat, Send, Loader2, Mic, Square } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
+import { ChoiceCard } from "@/components/ui/choice-card";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { activeStudioHeaders } from "@/hooks/use-active-studio";
@@ -104,13 +105,9 @@ export function KateChat({
                   "У скольких клиентов заканчивается абонемент?",
                   "Какие клиенты зарегистрировались на этой неделе?",
                 ].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => sendText(s)}
-                    className="rounded-md border bg-muted/30 px-3 py-2 text-foreground transition hover:bg-muted"
-                  >
+                  <ChoiceCard key={s} compact onClick={() => sendText(s)}>
                     {s}
-                  </button>
+                  </ChoiceCard>
                 ))}
               </div>
             </div>

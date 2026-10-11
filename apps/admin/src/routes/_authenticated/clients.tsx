@@ -2,22 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
-import { DateRange } from "react-day-picker";
-import { Plus, Pencil, Trash2, CalendarIcon, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
-import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
 import {
   Select,
   SelectContent,
@@ -117,52 +112,6 @@ const CLUB_STATUSES = Object.keys(CLUB_STATUS_FULL) as ClubStatus[];
 // Локальная дата (YYYY-MM-DD): даты регистрации/визита хранятся без времени.
 function toISODate(d: Date | undefined) {
   return d ? format(d, "yyyy-MM-dd") : null;
-}
-
-function DateRangeFilter({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: DateRange | undefined;
-  onChange: (v: DateRange | undefined) => void;
-}) {
-  // Компактный формат дат, чтобы плашка фильтров оставалась одной строкой.
-  const text = value?.from
-    ? value.to
-      ? `${format(value.from, "dd.MM.yy", { locale: ru })}–${format(value.to, "dd.MM.yy", { locale: ru })}`
-      : `от ${format(value.from, "dd.MM.yy", { locale: ru })}`
-    : label;
-  // Два месяца рядом не помещаются в экран телефона.
-  const isMobile = useIsMobile();
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "justify-start px-3 text-left font-normal",
-            !value?.from && "text-muted-foreground",
-          )}
-        >
-          <CalendarIcon className="text-muted-foreground" />
-          <span className="truncate">{text}</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="range"
-          selected={value}
-          onSelect={onChange}
-          numberOfMonths={isMobile ? 1 : 2}
-          locale={ru}
-          className="pointer-events-auto"
-        />
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 function ClientsPage() {
@@ -307,8 +256,12 @@ function ClientsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <DateRangeFilter label="Регистрация" value={regRange} onChange={setRegRange} />
-            <DateRangeFilter label="Последний визит" value={visitRange} onChange={setVisitRange} />
+            <DateRangeFilter placeholder="Регистрация" value={regRange} onChange={setRegRange} />
+            <DateRangeFilter
+              placeholder="Последний визит"
+              value={visitRange}
+              onChange={setVisitRange}
+            />
             <ToolbarReset active={hasFilters} onReset={resetFilters} />
           </TableToolbar>
 

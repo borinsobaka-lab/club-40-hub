@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ColorInput } from "@/components/ui/color-input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import {
   Select,
@@ -479,22 +480,7 @@ function StudioForm({
               tip={TIPS.color}
               hint="В формате #RRGGBB."
             >
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  aria-label="Выбрать цвет"
-                  value={isBrandColor(color) ? color : DEFAULT_BRAND_COLOR}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="h-10 w-12 shrink-0 cursor-pointer rounded-md border bg-background p-1 lg:h-9"
-                />
-                <Input
-                  aria-label="Цвет в формате #RRGGBB"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value.trim())}
-                  className="w-32 font-mono uppercase"
-                  maxLength={7}
-                />
-              </div>
+              <ColorInput value={color} onChange={setColor} fallback={DEFAULT_BRAND_COLOR} />
             </FormField>
 
             <FormField

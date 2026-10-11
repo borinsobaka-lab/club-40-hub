@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Trash2, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ChoiceCard } from "@/components/ui/choice-card";
 
 import { AdminShell } from "@/components/admin-shell";
 import { SELLER_TIP } from "@/lib/studio-staff";
@@ -166,27 +167,22 @@ function SaleKindPickerDialog({
         <DialogBody>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {SALE_KINDS.map((k) => (
-              <button
+              <ChoiceCard
                 key={k}
-                type="button"
                 onClick={() => onPick(k)}
-                className="group flex items-center gap-3 rounded-lg border p-3 text-left transition hover:border-foreground/30 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
-              >
-                <span
-                  className={cn(
-                    "flex size-11 shrink-0 items-center justify-center rounded-xl",
-                    SALE_KIND_TINT[k],
-                  )}
-                >
-                  <span className={cn("size-3.5 rounded-full", SALE_KIND_DOT[k])} />
-                </span>
-                <span className="space-y-1">
-                  <span className="block text-sm font-semibold">{SALE_KIND_LABEL[k]}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {SALE_KIND_DESCRIPTION[k]}
+                media={
+                  <span
+                    className={cn(
+                      "flex size-11 shrink-0 items-center justify-center rounded-xl",
+                      SALE_KIND_TINT[k],
+                    )}
+                  >
+                    <span className={cn("size-3.5 rounded-full", SALE_KIND_DOT[k])} />
                   </span>
-                </span>
-              </button>
+                }
+                title={SALE_KIND_LABEL[k]}
+                description={SALE_KIND_DESCRIPTION[k]}
+              />
             ))}
           </div>
         </DialogBody>

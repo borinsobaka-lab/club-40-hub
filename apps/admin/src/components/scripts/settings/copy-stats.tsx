@@ -12,7 +12,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -101,20 +101,16 @@ export function CopyStatsTab() {
             ))}
           </SelectContent>
         </Select>
-        <Tabs
+        <SegmentedControl
+          aria-label="Язык"
           value={lang || ALL}
-          onValueChange={(v) => setLang(v === ALL ? "" : (v as ScriptLang))}
+          onChange={(v) => setLang(v === ALL ? "" : (v as ScriptLang))}
+          options={[
+            { value: ALL, label: "Все языки" },
+            ...LANGS.map((l) => ({ value: l.key as string, label: l.label })),
+          ]}
           className="toolbar-full"
-        >
-          <TabsList aria-label="Язык">
-            <TabsTrigger value={ALL}>Все языки</TabsTrigger>
-            {LANGS.map((l) => (
-              <TabsTrigger key={l.key} value={l.key} title={l.name}>
-                {l.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        />
         <ToolbarReset
           active={filtered}
           onReset={() => {

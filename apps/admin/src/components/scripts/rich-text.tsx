@@ -210,7 +210,7 @@ function MiniCopy({ text }: { text: string }) {
     <button
       type="button"
       className={cn(
-        "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground [&_svg]:size-3.5",
+        "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground [&_svg]:size-3.5",
         done && "text-emerald-700",
       )}
       title={done ? "Скопировано" : `Копировать: ${text}`}

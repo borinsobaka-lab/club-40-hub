@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -60,6 +60,8 @@ import {
   type Employee,
 } from "@/lib/staff-directory";
 import { cn } from "@/lib/utils";
+import { PeriodStepper } from "@/components/period-stepper";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { AdminShiftsPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/admin-shifts")({
@@ -182,33 +184,14 @@ function AdminShiftsPage() {
     <AdminShell title="График администраторов">
       <div className="space-y-3">
         <TableToolbar>
-          <div className="toolbar-full flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Предыдущий месяц"
-              onClick={() => setMonth(addMonths(month, -1))}
-            >
-              <ChevronLeft />
-            </Button>
-            <Button
-              variant="outline"
-              className="max-sm:flex-1"
-              onClick={() => setMonth(monthOf(today))}
-              disabled={month === monthOf(today)}
-            >
-              Текущий месяц
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Следующий месяц"
-              onClick={() => setMonth(addMonths(month, 1))}
-            >
-              <ChevronRight />
-            </Button>
-            <span className="ml-1 text-sm font-semibold">{monthLabel(month)}</span>
-          </div>
+          <PeriodStepper
+            unit="month"
+            label={monthLabel(month)}
+            onPrev={() => setMonth(addMonths(month, -1))}
+            onNext={() => setMonth(addMonths(month, 1))}
+            onCurrent={() => setMonth(monthOf(today))}
+            isCurrent={month === monthOf(today)}
+          />
         </TableToolbar>
 
         {!scopeLoading && studios.length === 0 ? (
@@ -729,27 +712,16 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
           </Select>
         </FormField>
         <FormField label="Тип" htmlFor={null} required>
-          <div role="radiogroup" className="grid grid-cols-2 gap-1 rounded-md border p-1">
-            {(Object.keys(ADJUSTMENT_KINDS) as AdjustmentKind[]).map((k) => (
-              <button
-                key={k}
-                type="button"
-                role="radio"
-                aria-checked={kind === k}
-                onClick={() => setKind(k)}
-                className={cn(
-                  "h-7 cursor-pointer rounded text-sm transition-colors",
-                  kind === k
-                    ? k === "deduction"
-                      ? "bg-rose-50 font-medium text-rose-700"
-                      : "bg-emerald-50 font-medium text-emerald-700"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {ADJUSTMENT_KINDS[k].label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            aria-label="Тип"
+            fullWidth
+            value={kind}
+            onChange={setKind}
+            options={(Object.keys(ADJUSTMENT_KINDS) as AdjustmentKind[]).map((k) => ({
+              value: k,
+              label: ADJUSTMENT_KINDS[k].label,
+            }))}
+          />
         </FormField>
         <FormField label="Сумма, ₾" required>
           <Input

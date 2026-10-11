@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { fieldTriggerClass } from "@/components/ui/field-styles";
+import { InputClearButton } from "@/components/ui/search-input";
 import { useFieldId } from "@/components/ui/field-context";
 import {
   Command,
@@ -79,10 +81,8 @@ export function SearchableCombobox({
             role="combobox"
             aria-expanded={open}
             disabled={disabled}
-            className={cn(
-              "flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-              onClear && value && "pr-16",
-            )}
+            data-field=""
+            className={cn(fieldTriggerClass, onClear && value && "pr-16")}
           >
             <span className={cn("truncate", !label && "text-muted-foreground")}>
               {label ?? placeholder}
@@ -91,15 +91,7 @@ export function SearchableCombobox({
           </button>
         </PopoverTrigger>
         {onClear && value && !disabled && (
-          <button
-            type="button"
-            aria-label="Очистить"
-            title="Очистить"
-            onClick={onClear}
-            className="absolute right-8 top-1/2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <InputClearButton onClear={onClear} className="right-8" />
         )}
       </div>
       {/* w-(--…) — синтаксис Tailwind 4; w-[--…] из v3 компилировался в

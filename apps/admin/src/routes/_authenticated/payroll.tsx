@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, Copy, Info, Loader2 } from "lucide-react";
+import { Check, Copy, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -34,7 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, todayISO } from "@/lib/format";
 import {
@@ -74,6 +73,8 @@ import {
   type TrainerRole,
 } from "@/lib/staff-directory";
 import { cn } from "@/lib/utils";
+import { PeriodStepper } from "@/components/period-stepper";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { PayrollPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/payroll")({
@@ -256,40 +257,27 @@ function PayrollPage() {
     <AdminShell title="Зарплаты">
       <div className="space-y-3">
         <TableToolbar>
-          <div className="toolbar-full flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Предыдущий месяц"
-              onClick={() => setMonth(addMonths(month, -1))}
-            >
-              <ChevronLeft />
-            </Button>
-            <span className="min-w-32 text-center text-sm font-semibold max-sm:flex-1">
-              {monthLabel(month)}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Следующий месяц"
-              onClick={() => setMonth(addMonths(month, 1))}
-            >
-              <ChevronRight />
-            </Button>
-          </div>
-          <Tabs
+          <PeriodStepper
+            unit="month"
+            label={monthLabel(month)}
+            onPrev={() => setMonth(addMonths(month, -1))}
+            onNext={() => setMonth(addMonths(month, 1))}
+            onCurrent={() => {
+              setMonth(initial.month);
+              setPeriod(initial.period);
+            }}
+            isCurrent={month === initial.month}
+          />
+          <SegmentedControl
+            aria-label="Период выплаты"
             value={period}
-            onValueChange={(v) => setPeriod(v as PeriodKey)}
-            className="toolbar-full"
-          >
-            <TabsList className="max-sm:w-full">
-              {(["advance", "main", "month"] as PeriodKey[]).map((p) => (
-                <TabsTrigger key={p} value={p} className="max-sm:flex-1">
-                  {periodLabel(month, p)}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+            onChange={setPeriod}
+            options={(["advance", "main", "month"] as PeriodKey[]).map((p) => ({
+              value: p,
+              label: periodLabel(month, p),
+            }))}
+            className="toolbar-full max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col"
+          />
           <div className="toolbar-full flex flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:ml-auto">
             <span className="flex items-center gap-1">
               Выплачено:{" "}
@@ -330,7 +318,7 @@ function PayrollPage() {
                 value={roleFilter}
                 onValueChange={(v) => setRoleFilter(v as typeof ALL | TrainerRole)}
               >
-                <SelectTrigger className="w-44">
+                <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -346,7 +334,7 @@ function PayrollPage() {
                 value={statusFilter}
                 onValueChange={(v) => setStatusFilter(v as StatusFilter)}
               >
-                <SelectTrigger className="w-44">
+                <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -550,7 +538,7 @@ function StatusButton({
             : "Отметить как выплачено"
       }
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-opacity hover:opacity-80",
+        "inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-opacity hover:opacity-80",
         view.className,
       )}
     >
@@ -895,7 +883,9 @@ function EmployeePayroll({
                 </>
               ) : (
                 <Button
-                  className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                  variant="success"
+                  size="lg"
+                  className="w-full"
                   disabled={pending === key || h.total <= 0}
                   onClick={() => run(key, () => onMarkPaid(h, h.total))}
                 >

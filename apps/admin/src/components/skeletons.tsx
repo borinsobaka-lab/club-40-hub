@@ -89,7 +89,8 @@ export function ControlSkeletonView({ control }: { control: ControlSkeleton }) {
   return (
     <Skeleton
       className={cn(
-        "inline-flex h-10 shrink-0 items-center gap-2 px-4 text-sm font-medium",
+        // Болванка кнопки — пилюля, как Button; строка-класс выше — поле.
+        "inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium",
         control.className,
       )}
     >
@@ -134,7 +135,7 @@ export function ShellSkeleton({
         {/* Поиск клиента — как HeaderClientSearch. */}
         <Skeleton className="order-last h-10 w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
         <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
-          <Skeleton className="h-10 w-10 shrink-0 sm:w-20 lg:h-9" />
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full sm:w-20" />
           {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
           <div className="hidden items-center gap-2 lg:flex">
             <Skeleton className="h-10 w-44" />
@@ -194,7 +195,7 @@ export function ToolbarSkeleton({
 
 /** Подвал пагинации (DataPagination): «строк на странице», счётчик, стрелки. */
 export function PaginationSkeleton() {
-  const arrow = "size-10 shrink-0 rounded-md border bg-background";
+  const arrow = "size-10 shrink-0 rounded-full border bg-background";
   return (
     <div className="flex items-center justify-between gap-2 rounded-b-lg border-t bg-background px-2 py-2 sm:gap-3 sm:px-3">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">

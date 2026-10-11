@@ -626,7 +626,7 @@ function StudioAccess({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs text-muted-foreground"
+            className="text-muted-foreground"
             onClick={() => onSectionsChange(allChecked ? [] : ALL_CLUB_SECTIONS)}
           >
             {allChecked ? "Снять все" : "Выбрать все"}

@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Command as CommandPrimitive } from "cmdk";
-import { Loader2, Search, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -10,6 +10,8 @@ import { clientName, phoneSearchTerm, sanitizeSearch } from "@/lib/format";
 import { unwrap } from "@/lib/query";
 import type { ClubStatus } from "@/lib/client-status";
 import { cn } from "@/lib/utils";
+import { fieldClass } from "@/components/ui/field-styles";
+import { InputClearButton, SearchIcon } from "@/components/ui/search-input";
 import { ClientCardDialog, type ClientLike } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 
@@ -93,7 +95,7 @@ export function HeaderClientSearch({ className }: { className?: string }) {
         }}
         className={cn("relative", className)}
       >
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <SearchIcon />
         <CommandPrimitive.Input
           ref={inputRef}
           value={query}
@@ -104,23 +106,15 @@ export function HeaderClientSearch({ className }: { className?: string }) {
           inputMode="search"
           aria-label="Поиск клиента"
           placeholder={studioId ? "Поиск клиента: имя, телефон, почта" : "Сначала выберите клуб"}
-          className="flex h-10 w-full rounded-md border border-input bg-muted/40 pl-9 pr-9 text-base transition-colors placeholder:text-muted-foreground focus-visible:bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+          data-field=""
+          // Поле как все (field-styles), только на сером: в шапке без плашки
+          // фильтров иначе не видно границ поиска.
+          className={cn(fieldClass, "flex bg-muted/40 pl-9 pr-9 focus-visible:bg-background")}
         />
         {query && (
-          <button
-            type="button"
-            aria-label="Очистить"
-            // mousedown не уводит фокус из поля — список не схлопывается.
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setQuery("")}
-            className="absolute right-2 top-1/2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            {isFetching ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <X className="h-3.5 w-3.5" />
-            )}
-          </button>
+          <InputClearButton onClear={() => setQuery("")}>
+            {isFetching ? <Loader2 className="animate-spin" /> : undefined}
+          </InputClearButton>
         )}
 
         {open && (

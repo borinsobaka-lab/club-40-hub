@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ListItemButton } from "@/components/ui/list-item-button";
 import { normalize } from "@/lib/scripts/logic";
 import type { ScriptSection } from "@/lib/scripts/types";
 
@@ -173,14 +174,13 @@ export function FormatBar({
           <ul className="max-h-64 overflow-y-auto">
             {options.map((o) => (
               <li key={o.id}>
-                <button
-                  type="button"
-                  className="flex w-full cursor-pointer items-baseline justify-between gap-3 rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                <ListItemButton
+                  className="items-baseline justify-between gap-3 px-2"
                   onClick={() => link(o.id, o.title)}
                 >
                   <span className="font-medium">{o.title}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">{o.section}</span>
-                </button>
+                </ListItemButton>
               </li>
             ))}
             {!options.length && (

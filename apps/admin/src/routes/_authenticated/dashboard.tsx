@@ -2,9 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useId, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, differenceInCalendarDays, addDays, min } from "date-fns";
-import { ru } from "date-fns/locale";
 import {
-  CalendarIcon,
   ArrowUp,
   ArrowDown,
   ArrowUpRight,
@@ -33,7 +31,8 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { TableToolbar } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { DateRangeFilter } from "@/components/date-range-filter";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Dialog,
   DialogBody,
@@ -42,8 +41,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAccess } from "@/hooks/use-admin-access";
@@ -72,13 +69,6 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   pendingComponent: DashboardPageSkeleton,
   component: DashboardPage,
 });
-
-function formatRange(range: DateRange | undefined) {
-  if (!range?.from) return "Выберите период";
-  const from = format(range.from, "d MMM yyyy", { locale: ru });
-  const to = range.to ? format(range.to, "d MMM yyyy", { locale: ru }) : from;
-  return `${from} — ${to}`;
-}
 
 function toISO(d: Date) {
   return format(d, "yyyy-MM-dd");
@@ -669,10 +659,6 @@ function StudioDashboard({ studio }: { studio: Studio }) {
     from: startOfMonth(today),
     to: endOfMonth(today),
   });
-  const [open, setOpen] = useState(false);
-  // Два месяца рядом не помещаются в экран телефона.
-  const isMobile = useIsMobile();
-
   const fromDate = range?.from;
   const toDate = range?.to ?? range?.from;
   const period = fromDate && toDate ? { from: toISO(fromDate), to: toISO(toDate) } : null;
@@ -736,32 +722,12 @@ function StudioDashboard({ studio }: { studio: Studio }) {
         <span className="min-w-0 truncate">{studio.name}</span>
       </h2>
       <TableToolbar>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "toolbar-full min-w-[260px] justify-start text-left font-normal",
-                !range?.from && "text-muted-foreground",
-              )}
-            >
-              <CalendarIcon />
-              {formatRange(range)}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
-            <Calendar
-              mode="range"
-              numberOfMonths={isMobile ? 1 : 2}
-              selected={range}
-              onSelect={setRange}
-              defaultMonth={range?.from ?? today}
-              initialFocus
-              locale={ru}
-              className="p-3 pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
+        <DateRangeFilter
+          placeholder="Выберите период"
+          value={range}
+          onChange={setRange}
+          className="toolbar-full"
+        />
         <Button
           variant="ghost"
           onClick={() => setRange({ from: startOfMonth(today), to: endOfMonth(today) })}
@@ -1010,38 +976,19 @@ function MetricChart({
       </DialogHeader>
       <DialogBody className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Tabs value={granularity} onValueChange={(v) => setGranularity(v as Granularity)}>
-            <TabsList>
-              {GRANULARITIES.map((x) => (
-                <TabsTrigger key={x.value} value={x.value}>
-                  {x.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <div
-            role="radiogroup"
+          <SegmentedControl
+            aria-label="Разбивка"
+            value={granularity}
+            onChange={setGranularity}
+            options={GRANULARITIES}
+          />
+          <SegmentedControl
             aria-label="Вид графика"
-            className="inline-flex items-center gap-1 rounded-lg border p-1"
-          >
-            {CHART_TYPES.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={chartType === value}
-                aria-label={label}
-                title={label}
-                onClick={() => setChartType(value)}
-                className={cn(
-                  "inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  chartType === value && "bg-muted text-foreground",
-                )}
-              >
-                <Icon className="size-4" />
-              </button>
-            ))}
-          </div>
+            iconOnly
+            value={chartType}
+            onChange={setChartType}
+            options={CHART_TYPES}
+          />
         </div>
 
         {/* На телефоне итоги — строками «подпись · значение»: в трети ширины

@@ -14,7 +14,7 @@ import { ArrowDown, ArrowUp, Check, Copy, Link2, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Formatted, Highlight, RichText } from "@/components/scripts/rich-text";
 import { logCopy } from "@/lib/scripts/data";
 import {
@@ -262,15 +262,12 @@ export function ScriptCard({
         {item.variants.length > 1 && (
           <div className="flex flex-wrap items-center gap-2">
             <span className={LABEL}>Клуб</span>
-            <Tabs value={variant.label} onValueChange={onStudio}>
-              <TabsList>
-                {item.variants.map((v) => (
-                  <TabsTrigger key={v.label} value={v.label}>
-                    {v.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <SegmentedControl
+              aria-label="Клуб"
+              value={variant.label}
+              onChange={onStudio}
+              options={item.variants.map((v) => ({ value: v.label, label: v.label }))}
+            />
           </div>
         )}
 

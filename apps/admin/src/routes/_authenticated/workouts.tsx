@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ColorInput } from "@/components/ui/color-input";
 import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -51,7 +52,6 @@ import {
   dayTypeLabel,
   isWorkoutColor,
 } from "@/lib/workout-types";
-import { cn } from "@/lib/utils";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -450,7 +450,12 @@ function WorkoutForm({
 
             {packages ? (
               <FormField label="Цвет" htmlFor={null} tip={TIPS.color} required>
-                <WorkoutColorPicker value={color} onChange={setColor} />
+                <ColorInput
+                  value={color}
+                  onChange={setColor}
+                  fallback={WORKOUT_COLORS[0].hex}
+                  swatches={WORKOUT_COLORS}
+                />
               </FormField>
             ) : (
               <FormField label="Тип тренировки" tip={TIPS.type} optional>
@@ -530,47 +535,5 @@ function WorkoutForm({
         </DialogFooter>
       </DialogForm>
     </>
-  );
-}
-
-/** Цвет тренировки: готовая палитра + свой цвет. */
-function WorkoutColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const current = value.toLowerCase();
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {WORKOUT_COLORS.map((c) => (
-          <button
-            key={c.hex}
-            type="button"
-            title={c.label}
-            aria-label={c.label}
-            aria-pressed={current === c.hex}
-            onClick={() => onChange(c.hex)}
-            className={cn(
-              "size-8 cursor-pointer rounded-full border border-black/10 transition-transform hover:scale-110",
-              current === c.hex && "ring-2 ring-ring ring-offset-2 ring-offset-background",
-            )}
-            style={{ backgroundColor: c.hex }}
-          />
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label="Свой цвет"
-          value={isWorkoutColor(value) ? value : WORKOUT_COLORS[0].hex}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border bg-background p-1 lg:h-9"
-        />
-        <Input
-          aria-label="Цвет в формате #RRGGBB"
-          value={value}
-          onChange={(e) => onChange(e.target.value.trim())}
-          className="w-32 font-mono uppercase"
-          maxLength={7}
-        />
-      </div>
-    </div>
   );
 }

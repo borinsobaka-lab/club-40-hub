@@ -40,6 +40,7 @@ import type {
   ScriptSection,
 } from "@/lib/scripts/types";
 import { cn } from "@/lib/utils";
+import { ListItemButton } from "@/components/ui/list-item-button";
 
 type Group = CallNode["group"];
 
@@ -310,14 +311,11 @@ export function CallEditor({
                 const orphan = !isStart && n.group === "main" && !incoming.get(n.id);
                 return (
                   // Название блока бывает в две строки — высота по содержимому.
-                  <Button
+                  <ListItemButton
                     key={n.id}
-                    variant="ghost"
+                    active={n.id === node.id}
                     aria-current={n.id === node.id ? "true" : undefined}
-                    className={cn(
-                      "h-auto min-h-9 w-full justify-start gap-2 whitespace-normal px-2 py-1.5 text-left font-normal",
-                      n.id === node.id && "bg-muted font-semibold",
-                    )}
+                    className="px-2"
                     onClick={() => select(n.id)}
                   >
                     {isStart && (
@@ -338,7 +336,7 @@ export function CallEditor({
                     <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums">
                       {n.answers.length || "конец"}
                     </span>
-                  </Button>
+                  </ListItemButton>
                 );
               })}
             <Button variant="ghost" size="sm" onClick={() => addNode(g.key)}>

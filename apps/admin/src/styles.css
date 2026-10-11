@@ -251,12 +251,15 @@
    `[role="dialog"]` — он цеплял и всплывающие панели (у Popover тоже
    role="dialog"), и поле поиска в комбобоксе становилось серым. Выпадающая панель Select живёт в портале
    вне диалога, поэтому список остаётся белым — красится только сам триггер.
-   `button[role="combobox"]` покрывает и SelectTrigger, и SearchableCombobox.
+   `button[role="combobox"]` покрывает и SelectTrigger, и SearchableCombobox;
+   `[data-field]` — любые поля-кнопки из field-styles.ts (выбор страны,
+   период).
    Переключатели (Checkbox, Switch) — это button role="checkbox"/"switch",
    под правило не попадают: они не поля ввода. */
 [data-form-surface] input,
 [data-form-surface] textarea,
-[data-form-surface] button[role="combobox"] {
+[data-form-surface] button[role="combobox"],
+[data-form-surface] [data-field] {
   background-color: var(--field);
 }
 
@@ -375,23 +378,29 @@ input[type="number"]::-webkit-outer-spin-button {
     max-width: none;
   }
   .table-toolbar > .toolbar-search,
-  .table-toolbar > .toolbar-full {
+  .table-toolbar > .toolbar-full,
+  .table-toolbar > [role="radiogroup"] {
     flex-basis: 100%;
+  }
+  /* Сегменты (SegmentedControl) на всю строку делят её поровну. */
+  .table-toolbar > [role="radiogroup"] {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
   }
 }
 
 /* Действия страницы — плавающие кнопки в правом нижнем углу
    (FloatingActions в admin-shell.tsx). Кнопки страницы приходят обычными
-   <Button> размера по умолчанию; крупнее, «пилюлей» и с тенью их делает
-   это правило, на месте размер не задаём. Без слоя — перебивает утилиты
-   h-10/px-4 из buttonVariants. */
+   <Button> размера по умолчанию; здесь они получают размер `lg` и тень
+   (пилюлей кнопка уже сама). На месте размер не задаём. Без слоя —
+   перебивает утилиты h-10/px-4 из buttonVariants. */
 .fab-actions div {
   gap: 0.75rem;
 }
 .fab-actions button {
   height: 3rem;
-  padding-inline: 1.25rem;
-  border-radius: 9999px;
+  padding-inline: 1.5rem;
   font-size: 0.9375rem;
   box-shadow:
     0 10px 24px -6px rgb(0 0 0 / 0.28),
@@ -402,7 +411,7 @@ input[type="number"]::-webkit-outer-spin-button {
   height: 1.25rem;
 }
 /* Иконка без подписи (size="icon") — круг. */
-.fab-actions button.w-10 {
+.fab-actions button.size-10 {
   width: 3rem;
   padding-inline: 0;
 }

@@ -47,6 +47,8 @@ import { newRunId, useCallRun, type CallStep } from "@/lib/scripts/call-run";
 import { langInfo, type VarResolver } from "@/lib/scripts/logic";
 import type { CallFlow, CallNode, ScriptLang, ScriptSection } from "@/lib/scripts/types";
 import { cn } from "@/lib/utils";
+import { ChoiceCard } from "@/components/ui/choice-card";
+import { ListItemButton } from "@/components/ui/list-item-button";
 
 type Saved = {
   path: CallStep[];
@@ -371,14 +373,13 @@ function Runner({
                     </div>
                   ) : (
                     // Строка пути — двухстрочная: высота по содержимому.
-                    <Button
-                      variant="ghost"
-                      className="h-auto w-full flex-col items-start gap-0.5 whitespace-normal px-3 py-2 text-left"
+                    <ListItemButton
+                      className="flex-col items-start gap-0.5 py-2"
                       title="Вернуться к этому шагу"
                       onClick={() => backTo(i)}
                     >
                       {body}
-                    </Button>
+                    </ListItemButton>
                   )}
                 </li>
               );
@@ -432,13 +433,8 @@ function Runner({
           <div className="space-y-2 px-4 pb-4">
             {current.answers.length ? (
               current.answers.map((a, i) => (
-                // Ответ бывает длинным — кнопка растёт по высоте, а не обрезает текст.
-                <Button
-                  key={i}
-                  variant="outline"
-                  className="h-auto min-h-10 w-full justify-start gap-3 whitespace-normal py-2 text-left"
-                  onClick={() => go(a.to, a.label)}
-                >
+                // Ответ бывает длинным — карточка растёт по высоте, а не обрезает текст.
+                <ChoiceCard key={i} compact onClick={() => go(a.to, a.label)}>
                   <span
                     aria-hidden="true"
                     className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums"
@@ -451,7 +447,7 @@ function Runner({
                       → {byId.get(a.to)?.title}
                     </span>
                   )}
-                </Button>
+                </ChoiceCard>
               ))
             ) : (
               <div className="space-y-3 rounded-md border border-dashed p-4 text-center">
@@ -523,22 +519,20 @@ function JumpList({
           const done = !isCurrent && visited?.has(n.id);
           return (
             // Название блока бывает в две строки — высота по содержимому.
-            <Button
+            <ListItemButton
               key={n.id}
               variant="outline"
-              size="sm"
+              active={isCurrent}
               aria-current={isCurrent ? "step" : undefined}
               className={cn(
-                "h-auto min-h-9 w-full justify-start whitespace-normal py-1.5 text-left",
                 n.group === "objection" && "border-amber-200 hover:bg-amber-100",
-                isCurrent && "bg-muted font-semibold",
                 done && "text-muted-foreground",
               )}
               onClick={() => !isCurrent && onJump(n.id)}
             >
               <span className="flex-1">{n.title}</span>
               {done && <Check aria-label="Пройден" />}
-            </Button>
+            </ListItemButton>
           );
         })}
       </div>

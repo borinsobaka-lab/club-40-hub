@@ -1,6 +1,6 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
-import { CalendarIcon, ChevronLeft, ChevronRight, Info, Wallet, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Wallet, Zap } from "lucide-react";
 
 import {
   ShellSkeleton,
@@ -75,12 +75,12 @@ function TabsSkeleton({
 }) {
   return (
     <div className={className}>
-      <div className="relative inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground max-sm:max-w-full">
+      <div className="relative inline-flex h-10 items-center justify-center rounded-full bg-muted p-1 text-muted-foreground max-sm:max-w-full">
         {labels.map((label, i) => (
           <span
             key={label}
             className={cn(
-              "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium",
+              "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1 text-sm font-medium",
               i === active && "bg-primary text-primary-foreground",
             )}
           >
@@ -92,10 +92,10 @@ function TabsSkeleton({
   );
 }
 
-/** Кнопка-иконка (стрелки периода): 40×40 с рамкой, как outline icon. */
+/** Кнопка-иконка (стрелки периода): круг 40×40 с рамкой, как outline icon. */
 function IconButtonSkeleton({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground/60">
+    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground/60">
       {children}
     </span>
   );
@@ -159,8 +159,6 @@ function TablePage({
   );
 }
 
-const range = (label: string): ControlSkeleton => ({ label, className: "px-3" });
-
 // ---------------------------------------------------------------------------
 // Вход
 
@@ -205,7 +203,7 @@ export function DashboardStudioSkeleton() {
       </div>
       <ToolbarSkeleton
         search={false}
-        controls={["toolbar-full w-[260px]", { label: "Текущий месяц", icon: false }]}
+        controls={["toolbar-full w-48", { label: "Текущий месяц", icon: false }]}
       />
       <DashboardStatsSkeleton />
     </section>
@@ -300,16 +298,7 @@ export function SchedulePageSkeleton() {
     >
       <div className="space-y-3">
         <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
-          <div className="toolbar-full flex items-center gap-2">
-            <IconButtonSkeleton>
-              <ChevronLeft className="size-4" />
-            </IconButtonSkeleton>
-            <Skeleton className="h-10 w-36 max-sm:flex-1" />
-            <IconButtonSkeleton>
-              <ChevronRight className="size-4" />
-            </IconButtonSkeleton>
-            <Skeleton className="ml-1 h-4 w-28 max-sm:hidden" />
-          </div>
+          <PeriodStepperSkeleton />
           <div className="toolbar-full flex flex-wrap items-center gap-2 sm:ml-auto">
             {!packages && <Skeleton className="h-10 w-40 max-sm:flex-1" />}
             <Skeleton className="h-10 w-[25rem] max-sm:h-[4.5rem] max-sm:w-full" />
@@ -345,7 +334,8 @@ export function ClientsPageSkeleton() {
     <TablePage
       title="Клиенты"
       actions={[{ label: "Добавить клиента" }]}
-      toolbar={{ controls: ["w-40", "w-48", range("Регистрация"), range("Последний визит")] }}
+      // Два фильтра периода (DateRangeFilter) — поля w-48, как селекты.
+      toolbar={{ controls: ["w-40", "w-48", "w-48", "w-48"] }}
       headers={[
         { label: "Клиент", className: "min-w-[240px]" },
         { label: "Статус", className: "w-[80px]" },
@@ -845,29 +835,18 @@ export function PayRatesPageSkeleton() {
   );
 }
 
-/** Навигация по месяцу (◀ подпись ▶) в плашке фильтров. */
-function MonthNavSkeleton({ label }: { label: "button" | "center" }) {
+/** Листание периода (PeriodStepper): ◀ «Текущий …» ▶ и подпись. */
+function PeriodStepperSkeleton() {
   return (
     <div className="toolbar-full flex items-center gap-2">
       <IconButtonSkeleton>
         <ChevronLeft className="size-4" />
       </IconButtonSkeleton>
-      {label === "button" ? (
-        <>
-          <Skeleton className="h-10 w-36 max-sm:flex-1" />
-          <IconButtonSkeleton>
-            <ChevronRight className="size-4" />
-          </IconButtonSkeleton>
-          <Skeleton className="ml-1 h-4 w-28" />
-        </>
-      ) : (
-        <>
-          <Skeleton className="mx-2 h-4 w-28 max-sm:flex-1" />
-          <IconButtonSkeleton>
-            <ChevronRight className="size-4" />
-          </IconButtonSkeleton>
-        </>
-      )}
+      <Skeleton className="h-10 w-36 rounded-full max-sm:flex-1" />
+      <IconButtonSkeleton>
+        <ChevronRight className="size-4" />
+      </IconButtonSkeleton>
+      <Skeleton className="ml-1 h-4 w-28 max-sm:hidden" />
     </div>
   );
 }
@@ -877,7 +856,7 @@ export function AdminShiftsPageSkeleton() {
     <ShellSkeleton title="График администраторов">
       <div className="space-y-3">
         <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
-          <MonthNavSkeleton label="button" />
+          <PeriodStepperSkeleton />
         </div>
         <div className="overflow-x-auto rounded-lg border bg-background">
           <table className="w-max border-separate border-spacing-0 text-sm">
@@ -983,7 +962,7 @@ export function PayrollPageSkeleton() {
     <ShellSkeleton title="Зарплаты">
       <div className="space-y-3">
         <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
-          <MonthNavSkeleton label="center" />
+          <PeriodStepperSkeleton />
           <TabsSkeleton
             labels={periods.map((p) => periodLabel(month, p))}
             active={periods.indexOf(period)}
@@ -1002,7 +981,7 @@ export function PayrollPageSkeleton() {
           <Info className="size-3.5 shrink-0" />
           <Skeleton className="h-3 w-full max-w-lg" />
         </div>
-        <ToolbarSkeleton controls={["w-44", "w-44"]} />
+        <ToolbarSkeleton controls={["w-48", "w-48"]} />
         <TableCardSkeleton
           headers={[
             { label: "Сотрудник", className: "min-w-[220px]" },
