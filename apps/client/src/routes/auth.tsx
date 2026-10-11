@@ -7,6 +7,7 @@ import { Refresh } from "@solar-icons/react";
 import { useAuth } from "@/hooks/use-auth";
 import { CLUB, IS_PACKAGES } from "@/lib/terms";
 import { DarkFrame } from "@/formats/packages/dark-frame";
+import packagesLogo from "@/assets/packages-logo.svg";
 
 function formatCooldown(sec: number) {
   const m = Math.floor(sec / 60);
@@ -258,10 +259,12 @@ function AuthPage() {
       <DarkFrame
         tall
         header={
-          <div className="flex flex-1 flex-col px-6 pb-10">
-            <div className="text-2xl font-black tracking-widest">
-              Base<span className="text-primary">40</span>
-            </div>
+          <div className="flex min-h-0 flex-1 flex-col px-6 pb-10">
+            <img
+              src={packagesLogo}
+              alt="Логотип студии"
+              className="mt-6 h-auto w-[220px] max-w-[70%] shrink-0"
+            />
             <h1 className="mt-auto pt-6 text-3xl font-semibold leading-tight">Добро пожаловать</h1>
             <p className="mt-2 text-sm text-white/70">{subtitle}</p>
           </div>

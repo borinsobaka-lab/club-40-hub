@@ -6,9 +6,9 @@ import { HeaderBackdrop } from "@/components/page-shell";
  * Полноэкранный экран пакетного приложения в оформлении разделов (PageShell):
  * сверху тёмная зона с огоньками, под ней белая скруглённая панель с
  * содержимым; кнопка (footer) — внизу панели. Онбординг и вход.
- * tall — заголовок внизу тёмной зоны высотой 300px: огоньки HeaderBackdrop
- * рисуются только в верхних 320px, выше тёмная зона обрезала бы их видимой
- * границей.
+ * tall — вход, вступление и финал анкеты: тёмная зона занимает всё
+ * свободное место (заголовок — внизу, огоньки — на всю её высоту), белая
+ * панель — по содержимому, без пустого места над кнопкой.
  */
 export function DarkFrame({
   tall = false,
@@ -24,15 +24,19 @@ export function DarkFrame({
   return (
     <div className="relative flex h-[100dvh] flex-col overflow-hidden">
       {/* Фон и огоньки — те же, что у разделов приложения. */}
-      <HeaderBackdrop />
+      <HeaderBackdrop full={tall} />
       <div
-        className={`relative z-10 shrink-0 text-white pt-[max(env(safe-area-inset-top),0.75rem)] ${
-          tall ? "flex min-h-[300px] flex-col justify-end" : ""
+        className={`relative z-10 text-white pt-[max(env(safe-area-inset-top),0.75rem)] ${
+          tall ? "flex min-h-0 flex-1 flex-col justify-end" : "shrink-0"
         }`}
       >
         {header}
       </div>
-      <div className="relative z-10 -mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]">
+      <div
+        className={`relative z-10 -mt-4 flex flex-col overflow-hidden rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] ${
+          tall ? "max-h-[70%] shrink-0" : "min-h-0 flex-1"
+        }`}
+      >
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>

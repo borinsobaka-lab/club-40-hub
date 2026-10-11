@@ -49,10 +49,12 @@ const BLOB_STYLES = (() => {
  * пересоздаётся (main с key={pathname}), подложка — нет, поэтому огоньки
  * не дёргаются.
  */
-export function HeaderBackdrop() {
+export function HeaderBackdrop({ full = false }: { full?: boolean }) {
+  // full — огоньки на всю высоту (экраны, где тёмная зона выше 320px:
+  // вход и онбординг пакетного приложения), иначе видна граница слоя.
   return (
     <div className="pointer-events-none absolute inset-0 bg-[#2A2B2F]" aria-hidden="true">
-      <div className="absolute inset-x-0 top-0 h-[320px]">
+      <div className={full ? "absolute inset-0" : "absolute inset-x-0 top-0 h-[320px]"}>
         <div className="gradient-blobs">
           {BLOB_STYLES.map((style, i) => (
             <span key={i} style={style} />
