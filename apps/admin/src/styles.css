@@ -380,21 +380,44 @@ input[type="number"]::-webkit-outer-spin-button {
   }
 }
 
-/* Действия страницы в шапке AdminShell до lg — отдельной строкой на всю
-   ширину: кнопки делят строку поровну и переносятся, если не влезают. */
-@media (width < 64rem) {
-  .shell-actions,
-  .shell-actions > div {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .shell-actions > div {
-    width: 100%;
-  }
-  .shell-actions button {
-    flex: 1 1 auto;
-  }
+/* Действия страницы — плавающие кнопки в правом нижнем углу
+   (FloatingActions в admin-shell.tsx). Кнопки страницы приходят обычными
+   <Button> размера по умолчанию; крупнее, «пилюлей» и с тенью их делает
+   это правило, на месте размер не задаём. Без слоя — перебивает утилиты
+   h-10/px-4 из buttonVariants. */
+.fab-actions div {
+  gap: 0.75rem;
+}
+.fab-actions button {
+  height: 3rem;
+  padding-inline: 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.9375rem;
+  box-shadow:
+    0 10px 24px -6px rgb(0 0 0 / 0.28),
+    0 2px 6px -1px rgb(0 0 0 / 0.12);
+}
+.fab-actions button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+/* Иконка без подписи (size="icon") — круг. */
+.fab-actions button.w-10 {
+  width: 3rem;
+  padding-inline: 0;
+}
+/* Полупрозрачная неактивная кнопка просвечивала бы таблицей под собой —
+   неактивную красим глухим приглушённым цветом. */
+.fab-actions button:disabled {
+  opacity: 1;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+}
+/* Запас снизу у рабочей области, пока на странице есть плавающие действия:
+   конец таблицы и пагинация прокручиваются из-под кнопок. */
+.admin-main:has(.fab-actions) {
+  padding-bottom: 6.5rem;
 }
 
 /* Полоса прокрутки бокового меню. Системная на тёмной панели выглядит как

@@ -7,6 +7,24 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
 import { KateChat } from "@/components/kate-chat";
+import { HeaderClientSearch } from "@/components/header-client-search";
+
+/**
+ * Действия страницы («Продажа», «Добавить тренировку»…) — крупные кнопки,
+ * плавающие в правом нижнем углу рабочей области. AdminShell ставит сюда
+ * свой проп `actions`; раздел, где действие зависит от таба («Прочие
+ * продажи»), рендерит FloatingActions сам — где угодно внутри страницы.
+ * Размер и тень кнопок — `.fab-actions` в styles.css: на месте кнопкам
+ * размер не задаём, там же запас снизу у main.
+ * Рендерить один раз: внутри бывают диалоги со своим состоянием.
+ */
+export function FloatingActions({ children }: { children: ReactNode }) {
+  return (
+    <div className="fab-actions fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-end gap-3 sm:right-6 sm:bottom-6 lg:right-8 lg:bottom-8">
+      {children}
+    </div>
+  );
+}
 
 export function AdminShell({
   title,
@@ -28,65 +46,76 @@ export function AdminShell({
         соседний блок), поэтому полупрозрачность только подмешивала подложку и
         размывала границу между шапкой и рабочей областью.
 
-        Узкий экран (до lg): первая строка — меню, заголовок, «Обновить», Kate;
-        действия страницы уходят второй строкой на всю ширину (order-last +
-        w-full), а выбор студии — в низ бокового меню (AppSidebar).
-        Действия рендерятся один раз и только переезжают: внутри них бывают
-        диалоги со своим состоянием, второй экземпляр открыл бы окно дважды.
+        С lg — три части: слева заголовок и «Обновить», по центру поиск
+        клиента, справа Kate и выбор клуба. Левая и правая части одинаково
+        тянутся (flex-1 basis-0), поэтому поиск стоит ровно посередине, пока
+        им хватает места. Узкий экран (до lg): первая строка — меню,
+        заголовок, «Обновить», Kate; поиск — второй строкой на всю ширину, а
+        выбор клуба — в низ бокового меню (AppSidebar).
+        Действия страницы в шапку больше не ставим — они плавают в правом
+        нижнем углу (FloatingActions).
       */}
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
-        {/*
-          На узком экране боковое меню уходит в шторку и кнопка сворачивания
-          внутри него недоступна — открыть меню больше нечем.
-        */}
-        <SidebarTrigger className="-ml-1 size-10 md:hidden" />
-        {/*
-          Заголовок раздела: font-semibold — тот же вес, что у заголовков
-          диалогов и карточек, и он же прописан в дизайн-системе как вес
-          ведущего элемента. Трекинг не задаём руками: он зашит в токен
-          --text-2xl--letter-spacing. leading-tight обязателен — заголовок под
-          truncate, а у «Промокодов» и «Пуш-уведомлений» есть выносные
-          элементы (р, у), их бы срезало. На телефоне ступенью меньше (xl):
-          в 2xl «Отмены автопродления» не помещались рядом с кнопками.
-        */}
-        <h1 className="min-w-0 flex-1 truncate text-xl font-semibold leading-tight lg:flex-initial lg:text-2xl">
-          {title}
-        </h1>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Обновить"
-          className="shrink-0"
-          onClick={() => {
-            router.invalidate();
-            queryClient.invalidateQueries();
-          }}
-        >
-          <RefreshCw className="h-5 w-5" />
-        </Button>
+        <div className="flex min-w-0 flex-1 items-center gap-2 lg:basis-0">
+          {/*
+            На узком экране боковое меню уходит в шторку и кнопка сворачивания
+            внутри него недоступна — открыть меню больше нечем.
+          */}
+          <SidebarTrigger className="-ml-1 size-10 md:hidden" />
+          {/*
+            Заголовок раздела: font-semibold — тот же вес, что у заголовков
+            диалогов и карточек, и он же прописан в дизайн-системе как вес
+            ведущего элемента. Трекинг не задаём руками: он зашит в токен
+            --text-2xl--letter-spacing. leading-tight обязателен — заголовок под
+            truncate, а у «Промокодов» и «Пуш-уведомлений» есть выносные
+            элементы (р, у), их бы срезало. На телефоне ступенью меньше (xl):
+            в 2xl «Отмены автопродления» не помещались рядом с кнопками.
+          */}
+          <h1 className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl">
+            {title}
+          </h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Обновить"
+            className="shrink-0"
+            onClick={() => {
+              router.invalidate();
+              queryClient.invalidateQueries();
+            }}
+          >
+            <RefreshCw className="h-5 w-5" />
+          </Button>
+        </div>
 
-        {actions && (
-          <div className="shell-actions order-last w-full lg:order-none lg:ml-auto lg:w-auto">
-            {actions}
+        <HeaderClientSearch className="order-last w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+
+        <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
+          <button
+            type="button"
+            onClick={() => setKateOpen(true)}
+            aria-label="Kate — AI ассистент"
+            className="ai-gradient group relative inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white transition lg:h-9"
+          >
+            <Cat className="h-4 w-4" />
+            <span className="max-sm:hidden">Kate</span>
+          </button>
+          {/* «Выход» — в рейке слева, под аватаркой сотрудника (RailAccount). */}
+          <div className="hidden items-center gap-2 lg:flex">
+            <StudioSwitcher />
           </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setKateOpen(true)}
-          aria-label="Kate — AI ассистент"
-          className={`ai-gradient group relative inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-md px-3 text-sm font-medium text-white transition lg:h-9 ${actions ? "" : "lg:ml-auto"}`}
-        >
-          <Cat className="h-4 w-4" />
-          <span className="max-sm:hidden">Kate</span>
-        </button>
-        {/* «Выход» — в рейке слева, под аватаркой сотрудника (RailAccount). */}
-        <div className="hidden items-center gap-2 lg:flex">
-          <StudioSwitcher />
         </div>
       </header>
-      {/* На телефоне поля рабочей области уже: p-6 съедал 48px из 390. */}
-      <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">{children}</main>
+      {/*
+        На телефоне поля рабочей области уже: p-6 съедал 48px из 390.
+        admin-main: пока на странице есть плавающие действия, снизу добавляется
+        запас (styles.css) — последняя строка таблицы и пагинация
+        прокручиваются из-под кнопок.
+      */}
+      <main className="admin-main flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
+        {children}
+        {actions && <FloatingActions>{actions}</FloatingActions>}
+      </main>
 
       <DialogPrimitive.Root open={kateOpen} onOpenChange={setKateOpen}>
         <DialogPrimitive.Portal>

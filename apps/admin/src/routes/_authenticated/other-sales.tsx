@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 
-import { AdminShell } from "@/components/admin-shell";
+import { AdminShell, FloatingActions } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
@@ -153,8 +153,8 @@ function OtherSalesPage() {
 type TabValue = "sales" | "catalog";
 
 /**
- * Кнопка «Добавить …» стоит в одной строке с вкладками и зависит от
- * открытой вкладки, поэтому окна создания открываются отсюда.
+ * Плавающая кнопка «Добавить …» зависит от открытой вкладки, поэтому она и
+ * окна создания живут здесь, а не в actions шапки AdminShell.
  */
 function OtherSalesTabs({ studioId }: { studioId: string }) {
   const [tab, setTab] = useState<TabValue>("sales");
@@ -170,11 +170,11 @@ function OtherSalesTabs({ studioId }: { studioId: string }) {
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)} className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TabsList>
-          <TabsTrigger value="sales">Продажи</TabsTrigger>
-          <TabsTrigger value="catalog">Позиции</TabsTrigger>
-        </TabsList>
+      <TabsList>
+        <TabsTrigger value="sales">Продажи</TabsTrigger>
+        <TabsTrigger value="catalog">Позиции</TabsTrigger>
+      </TabsList>
+      <FloatingActions>
         {tab === "sales" ? (
           <Button onClick={() => setSaleOpen(true)} disabled={items.length === 0}>
             <Plus />
@@ -186,7 +186,7 @@ function OtherSalesTabs({ studioId }: { studioId: string }) {
             Добавить позицию
           </Button>
         )}
-      </div>
+      </FloatingActions>
 
       <TabsContent value="sales" className="space-y-3">
         <SalesTab studioId={studioId} open={saleOpen} onOpenChange={setSaleOpen} />
