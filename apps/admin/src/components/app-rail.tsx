@@ -127,10 +127,10 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
         justify-center обрезал бы верхние без возможности прокрутить к ним.
       */}
       <div className="my-auto flex w-full flex-col items-center gap-1">{renderGroup(SECTIONS)}</div>
-      {/* Внизу: кто вошёл (аватарка, по нажатию — выход), «Доступы», «Клубы». */}
+      {/* Внизу: «Доступы», «Клубы» и в самом низу — кто вошёл (аватарка, по нажатию — выход). */}
       <div className="flex w-full flex-col items-center gap-1 border-t border-white/10 pt-2">
-        <RailAccount />
         {renderGroup(ADMIN_SECTIONS)}
+        <RailAccount />
       </div>
     </nav>
   );
