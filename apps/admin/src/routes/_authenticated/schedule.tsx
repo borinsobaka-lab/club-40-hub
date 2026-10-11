@@ -1,7 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Copy, X } from "lucide-react";
+import {
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Loader2,
+  Trash2,
+  Copy,
+  X,
+} from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -14,7 +23,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
+import {
+  ACTIVITY_KINDS,
+  ACTIVITY_KIND_VALUES,
+  activityKind,
+  type ActivityKind,
+} from "@/lib/schedule-activities";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
@@ -49,7 +65,13 @@ type Trainer = { id: string; full_name: string; photo_url?: string | null };
 type Entry = {
   id: string;
   studio_id: string;
-  workout_id: string;
+  /** Групповое — по тренировке; персональное и прочее — без неё. */
+  kind: ActivityKind;
+  workout_id: string | null;
+  /** Название прочей активности. */
+  title: string | null;
+  /** Ставка за прочую активность, лари каждому отмеченному тренеру. */
+  pay_rate: number | null;
   starts_at: string;
   ends_at: string;
   capacity: number | null;
@@ -66,7 +88,15 @@ type Entry = {
 };
 
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
-type EntryDraft = { workout_id: string; starts_at: string; ends_at: string; trainerIds: string[] };
+type EntryDraft = {
+  kind: ActivityKind;
+  workout_id: string | null;
+  title: string | null;
+  pay_rate: number | null;
+  starts_at: string;
+  ends_at: string;
+  trainerIds: string[];
+};
 
 const ENTRY_SELECT =
   "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, photo_url))";
@@ -134,13 +164,31 @@ function cellKey(day: Date, hour: number) {
   return `${day.toDateString()}|${hour}`;
 }
 
-/** «Тренировка + начало» — так узнаём одно и то же занятие в разных выборках. */
-function entryKey(workoutId: string, startsAt: string) {
-  return `${workoutId}|${new Date(startsAt).toISOString()}`;
+/**
+ * «Что + начало» — так узнаём одно и то же занятие на соседней неделе:
+ * групповое — по тренировке, персональное — по тренеру, прочее — по названию.
+ */
+function entryKey(
+  e: Pick<EntryDraft, "kind" | "workout_id" | "title" | "starts_at" | "trainerIds">,
+) {
+  const subject =
+    e.kind === "group"
+      ? e.workout_id
+      : e.kind === "personal"
+        ? [...e.trainerIds].sort().join(",")
+        : e.title?.trim().toLowerCase();
+  return `${e.kind}|${subject}|${new Date(e.starts_at).toISOString()}`;
 }
 
-function trainerIdsOf(e: Entry) {
+function trainerIdsOf(e: Pick<Entry, "schedule_entry_trainers">) {
   return e.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
+}
+
+/** Подпись занятия на карточке и в баннере копирования. */
+function entryTitle(e: Entry) {
+  if (e.kind === "personal") return "Персональное занятие";
+  if (e.kind === "other") return e.title ?? "Прочая активность";
+  return e.workout?.name ?? "Занятие";
 }
 
 /**
@@ -152,11 +200,14 @@ function entryCapacity(e: Entry) {
   return (e.capacity ?? e.workout?.capacity) || null;
 }
 
-/** Копия занятия с новым началом: та же тренировка, длительность и тренеры. */
+/** Копия занятия с новым началом: тот же тип, тренировка, длительность и тренеры. */
 function copyDraft(e: Entry, start: Date): EntryDraft {
   const duration = new Date(e.ends_at).getTime() - new Date(e.starts_at).getTime();
   return {
+    kind: e.kind,
     workout_id: e.workout_id,
+    title: e.title,
+    pay_rate: e.pay_rate,
     starts_at: start.toISOString(),
     ends_at: new Date(start.getTime() + duration).toISOString(),
     trainerIds: trainerIdsOf(e),
@@ -181,30 +232,25 @@ type InsertResult =
  * вставка дала бы дубли.
  */
 async function insertEntries(studioId: string, drafts: EntryDraft[]): Promise<InsertResult> {
-  const { data, error } = await supabase
-    .from("schedule_entries")
-    .insert(
-      drafts.map((d) => ({
-        studio_id: studioId,
-        workout_id: d.workout_id,
-        starts_at: d.starts_at,
-        ends_at: d.ends_at,
-      })),
-    )
-    .select("id, workout_id, starts_at");
-  if (error || !data) return { ok: false, error: error?.message ?? "" };
-  // Тренеров сопоставляем по «тренировка + начало», а не по порядку строк:
-  // порядок строк в ответе на вставку база не гарантирует.
-  const trainersByKey = new Map(
-    drafts.map((d) => [entryKey(d.workout_id, d.starts_at), d.trainerIds]),
+  // id задаём сами: тренеров привязываем по нему, а не по порядку строк в
+  // ответе на вставку (его база не гарантирует) и не по «тренировка + начало»
+  // (у персональных и прочих тренировки нет).
+  const rows = drafts.map((d) => ({
+    id: crypto.randomUUID(),
+    studio_id: studioId,
+    kind: d.kind,
+    workout_id: d.workout_id,
+    title: d.title,
+    pay_rate: d.pay_rate,
+    starts_at: d.starts_at,
+    ends_at: d.ends_at,
+  }));
+  const { error } = await supabase.from("schedule_entries").insert(rows);
+  if (error) return { ok: false, error: error.message };
+  const links = rows.flatMap((row, i) =>
+    drafts[i].trainerIds.map((trainer_id) => ({ entry_id: row.id, trainer_id })),
   );
-  const links = data.flatMap((row: { id: string; workout_id: string; starts_at: string }) =>
-    (trainersByKey.get(entryKey(row.workout_id, row.starts_at)) ?? []).map((trainer_id) => ({
-      entry_id: row.id,
-      trainer_id,
-    })),
-  );
-  return { ok: true, count: data.length, trainersError: await linkTrainers(links) };
+  return { ok: true, count: rows.length, trainersError: await linkTrainers(links) };
 }
 
 function SchedulePage() {
@@ -218,6 +264,11 @@ function SchedulePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [presetStart, setPresetStart] = useState<Date | null>(null);
+  // Новое занятие: сначала окно выбора типа, потом форма выбранного типа.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [formKind, setFormKind] = useState<ActivityKind>("group");
+  // Фильтр типов занятий не запоминается: при входе в раздел видны все типы.
+  const [kindFilter, setKindFilter] = useState<ActivityKind[]>(ACTIVITY_KIND_VALUES);
   const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
   const [copySource, setCopySource] = useState<Entry | null>(null);
@@ -279,7 +330,10 @@ function SchedulePage() {
   const isCurrentWeek = startOfWeek(new Date()).toDateString() === weekStart.toDateString();
   // Фильтр типа, выбранный в подписочной студии, в пакетной не действует.
   const typeFilter = packages ? ALL_FILTER_VALUE : filterType;
-  const filtersActive = typeFilter !== ALL_FILTER_VALUE || filterTrainerId !== ALL_FILTER_VALUE;
+  const filtersActive =
+    typeFilter !== ALL_FILTER_VALUE ||
+    filterTrainerId !== ALL_FILTER_VALUE ||
+    kindFilter.length !== ACTIVITY_KIND_VALUES.length;
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -297,7 +351,10 @@ function SchedulePage() {
     // Занятий по дням недели — точки под днями в переключателе на телефоне.
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
-      if (typeFilter !== ALL_FILTER_VALUE && e.workout?.type !== typeFilter) continue;
+      if (!kindFilter.includes(e.kind)) continue;
+      // Тип тренировки есть только у групповых: при выбранном типе прочие скрыты.
+      if (typeFilter !== ALL_FILTER_VALUE && (e.kind !== "group" || e.workout?.type !== typeFilter))
+        continue;
       if (
         filterTrainerId !== ALL_FILTER_VALUE &&
         !e.schedule_entry_trainers?.some((x) => x.trainer_id === filterTrainerId)
@@ -310,7 +367,7 @@ function SchedulePage() {
       perDay[(start.getDay() + 6) % 7]++;
     }
     return { cells, busyHours, perDay };
-  }, [entries, typeFilter, filterTrainerId]);
+  }, [entries, kindFilter, typeFilter, filterTrainerId]);
 
   const openSlot = (day: Date, hour: number) => {
     const start = new Date(day);
@@ -321,6 +378,12 @@ function SchedulePage() {
     }
     setEditing(null);
     setPresetStart(start);
+    setPickerOpen(true);
+  };
+
+  const pickKind = (kind: ActivityKind) => {
+    setFormKind(kind);
+    setPickerOpen(false);
     setDialogOpen(true);
   };
 
@@ -362,7 +425,7 @@ function SchedulePage() {
     if (
       !(await confirm({
         title: "Дублировать неделю?",
-        description: `Все занятия с недели ${weekLabel} (${entries.length}) будут скопированы на следующую неделю (${fmtDate(nextWeekStart)} — ${fmtDate(addDays(nextWeekStart, 6))}) в те же дни и время, с теми же тренерами. Записи клиентов не копируются. Уже существующие на следующей неделе занятия (тот же тип и время) пропускаются.`,
+        description: `Все занятия с недели ${weekLabel} (${entries.length}) будут скопированы на следующую неделю (${fmtDate(nextWeekStart)} — ${fmtDate(addDays(nextWeekStart, 6))}) в те же дни и время, с теми же тренерами. Записи клиентов не копируются. Уже существующие на следующей неделе занятия (то же занятие и время) пропускаются.`,
         confirmLabel: "Дублировать",
         destructive: false,
       }))
@@ -370,10 +433,10 @@ function SchedulePage() {
       return;
     setDuplicatingWeek(true);
     try {
-      // Уже стоящие на следующей неделе занятия (та же тренировка и время) не дублируем.
+      // Уже стоящие на следующей неделе занятия (то же занятие и время) не дублируем.
       const { data: existing, error: exErr } = await supabase
         .from("schedule_entries")
-        .select("workout_id, starts_at")
+        .select("kind, workout_id, title, starts_at, schedule_entry_trainers(trainer_id)")
         .eq("studio_id", studioId)
         .gte("starts_at", nextWeekStart.toISOString())
         .lt("starts_at", addDays(nextWeekStart, 7).toISOString());
@@ -382,13 +445,16 @@ function SchedulePage() {
         return;
       }
       const existingKeys = new Set(
-        (existing ?? []).map((e: { workout_id: string; starts_at: string }) =>
-          entryKey(e.workout_id, e.starts_at),
-        ),
+        (
+          (existing ?? []) as Pick<
+            Entry,
+            "kind" | "workout_id" | "title" | "starts_at" | "schedule_entry_trainers"
+          >[]
+        ).map((e) => entryKey({ ...e, trainerIds: trainerIdsOf(e) })),
       );
       const drafts = entries
         .map((e) => copyDraft(e, new Date(new Date(e.starts_at).getTime() + WEEK_MS)))
-        .filter((d) => !existingKeys.has(entryKey(d.workout_id, d.starts_at)));
+        .filter((d) => !existingKeys.has(entryKey(d)));
       if (drafts.length === 0) {
         toast.info("Все занятия уже скопированы на следующую неделю");
         return;
@@ -413,11 +479,12 @@ function SchedulePage() {
   const openAdd = () => {
     setEditing(null);
     setPresetStart(null);
-    setDialogOpen(true);
+    setPickerOpen(true);
   };
 
   const openEdit = (e: Entry) => {
     setEditing(e);
+    setFormKind(e.kind);
     setPresetStart(null);
     setDialogOpen(true);
   };
@@ -458,7 +525,7 @@ function SchedulePage() {
             {/* На телефоне — коротко, чтобы обе кнопки встали в одну строку. */}
             Дублировать<span className="max-sm:hidden"> неделю</span>
           </Button>
-          <Button onClick={openAdd} disabled={!studioId || workouts.length === 0}>
+          <Button onClick={openAdd} disabled={!studioId}>
             <Plus />
             Добавить<span className="max-sm:hidden"> занятие</span>
           </Button>
@@ -524,6 +591,7 @@ function SchedulePage() {
                   </SelectContent>
                 </Select>
               )}
+              <KindFilter value={kindFilter} onChange={setKindFilter} />
               <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
                 <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <SelectValue placeholder="Все тренеры" />
@@ -542,6 +610,7 @@ function SchedulePage() {
                 onReset={() => {
                   setFilterType(ALL_FILTER_VALUE);
                   setFilterTrainerId(ALL_FILTER_VALUE);
+                  setKindFilter(ACTIVITY_KIND_VALUES);
                 }}
               />
             </div>
@@ -556,8 +625,8 @@ function SchedulePage() {
                   <Copy className="h-4 w-4" />
                 )}
                 <span>
-                  Копирование «{copySource.workout?.name ?? "Занятие"}» — кликните на свободный
-                  слот, чтобы вставить.
+                  Копирование «{entryTitle(copySource)}» — кликните на свободный слот, чтобы
+                  вставить.
                 </span>
               </div>
               <Button
@@ -700,15 +769,24 @@ function SchedulePage() {
 
           {workouts.length === 0 && (
             <InfoNote variant="empty">
-              Чтобы добавить занятие, сначала создайте тренировки в разделе «Тренировки».
+              Чтобы добавлять групповые занятия, сначала создайте тренировки в разделе «Тренировки».
+              Персональные занятия и прочие активности тренировок не требуют.
             </InfoNote>
           )}
         </RequireStudio>
       </div>
 
+      <KindPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        hasWorkouts={workouts.length > 0}
+        onPick={pickKind}
+      />
+
       <EntryDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        kind={formKind}
         studioId={studioId}
         workouts={workouts}
         trainers={trainers}
@@ -720,6 +798,116 @@ function SchedulePage() {
 
       {confirmDialog}
     </AdminShell>
+  );
+}
+
+/**
+ * Фильтр по типам занятий: по умолчанию отмечены все, можно оставить,
+ * например, только персональные. Последний отмеченный тип снять нельзя —
+ * пустая сетка только путает.
+ */
+function KindFilter({
+  value,
+  onChange,
+}: {
+  value: ActivityKind[];
+  onChange: (v: ActivityKind[]) => void;
+}) {
+  const label =
+    value.length === ACTIVITY_KIND_VALUES.length
+      ? "Все активности"
+      : value.length === 1
+        ? activityKind(value[0]).plural
+        : value.map((k) => activityKind(k).plural).join(", ");
+  const toggle = (kind: ActivityKind, checked: boolean) => {
+    // Порядок — как в справочнике, а не порядок кликов: от него зависит подпись.
+    onChange(ACTIVITY_KIND_VALUES.filter((k) => (k === kind ? checked : value.includes(k))));
+  };
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-48 justify-between px-3 font-normal max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
+        >
+          <span className="truncate">{label}</span>
+          <ChevronDown className="opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-1.5">
+        {ACTIVITY_KINDS.map((k) => {
+          const checked = value.includes(k.value);
+          return (
+            <CheckboxOption
+              key={k.value}
+              checked={checked}
+              disabled={checked && value.length === 1}
+              onCheckedChange={(v) => toggle(k.value, v)}
+              className="rounded-md px-2 py-2 hover:bg-muted"
+            >
+              <k.icon className="size-4 shrink-0" style={{ color: k.color }} />
+              {k.plural}
+            </CheckboxOption>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Выбор типа нового занятия — плитки с иконками; дальше форма этого типа. */
+function KindPickerDialog({
+  open,
+  onOpenChange,
+  hasWorkouts,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** Групповое занятие ставится по тренировке — без тренировок плитка выключена. */
+  hasWorkouts: boolean;
+  onPick: (kind: ActivityKind) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Что добавить в расписание?</DialogTitle>
+          <DialogDescription>Выберите тип занятия.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {ACTIVITY_KINDS.map((k) => {
+              const disabled = k.value === "group" && !hasWorkouts;
+              return (
+                <button
+                  key={k.value}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onPick(k.value)}
+                  className="group flex items-center gap-3 rounded-lg border p-3 text-left transition hover:border-foreground/30 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent sm:flex-col sm:items-start sm:p-4"
+                >
+                  <span
+                    className="flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-12"
+                    style={{ backgroundColor: `${k.color}1f`, color: k.color }}
+                  >
+                    <k.icon className="size-6" />
+                  </span>
+                  <span className="space-y-1">
+                    <span className="block text-sm font-semibold">{k.label}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {disabled
+                        ? "Сначала создайте тренировки в разделе «Тренировки»"
+                        : k.description}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -770,12 +958,18 @@ function EntryCard({
     x.trainer ? [x.trainer] : [],
   );
   const names = trainers.map((t) => t.full_name).join(", ");
-  if (packages) {
+  // Персональные и прочие в обоих форматах — светлая карточка с полоской и
+  // иконкой своего типа: так они не путаются с групповыми.
+  const group = entry.kind === "group";
+  if (packages || !group) {
+    const kind = activityKind(entry.kind);
     return (
       <div
         className="absolute inset-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs"
         // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
-        style={{ borderLeftColor: entry.workout?.color ?? "var(--muted-foreground)" }}
+        style={{
+          borderLeftColor: group ? (entry.workout?.color ?? "var(--muted-foreground)") : kind.color,
+        }}
       >
         <button
           type="button"
@@ -788,7 +982,16 @@ function EntryCard({
             </span>
             <CapacityBadge entry={entry} light />
           </span>
-          <span className="font-medium line-clamp-2">{entry.workout?.name ?? "Занятие"}</span>
+          <span className="flex items-start gap-1 font-medium">
+            {!group && (
+              <kind.icon
+                aria-label={kind.label}
+                className="mt-px size-3 shrink-0"
+                style={{ color: kind.color }}
+              />
+            )}
+            <span className="line-clamp-2">{entryTitle(entry)}</span>
+          </span>
           {trainers.length > 0 && (
             <span className="mt-0.5 flex min-w-0 items-center gap-1 pr-5">
               <span className="flex shrink-0 -space-x-1.5">
@@ -834,7 +1037,7 @@ function EntryCard({
           </span>
           <CapacityBadge entry={entry} />
         </span>
-        <span className="font-medium line-clamp-2">{entry.workout?.name ?? "Занятие"}</span>
+        <span className="font-medium line-clamp-2">{entryTitle(entry)}</span>
         {names && <span className="block truncate opacity-80">{names}</span>}
       </button>
       {/* Соседняя кнопка поверх карточки, а не вложенная в неё — там же, где была. */}
@@ -854,6 +1057,8 @@ function EntryCard({
 type EntryDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Тип нового занятия; у правки — тип самого занятия (entry.kind). */
+  kind: ActivityKind;
   studioId: string | null;
   workouts: Workout[];
   trainers: Trainer[];
@@ -862,6 +1067,47 @@ type EntryDialogProps = {
   onSaved: () => void;
   /** Спрашивает подтверждение и удаляет; true — удалено. */
   onDelete: (entry: Entry) => Promise<boolean>;
+};
+
+/** Тексты формы по типу занятия. */
+const FORM_TEXT: Record<
+  ActivityKind,
+  { create: string; edit: string; hint: string; added: string; updated: string }
+> = {
+  group: {
+    create: "Новое групповое занятие",
+    edit: "Групповое занятие",
+    hint: "Выберите тренировку, время и тренеров.",
+    added: "Занятие добавлено",
+    updated: "Занятие обновлено",
+  },
+  personal: {
+    create: "Новое персональное занятие",
+    edit: "Персональное занятие",
+    hint: "Выберите тренера и время. Клиенты в приложении персональные занятия не видят.",
+    added: "Персональное занятие добавлено",
+    updated: "Персональное занятие обновлено",
+  },
+  other: {
+    create: "Новая прочая активность",
+    edit: "Прочая активность",
+    hint: "Название, время, тренеры и ставка. Клиенты в приложении её не видят.",
+    added: "Активность добавлена",
+    updated: "Активность обновлена",
+  },
+};
+
+const TIPS = {
+  workout: "Из раздела «Тренировки»: оттуда берутся описание, фото и вместимость.",
+  starts:
+    "От него считается срок, до которого клиент может отменить запись сам (см. «Настройки клуба»).",
+  groupTrainers: "Клиенты видят их имена в расписании приложения. Можно выбрать нескольких.",
+  personalTrainer:
+    "Тренер, который проводит занятие. В зарплату ему пойдёт ставка за персональную тренировку из «Зарплатных ставок».",
+  title: "Как активность будет подписана в расписании, например «Мастер-класс» или «Съёмка».",
+  otherTrainers: "Кому начислить ставку за эту активность. Можно никого не выбирать.",
+  payRate:
+    "Сколько получит за эту активность каждый отмеченный тренер, в лари — пойдёт в зарплату. Без тренеров можно не указывать.",
 };
 
 function EntryDialog({ open, ...formProps }: EntryDialogProps) {
@@ -874,14 +1120,56 @@ function EntryDialog({ open, ...formProps }: EntryDialogProps) {
           поля сбрасывал эффект по списку тренировок, и любая перезагрузка
           («Посетил» в панели записей, «Обновить» в шапке) затирала правки.
         */}
-        <EntryForm key={formProps.entry?.id ?? "new"} {...formProps} />
+        <EntryForm key={formProps.entry?.id ?? `new-${formProps.kind}`} {...formProps} />
       </DialogContent>
     </Dialog>
   );
 }
 
+/** Ставка из поля ввода: null — пусто, NaN — не число или меньше нуля. */
+function parsePayRate(v: string) {
+  const s = v.trim().replace(",", ".");
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+function TrainerChecks({
+  options,
+  value,
+  onToggle,
+}: {
+  options: Trainer[];
+  value: string[];
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
+      {options.map((t) => (
+        <CheckboxOption
+          key={t.id}
+          checked={value.includes(t.id)}
+          onCheckedChange={() => onToggle(t.id)}
+        >
+          {t.full_name}
+        </CheckboxOption>
+      ))}
+    </div>
+  );
+}
+
+function NoTrainersNote() {
+  return (
+    <InfoNote variant="empty">
+      В студии нет тренеров. Добавьте их в разделе «Сотрудники» (в рейке слева) и отметьте эту
+      студию.
+    </InfoNote>
+  );
+}
+
 function EntryForm({
   onOpenChange,
+  kind: newKind,
   studioId,
   workouts,
   trainers,
@@ -890,7 +1178,12 @@ function EntryForm({
   onSaved,
   onDelete,
 }: Omit<EntryDialogProps, "open">) {
+  // Тип занятия после создания не меняется.
+  const kind = entry?.kind ?? newKind;
+  const text = FORM_TEXT[kind];
   const [workoutId, setWorkoutId] = useState(entry?.workout_id ?? workouts[0]?.id ?? "");
+  const [title, setTitle] = useState(entry?.title ?? "");
+  const [payRate, setPayRate] = useState(entry?.pay_rate != null ? String(entry.pay_rate) : "");
   const [startsAt, setStartsAt] = useState(() =>
     toDateTimeLocalValue(entry ? new Date(entry.starts_at) : (presetStart ?? nextFullHour())),
   );
@@ -918,7 +1211,7 @@ function EntryForm({
   ];
 
   /** Правка занятия: строка и полный пересбор тренеров. Возвращает текст ошибки. */
-  const updateEntry = async (id: string, row: Record<string, string>) => {
+  const updateEntry = async (id: string, row: Record<string, string | number | null>) => {
     const { error } = await supabase.from("schedule_entries").update(row).eq("id", id);
     if (error) return "Ошибка сохранения: " + error.message;
     const { error: delErr } = await supabase
@@ -932,10 +1225,31 @@ function EntryForm({
     return linkErr ? "Ошибка добавления тренеров: " + linkErr : null;
   };
 
+  /** Поля своего типа занятия или текст ошибки проверки. */
+  const kindFields = ():
+    | { workout_id: string | null; title: string | null; pay_rate: number | null }
+    | string => {
+    if (kind === "group") {
+      if (!workoutId) return "Выберите тренировку";
+      return { workout_id: workoutId, title: null, pay_rate: null };
+    }
+    if (kind === "personal") {
+      if (trainerIds.length !== 1) return "Выберите тренера";
+      return { workout_id: null, title: null, pay_rate: null };
+    }
+    if (!title.trim()) return "Введите название активности";
+    const rate = parsePayRate(payRate);
+    if (Number.isNaN(rate)) return "Ставка — число не меньше 0";
+    if (rate == null && trainerIds.length > 0)
+      return "Укажите ставку — она пойдёт в зарплату отмеченным тренерам";
+    return { workout_id: null, title: title.trim(), pay_rate: rate };
+  };
+
   const handleSave = async () => {
     if (!studioId) return;
-    if (!workoutId) {
-      toast.error("Выберите тренировку");
+    const fields = kindFields();
+    if (typeof fields === "string") {
+      toast.error(fields);
       return;
     }
     const startDate = new Date(startsAt);
@@ -945,7 +1259,8 @@ function EntryForm({
       return;
     }
     const row = {
-      workout_id: workoutId,
+      kind,
+      ...fields,
       starts_at: startDate.toISOString(),
       ends_at: endDate.toISOString(),
     };
@@ -957,7 +1272,7 @@ function EntryForm({
           toast.error(failure);
           return;
         }
-        toast.success("Занятие обновлено");
+        toast.success(text.updated);
       } else {
         const res = await insertEntries(studioId, [{ ...row, trainerIds }]);
         if (!res.ok) {
@@ -969,7 +1284,7 @@ function EntryForm({
         if (res.trainersError) {
           toast.error("Занятие добавлено, но тренеры не привязаны: " + res.trainersError);
         } else {
-          toast.success("Занятие добавлено");
+          toast.success(text.added);
         }
       }
       onOpenChange(false);
@@ -990,42 +1305,79 @@ function EntryForm({
     }
   };
 
+  const KindIcon = activityKind(kind).icon;
+
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{entry ? "Редактировать занятие" : "Новое занятие"}</DialogTitle>
+        <DialogTitle className="flex items-center gap-2">
+          <KindIcon className="size-5 shrink-0" style={{ color: activityKind(kind).color }} />
+          {entry ? text.edit : text.create}
+        </DialogTitle>
         <DialogDescription>
-          {entry
+          {entry && kind === "group"
             ? "Настройки занятия, ниже — записанные участники."
-            : "Выберите тренировку, время и тренеров."}
+            : text.hint}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField
-              label="Тренировка"
-              tip="Из раздела «Тренировки»: оттуда берутся описание, фото и вместимость."
-            >
-              <Select value={workoutId} onValueChange={setWorkoutId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите тренировку" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workouts.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
+            {kind === "group" && (
+              <FormField label="Тренировка" tip={TIPS.workout}>
+                <Select value={workoutId} onValueChange={setWorkoutId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите тренировку" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workouts.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
+
+            {kind === "personal" && (
+              <FormField
+                label="Тренер"
+                tip={TIPS.personalTrainer}
+                htmlFor={trainerOptions.length === 0 ? null : undefined}
+              >
+                {trainerOptions.length === 0 ? (
+                  <NoTrainersNote />
+                ) : (
+                  <Select value={trainerIds[0] ?? ""} onValueChange={(id) => setTrainerIds([id])}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите тренера" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trainerOptions.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+            )}
+
+            {kind === "other" && (
+              <FormField label="Название" tip={TIPS.title}>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Например, мастер-класс"
+                  autoFocus
+                />
+              </FormField>
+            )}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Начало"
-                tip="От него считается срок, до которого клиент может отменить запись сам (см. «Настройки клуба»)."
-              >
+              <FormField label="Начало" tip={kind === "group" ? TIPS.starts : undefined}>
                 <Input
                   type="datetime-local"
                   value={startsAt}
@@ -1041,33 +1393,40 @@ function EntryForm({
               </FormField>
             </div>
 
-            <FormField
-              label="Тренеры"
-              tip="Клиенты видят их имена в расписании приложения. Можно выбрать нескольких."
-              optional
-              htmlFor={null}
-            >
-              {trainerOptions.length === 0 ? (
-                <InfoNote variant="empty">
-                  В студии нет тренеров. Добавьте их в разделе «Сотрудники» (в рейке слева) и
-                  отметьте эту студию.
-                </InfoNote>
-              ) : (
-                <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
-                  {trainerOptions.map((t) => (
-                    <CheckboxOption
-                      key={t.id}
-                      checked={trainerIds.includes(t.id)}
-                      onCheckedChange={() => toggleTrainer(t.id)}
-                    >
-                      {t.full_name}
-                    </CheckboxOption>
-                  ))}
-                </div>
-              )}
-            </FormField>
+            {kind !== "personal" && (
+              <FormField
+                label="Тренеры"
+                tip={kind === "group" ? TIPS.groupTrainers : TIPS.otherTrainers}
+                optional
+                htmlFor={null}
+              >
+                {trainerOptions.length === 0 ? (
+                  <NoTrainersNote />
+                ) : (
+                  <TrainerChecks
+                    options={trainerOptions}
+                    value={trainerIds}
+                    onToggle={toggleTrainer}
+                  />
+                )}
+              </FormField>
+            )}
 
-            {entry && <BookingsPanel entry={entry} onChanged={onSaved} />}
+            {kind === "other" && (
+              <FormField label="Ставка, ₾" tip={TIPS.payRate} optional={trainerIds.length === 0}>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  value={payRate}
+                  onChange={(e) => setPayRate(e.target.value)}
+                  placeholder="0"
+                />
+              </FormField>
+            )}
+
+            {entry && kind === "group" && <BookingsPanel entry={entry} onChanged={onSaved} />}
           </div>
         </DialogBody>
         <DialogFooter>

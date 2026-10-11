@@ -135,6 +135,11 @@ AUTH_SETUP.md.
   `for_regular_clients` убран `2026-10-11_packages_no_regular_price.sql`).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
+  Типы занятий в расписании (оба формата):
+  `db/migrations/2026-10-11_schedule_activity_kinds.sql` —
+  `schedule_entries.kind` (`group` / `personal` / `other`), `title` и
+  `pay_rate` прочей активности, `workout_id` только у групповых; клиенты видят
+  и записываются только на групповые (RLS + триггер на `schedule_bookings`).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

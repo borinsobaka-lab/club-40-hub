@@ -65,12 +65,15 @@ import {
   Save as SaveArt,
   Search as SearchArt,
   SentIcon as SendArt,
+  Shapes as ShapesArt,
   Square as SquareArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
   TrendingUp as TrendingUpArt,
   Upload as UploadArt,
   UserPlus as UserPlusArt,
+  UserRound as UserRoundArt,
+  Users as UsersArt,
   Wallet as WalletArt,
   X as XArt,
   Zap as ZapArt,
@@ -138,12 +141,15 @@ export const RotateCcw = icon(RotateCcwArt, "RotateCcw");
 export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
+export const Shapes = icon(ShapesArt, "Shapes");
 export const Square = icon(SquareArt, "Square");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");
 export const Upload = icon(UploadArt, "Upload");
 export const UserPlus = icon(UserPlusArt, "UserPlus");
+export const UserRound = icon(UserRoundArt, "UserRound");
+export const Users = icon(UsersArt, "Users");
 export const Wallet = icon(WalletArt, "Wallet");
 export const X = icon(XArt, "X");
 export const Zap = icon(ZapArt, "Zap");

@@ -220,7 +220,9 @@ GoTrue и видит только хук писем — в браузер он �
   формата и подсказка по опечаткам доменов (gmial.com → gmail.com). Поиск
   по телефону — `phoneSearchTerm` (`lib/format.ts`): «555 12» ищется как «55512».
 - `src/lib/payments.ts`, `src/lib/bookings.ts` (+ `BookingStatusBadge`),
-  `src/lib/client-status.ts`, `src/lib/workout-types.ts` — справочники.
+  `src/lib/client-status.ts`, `src/lib/workout-types.ts`,
+  `src/lib/schedule-activities.ts` (типы занятий в расписании: групповое,
+  персональное, прочая активность — подписи, иконки, цвета) — справочники.
 - `src/lib/storage.ts` + `components/image-upload-field.tsx` — картинки
   Storage (`StorageImage`, `ImageUploadField`); бакеты — `STORAGE_BUCKETS`.
 - `components/client-combobox.tsx` — выбор клиента (серверный поиск);

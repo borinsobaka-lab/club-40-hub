@@ -132,7 +132,8 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
 
     // ====== РАСПИСАНИЕ ======
     list_schedule: tool({
-      description: "Расписание занятий за период (по дате начала занятия, обе даты включительно).",
+      description:
+        "Расписание занятий за период (по дате начала занятия, обе даты включительно). kind: group — групповое (по тренировке workout_id), personal — персональное, other — прочая активность (название в title).",
       inputSchema: z.object({
         from: dateString("Начало периода"),
         to: dateString("Конец периода включительно"),
@@ -141,7 +142,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
       execute: async ({ from, to, limit }) => {
         const q = supabase
           .from("schedule_entries")
-          .select("id, starts_at, ends_at, workout_id, capacity, booked_count")
+          .select("id, kind, title, starts_at, ends_at, workout_id, capacity, booked_count")
           .eq("studio_id", studioId);
         return listResult(
           inPeriod(q, "starts_at", from, to).order("starts_at", { ascending: true }).limit(limit),
