@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EmployeePhoto } from "@/components/employee-photo";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { TableToolbar } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import {
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -204,7 +206,6 @@ function AdminShiftsPage() {
               <ChevronRight />
             </Button>
             <span className="ml-1 text-sm font-semibold">{monthLabel(month)}</span>
-            {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
         </TableToolbar>
 
@@ -216,6 +217,7 @@ function AdminShiftsPage() {
         ) : (
           <>
             <ShiftGrid
+              loading={loading}
               days={days}
               today={today}
               month={month}
@@ -232,6 +234,7 @@ function AdminShiftsPage() {
             <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
               <Adjustments month={month} employees={employees} />
               <ShiftStats
+                loading={loading}
                 month={month}
                 today={today}
                 shifts={shifts}
@@ -249,6 +252,7 @@ function AdminShiftsPage() {
 // --- Сетка смен -------------------------------------------------------------------
 
 function ShiftGrid({
+  loading,
   days,
   today,
   month,
@@ -260,6 +264,7 @@ function ShiftGrid({
   onReplace,
   onRemove,
 }: {
+  loading: boolean;
   days: ReturnType<typeof monthDays>;
   today: string;
   month: MonthKey;
@@ -284,7 +289,7 @@ function ShiftGrid({
     // Слева закреплён столбец студий: сегодня — сразу за ним, вчера ещё видно.
     const sticky = stickyRef.current?.offsetWidth ?? 0;
     box.scrollLeft = cell ? Math.max(0, cell.offsetLeft - sticky - cell.offsetWidth) : 0;
-  }, [month, studios.length]);
+  }, [month, studios.length, loading]);
 
   const byCell = new Map<string, Shift[]>();
   for (const s of shifts) {
@@ -338,89 +343,112 @@ function ShiftGrid({
           </tr>
         </thead>
         <tbody>
-          {studios.map((studio) => {
-            const candidates = candidatesFor(studio.id);
-            return (
-              <tr key={studio.id}>
-                <th
-                  scope="row"
-                  className="sticky left-0 z-10 border-r border-b bg-background px-3 py-2 text-left align-top font-medium"
-                >
-                  <span className="flex items-center gap-2">
-                    <span
-                      aria-hidden
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: studio.brand_color }}
-                    />
-                    <span className="truncate">{studio.name}</span>
-                  </span>
+          {loading &&
+            // Болванка строк студий: та же высота ячеек, что у настоящих.
+            Array.from({ length: Math.max(studios.length, 2) }, (_, i) => (
+              <tr key={`skeleton-${i}`}>
+                <th className="sticky left-0 z-10 border-r border-b bg-background px-3 py-2">
+                  <Skeleton className="h-4 w-20" />
                 </th>
-                {days.map((d) => {
-                  const cell = byCell.get(`${studio.id}|${d.date}`) ?? [];
-                  const taken = new Set(cell.map((s) => s.trainer_id));
-                  const dayLabel = `${studio.name}, ${formatDate(d.date)}`;
-                  return (
-                    <td
-                      key={d.date}
-                      className={cn(
-                        "border-r border-b p-1 align-top last:border-r-0",
-                        isWeekend(d.weekday) && "bg-muted",
-                      )}
-                    >
-                      <div className="flex min-h-14 flex-col gap-1">
-                        {cell.map((shift) => {
-                          const e = employeeById.get(shift.trainer_id);
-                          const name = e?.full_name ?? "Сотрудник";
-                          return (
-                            <AdminPicker
-                              key={shift.id}
-                              title="Заменить на"
-                              candidates={candidates}
-                              taken={taken}
-                              current={shift.trainer_id}
-                              onPick={(id) => onReplace(shift, id)}
-                              onRemove={() => onRemove(shift)}
-                            >
-                              <button
-                                type="button"
-                                title={name}
-                                aria-label={`${dayLabel}: ${name}. Заменить или убрать`}
-                                className="flex w-full cursor-pointer items-center gap-1 rounded-md border bg-background px-1 py-0.5 text-left text-xs shadow-xs transition-colors hover:border-brand/60"
-                              >
-                                <EmployeePhoto
-                                  value={e?.photo_url ?? null}
-                                  name={name}
-                                  className="size-5 text-[9px]"
-                                />
-                                <span className="min-w-0 truncate">{shortName(name)}</span>
-                              </button>
-                            </AdminPicker>
-                          );
-                        })}
-                        <AdminPicker
-                          title="Поставить на смену"
-                          candidates={candidates}
-                          taken={taken}
-                          onPick={(id) => onAdd(studio.id, d.date, id)}
-                        >
-                          <button
-                            type="button"
-                            aria-label={`${dayLabel}: добавить администратора`}
-                            className={cn(
-                              "flex h-6 w-full cursor-pointer items-center justify-center rounded-md border border-dashed text-muted-foreground transition-colors hover:border-brand hover:text-brand",
-                              cell.length > 0 && "border-transparent",
-                            )}
-                          >
-                            <Plus className="size-3.5" />
-                          </button>
-                        </AdminPicker>
-                      </div>
-                    </td>
-                  );
-                })}
+                {days.map((d) => (
+                  <td
+                    key={d.date}
+                    className={cn(
+                      "border-r border-b p-1 align-top last:border-r-0",
+                      isWeekend(d.weekday) && "bg-muted",
+                    )}
+                  >
+                    <div className="flex min-h-14 flex-col gap-1">
+                      <Skeleton className="h-6 w-full" />
+                    </div>
+                  </td>
+                ))}
               </tr>
-            );
-          })}
+            ))}
+          {!loading &&
+            studios.map((studio) => {
+              const candidates = candidatesFor(studio.id);
+              return (
+                <tr key={studio.id}>
+                  <th
+                    scope="row"
+                    className="sticky left-0 z-10 border-r border-b bg-background px-3 py-2 text-left align-top font-medium"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: studio.brand_color }}
+                      />
+                      <span className="truncate">{studio.name}</span>
+                    </span>
+                  </th>
+                  {days.map((d) => {
+                    const cell = byCell.get(`${studio.id}|${d.date}`) ?? [];
+                    const taken = new Set(cell.map((s) => s.trainer_id));
+                    const dayLabel = `${studio.name}, ${formatDate(d.date)}`;
+                    return (
+                      <td
+                        key={d.date}
+                        className={cn(
+                          "border-r border-b p-1 align-top last:border-r-0",
+                          isWeekend(d.weekday) && "bg-muted",
+                        )}
+                      >
+                        <div className="flex min-h-14 flex-col gap-1">
+                          {cell.map((shift) => {
+                            const e = employeeById.get(shift.trainer_id);
+                            const name = e?.full_name ?? "Сотрудник";
+                            return (
+                              <AdminPicker
+                                key={shift.id}
+                                title="Заменить на"
+                                candidates={candidates}
+                                taken={taken}
+                                current={shift.trainer_id}
+                                onPick={(id) => onReplace(shift, id)}
+                                onRemove={() => onRemove(shift)}
+                              >
+                                <button
+                                  type="button"
+                                  title={name}
+                                  aria-label={`${dayLabel}: ${name}. Заменить или убрать`}
+                                  className="flex w-full cursor-pointer items-center gap-1 rounded-md border bg-background px-1 py-0.5 text-left text-xs shadow-xs transition-colors hover:border-brand/60"
+                                >
+                                  <EmployeePhoto
+                                    value={e?.photo_url ?? null}
+                                    name={name}
+                                    className="size-5 text-[9px]"
+                                  />
+                                  <span className="min-w-0 truncate">{shortName(name)}</span>
+                                </button>
+                              </AdminPicker>
+                            );
+                          })}
+                          <AdminPicker
+                            title="Поставить на смену"
+                            candidates={candidates}
+                            taken={taken}
+                            onPick={(id) => onAdd(studio.id, d.date, id)}
+                          >
+                            <button
+                              type="button"
+                              aria-label={`${dayLabel}: добавить администратора`}
+                              className={cn(
+                                "flex h-6 w-full cursor-pointer items-center justify-center rounded-md border border-dashed text-muted-foreground transition-colors hover:border-brand hover:text-brand",
+                                cell.length > 0 && "border-transparent",
+                              )}
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
+                          </AdminPicker>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
         </tbody>
       </table>
     </div>
@@ -502,12 +530,14 @@ function AdminPicker({
 // --- Статистика ---------------------------------------------------------------------
 
 function ShiftStats({
+  loading,
   month,
   today,
   shifts,
   employeeById,
   multiStudio,
 }: {
+  loading: boolean;
   month: MonthKey;
   today: string;
   shifts: Shift[];
@@ -541,7 +571,20 @@ function ShiftStats({
     <section className="rounded-lg border bg-background p-4">
       <h2 className="font-semibold">Смены за {monthName(month).toLowerCase()}</h2>
       <p className="mt-0.5 text-xs text-muted-foreground">{TIPS.stats}</p>
-      {sorted.length === 0 ? (
+      {loading ? (
+        <ul className="mt-3 divide-y">
+          {Array.from({ length: 3 }, (_, i) => (
+            <li key={i} className="flex items-center gap-3 py-2">
+              <Skeleton className="size-8 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-7 w-8" />
+            </li>
+          ))}
+        </ul>
+      ) : sorted.length === 0 ? (
         <InfoNote variant="empty" className="mt-3">
           В этом месяце смен пока нет.
         </InfoNote>
@@ -749,11 +792,7 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
-                  Загрузка…
-                </TableCell>
-              </TableRow>
+              <TableSkeletonRows columns={6} rows={3} />
             ) : adjustments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">

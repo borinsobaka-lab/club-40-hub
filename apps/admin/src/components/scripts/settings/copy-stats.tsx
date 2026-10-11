@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,

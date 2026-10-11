@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, type LinkProps } from "@tanstack/react-router";
 
 import { AdminShell } from "@/components/admin-shell";
+import { PageBodySkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
@@ -31,7 +32,12 @@ export function RequireFormat({
   const studio = useActiveStudio();
   if (!studioId) return <>{children}</>;
   // Студии ещё грузятся — не показываем страницу, которая может оказаться чужой.
-  if (!studio) return <AdminShell title={title}>{null}</AdminShell>;
+  if (!studio)
+    return (
+      <AdminShell title={title}>
+        <PageBodySkeleton />
+      </AdminShell>
+    );
   if (studio.format === format) return <>{children}</>;
 
   const otherUrl = other?.[studio.format];

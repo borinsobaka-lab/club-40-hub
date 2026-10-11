@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EmployeePhoto, TrainerRoleBadge } from "@/components/employee-photo";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { InfoNote } from "@/components/ui/form-field";
@@ -148,8 +149,8 @@ function PayrollPage() {
     enabled: studios.length > 0,
     meta: { errorMessage: "Не удалось посчитать зарплаты" },
   });
-  const { data: adjustments = [] } = usePayrollAdjustments(month);
-  const { data: payouts = [] } = useQuery({
+  const { data: adjustments = [], isLoading: adjustmentsLoading } = usePayrollAdjustments(month);
+  const { data: payouts = [], isLoading: payoutsLoading } = useQuery({
     queryKey: ["payroll_payouts", month],
     queryFn: () =>
       unwrap<PayrollPayout[]>(
@@ -245,7 +246,8 @@ function PayrollPage() {
 
   const selected = employees.find((e) => e.id === selectedId) ?? null;
   const payOn = payDate(month, period);
-  const loading = scopeLoading || linesLoading;
+  // Статусы и итоги без выплат и корректировок были бы неправдой — ждём всё.
+  const loading = scopeLoading || linesLoading || adjustmentsLoading || payoutsLoading;
   const columns = 8;
 
   return (
@@ -286,13 +288,22 @@ function PayrollPage() {
               ))}
             </TabsList>
           </Tabs>
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           <div className="toolbar-full flex flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:ml-auto">
-            <span>
-              Выплачено: <b className="text-emerald-600 tabular-nums">{formatPay(paidTotal)}</b>
+            <span className="flex items-center gap-1">
+              Выплачено:{" "}
+              {loading ? (
+                <Skeleton className="h-4 w-16" />
+              ) : (
+                <b className="text-emerald-600 tabular-nums">{formatPay(paidTotal)}</b>
+              )}
             </span>
-            <span>
-              Осталось: <b className="text-amber-600 tabular-nums">{formatPay(leftTotal)}</b>
+            <span className="flex items-center gap-1">
+              Осталось:{" "}
+              {loading ? (
+                <Skeleton className="h-4 w-16" />
+              ) : (
+                <b className="text-amber-600 tabular-nums">{formatPay(leftTotal)}</b>
+              )}
             </span>
           </div>
         </TableToolbar>

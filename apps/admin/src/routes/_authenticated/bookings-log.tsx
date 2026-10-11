@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useCrmLinks } from "@/hooks/use-crm-links";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { BOOKING_STATUS_FILTER, BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
 import { formatDateTime } from "@/lib/format";

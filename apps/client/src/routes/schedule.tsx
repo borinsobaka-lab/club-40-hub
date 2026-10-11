@@ -6,6 +6,7 @@ import { Refresh, Fire, CloseCircle } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { settlePackageMemberships } from "@/lib/packages-memberships";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { entryToDrawerData, workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
@@ -219,6 +220,9 @@ function SchedulePage() {
     const wasWaitlisted = waitlistedIds.has(entryId);
     const isActive = wasBooked || wasWaitlisted;
     const fn = isActive ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
+    // Пакетный формат: продление могло стать действующим — иначе запись
+    // ответила бы «нет абонемента».
+    if (!isActive) await settlePackageMemberships();
     const { data, error } = await supabase.rpc(
       fn,
       isActive ? { p_entry_id: entryId, p_reason: reason ?? null } : { p_entry_id: entryId },

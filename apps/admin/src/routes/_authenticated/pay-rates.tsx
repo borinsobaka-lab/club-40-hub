@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { EmployeePhoto } from "@/components/employee-photo";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

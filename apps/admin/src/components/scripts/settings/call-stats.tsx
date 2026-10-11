@@ -15,7 +15,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { CardSkeleton, TableSkeletonRows } from "@/components/table-skeleton";
+import { CardSkeleton, TableSkeletonRows } from "@/components/skeletons";
 import { TableToolbar } from "@/components/table-toolbar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {

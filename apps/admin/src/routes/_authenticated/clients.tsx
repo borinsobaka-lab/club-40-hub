@@ -45,7 +45,7 @@ import {
   CLUB_STATUS_RULE,
   type ClubStatus,
 } from "@/lib/client-status";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import {
   GENDER_OPTIONS,
   clientName,

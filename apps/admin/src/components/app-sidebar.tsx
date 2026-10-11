@@ -20,7 +20,9 @@ import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenClubSection, type AdminAccess } from "@/lib/admin-access";
 import { SignOutButton } from "@/components/sign-out-button";
 import { StudioSwitcher } from "@/components/studio-switcher";
-import { useActiveStudio } from "@/hooks/use-studios";
+import { useActiveStudio, useStudios } from "@/hooks/use-studios";
+import { MenuSkeleton } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useStorageUrl } from "@/lib/storage";
 import type { StudioFormat } from "@/lib/studio-formats";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -81,12 +83,14 @@ function visibleGroups(
  * переставляют в самом разделе), поэтому меню собирается из них. У
  * «Настроек» — счётчик новых предложений, у каждого сотрудника свой.
  */
-function useScriptsMenu(enabled: boolean): NavGroup[] {
+function useScriptsMenu(enabled: boolean): { groups: NavGroup[]; loading: boolean } {
   const access = useScriptAccess();
-  const { data: sections = [] } = usePlaybook(enabled && !!access?.canRead);
+  const { data: sections = [], isLoading } = usePlaybook(enabled && !!access?.canRead);
   const { data: unread = 0 } = useUnreadSuggestions(enabled && !!access?.canEdit);
-  if (!enabled) return [];
-  return [
+  if (!enabled) return { groups: [], loading: false };
+  // Пока нет прав или дерева скриптов — скелетон меню, а не одни «Все скрипты».
+  if (!access || isLoading) return { groups: [], loading: true };
+  const groups: NavGroup[] = [
     {
       key: "scripts",
       label: "Разделы",
@@ -105,6 +109,7 @@ function useScriptsMenu(enabled: boolean): NavGroup[] {
       items: [{ title: "Настройки", url: SCRIPTS_SETTINGS_URL, icon: Settings, badge: unread }],
     },
   ];
+  return { groups, loading: false };
 }
 
 const STORAGE_KEY = "sidebar_groups";
@@ -126,7 +131,9 @@ function readCollapsedGroups(): Record<string, boolean> {
  */
 function StudioLogo() {
   const studio = useActiveStudio();
+  const { isLoading } = useStudios();
   const src = useStorageUrl("studios", studio?.logo_url);
+  if (isLoading) return <Skeleton className="h-9 w-32 bg-white/10" />;
   if (!studio) return <span className="block h-9" />;
   if (src)
     return (
@@ -145,10 +152,14 @@ export function AppSidebar() {
   const access = useAdminAccess();
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
   const railKey = railSectionKey(currentPath);
-  const scriptsGroups = useScriptsMenu(railKey === "scripts");
+  const scriptsMenu = useScriptsMenu(railKey === "scripts");
   const sectionMenu =
-    railKey === "scripts" ? { title: "Скрипты LS", groups: scriptsGroups } : SECTION_MENUS[railKey];
+    railKey === "scripts"
+      ? { title: "Скрипты LS", groups: scriptsMenu.groups }
+      : SECTION_MENUS[railKey];
   const groups = sectionMenu?.groups ?? visibleGroups(studioFormat, access, studioId);
+  // Меню клуба собирается по правам сотрудника: пока их нет, оно пустое.
+  const menuLoading = railKey === "scripts" ? scriptsMenu.loading : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
   const setGroupOpen = useCallback((key: string, open: boolean) => {
@@ -215,6 +226,7 @@ export function AppSidebar() {
             заголовок h-7 — в меню по высоте помещается больше пунктов.
           */}
           <SidebarContent className="sidebar-scroll gap-1">
+            {menuLoading && <MenuSkeleton />}
             {groups.map((group) => (
               <Collapsible
                 key={group.key}

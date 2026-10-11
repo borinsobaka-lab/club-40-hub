@@ -157,6 +157,13 @@ AUTH_SETUP.md.
   списание при `attended` — триггер на `schedule_bookings`
   (`charged_membership_id`), состояние `soon` в `client_packages_list`
   (актуальное определение вью — в этой миграции).
+  Продление пакетных студий: `db/migrations/2026-10-11_zzz_packages_renewal_queue.sql`
+  — `client_memberships.status = 'pending'` и `starts_on_first_visit` (срок от
+  первого посещения, `started_at` может быть null), очередь — `packages_settle`
+  (по виду баланса); переопределены `activate_membership_from_sale` и
+  `schedule_bookings_charge_balance` (из `zz_packages_personal_balance`),
+  `sale_installments.payment_method`; вью `client_packages_list` пересоздана
+  (актуальное определение — здесь).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):

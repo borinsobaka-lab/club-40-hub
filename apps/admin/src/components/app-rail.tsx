@@ -9,6 +9,7 @@ import {
   type RailSection,
 } from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
+import { RailSkeleton } from "@/components/skeletons";
 
 function RailItem({
   section,
@@ -87,8 +88,7 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const studioId = useActiveStudioId();
 
   // Разделы, закрытые сотруднику в «Доступах», не показываем; заготовки без
-  // url — как есть. Пока права грузятся — только заготовки, чтобы закрытые
-  // разделы не мелькали. «Клуб» виден, если открыт раздел рейки, — даже когда
+  // url — как есть. «Клуб» виден, если открыт раздел рейки, — даже когда
   // в активной студии ему не открыт ни один пункт (студию можно сменить).
   const visible = (section: RailSection) =>
     !section.url ||
@@ -97,17 +97,23 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
         ? canOpenPath(access, null, section.url)
         : canOpenPath(access, studioId, section.url)));
 
+  // Пока права грузятся — скелетоны на месте разделов: иначе рейка сначала
+  // пустая, а потом разделы «выпрыгивают».
   const renderGroup = (sections: RailSection[]) =>
-    sections
-      .filter(visible)
-      .map((section) => (
-        <RailItem
-          key={section.key}
-          section={section}
-          active={section.key === activeKey}
-          onNavigate={onNavigate}
-        />
-      ));
+    !access ? (
+      <RailSkeleton items={sections.length} />
+    ) : (
+      sections
+        .filter(visible)
+        .map((section) => (
+          <RailItem
+            key={section.key}
+            section={section}
+            active={section.key === activeKey}
+            onNavigate={onNavigate}
+          />
+        ))
+    );
 
   return (
     <nav

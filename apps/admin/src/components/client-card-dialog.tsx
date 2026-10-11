@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CardSkeleton, TableSkeletonRows } from "@/components/table-skeleton";
+import { CardSkeleton, TableSkeletonRows } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { SaleDialog } from "@/components/sale-dialog";
@@ -169,7 +169,8 @@ type MembershipRow = {
   id: string;
   status: string;
   source: "admin" | "mobile";
-  started_at: string;
+  /** null — продление пакетной студии, по которому ещё не было посещений. */
+  started_at: string | null;
   ends_at: string | null;
   visits_left: number | null;
   auto_renew: boolean | null;
@@ -375,8 +376,14 @@ function ClientCard<C extends ClientLike>({
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {formatDate(active.started_at)} →{" "}
-                    {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                    {active.started_at ? (
+                      <>
+                        {formatDate(active.started_at)} →{" "}
+                        {active.ends_at ? formatDate(active.ends_at) : "бессрочно"}
+                      </>
+                    ) : (
+                      "срок — с первого посещения"
+                    )}
                     {" · "}
                     {active.visits_left == null
                       ? "посещения: безлимит"

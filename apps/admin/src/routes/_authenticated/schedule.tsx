@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -143,6 +144,12 @@ const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
 const SLOT_PX_FULL = 88;
 const SLOT_PX_EMPTY = 28;
+// Скелетон недели, пока занятия грузятся впервые: болванки карточек в шахматном
+// порядке в «рабочие» часы — сетка сразу выглядит расписанием, а не пустой.
+// На телефоне виден один день — там болванка в каждом из этих часов.
+const SKELETON_HOURS = new Set([9, 11, 18, 19]);
+const isSkeletonCell = (hour: number, dayIndex: number, singleDay: boolean) =>
+  SKELETON_HOURS.has(hour) && (singleDay || (hour + dayIndex) % 2 === 0);
 const ALL_FILTER_VALUE = "all";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -312,7 +319,11 @@ function SchedulePage() {
 
   // Справочники зависят только от студии, занятия — ещё и от недели: листание
   // недель не перезапрашивает тренировки и тренеров.
-  const { data: workouts = [], isFetching: workoutsFetching } = useQuery({
+  const {
+    data: workouts = [],
+    isFetching: workoutsFetching,
+    isPending: workoutsPending,
+  } = useQuery({
     queryKey: ["workouts", studioId, WORKOUT_COLS],
     queryFn: () =>
       unwrap<Workout[]>(
@@ -339,7 +350,11 @@ function SchedulePage() {
   // занятия прошлой — иначе «Дублировать неделю» скопировал бы чужую неделю.
   // Ответ, пришедший после перелистывания, ложится в кэш своей недели.
   const weekFrom = weekStart.toISOString();
-  const { data: entries = [], isFetching: entriesFetching } = useQuery({
+  const {
+    data: entries = [],
+    isFetching: entriesFetching,
+    isPending: entriesPending,
+  } = useQuery({
     queryKey: ["schedule_entries", studioId, weekFrom],
     queryFn: () =>
       unwrap<Entry[]>(
@@ -622,7 +637,8 @@ function SchedulePage() {
                 <ChevronRight />
               </Button>
               <span className="ml-1 text-sm font-medium max-sm:hidden">{weekLabel}</span>
-              {loading && (
+              {/* Первая загрузка недели — скелетон в сетке, спиннер — только для обновления. */}
+              {loading && !entriesPending && (
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
               )}
             </div>
@@ -795,7 +811,10 @@ function SchedulePage() {
               )}
 
               {HOURS.map((hour) => {
-                const rowHeight = grid.busyHours.has(hour) ? SLOT_PX_FULL : SLOT_PX_EMPTY;
+                const rowHeight =
+                  grid.busyHours.has(hour) || (entriesPending && SKELETON_HOURS.has(hour))
+                    ? SLOT_PX_FULL
+                    : SLOT_PX_EMPTY;
                 return (
                   <div key={`row-${hour}`} className="contents">
                     <div
@@ -831,6 +850,9 @@ function SchedulePage() {
                               packages ? "hover:bg-black/5" : "hover:bg-accent/40",
                             )}
                           />
+                          {entriesPending && isSkeletonCell(hour, di, isMobile) && (
+                            <EntryCardSkeleton />
+                          )}
                           {grid.cells.get(cellKey(day, hour))?.map((e) => (
                             <EntryCard
                               key={e.id}
@@ -849,7 +871,7 @@ function SchedulePage() {
             </div>
           </div>
 
-          {workouts.length === 0 && (
+          {!workoutsPending && workouts.length === 0 && (
             <InfoNote variant="empty">
               Чтобы добавлять групповые занятия, сначала создайте тренировки в разделе «Тренировки».
               Персональные занятия и прочие активности тренировок не требуют.
@@ -1008,6 +1030,17 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
         </span>
       )}
     </span>
+  );
+}
+
+/** Болванка карточки занятия на время первой загрузки недели. */
+function EntryCardSkeleton() {
+  return (
+    <div className="pointer-events-none absolute inset-1 space-y-1.5 rounded-md border bg-background p-2">
+      <Skeleton className="h-3 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
+      <Skeleton className="h-3 w-2/3" />
+    </div>
   );
 }
 
@@ -2023,8 +2056,13 @@ function BookingsPanel({
         />
 
         {loading ? (
-          <div className="flex h-32 items-center justify-center rounded-md border">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <div className="space-y-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="space-y-2 rounded-md border p-3">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+            ))}
           </div>
         ) : booked.length === 0 ? (
           <InfoNote variant="empty">

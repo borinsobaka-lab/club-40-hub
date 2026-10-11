@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { DataPagination } from "@/components/data-pagination";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime, formatMoneyPrecise, toDateTimeLocalValue } from "@/lib/format";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
@@ -114,7 +115,7 @@ function CashPage() {
 
   // Итоги считает БД по всем операциям студии, а не по текущей странице, —
   // поэтому это отдельный запрос, который не повторяется при листании таблицы.
-  const { data: totalsRow } = useQuery({
+  const { data: totalsRow, isLoading: totalsLoading } = useQuery({
     queryKey: ["cash_totals", studioId],
     queryFn: () =>
       unwrap<{ income: number | null; expense: number | null } | null>(
@@ -174,9 +175,14 @@ function CashPage() {
                 <Wallet className="h-4 w-4" />
                 Баланс кассы
               </div>
-              <div className="mt-2 text-2xl font-semibold tabular-nums">
-                {formatMoneyPrecise(income - expense)}
-              </div>
+              {/* Пока баланс не пришёл — болванка, а не «0,00», который легко принять за правду. */}
+              {totalsLoading ? (
+                <Skeleton className="mt-2 h-8 w-32" />
+              ) : (
+                <div className="mt-2 text-2xl font-semibold tabular-nums">
+                  {formatMoneyPrecise(income - expense)}
+                </div>
+              )}
             </div>
           </div>
 

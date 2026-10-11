@@ -10,6 +10,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AdminShell } from "@/components/admin-shell";
 import { StudioBranding } from "@/components/studio-branding";
+import { AppShellSkeleton, PageSkeleton } from "@/components/skeletons";
 import { hasStaffRole } from "@/lib/roles";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -35,6 +36,9 @@ export const Route = createFileRoute("/_authenticated")({
 
     return { user: data.user };
   },
+  // Пока проверяется вход (и при ssr: false — в HTML с сервера) — скелетон
+  // всего каркаса, а не белый экран.
+  pendingComponent: AppShellSkeleton,
   component: AuthenticatedLayout,
 });
 
@@ -81,8 +85,8 @@ function AccessGate() {
   const studioId = useActiveStudioId();
   const access = useAdminAccess();
 
-  // Пока права грузятся — пустая область, чтобы закрытая страница не мелькнула.
-  if (!access) return null;
+  // Пока права грузятся — скелетон страницы, чтобы закрытая страница не мелькнула.
+  if (!access) return <PageSkeleton />;
   if (canOpenPath(access, studioId, pathname)) return <Outlet />;
 
   const fallback = firstAllowedUrl(access, studioId);

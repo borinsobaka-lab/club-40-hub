@@ -52,7 +52,7 @@ import {
   isWorkoutColor,
 } from "@/lib/workout-types";
 import { cn } from "@/lib/utils";
-import { TableSkeletonRows } from "@/components/table-skeleton";
+import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 
