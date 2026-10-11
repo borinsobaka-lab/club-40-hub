@@ -341,6 +341,7 @@ function DeleteStudioForm({
             </InfoNote>
             <FormField
               label="Название студии"
+              required
               hint={`Введите «${studio.name}», чтобы подтвердить.`}
             >
               <Input
@@ -433,7 +434,7 @@ function StudioForm({
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Название">
+            <FormField label="Название" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -450,6 +451,7 @@ function StudioForm({
             ) : (
               <FormField
                 label="Тип студии"
+                required
                 tip={TIPS.format}
                 hint={`Приложение клиентов — ${appHost(format)}. После создания тип не меняется.`}
               >
@@ -471,6 +473,7 @@ function StudioForm({
             <FormField
               label="Основной цвет"
               htmlFor={null}
+              required
               tip={TIPS.color}
               hint="В формате #RRGGBB."
             >

@@ -431,7 +431,7 @@ function NewFeedbackForm({
       <DialogForm onSubmit={submit}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Тема">
+            <FormField label="Тема" required>
               <Select value={topic} onValueChange={setTopic}>
                 <SelectTrigger>
                   <SelectValue />
@@ -445,7 +445,7 @@ function NewFeedbackForm({
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField label="Сообщение">
+            <FormField label="Сообщение" required>
               <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} />
             </FormField>
             <FormField label="Оценка">

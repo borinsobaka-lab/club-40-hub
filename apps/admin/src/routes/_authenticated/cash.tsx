@@ -337,7 +337,7 @@ function CashOperationForm({
     >
       <h2 className="mb-3 text-sm font-semibold">Новая операция</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <FormField label="Тип">
+        <FormField label="Тип" required>
           <Select value={kind} onValueChange={(v) => changeKind(v as CashKind)}>
             <SelectTrigger>
               <SelectValue />
@@ -348,7 +348,7 @@ function CashOperationForm({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="Категория" tip={TIPS.category}>
+        <FormField label="Категория" tip={TIPS.category} required>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger>
               <SelectValue />
@@ -362,7 +362,7 @@ function CashOperationForm({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="Сумма, ₾" tip={TIPS.amount}>
+        <FormField label="Сумма, ₾" tip={TIPS.amount} required>
           <Input
             type="number"
             min={0}
@@ -372,7 +372,7 @@ function CashOperationForm({
             placeholder="0"
           />
         </FormField>
-        <FormField label="Кто проводит" tip={TIPS.operator}>
+        <FormField label="Кто проводит" tip={TIPS.operator} required>
           <Select value={selectedOperatorId} onValueChange={setOperatorId}>
             <SelectTrigger>
               <SelectValue placeholder="Сотрудник" />
@@ -387,14 +387,19 @@ function CashOperationForm({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="Дата и время" tip={TIPS.occurredAt} className="sm:col-span-2">
+        <FormField label="Дата и время" tip={TIPS.occurredAt} required className="sm:col-span-2">
           <Input
             type="datetime-local"
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
           />
         </FormField>
-        <FormField label="Комментарий" tip={TIPS.comment} className="sm:col-span-2 lg:col-span-6">
+        <FormField
+          label="Комментарий"
+          tip={TIPS.comment}
+          required
+          className="sm:col-span-2 lg:col-span-6"
+        >
           <Textarea
             rows={2}
             value={comment}

@@ -411,7 +411,7 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
               </FormField>
             </div>
 
-            <FormField label="Заголовок">
+            <FormField label="Заголовок" required>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -459,14 +459,20 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField label="Текст на кнопке">
+                <FormField
+                  label="Текст на кнопке"
+                  required={config.requireButtonPair && !!buttonUrl.trim()}
+                >
                   <Input
                     value={buttonText}
                     onChange={(e) => setButtonText(e.target.value)}
                     placeholder={texts.buttonPlaceholder}
                   />
                 </FormField>
-                <FormField label="Ссылка">
+                <FormField
+                  label="Ссылка"
+                  required={config.requireButtonPair && !!buttonText.trim()}
+                >
                   <Input
                     value={buttonUrl}
                     onChange={(e) => setButtonUrl(e.target.value)}

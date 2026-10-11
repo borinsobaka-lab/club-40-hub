@@ -550,7 +550,7 @@ function NewResponseForm({
       <DialogForm onSubmit={submit}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Тип опроса" tip={TIPS.surveyType}>
+            <FormField label="Тип опроса" tip={TIPS.surveyType} required>
               <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -564,7 +564,7 @@ function NewResponseForm({
                 </SelectContent>
               </Select>
             </FormField>
-            <FormField label="Оценка" tip={TIPS.score} hint="От 0 до 10.">
+            <FormField label="Оценка" tip={TIPS.score} hint="От 0 до 10." required>
               <Input
                 type="number"
                 inputMode="numeric"

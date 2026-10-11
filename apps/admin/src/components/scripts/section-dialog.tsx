@@ -77,7 +77,7 @@ export function SectionDialogContent({
         <DialogBody>
           <div className="space-y-4">
             {isNew && (
-              <FormField label="Тип раздела" htmlFor={null}>
+              <FormField label="Тип раздела" required htmlFor={null}>
                 <RadioGroup
                   value={kind}
                   onValueChange={(v) => {
@@ -100,7 +100,7 @@ export function SectionDialogContent({
                 </RadioGroup>
               </FormField>
             )}
-            <FormField label="Название">
+            <FormField label="Название" required>
               <Input
                 autoFocus
                 value={title}
@@ -109,7 +109,7 @@ export function SectionDialogContent({
                 onChange={(e) => setTitle(e.target.value)}
               />
             </FormField>
-            <FormField label="Иконка в меню" htmlFor={null}>
+            <FormField label="Иконка в меню" required htmlFor={null}>
               <div
                 className="grid grid-cols-7 gap-1 rounded-md border p-2"
                 role="radiogroup"

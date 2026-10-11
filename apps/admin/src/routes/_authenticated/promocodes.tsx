@@ -345,7 +345,7 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Название">
+            <FormField label="Название" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -353,7 +353,12 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
               />
             </FormField>
 
-            <FormField label="Промокод" tip={TIPS.code} hint="Только латинские буквы и цифры.">
+            <FormField
+              label="Промокод"
+              tip={TIPS.code}
+              required
+              hint="Только латинские буквы и цифры."
+            >
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
@@ -363,7 +368,7 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Тип скидки">
+              <FormField label="Тип скидки" required>
                 <Select
                   value={discountType}
                   onValueChange={(v) => setDiscountType(v as DiscountType)}
@@ -377,7 +382,7 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="Размер скидки" tip={TIPS.discount}>
+              <FormField label="Размер скидки" tip={TIPS.discount} required>
                 <Input
                   inputMode="decimal"
                   value={discountValue}

@@ -387,7 +387,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Название">
+            <FormField label="Название" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -396,7 +396,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <FormField label="Тренировок" tip={TIPS.visits}>
+              <FormField label="Тренировок" tip={TIPS.visits} required>
                 <Input
                   type="number"
                   min={1}
@@ -405,7 +405,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
                   placeholder="8"
                 />
               </FormField>
-              <FormField label="Срок, дней" tip={TIPS.duration}>
+              <FormField label="Срок, дней" tip={TIPS.duration} required>
                 <Input
                   type="number"
                   min={1}
@@ -414,7 +414,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
                   placeholder="30"
                 />
               </FormField>
-              <FormField label="Стоимость, ₾" tip={TIPS.price}>
+              <FormField label="Стоимость, ₾" tip={TIPS.price} required>
                 <Input
                   inputMode="decimal"
                   value={price}

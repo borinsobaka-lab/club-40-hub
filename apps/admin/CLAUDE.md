@@ -198,6 +198,9 @@ GoTrue и видит только хук писем — в браузер он �
 - Разметка форм — блоки из `components/ui/form-field.tsx` (`FormField`,
   `SwitchRow`, `CheckboxOption`, `InfoNote`) и `DialogForm` (Enter = сохранить,
   главная кнопка `type="submit"`, у `Button` по умолчанию `type="button"`).
+  Обязательное поле — проп `required` у `FormField` (красная звёздочка, во
+  всех формах — решение владельца 2026-10-11): ровно те поля, без которых
+  обработчик не сохранит форму; новое обязательное поле — сразу с `required`.
   Подсказка «?» у подписи поля — проп `tip` у `FormField`/`SwitchRow`: зачем
   поле, 1–2 предложения; новому неочевидному полю — писать сразу. Тот же
   текст — у колонки таблицы (`<TableHead tip>`): тексты страницы лежат в
@@ -223,6 +226,9 @@ GoTrue и видит только хук писем — в браузер он �
   `src/lib/client-status.ts`, `src/lib/workout-types.ts` — справочники.
 - `src/lib/storage.ts` + `components/image-upload-field.tsx` — картинки
   Storage (`StorageImage`, `ImageUploadField`); бакеты — `STORAGE_BUCKETS`.
+- `components/sale-dialog.tsx` — диалог «Новая продажа» абонемента: из
+  «Продаж» и из карточки клиента («Добавить продажу», `initialClient` —
+  клиент подставлен). Карточка клиента — `components/client-card-dialog.tsx`.
 - `components/client-combobox.tsx` — выбор клиента (серверный поиск);
   `ClientNameLink` + `hooks/use-crm-links.ts` — имя клиента со ссылкой amoCRM
   (ссылки для таблицы — одним запросом на страницу).

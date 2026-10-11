@@ -429,7 +429,7 @@ function WorkoutForm({
               </FormField>
             )}
 
-            <FormField label="Название">
+            <FormField label="Название" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -447,7 +447,7 @@ function WorkoutForm({
             </FormField>
 
             {packages ? (
-              <FormField label="Цвет" htmlFor={null} tip={TIPS.color}>
+              <FormField label="Цвет" htmlFor={null} tip={TIPS.color} required>
                 <WorkoutColorPicker value={color} onChange={setColor} />
               </FormField>
             ) : (
@@ -497,6 +497,7 @@ function WorkoutForm({
               <FormField
                 label="MET — интенсивность"
                 optional={!packages}
+                required={packages}
                 tip={packages ? TIPS.met : undefined}
                 hint={
                   packages

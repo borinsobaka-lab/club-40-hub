@@ -23,6 +23,7 @@ export function FormField({
   hint,
   tip,
   optional,
+  required,
   htmlFor,
   className,
   children,
@@ -35,8 +36,14 @@ export function FormField({
    * дальше. Коротко, 1–2 предложения; у очевидных полей (имя, телефон) не нужна.
    */
   tip?: React.ReactNode;
-  /** Пометка «(необязательно)» после подписи. Обязательные поля не помечаем. */
+  /** Пометка «(необязательно)» после подписи. */
   optional?: boolean;
+  /**
+   * Красная звёздочка после подписи: без поля форма не сохранится (решение
+   * владельца 2026-10-11). Ставить ровно тем полям, которые проверяет
+   * обработчик сохранения.
+   */
+  required?: boolean;
   /** Свой id контрола; null — не связывать подпись (несколько контролов). */
   htmlFor?: string | null;
   className?: string;
@@ -51,6 +58,11 @@ export function FormField({
           <div className="flex items-center gap-1">
             <Label htmlFor={id}>
               {label}
+              {required && (
+                <span aria-hidden="true" className="ml-0.5 text-destructive">
+                  *
+                </span>
+              )}
               {optional && (
                 <span className="ml-1 font-normal text-muted-foreground">(необязательно)</span>
               )}

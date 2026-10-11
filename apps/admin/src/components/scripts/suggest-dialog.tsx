@@ -84,7 +84,7 @@ export function SuggestDialogContent({
                 </span>
               </p>
             ) : (
-              <FormField label="Что стоит изменить" hint="Ctrl/⌘ + Enter — отправить.">
+              <FormField label="Что стоит изменить" required hint="Ctrl/⌘ + Enter — отправить.">
                 <Textarea
                   autoFocus
                   rows={6}
