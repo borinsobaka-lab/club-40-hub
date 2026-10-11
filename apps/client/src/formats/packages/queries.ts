@@ -186,6 +186,9 @@ export type StudioTrainer = {
   photo_url: string | null;
   bio: string | null;
   role: string | null;
+  rating_avg: number | null;
+  rating_count: number;
+  tip_url: string | null;
 };
 
 export function studioInfoQuery(studioId: string | null, enabled = true) {
@@ -210,13 +213,19 @@ export function studioTrainersQuery(studioId: string | null, enabled = true) {
     queryFn: async (): Promise<StudioTrainer[]> => {
       const { data, error } = await untypedDb
         .from("trainer_studios")
-        .select("trainer:trainers(id, full_name, photo_url, bio, role)")
+        .select(
+          "trainer:trainers(id, full_name, photo_url, bio, role, rating_avg, rating_count, tip_url)",
+        )
         .eq("studio_id", studioId);
       if (error) throw error;
-      return ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
-        .map((r) => r.trainer)
-        .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
-        .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"));
+      return (
+        ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
+          .map((r) => r.trainer)
+          .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
+          // numeric приходит строкой.
+          .map((t) => ({ ...t, rating_avg: t.rating_avg == null ? null : Number(t.rating_avg) }))
+          .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"))
+      );
     },
     enabled: enabled && !!studioId,
   });
