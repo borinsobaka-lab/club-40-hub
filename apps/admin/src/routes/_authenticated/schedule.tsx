@@ -750,9 +750,9 @@ function SchedulePage() {
                           className={cn(
                             "relative border-b border-r max-md:border-r-0",
                             // Пакетные студии: слоты — светлее подложки раздела (её цвет
-                            // наполовину с белым фоном сетки), линии белые; шапка дней
-                            // и столбец времени — белые, белые карточки на слотах видны.
-                            packages && "border-background bg-canvas/50",
+                            // наполовину с белым фоном сетки), линии — обычные светло-серые
+                            // (--border); шапка дней и столбец времени — белые.
+                            packages && "bg-canvas/50",
                           )}
                           style={{ height: rowHeight }}
                         >
