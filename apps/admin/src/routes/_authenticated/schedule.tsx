@@ -749,10 +749,10 @@ function SchedulePage() {
                           key={`${hour}-${di}`}
                           className={cn(
                             "relative border-b border-r max-md:border-r-0",
-                            // Пакетные студии: слоты цвета подложки раздела, линии
-                            // белые; шапка дней и столбец времени — белые, белые
-                            // карточки занятий на слотах видны сразу.
-                            packages && "border-background bg-canvas",
+                            // Пакетные студии: слоты — светлее подложки раздела (её цвет
+                            // наполовину с белым фоном сетки), линии белые; шапка дней
+                            // и столбец времени — белые, белые карточки на слотах видны.
+                            packages && "border-background bg-canvas/50",
                           )}
                           style={{ height: rowHeight }}
                         >
@@ -1004,7 +1004,9 @@ function EntryCard({
             </span>
             <CapacityBadge entry={entry} light />
           </span>
-          <span className="font-medium line-clamp-2">{entryTitle(entry)}</span>
+          <span className="mt-0.5 text-[13px] font-semibold leading-snug line-clamp-2">
+            {entryTitle(entry)}
+          </span>
           {trainers.length > 0 && (
             <span className="mt-0.5 flex min-w-0 items-center gap-1 pr-5">
               <span className="flex shrink-0 -space-x-1.5">
@@ -1050,7 +1052,9 @@ function EntryCard({
           </span>
           <CapacityBadge entry={entry} />
         </span>
-        <span className="font-medium line-clamp-2">{entryTitle(entry)}</span>
+        <span className="mt-0.5 text-[13px] font-semibold leading-snug line-clamp-2">
+          {entryTitle(entry)}
+        </span>
         {names && <span className="block truncate opacity-80">{names}</span>}
       </button>
       {/* Соседняя кнопка поверх карточки, а не вложенная в неё — там же, где была. */}
