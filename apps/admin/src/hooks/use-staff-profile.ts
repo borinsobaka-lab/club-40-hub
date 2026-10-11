@@ -13,7 +13,7 @@ export type StaffProfile = {
   displayName: string;
 };
 
-const staffProfileQuery = queryOptions({
+export const staffProfileQuery = queryOptions({
   queryKey: ["staff-profile"],
   queryFn: async (): Promise<StaffProfile | null> => {
     const { data } = await supabase.auth.getSession();

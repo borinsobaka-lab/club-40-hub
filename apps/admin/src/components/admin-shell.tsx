@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -6,8 +6,13 @@ import { Cat, RefreshCw, X } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
-import { KateChat } from "@/components/kate-chat";
 import { HeaderClientSearch } from "@/components/header-client-search";
+
+// Kate (AI SDK, markdown) — отдельным чанком: в общем каркасе он прибавлял к
+// первой загрузке любой страницы ~80 kB, а открывают его редко. Наведение на
+// кнопку начинает загрузку заранее.
+const loadKateChat = () => import("@/components/kate-chat");
+const KateChat = lazy(() => loadKateChat().then((m) => ({ default: m.KateChat })));
 
 /**
  * Действия страницы («Продажа», «Добавить тренировку»…) — крупные кнопки,
@@ -94,6 +99,8 @@ export function AdminShell({
           <button
             type="button"
             onClick={() => setKateOpen(true)}
+            onPointerEnter={() => void loadKateChat()}
+            onFocus={() => void loadKateChat()}
             aria-label="Kate — AI ассистент"
             className="ai-gradient group relative inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full px-4 text-sm font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-sm:w-10 max-sm:justify-center max-sm:px-0"
           >
@@ -126,7 +133,13 @@ export function AdminShell({
             <DialogPrimitive.Description className="sr-only">
               Спросите Kate о клиентах, тренерах, расписании или абонементах.
             </DialogPrimitive.Description>
-            <KateChat heightClass="h-dvh md:h-[min(80vh,720px)]" fullscreenOnMobile />
+            <Suspense
+              fallback={
+                <div className="mx-auto h-dvh w-full max-w-3xl rounded-lg border bg-background max-md:rounded-none max-md:border-0 md:h-[min(80vh,720px)]" />
+              }
+            >
+              <KateChat heightClass="h-dvh md:h-[min(80vh,720px)]" fullscreenOnMobile />
+            </Suspense>
             {/* Во весь экран подложки не видно — закрыть окно иначе нечем. */}
             <DialogPrimitive.Close className="absolute right-2 top-2 z-20 inline-flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden">
               <X className="h-5 w-5" />

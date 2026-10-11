@@ -11,6 +11,10 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // Наведение (или касание) ссылки меню заранее грузит код раздела —
+    // к клику он уже на месте. Данные страниц грузит React Query, лоадеров у
+    // роутов нет, поэтому preload — это только чанк и дешёвый beforeLoad.
+    defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
     // Пока грузится код страницы — её собственный скелетон (pendingComponent
     // роута, components/page-skeletons.tsx); меню остаётся, оно в

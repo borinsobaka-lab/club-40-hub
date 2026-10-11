@@ -12,28 +12,63 @@ import { AdminShell } from "@/components/admin-shell";
 import { StudioBranding } from "@/components/studio-branding";
 import { AppShellSkeleton, RoutePendingSkeleton } from "@/components/skeletons";
 import { hasStaffRole } from "@/lib/roles";
-import { useAdminAccess } from "@/hooks/use-admin-access";
+import { studiosQuery } from "@/hooks/use-studios";
+import { staffProfileQuery } from "@/hooks/use-staff-profile";
+import { adminPermissionsQuery, useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenPath, firstAllowedUrl } from "@/lib/nav-sections";
+import { usePreloadSections } from "@/hooks/use-preload-sections";
+
+/**
+ * Кто уже прошёл полную проверку в этой вкладке. beforeLoad выполняется на
+ * КАЖДОМ переходе между разделами: раньше это были два запроса по сети
+ * подряд (getUser в GoTrue и роль в user_roles) до того, как раздел вообще
+ * начинал открываться. Теперь полная проверка — один раз на человека, дальше
+ * хватает сессии из localStorage (getSession без сети, пока жив токен).
+ * Отозванную роль это не пропустит к данным: границу держит RLS.
+ */
+let verifiedUserId: string | null = null;
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUser = sessionData.session?.user;
+    if (!sessionUser) {
+      verifiedUserId = null;
       throw redirect({ to: "/auth" });
     }
+
+    // Меню, права и профиль нужны любой странице — грузим их сразу и
+    // параллельно с проверкой, а не после неё по очереди.
+    void queryClient.prefetchQuery(studiosQuery);
+    void queryClient.prefetchQuery(adminPermissionsQuery);
+    void queryClient.prefetchQuery(staffProfileQuery);
+
+    if (verifiedUserId === sessionUser.id) return { user: sessionUser };
 
     // Одной авторизации мало: клиент мобильного приложения — тоже
     // авторизованный пользователь этого же проекта Supabase. В админку
     // пускаем только сотрудников (owner/admin/trainer в user_roles).
-    // Сбой самой проверки — исключение: страница ошибки с «Повторить», без
-    // выхода из аккаунта. scope local — не трогаем сессии на других устройствах.
-    if (!(await hasStaffRole(supabase, data.user.id))) {
+    // Сбой самой проверки роли — исключение: страница ошибки с «Повторить»,
+    // без выхода из аккаунта. getUser сверяет сессию с сервером (локальная
+    // могла быть отозвана), роль проверяется одновременно с ним.
+    // Отозванная сессия важнее сбоя проверки роли: сначала ответ getUser.
+    const staffCheck = hasStaffRole(supabase, sessionUser.id);
+    staffCheck.catch(() => {});
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user || data.user.id !== sessionUser.id) {
+      throw redirect({ to: "/auth" });
+    }
+    // scope local — не трогаем сессии на других устройствах.
+    if (!(await staffCheck)) {
       await supabase.auth.signOut({ scope: "local" });
       throw redirect({ to: "/auth" });
     }
 
+    // Кэш — только в браузере: на сервере (если когда-нибудь включат SSR
+    // этого роута) модуль общий для всех посетителей.
+    if (typeof window !== "undefined") verifiedUserId = data.user.id;
     return { user: data.user };
   },
   // Пока проверяется вход (и при ssr: false — в HTML с сервера) — скелетон
@@ -51,6 +86,7 @@ export const Route = createFileRoute("/_authenticated")({
  * Outlet — AdminShell рисует шапку с заголовком и тело страницы.
  */
 function AuthenticatedLayout() {
+  usePreloadSections();
   return (
     // Меню всегда развёрнуто: кнопку сворачивания убрали, а сохранённое в
     // cookie «свёрнуто» иначе оставило бы меню свёрнутым без пути назад.

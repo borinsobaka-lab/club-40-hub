@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useStudios } from "@/hooks/use-studios";
@@ -10,6 +10,34 @@ type OwnPermissions = {
   studios: Record<string, ClubSectionKey[]>;
 };
 
+/** Свои строки прав; заранее загружает и проверка входа (`_authenticated/route.tsx`). */
+export const adminPermissionsQuery = queryOptions({
+  queryKey: ["admin_permissions"],
+  queryFn: async (): Promise<OwnPermissions> => {
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session.session?.user.id;
+    if (!userId) return { rail: null, studios: {} };
+    const [rail, perStudio] = await Promise.all([
+      unwrap<{ sections: AdminSectionKey[] }[]>(
+        supabase.from("admin_permissions").select("sections").eq("user_id", userId),
+      ),
+      unwrap<{ studio_id: string; sections: ClubSectionKey[] }[]>(
+        supabase
+          .from("admin_studio_permissions")
+          .select("studio_id, sections")
+          .eq("user_id", userId),
+      ),
+    ]);
+    return {
+      rail: rail[0]?.sections ?? null,
+      studios: Object.fromEntries(perStudio.map((r) => [r.studio_id, r.sections])),
+    };
+  },
+  // Права меняет владелец в «Доступах»; свои права он менять не может.
+  staleTime: Infinity,
+  meta: { errorMessage: "Не удалось загрузить права доступа" },
+});
+
 /**
  * Права текущего сотрудника («Доступы»): какие разделы рейки и клуба ему
  * открыты. null — ещё загружаются. Свои строки прав RLS отдаёт всегда.
@@ -20,32 +48,7 @@ type OwnPermissions = {
  */
 export function useAdminAccess(): AdminAccess | null {
   const { data: studios, isLoading: studiosLoading } = useStudios();
-  const { data: own, isLoading } = useQuery({
-    queryKey: ["admin_permissions"],
-    queryFn: async (): Promise<OwnPermissions> => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
-      if (!userId) return { rail: null, studios: {} };
-      const [rail, perStudio] = await Promise.all([
-        unwrap<{ sections: AdminSectionKey[] }[]>(
-          supabase.from("admin_permissions").select("sections").eq("user_id", userId),
-        ),
-        unwrap<{ studio_id: string; sections: ClubSectionKey[] }[]>(
-          supabase
-            .from("admin_studio_permissions")
-            .select("studio_id, sections")
-            .eq("user_id", userId),
-        ),
-      ]);
-      return {
-        rail: rail[0]?.sections ?? null,
-        studios: Object.fromEntries(perStudio.map((r) => [r.studio_id, r.sections])),
-      };
-    },
-    // Права меняет владелец в «Доступах»; свои права он менять не может.
-    staleTime: Infinity,
-    meta: { errorMessage: "Не удалось загрузить права доступа" },
-  });
+  const { data: own, isLoading } = useQuery(adminPermissionsQuery);
 
   if (studiosLoading || isLoading) return null;
   const list = studios ?? [];

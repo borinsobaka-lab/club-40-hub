@@ -49,7 +49,17 @@ export default defineConfig(({ command }) => ({
     }),
     // Nitro packages the SSR app as a standalone node-server bundle
     // (.output/server/index.mjs) — то, что запускает Dockerfile.
-    ...(command === "build" ? [nitro({ preset: "node-server" })] : []),
+    // compressPublicAssets: рядом с каждым файлом /assets кладутся .br и .gz,
+    // сервер отдаёт их по Accept-Encoding. Brotli жмёт JS на ~15–20% лучше
+    // gzip, которым прокси Coolify сжимает ответы на лету.
+    ...(command === "build"
+      ? [
+          nitro({
+            preset: "node-server",
+            compressPublicAssets: { gzip: true, brotli: true },
+          }),
+        ]
+      : []),
     viteReact(),
   ],
 }));

@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { Command as CommandPrimitive } from "cmdk";
 import { Loader2 } from "lucide-react";
 
@@ -12,7 +12,7 @@ import type { ClubStatus } from "@/lib/client-status";
 import { cn } from "@/lib/utils";
 import { fieldClass } from "@/components/ui/field-styles";
 import { InputClearButton, SearchIcon } from "@/components/ui/search-input";
-import { ClientCardDialog, type ClientLike } from "@/components/client-card-dialog";
+import type { ClientLike } from "@/components/client-card-dialog";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 
 type FoundClient = ClientLike & { club_status: ClubStatus | null };
@@ -24,6 +24,15 @@ const COLUMNS =
   "notes, registration_date, last_visit_date, crm_link, photo_url, club_status";
 
 const LIMIT = 8;
+
+// Карточка клиента тянет за собой формы продажи и правки клиента (с ними —
+// libphonenumber-js, ~220 kB): в шапке каждой страницы она шла в первую
+// загрузку админки. Теперь — отдельным чанком, загрузка начинается, как
+// только сотрудник ставит курсор в поиск.
+const loadClientCard = () => import("@/components/client-card-dialog");
+const ClientCardDialog = lazy(() =>
+  loadClientCard().then((m) => ({ default: m.ClientCardDialog })),
+);
 
 /**
  * Условие PostgREST `.or()` для поиска клиента. Слова имени ищутся каждое
@@ -101,7 +110,10 @@ export function HeaderClientSearch({ className }: { className?: string }) {
           ref={inputRef}
           value={query}
           onValueChange={setQuery}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            void loadClientCard();
+          }}
           onBlur={() => setFocused(false)}
           disabled={!studioId}
           inputMode="search"
@@ -149,7 +161,12 @@ export function HeaderClientSearch({ className }: { className?: string }) {
         )}
       </CommandPrimitive>
 
-      <ClientCardDialog open={cardOpen} onOpenChange={setCardOpen} client={client} />
+      {/* Карточку монтируем с первым выбором и не снимаем: закрытие — анимация Radix. */}
+      {client && (
+        <Suspense fallback={null}>
+          <ClientCardDialog open={cardOpen} onOpenChange={setCardOpen} client={client} />
+        </Suspense>
+      )}
     </>
   );
 }

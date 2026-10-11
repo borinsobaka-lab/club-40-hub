@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useId, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, differenceInCalendarDays, addDays, min } from "date-fns";
 import {
@@ -13,19 +13,6 @@ import {
   Loader2,
 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -42,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import type { ChartType } from "@/components/metric-chart-plot";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useStudios, type Studio } from "@/hooks/use-studios";
@@ -813,18 +801,17 @@ const GRANULARITIES: { value: Granularity; label: string; span: string; unit: st
   { value: "day", label: "По дням", span: "30 дней", unit: "день" },
 ];
 
-type ChartType = "bar" | "line" | "area";
+// График (recharts, ~100 kB gzip) — отдельным чанком: дашборд открывается
+// первым после входа, а окно с графиком нужно не каждый раз.
+const MetricChartPlot = lazy(() =>
+  import("@/components/metric-chart-plot").then((m) => ({ default: m.MetricChartPlot })),
+);
 
 const CHART_TYPES: { value: ChartType; label: string; icon: typeof ChartColumn }[] = [
   { value: "bar", label: "Столбцы", icon: ChartColumn },
   { value: "line", label: "Линия", icon: ChartLine },
   { value: "area", label: "Область", icon: ChartArea },
 ];
-
-const compactNumber = new Intl.NumberFormat("ru-RU", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
 
 /**
  * Окно графика показателя: разбивка (табы) и вид графика. Окно графика
@@ -844,7 +831,6 @@ function MetricChart({
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [chartType, setChartType] = useState<ChartType>("bar");
   const isMobile = useIsMobile();
-  const gradientId = `chart-fill-${useId().replace(/:/g, "")}`;
 
   const anchor = def.future ? periodEnd : min([periodEnd, new Date()]);
   const anchorISO = toISO(anchor);
@@ -913,44 +899,6 @@ function MetricChart({
     },
   ];
 
-  const axis = {
-    tick: { fontSize: 11, fill: "var(--muted-foreground)" },
-    tickLine: false,
-    axisLine: false,
-  };
-  const tooltip = (
-    <Tooltip
-      cursor={
-        chartType === "bar"
-          ? { fill: "var(--muted)", opacity: 0.6 }
-          : { stroke: "var(--border)", strokeWidth: 1 }
-      }
-      content={({ active, payload }) => {
-        const row = active ? payload?.[0]?.payload : null;
-        if (!row) return null;
-        return (
-          <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
-            <div className="font-medium first-letter:uppercase">{row.label}</div>
-            <div className="mt-1 text-sm font-semibold tabular-nums">
-              {row.value === null ? "нет продаж" : fmt(row.value)}
-            </div>
-            {def.kind === "avg" && row.n > 0 && (
-              <div className="text-muted-foreground">продаж: {formatNumber(row.n)}</div>
-            )}
-          </div>
-        );
-      }}
-    />
-  );
-  const common = { data, margin: { top: 8, right: 8, bottom: 0, left: 0 } };
-  const grid = <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />;
-  const xAxis = (
-    <XAxis dataKey="tick" {...axis} interval="preserveStartEnd" minTickGap={12} tickMargin={8} />
-  );
-  const yAxis = (
-    <YAxis {...axis} width={64} allowDecimals={false} tickFormatter={compactNumber.format} />
-  );
-
   return (
     <>
       <DialogHeader>
@@ -1018,53 +966,16 @@ function MetricChart({
               Нет данных за {g.span}
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              {chartType === "bar" ? (
-                <BarChart {...common}>
-                  {grid}
-                  {xAxis}
-                  {yAxis}
-                  {tooltip}
-                  <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} />
-                </BarChart>
-              ) : chartType === "line" ? (
-                <LineChart {...common}>
-                  {grid}
-                  {xAxis}
-                  {yAxis}
-                  {tooltip}
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke={color}
-                    strokeWidth={2}
-                    dot={granularity === "day" ? false : { r: 3, fill: color }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              ) : (
-                <AreaChart {...common}>
-                  <defs>
-                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-                      <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  {grid}
-                  {xAxis}
-                  {yAxis}
-                  {tooltip}
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke={color}
-                    strokeWidth={2}
-                    fill={`url(#${gradientId})`}
-                    activeDot={{ r: 5 }}
-                  />
-                </AreaChart>
-              )}
-            </ResponsiveContainer>
+            <Suspense fallback={<Skeleton className="h-full w-full" />}>
+              <MetricChartPlot
+                data={data}
+                chartType={chartType}
+                color={color}
+                dots={granularity !== "day"}
+                format={fmt}
+                showDeals={def.kind === "avg"}
+              />
+            </Suspense>
           )}
         </div>
       </DialogBody>
