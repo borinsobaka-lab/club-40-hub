@@ -13,6 +13,8 @@ export type Studio = {
   brand_color: string;
   /** Путь в бакете studio-logos или полный URL. */
   logo_url: string | null;
+  /** Адрес одной строкой — для клиентского приложения. */
+  address: string | null;
   created_at: string;
   /** Роли текущего сотрудника в этой студии. */
   roles: StaffRole[];
@@ -44,7 +46,7 @@ export const studiosQuery = queryOptions({
     const studios = await unwrap<Omit<Studio, "roles">[]>(
       supabase
         .from("studios")
-        .select("id, name, format, brand_color, logo_url, created_at")
+        .select("id, name, format, brand_color, logo_url, address, created_at")
         .in("id", ids)
         .order("created_at"),
     );

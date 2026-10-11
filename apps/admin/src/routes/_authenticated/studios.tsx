@@ -60,6 +60,7 @@ const TIPS = {
     "От типа зависят абонементы, тренировки и расписание клуба, а клиенты пользуются приложением этого типа.",
   color: "Цвет иконки активного пункта меню и акцентов админки, пока открыт этот клуб.",
   logo: "Показывается в шапке бокового меню. Без логотипа там будет название клуба.",
+  address: "Клиенты видят его в приложении под названием клуба — на главной и в выборе клуба.",
 };
 
 export const Route = createFileRoute("/_authenticated/studios")({
@@ -383,6 +384,7 @@ function StudioForm({
   const [format, setFormat] = useState<StudioFormat>(item?.format ?? "subscription");
   const [color, setColor] = useState(item?.brand_color ?? DEFAULT_BRAND_COLOR);
   const [logo, setLogo] = useState<string | null>(item?.logo_url ?? null);
+  const [address, setAddress] = useState(item?.address ?? "");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -399,17 +401,35 @@ function StudioForm({
       const brandColor = color.toLowerCase();
       // Формат после создания не меняется: под ним у студии свои абонементы,
       // расписание и данные, переключение — это миграция, а не правка поля.
-      const { error } = item
-        ? await supabase
+      const addressValue = address.trim() || null;
+      let error;
+      if (item) {
+        ({ error } = await supabase
+          .from("studios")
+          .update({
+            name: name.trim(),
+            brand_color: brandColor,
+            logo_url: logo,
+            address: addressValue,
+          })
+          .eq("id", item.id));
+      } else {
+        const created = await supabase.rpc("create_studio", {
+          _name: name.trim(),
+          _format: format,
+          _brand_color: brandColor,
+          _logo_url: logo,
+        });
+        error = created.error;
+        // create_studio адрес не принимает — дописываем: создатель уже
+        // владелец новой студии и может её править.
+        if (!error && addressValue && created.data) {
+          ({ error } = await supabase
             .from("studios")
-            .update({ name: name.trim(), brand_color: brandColor, logo_url: logo })
-            .eq("id", item.id)
-        : await supabase.rpc("create_studio", {
-            _name: name.trim(),
-            _format: format,
-            _brand_color: brandColor,
-            _logo_url: logo,
-          });
+            .update({ address: addressValue })
+            .eq("id", created.data as string));
+        }
+      }
       if (error) {
         toast.error("Ошибка сохранения: " + error.message);
         return;
@@ -442,6 +462,14 @@ function StudioForm({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Base40 Ваке"
+              />
+            </FormField>
+
+            <FormField label="Адрес" optional tip={TIPS.address}>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Тбилиси, ул. Палиашвили, 40"
               />
             </FormField>
 

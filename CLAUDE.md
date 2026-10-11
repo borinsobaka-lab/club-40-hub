@@ -272,6 +272,9 @@ AUTH_SETUP.md.
   `… client browse` + `client_can_browse_studio`: клиент читает расписание,
   тренировки, тренеров и показываемые абонементы другой студии того же
   формата (переключатель студий; записаться — только в своей).
+  Адрес студии: `db/migrations/2026-10-11_zzzzzzzzzzzz_studio_address.sql` —
+  `studios.address` (публичное чтение колонки, правит владелец; плашка
+  студии в приложении пакетов).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`
