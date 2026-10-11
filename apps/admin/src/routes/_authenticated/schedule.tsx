@@ -61,7 +61,13 @@ export const Route = createFileRoute("/_authenticated/schedule")({
 });
 
 type Workout = { id: string; name: string; type?: string | null; capacity?: number | null };
-type Trainer = { id: string; full_name: string; photo_url?: string | null };
+type Trainer = {
+  id: string;
+  full_name: string;
+  photo_url?: string | null;
+  /** trainer | admin — справочник «Сотрудники». */
+  role?: string;
+};
 type Entry = {
   id: string;
   studio_id: string;
@@ -70,7 +76,7 @@ type Entry = {
   workout_id: string | null;
   /** Название прочей активности. */
   title: string | null;
-  /** Ставка за прочую активность, лари каждому отмеченному тренеру. */
+  /** Ставка за прочую активность, лари каждому отмеченному сотруднику. */
   pay_rate: number | null;
   starts_at: string;
   ends_at: string;
@@ -103,9 +109,13 @@ const ENTRY_SELECT =
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
-// Сотрудники общие для студий: на занятие ставим тренеров, привязанных к этой
-// студии (trainer_studios); администраторы занятия не ведут.
-const TRAINER_COLS = "id, full_name, trainer_studios!inner(studio_id)";
+// Сотрудники общие для студий: в расписание ставим тех, кто привязан к этой
+// студии (trainer_studios). Занятия ведут тренеры; на прочую активность
+// (например, фотосъёмку) можно отметить и администраторов.
+const STAFF_COLS = "id, full_name, role, trainer_studios!inner(studio_id)";
+
+/** Полоска на карточках персональных занятий и прочих активностей. */
+const NON_GROUP_STRIPE = "#262626";
 
 const ADMIN_CANCEL_REASONS = [
   "Клиент отменил",
@@ -290,20 +300,20 @@ function SchedulePage() {
     enabled: !!studioId,
     meta: { errorMessage: "Ошибка загрузки тренировок" },
   });
-  const { data: trainers = [], isFetching: trainersFetching } = useQuery({
-    queryKey: ["trainers", studioId, TRAINER_COLS],
+  const { data: staff = [], isFetching: trainersFetching } = useQuery({
+    queryKey: ["trainers", studioId, STAFF_COLS],
     queryFn: () =>
       unwrap<Trainer[]>(
         supabase
           .from("trainers")
-          .select(TRAINER_COLS)
+          .select(STAFF_COLS)
           .eq("trainer_studios.studio_id", studioId!)
-          .eq("role", "trainer")
           .order("full_name"),
       ),
     enabled: !!studioId,
-    meta: { errorMessage: "Ошибка загрузки тренеров" },
+    meta: { errorMessage: "Ошибка загрузки сотрудников" },
   });
+  const trainers = useMemo(() => staff.filter((t) => t.role === "trainer"), [staff]);
   // Без placeholderData: пока грузится новая неделя, занятий нет вовсе, а не
   // занятия прошлой — иначе «Дублировать неделю» скопировал бы чужую неделю.
   // Ответ, пришедший после перелистывания, ложится в кэш своей недели.
@@ -595,11 +605,12 @@ function SchedulePage() {
               <KindFilter value={kindFilter} onChange={setKindFilter} />
               <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
                 <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
-                  <SelectValue placeholder="Все тренеры" />
+                  <SelectValue placeholder="Все сотрудники" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL_FILTER_VALUE}>Все тренеры</SelectItem>
-                  {trainers.map((t) => (
+                  <SelectItem value={ALL_FILTER_VALUE}>Все сотрудники</SelectItem>
+                  {/* С администраторами: их отмечают на прочих активностях. */}
+                  {staff.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.full_name}
                     </SelectItem>
@@ -819,6 +830,7 @@ function SchedulePage() {
         studioId={studioId}
         workouts={workouts}
         trainers={trainers}
+        staff={staff}
         entry={editing}
         presetStart={presetStart}
         onSaved={reloadEntries}
@@ -987,17 +999,18 @@ function EntryCard({
     x.trainer ? [x.trainer] : [],
   );
   const names = trainers.map((t) => t.full_name).join(", ");
-  // Персональные и прочие в обоих форматах — светлая карточка с полоской и
-  // иконкой своего типа: так они не путаются с групповыми.
+  // Персональные и прочие в обоих форматах — светлая карточка с тёмной
+  // полоской: так они не путаются с групповыми.
   const group = entry.kind === "group";
   if (packages || !group) {
-    const kind = activityKind(entry.kind);
     return (
       <div
         className="absolute inset-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs"
         // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
         style={{
-          borderLeftColor: group ? (entry.workout?.color ?? "var(--muted-foreground)") : kind.color,
+          borderLeftColor: group
+            ? (entry.workout?.color ?? "var(--muted-foreground)")
+            : NON_GROUP_STRIPE,
         }}
       >
         <button
@@ -1011,16 +1024,7 @@ function EntryCard({
             </span>
             <CapacityBadge entry={entry} light />
           </span>
-          <span className="flex items-start gap-1 font-medium">
-            {!group && (
-              <kind.icon
-                aria-label={kind.label}
-                className="mt-px size-3 shrink-0"
-                style={{ color: kind.color }}
-              />
-            )}
-            <span className="line-clamp-2">{entryTitle(entry)}</span>
-          </span>
+          <span className="font-medium line-clamp-2">{entryTitle(entry)}</span>
           {trainers.length > 0 && (
             <span className="mt-0.5 flex min-w-0 items-center gap-1 pr-5">
               <span className="flex shrink-0 -space-x-1.5">
@@ -1090,7 +1094,10 @@ type EntryDialogProps = {
   kind: ActivityKind;
   studioId: string | null;
   workouts: Workout[];
+  /** Тренеры студии — для групповых и персональных занятий. */
   trainers: Trainer[];
+  /** Все сотрудники студии (и администраторы) — для прочей активности. */
+  staff: Trainer[];
   entry: Entry | null;
   presetStart: Date | null;
   onSaved: () => void;
@@ -1120,7 +1127,7 @@ const FORM_TEXT: Record<
   other: {
     create: "Новая прочая активность",
     edit: "Прочая активность",
-    hint: "Название, время, тренеры и ставка. Клиенты в приложении её не видят.",
+    hint: "Название, время, сотрудники и ставка. Клиенты в приложении её не видят.",
     added: "Активность добавлена",
     updated: "Активность обновлена",
   },
@@ -1134,9 +1141,10 @@ const TIPS = {
   personalTrainer:
     "Тренер, который проводит занятие. В зарплату ему пойдёт ставка за персональную тренировку из «Зарплатных ставок».",
   title: "Как активность будет подписана в расписании, например «Мастер-класс» или «Съёмка».",
-  otherTrainers: "Кому начислить ставку за эту активность. Можно никого не выбирать.",
+  otherStaff:
+    "Тренеры и администраторы, которые участвуют, — им начислится ставка. Можно никого не выбирать.",
   payRate:
-    "Сколько получит за эту активность каждый отмеченный тренер, в лари — пойдёт в зарплату. Без тренеров можно не указывать.",
+    "Сколько получит за эту активность каждый отмеченный сотрудник, в лари — пойдёт в зарплату. Без сотрудников можно не указывать.",
 };
 
 function EntryDialog({ open, ...formProps }: EntryDialogProps) {
@@ -1163,18 +1171,21 @@ function parsePayRate(v: string) {
   return Number.isFinite(n) && n >= 0 ? n : NaN;
 }
 
+/** Галочки сотрудников; с byRole — тренеры и администраторы отдельными группами. */
 function TrainerChecks({
   options,
   value,
   onToggle,
+  byRole,
 }: {
   options: Trainer[];
   value: string[];
   onToggle: (id: string) => void;
+  byRole?: boolean;
 }) {
-  return (
-    <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
-      {options.map((t) => (
+  const checks = (list: Trainer[]) => (
+    <div className="flex flex-wrap gap-x-4 gap-y-2">
+      {list.map((t) => (
         <CheckboxOption
           key={t.id}
           checked={value.includes(t.id)}
@@ -1185,13 +1196,30 @@ function TrainerChecks({
       ))}
     </div>
   );
+  const admins = byRole ? options.filter((t) => t.role === "admin") : [];
+  if (admins.length === 0) return <div className="rounded-md border p-3">{checks(options)}</div>;
+  const others = options.filter((t) => t.role !== "admin");
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      {others.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Тренеры</div>
+          {checks(others)}
+        </div>
+      )}
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-muted-foreground">Администраторы</div>
+        {checks(admins)}
+      </div>
+    </div>
+  );
 }
 
-function NoTrainersNote() {
+function NoTrainersNote({ staff }: { staff?: boolean }) {
   return (
     <InfoNote variant="empty">
-      В студии нет тренеров. Добавьте их в разделе «Сотрудники» (в рейке слева) и отметьте эту
-      студию.
+      В студии нет {staff ? "сотрудников" : "тренеров"}. Добавьте их в разделе «Сотрудники» (в рейке
+      слева) и отметьте эту студию.
     </InfoNote>
   );
 }
@@ -1202,6 +1230,7 @@ function EntryForm({
   studioId,
   workouts,
   trainers,
+  staff,
   entry,
   presetStart,
   onSaved,
@@ -1230,12 +1259,14 @@ function EntryForm({
   const toggleTrainer = (id: string) => {
     setTrainerIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+  // На прочую активность отмечают любых сотрудников студии, на занятия — тренеров.
+  const pool = kind === "other" ? staff : trainers;
   // Тренер, которого отвязали от студии, остаётся на прежних занятиях —
   // показываем его в списке, чтобы его можно было снять с занятия.
   const trainerOptions = [
-    ...trainers,
+    ...pool,
     ...(entry?.schedule_entry_trainers ?? []).flatMap((x) =>
-      x.trainer && !trainers.some((t) => t.id === x.trainer_id) ? [x.trainer] : [],
+      x.trainer && !pool.some((t) => t.id === x.trainer_id) ? [x.trainer] : [],
     ),
   ];
 
@@ -1270,7 +1301,7 @@ function EntryForm({
     const rate = parsePayRate(payRate);
     if (Number.isNaN(rate)) return "Ставка — число не меньше 0";
     if (rate == null && trainerIds.length > 0)
-      return "Укажите ставку — она пойдёт в зарплату отмеченным тренерам";
+      return "Укажите ставку — она пойдёт в зарплату отмеченным сотрудникам";
     return { workout_id: null, title: title.trim(), pay_rate: rate };
   };
 
@@ -1425,18 +1456,19 @@ function EntryForm({
 
             {kind !== "personal" && (
               <FormField
-                label="Тренеры"
-                tip={kind === "group" ? TIPS.groupTrainers : TIPS.otherTrainers}
+                label={kind === "group" ? "Тренеры" : "Сотрудники"}
+                tip={kind === "group" ? TIPS.groupTrainers : TIPS.otherStaff}
                 optional
                 htmlFor={null}
               >
                 {trainerOptions.length === 0 ? (
-                  <NoTrainersNote />
+                  <NoTrainersNote staff={kind === "other"} />
                 ) : (
                   <TrainerChecks
                     options={trainerOptions}
                     value={trainerIds}
                     onToggle={toggleTrainer}
+                    byRole={kind === "other"}
                   />
                 )}
               </FormField>
@@ -1446,7 +1478,7 @@ function EntryForm({
               <FormField
                 label="Ставка, ₾"
                 tip={TIPS.payRate}
-                // Без ставки не сохранится, только если отмечены тренеры.
+                // Без ставки не сохранится, только если отмечены сотрудники.
                 required={trainerIds.length > 0}
                 optional={trainerIds.length === 0}
               >
