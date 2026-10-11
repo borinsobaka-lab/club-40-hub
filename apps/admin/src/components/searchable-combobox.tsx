@@ -62,7 +62,9 @@ export function SearchableCombobox({
   const selected = options.find((o) => o.value === value);
   const label = selected?.label ?? (value ? selectedLabel : undefined);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    // modal: комбобокс стоит в диалогах, а диалог глушит прокрутку колесом за
+    // своими пределами — без modal длинный список не листался.
+    <Popover open={open} onOpenChange={setOpen} modal>
       {/*
         Триггер выглядит как SelectTrigger (те же отступы, шеврон, без ховера):
         в одной форме комбобокс и обычный выбор стоят рядом. Крестик

@@ -141,7 +141,9 @@ function CountryPicker({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    // modal: список открыт поверх диалога карточки, а диалог глушит прокрутку
+    // колесом за своими пределами — без modal список стран не листался.
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <button
           type="button"
