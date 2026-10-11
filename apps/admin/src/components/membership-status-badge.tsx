@@ -2,7 +2,15 @@ import { useActiveStudio } from "@/hooks/use-studios";
 import { todayISO } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export type CMStatus = "active" | "frozen" | "replaced" | "expired" | "cancelled" | string;
+/** pending — продление пакетной студии ждёт, пока закончится текущий абонемент. */
+export type CMStatus =
+  | "active"
+  | "frozen"
+  | "pending"
+  | "replaced"
+  | "expired"
+  | "cancelled"
+  | string;
 
 export type MembershipStatusInput = {
   status: CMStatus | null | undefined;
@@ -20,6 +28,7 @@ export function effectiveStatus(m: MembershipStatusInput): CMStatus {
 const LABELS: Record<string, string> = {
   active: "Активен",
   frozen: "Заморожен",
+  pending: "Ждёт начала",
   replaced: "Заменён",
   expired: "Истёк",
   cancelled: "Отменён",
@@ -28,6 +37,7 @@ const LABELS: Record<string, string> = {
 const CLASSES: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
   frozen: "bg-blue-100 text-blue-700",
+  pending: "bg-violet-100 text-violet-700",
   replaced: "bg-amber-100 text-amber-700",
   expired: "bg-muted text-muted-foreground",
   cancelled: "bg-rose-100 text-rose-700",

@@ -1695,6 +1695,9 @@ type ActiveMembershipRow = {
   started_at: string | null;
   ends_at: string | null;
   visits_left: number | null;
+  /** Пакетный формат: остаток персональных и вид баланса абонемента. */
+  personal_left: number;
+  balance_kind: "group" | "personal";
   membership: { name: string | null } | null;
 };
 
@@ -1702,7 +1705,8 @@ type BookingsData = {
   bookings: BookingRow[];
   clientsById: Map<string, ClientRow>;
   clientsByUser: Map<string, ClientRow>;
-  membershipsByClient: Map<string, ActiveMembershipRow>;
+  /** У клиента пакетной студии может быть два: пакет тренировок и пакет персональных. */
+  membershipsByClient: Map<string, ActiveMembershipRow[]>;
 };
 
 function bookingClient(data: BookingsData | undefined, b: BookingRow) {
@@ -1724,7 +1728,7 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
   );
   const clientsById = new Map<string, ClientRow>();
   const clientsByUser = new Map<string, ClientRow>();
-  const membershipsByClient = new Map<string, ActiveMembershipRow>();
+  const membershipsByClient = new Map<string, ActiveMembershipRow[]>();
   const empty = { bookings, clientsById, clientsByUser, membershipsByClient };
   const clientIds = Array.from(new Set(bookings.map((r) => r.client_id).filter(Boolean)));
   // Старые записи из приложения без карточки — по учётной записи.
@@ -1757,7 +1761,9 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
 
   const { data: mData } = await supabase
     .from("client_memberships")
-    .select("client_id, started_at, ends_at, visits_left, membership:memberships(name)")
+    .select(
+      "client_id, started_at, ends_at, visits_left, personal_left, balance_kind, membership:memberships(name)",
+    )
     .eq("status", "active")
     .in(
       "client_id",
@@ -1766,8 +1772,25 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
   // membership — связь «многие к одному», но разбор select без схемы базы
   // считает любую связь массивом.
   const memberships = (mData ?? []) as unknown as ActiveMembershipRow[];
-  for (const m of memberships) membershipsByClient.set(m.client_id, m);
+  for (const m of memberships)
+    membershipsByClient.set(m.client_id, [...(membershipsByClient.get(m.client_id) ?? []), m]);
   return empty;
+}
+
+/**
+ * Абонемент, с которого спишется посещение: на персональном (пакетная
+ * студия) — с остатком персональных, иначе пакет персональных; на остальных —
+ * абонемент обычных тренировок.
+ */
+function pickMembership(rows: ActiveMembershipRow[] | undefined, personal: boolean) {
+  if (!rows?.length) return undefined;
+  if (personal)
+    return (
+      rows.find((r) => r.personal_left > 0) ??
+      rows.find((r) => r.balance_kind === "personal") ??
+      rows[0]
+    );
+  return rows.find((r) => r.balance_kind !== "personal") ?? rows[0];
 }
 
 const BOOK_REASONS: Record<string, string> = {
@@ -1947,6 +1970,9 @@ function BookingsPanel({
   onChanged: () => void;
 }) {
   const queryClient = useQueryClient();
+  // Пакетная студия: на персональном занятии посещение списывается с баланса
+  // персональных — его и показываем у клиента.
+  const personalBalance = useActiveStudio()?.format === "packages" && entry.kind === "personal";
   const [booking, setBooking] = useState(false);
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -1961,6 +1987,8 @@ function BookingsPanel({
   const bookings = data?.bookings ?? [];
   const reload = () => {
     queryClient.invalidateQueries({ queryKey });
+    // Посещение списало тренировку — баланс в «Абонементах» изменился.
+    queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
     onChanged();
   };
 
@@ -2046,7 +2074,9 @@ function BookingsPanel({
           <div className="space-y-2">
             {booked.map((b) => {
               const c = bookingClient(data, b);
-              const m = c ? data?.membershipsByClient.get(c.id) : undefined;
+              const m = c
+                ? pickMembership(data?.membershipsByClient.get(c.id), personalBalance)
+                : undefined;
               const contacts = [c?.phone, c?.email].filter(Boolean).join(" · ");
               return (
                 <div key={b.id} className="space-y-1 rounded-md border p-3 text-sm">
@@ -2080,8 +2110,12 @@ function BookingsPanel({
                     {m ? (
                       <div>
                         {m.membership?.name ?? "Абонемент"} ·{" "}
-                        {m.visits_left != null ? `осталось ${m.visits_left}` : "безлимит"} ·{" "}
-                        {formatDate(m.started_at)} – {m.ends_at ? formatDate(m.ends_at) : "∞"}
+                        {personalBalance
+                          ? `персональных осталось ${m.personal_left}`
+                          : m.visits_left != null
+                            ? `осталось ${m.visits_left}`
+                            : "безлимит"}{" "}
+                        · {formatDate(m.started_at)} – {m.ends_at ? formatDate(m.ends_at) : "∞"}
                       </div>
                     ) : (
                       <div className="italic">Нет активного абонемента</div>
