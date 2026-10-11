@@ -48,12 +48,18 @@ const TIPS = {
   price:
     "Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет.",
   description: "Видно клиентам в карточке пакета в приложении.",
+  payments:
+    "Сколькими ежемесячными платежами можно оплатить пакет (внутренняя рассрочка). 1 — только сразу. При продаже можно выбрать меньше.",
 };
+
+/** Предел платежей — как ограничение memberships.max_payments в БД. */
+const MAX_PAYMENTS_LIMIT = 12;
 
 /**
  * Номенклатура «Зала с пакетами тренировок» (STUDIO_FORMATS.md): пакеты —
  * строки той же таблицы memberships, что и подписки, но без автопродления,
- * рассрочки, заморозки и безлимита. В номенклатуре — только полная цена:
+ * заморозки и безлимита. Рассрочка своя — «сколькими платежами можно
+ * оплатить» (max_payments), подписочная installment_enabled не используется. В номенклатуре — только полная цена:
  * скидку (например, постоянному клиенту) дают при продаже, снижая стоимость
  * (решение владельца 2026-10-11). Подписочная номенклатура — memberships.tsx.
  */
@@ -70,13 +76,16 @@ type Package = {
   visits_count: number | null;
   duration_days: number | null;
   price: number;
+  /** Сколькими платежами можно оплатить (1 — только сразу). */
+  max_payments: number;
   is_active: boolean;
 };
 
 /** Поля, которыми можно предзаполнить новый пакет (дублирование). */
 type PackageDraft = Omit<Package, "id" | "studio_id">;
 
-const COLUMNS = "id, studio_id, name, description, visits_count, duration_days, price, is_active";
+const COLUMNS =
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, is_active";
 
 function formatDuration(days: number | null) {
   if (!days) return "—";
@@ -193,17 +202,18 @@ function PackagesPage() {
                   <TableHead tip={TIPS.visits}>Тренировок</TableHead>
                   <TableHead tip={TIPS.duration}>Срок действия</TableHead>
                   <TableHead tip={TIPS.price}>Стоимость</TableHead>
+                  <TableHead tip={TIPS.payments}>Платежей</TableHead>
                   <TableHead tip={TIPS.description}>Описание</TableHead>
                   <TableHead>Статус</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeletonRows columns={6} />
+                  <TableSkeletonRows columns={7} />
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       {items.length === 0
@@ -238,6 +248,7 @@ function PackagesPage() {
                         <TableCell className="font-medium">
                           {formatMoney(Number(p.price))}
                         </TableCell>
+                        <TableCell>{p.max_payments > 1 ? `до ${p.max_payments}` : "1"}</TableCell>
                         <TableCell className="max-w-[300px] truncate text-muted-foreground">
                           {p.description ?? "—"}
                         </TableCell>
@@ -317,6 +328,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
     init?.duration_days != null ? String(init.duration_days) : "",
   );
   const [price, setPrice] = useState(init?.price != null ? String(init.price) : "");
+  const [maxPayments, setMaxPayments] = useState(String(init?.max_payments ?? 1));
   const [isActive, setIsActive] = useState(init?.is_active ?? true);
   const [saving, setSaving] = useState(false);
 
@@ -341,6 +353,11 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
       toast.error("Укажите стоимость");
       return;
     }
+    const payments = positiveInt(maxPayments);
+    if (payments == null || payments > MAX_PAYMENTS_LIMIT) {
+      toast.error(`Укажите число платежей — целое от 1 до ${MAX_PAYMENTS_LIMIT}`);
+      return;
+    }
 
     setSaving(true);
     try {
@@ -354,6 +371,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
         visits_count: visits,
         duration_days: days,
         price: priceNum,
+        max_payments: payments,
         is_active: isActive,
         auto_renew: false,
         installment_enabled: false,
@@ -423,6 +441,22 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
                 />
               </FormField>
             </div>
+
+            <FormField
+              label="Сколькими платежами можно оплатить"
+              tip={TIPS.payments}
+              hint="Платежи ежемесячные: первый — в день продажи, остаток делится на следующие."
+              required
+            >
+              <Input
+                type="number"
+                min={1}
+                max={MAX_PAYMENTS_LIMIT}
+                value={maxPayments}
+                onChange={(e) => setMaxPayments(e.target.value)}
+                className="sm:w-32"
+              />
+            </FormField>
 
             <FormField label="Описание" tip={TIPS.description} optional>
               <Textarea

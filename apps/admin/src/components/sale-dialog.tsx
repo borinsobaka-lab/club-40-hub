@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
+import { useStudios } from "@/hooks/use-studios";
 import { unwrap } from "@/lib/query";
 import {
   PAYMENT_METHOD_LABEL,
@@ -45,6 +46,12 @@ import { useConfirm } from "@/components/confirm-dialog";
 
 // Диалог «Новая продажа» абонемента. Открывается из «Продаж» и из карточки
 // клиента («Добавить продажу» — клиент уже подставлен).
+//
+// Рассрочка зависит от формата студии (STUDIO_FORMATS.md):
+// - подписочный — у тарифа флаг installment_enabled, остаток на 2 или 3 мес.;
+// - пакетный — у пакета max_payments («сколькими платежами можно оплатить»),
+//   администратор выбирает число платежей от 1 до него; поля «Тип оплаты» нет.
+// В обоих случаях первый платёж — в день продажи, остальные — ежемесячно.
 
 type MembershipRow = {
   id: string;
@@ -53,6 +60,8 @@ type MembershipRow = {
   duration_days: number | null;
   visits_count: number | null;
   installment_enabled: boolean;
+  /** Пакетный формат: сколькими платежами можно оплатить (1 — только сразу). */
+  max_payments: number;
 };
 
 // Календарная арифметика по Y-M-D: без Date-парсинга (он читает дату как UTC)
@@ -86,7 +95,10 @@ type SaleFields = {
   soldAt: string;
   amount: string;
   downPayment: string;
+  /** Подписочный формат: на сколько месяцев разбить остаток. */
   remainingCount: 2 | 3;
+  /** Пакетный формат: всего платежей, включая первый (1 — оплата сразу). */
+  paymentsCount: number;
   paymentType: PaymentType;
   paymentMethod: PaymentMethod;
   promoCode: string;
@@ -94,11 +106,13 @@ type SaleFields = {
 };
 
 /** Суммы продажи по форме: итог, первый взнос, скидка от тарифа, график рассрочки. */
-function saleTotals(form: SaleFields, membership: MembershipRow | null) {
-  const installment = membership?.installment_enabled ?? false;
+function saleTotals(form: SaleFields, membership: MembershipRow | null, isPackages: boolean) {
+  const installment = isPackages
+    ? form.paymentsCount > 1
+    : (membership?.installment_enabled ?? false);
   const total = Number(form.amount) || 0;
   const down = installment ? Number(form.downPayment) || 0 : total;
-  const remaining = installment ? form.remainingCount : 0;
+  const remaining = !installment ? 0 : isPackages ? form.paymentsCount - 1 : form.remainingCount;
   const remainingTotal = Math.max(0, total - down);
   const listPrice = membership?.price != null ? Number(membership.price) : null;
   const discount = listPrice != null ? Math.max(0, listPrice - total) : 0;
@@ -158,6 +172,8 @@ export function SaleDialog(props: SaleDialogProps) {
 function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialogProps) {
   const { confirm, confirmDialog } = useConfirm();
   const { data: staff, ensure: ensureStaff } = useStaffProfile();
+  const { data: studios } = useStudios();
+  const isPackages = studios?.find((s) => s.id === studioId)?.format === "packages";
   const [form, setForm] = useState<SaleFields>(() => ({
     clientId: initialClient?.id ?? "",
     clientLabel: initialClient ? clientName(initialClient) : "",
@@ -166,6 +182,7 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
     amount: "",
     downPayment: "",
     remainingCount: 2,
+    paymentsCount: 1,
     paymentType: "first",
     paymentMethod: "cash",
     promoCode: "",
@@ -181,7 +198,7 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
       unwrap<MembershipRow[]>(
         supabase
           .from("memberships")
-          .select("id, name, price, duration_days, visits_count, installment_enabled")
+          .select("id, name, price, duration_days, visits_count, installment_enabled, max_payments")
           .eq("studio_id", studioId!)
           .order("name"),
       ),
@@ -190,7 +207,8 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
   });
 
   const membership = memberships.find((m) => m.id === form.membershipId) ?? null;
-  const t = saleTotals(form, membership);
+  const t = saleTotals(form, membership, isPackages);
+  const maxPayments = isPackages ? Math.max(1, membership?.max_payments ?? 1) : 1;
 
   // Цена подставляется при выборе, а не эффектом по выбранному абонементу:
   // эффект срабатывал и на перезагрузку списка и затирал введённую скидку.
@@ -202,12 +220,31 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
       amount: m ? String(m.price ?? 0) : "",
       downPayment: "",
       remainingCount: 2,
+      paymentsCount: 1,
     }));
+  };
+
+  // Пакетный формат: при выборе числа платежей первый платёж предлагается
+  // равной долей — график виден сразу, администратор правит сумму, внесённую
+  // на месте, остаток пересчитывается на следующие платежи.
+  const pickPaymentsCount = (n: number) => {
+    setForm((f) => {
+      const total = Number(f.amount) || 0;
+      return {
+        ...f,
+        paymentsCount: n,
+        downPayment: n > 1 && total > 0 ? String(splitAmount(total, n)[0]) : "",
+      };
+    });
   };
 
   const handleSave = async () => {
     if (!studioId || saving) return;
-    const invalid = saleFormError(form, t);
+    const invalid =
+      saleFormError(form, t) ??
+      (isPackages && form.paymentsCount > maxPayments
+        ? `Этот пакет можно оплатить не больше чем ${maxPayments} платежами`
+        : null);
     if (invalid) {
       toast.error(invalid);
       return;
@@ -258,7 +295,8 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
           down_payment_amount: t.down,
           remaining_installments: t.remaining,
           source: "admin",
-          payment_type: form.paymentType,
+          // В пакетных студиях типа оплаты нет — колонка остаётся по умолчанию.
+          ...(isPackages ? {} : { payment_type: form.paymentType }),
           payment_method: form.paymentMethod,
           list_price: t.listPrice,
           discount_amount: t.discount,
@@ -386,7 +424,58 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
               </FormField>
             </div>
 
-            {t.installment ? (
+            {isPackages ? (
+              maxPayments > 1 && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FormField label="Платежей" tip={SALE_TIPS.paymentsCount} required>
+                    <Select
+                      value={String(form.paymentsCount)}
+                      onValueChange={(v) => pickPaymentsCount(Number(v))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: maxPayments }, (_, i) => i + 1).map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n === 1 ? "1 — оплата сразу" : n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                  {t.installment && (
+                    <FormField label="Первый платёж, ₾" tip={SALE_TIPS.firstPayment} required>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={form.downPayment}
+                        onChange={(e) => set("downPayment", e.target.value)}
+                        placeholder="Сколько внесено сейчас"
+                      />
+                    </FormField>
+                  )}
+                  {t.schedule.length > 0 && (
+                    <InfoNote className="sm:col-span-2">
+                      <ul className="space-y-1">
+                        {t.schedule.map((p, i) => (
+                          <li key={i} className="flex items-center justify-between gap-3">
+                            <span>
+                              Платёж {i + 1} — {formatDate(p.date)}
+                              {p.isDownPayment && " (сегодня, в студии)"}
+                            </span>
+                            <span className="font-medium tabular-nums text-foreground">
+                              {formatMoney(p.amount)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </InfoNote>
+                  )}
+                </div>
+              )
+            ) : t.installment ? (
               <div className="space-y-3">
                 <div className="text-xs font-medium uppercase text-muted-foreground">Рассрочка</div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -446,23 +535,25 @@ function SaleForm({ onOpenChange, studioId, onSaved, initialClient }: SaleDialog
             ) : null}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Тип оплаты" tip={SALE_TIPS.paymentType} required>
-                <Select
-                  value={form.paymentType}
-                  onValueChange={(v) => set("paymentType", v as PaymentType)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_TYPES.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {PAYMENT_TYPE_LABEL[p]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
+              {!isPackages && (
+                <FormField label="Тип оплаты" tip={SALE_TIPS.paymentType} required>
+                  <Select
+                    value={form.paymentType}
+                    onValueChange={(v) => set("paymentType", v as PaymentType)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_TYPES.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {PAYMENT_TYPE_LABEL[p]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
               <FormField label="Промокод" tip={SALE_TIPS.promo} optional>
                 <Input value={form.promoCode} onChange={(e) => set("promoCode", e.target.value)} />
               </FormField>

@@ -133,6 +133,10 @@ AUTH_SETUP.md.
   Номенклатура пакетных студий: `db/migrations/2026-10-10_packages_memberships.sql`
   — триггер, выключающий автопродление в пакетных студиях (добавленный там
   `for_regular_clients` убран `2026-10-11_packages_no_regular_price.sql`).
+  Рассрочка пакетных студий: `db/migrations/2026-10-11_packages_installments.sql`
+  — `memberships.max_payments` (сколькими платежами можно оплатить, 1–12),
+  `sales.remaining_installments` расширен до 0–11 (подписочные 0/2/3 — как
+  были).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
