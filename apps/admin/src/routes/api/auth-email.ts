@@ -5,9 +5,8 @@ import { buildEmails, isAdminApp, type HookPayload } from "@/lib/auth-email";
 import { mailProvider, sendMail } from "@/lib/mail";
 
 // Send Email Hook для Supabase Auth: GoTrue не шлёт письма сам, а дёргает
-// этот эндпоинт, и мы отправляем письмо с noreply@base40.fit через
-// Unisender Go (если задан UNISENDER_GO_API_KEY), иначе по-старому через
-// Resend — см. src/lib/mail.ts.
+// этот эндпоинт, и мы отправляем письмо с noreply@base40.fit через Resend
+// (RESEND_API_KEY) — см. src/lib/mail.ts.
 //
 // Во всех письмах авторизации — 6-значный код, ссылок авто-входа нет: код
 // GoTrue передаёт только сюда, на сервер, и он уходит лишь в письмо (в ответ
@@ -21,8 +20,7 @@ import { mailProvider, sendMail } from "@/lib/mail";
 //
 // Настройка (self-hosted Supabase): переменные GOTRUE_HOOK_SEND_EMAIL_* сервиса
 // auth в Coolify, URI https://admin.base40.fit/api/auth-email; тот же секрет и
-// ключ почты — в окружении админки (SEND_EMAIL_HOOK_SECRET, UNISENDER_GO_API_KEY
-// или RESEND_API_KEY). Пока они не заданы, роут отвечает 500 и письма не
+// ключ почты — в окружении админки (SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY). Пока они не заданы, роут отвечает 500 и письма не
 // уходят вовсе (запасной отправки у GoTrue при включённом хуке нет) — хук
 // включать только после задания переменных.
 
@@ -74,9 +72,7 @@ export const Route = createFileRoute("/api/auth-email")({
       POST: async ({ request }) => {
         const secret = process.env.SEND_EMAIL_HOOK_SECRET;
         if (!secret || !mailProvider()) {
-          console.error(
-            "[auth-email] SEND_EMAIL_HOOK_SECRET / UNISENDER_GO_API_KEY (или RESEND_API_KEY) не заданы",
-          );
+          console.error("[auth-email] SEND_EMAIL_HOOK_SECRET / RESEND_API_KEY не заданы");
           return new Response("hook not configured", { status: 500 });
         }
 
