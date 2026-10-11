@@ -130,7 +130,7 @@ function PackagesPage() {
   const handleDelete = async (p: Package) => {
     if (
       !(await confirm({
-        title: "Удалить пакет?",
+        title: "Удалить номенклатуру?",
         description: `«${p.name}» пропадёт из каталога. Уже проданные пакеты клиентов останутся.`,
       }))
     )
@@ -140,7 +140,7 @@ function PackagesPage() {
       toast.error("Ошибка удаления: " + error.message);
       return;
     }
-    toast.success("Пакет удалён");
+    toast.success("Номенклатура удалена");
     reload();
   };
 
@@ -150,7 +150,7 @@ function PackagesPage() {
       toast.error("Не удалось изменить статус: " + error.message);
       return;
     }
-    toast.success(next ? "Пакет активен" : "Пакет скрыт в приложении");
+    toast.success(next ? "Показывается в приложении" : "Скрыто в приложении");
     reload();
   };
 
@@ -180,7 +180,7 @@ function PackagesPage() {
       actions={
         <Button onClick={() => openCreate()} disabled={!studioId}>
           <Plus />
-          Добавить пакет
+          Добавить
         </Button>
       }
     >
@@ -217,7 +217,7 @@ function PackagesPage() {
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       {items.length === 0
-                        ? "Пока нет пакетов. Нажмите «Добавить пакет»."
+                        ? "Пока нет номенклатур. Нажмите «Добавить»."
                         : "Ничего не найдено."}
                     </TableCell>
                   </TableRow>
@@ -386,7 +386,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
         toast.error("Ошибка сохранения: " + error.message);
         return;
       }
-      toast.success(item ? "Пакет обновлён" : "Пакет добавлен");
+      toast.success(item ? "Номенклатура обновлена" : "Номенклатура добавлена");
       onOpenChange(false);
       onSaved();
     } finally {

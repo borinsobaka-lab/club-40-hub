@@ -137,6 +137,11 @@ AUTH_SETUP.md.
   — `memberships.max_payments` (сколькими платежами можно оплатить, 1–12),
   `sales.remaining_installments` расширен до 0–11 (подписочные 0/2/3 — как
   были).
+  Типы номенклатуры и продаж пакетных студий:
+  `db/migrations/2026-10-11_packages_sale_kinds.sql` — `memberships.kind`
+  (`package` / `trial`), `sales.sale_kind` (`new` / `trial` / `upsell` /
+  `renewal`, null — без типа); там же пересоздана вью `sales_list` (актуальное
+  определение — в этой миграции, не в `db/performance_indexes.sql`).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
@@ -180,8 +185,11 @@ AUTH_SETUP.md.
 - Перед выкаткой миграцию можно прогнать на локальном Postgres 16 (есть в
   системе): заглушки auth/storage + прогон db/\*.sql, см. историю сессий.
 - Серверная пагинация админки опирается на вью `clients_with_status`,
-  `sales_list`, `cash_totals`, `bookings_log_full` (db/performance_indexes.sql),
-  все с `security_invoker = true` — RLS действует.
+  `sales_list`, `cash_totals`, `bookings_log_full` (db/performance_indexes.sql;
+  `sales_list` пересоздана в `2026-10-11_packages_sale_kinds.sql`), все с
+  `security_invoker = true` — RLS действует. `s.*` во вью раскрывается при её
+  создании: новая колонка `sales` попадёт в `sales_list` только после
+  пересоздания вью.
 - **Модель доступа: граница безопасности — RLS, не фронтенд.** Publishable-ключ
   вшит в бандл, любой может дёргать PostgREST напрямую. Guard'ы роутов —
   только UX. Все клиентские таблицы читаются по принципу «своя строка или

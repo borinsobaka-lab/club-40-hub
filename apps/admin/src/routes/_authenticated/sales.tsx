@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useActiveStudio } from "@/hooks/use-studios";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -16,10 +17,13 @@ import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHODS,
   PAYMENT_TYPE_LABEL,
+  SALE_KIND_LABEL,
+  SALE_KINDS,
   SALE_TIPS,
   saleSourceLabel,
   type PaymentMethod,
   type PaymentType,
+  type SaleKind,
 } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +62,7 @@ import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { SaleDialog } from "@/components/sale-dialog";
+import { CommentCell } from "@/components/comment-cell";
 import { TableSkeletonRows } from "@/components/table-skeleton";
 import { clientName, formatMoney, formatDate, todayISO } from "@/lib/format";
 import { SearchableCombobox } from "@/components/searchable-combobox";
@@ -82,7 +87,7 @@ export const Route = createFileRoute("/_authenticated/sales")({
 // client_memberships) вью отдаёт в той же форме, что раньше вложенный select.
 const SALE_COLUMNS =
   "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, " +
-  "down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, " +
+  "down_payment_amount, remaining_installments, source, payment_type, sale_kind, promo_code, comment, " +
   "created_at, clients, memberships, client_memberships";
 
 type Sale = {
@@ -98,6 +103,8 @@ type Sale = {
   remaining_installments: number;
   source: "admin" | "mobile";
   payment_type: PaymentType | null;
+  /** Тип продажи пакетной студии; null — без типа (подписочная, приложение). */
+  sale_kind: SaleKind | null;
   promo_code: string | null;
   comment: string | null;
   created_at: string;
@@ -137,9 +144,13 @@ function SourceBadge({ source }: { source: Sale["source"] | null }) {
 function SalesPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
+  // Пакетная студия: четыре типа продаж и колонка «Тип продажи» вместо
+  // «Типа оплаты» (STUDIO_FORMATS.md).
+  const isPackages = useActiveStudio()?.format === "packages";
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [saleOpen, setSaleOpen] = useState(false);
+  const [saleKind, setSaleKind] = useState<SaleKind>("new");
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundSale, setRefundSale] = useState<Sale | null>(null);
 
@@ -181,6 +192,11 @@ function SalesPage() {
     reload();
   };
 
+  const openSale = (k: SaleKind) => {
+    setSaleKind(k);
+    setSaleOpen(true);
+  };
+
   const openRefund = (s: Sale) => {
     setRefundSale(s);
     setRefundOpen(true);
@@ -190,10 +206,26 @@ function SalesPage() {
     <AdminShell
       title="Продажи"
       actions={
-        <Button onClick={() => setSaleOpen(true)} disabled={!studioId}>
-          <Plus />
-          Новая продажа
-        </Button>
+        isPackages ? (
+          <>
+            {SALE_KINDS.map((k) => (
+              <Button
+                key={k}
+                variant={k === "new" ? "default" : "outline"}
+                onClick={() => openSale(k)}
+                disabled={!studioId}
+              >
+                {k === "new" && <Plus />}
+                {SALE_KIND_LABEL[k]}
+              </Button>
+            ))}
+          </>
+        ) : (
+          <Button onClick={() => openSale("new")} disabled={!studioId}>
+            <Plus />
+            Новая продажа
+          </Button>
+        )
       }
     >
       <div className="space-y-3">
@@ -216,7 +248,11 @@ function SalesPage() {
                   <TableHead>Источник</TableHead>
                   <TableHead tip={TIPS.membership}>Абонемент</TableHead>
                   <TableHead>Статус</TableHead>
-                  <TableHead tip={TIPS.paymentType}>Тип оплаты</TableHead>
+                  {isPackages ? (
+                    <TableHead tip={TIPS.saleKind}>Тип продажи</TableHead>
+                  ) : (
+                    <TableHead tip={TIPS.paymentType}>Тип оплаты</TableHead>
+                  )}
                   <TableHead tip={TIPS.promo}>Промо-код</TableHead>
                   <TableHead tip={TIPS.amount}>Сумма</TableHead>
                   <TableHead tip={TIPS.downPayment}>Первый взнос</TableHead>
@@ -292,7 +328,11 @@ function SalesPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {PAYMENT_TYPE_LABEL[s.payment_type ?? "other"]}
+                            {isPackages
+                              ? s.sale_kind
+                                ? SALE_KIND_LABEL[s.sale_kind]
+                                : "—"
+                              : PAYMENT_TYPE_LABEL[s.payment_type ?? "other"]}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {s.promo_code ?? "—"}
@@ -311,8 +351,8 @@ function SalesPage() {
                           <TableCell className="text-muted-foreground">
                             {s.admin_name ?? "—"}
                           </TableCell>
-                          <TableCell className="max-w-[220px] truncate text-muted-foreground">
-                            {s.comment ?? "—"}
+                          <TableCell>
+                            <CommentCell text={s.comment} />
                           </TableCell>
                         </TableRow>
                       </RowContextMenu>
@@ -327,7 +367,13 @@ function SalesPage() {
         </RequireStudio>
       </div>
 
-      <SaleDialog open={saleOpen} onOpenChange={setSaleOpen} studioId={studioId} onSaved={reload} />
+      <SaleDialog
+        open={saleOpen}
+        onOpenChange={setSaleOpen}
+        studioId={studioId}
+        onSaved={reload}
+        kind={saleKind}
+      />
       <RefundDialog
         open={refundOpen}
         onOpenChange={setRefundOpen}
