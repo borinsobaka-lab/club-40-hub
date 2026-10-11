@@ -18,7 +18,7 @@ const Textarea = React.forwardRef<
       id={fieldId}
       data-note={note ? "" : undefined}
       className={cn(
-        "flex min-h-20 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        "flex min-h-20 w-full resize-y rounded-md border border-input bg-field px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
         className,
       )}
       ref={ref}

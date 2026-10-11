@@ -37,8 +37,6 @@ const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      // Метка для заливки полей (styles.css): поля в окнах светло-серые.
-      data-form-surface=""
       className={cn(
         // От sm — окно по центру. На телефоне — шторка снизу во всю ширину:
         // кнопки подвала под большим пальцем, а поля не зажаты отступами по

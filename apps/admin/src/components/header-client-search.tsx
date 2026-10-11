@@ -108,9 +108,8 @@ export function HeaderClientSearch({ className }: { className?: string }) {
           aria-label="Поиск клиента"
           placeholder={studioId ? "Поиск клиента: имя, телефон, почта" : "Сначала выберите клуб"}
           data-field=""
-          // Поле как все (field-styles), только на сером: в шапке без плашки
-          // фильтров иначе не видно границ поиска.
-          className={cn(fieldClass, "flex bg-muted/40 pl-9 pr-9 focus-visible:bg-background")}
+          // Поле как все (field-styles): та же заливка, что в фильтрах и формах.
+          className={cn(fieldClass, "flex pl-9 pr-9")}
         />
         {query && (
           <InputClearButton onClear={() => setQuery("")}>

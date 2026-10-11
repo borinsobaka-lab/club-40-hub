@@ -304,7 +304,7 @@ export function AppSidebar() {
         (RailAccount).
       */}
           <SidebarFooter className="gap-2 border-t border-white/10 p-3 lg:hidden">
-            <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white [&>svg]:text-white" />
+            <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white focus-visible:bg-white/10 [&>svg]:text-white" />
           </SidebarFooter>
         </div>
       </div>
