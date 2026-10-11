@@ -165,7 +165,7 @@ export function WorkoutDrawer({
                   <img
                     src={data.photo ?? logoSrc}
                     alt=""
-                    className="w-28 h-28 rounded-full object-cover shrink-0 bg-muted"
+                    className={`w-28 h-28 rounded-full object-cover shrink-0 bg-muted ${data.photo ? "" : "brand-art"}`}
                   />
                 </div>
 
