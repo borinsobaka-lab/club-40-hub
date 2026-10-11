@@ -42,8 +42,8 @@ export function CommentCell({ text }: { text: string | null | undefined }) {
         <div className="mb-1 text-xs font-medium text-muted-foreground">Комментарий</div>
         <p
           className={cn(
-            noteChipClass,
-            "max-h-72 overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-sm",
+            noteBoxClass,
+            "max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-sm",
           )}
         >
           {value}

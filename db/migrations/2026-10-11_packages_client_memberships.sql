@@ -28,6 +28,15 @@
 -- старые не меняются. Идемпотентно. Выполняет мигратор при старте админки.
 -- ============================================================================
 
+-- Колонки из 2026-10-11_packages_sale_kinds.sql, которые читают вью ниже: по
+-- имени тот файл идёт ПОСЛЕ этого, и на чистой базе мигратор падал здесь на
+-- «column s.sale_kind does not exist». Ограничения (check) ставит тот файл.
+-- На живой базе этот файл уже выполнен — правка влияет только на новые базы.
+alter table public.memberships
+  add column if not exists kind text not null default 'package';
+alter table public.sales
+  add column if not exists sale_kind text;
+
 alter table public.sales
   add column if not exists trainer_id uuid references public.trainers(id) on delete set null,
   add column if not exists trainer_name text,
