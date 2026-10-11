@@ -106,15 +106,18 @@ Resend (хук в админке, `RESEND_API_KEY` у club40-admin).
 - Студия клиента: `useClientStudioId()` (`src/hooks/use-client-studio.ts`) —
   clients.studio_id с кэшем; гость/нет карточки → null → запросы без фильтра
   (поведение одной студии). Расписание фильтруется по ней; новости и услуги —
-  нет: приложение общее для всех студий (решение владельца 2026-10-10);
+  тоже: `.contains("studio_ids", [studioId])` — студии выбирают в админке
+  (решение владельца 2026-10-11; до того приложение было общим);
   тарифы — по студии из карточки клиента (memberships.tsx).
 - «Мои записи» всегда фильтровать `.eq("user_id", user.id)` явно — RLS
   разрешает тренеру видеть все брони студии.
 - Запись на тренировку — только через RPC `book_schedule_entry` /
   `cancel_schedule_booking` (атомарные, без овербукинга). Никаких прямых
   insert в schedule_bookings.
-- `club_settings` — глобальный синглтон (id = true), см. use-club-settings.
-- Обратная связь — внешняя ссылка (club_settings.feedback_url); приложение
+- «Контакты и правила» (ссылки кнопок главной, срок отмены записи) — свои у
+  студии: `studio_app_settings`, хук `use-club-settings`; клиент без
+  карточки — прежний синглтон `club_settings`.
+- Обратная связь — внешняя ссылка (`feedback_url`); приложение
   НЕ пишет в feedback/nps_responses.
 
 ## Типы
@@ -130,12 +133,12 @@ memberships, sales, bookings_log, client_stats_30d_mv...). TODO: полная
 
 Установка на рабочий стол (2026-10-11): манифест собирается на лету —
 `src/routes/manifest[.]webmanifest.ts`; иконка и подпись под значком —
-из админки («Приложение» → «Настройки», `club_settings.app_name` /
-`app_icon_path`, бакет `app-icons`), читает `src/lib/app-install.ts`
-(минутный кэш в памяти, при ошибке или без колонок — Base40 из `public/`).
+из админки («Приложение» → «Настройки», `app_install_settings` — строка
+на формат, `APP_FORMAT`; картинки — бакет `app-icons`), читает
+`src/lib/app-install.ts` (минутный кэш в памяти, при ошибке — Base40 из `public/`).
 В `<head>` их ставит loader корня (`__root.tsx`): фавикон,
 `apple-touch-icon`, `apple-mobile-web-app-title` (подпись на iOS).
-Одни настройки на обе сборки (app. и pack.).
+У app. и pack. — свои.
 
 Service worker пока нет (приложение без сети не открывается). Дальше:
 офлайн-страница, как у админки, и стратегия для расписания.

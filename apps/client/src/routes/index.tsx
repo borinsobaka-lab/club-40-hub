@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
 import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
+import { useClientStudioId } from "@/hooks/use-client-studio";
 
 import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
@@ -119,6 +120,7 @@ function HomePage() {
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const clubSettings = useClubSettings();
+  const { studioId, studioReady } = useClientStudioId();
 
   useEffect(() => {
     if (!user) {
@@ -232,13 +234,14 @@ function HomePage() {
   }, [user]);
 
   useEffect(() => {
+    if (!studioReady) return;
     let cancelled = false;
     const load = () => {
-      // Приложение общее для всех студий (решение владельца 2026-10-10):
-      // новости не фильтруются по студии клиента.
-      return supabase
-        .from("news")
-        .select("id,title,description,image_url,position")
+      // Новости — тех студий, что выбраны у новости в админке (studio_ids);
+      // клиент без карточки (студия неизвестна) видит все.
+      let q = supabase.from("news").select("id,title,description,image_url,position");
+      if (studioId) q = q.contains("studio_ids", [studioId]);
+      return q
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
         .then(({ data, error }) => {
@@ -264,15 +267,18 @@ function HomePage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [studioReady, studioId]);
 
   useEffect(() => {
+    if (!studioReady) return;
     let cancelled = false;
     const load = () => {
-      // Услуги общие для всех студий, как и новости.
-      return (supabase as any)
+      // Услуги — по студиям, как и новости.
+      let q = (supabase as any)
         .from("services")
-        .select("id,title,description,image_url,button_text,button_url,position")
+        .select("id,title,description,image_url,button_text,button_url,position");
+      if (studioId) q = q.contains("studio_ids", [studioId]);
+      return q
         .order("position", { ascending: true })
         .order("created_at", { ascending: false })
         .then(({ data, error }: { data: Service[] | null; error: unknown }) => {
@@ -294,7 +300,7 @@ function HomePage() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [studioReady, studioId]);
 
   return (
     <PageShell

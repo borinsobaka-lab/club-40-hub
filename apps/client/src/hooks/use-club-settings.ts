@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useClientStudioId } from "@/hooks/use-client-studio";
 
 export type ClubSettings = {
   write_url: string | null;
@@ -15,47 +16,64 @@ const DEFAULTS: ClubSettings = {
   cancel_booking_minutes: 180,
 };
 
-let cached: ClubSettings | null = null;
-let inflight: Promise<ClubSettings> | null = null;
+// Кэш на модуль по студии: настройки меняются редко, а читают их главная и
+// расписание.
+const cached = new Map<string, ClubSettings>();
+const inflight = new Map<string, Promise<ClubSettings>>();
 
-// club_settings — глобальный синглтон (одна строка, id = true), обе стороны
-// читают/пишут его без привязки к студии. В живой БД колонка studio_id уже
-// существует (в db/club_settings.sql её нет — дрейф схемы), но пока настройки
-// не станут пер-студийными осознанно, фильтровать здесь нечего.
+// «Контакты и правила» — у каждой студии свои: studio_app_settings
+// (db/migrations/2026-10-11_zzzzzzzzzz_app_content_by_studio.sql, правятся в
+// админке). Строки нет (новая студия) — значения по умолчанию. Клиент без
+// карточки (студия неизвестна) — прежний общий синглтон club_settings.
 // Ошибку пробрасываем: раньше сбой запроса превращался в DEFAULTS и
 // кэшировался до перезагрузки страницы (без быстрых действий и с чужим
 // дедлайном отмены), а отклонённый промис оставался в inflight навсегда.
-async function fetchSettings(): Promise<ClubSettings> {
-  const { data, error } = await supabase
-    .from("club_settings")
-    .select("write_url, call_url, feedback_url, cancel_booking_minutes")
-    .maybeSingle();
+async function fetchSettings(studioId: string | null): Promise<ClubSettings> {
+  const columns = "write_url, call_url, feedback_url, cancel_booking_minutes";
+  const { data, error } = studioId
+    ? await supabase
+        .from("studio_app_settings")
+        .select(columns)
+        .eq("studio_id", studioId)
+        .maybeSingle()
+    : await supabase.from("club_settings").select(columns).eq("id", true).maybeSingle();
   if (error) throw error;
   return data ? { ...DEFAULTS, ...data } : DEFAULTS;
 }
 
 export function useClubSettings(): ClubSettings {
-  const [s, setS] = useState<ClubSettings>(cached ?? DEFAULTS);
+  const { studioId, studioReady } = useClientStudioId();
+  const key = studioId ?? "";
+  const [s, setS] = useState<ClubSettings>(() => cached.get(key) ?? DEFAULTS);
   useEffect(() => {
-    if (cached) return;
+    if (!studioReady) return;
+    const hit = cached.get(key);
+    if (hit) {
+      setS(hit);
+      return;
+    }
     let cancelled = false;
-    if (!inflight) inflight = fetchSettings();
-    const current = inflight;
-    current
+    let current = inflight.get(key);
+    if (!current) {
+      current = fetchSettings(studioId);
+      inflight.set(key, current);
+    }
+    const promise = current;
+    promise
       .then((v) => {
-        cached = v;
+        cached.set(key, v);
         if (!cancelled) setS(v);
       })
       .catch(() => {
         // Остаёмся на DEFAULTS; следующее монтирование попробует снова.
       })
       .finally(() => {
-        if (inflight === current) inflight = null;
+        if (inflight.get(key) === promise) inflight.delete(key);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [studioReady, studioId, key]);
   return s;
 }
 

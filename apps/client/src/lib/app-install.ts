@@ -1,11 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
+import { APP_FORMAT } from "@/lib/app-format";
 
 /**
  * Иконка и подпись приложения для установки (PWA, «На экран „Домой“») и
  * фавикон. Задаются в админке: «Мобильное приложение» → «Настройки»
- * (club_settings.app_name / app_icon_path,
- * db/migrations/2026-10-11_app_install_settings.sql). Одни на обе сборки
- * (app. и pack.): мобильное приложение общее для всех студий.
+ * (app_install_settings — строка на формат клубов, то есть на приложение:
+ * у app. и pack. свои; db/migrations/2026-10-11_zzzzzzzzzz_app_content_by_studio.sql).
  *
  * app_icon_path — папка в публичном бакете app-icons с готовыми PNG (их
  * нарезает админка, apps/admin/src/lib/app-icons.ts — имена файлов те же).
@@ -72,10 +72,11 @@ let cached: { value: AppInstall; at: number } | null = null;
 export async function fetchAppInstall(): Promise<AppInstall> {
   if (cached && Date.now() - cached.at < TTL_MS) return cached.value;
   try {
+    // У каждого приложения (формата клубов) своя строка.
     const { data, error } = await supabase
-      .from("club_settings")
+      .from("app_install_settings")
       .select("app_name, app_icon_path")
-      .eq("id", true)
+      .eq("format", APP_FORMAT)
       .abortSignal(AbortSignal.timeout(2000))
       .maybeSingle();
     if (error) throw error;

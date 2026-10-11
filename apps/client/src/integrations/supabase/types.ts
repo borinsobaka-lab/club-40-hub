@@ -61,6 +61,28 @@ export type Database = {
         };
         Relationships: [];
       };
+      app_install_settings: {
+        /* patched: 2026-10-11_zzzzzzzzzz_app_content_by_studio.sql */
+        Row: {
+          app_icon_path: string | null;
+          app_name: string | null;
+          format: string;
+          updated_at: string;
+        };
+        Insert: {
+          app_icon_path?: string | null;
+          app_name?: string | null;
+          format: string;
+          updated_at?: string;
+        };
+        Update: {
+          app_icon_path?: string | null;
+          app_name?: string | null;
+          format?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       club_settings: {
         Row: {
           app_icon_path: string | null; /* patched: 2026-10-11_app_install_settings.sql */
@@ -173,6 +195,7 @@ export type Database = {
           image_url: string | null;
           position: number;
           studio_id: string; /* patched */
+          studio_ids: string[]; /* patched: 2026-10-11_zzzzzzzzzz_app_content_by_studio.sql */
           published: boolean;
           title: string;
           updated_at: string;
@@ -292,6 +315,34 @@ export type Database = {
       };
       /* patched: db/migrations/2026-10-09_studio_formats.sql; приложению studios
          доступна только на чтение — Insert/Update не описаны */
+      studio_app_settings: {
+        /* patched: 2026-10-11_zzzzzzzzzz_app_content_by_studio.sql */
+        Row: {
+          call_url: string | null;
+          cancel_booking_minutes: number;
+          feedback_url: string | null;
+          studio_id: string;
+          updated_at: string;
+          write_url: string | null;
+        };
+        Insert: {
+          call_url?: string | null;
+          cancel_booking_minutes?: number;
+          feedback_url?: string | null;
+          studio_id: string;
+          updated_at?: string;
+          write_url?: string | null;
+        };
+        Update: {
+          call_url?: string | null;
+          cancel_booking_minutes?: number;
+          feedback_url?: string | null;
+          studio_id?: string;
+          updated_at?: string;
+          write_url?: string | null;
+        };
+        Relationships: [];
+      };
       studios: {
         Row: {
           brand_color: string;
