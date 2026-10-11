@@ -114,8 +114,10 @@ export function buildEmail(
 
   switch (email_action_type) {
     case "signup":
-      // Саморегистрация есть только в клиентском приложении: в админке
-      // shouldCreateUser: false, сотрудников заводит владелец.
+      // Саморегистрации нет: учётную запись клиента GoTrue создаёт при первом
+      // входе в клиентское приложение, и только по карточке клиента с портала
+      // (db/migrations/…_client_signin_only.sql). В админке shouldCreateUser:
+      // false, сотрудников заводит владелец.
       return {
         subject: "Код подтверждения — Base40",
         html: codeEmail("Добро пожаловать в Base40!", "Ваш код подтверждения:", token),

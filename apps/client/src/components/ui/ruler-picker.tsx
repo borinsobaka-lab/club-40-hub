@@ -94,9 +94,7 @@ export function RulerPicker({
         <div className="text-5xl font-black tabular-nums leading-none">
           {value != null ? formatValue(value) : "—"}
         </div>
-        {unit && (
-          <div className="mt-1 text-xs text-muted-foreground uppercase tracking-wider">{unit}</div>
-        )}
+        {unit && <div className="mt-1 text-xs text-muted-foreground">{unit}</div>}
       </div>
 
       {/* Ruler */}

@@ -18,6 +18,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useClientStudio, type Studio } from "@/hooks/use-studios";
 import { APP_FORMAT, FORMAT_APP_URL } from "@/lib/app-format";
+import { DEFAULT_APP_INSTALL, fetchAppInstall } from "@/lib/app-install";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -79,40 +80,63 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
-      { title: "Base40" },
-      {
-        name: "description",
-        content: "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
-      },
-      { name: "theme-color", content: "#0a0a0a" },
-      { property: "og:title", content: "Base40" },
-      {
-        property: "og:description",
-        content: "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Base40" },
-      {
-        name: "twitter:description",
-        content: "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
-      },
-    ],
-    links: [
-      // Шрифт (Roboto) самохостится и подключён в styles.css. Обращений к
-      // Google Fonts нет намеренно: «Google Sans» там публично не раздаётся,
-      // так что прежние preconnect и stylesheet уходили впустую на каждой
-      // загрузке — и утекали на сторонний домен.
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
+  // Иконка и подпись приложения из админки (src/lib/app-install.ts) — для
+  // фавикона и установки на рабочий стол. Грузятся при серверном рендере;
+  // переходы внутри приложения их не перезапрашивают.
+  loader: () => fetchAppInstall(),
+  staleTime: Infinity,
+  head: ({ loaderData }) => {
+    const app = loaderData ?? DEFAULT_APP_INSTALL;
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
+        { title: "Base40" },
+        {
+          name: "description",
+          content:
+            "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
+        },
+        { name: "theme-color", content: "#0a0a0a" },
+        // Подпись под значком: Android берёт её из манифеста, iOS — отсюда.
+        { name: "application-name", content: app.name },
+        { name: "apple-mobile-web-app-title", content: app.name },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+        { property: "og:title", content: "Base40" },
+        {
+          property: "og:description",
+          content:
+            "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
+        },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: "Base40" },
+        {
+          name: "twitter:description",
+          content:
+            "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
+        },
+      ],
+      links: [
+        // Шрифт (Roboto) самохостится и подключён в styles.css. Обращений к
+        // Google Fonts нет намеренно: «Google Sans» там публично не раздаётся,
+        // так что прежние preconnect и stylesheet уходили впустую на каждой
+        // загрузке — и утекали на сторонний домен.
+        {
+          rel: "stylesheet",
+          href: appCss,
+        },
+        { rel: "icon", type: "image/png", sizes: "32x32", href: app.icons.favicon32 },
+        // /favicon.ico (Base40) — только без своей иконки: иначе часть браузеров
+        // предпочла бы его.
+        ...(app.custom ? [] : [{ rel: "icon", href: "/favicon.ico", sizes: "any" }]),
+        { rel: "apple-touch-icon", href: app.icons.appleTouch },
+        { rel: "manifest", href: "/manifest.webmanifest" },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -121,7 +145,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="ru">
+    // Формат приложения — для фирменного цвета (styles.css, --brand).
+    <html lang="ru" data-app-format={APP_FORMAT}>
       <head>
         <HeadContent />
       </head>

@@ -10,7 +10,7 @@ afterEach(() => {
 type Call = {
   url: string;
   headers: Record<string, string>;
-  body: { message?: Record<string, unknown>; from?: string };
+  body: Record<string, unknown>;
   signal?: AbortSignal | null;
 };
 function mockFetch(status: number, reply: unknown) {
@@ -28,64 +28,57 @@ function mockFetch(status: number, reply: unknown) {
 }
 
 describe("выбор провайдера", () => {
-  test("есть ключ Unisender Go — он", () =>
-    expect(mailProvider({ UNISENDER_GO_API_KEY: "u", RESEND_API_KEY: "r" })).toBe("unisender"));
-  test("только Resend — по-старому", () =>
-    expect(mailProvider({ RESEND_API_KEY: "r" })).toBe("resend"));
+  test("ключ Resend — он", () => expect(mailProvider({ RESEND_API_KEY: "r" })).toBe("resend"));
+  test("ключ Unisender Go больше не используется", () =>
+    expect(mailProvider({ UNISENDER_GO_API_KEY: "u" })).toBeNull());
   test("ничего — null", () => expect(mailProvider({})).toBeNull());
 });
 
 describe("sendMail", () => {
-  test("Unisender Go: формат запроса", async () => {
-    const calls = mockFetch(200, { status: "success", job_id: "j" });
+  test("Resend: формат запроса", async () => {
+    const calls = mockFetch(200, { id: "x" });
     const r = await sendMail(
       { to: ["a@b.ru", "c@d.ru"], subject: "Тема", html: "<p>Код<br>1234</p>" },
-      { UNISENDER_GO_API_KEY: "key", RESEND_API_KEY: "r" },
+      { RESEND_API_KEY: "re", UNISENDER_GO_API_KEY: "u" },
     );
     expect(r.ok).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe("https://go2.unisender.ru/ru/transactional/api/v1/email/send.json");
-    expect(calls[0].headers["X-API-KEY"]).toBe("key");
-    expect(calls[0].body.message).toEqual({
-      recipients: [{ email: "a@b.ru" }, { email: "c@d.ru" }],
-      from_email: "noreply@base40.fit",
-      from_name: "Base40",
+    expect(calls[0].url).toBe("https://api.resend.com/emails");
+    expect(calls[0].headers.Authorization).toBe("Bearer re");
+    expect(calls[0].body).toEqual({
+      from: "Base40 <noreply@base40.fit>",
+      to: ["a@b.ru", "c@d.ru"],
       subject: "Тема",
-      body: { html: "<p>Код<br>1234</p>", plaintext: "Код\n1234" },
-      track_links: 0,
-      track_read: 0,
+      html: "<p>Код<br>1234</p>",
+      text: "Код\n1234",
     });
   });
 
-  test("Unisender Go: status error — не ok, с message и code", async () => {
-    mockFetch(200, { status: "error", message: "invalid key", code: 102 });
+  test("Resend: ошибка — не ok, со статусом и телом ответа", async () => {
+    mockFetch(403, { message: "domain not verified" });
     const origErr = console.error;
     console.error = () => {};
-    const r = await sendMail(
-      { to: "a@b.ru", subject: "s", html: "h" },
-      { UNISENDER_GO_API_KEY: "k" },
-    );
+    const r = await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { RESEND_API_KEY: "k" });
     console.error = origErr;
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toContain("invalid key (code 102)");
+    if (!r.ok) expect(r.error).toContain("Resend 403");
+    if (!r.ok) expect(r.error).toContain("domain not verified");
   });
 
-  test("без ключа Unisender Go — Resend, как раньше", async () => {
-    const calls = mockFetch(200, { id: "x" });
-    const r = await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { RESEND_API_KEY: "re" });
-    expect(r.ok).toBe(true);
-    expect(calls[0].url).toBe("https://api.resend.com/emails");
-    expect(calls[0].body.from).toBe("Base40 <noreply@base40.fit>");
+  test("без ключа — не ok, запроса нет", async () => {
+    const calls = mockFetch(200, {});
+    const r = await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, {});
+    expect(r.ok).toBe(false);
+    expect(calls).toHaveLength(0);
   });
 });
 
 describe("sendMail: таймаут провайдера", () => {
-  test("у запроса есть сигнал отмены — оба провайдера", async () => {
-    const calls = mockFetch(200, { status: "success" });
-    await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { UNISENDER_GO_API_KEY: "k" });
+  test("у запроса есть сигнал отмены", async () => {
+    const calls = mockFetch(200, { id: "x" });
     await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { RESEND_API_KEY: "r" });
-    expect(calls).toHaveLength(2);
-    for (const c of calls) expect(c.signal).toBeInstanceOf(AbortSignal);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].signal).toBeInstanceOf(AbortSignal);
   });
 
   test("провайдер не ответил вовремя — не ok, без исключения", async () => {
@@ -94,10 +87,7 @@ describe("sendMail: таймаут провайдера", () => {
     }) as unknown as typeof fetch;
     const origErr = console.error;
     console.error = () => {};
-    const r = await sendMail(
-      { to: "a@b.ru", subject: "s", html: "h" },
-      { UNISENDER_GO_API_KEY: "k" },
-    );
+    const r = await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { RESEND_API_KEY: "k" });
     console.error = origErr;
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("timed out");

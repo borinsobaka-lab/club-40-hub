@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useClientStudioId } from "@/hooks/use-client-studio";
-import { APP_FORMAT, type StudioFormat } from "@/lib/app-format";
+import type { StudioFormat } from "@/lib/app-format";
 
 export type Studio = {
   id: string;
@@ -18,26 +18,8 @@ const STUDIO_COLUMNS = "id, name, format, brand_color, logo_url";
 
 // Таблица studios читается публично (db/migrations/2026-10-09_studio_formats.sql), в том числе до
 // входа. Пока миграция не выполнена, колонки format нет и запросы падают —
-// тогда хуки отдают undefined, и приложение ведёт себя как до разделения
-// форматов (без выбора студии и без проверки формата).
-
-/** Студии формата этого приложения — для выбора при регистрации. */
-export function useFormatStudios() {
-  return useQuery({
-    queryKey: ["studios", APP_FORMAT],
-    queryFn: async (): Promise<Studio[]> => {
-      const { data, error } = await supabase
-        .from("studios")
-        .select(STUDIO_COLUMNS)
-        .eq("format", APP_FORMAT)
-        .order("created_at");
-      if (error) throw error;
-      return (data ?? []) as Studio[];
-    },
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-}
+// тогда хук отдаёт null, и приложение ведёт себя как до разделения
+// форматов (без проверки формата).
 
 /** Студия текущего клиента (по карточке clients.studio_id). */
 export function useClientStudio(): Studio | null {

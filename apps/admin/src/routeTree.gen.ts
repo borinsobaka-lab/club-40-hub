@@ -33,7 +33,6 @@ import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/n
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClubSettingsRouteImport } from './routes/_authenticated/club-settings'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedClientMembershipsRouteImport } from './routes/_authenticated/client-memberships'
@@ -41,10 +40,16 @@ import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
 import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app-settings'
 import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenticated/admin-shifts'
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
+import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
 import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
+import { Route as AuthenticatedDashboardSalesRouteImport } from './routes/_authenticated/dashboard/sales'
+import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_authenticated/dashboard/marketing'
+import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
+import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -167,11 +172,6 @@ const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedClubSettingsRoute =
   AuthenticatedClubSettingsRouteImport.update({
     id: '/club-settings',
@@ -211,6 +211,12 @@ const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAppSettingsRoute =
+  AuthenticatedAppSettingsRouteImport.update({
+    id: '/app-settings',
+    path: '/app-settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminShiftsRoute =
   AuthenticatedAdminShiftsRouteImport.update({
     id: '/admin-shifts',
@@ -221,6 +227,12 @@ const AuthenticatedScriptsIndexRoute =
   AuthenticatedScriptsIndexRouteImport.update({
     id: '/scripts/',
     path: '/scripts/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardIndexRoute =
+  AuthenticatedDashboardIndexRouteImport.update({
+    id: '/dashboard/',
+    path: '/dashboard/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedScriptsSettingsRoute =
@@ -235,11 +247,36 @@ const AuthenticatedScriptsSectionIdRoute =
     path: '/scripts/$sectionId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDashboardSalesRoute =
+  AuthenticatedDashboardSalesRouteImport.update({
+    id: '/dashboard/sales',
+    path: '/dashboard/sales',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardMarketingRoute =
+  AuthenticatedDashboardMarketingRouteImport.update({
+    id: '/dashboard/marketing',
+    path: '/dashboard/marketing',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardClientsRoute =
+  AuthenticatedDashboardClientsRouteImport.update({
+    id: '/dashboard/clients',
+    path: '/dashboard/clients',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardClassesRoute =
+  AuthenticatedDashboardClassesRouteImport.update({
+    id: '/dashboard/classes',
+    path: '/dashboard/classes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -247,7 +284,6 @@ export interface FileRoutesByFullPath {
   '/client-memberships': typeof AuthenticatedClientMembershipsRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/club-settings': typeof AuthenticatedClubSettingsRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
@@ -269,13 +305,19 @@ export interface FileRoutesByFullPath {
   '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
+  '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
+  '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
+  '/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
+  '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -283,7 +325,6 @@ export interface FileRoutesByTo {
   '/client-memberships': typeof AuthenticatedClientMembershipsRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/club-settings': typeof AuthenticatedClubSettingsRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
@@ -306,8 +347,13 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/': typeof AuthenticatedIndexRoute
+  '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
+  '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
+  '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
+  '/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
+  '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRoutesById {
@@ -315,6 +361,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/_authenticated/app-settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/_authenticated/bookings-log': typeof AuthenticatedBookingsLogRoute
@@ -322,7 +369,6 @@ export interface FileRoutesById {
   '/_authenticated/client-memberships': typeof AuthenticatedClientMembershipsRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/club-settings': typeof AuthenticatedClubSettingsRoute
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
@@ -345,8 +391,13 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
+  '/_authenticated/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
+  '/_authenticated/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
+  '/_authenticated/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/_authenticated/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/_authenticated/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
+  '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
 }
 export interface FileRouteTypes {
@@ -355,6 +406,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin-shifts'
+    | '/app-settings'
     | '/assistant'
     | '/autorenew-cancellations'
     | '/bookings-log'
@@ -362,7 +414,6 @@ export interface FileRouteTypes {
     | '/client-memberships'
     | '/clients'
     | '/club-settings'
-    | '/dashboard'
     | '/employees'
     | '/feedback'
     | '/memberships'
@@ -384,13 +435,19 @@ export interface FileRouteTypes {
     | '/api/auth-email'
     | '/api/chat'
     | '/api/transcribe'
+    | '/dashboard/classes'
+    | '/dashboard/clients'
+    | '/dashboard/marketing'
+    | '/dashboard/sales'
     | '/scripts/$sectionId'
     | '/scripts/settings'
+    | '/dashboard/'
     | '/scripts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/admin-shifts'
+    | '/app-settings'
     | '/assistant'
     | '/autorenew-cancellations'
     | '/bookings-log'
@@ -398,7 +455,6 @@ export interface FileRouteTypes {
     | '/client-memberships'
     | '/clients'
     | '/club-settings'
-    | '/dashboard'
     | '/employees'
     | '/feedback'
     | '/memberships'
@@ -421,14 +477,20 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/transcribe'
     | '/'
+    | '/dashboard/classes'
+    | '/dashboard/clients'
+    | '/dashboard/marketing'
+    | '/dashboard/sales'
     | '/scripts/$sectionId'
     | '/scripts/settings'
+    | '/dashboard'
     | '/scripts'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin-shifts'
+    | '/_authenticated/app-settings'
     | '/_authenticated/assistant'
     | '/_authenticated/autorenew-cancellations'
     | '/_authenticated/bookings-log'
@@ -436,7 +498,6 @@ export interface FileRouteTypes {
     | '/_authenticated/client-memberships'
     | '/_authenticated/clients'
     | '/_authenticated/club-settings'
-    | '/_authenticated/dashboard'
     | '/_authenticated/employees'
     | '/_authenticated/feedback'
     | '/_authenticated/memberships'
@@ -459,8 +520,13 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/transcribe'
     | '/_authenticated/'
+    | '/_authenticated/dashboard/classes'
+    | '/_authenticated/dashboard/clients'
+    | '/_authenticated/dashboard/marketing'
+    | '/_authenticated/dashboard/sales'
     | '/_authenticated/scripts/$sectionId'
     | '/_authenticated/scripts/settings'
+    | '/_authenticated/dashboard/'
     | '/_authenticated/scripts/'
   fileRoutesById: FileRoutesById
 }
@@ -642,13 +708,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployeesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/club-settings': {
       id: '/_authenticated/club-settings'
       path: '/club-settings'
@@ -698,6 +757,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/app-settings': {
+      id: '/_authenticated/app-settings'
+      path: '/app-settings'
+      fullPath: '/app-settings'
+      preLoaderRoute: typeof AuthenticatedAppSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin-shifts': {
       id: '/_authenticated/admin-shifts'
       path: '/admin-shifts'
@@ -710,6 +776,13 @@ declare module '@tanstack/react-router' {
       path: '/scripts'
       fullPath: '/scripts/'
       preLoaderRoute: typeof AuthenticatedScriptsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/': {
+      id: '/_authenticated/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/scripts/settings': {
@@ -726,11 +799,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScriptsSectionIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard/sales': {
+      id: '/_authenticated/dashboard/sales'
+      path: '/dashboard/sales'
+      fullPath: '/dashboard/sales'
+      preLoaderRoute: typeof AuthenticatedDashboardSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/marketing': {
+      id: '/_authenticated/dashboard/marketing'
+      path: '/dashboard/marketing'
+      fullPath: '/dashboard/marketing'
+      preLoaderRoute: typeof AuthenticatedDashboardMarketingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/clients': {
+      id: '/_authenticated/dashboard/clients'
+      path: '/dashboard/clients'
+      fullPath: '/dashboard/clients'
+      preLoaderRoute: typeof AuthenticatedDashboardClientsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/classes': {
+      id: '/_authenticated/dashboard/classes'
+      path: '/dashboard/classes'
+      fullPath: '/dashboard/classes'
+      preLoaderRoute: typeof AuthenticatedDashboardClassesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminShiftsRoute: typeof AuthenticatedAdminShiftsRoute
+  AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedAutorenewCancellationsRoute: typeof AuthenticatedAutorenewCancellationsRoute
   AuthenticatedBookingsLogRoute: typeof AuthenticatedBookingsLogRoute
@@ -738,7 +840,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientMembershipsRoute: typeof AuthenticatedClientMembershipsRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedClubSettingsRoute: typeof AuthenticatedClubSettingsRoute
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
@@ -758,13 +859,19 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTrainersRoute: typeof AuthenticatedTrainersRoute
   AuthenticatedWorkoutsRoute: typeof AuthenticatedWorkoutsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
+  AuthenticatedDashboardClientsRoute: typeof AuthenticatedDashboardClientsRoute
+  AuthenticatedDashboardMarketingRoute: typeof AuthenticatedDashboardMarketingRoute
+  AuthenticatedDashboardSalesRoute: typeof AuthenticatedDashboardSalesRoute
   AuthenticatedScriptsSectionIdRoute: typeof AuthenticatedScriptsSectionIdRoute
   AuthenticatedScriptsSettingsRoute: typeof AuthenticatedScriptsSettingsRoute
+  AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminShiftsRoute: AuthenticatedAdminShiftsRoute,
+  AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedAutorenewCancellationsRoute:
     AuthenticatedAutorenewCancellationsRoute,
@@ -773,7 +880,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientMembershipsRoute: AuthenticatedClientMembershipsRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedClubSettingsRoute: AuthenticatedClubSettingsRoute,
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
@@ -793,8 +899,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTrainersRoute: AuthenticatedTrainersRoute,
   AuthenticatedWorkoutsRoute: AuthenticatedWorkoutsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
+  AuthenticatedDashboardClientsRoute: AuthenticatedDashboardClientsRoute,
+  AuthenticatedDashboardMarketingRoute: AuthenticatedDashboardMarketingRoute,
+  AuthenticatedDashboardSalesRoute: AuthenticatedDashboardSalesRoute,
   AuthenticatedScriptsSectionIdRoute: AuthenticatedScriptsSectionIdRoute,
   AuthenticatedScriptsSettingsRoute: AuthenticatedScriptsSettingsRoute,
+  AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,
 }
 

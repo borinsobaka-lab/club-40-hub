@@ -13,18 +13,22 @@ import {
   Card,
   ChartSquare,
   ChatRoundDots,
+  ClipboardCheck,
   ClipboardRemove,
   DocumentText,
   Dumbbell,
+  GraphUp,
   History,
   HomeSmile,
   MoneyBag,
   Notebook,
+  PieChart2,
   Settings,
   ShieldUser,
   Smartphone,
   StarsMinimalistic,
   TagPrice,
+  Target,
   TicketSale,
   UserId,
   UsersGroupRounded,
@@ -40,6 +44,7 @@ import {
   type AdminAccess,
   type ClubSectionKey,
 } from "@/lib/admin-access";
+import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
 export type RailSectionKey =
@@ -179,6 +184,18 @@ export const DASHBOARD_ITEM: ClubNavItem = {
   section: "dashboard",
 };
 
+/**
+ * Меню раздела «Дашборд»: подразделы показателей. Как и сам дашборд, они
+ * над клубами — на каждой странице все клубы сотрудника, где открыт дашборд.
+ */
+export const DASHBOARD_ITEMS: NavItem[] = [
+  { title: DASHBOARD_TITLES.overview, url: DASHBOARD_ITEM.url, icon: PieChart2, exact: true },
+  { title: DASHBOARD_TITLES.sales, url: "/dashboard/sales", icon: GraphUp },
+  { title: DASHBOARD_TITLES.clients, url: "/dashboard/clients", icon: UsersGroupRounded },
+  { title: DASHBOARD_TITLES.classes, url: "/dashboard/classes", icon: Dumbbell },
+  { title: DASHBOARD_TITLES.marketing, url: "/dashboard/marketing", icon: Target },
+];
+
 /** Разделы студии в форме «Доступов»: дашборд и меню клуба. */
 export const STUDIO_SECTION_GROUPS: NavGroup<ClubNavItem>[] = [
   { key: "dashboard", label: "Дашборд", items: [DASHBOARD_ITEM] },
@@ -195,7 +212,10 @@ export const MOBILE_APP_ITEMS: NavItem[] = [
   { title: "Услуги", url: "/services", icon: StarsMinimalistic },
   { title: "Пуш-уведомления", url: "/push", icon: BellBing },
   { title: "Триггеры", url: "/push-triggers", icon: Bolt },
-  { title: "Настройки клуба", url: "/club-settings", icon: Settings },
+  // Ссылки кнопок главного экрана и срок отмены записи (club_settings).
+  { title: "Контакты и правила", url: "/club-settings", icon: ClipboardCheck },
+  // Установка приложения: иконка и подпись под значком (PWA).
+  { title: "Настройки", url: "/app-settings", icon: Settings },
 ];
 
 /**
@@ -215,8 +235,14 @@ export const SCRIPTS_SETTINGS_URL = "/scripts/settings";
 
 /** Раздел без url — заготовка: виден в рейке, но не нажимается. */
 export const SECTIONS: RailSection[] = [
-  // Над студиями: своего меню нет, справа остаётся меню клуба.
-  { key: "dashboard", title: "Дашборд", url: DASHBOARD_ITEM.url, icon: Widget5 },
+  // Над студиями: своё меню — подразделы дашборда.
+  {
+    key: "dashboard",
+    title: "Дашборд",
+    url: DASHBOARD_ITEM.url,
+    icon: Widget5,
+    paths: DASHBOARD_ITEMS.map((i) => i.url),
+  },
   // Вход в клуб — первая страница его меню; закрытую в активной студии
   // AccessGate сменит на первую доступную.
   { key: "club", title: "Клуб", url: CLUB_GROUPS[0].items[0].url, icon: HomeSmile },

@@ -256,7 +256,7 @@ function ProfilePage() {
     <PageShell
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black uppercase">Профиль</h1>
+          <h1 className="text-3xl font-black">Профиль</h1>
           <p className="text-sm text-white/70">Ваши данные и настройки</p>
         </div>
       }
@@ -408,7 +408,7 @@ function ProfileField({ label, value }: { label: string; value?: string | null }
   const isEmpty = !value || value.length === 0;
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-[11px] text-muted-foreground">{label}</dt>
       <dd
         className={`mt-0.5 text-sm font-medium break-words ${isEmpty ? "text-muted-foreground/60 italic" : ""}`}
       >

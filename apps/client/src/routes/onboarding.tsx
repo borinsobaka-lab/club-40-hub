@@ -252,7 +252,7 @@ function OnboardingPage() {
     return (
       <Shell>
         <div className="flex-1 flex flex-col justify-center px-6 text-center">
-          <h1 className="text-3xl font-black uppercase leading-tight">
+          <h1 className="text-3xl font-black leading-tight">
             Пара вопросов — и мы подстроим тренировки под вас
           </h1>
           <p className="mt-4 text-base text-muted-foreground">
@@ -276,7 +276,7 @@ function OnboardingPage() {
           <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center mb-6">
             <CheckCircle className="h-9 w-9 text-primary-foreground" weight="BoldDuotone" />
           </div>
-          <h1 className="text-2xl font-black uppercase leading-tight">
+          <h1 className="text-2xl font-black leading-tight">
             Готово. Подготовим ваше первое занятие под вас.
           </h1>
           <p className="mt-3 text-base text-muted-foreground">До встречи в студии.</p>
@@ -443,7 +443,7 @@ function OptionButton({
 function StepTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-5">
-      <h2 className="text-2xl font-black uppercase leading-tight">{title}</h2>
+      <h2 className="text-2xl font-black leading-tight">{title}</h2>
       {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
     </div>
   );
@@ -671,7 +671,7 @@ function StepBody({
     <div>
       <StepTitle
         title="Базовые параметры — чтобы правильно рассчитать статистику"
-        subtitle="Эти данные доступны только вам."
+        subtitle="Эти данные увидите только вы и тренеры клуба."
       />
       <div className="space-y-7">
         <div>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { APP_FORMAT } from "@/lib/app-format";
 
 type AuthCtx = {
   session: Session | null;
@@ -8,24 +9,13 @@ type AuthCtx = {
   loading: boolean;
   /**
    * Отправляет код входа на почту (письмо уходит с noreply@base40.fit через
-   * SMTP, настроенный в Supabase). При signup=true создаёт пользователя с
-   * метаданными — их читает триггер handle_new_user (db/auth_trigger.sql
-   * в репозитории админки).
+   * хук писем админки). Регистрации в приложении нет: войти может только тот,
+   * чья почта есть в карточке клиента на портале. При первом входе GoTrue
+   * создаёт учётную запись, а триггер handle_new_user привязывает её к
+   * карточке или отказывает, если карточки нет
+   * (db/migrations/…_client_signin_only.sql).
    */
-  requestOtp: (
-    email: string,
-    opts?: {
-      signup?: boolean;
-      firstName?: string;
-      lastName?: string;
-      phone?: string;
-      /**
-       * Студия нового клиента (формата этого приложения). Без неё триггер
-       * запишет клиента в самую старую студию — то есть в подписочную.
-       */
-      studioId?: string;
-    },
-  ) => Promise<{ error: string | null }>;
+  requestOtp: (email: string) => Promise<{ error: string | null }>;
   /** Проверяет код из письма. Успех = сессия появляется через onAuthStateChange. */
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -69,32 +59,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     user,
     loading,
-    requestOtp: async (email, opts) => {
-      const signup = opts?.signup ?? false;
-      const firstName = opts?.firstName?.trim() ?? "";
-      const lastName = opts?.lastName?.trim() ?? "";
-      const fullName = [lastName, firstName].filter(Boolean).join(" ").trim();
+    requestOtp: async (email) => {
       // emailRedirectTo задаём явно, хотя вход идёт по коду: по хосту в нём
       // обработчик писем (admin: /api/auth-email) отличает клиентское
-      // приложение от админки и шлёт код, а не ссылку авто-входа. Без этого
-      // Supabase подставит Site URL (= админка), и клиенту уйдёт письмо
-      // админки.
+      // приложение от админки. Без этого Supabase подставит Site URL
+      // (= админка), и клиенту уйдёт письмо админки.
       const emailRedirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: signup
-          ? {
-              shouldCreateUser: true,
-              emailRedirectTo,
-              data: {
-                first_name: firstName,
-                last_name: lastName,
-                full_name: fullName,
-                phone: opts?.phone?.trim() ?? "",
-                ...(opts?.studioId ? { studio_id: opts.studioId } : {}),
-              },
-            }
-          : { shouldCreateUser: false, emailRedirectTo },
+        options: {
+          // Учётную запись создаём при первом входе — но только для почты из
+          // карточки клиента (проверяет триггер в базе, не фронтенд).
+          shouldCreateUser: true,
+          emailRedirectTo,
+          // Формат приложения: если карточки с этой почтой есть в студиях
+          // обоих форматов, триггер привяжет карточку студии этого формата.
+          data: { app_format: APP_FORMAT },
+        },
       });
       return { error: error?.message ?? null };
     },

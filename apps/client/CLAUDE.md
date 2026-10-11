@@ -23,12 +23,20 @@ DEPLOY.md, раздел «Второе приложение».
 - Подписочное приложение не ломаем: экраны пакетного формата — в
   `src/formats/packages/` (появятся с первой задачей), выбор по `APP_FORMAT`;
   общие экраны (вход, профиль, новости) — общие.
-- Регистрация передаёт `studio_id` студии своего формата (`useFormatStudios`,
-  `src/hooks/use-studios.ts`): одна студия — молча, несколько — выбор в форме.
+- Регистрации нет (решение владельца 2026-10-11) — см. «Авторизация».
 - Клиент студии другого формата видит экран «Ваша студия — в другом
   приложении» (`OtherAppScreen` в `__root.tsx`, студия — `useClientStudio`).
-- Цвет и логотип студии (`studios.brand_color`/`logo_url`) приходят, но пока
-  не применяются: у приложения свой жёлтый `--primary`.
+- Фирменный цвет — по формату приложения: `--brand`/`--brand-foreground` в
+  `src/styles.css`, атрибут `data-app-format` на `<html>` (`RootShell` в
+  `__root.tsx`). Подписочное — `#FFD900`, текст на кнопках тёмно-серый
+  `#333`; пакетное — `#F763FC`, текст белый (решение владельца 2026-10-11).
+  `--primary` = `--brand`; цвета бренда в коде не хардкодить — только
+  `primary`/`primary-foreground` (жёлтые пятна шапки и свечение кнопки
+  ассистента в пакетном переводит `hue-rotate` в конце `styles.css`).
+  Цвет и логотип студии (`studios.brand_color`/`logo_url`) приходят, но не
+  применяются.
+- Надписей заглавными буквами (`uppercase`, капс в тексте) нет — заголовки и
+  подписи пишутся «как в предложении» (решение владельца 2026-10-11).
 - Пока в базе нет `db/migrations/2026-10-09_studio_formats.sql`, запросы к `studios` падают — хуки
   отдают undefined, и приложение работает как до разделения форматов.
 
@@ -72,11 +80,23 @@ Dashboard. Edge Functions нет.
 Вход по email-коду (6 цифр — Supabase не даёт менять длину; константы
 OTP_LENGTH и RESEND_COOLDOWN_SEC = 60 в src/routes/auth.tsx — повторная
 отправка кода заблокирована на минуту с обратным отсчётом): `requestOtp`/`verifyOtp` в
-`src/hooks/use-auth.tsx` (signInWithOtp / verifyOtp type=email). Регистрация
-передаёт метаданные (first_name, last_name, full_name, phone) — их читает
-триггер handle_new_user. Паролей у клиентов НЕТ; настройка писем и длины кода
-в Supabase — см. AUTH_SETUP.md в корне репозитория. Письма уходят с noreply@base40.fit через Unisender Go (хук в админке,
-`UNISENDER_GO_API_KEY` у club40-admin; без ключа — по-старому Resend).
+`src/hooks/use-auth.tsx` (signInWithOtp / verifyOtp type=email).
+
+**Регистрации нет** (решение владельца 2026-10-11): на экране входа только
+почта. Войти может лишь член клуба, которого завели на портале (карточка
+`clients` с этой почтой). `requestOtp` шлёт `shouldCreateUser: true` и
+`app_format`: при первом входе GoTrue создаёт учётную запись, а триггер
+`handle_new_user` (`db/migrations/2026-10-11_zzzzzzzzz_client_signin_only.sql`)
+привязывает её к карточке или отказывает — GoTrue отвечает «Database error
+saving new user», экран показывает «почта не найдена среди членов клуба».
+Граница — в базе, не во фронтенде. `GOTRUE_DISABLE_SIGNUP` должен быть
+`false`, иначе впервые войти нельзя. После входа — онбординг (`/onboarding`,
+`member_profiles`): ответы видны на портале в карточке клиента, вкладка
+«Анкета».
+
+Паролей у клиентов НЕТ; настройка писем и длины кода в Supabase — см.
+AUTH_SETUP.md в корне репозитория. Письма уходят с noreply@base40.fit через
+Resend (хук в админке, `RESEND_API_KEY` у club40-admin).
 
 ## Данные и мультистудийность
 
@@ -103,8 +123,16 @@ OTP_LENGTH и RESEND_COOLDOWN_SEC = 60 в src/routes/auth.tsx — повторн
 memberships, sales, bookings_log, client_stats_30d_mv...). TODO: полная
 регенерация `supabase gen types typescript` (нужен access token владельца).
 
-## PWA (следующий этап)
+## PWA
 
-Манифеста и service worker пока нет. Перед PWA: самостоятельный хостинг
-шрифтов (сейчас Google Sans с CDN Google; учесть лицензию — шрифт
-проприетарный), офлайн-стратегия для расписания.
+Установка на рабочий стол (2026-10-11): манифест собирается на лету —
+`src/routes/manifest[.]webmanifest.ts`; иконка и подпись под значком —
+из админки («Приложение» → «Настройки», `club_settings.app_name` /
+`app_icon_path`, бакет `app-icons`), читает `src/lib/app-install.ts`
+(минутный кэш в памяти, при ошибке или без колонок — Base40 из `public/`).
+В `<head>` их ставит loader корня (`__root.tsx`): фавикон,
+`apple-touch-icon`, `apple-mobile-web-app-title` (подпись на iOS).
+Одни настройки на обе сборки (app. и pack.).
+
+Service worker пока нет (приложение без сети не открывается). Дальше:
+офлайн-страница, как у админки, и стратегия для расписания.

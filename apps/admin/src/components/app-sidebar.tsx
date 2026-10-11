@@ -6,6 +6,7 @@ import { AppRail } from "@/components/app-rail";
 import {
   ACCESS_ITEMS,
   CLUB_GROUPS,
+  DASHBOARD_ITEMS,
   MOBILE_APP_ITEMS,
   SCRIPTS_SETTINGS_URL,
   SCRIPTS_URL,
@@ -48,6 +49,10 @@ import {
  * раздела — в шапке, группе хватит нейтральной подписи.
  */
 const SECTION_MENUS: Partial<Record<RailSectionKey, { title: string; groups: NavGroup[] }>> = {
+  dashboard: {
+    title: "Дашборд",
+    groups: [{ key: "dashboard", label: "Разделы", items: DASHBOARD_ITEMS }],
+  },
   staff: {
     title: "Сотрудники",
     groups: [{ key: "staff", label: "Разделы", items: STAFF_ITEMS }],

@@ -21,6 +21,21 @@ import {
   isScheduleSkeletonCell,
   readSkeletonFormat,
 } from "@/lib/page-skeleton-layout";
+import {
+  CLIENTS_CHARTS,
+  CLIENTS_GRID,
+  CLIENTS_STATS,
+  DASHBOARD_CHART_HEIGHT,
+  DASHBOARD_PIE_HEIGHT,
+  DASHBOARD_RANK_HEIGHT,
+  DASHBOARD_TITLES,
+  OVERVIEW_CHARTS,
+  OVERVIEW_GRID,
+  OVERVIEW_STATS,
+  SALES_CHARTS,
+  SALES_GRID,
+  SALES_STATS,
+} from "@/lib/dashboard-stats";
 
 /*
  * Скелетоны страниц админки — по одному на раздел, каждый повторяет
@@ -178,23 +193,87 @@ export function AuthPageSkeleton() {
 // ---------------------------------------------------------------------------
 // Дашборд
 
-/** Десять плиток показателей — сетка как у настоящих (dashboard.tsx, STATS). */
-export function DashboardStatsSkeleton() {
+/**
+ * Плитки показателей подраздела дашборда — подписи настоящие, болванки на
+ * месте значения и сравнения (components/dashboard/stat-cards.tsx).
+ */
+export function DashboardStatsSkeleton({
+  labels,
+  className,
+}: {
+  labels: string[];
+  className: string;
+}) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 10 }, (_, i) => (
-        <div key={i} className="rounded-lg border bg-background p-3 sm:p-4">
-          <Skeleton className="h-4 w-full max-w-32" />
-          <Skeleton className="mt-3 h-7 w-24" />
-          <Skeleton className="mt-2 h-3 w-20" />
+    <div className={cn("grid grid-cols-2 gap-2 sm:gap-3", className)}>
+      {labels.map((label) => (
+        <div key={label} className="rounded-lg border bg-background px-3 py-2.5 sm:px-4 sm:py-3">
+          <p className="text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
+          <Skeleton className="mt-1.5 h-6 w-24" />
+          <Skeleton className="mt-1.5 h-3 w-20" />
         </div>
       ))}
     </div>
   );
 }
 
-/** Блок одного клуба: название, период, плитки. */
-export function DashboardStudioSkeleton() {
+/** Панель графика дашборда: настоящий заголовок, болванка графика (components/dashboard/chart-panel.tsx). */
+export function DashboardChartSkeleton({
+  title,
+  height,
+  className,
+  children,
+}: {
+  title: string;
+  height?: number;
+  className?: string;
+  /** Своя болванка вместо прямоугольника графика (рейтинг, круговая). */
+  children?: ReactNode;
+}) {
+  return (
+    <section className={cn("min-w-0 rounded-lg border bg-background p-3 sm:p-4", className)}>
+      <h3 className="mb-3 text-sm font-semibold">{title}</h3>
+      {children ?? <Skeleton className="w-full" style={{ height }} />}
+    </section>
+  );
+}
+
+/** «Топ 10»: место, имя с полосой, значение (RankList). */
+export function DashboardRankSkeleton({ rows = 10 }: { rows?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-x-2">
+          <Skeleton className="h-3 w-3" />
+          <div>
+            <Skeleton className="h-4 w-40 max-w-full" />
+            <Skeleton className="mt-1 h-1.5 w-full" />
+          </div>
+          <Skeleton className="h-4 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Круговая диаграмма с легендой (PiePlot + PieLegend). */
+export function DashboardPieSkeleton({ height, rows = 3 }: { height: number; rows?: number }) {
+  return (
+    <>
+      <div className="flex items-center justify-center" style={{ height }}>
+        <Skeleton className="aspect-square h-[90%] rounded-full" />
+      </div>
+      <div className="mt-3 space-y-1.5">
+        {Array.from({ length: rows }, (_, i) => (
+          <Skeleton key={i} className="h-5 w-full" />
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** Блок одного клуба: название, период и тело подраздела. */
+export function DashboardStudioSkeleton({ children }: { children: ReactNode }) {
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2">
@@ -205,15 +284,132 @@ export function DashboardStudioSkeleton() {
         search={false}
         controls={["toolbar-full w-48", { label: "Текущий месяц", icon: false }]}
       />
-      <DashboardStatsSkeleton />
+      {children}
     </section>
+  );
+}
+
+/** «Общие показатели»: плитки, выручка по дням, продления и посещения. */
+export function DashboardOverviewSkeleton() {
+  return (
+    <>
+      <DashboardStatsSkeleton
+        labels={OVERVIEW_STATS.map((s) => s.label)}
+        className={OVERVIEW_GRID}
+      />
+      <DashboardChartSkeleton
+        title={OVERVIEW_CHARTS.revenue.title}
+        height={DASHBOARD_CHART_HEIGHT}
+      />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <DashboardChartSkeleton
+          title={OVERVIEW_CHARTS.rates.title}
+          height={DASHBOARD_CHART_HEIGHT}
+        />
+        <DashboardChartSkeleton
+          title={OVERVIEW_CHARTS.visits.title}
+          height={DASHBOARD_CHART_HEIGHT}
+        />
+      </div>
+    </>
   );
 }
 
 export function DashboardPageSkeleton() {
   return (
-    <ShellSkeleton title="Дашборд">
-      <DashboardStudioSkeleton />
+    <ShellSkeleton title={DASHBOARD_TITLES.overview}>
+      <DashboardStudioSkeleton>
+        <DashboardOverviewSkeleton />
+      </DashboardStudioSkeleton>
+    </ShellSkeleton>
+  );
+}
+
+/** «Продажи»: плитки, три круговые, два рейтинга. */
+export function DashboardSalesSkeleton() {
+  return (
+    <>
+      <DashboardStatsSkeleton labels={SALES_STATS.map((s) => s.label)} className={SALES_GRID} />
+      <div className="grid gap-3 lg:grid-cols-3">
+        {[SALES_CHARTS.origin, SALES_CHARTS.methods, SALES_CHARTS.subjects].map((c) => (
+          <DashboardChartSkeleton key={c.title} title={c.title}>
+            <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} />
+          </DashboardChartSkeleton>
+        ))}
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {[SALES_CHARTS.topMemberships, SALES_CHARTS.topSellers].map((c) => (
+          <DashboardChartSkeleton key={c.title} title={c.title}>
+            <DashboardRankSkeleton />
+          </DashboardChartSkeleton>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export function DashboardSalesPageSkeleton() {
+  return (
+    <ShellSkeleton title={DASHBOARD_TITLES.sales}>
+      <DashboardStudioSkeleton>
+        <DashboardSalesSkeleton />
+      </DashboardStudioSkeleton>
+    </ShellSkeleton>
+  );
+}
+
+/** «Клиенты»: плитки, возраст и топ по посещениям, топ по LTV. */
+export function DashboardClientsSkeleton() {
+  return (
+    <>
+      <DashboardStatsSkeleton labels={CLIENTS_STATS.map((s) => s.label)} className={CLIENTS_GRID} />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <DashboardChartSkeleton title={CLIENTS_CHARTS.ages.title} height={DASHBOARD_RANK_HEIGHT} />
+        <DashboardChartSkeleton title={CLIENTS_CHARTS.topVisits.title}>
+          <DashboardRankSkeleton />
+        </DashboardChartSkeleton>
+      </div>
+      <DashboardChartSkeleton title={CLIENTS_CHARTS.topLtv.title}>
+        <DashboardRankSkeleton />
+      </DashboardChartSkeleton>
+    </>
+  );
+}
+
+export function DashboardClientsPageSkeleton() {
+  return (
+    <ShellSkeleton title={DASHBOARD_TITLES.clients}>
+      <DashboardStudioSkeleton>
+        <DashboardClientsSkeleton />
+      </DashboardStudioSkeleton>
+    </ShellSkeleton>
+  );
+}
+
+/**
+ * Подраздел дашборда в разработке («Занятия», «Маркетинг»): данных у него
+ * нет, поэтому страница и её скелетон рисуют одно и то же.
+ */
+export function DashboardSoon() {
+  return (
+    <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+      Раздел в разработке — показатели появятся здесь позже.
+    </div>
+  );
+}
+
+export function DashboardClassesPageSkeleton() {
+  return (
+    <ShellSkeleton title={DASHBOARD_TITLES.classes}>
+      <DashboardSoon />
+    </ShellSkeleton>
+  );
+}
+
+export function DashboardMarketingPageSkeleton() {
+  return (
+    <ShellSkeleton title={DASHBOARD_TITLES.marketing}>
+      <DashboardSoon />
     </ShellSkeleton>
   );
 }
@@ -760,7 +956,7 @@ export function PushTriggersPageSkeleton() {
   );
 }
 
-/** Форма «Настроек клуба»: две секции, 3 и 1 поле. */
+/** Форма «Контактов и правил» (/club-settings): две секции, 3 и 1 поле. */
 export function ClubSettingsFormSkeleton() {
   return (
     <div className="max-w-2xl space-y-8">
@@ -784,8 +980,45 @@ export function ClubSettingsFormSkeleton() {
 
 export function ClubSettingsPageSkeleton() {
   return (
-    <ShellSkeleton title="Настройки клуба" actions={[{ label: "Сохранить" }]}>
+    <ShellSkeleton title="Контакты и правила" actions={[{ label: "Сохранить" }]}>
       <ClubSettingsFormSkeleton />
+    </ShellSkeleton>
+  );
+}
+
+/** Форма «Настроек приложения»: иконка, подпись, предпросмотр. */
+export function AppSettingsFormSkeleton() {
+  return (
+    <div className="max-w-2xl space-y-8">
+      <div className="space-y-4 rounded-lg border bg-background p-6">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-16 w-16 rounded-[22%]" />
+            <Skeleton className="h-8 w-24 rounded-full" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-10 w-full max-w-80" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-36 w-44 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AppSettingsPageSkeleton() {
+  return (
+    <ShellSkeleton title="Настройки приложения" actions={[{ label: "Сохранить" }]}>
+      <AppSettingsFormSkeleton />
     </ShellSkeleton>
   );
 }

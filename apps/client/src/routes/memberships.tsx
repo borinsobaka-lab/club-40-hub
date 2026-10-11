@@ -409,7 +409,7 @@ function MembershipsPage() {
       scrollKey={activeTab}
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black uppercase">Абонементы</h1>
+          <h1 className="text-3xl font-black">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
           {!loading &&
             user &&
@@ -764,9 +764,7 @@ function MembershipCard({
         className="p-5 border-t border-card-border"
         style={{ minHeight: bottomMinHeight }}
       >
-        <div className="text-xs font-bold tracking-wider text-muted-foreground mb-3">
-          ПРЕИМУЩЕСТВА
-        </div>
+        <div className="text-xs font-bold text-muted-foreground mb-3">Преимущества</div>
         <div className="space-y-2">
           {features.map((f, i) => (
             <div key={i} className="flex items-start gap-2 text-sm">
@@ -878,9 +876,7 @@ function CheckoutSheet({
 
             {/* Card */}
             <div className="mt-4">
-              <div className="text-xs font-bold tracking-wider text-muted-foreground mb-2">
-                БАНКОВСКАЯ КАРТА
-              </div>
+              <div className="text-xs font-bold text-muted-foreground mb-2">Банковская карта</div>
               <Input
                 inputMode="numeric"
                 placeholder="0000 0000 0000 0000"
