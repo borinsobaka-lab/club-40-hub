@@ -12,10 +12,13 @@ import { KateChat } from "@/components/kate-chat";
 export function AdminShell({
   title,
   actions,
+  canvas = "default",
   children,
 }: {
   title: string;
   actions?: ReactNode;
+  /** Подложка рабочей области: обычная (--canvas) или белая (расписание пакетных студий). */
+  canvas?: "default" | "white";
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -87,7 +90,11 @@ export function AdminShell({
         </div>
       </header>
       {/* На телефоне поля рабочей области уже: p-6 съедал 48px из 390. */}
-      <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">{children}</main>
+      <main
+        className={`flex-1 overflow-auto p-3 sm:p-4 lg:p-6 ${canvas === "white" ? "bg-background" : ""}`}
+      >
+        {children}
+      </main>
 
       <DialogPrimitive.Root open={kateOpen} onOpenChange={setKateOpen}>
         <DialogPrimitive.Portal>
