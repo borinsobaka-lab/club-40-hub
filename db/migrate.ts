@@ -53,17 +53,19 @@ export async function runMigrations(
 ): Promise<string[]> {
   const conn = await db.reserve();
   try {
-    await conn.unsafe(`
-      create schema if not exists app_migrations;
-      revoke all on schema app_migrations from public;
-      create table if not exists app_migrations.applied (
-        name text primary key,
-        checksum text not null,
-        applied_at timestamptz not null default now()
-      );
-    `);
+    // Сначала блокировка, потом служебная таблица: два контейнера, стартующие
+    // одновременно на новой базе, иначе падали бы на дубликате при create.
     await conn.unsafe(`select pg_advisory_lock(${LOCK_KEY})`);
     try {
+      await conn.unsafe(`
+        create schema if not exists app_migrations;
+        revoke all on schema app_migrations from public;
+        create table if not exists app_migrations.applied (
+          name text primary key,
+          checksum text not null,
+          applied_at timestamptz not null default now()
+        );
+      `);
       const rows = (await conn.unsafe(`select name, checksum from app_migrations.applied`)) as {
         name: string;
         checksum: string;
