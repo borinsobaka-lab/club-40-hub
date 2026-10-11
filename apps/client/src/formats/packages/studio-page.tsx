@@ -17,12 +17,14 @@ import { useViewedStudioName, useViewedStudioId } from "@/hooks/use-viewed-studi
 import { FormattedText } from "@/lib/formatted-text";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
+import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
 
 /**
  * «Студия» пакетного приложения (до 2026-10-11 — заглушка «Клуб»): вкладки
  * «Информация» (фото, описание, карты, Instagram — studio_app_settings,
  * правятся в админке: «Мобильное приложение» → «Контакты и правила») и
- * «Тренеры» (тренеры студии с биографией — «Сотрудники» в админке).
+ * «Тренеры» (тренеры студии с биографией, рейтингом и чаевыми —
+ * «Сотрудники» в админке; рейтинг и оценка — trainer-rating.tsx).
  * Студия — смотримая (переключатель на главной).
  */
 
@@ -40,6 +42,9 @@ type StudioTrainer = {
   photo_url: string | null;
   bio: string | null;
   role: string | null;
+  rating_avg: number | null;
+  rating_count: number;
+  tip_url: string | null;
 };
 
 const TABS = [
@@ -172,19 +177,26 @@ function StudioInfoTab() {
 
 function TrainersTab() {
   const { studioId, studioReady } = useViewedStudioId();
-  const [open, setOpen] = useState<StudioTrainer | null>(null);
+  // id, а не строка: после оценки список перезагружается с новым рейтингом.
+  const [openId, setOpenId] = useState<string | null>(null);
   const { data, isPending, error } = useQuery({
     queryKey: ["studio-trainers", studioId],
     queryFn: async (): Promise<StudioTrainer[]> => {
       const { data, error } = await untypedDb
         .from("trainer_studios")
-        .select("trainer:trainers(id, full_name, photo_url, bio, role)")
+        .select(
+          "trainer:trainers(id, full_name, photo_url, bio, role, rating_avg, rating_count, tip_url)",
+        )
         .eq("studio_id", studioId);
       if (error) throw error;
-      return ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
-        .map((r) => r.trainer)
-        .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
-        .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"));
+      return (
+        ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
+          .map((r) => r.trainer)
+          .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
+          // numeric приходит строкой.
+          .map((t) => ({ ...t, rating_avg: t.rating_avg == null ? null : Number(t.rating_avg) }))
+          .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"))
+      );
     },
     enabled: studioReady && !!studioId,
   });
@@ -211,6 +223,7 @@ function TrainersTab() {
       </Card>
     );
   }
+  const open = data?.find((t) => t.id === openId) ?? null;
   if (!data || data.length === 0) {
     return (
       <Card className="flex flex-col items-center gap-3 p-8 text-center text-sm text-muted-foreground">
@@ -229,7 +242,7 @@ function TrainersTab() {
             <button
               key={t.id}
               type="button"
-              onClick={() => setOpen(t)}
+              onClick={() => setOpenId(t.id)}
               className="w-full text-left transition active:scale-[0.99]"
             >
               <Card className="flex items-center gap-3 p-3">
@@ -241,8 +254,13 @@ function TrainersTab() {
                 </SquircleAvatar>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-base font-semibold">{t.full_name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {t.bio?.trim() ? "Читать о тренере" : "Тренер"}
+                  <div className="mt-1">
+                    <TrainerRatingLine
+                      avg={t.rating_avg}
+                      count={t.rating_count}
+                      starClass="h-3.5 w-3.5"
+                      textClass="text-xs"
+                    />
                   </div>
                 </div>
                 <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -255,7 +273,7 @@ function TrainersTab() {
       <DrawerPrimitive.Root
         open={open !== null}
         onOpenChange={(o) => {
-          if (!o) setOpen(null);
+          if (!o) setOpenId(null);
         }}
         shouldScaleBackground
       >
@@ -285,8 +303,20 @@ function TrainersTab() {
                     <DrawerPrimitive.Title className="text-2xl font-semibold leading-tight">
                       {open.full_name}
                     </DrawerPrimitive.Title>
+                    <div className="mt-1.5">
+                      <TrainerRatingLine
+                        avg={open.rating_avg}
+                        count={open.rating_count}
+                        starClass="h-4 w-4"
+                      />
+                    </div>
                   </div>
                 </div>
+                {/^https?:\/\//i.test(open.tip_url?.trim() ?? "") && (
+                  <div className="mt-5">
+                    <TipButton url={open.tip_url!.trim()} />
+                  </div>
+                )}
                 {open.bio?.trim() ? (
                   <FormattedText
                     text={open.bio}
@@ -298,6 +328,9 @@ function TrainersTab() {
                     Рассказ о тренере скоро появится.
                   </p>
                 )}
+                <div className="mt-6">
+                  <RateTrainer key={open.id} trainerId={open.id} />
+                </div>
               </div>
             )}
           </DrawerPrimitive.Content>
