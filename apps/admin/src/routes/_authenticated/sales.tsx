@@ -86,8 +86,6 @@ type MembershipRow = {
   duration_days: number | null;
   visits_count: number | null;
   installment_enabled: boolean;
-  /** Пакетный формат: цена для постоянных клиентов (то же название, что у полной). */
-  for_regular_clients: boolean;
 };
 
 type PaymentType = "first" | "recurring" | "other";
@@ -477,12 +475,9 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
       unwrap<MembershipRow[]>(
         supabase
           .from("memberships")
-          .select(
-            "id, name, price, duration_days, visits_count, installment_enabled, for_regular_clients",
-          )
+          .select("id, name, price, duration_days, visits_count, installment_enabled")
           .eq("studio_id", studioId!)
-          .order("name")
-          .order("for_regular_clients"),
+          .order("name"),
       ),
     enabled: !!studioId,
     meta: { errorMessage: "Не удалось загрузить абонементы" },
@@ -646,11 +641,7 @@ function SaleForm({ onOpenChange, studioId, onSaved }: SaleDialogProps) {
                 options={memberships.map((m) => ({
                   value: m.id,
                   label: m.name,
-                  // Цены пакета для новых и постоянных клиентов — одноимённые
-                  // строки: различаем подписью.
-                  hint: m.for_regular_clients
-                    ? `постоянным · ${formatMoney(Number(m.price ?? 0))}`
-                    : formatMoney(Number(m.price ?? 0)),
+                  hint: formatMoney(Number(m.price ?? 0)),
                   searchText: m.name,
                 }))}
               />

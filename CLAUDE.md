@@ -131,8 +131,8 @@ AUTH_SETUP.md.
   подписи и хронологию пишут триггеры, статистика — RPC `scripts_copy_stats` /
   `scripts_call_stats`, импорт — `scripts_import`.
   Номенклатура пакетных студий: `db/migrations/2026-10-10_packages_memberships.sql`
-  — `memberships.for_regular_clients` (цена для постоянных клиентов) и
-  триггер, выключающий автопродление в пакетных студиях.
+  — триггер, выключающий автопродление в пакетных студиях (добавленный там
+  `for_regular_clients` убран `2026-10-11_packages_no_regular_price.sql`).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

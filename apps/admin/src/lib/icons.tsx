@@ -62,7 +62,6 @@ import {
   Search as SearchArt,
   SentIcon as SendArt,
   Square as SquareArt,
-  Tag as TagArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
   TrendingUp as TrendingUpArt,
@@ -132,7 +131,6 @@ export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
 export const Square = icon(SquareArt, "Square");
-export const Tag = icon(TagArt, "Tag");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");
