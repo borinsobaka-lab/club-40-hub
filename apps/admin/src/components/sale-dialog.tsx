@@ -433,6 +433,7 @@ function SaleForm({
               <ClientCombobox
                 studioId={studioId}
                 initialClient={initialClient}
+                creatable
                 value={form.clientId}
                 onChange={(id, c) =>
                   setForm((f) => ({ ...f, clientId: id, clientLabel: c ? clientName(c) : "" }))

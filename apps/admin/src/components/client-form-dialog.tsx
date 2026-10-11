@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +40,8 @@ export type EditableClient = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  /** Второй телефон (по желанию); E.164, как phone. */
+  phone2?: string | null;
   email: string | null;
   birthday: string | null;
   gender: string | null;
@@ -102,6 +104,10 @@ function ClientForm({
   const [firstName, setFirstName] = useState(() => initialNames(client).first);
   const [lastName, setLastName] = useState(() => initialNames(client).last);
   const [phone, setPhone] = useState<PhoneValue>(() => phoneForEditing(client?.phone));
+  // Второй номер — по ссылке «Добавить ещё номер» под телефоном; уже
+  // сохранённый виден сразу.
+  const [phone2, setPhone2] = useState<PhoneValue>(() => phoneForEditing(client?.phone2));
+  const [showPhone2, setShowPhone2] = useState(!!client?.phone2);
   const [email, setEmail] = useState(client?.email ?? "");
   // После попытки сохранить ошибки полей видны и без ухода из них.
   const [submitted, setSubmitted] = useState(false);
@@ -135,6 +141,13 @@ function ClientForm({
       toast.error(`Телефон: ${phoneCheck.error}`);
       return;
     }
+    const phone2Check = showPhone2
+      ? checkPhone(phone2.value, phone2.country)
+      : ({ status: "empty" } as const);
+    if (phone2Check.status === "invalid") {
+      toast.error(`Второй телефон: ${phone2Check.error}`);
+      return;
+    }
     const mailError = emailError(email);
     if (mailError) {
       toast.error(`Email: ${mailError}`);
@@ -149,6 +162,10 @@ function ClientForm({
         last_name: ln || null,
         full_name: fullName,
         phone: phoneCheck.status === "valid" ? phoneCheck.e164 : null,
+        // Карточку открыли из запроса без phone2 — его не трогаем, а не стираем.
+        ...(client && client.phone2 === undefined && !showPhone2
+          ? {}
+          : { phone2: phone2Check.status === "valid" ? phone2Check.e164 : null }),
         email: email || null,
         birthday: birthday || null,
         gender: gender || null,
@@ -231,7 +248,34 @@ function ClientForm({
             <div className="grid grid-cols-1 gap-3">
               <FormField label="Телефон" tip={CLIENT_TIPS.phone}>
                 <PhoneInput value={phone} onChange={setPhone} showError={submitted} />
+                {!showPhone2 && (
+                  <Button variant="link" size="inline" onClick={() => setShowPhone2(true)}>
+                    <Plus />
+                    Добавить ещё номер
+                  </Button>
+                )}
               </FormField>
+              {showPhone2 && (
+                <FormField label="Второй телефон" tip={CLIENT_TIPS.phone2} optional>
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <PhoneInput value={phone2} onChange={setPhone2} showError={submitted} />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Убрать второй номер"
+                      title="Убрать второй номер"
+                      onClick={() => {
+                        setShowPhone2(false);
+                        setPhone2(phoneForEditing(null));
+                      }}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                </FormField>
+              )}
               <FormField label="Email" tip={CLIENT_TIPS.email}>
                 <EmailInput value={email} onChange={setEmail} showError={submitted} />
               </FormField>

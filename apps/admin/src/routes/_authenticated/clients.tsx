@@ -89,6 +89,7 @@ type Client = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  phone2: string | null;
   email: string | null;
   birthday: string | null;
   gender: string | null;
@@ -105,7 +106,7 @@ type Client = {
 // Колонки запрашиваем поимённо: во вью есть ещё search_name, который нужен
 // только для фильтрации на сервере и незачем гонять по сети.
 const CLIENT_COLUMNS =
-  "id, studio_id, user_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
+  "id, studio_id, user_id, full_name, first_name, last_name, phone, phone2, email, birthday, gender, " +
   "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status";
 
 const CLUB_STATUSES = Object.keys(CLUB_STATUS_FULL) as ClubStatus[];
@@ -164,7 +165,7 @@ function ClientsPage() {
         .eq("studio_id", studioId!);
       if (term) {
         query = query.or(
-          `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
+          `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,phone2.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
         );
       }
       if (genderFilter) query = query.eq("gender", genderFilter);
@@ -330,6 +331,11 @@ function ClientsPage() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap tabular-nums">
                           {formatPhoneDisplay(c.phone) || "—"}
+                          {c.phone2 && (
+                            <div className="text-xs text-muted-foreground">
+                              {formatPhoneDisplay(c.phone2)}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>

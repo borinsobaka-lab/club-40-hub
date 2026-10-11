@@ -20,7 +20,7 @@ type FoundClient = ClientLike & { club_status: ClubStatus | null };
 // Те же колонки, что у раздела «Клиенты»: найденная строка сразу уходит в
 // карточку клиента, второй запрос за ней не нужен.
 const COLUMNS =
-  "id, studio_id, user_id, full_name, first_name, last_name, phone, email, birthday, gender, " +
+  "id, studio_id, user_id, full_name, first_name, last_name, phone, phone2, email, birthday, gender, " +
   "notes, registration_date, last_visit_date, crm_link, photo_url, club_status";
 
 const LIMIT = 8;
@@ -35,7 +35,8 @@ function clientSearchFilter(term: string) {
     words.length > 1
       ? `and(${words.map((w) => `search_name.ilike.%${w}%`).join(",")})`
       : `search_name.ilike.%${term}%`;
-  return `${name},phone.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`;
+  const phone = phoneSearchTerm(term);
+  return `${name},phone.ilike.%${phone}%,phone2.ilike.%${phone}%,email.ilike.%${term}%`;
 }
 
 /**
@@ -139,7 +140,7 @@ export function HeaderClientSearch({ className }: { className?: string }) {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{clientName(c)}</span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {[c.phone, c.email].filter(Boolean).join(" · ") || "Нет контактов"}
+                    {[c.phone, c.phone2, c.email].filter(Boolean).join(" · ") || "Нет контактов"}
                   </span>
                 </span>
                 {c.club_status && <ClubStatusBadge status={c.club_status} className="shrink-0" />}

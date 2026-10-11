@@ -537,6 +537,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                 onChange={(id) => set("clientId", id)}
                 placeholder="Без клиента"
                 clearable
+                creatable
               />
             </FormField>
 

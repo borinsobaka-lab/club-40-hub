@@ -1,11 +1,14 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Plus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { clientName, phoneSearchTerm, sanitizeSearch } from "@/lib/format";
 import { unwrap } from "@/lib/query";
 import { SearchableCombobox } from "@/components/searchable-combobox";
+import { Button } from "@/components/ui/button";
+import { ClientDialog } from "@/components/client-form-dialog";
 
 /** Клиент в выпадающем списке: имя и контакты — для подписи и поиска. */
 export type ClientOption = {
@@ -27,6 +30,8 @@ const PAGE = 50;
  * строк, и при большой базе часть клиентов в список просто не попала бы.
  *
  * `clearable` — под списком ссылка «Убрать клиента» (продажа без клиента).
+ * `creatable` — под полем «Новый клиент»: карточка заводится прямо отсюда и
+ * сразу выбирается (продажи — не уходить в «Клиенты» и обратно).
  */
 export function ClientCombobox({
   studioId,
@@ -34,6 +39,7 @@ export function ClientCombobox({
   onChange,
   placeholder = "Выбрать клиента",
   clearable = false,
+  creatable = false,
   initialClient = null,
 }: {
   studioId: string | null;
@@ -41,11 +47,14 @@ export function ClientCombobox({
   onChange: (id: string, client: ClientOption | null) => void;
   placeholder?: string;
   clearable?: boolean;
+  creatable?: boolean;
   /** Клиент, выбранный заранее: его имя видно, даже если его нет в первой странице списка. */
   initialClient?: ClientOption | null;
 }) {
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<ClientOption | null>(initialClient);
+  const [createOpen, setCreateOpen] = useState(false);
+  const queryClient = useQueryClient();
   const term = sanitizeSearch(useDebouncedValue(search, 250));
 
   const { data: clients = [], isFetching } = useQuery({
@@ -58,7 +67,7 @@ export function ClientCombobox({
       if (term) {
         q = q
           .or(
-            `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
+            `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,phone2.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
           )
           .order("full_name", { ascending: true });
       } else {
@@ -78,7 +87,7 @@ export function ClientCombobox({
     searchText: "",
   }));
 
-  return (
+  const combobox = (
     <SearchableCombobox
       placeholder={placeholder}
       searchPlaceholder="Поиск по имени, телефону, email"
@@ -101,5 +110,28 @@ export function ClientCombobox({
           : undefined
       }
     />
+  );
+  if (!creatable) return combobox;
+  return (
+    <div className="space-y-1">
+      {combobox}
+      <Button variant="link" size="inline" onClick={() => setCreateOpen(true)} disabled={!studioId}>
+        <Plus />
+        Новый клиент
+      </Button>
+      <ClientDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        studioId={studioId}
+        client={null}
+        createDescription="Карточка появится в «Клиентах», клиент сразу будет выбран здесь."
+        onSaved={(c) => {
+          setPicked(c);
+          onChange(c.id, c);
+          for (const key of ["clients", "clients_with_status"])
+            queryClient.invalidateQueries({ queryKey: [key] });
+        }}
+      />
+    </div>
   );
 }

@@ -133,6 +133,7 @@ export type ClientLike = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  phone2?: string | null;
   email: string | null;
   birthday: string | null;
   gender: string | null;
@@ -318,7 +319,7 @@ function ClientCard<C extends ClientLike>({
   const name = clientName(client);
   const photo = client.photo_url || "";
 
-  const contacts = [client.phone, client.email].filter(Boolean).join(" · ");
+  const contacts = [client.phone, client.phone2, client.email].filter(Boolean).join(" · ");
 
   return (
     <>
