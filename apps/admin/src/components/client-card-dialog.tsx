@@ -470,7 +470,7 @@ function ClientCard<C extends ClientLike>({
           </TabsContent>
 
           <TabsContent value="visits" className="mt-4">
-            <VisitsTab userId={userId} />
+            <VisitsTab clientId={client.id} userId={userId} />
           </TabsContent>
 
           <TabsContent value="profile" className="mt-4">
@@ -661,29 +661,25 @@ type VisitRow = {
   cancelled_at: string | null;
 };
 
-function VisitsTab({ userId }: { userId: string | null }) {
+/**
+ * Записи клиента: по карточке (client_id — и записи администратора клиента без
+ * приложения) и по учётной записи (старые строки журнала без client_id).
+ */
+function VisitsTab({ clientId, userId }: { clientId: string; userId: string | null }) {
   const { data: rows = [], isLoading: loading } = useQuery({
-    queryKey: ["bookings_log", "by-user", userId],
+    queryKey: ["bookings_log", "by-client", clientId, userId],
     queryFn: () =>
       unwrap<VisitRow[]>(
         supabase
           .from("bookings_log")
           .select("id, workout_name, starts_at, status, cancelled_at")
-          .eq("user_id", userId!)
+          .or(userId ? `client_id.eq.${clientId},user_id.eq.${userId}` : `client_id.eq.${clientId}`)
           .order("starts_at", { ascending: false })
           .limit(500),
       ),
-    enabled: !!userId,
     meta: { errorMessage: "Не удалось загрузить посещения клиента" },
   });
 
-  if (!userId) {
-    return (
-      <InfoNote variant="empty">
-        Клиент ещё не зарегистрирован в мобильном приложении — посещений нет.
-      </InfoNote>
-    );
-  }
   if (!loading && rows.length === 0) {
     return <InfoNote variant="empty">Посещений пока нет.</InfoNote>;
   }
@@ -705,7 +701,7 @@ function VisitsTab({ userId }: { userId: string | null }) {
           ) : (
             rows.map((r) => (
               <TableRow key={r.id}>
-                <TableCell>{r.workout_name ?? "—"}</TableCell>
+                <TableCell>{r.workout_name ?? "Персональное занятие"}</TableCell>
                 <TableCell className="whitespace-nowrap">{formatDateTime(r.starts_at)}</TableCell>
                 <TableCell>
                   <BookingStatusBadge status={r.status} />

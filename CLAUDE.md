@@ -144,6 +144,14 @@ AUTH_SETUP.md.
   `schedule_entries.kind` (`group` / `personal` / `other`), `title` и
   `pay_rate` прочей активности, `workout_id` только у групповых; клиенты видят
   и записываются только на групповые (RLS + триггер на `schedule_bookings`).
+  Запись по карточке клиента: `db/migrations/2026-10-11_bookings_by_client.sql`
+  — `schedule_bookings.client_id` (user_id необязателен: клиент без
+  приложения), user_id/client_id дополняют друг друга триггером, при привязке
+  карточки к приложению записи получают user_id; журнал — `bookings_log.client_id`;
+  администратор записывает RPC `admin_book_client` (групповое и персональное,
+  проверка мест); персональное — только сотрудник, прочая активность — никто.
+  Старые функции журнала не переписаны (неизвестно, какие db/\*.sql на живой
+  базе), рядом — свои триггеры.
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

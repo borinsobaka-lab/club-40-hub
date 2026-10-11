@@ -9,6 +9,7 @@ import {
   Loader2,
   Trash2,
   Copy,
+  UserPlus,
   X,
 } from "lucide-react";
 
@@ -34,6 +35,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
+import { ClientCombobox, type ClientOption } from "@/components/client-combobox";
+import { ClientDialog } from "@/components/client-form-dialog";
 import {
   Select,
   SelectContent,
@@ -91,7 +94,19 @@ type Entry = {
     color?: string | null;
   } | null;
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
+  /** Записи с карточками клиентов — для подписи персонального на карточке. */
+  participants?: { status: string; client: ParticipantName | null }[];
 };
+
+type ParticipantName = { first_name: string | null; last_name: string | null; full_name: string };
+
+/** Клиенты персонального занятия: «Фамилия Имя» записанных (не отменённых). */
+function participantNames(e: Entry) {
+  return (e.participants ?? [])
+    .filter((p) => p.client && (p.status === "booked" || p.status === "attended"))
+    .map((p) => clientName(p.client!))
+    .join(", ");
+}
 
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
 type EntryDraft = {
@@ -105,7 +120,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, photo_url))";
+  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, photo_url)), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -233,7 +248,7 @@ async function linkTrainers(links: { entry_id: string; trainer_id: string }[]) {
 
 type InsertResult =
   | { ok: false; error: string }
-  | { ok: true; count: number; trainersError: string | null };
+  | { ok: true; count: number; ids: string[]; trainersError: string | null };
 
 /**
  * Создаёт занятия вместе с привязками тренеров — общий путь для «Нового
@@ -260,7 +275,12 @@ async function insertEntries(studioId: string, drafts: EntryDraft[]): Promise<In
   const links = rows.flatMap((row, i) =>
     drafts[i].trainerIds.map((trainer_id) => ({ entry_id: row.id, trainer_id })),
   );
-  return { ok: true, count: rows.length, trainersError: await linkTrainers(links) };
+  return {
+    ok: true,
+    count: rows.length,
+    ids: rows.map((r) => r.id),
+    trainersError: await linkTrainers(links),
+  };
 }
 
 function SchedulePage() {
@@ -965,6 +985,9 @@ function EntryCard({
     x.trainer ? [x.trainer] : [],
   );
   const names = trainers.map((t) => t.full_name).join(", ");
+  // Персональное: «тренер + клиент» — видно, с кем занятие.
+  const clients = entry.kind === "personal" ? participantNames(entry) : "";
+  const people = [names, clients].filter(Boolean).join(" + ");
   // Персональные и прочие в обоих форматах — светлая карточка с тёмной
   // полоской: так они не путаются с групповыми.
   const group = entry.kind === "group";
@@ -990,10 +1013,16 @@ function EntryCard({
             </span>
             <CapacityBadge entry={entry} light />
           </span>
-          <span className="mt-0.5 text-[13px] font-semibold leading-snug line-clamp-2">
+          <span
+            className={cn(
+              "mt-0.5 text-[13px] font-semibold leading-snug",
+              // Персональному название в одну строку — место под клиента.
+              clients ? "truncate" : "line-clamp-2",
+            )}
+          >
             {entryTitle(entry)}
           </span>
-          {trainers.length > 0 && (
+          {people && (
             <span className="mt-0.5 flex min-w-0 items-center gap-1 pr-5">
               <span className="flex shrink-0 -space-x-1.5">
                 {trainers.map((t) => (
@@ -1005,7 +1034,15 @@ function EntryCard({
                   />
                 ))}
               </span>
-              <span className="truncate text-muted-foreground">{names}</span>
+              {/* У персонального «тренер + клиент» — до двух строк, имя клиента не режем. */}
+              <span
+                className={cn(
+                  "text-muted-foreground",
+                  clients ? "line-clamp-2 break-words" : "truncate",
+                )}
+              >
+                {people}
+              </span>
             </span>
           )}
         </button>
@@ -1090,7 +1127,7 @@ const FORM_TEXT: Record<
   personal: {
     create: "Новое персональное занятие",
     edit: "Персональное занятие",
-    hint: "Выберите тренера и время. Клиенты в приложении персональные занятия не видят.",
+    hint: "Выберите тренера, клиента и время. Клиенты в приложении персональные занятия не видят.",
     added: "Персональное занятие добавлено",
     updated: "Персональное занятие обновлено",
   },
@@ -1111,6 +1148,9 @@ const TIPS = {
   personalTrainer:
     "Тренер, который проводит занятие. В зарплату ему пойдёт ставка за персональную тренировку из «Зарплатных ставок».",
   title: "Как активность будет подписана в расписании, например «Мастер-класс» или «Съёмка».",
+  personalClients: "С кем занятие. Позже с абонемента на персональные будет списываться посещение.",
+  groupClients:
+    "Обычно клиенты записываются сами в приложении. Здесь — записать без приложения или на пробное.",
   otherStaff:
     "Тренеры и администраторы, которые участвуют, — им начислится ставка. Можно никого не выбирать.",
   payRate:
@@ -1222,6 +1262,9 @@ function EntryForm({
     return toDateTimeLocalValue(end);
   });
   const [trainerIds, setTrainerIds] = useState<string[]>(() => (entry ? trainerIdsOf(entry) : []));
+  // Участники нового занятия: записываются после его создания. У созданного —
+  // панель записей, там запись сразу.
+  const [pending, setPending] = useState<PickedClient[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const busy = saving || deleting;
@@ -1265,6 +1308,7 @@ function EntryForm({
     }
     if (kind === "personal") {
       if (trainerIds.length !== 1) return "Выберите тренера";
+      if (!entry && pending.length === 0) return "Добавьте клиента";
       return { workout_id: null, title: null, pay_rate: null };
     }
     if (!title.trim()) return "Введите название активности";
@@ -1296,6 +1340,18 @@ function EntryForm({
     };
     setSaving(true);
     try {
+      if (entry && kind === "personal") {
+        // Персональное без клиента не сохраняем: клиент записан в панели ниже.
+        const { count } = await supabase
+          .from("schedule_bookings")
+          .select("id", { count: "exact", head: true })
+          .eq("entry_id", entry.id)
+          .in("status", ["booked", "attended"]);
+        if (!count) {
+          toast.error("Добавьте клиента — кнопка «Добавить участника» ниже");
+          return;
+        }
+      }
       if (entry) {
         const failure = await updateEntry(entry.id, { studio_id: studioId, ...row });
         if (failure) {
@@ -1316,6 +1372,13 @@ function EntryForm({
         } else {
           toast.success(text.added);
         }
+        // Участники — после создания: запись идёт по id занятия.
+        const failed: string[] = [];
+        for (const c of pending) {
+          const err = await bookClient(res.ids[0], c.id);
+          if (err) failed.push(`${c.name} (${err})`);
+        }
+        if (failed.length > 0) toast.error("Не записаны: " + failed.join(", "));
       }
       onOpenChange(false);
       onSaved();
@@ -1345,7 +1408,7 @@ function EntryForm({
           {entry ? text.edit : text.create}
         </DialogTitle>
         <DialogDescription>
-          {entry && kind === "group"
+          {entry && kind !== "other"
             ? "Настройки занятия, ниже — записанные участники."
             : text.hint}
         </DialogDescription>
@@ -1464,7 +1527,49 @@ function EntryForm({
               </FormField>
             )}
 
-            {entry && kind === "group" && <BookingsPanel entry={entry} onChanged={onSaved} />}
+            {!entry && kind !== "other" && (
+              <FormField
+                label="Участники"
+                tip={kind === "personal" ? TIPS.personalClients : TIPS.groupClients}
+                required={kind === "personal"}
+                optional={kind === "group"}
+                htmlFor={null}
+              >
+                <div className="space-y-2">
+                  {pending.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {pending.map((c) => (
+                        <span
+                          key={c.id}
+                          className="inline-flex items-center gap-1 rounded-full border bg-muted/40 py-1 pl-3 pr-1.5 text-sm"
+                        >
+                          {c.name}
+                          <button
+                            type="button"
+                            aria-label={`Убрать ${c.name}`}
+                            onClick={() => setPending((prev) => prev.filter((x) => x.id !== c.id))}
+                            className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <ParticipantActions
+                    studioId={studioId}
+                    trial={kind === "group"}
+                    onPick={(c) =>
+                      setPending((prev) => (prev.some((x) => x.id === c.id) ? prev : [...prev, c]))
+                    }
+                  />
+                </div>
+              </FormField>
+            )}
+
+            {entry && kind !== "other" && (
+              <BookingsPanel entry={entry} trial={kind === "group"} onChanged={onSaved} />
+            )}
           </div>
         </DialogBody>
         <DialogFooter>
@@ -1494,7 +1599,9 @@ function EntryForm({
 
 type BookingRow = {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  /** Карточка клиента; у старых записей из приложения может не быть. */
+  client_id: string | null;
   status: string;
   created_at: string;
 };
@@ -1520,35 +1627,60 @@ type ActiveMembershipRow = {
 
 type BookingsData = {
   bookings: BookingRow[];
+  clientsById: Map<string, ClientRow>;
   clientsByUser: Map<string, ClientRow>;
   membershipsByClient: Map<string, ActiveMembershipRow>;
 };
 
-/** Записи на занятие + анкеты клиентов студии + их активные абонементы. */
+function bookingClient(data: BookingsData | undefined, b: BookingRow) {
+  return (
+    (b.client_id ? data?.clientsById.get(b.client_id) : undefined) ??
+    (b.user_id ? data?.clientsByUser.get(b.user_id) : undefined)
+  );
+}
+
+/** Записи на занятие + карточки клиентов + их активные абонементы. */
 async function fetchBookings(entry: Entry): Promise<BookingsData> {
   const bookings = await unwrap<BookingRow[]>(
     supabase
       .from("schedule_bookings")
-      .select("id, user_id, status, created_at")
+      .select("id, user_id, client_id, status, created_at")
       .eq("entry_id", entry.id)
       .in("status", ["booked", "attended", "waitlist"])
       .order("created_at"),
   );
+  const clientsById = new Map<string, ClientRow>();
   const clientsByUser = new Map<string, ClientRow>();
   const membershipsByClient = new Map<string, ActiveMembershipRow>();
-  const userIds = Array.from(new Set(bookings.map((r) => r.user_id))).filter(Boolean);
-  if (userIds.length === 0) return { bookings, clientsByUser, membershipsByClient };
+  const empty = { bookings, clientsById, clientsByUser, membershipsByClient };
+  const clientIds = Array.from(new Set(bookings.map((r) => r.client_id).filter(Boolean)));
+  // Старые записи из приложения без карточки — по учётной записи.
+  const userIds = Array.from(
+    new Set(bookings.filter((r) => !r.client_id).map((r) => r.user_id)),
+  ).filter((v): v is string => !!v);
+  if (clientIds.length === 0 && userIds.length === 0) return empty;
 
-  // Анкеты и абонементы — дополнение: если они не загрузились, записи всё
+  // Карточки и абонементы — дополнение: если они не загрузились, записи всё
   // равно показываем (с «Пользователь без анкеты»), а не ошибку на всю панель.
-  const { data: cData } = await supabase
-    .from("clients")
-    .select("id, user_id, first_name, last_name, full_name, phone, email, crm_link")
-    .eq("studio_id", entry.studio_id)
-    .in("user_id", userIds);
-  const clients: ClientRow[] = cData ?? [];
-  for (const c of clients) if (c.user_id) clientsByUser.set(c.user_id, c);
-  if (clients.length === 0) return { bookings, clientsByUser, membershipsByClient };
+  const cols = "id, user_id, first_name, last_name, full_name, phone, email, crm_link";
+  const [byId, byUser] = await Promise.all([
+    clientIds.length
+      ? supabase.from("clients").select(cols).in("id", clientIds)
+      : Promise.resolve({ data: [] as ClientRow[] }),
+    userIds.length
+      ? supabase
+          .from("clients")
+          .select(cols)
+          .eq("studio_id", entry.studio_id)
+          .in("user_id", userIds)
+      : Promise.resolve({ data: [] as ClientRow[] }),
+  ]);
+  const clients: ClientRow[] = [...(byId.data ?? []), ...(byUser.data ?? [])];
+  for (const c of clients) {
+    clientsById.set(c.id, c);
+    if (c.user_id) clientsByUser.set(c.user_id, c);
+  }
+  if (clients.length === 0) return empty;
 
   const { data: mData } = await supabase
     .from("client_memberships")
@@ -1562,7 +1694,141 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
   // считает любую связь массивом.
   const memberships = (mData ?? []) as unknown as ActiveMembershipRow[];
   for (const m of memberships) membershipsByClient.set(m.client_id, m);
-  return { bookings, clientsByUser, membershipsByClient };
+  return empty;
+}
+
+const BOOK_REASONS: Record<string, string> = {
+  full: "мест нет",
+  already_booked: "уже записан",
+  forbidden: "нет прав в этой студии",
+  not_bookable: "на прочую активность не записывают",
+  client_not_found: "клиент не из этой студии",
+  not_found: "занятие не найдено",
+};
+
+/** Записывает клиента на занятие (RPC admin_book_client); текст ошибки или null. */
+async function bookClient(entryId: string, clientId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("admin_book_client", {
+    p_entry_id: entryId,
+    p_client_id: clientId,
+  });
+  if (error) return error.message;
+  const result = data as { ok?: boolean; reason?: string } | null;
+  if (result?.ok) return null;
+  return BOOK_REASONS[result?.reason ?? ""] ?? result?.reason ?? "неизвестная ошибка";
+}
+
+type PickedClient = { id: string; name: string };
+
+/**
+ * «Добавить участника» — выбор клиента студии; «Пробное посещение» (у
+ * групповых) — новая карточка клиента: он попадает в «Клиенты» потенциальным
+ * членом клуба. Оба отдают клиента наверх — там его записывают.
+ */
+function ParticipantActions({
+  studioId,
+  trial,
+  onPick,
+  disabled,
+}: {
+  studioId: string | null;
+  trial: boolean;
+  onPick: (c: PickedClient) => void;
+  disabled?: boolean;
+}) {
+  const [pickOpen, setPickOpen] = useState(false);
+  const [trialOpen, setTrialOpen] = useState(false);
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPickOpen(true)}
+          disabled={disabled || !studioId}
+        >
+          <UserPlus />
+          Добавить участника
+        </Button>
+        {trial && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTrialOpen(true)}
+            disabled={disabled || !studioId}
+          >
+            <Plus />
+            Пробное посещение
+          </Button>
+        )}
+      </div>
+      <Dialog open={pickOpen} onOpenChange={setPickOpen}>
+        <DialogContent className="max-w-md">
+          <PickClientForm
+            studioId={studioId}
+            onCancel={() => setPickOpen(false)}
+            onPick={(c) => {
+              setPickOpen(false);
+              onPick(c);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+      <ClientDialog
+        open={trialOpen}
+        onOpenChange={setTrialOpen}
+        studioId={studioId}
+        client={null}
+        createTitle="Пробное посещение"
+        createDescription="Новый клиент появится в «Клиентах» как потенциальный член клуба и будет записан на это занятие."
+        onSaved={(c) => onPick({ id: c.id, name: clientName(c) })}
+      />
+    </>
+  );
+}
+
+function PickClientForm({
+  studioId,
+  onPick,
+  onCancel,
+}: {
+  studioId: string | null;
+  onPick: (c: PickedClient) => void;
+  onCancel: () => void;
+}) {
+  const [picked, setPicked] = useState<ClientOption | null>(null);
+  const handleSubmit = () => {
+    if (!picked) {
+      toast.error("Выберите клиента");
+      return;
+    }
+    onPick({ id: picked.id, name: clientName(picked) });
+  };
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Добавить участника</DialogTitle>
+        <DialogDescription>Клиент студии — поиск по имени, телефону или почте.</DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleSubmit}>
+        <DialogBody>
+          <FormField label="Клиент" required>
+            <ClientCombobox
+              studioId={studioId}
+              value={picked?.id ?? ""}
+              onChange={(_, c) => setPicked(c)}
+            />
+          </FormField>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Отмена
+          </Button>
+          <Button type="submit">Добавить</Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
+  );
 }
 
 /**
@@ -1597,8 +1863,18 @@ function BookingClientName({ client }: { client: ClientRow | undefined }) {
   );
 }
 
-function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => void }) {
+function BookingsPanel({
+  entry,
+  trial,
+  onChanged,
+}: {
+  entry: Entry;
+  /** Групповое: можно записать на пробное посещение нового клиента. */
+  trial: boolean;
+  onChanged: () => void;
+}) {
   const queryClient = useQueryClient();
+  const [booking, setBooking] = useState(false);
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<BookingRow | null>(null);
@@ -1613,6 +1889,21 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
   const reload = () => {
     queryClient.invalidateQueries({ queryKey });
     onChanged();
+  };
+
+  const addParticipant = async (c: PickedClient) => {
+    setBooking(true);
+    try {
+      const err = await bookClient(entry.id, c.id);
+      if (err) {
+        toast.error(`Не удалось записать ${c.name}: ${err}`);
+        return;
+      }
+      toast.success(`${c.name} — записан(а)`);
+      reload();
+    } finally {
+      setBooking(false);
+    }
   };
 
   const askCancel = (b: BookingRow) => {
@@ -1656,16 +1947,27 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
           </span>
         </div>
 
+        <ParticipantActions
+          studioId={entry.studio_id}
+          trial={trial}
+          onPick={addParticipant}
+          disabled={booking}
+        />
+
         {loading ? (
           <div className="flex h-32 items-center justify-center rounded-md border">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : booked.length === 0 ? (
-          <InfoNote variant="empty">Пока никто не записан.</InfoNote>
+          <InfoNote variant="empty">
+            {entry.kind === "personal"
+              ? "Клиент не выбран — нажмите «Добавить участника»."
+              : "Пока никто не записан."}
+          </InfoNote>
         ) : (
           <div className="space-y-2">
             {booked.map((b) => {
-              const c = data?.clientsByUser.get(b.user_id);
+              const c = bookingClient(data, b);
               const m = c ? data?.membershipsByClient.get(c.id) : undefined;
               const contacts = [c?.phone, c?.email].filter(Boolean).join(" · ");
               return (
@@ -1727,7 +2029,7 @@ function BookingsPanel({ entry, onChanged }: { entry: Entry; onChanged: () => vo
           </div>
           <div className="space-y-2">
             {waitlisted.map((b) => {
-              const c = data?.clientsByUser.get(b.user_id);
+              const c = bookingClient(data, b);
               return (
                 <div
                   key={b.id}
