@@ -36,6 +36,7 @@ export const CLUB_SECTION_KEYS = [
   "dashboard",
   "schedule",
   "clients",
+  "client-memberships",
   "workouts",
   "memberships",
   "promocodes",

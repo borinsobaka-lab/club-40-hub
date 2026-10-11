@@ -87,7 +87,7 @@ export const Route = createFileRoute("/_authenticated/sales")({
 // client_memberships) вью отдаёт в той же форме, что раньше вложенный select.
 const SALE_COLUMNS =
   "id, studio_id, client_id, membership_id, admin_id, admin_name, sold_at, total_amount, " +
-  "down_payment_amount, remaining_installments, source, payment_type, sale_kind, promo_code, comment, " +
+  "down_payment_amount, remaining_installments, source, payment_type, sale_kind, trainer_name, promo_code, comment, " +
   "created_at, clients, memberships, client_memberships";
 
 type Sale = {
@@ -105,6 +105,8 @@ type Sale = {
   payment_type: PaymentType | null;
   /** Тип продажи пакетной студии; null — без типа (подписочная, приложение). */
   sale_kind: SaleKind | null;
+  /** Пакетная студия: тренер при продаже (снимок имени). */
+  trainer_name: string | null;
   promo_code: string | null;
   comment: string | null;
   created_at: string;
@@ -147,6 +149,8 @@ function SalesPage() {
   // Пакетная студия: четыре типа продаж и колонка «Тип продажи» вместо
   // «Типа оплаты» (STUDIO_FORMATS.md).
   const isPackages = useActiveStudio()?.format === "packages";
+  // У пакетной студии ещё колонка «Тренер».
+  const columns = isPackages ? 14 : 13;
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [saleOpen, setSaleOpen] = useState(false);
@@ -258,16 +262,17 @@ function SalesPage() {
                   <TableHead tip={TIPS.downPayment}>Первый взнос</TableHead>
                   <TableHead tip={TIPS.installments}>Рассрочка</TableHead>
                   <TableHead tip={TIPS.admin}>Администратор</TableHead>
+                  {isPackages && <TableHead tip={TIPS.trainer}>Тренер</TableHead>}
                   <TableHead>Комментарий</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {table.loading ? (
-                  <TableSkeletonRows columns={13} />
+                  <TableSkeletonRows columns={columns} />
                 ) : table.rows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={13}
+                      colSpan={columns}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       {term ? "Ничего не найдено." : "Продаж пока нет. Нажмите «Новая продажа»."}
@@ -351,6 +356,11 @@ function SalesPage() {
                           <TableCell className="text-muted-foreground">
                             {s.admin_name ?? "—"}
                           </TableCell>
+                          {isPackages && (
+                            <TableCell className="text-muted-foreground">
+                              {s.trainer_name ?? "—"}
+                            </TableCell>
+                          )}
                           <TableCell>
                             <CommentCell text={s.comment} />
                           </TableCell>

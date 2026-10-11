@@ -231,7 +231,11 @@ GoTrue и видит только хук писем — в браузер он �
 - `components/sale-dialog.tsx` — диалог «Новая продажа» абонемента: из
   «Продаж» и из карточки клиента («Добавить продажу», `initialClient` —
   клиент подставлен). В пакетной студии — проп `kind` (тип продажи:
-  новая / пробное / допродажа / продление, `SALE_KIND_*` в `lib/payments.ts`).
+  новая / пробное / допродажа / продление, `SALE_KIND_*` в `lib/payments.ts`)
+  и поле «Тренер» (`sales.trainer_id` + снимок `trainer_name`).
+- «Абонементы» пакетных студий — `routes/_authenticated/client-memberships.tsx`
+  (вью `client_packages_list`): проданные абонементы и сбор денег по
+  рассрочкам, подробно — STUDIO_FORMATS.md.
   Карточка клиента — `components/client-card-dialog.tsx`.
 - `components/client-combobox.tsx` — выбор клиента (серверный поиск);
   `ClientNameLink` + `hooks/use-crm-links.ts` — имя клиента со ссылкой amoCRM

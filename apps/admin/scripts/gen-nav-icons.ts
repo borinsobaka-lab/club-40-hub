@@ -24,6 +24,7 @@ const ICONS: Record<string, string> = {
   Buildings2: "building",
   CalendarAdd: "time",
   CalendarMinimalistic: "time",
+  Card: "money",
   ChartSquare: "business",
   ChatRoundDots: "messages",
   ChatRoundLine: "messages",

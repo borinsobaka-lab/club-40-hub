@@ -11,6 +11,7 @@ import {
   Bolt,
   Buildings2,
   CalendarMinimalistic,
+  Card,
   ChartSquare,
   ChatRoundDots,
   City,
@@ -98,6 +99,14 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     items: [
       { title: "Расписание", url: "/schedule", icon: CalendarMinimalistic, section: "schedule" },
       { title: "Клиенты", url: "/clients", icon: UsersGroupRounded, section: "clients" },
+      // Пакетные студии: проданные клиентам абонементы и сбор денег по рассрочкам.
+      {
+        title: "Абонементы",
+        url: "/client-memberships",
+        icon: Card,
+        section: "client-memberships",
+        formats: ["packages"],
+      },
     ],
   },
   {

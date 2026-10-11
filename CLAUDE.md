@@ -142,6 +142,13 @@ AUTH_SETUP.md.
   (`package` / `trial`), `sales.sale_kind` (`new` / `trial` / `upsell` /
   `renewal`, null — без типа); там же пересоздана вью `sales_list` (актуальное
   определение — в этой миграции, не в `db/performance_indexes.sql`).
+  Раздел «Абонементы» пакетных студий:
+  `db/migrations/2026-10-11_packages_client_memberships.sql` —
+  `sales.trainer_id`/`trainer_name` (тренер при продаже, бонус к зарплате),
+  `sales.membership_note` (комментарий раздела), `sale_installments.paid_at`
+  (дата внесения, ставит триггер), вью `client_packages_list` (строки раздела,
+  платежи json и `payment_state` paid/overdue/pending по дате Тбилиси); там же
+  снова пересоздана `sales_list` (актуальное определение — в этой миграции).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
@@ -186,10 +193,10 @@ AUTH_SETUP.md.
   системе): заглушки auth/storage + прогон db/\*.sql, см. историю сессий.
 - Серверная пагинация админки опирается на вью `clients_with_status`,
   `sales_list`, `cash_totals`, `bookings_log_full` (db/performance_indexes.sql;
-  `sales_list` пересоздана в `2026-10-11_packages_sale_kinds.sql`), все с
+  `sales_list` пересоздана в `2026-10-11_packages_client_memberships.sql`), все с
   `security_invoker = true` — RLS действует. `s.*` во вью раскрывается при её
   создании: новая колонка `sales` попадёт в `sales_list` только после
-  пересоздания вью.
+  пересоздания вью (последнее — `2026-10-11_packages_client_memberships.sql`).
 - **Модель доступа: граница безопасности — RLS, не фронтенд.** Publishable-ключ
   вшит в бандл, любой может дёргать PostgREST напрямую. Guard'ы роутов —
   только UX. Все клиентские таблицы читаются по принципу «своя строка или

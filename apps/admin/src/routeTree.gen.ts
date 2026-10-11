@@ -35,6 +35,7 @@ import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClubSettingsRouteImport } from './routes/_authenticated/club-settings'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
+import { Route as AuthenticatedClientMembershipsRouteImport } from './routes/_authenticated/client-memberships'
 import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/cash'
 import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenticated/bookings-log'
 import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
@@ -175,6 +176,12 @@ const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientMembershipsRoute =
+  AuthenticatedClientMembershipsRouteImport.update({
+    id: '/client-memberships',
+    path: '/client-memberships',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCashRoute = AuthenticatedCashRouteImport.update({
   id: '/cash',
   path: '/cash',
@@ -223,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
+  '/client-memberships': typeof AuthenticatedClientMembershipsRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -256,6 +264,7 @@ export interface FileRoutesByTo {
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/cash': typeof AuthenticatedCashRoute
+  '/client-memberships': typeof AuthenticatedClientMembershipsRoute
   '/clients': typeof AuthenticatedClientsRoute
   '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -292,6 +301,7 @@ export interface FileRoutesById {
   '/_authenticated/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
   '/_authenticated/bookings-log': typeof AuthenticatedBookingsLogRoute
   '/_authenticated/cash': typeof AuthenticatedCashRoute
+  '/_authenticated/client-memberships': typeof AuthenticatedClientMembershipsRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/club-settings': typeof AuthenticatedClubSettingsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/autorenew-cancellations'
     | '/bookings-log'
     | '/cash'
+    | '/client-memberships'
     | '/clients'
     | '/club-settings'
     | '/dashboard'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/autorenew-cancellations'
     | '/bookings-log'
     | '/cash'
+    | '/client-memberships'
     | '/clients'
     | '/club-settings'
     | '/dashboard'
@@ -397,6 +409,7 @@ export interface FileRouteTypes {
     | '/_authenticated/autorenew-cancellations'
     | '/_authenticated/bookings-log'
     | '/_authenticated/cash'
+    | '/_authenticated/client-memberships'
     | '/_authenticated/clients'
     | '/_authenticated/club-settings'
     | '/_authenticated/dashboard'
@@ -618,6 +631,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/client-memberships': {
+      id: '/_authenticated/client-memberships'
+      path: '/client-memberships'
+      fullPath: '/client-memberships'
+      preLoaderRoute: typeof AuthenticatedClientMembershipsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cash': {
       id: '/_authenticated/cash'
       path: '/cash'
@@ -675,6 +695,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAutorenewCancellationsRoute: typeof AuthenticatedAutorenewCancellationsRoute
   AuthenticatedBookingsLogRoute: typeof AuthenticatedBookingsLogRoute
   AuthenticatedCashRoute: typeof AuthenticatedCashRoute
+  AuthenticatedClientMembershipsRoute: typeof AuthenticatedClientMembershipsRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedClubSettingsRoute: typeof AuthenticatedClubSettingsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -707,6 +728,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedAutorenewCancellationsRoute,
   AuthenticatedBookingsLogRoute: AuthenticatedBookingsLogRoute,
   AuthenticatedCashRoute: AuthenticatedCashRoute,
+  AuthenticatedClientMembershipsRoute: AuthenticatedClientMembershipsRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedClubSettingsRoute: AuthenticatedClubSettingsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,

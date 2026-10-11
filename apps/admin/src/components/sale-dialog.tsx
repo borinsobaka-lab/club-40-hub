@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -60,6 +60,16 @@ import { useConfirm } from "@/components/confirm-dialog";
 // новая продажа, пробное, допродажа, продление. «Пробное» предлагает только
 // номенклатуры «Пробное посещение» и подставляет первую сама, остальные типы —
 // только пакеты тренировок. Подписочная студия тип не пишет.
+//
+// Ещё в пакетной студии — «Тренер» (sales.trainer_id + снимок имени
+// trainer_name): кто был тренером при продаже, ему начисляется бонус. Продажи
+// с тренером и рассрочкой видны в разделе «Абонементы».
+
+/** Сотрудник студии для поля «Тренер» — те же колонки, что у расписания (общий кэш). */
+type StaffRow = { id: string; full_name: string; role: string };
+const STAFF_COLS = "id, full_name, role, trainer_studios!inner(studio_id)";
+/** Значение «Без тренера»: у пунктов Radix Select пустой строки быть не может. */
+const NO_TRAINER = "none";
 
 type MembershipRow = {
   id: string;
@@ -121,6 +131,8 @@ type SaleFields = {
   paymentMethod: PaymentMethod;
   promoCode: string;
   comment: string;
+  /** Пакетный формат: тренер при продаже; NO_TRAINER — не было. */
+  trainerId: string;
 };
 
 /** Суммы продажи по форме: итог, первый взнос, скидка от тарифа, график рассрочки. */
@@ -197,6 +209,7 @@ function SaleForm({
   kind = "new",
 }: SaleDialogProps) {
   const { confirm, confirmDialog } = useConfirm();
+  const queryClient = useQueryClient();
   const { data: staff, ensure: ensureStaff } = useStaffProfile();
   const { data: studios } = useStudios();
   const isPackages = studios?.find((s) => s.id === studioId)?.format === "packages";
@@ -214,6 +227,7 @@ function SaleForm({
     paymentMethod: "cash",
     promoCode: "",
     comment: "",
+    trainerId: NO_TRAINER,
   }));
   const set = <K extends keyof SaleFields>(key: K, value: SaleFields[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -234,6 +248,23 @@ function SaleForm({
     enabled: !!studioId,
     meta: { errorMessage: "Не удалось загрузить абонементы" },
   });
+
+  // Тренеры студии (пакетный формат): кто был с клиентом при продаже.
+  const { data: staffRows = [] } = useQuery({
+    queryKey: ["trainers", studioId, STAFF_COLS],
+    queryFn: () =>
+      unwrap<StaffRow[]>(
+        supabase
+          .from("trainers")
+          .select(STAFF_COLS)
+          .eq("trainer_studios.studio_id", studioId!)
+          .order("full_name"),
+      ),
+    enabled: !!studioId && isPackages,
+    meta: { errorMessage: "Не удалось загрузить тренеров" },
+  });
+  const trainers = staffRows.filter((r) => r.role === "trainer");
+  const trainer = trainers.find((r) => r.id === form.trainerId) ?? null;
 
   // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты.
   const options = isPackages
@@ -337,7 +368,13 @@ function SaleForm({
           source: "admin",
           // В пакетных студиях типа оплаты нет — колонка остаётся по умолчанию,
           // зато есть тип продажи.
-          ...(isPackages ? { sale_kind: kind } : { payment_type: form.paymentType }),
+          ...(isPackages
+            ? {
+                sale_kind: kind,
+                trainer_id: trainer?.id ?? null,
+                trainer_name: trainer?.full_name ?? null,
+              }
+            : { payment_type: form.paymentType }),
           payment_method: form.paymentMethod,
           list_price: t.listPrice,
           discount_amount: t.discount,
@@ -356,6 +393,8 @@ function SaleForm({
           due_date: p.date,
           amount: p.amount,
           paid: p.isDownPayment,
+          // Первый платёж внесён в день продажи (а не в день оформления).
+          paid_at: p.isDownPayment ? p.date : null,
         }));
         const { error: instErr } = await supabase.from("sale_installments").insert(rows);
         if (instErr) {
@@ -364,6 +403,9 @@ function SaleForm({
       }
       toast.success("Продажа создана");
       celebrateSale();
+      // Продажа пакетной студии сразу появляется в «Абонементах» — откуда бы
+      // её ни оформили (из «Продаж» или из карточки клиента).
+      queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
       onOpenChange(false);
       onSaved();
     } finally {
@@ -589,6 +631,23 @@ function SaleForm({
             ) : null}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {isPackages && (
+                <FormField label="Тренер" tip={SALE_TIPS.trainer} optional>
+                  <Select value={form.trainerId} onValueChange={(v) => set("trainerId", v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_TRAINER}>Без тренера</SelectItem>
+                      {trainers.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
               {!isPackages && (
                 <FormField label="Тип оплаты" tip={SALE_TIPS.paymentType} required>
                   <Select
