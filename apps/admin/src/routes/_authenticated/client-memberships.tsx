@@ -53,6 +53,7 @@ import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-to
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
 import { CommentCell } from "@/components/comment-cell";
+import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
 
 // «Абонементы» пакетной студии (STUDIO_FORMATS.md): проданные клиентам
 // абонементы, одна строка — одна продажа. Здесь администраторы собирают деньги
@@ -186,6 +187,7 @@ const BASE_COLUMNS = 5;
 
 export const Route = createFileRoute("/_authenticated/client-memberships")({
   head: () => ({ meta: [{ title: "Абонементы — Base40 Admin" }] }),
+  pendingComponent: ClientMembershipsPageSkeleton,
   component: ClientMembershipsRoute,
 });
 

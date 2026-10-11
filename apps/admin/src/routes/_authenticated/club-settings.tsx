@@ -9,11 +9,12 @@ import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { ClubSettingsFormSkeleton, ClubSettingsPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/club-settings")({
   head: () => ({ meta: [{ title: "Настройки клуба — Base40 Admin" }] }),
+  pendingComponent: ClubSettingsPageSkeleton,
   component: ClubSettingsPage,
 });
 
@@ -109,22 +110,7 @@ function ClubSettingsPage() {
       }
     >
       {loading ? (
-        <div className="max-w-2xl space-y-8">
-          {[3, 1].map((fields, i) => (
-            <div key={i} className="space-y-4 rounded-lg border bg-background p-6">
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-1/2" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-              {Array.from({ length: fields }).map((_, f) => (
-                <div key={f} className="space-y-2">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+        <ClubSettingsFormSkeleton />
       ) : (
         // Форма — чтобы Enter в любом поле сохранял настройки.
         <form

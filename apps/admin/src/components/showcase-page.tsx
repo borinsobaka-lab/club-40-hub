@@ -286,7 +286,7 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
               )}
             </TableBody>
           </Table>
-          <DataPagination {...pg} />
+          <DataPagination {...pg} loading={loading} />
         </div>
       </div>
 

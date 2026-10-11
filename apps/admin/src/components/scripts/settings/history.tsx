@@ -5,7 +5,7 @@
  * что изменились: «было → стало», удалённые слова подсвечены в «было», новые —
  * в «стало». Подгружается порциями по мере прокрутки.
  */
-import { CardSkeleton } from "@/components/skeletons";
+import { ScriptsFeedSkeleton } from "@/components/page-skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { usePlaybook } from "@/lib/scripts/data";
@@ -42,7 +42,7 @@ export function HistoryTab() {
     errorMessage: "Не удалось загрузить хронологию",
   });
 
-  if (loading) return <CardSkeleton rows={3} />;
+  if (loading) return <ScriptsFeedSkeleton />;
   if (!items.length)
     return (
       <EmptyCard title="Изменений пока нет">

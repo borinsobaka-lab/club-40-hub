@@ -51,6 +51,7 @@ import {
   isBrandColor,
   type StudioFormat,
 } from "@/lib/studio-formats";
+import { StudiosPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -62,6 +63,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/studios")({
   head: () => ({ meta: [{ title: "Клубы — Base40 Admin" }] }),
+  pendingComponent: StudiosPageSkeleton,
   component: StudiosPage,
 });
 

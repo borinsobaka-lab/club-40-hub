@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
-import { CardSkeleton } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CallStatsTab } from "@/components/scripts/settings/call-stats";
 import { CopyStatsTab } from "@/components/scripts/settings/copy-stats";
@@ -18,6 +17,10 @@ import {
   useScriptAccess,
   useUnreadSuggestions,
 } from "@/lib/scripts/data";
+import {
+  ScriptsSettingsBodySkeleton,
+  ScriptsSettingsPageSkeleton,
+} from "@/components/page-skeletons";
 
 const TABS = ["history", "suggestions", "stats", "calls", "vars", "import"] as const;
 type SettingsTab = (typeof TABS)[number];
@@ -30,16 +33,18 @@ export const Route = createFileRoute("/_authenticated/scripts/settings")({
   validateSearch: (search: Record<string, unknown>): { tab?: SettingsTab } => ({
     tab: isTab(search.tab) ? search.tab : undefined,
   }),
+  pendingComponent: ScriptsSettingsPageSkeleton,
   component: ScriptsSettingsPage,
 });
 
 function ScriptsSettingsPage() {
   const access = useScriptAccess();
+  const { tab } = Route.useSearch();
 
   return (
     <AdminShell title="Настройки скриптов">
       {access === null ? (
-        <CardSkeleton rows={3} />
+        <ScriptsSettingsBodySkeleton tab={tab} />
       ) : !access.canRead ? (
         <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
           Раздел «Скрипты LS» вам не открыт — доступ выдаёт владелец в «Доступах».

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
+import { rememberStudioFormat } from "@/lib/page-skeleton-layout";
 
 /**
  * Живёт в layout админки, ничего не рисует:
@@ -19,6 +20,12 @@ export function StudioBranding() {
     if (!studios?.length) return;
     if (!activeId || !studios.some((s) => s.id === activeId)) setActiveStudioId(studios[0].id);
   }, [studios, activeId]);
+
+  // Формат клуба — для скелетонов страниц, чья раскладка от него зависит
+  // («Продажи», «Тренировки», «Расписание»): при следующем открытии он нужен
+  // раньше, чем придёт список клубов.
+  const format = active?.format;
+  useEffect(() => rememberStudioFormat(format), [format]);
 
   const color = active?.brand_color;
   useEffect(() => {

@@ -45,6 +45,7 @@ import { TableSkeletonRows } from "@/components/skeletons";
 import { formatDate, formatMoneyPrecise } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { PromocodesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -56,6 +57,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/promocodes")({
   head: () => ({ meta: [{ title: "Промокоды — Base40 Admin" }] }),
+  pendingComponent: PromocodesPageSkeleton,
   component: PromoCodesPage,
 });
 
@@ -228,7 +230,7 @@ function PromoCodesPage() {
                 )}
               </TableBody>
             </Table>
-            <DataPagination {...pg} />
+            <DataPagination {...pg} loading={loading} />
           </div>
         </RequireStudio>
       </div>

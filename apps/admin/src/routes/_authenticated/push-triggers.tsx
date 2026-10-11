@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Zap } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
+import { PushTriggersPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/push-triggers")({
   head: () => ({ meta: [{ title: "Триггерные уведомления — Base40 Admin" }] }),
+  pendingComponent: PushTriggersPageSkeleton,
   component: PushTriggersPage,
 });
 

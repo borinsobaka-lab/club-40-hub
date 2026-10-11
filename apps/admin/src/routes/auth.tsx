@@ -9,8 +9,10 @@ import { FormField } from "@/components/ui/form-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { AuthPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/auth")({
+  pendingComponent: AuthPageSkeleton,
   component: AuthPage,
 });
 

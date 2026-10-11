@@ -11,6 +11,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -127,13 +128,13 @@ export function CopyStatsTab() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile
             label={`Копирований${userName ? ` · ${userName}` : ""}`}
-            value={isPending ? "—" : (data?.totals.total ?? 0)}
+            value={isPending ? <Skeleton className="h-8 w-16" /> : (data?.totals.total ?? 0)}
           />
           {LANGS.map((l) => (
             <StatTile
               key={l.key}
               label={`${l.label} · ${l.name}`}
-              value={isPending ? "—" : (data?.totals[l.key] ?? 0)}
+              value={isPending ? <Skeleton className="h-8 w-16" /> : (data?.totals[l.key] ?? 0)}
               dim={dimLang(l.key)}
             />
           ))}

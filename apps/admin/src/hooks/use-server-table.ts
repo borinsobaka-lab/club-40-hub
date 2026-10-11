@@ -74,6 +74,7 @@ export function useServerTable<T>(opts: {
       },
       pageCount,
       total,
+      loading: query.isLoading,
     },
   };
 }

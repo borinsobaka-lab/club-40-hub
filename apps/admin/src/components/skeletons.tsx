@@ -1,21 +1,39 @@
+import type { ReactNode } from "react";
+import { useRouter, useRouterState } from "@tanstack/react-router";
+import { PanelLeft, RefreshCw } from "lucide-react";
+
 import { Skeleton } from "@/components/ui/skeleton";
-import { TableCell, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 /*
  * Скелетоны админки — состояние ПЕРВОЙ загрузки: вместо пустоты, нулей или
- * спиннера по центру показываем «болванку» того, что сейчас появится, —
- * раскладка не прыгает, и видно, что именно грузится.
+ * спиннера показываем болванку ИМЕННО ЭТОГО раздела — его шапку, фильтры,
+ * колонки и блоки. Чужая болванка (таблица на месте карточек скриптов) хуже
+ * пустоты: страница «перепрыгивает» из одной раскладки в другую.
  *
- * Как выбрать (полная инструкция — .interface-design/system.md, «Скелетоны»):
- *   таблица ................. <TableSkeletonRows columns={N} /> в TableBody
- *   карточки / форма ........ <CardSkeleton rows={N} />
- *   плитки показателей ...... <StatCardsSkeleton count={N} />
- *   одно значение ........... <Skeleton className="h-8 w-32" /> (ui/skeleton)
- *   раздел целиком .......... <PageBodySkeleton /> внутри AdminShell
- *   страница до AdminShell .. <PageSkeleton /> (роутер, права, формат студии)
- *   весь каркас ............. <AppShellSkeleton /> (до проверки входа)
- *   меню на тёмной панели ... <MenuSkeleton /> / <RailSkeleton />
+ * Полная инструкция — .interface-design/system.md, «Скелетоны». Коротко:
+ *  - у каждой страницы свой скелетон в components/page-skeletons.tsx
+ *    (шапка ShellSkeleton с настоящим заголовком + тело из блоков ниже) и
+ *    `pendingComponent` в её роуте. Его же показывают AccessGate, каркас до
+ *    входа и RequireFormat — через RoutePendingSkeleton;
+ *  - данные внутри уже открытой страницы — TableSkeletonRows в настоящей
+ *    таблице, тело-скелетон раздела (например, ScriptsListSkeleton) и т. п.
+ *
+ * Блоки:
+ *   ShellSkeleton ........... шапка AdminShell с заголовком + <main>
+ *   ToolbarSkeleton ......... плашка TableToolbar с теми же контролами
+ *   TableCardSkeleton ....... таблица с настоящими заголовками колонок
+ *   TableSkeletonRows ....... строки внутри настоящей таблицы
+ *   CardSkeleton ............ простые карточки (лента истории и т. п.)
+ *   MenuSkeleton / RailSkeleton — меню и рейка на тёмной панели
  */
 
 /**
@@ -60,95 +78,221 @@ export function CardSkeleton({ rows = 3, className }: { rows?: number; className
 }
 
 /**
- * Плитки показателей (подпись + крупное число). Сетку раздел задаёт сам
- * через className — та же, что у настоящих плиток, иначе при загрузке
- * раскладка прыгнет.
+ * Болванка кнопки или контрола. Строка — класс ширины (w-40, w-48: селекты,
+ * поля); объект — кнопка, ширину которой задаёт её настоящий текст
+ * (невидимый внутри болванки), поэтому она совпадает с кнопкой до пикселя.
  */
-export function StatCardsSkeleton({
-  count = 4,
-  className = "grid grid-cols-2 gap-3 lg:grid-cols-4",
+export type ControlSkeleton = string | { label: string; icon?: boolean; className?: string };
+
+export function ControlSkeletonView({ control }: { control: ControlSkeleton }) {
+  if (typeof control === "string") return <Skeleton className={cn("h-10", control)} />;
+  return (
+    <Skeleton
+      className={cn(
+        "inline-flex h-10 shrink-0 items-center gap-2 px-4 text-sm font-medium",
+        control.className,
+      )}
+    >
+      <span className="invisible inline-flex items-center gap-2 whitespace-nowrap">
+        {control.icon !== false && <span className="size-4" />}
+        {control.label}
+      </span>
+    </Skeleton>
+  );
+}
+
+/**
+ * Шапка страницы как в AdminShell: та же разметка и классы, настоящий
+ * заголовок раздела, вместо кнопок действий — болванки по их тексту.
+ * Хуков нет — можно рисовать до загрузки чего угодно (каркас до входа).
+ */
+export function ShellSkeleton({
+  title,
+  actions = [],
+  children,
 }: {
-  count?: number;
-  className?: string;
+  title: string;
+  /** Кнопки действий страницы — как в настоящих actions AdminShell. */
+  actions?: ControlSkeleton[];
+  children: ReactNode;
 }) {
   return (
-    <div className={className}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="rounded-lg border bg-background p-4">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="mt-3 h-7 w-28" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * Тело типового раздела: плашка фильтров (TableToolbar) и таблица. Для
- * случаев, когда раздел ещё не знает, что покажет: роутер грузит код
- * страницы, права ещё не пришли, формат студии неизвестен.
- */
-export function PageBodySkeleton({ columns = 6, rows = 8 }: { columns?: number; rows?: number }) {
-  return (
-    <div className="space-y-3" aria-busy="true" aria-label="Загрузка">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
-        <Skeleton className="h-10 w-full max-w-96" />
-        <Skeleton className="h-10 w-40 max-sm:hidden" />
-        <Skeleton className="h-10 w-40 max-sm:hidden" />
-      </div>
-      <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="flex gap-6 border-b px-4 py-3">
-          {Array.from({ length: columns }).map((_, c) => (
-            <Skeleton
-              key={c}
-              className={cn("h-3", c === 0 ? "w-24" : "w-14", c >= 3 && "max-md:hidden")}
-            />
-          ))}
-        </div>
-        {Array.from({ length: rows }).map((_, r) => (
-          <div key={r} className="flex gap-6 border-b px-4 py-3.5 last:border-0">
-            {Array.from({ length: columns }).map((_, c) => (
-              <Skeleton
-                key={c}
-                className={cn("h-4", c === 0 ? "w-40" : "w-16", c >= 3 && "max-md:hidden")}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Шапка страницы как в AdminShell (та же высота и поля): заголовок и место
- * под кнопки. Без данных и хуков — можно рисовать до загрузки чего угодно.
- */
-function PageHeaderSkeleton() {
-  return (
-    <header className="flex h-[57px] shrink-0 items-center gap-3 border-b bg-background px-3 lg:h-16 lg:px-4">
-      <Skeleton className="h-7 w-48" />
-      <Skeleton className="ml-auto h-9 w-24 max-sm:hidden" />
-      <Skeleton className="h-9 w-44 max-lg:hidden" />
-    </header>
-  );
-}
-
-/**
- * Страница целиком (шапка + тело) — на месте AdminShell, пока страницы ещё
- * нет: роутер грузит её код (defaultPendingComponent в router.tsx), права
- * сотрудника ещё не пришли (AccessGate). Боковое меню при этом настоящее —
- * оно в layout-роуте.
- */
-export function PageSkeleton() {
-  return (
     <>
-      <PageHeaderSkeleton />
-      <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
-        <PageBodySkeleton />
+      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
+        {/* Кнопка меню на узком экране — как SidebarTrigger. */}
+        <span className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center md:hidden">
+          <PanelLeft className="size-4" />
+        </span>
+        <h1 className="min-w-0 flex-1 truncate text-xl font-semibold leading-tight lg:flex-initial lg:text-2xl">
+          {title}
+        </h1>
+        <span className="inline-flex size-10 shrink-0 items-center justify-center">
+          <RefreshCw className="h-5 w-5" />
+        </span>
+        {actions.length > 0 && (
+          <div className="shell-actions order-last w-full lg:order-none lg:ml-auto lg:w-auto">
+            {/* До lg кнопки делят строку поровну (как .shell-actions у страницы),
+                а не тянутся по полному тексту — на телефоне он короче. */}
+            <div className="flex gap-2 max-lg:[&>*]:min-w-0 max-lg:[&>*]:flex-1 max-lg:[&>*]:basis-0 max-lg:[&>*]:overflow-hidden">
+              {actions.map((a, i) => (
+                <ControlSkeletonView key={i} control={a} />
+              ))}
+            </div>
+          </div>
+        )}
+        <Skeleton
+          className={cn("h-10 w-10 shrink-0 sm:w-20 lg:h-9", actions.length === 0 && "lg:ml-auto")}
+        />
+        <div className="hidden items-center gap-2 lg:flex">
+          <Skeleton className="h-10 w-44" />
+          <Skeleton className="h-10 w-20" />
+        </div>
+      </header>
+      <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6" aria-busy="true">
+        {children}
       </main>
     </>
   );
+}
+
+/**
+ * Плашка фильтров (TableToolbar): те же классы, на телефоне те же правила
+ * раскладки (styles.css, .table-toolbar). `search` — поле поиска,
+ * `controls` — остальные контролы по порядку (см. ControlSkeleton).
+ */
+export function ToolbarSkeleton({
+  search = true,
+  controls = [],
+  children,
+}: {
+  search?: boolean;
+  controls?: ControlSkeleton[];
+  children?: ReactNode;
+}) {
+  return (
+    <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
+      {search && <Skeleton className="toolbar-search h-10 w-full max-w-96" />}
+      {controls.map((c, i) => (
+        <ControlSkeletonView key={i} control={c} />
+      ))}
+      {children}
+    </div>
+  );
+}
+
+/** Подвал пагинации (DataPagination): «строк на странице», счётчик, стрелки. */
+export function PaginationSkeleton() {
+  const arrow = "size-10 shrink-0 rounded-md border bg-background";
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-b-lg border-t bg-background px-2 py-2 sm:gap-3 sm:px-3">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span className="max-sm:hidden">Строк на странице</span>
+        <Skeleton className="h-10 w-20" />
+      </div>
+      <div className="flex items-center gap-2 sm:gap-3">
+        <Skeleton className="h-4 w-20" />
+        <div className="flex items-center gap-1">
+          <span className={cn(arrow, "max-sm:hidden")} />
+          <span className={arrow} />
+          <Skeleton className="mx-1 h-4 w-8 sm:mx-2" />
+          <span className={arrow} />
+          <span className={cn(arrow, "max-sm:hidden")} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Таблица раздела целиком: обёртка, настоящие заголовки колонок (те же, что
+ * у страницы, — по ним видно, что это за таблица, и на телефоне карточки
+ * получают подписи) и строки-болванки. `title` — полоса над таблицей
+ * («История операций»), `pagination` — подвал DataPagination.
+ */
+export type HeaderSkeleton = string | { label: string; className?: string };
+
+export function TableCardSkeleton({
+  headers,
+  rows = 8,
+  title,
+  pagination = false,
+}: {
+  /** Заголовки колонок страницы; объект — с классом ширины колонки. */
+  headers: HeaderSkeleton[];
+  rows?: number;
+  title?: string;
+  pagination?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border bg-background">
+      {title && <div className="border-b px-4 py-2 text-sm font-semibold">{title}</div>}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {headers.map((h, i) =>
+              typeof h === "string" ? (
+                <TableHead key={i}>{h}</TableHead>
+              ) : (
+                <TableHead key={i} className={h.className}>
+                  {h.label}
+                </TableHead>
+              ),
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableSkeletonRows columns={headers.length} rows={rows} />
+        </TableBody>
+      </Table>
+      {pagination && <PaginationSkeleton />}
+    </div>
+  );
+}
+
+/**
+ * Типовой раздел, о котором ничего не известно: фильтры и таблица. Только
+ * запасной вариант (роут без своего скелетона) — у каждой страницы должен
+ * быть свой, см. page-skeletons.tsx.
+ */
+export function PageBodySkeleton() {
+  return (
+    <div className="space-y-3">
+      <ToolbarSkeleton controls={["w-40"]} />
+      <div className="rounded-lg border bg-background">
+        <Table>
+          <TableBody>
+            <TableSkeletonRows columns={6} />
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+/** Запасная страница целиком — роут без своего pendingComponent. */
+export function PageSkeleton() {
+  return (
+    <ShellSkeleton title="">
+      <PageBodySkeleton />
+    </ShellSkeleton>
+  );
+}
+
+/**
+ * Скелетон страницы, которая сейчас открывается: pendingComponent её роута
+ * (последнего в цепочке). Нужен там, где страница уже известна, а её
+ * компонент ещё нельзя показывать: AccessGate (права грузятся), каркас до
+ * проверки входа, RequireFormat (формат клуба неизвестен).
+ */
+export function RoutePendingSkeleton() {
+  const router = useRouter();
+  const routeId = useRouterState({ select: (s) => s.matches[s.matches.length - 1]?.routeId });
+  const route = routeId ? router.looseRoutesById[routeId] : undefined;
+  const Pending = route?.options.pendingComponent;
+  // Свой скелетон есть только у страниц; у layout-роута это сам каркас.
+  if (!Pending || Pending === AppShellSkeleton || Pending === RoutePendingSkeleton)
+    return <PageSkeleton />;
+  return <Pending />;
 }
 
 /**
@@ -212,7 +356,7 @@ export function AppShellSkeleton() {
         </div>
       </div>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas md:rounded-xl">
-        <PageSkeleton />
+        <RoutePendingSkeleton />
       </div>
     </div>
   );

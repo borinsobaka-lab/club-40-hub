@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { ShowcasePage, type ShowcaseConfig } from "@/components/showcase-page";
+import { ServicesPageSkeleton } from "@/components/page-skeletons";
 
 const SERVICES: ShowcaseConfig = {
   table: "services",
@@ -29,5 +30,6 @@ const SERVICES: ShowcaseConfig = {
 
 export const Route = createFileRoute("/_authenticated/services")({
   head: () => ({ meta: [{ title: "Услуги — Base40 Admin" }] }),
+  pendingComponent: ServicesPageSkeleton,
   component: () => <ShowcasePage config={SERVICES} />,
 });

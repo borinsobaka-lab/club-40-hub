@@ -74,9 +74,11 @@ import {
   type TrainerRole,
 } from "@/lib/staff-directory";
 import { cn } from "@/lib/utils";
+import { PayrollPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/payroll")({
   head: () => ({ meta: [{ title: "Зарплаты — Base40 Admin" }] }),
+  pendingComponent: PayrollPageSkeleton,
   component: PayrollPage,
 });
 

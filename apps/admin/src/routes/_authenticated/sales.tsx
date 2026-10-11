@@ -76,12 +76,14 @@ import {
   AutoRenewBadge,
   effectiveStatus,
 } from "@/components/membership-status-badge";
+import { SalesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?» колонок — те же, что у полей формы продажи. */
 const TIPS = SALE_TIPS;
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({ meta: [{ title: "Продажи — Base40 Admin" }] }),
+  pendingComponent: SalesPageSkeleton,
   component: SalesPage,
 });
 

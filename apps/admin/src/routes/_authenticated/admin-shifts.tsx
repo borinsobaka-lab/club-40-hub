@@ -60,9 +60,11 @@ import {
   type Employee,
 } from "@/lib/staff-directory";
 import { cn } from "@/lib/utils";
+import { AdminShiftsPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/admin-shifts")({
   head: () => ({ meta: [{ title: "График администраторов — Base40 Admin" }] }),
+  pendingComponent: AdminShiftsPageSkeleton,
   component: AdminShiftsPage,
 });
 

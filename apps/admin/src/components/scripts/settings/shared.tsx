@@ -81,7 +81,8 @@ export function StatTile({
   return (
     <div className={cn("rounded-lg border bg-background p-4", dim && "opacity-50")}>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      {/* div, а не p: на время загрузки здесь болванка (тоже div). */}
+      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
     </div>
   );
 }

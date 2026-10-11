@@ -37,6 +37,7 @@ import { formatDateTime, toDateTimeLocalValue } from "@/lib/format";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { PushPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -47,6 +48,7 @@ const TIPS = {
 
 export const Route = createFileRoute("/_authenticated/push")({
   head: () => ({ meta: [{ title: "Пуш-уведомления — Base40 Admin" }] }),
+  pendingComponent: PushPageSkeleton,
   component: PushPage,
 });
 
@@ -216,7 +218,7 @@ function PushPage() {
               )}
             </TableBody>
           </Table>
-          <DataPagination {...pg} />
+          <DataPagination {...pg} loading={loading} />
         </div>
       </div>
 

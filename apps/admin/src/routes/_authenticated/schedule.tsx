@@ -58,9 +58,12 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-dialog";
+import { EntryCardSkeleton, SchedulePageSkeleton } from "@/components/page-skeletons";
+import { SCHEDULE_SKELETON_HOURS, isScheduleSkeletonCell } from "@/lib/page-skeleton-layout";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
   head: () => ({ meta: [{ title: "Расписание — Base40 Admin" }] }),
+  pendingComponent: SchedulePageSkeleton,
   component: SchedulePage,
 });
 
@@ -144,12 +147,6 @@ const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
 const SLOT_PX_FULL = 88;
 const SLOT_PX_EMPTY = 28;
-// Скелетон недели, пока занятия грузятся впервые: болванки карточек в шахматном
-// порядке в «рабочие» часы — сетка сразу выглядит расписанием, а не пустой.
-// На телефоне виден один день — там болванка в каждом из этих часов.
-const SKELETON_HOURS = new Set([9, 11, 18, 19]);
-const isSkeletonCell = (hour: number, dayIndex: number, singleDay: boolean) =>
-  SKELETON_HOURS.has(hour) && (singleDay || (hour + dayIndex) % 2 === 0);
 const ALL_FILTER_VALUE = "all";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -812,7 +809,7 @@ function SchedulePage() {
 
               {HOURS.map((hour) => {
                 const rowHeight =
-                  grid.busyHours.has(hour) || (entriesPending && SKELETON_HOURS.has(hour))
+                  grid.busyHours.has(hour) || (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour))
                     ? SLOT_PX_FULL
                     : SLOT_PX_EMPTY;
                 return (
@@ -850,7 +847,7 @@ function SchedulePage() {
                               packages ? "hover:bg-black/5" : "hover:bg-accent/40",
                             )}
                           />
-                          {entriesPending && isSkeletonCell(hour, di, isMobile) && (
+                          {entriesPending && isScheduleSkeletonCell(hour, di, isMobile) && (
                             <EntryCardSkeleton />
                           )}
                           {grid.cells.get(cellKey(day, hour))?.map((e) => (
@@ -1030,17 +1027,6 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
         </span>
       )}
     </span>
-  );
-}
-
-/** Болванка карточки занятия на время первой загрузки недели. */
-function EntryCardSkeleton() {
-  return (
-    <div className="pointer-events-none absolute inset-1 space-y-1.5 rounded-md border bg-background p-2">
-      <Skeleton className="h-3 w-3/4" />
-      <Skeleton className="h-3 w-1/2" />
-      <Skeleton className="h-3 w-2/3" />
-    </div>
   );
 }
 
