@@ -1,16 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, differenceInCalendarDays, addDays } from "date-fns";
+import { useId, useMemo, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { format, startOfMonth, endOfMonth, differenceInCalendarDays, addDays, min } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CalendarIcon, ArrowUp, ArrowDown, Minus, Loader2 } from "lucide-react";
+import {
+  CalendarIcon,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpRight,
+  ChartArea,
+  ChartColumn,
+  ChartLine,
+  Minus,
+  Loader2,
+} from "lucide-react";
 import type { DateRange } from "react-day-picker";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { TableToolbar } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +52,15 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { dashboardStudioIds } from "@/lib/admin-access";
+import {
+  BUCKET_COUNT,
+  aggregate,
+  buildBuckets,
+  seriesTotal,
+  type Granularity,
+  type SeriesKind,
+  type SeriesPoint,
+} from "@/lib/dashboard-series";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Дашборд — Base40 Admin" }] }),
@@ -242,6 +283,215 @@ function previousPeriod(from: Date, to: Date) {
   const prevTo = addDays(from, -1);
   const prevFrom = addDays(prevTo, -(days - 1));
   return { from: toISO(prevFrom), to: toISO(prevTo) };
+}
+
+/**
+ * Строки одной таблицы для графика: откуда взять дату и сумму. Строк за год
+ * бывает больше лимита PostgREST на ответ (1000), поэтому `page` — запрос
+ * одной страницы, а `loadSeries` догружает остальные.
+ */
+type SeriesSource = {
+  page: (lo: number, hi: number) => PromiseLike<SupabaseResult>;
+  date: string;
+  /** timestamptz — дату берём по локальным суткам; иначе колонка date. */
+  timestamp?: boolean;
+  /** Без суммы точка — просто «одна штука». */
+  amount?: string;
+  /** Возвраты вычитаются из выручки. */
+  sign?: number;
+  /** Считается в число продаж (знаменатель среднего чека)? */
+  deal?: boolean;
+};
+
+type SeriesDef = {
+  kind: SeriesKind;
+  /** Что именно на графике — подзаголовок окна. */
+  description: string;
+  /**
+   * Показатель смотрит вперёд (окончания абонементов, сроки взносов) — график
+   * заканчивается концом выбранного периода. Остальные — не позже сегодня:
+   * будущие корзины выручки и посещений всегда пустые.
+   */
+  future?: boolean;
+  sources: (studioId: string, from: string, to: string) => SeriesSource[];
+};
+
+const PAGE_SIZE = 1000;
+
+function select(table: string, columns: string, lo: number) {
+  return supabase.from(table).select(`id, ${columns}`, lo === 0 ? { count: "exact" } : undefined);
+}
+
+function salesSource(table: "sales" | "other_sales") {
+  return (studioId: string, from: string, to: string): SeriesSource => ({
+    date: "sold_at",
+    amount: "total_amount",
+    page: (lo, hi) =>
+      select(table, "sold_at, total_amount", lo)
+        .eq("studio_id", studioId)
+        .gte("sold_at", from)
+        .lte("sold_at", to)
+        .order("sold_at")
+        .order("id")
+        .range(lo, hi),
+  });
+}
+
+const sales = salesSource("sales");
+const otherSales = salesSource("other_sales");
+
+function refunds(studioId: string, from: string, to: string): SeriesSource {
+  return {
+    date: "refunded_at",
+    timestamp: true,
+    amount: "amount",
+    sign: -1,
+    deal: false,
+    page: (lo, hi) =>
+      select("refunds", "refunded_at, amount", lo)
+        .eq("studio_id", studioId)
+        .gte("refunded_at", dayStartISO(from))
+        .lt("refunded_at", nextDayStartISO(to))
+        .order("refunded_at")
+        .order("id")
+        .range(lo, hi),
+  };
+}
+
+/** Графики есть у показателей за период; у «сейчас»-показателей истории нет. */
+const SERIES: Partial<Record<keyof Metrics, SeriesDef>> = {
+  revenue: {
+    kind: "sum",
+    description: "абонементы, услуги и товары за вычетом возвратов",
+    sources: (s, f, t) => [sales(s, f, t), otherSales(s, f, t), refunds(s, f, t)],
+  },
+  signups: {
+    kind: "count",
+    description: "клиенты по дате регистрации",
+    sources: (studioId, from, to) => [
+      {
+        date: "registration_date",
+        page: (lo, hi) =>
+          select("clients", "registration_date", lo)
+            .eq("studio_id", studioId)
+            .gte("registration_date", from)
+            .lte("registration_date", to)
+            .order("registration_date")
+            .order("id")
+            .range(lo, hi),
+      },
+    ],
+  },
+  expiring: {
+    kind: "count",
+    // Прошедшие абонементы уже не active (expire_memberships), поэтому здесь
+    // и истёкшие; заменённые новой покупкой и отменённые не считаем.
+    description: "абонементы по дате окончания, кроме отменённых и продлённых досрочно",
+    future: true,
+    sources: (studioId, from, to) => [
+      {
+        date: "ends_at",
+        page: (lo, hi) =>
+          select("client_memberships", "ends_at", lo)
+            .eq("studio_id", studioId)
+            .in("status", ["active", "frozen", "expired"])
+            .gte("ends_at", from)
+            .lte("ends_at", to)
+            .order("ends_at")
+            .order("id")
+            .range(lo, hi),
+      },
+    ],
+  },
+  visits: {
+    kind: "count",
+    description: "отмеченные посещения занятий",
+    sources: (studioId, from, to) => [
+      {
+        date: "starts_at",
+        timestamp: true,
+        page: (lo, hi) =>
+          select("bookings_log", "starts_at", lo)
+            .eq("studio_id", studioId)
+            .eq("status", "attended")
+            .gte("starts_at", dayStartISO(from))
+            .lt("starts_at", nextDayStartISO(to))
+            .order("starts_at")
+            .order("id")
+            .range(lo, hi),
+      },
+    ],
+  },
+  avgMembership: {
+    kind: "avg",
+    description: "выручка за абонементы / число продаж",
+    sources: (s, f, t) => [sales(s, f, t)],
+  },
+  avgServices: {
+    kind: "avg",
+    description: "выручка за услуги и товары / число продаж",
+    sources: (s, f, t) => [otherSales(s, f, t)],
+  },
+  avgTotal: {
+    kind: "avg",
+    description: "вся выручка / число продаж",
+    sources: (s, f, t) => [sales(s, f, t), otherSales(s, f, t)],
+  },
+  debtPeriod: {
+    kind: "sum",
+    description: "неоплаченные взносы по сроку оплаты",
+    future: true,
+    sources: (studioId, from, to) => [
+      {
+        date: "due_date",
+        amount: "amount",
+        page: (lo, hi) =>
+          select("sale_installments", "due_date, amount, sales!inner(studio_id)", lo)
+            .eq("paid", false)
+            .eq("sales.studio_id", studioId)
+            .gte("due_date", from)
+            .lte("due_date", to)
+            .order("due_date")
+            .order("id")
+            .range(lo, hi),
+      },
+    ],
+  },
+};
+
+/** Все строки источника: первая страница с count, остальные — параллельно. */
+async function loadAllRows(source: SeriesSource) {
+  const unwrapPage = ({ data, error }: SupabaseResult) => {
+    if (error) throw new Error(error.message);
+    return (data ?? []) as Record<string, unknown>[];
+  };
+  const first = await source.page(0, PAGE_SIZE - 1);
+  if (first.error?.code && MISSING_TABLE.has(first.error.code)) return [];
+  const rows = unwrapPage(first);
+  const total = first.count ?? rows.length;
+  // Сервер может отдавать меньше PAGE_SIZE (свой max-rows) — шаг по факту.
+  const step = rows.length;
+  if (!step || step >= total) return rows;
+  const pages: PromiseLike<SupabaseResult>[] = [];
+  for (let lo = step; lo < total; lo += step) pages.push(source.page(lo, lo + step - 1));
+  return rows.concat(...(await Promise.all(pages)).map(unwrapPage));
+}
+
+async function loadSeries(def: SeriesDef, studioId: string, from: string, to: string) {
+  const sources = def.sources(studioId, from, to);
+  const chunks = await Promise.all(
+    sources.map(async (source): Promise<SeriesPoint[]> => {
+      const rows = await loadAllRows(source);
+      return rows.map((r) => ({
+        date: source.timestamp
+          ? toISO(new Date(String(r[source.date])))
+          : String(r[source.date]).slice(0, 10),
+        amount: source.amount ? Number(r[source.amount] ?? 0) * (source.sign ?? 1) : 0,
+        n: source.deal === false ? 0 : 1,
+      }));
+    }),
+  );
+  return chunks.flat();
 }
 
 type StatDef = {
@@ -477,6 +727,14 @@ function StudioDashboard({ studio }: { studio: Studio }) {
   const previous: Partial<Metrics> = periodQuery.data?.previous ?? {};
   const headingId = `dashboard-${studioId}`;
 
+  // Показатель держим и после закрытия: иначе окно пустеет, пока гаснет.
+  const [chartStat, setChartStat] = useState<StatDef | null>(null);
+  const [chartOpen, setChartOpen] = useState(false);
+  const openChart = (stat: StatDef) => {
+    setChartStat(stat);
+    setChartOpen(true);
+  };
+
   return (
     <section aria-labelledby={headingId} className="space-y-3">
       {/* Точка — основной цвет студии, как в переключателе студий. */}
@@ -538,34 +796,357 @@ function StudioDashboard({ studio }: { studio: Studio }) {
             const p = previous[stat.key];
             const value =
               v === undefined ? "—" : stat.format === "money" ? formatMoney(v) : formatNumber(v);
+            const chartable = !!SERIES[stat.key];
+            // Карточка с графиком — кнопка: стрелка в углу, по нажатию окно.
+            const Card = chartable ? "button" : "div";
             return (
               // На телефоне — две карточки в ряд: по одной в столбик
               // одиннадцать показателей растягивались на пять экранов.
-              <div key={stat.key} className="min-w-0 rounded-lg border bg-background p-3 sm:p-4">
-                <div className="text-xs font-medium text-muted-foreground sm:text-sm">
+              <Card
+                key={stat.key}
+                {...(chartable && { type: "button", onClick: () => openChart(stat) })}
+                className={cn(
+                  // flex-col: кнопка иначе центрирует содержимое по высоте ряда.
+                  "flex min-w-0 flex-col rounded-lg border bg-background p-3 text-left sm:p-4",
+                  chartable &&
+                    "group relative cursor-pointer transition-[border-color,box-shadow] hover:border-foreground/20 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                )}
+              >
+                {chartable && (
+                  <ArrowUpRight
+                    aria-hidden
+                    className="absolute right-2.5 top-2.5 size-4 text-muted-foreground transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground sm:right-3 sm:top-3"
+                  />
+                )}
+                {/* Внутри кнопки — только span: div в button — невалидная разметка. */}
+                <span
+                  className={cn(
+                    "block text-xs font-medium text-muted-foreground sm:text-sm",
+                    chartable && "pr-5",
+                  )}
+                >
                   {stat.label}
-                </div>
-                <div className="mt-1.5 text-lg font-semibold tabular-nums sm:mt-2 sm:text-2xl">
+                  {chartable && <span className="sr-only"> — открыть график</span>}
+                </span>
+                <span className="mt-1.5 block text-lg font-semibold tabular-nums sm:mt-2 sm:text-2xl">
                   {value}
-                </div>
-                <div className="mt-1 flex items-center gap-2">
+                </span>
+                <span className="mt-1 flex items-center gap-2">
                   {stat.hint && <span className="text-xs text-muted-foreground">{stat.hint}</span>}
-                </div>
+                </span>
                 {stat.compare && v !== undefined && p !== undefined && (
-                  <div className="mt-2">
+                  <span className="mt-2 block">
                     <Delta
                       current={v}
                       previous={p}
                       goodWhenUp={stat.goodWhenUp}
                       isMoney={stat.format === "money"}
                     />
-                  </div>
+                  </span>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
       )}
+
+      <Dialog open={chartOpen} onOpenChange={setChartOpen}>
+        <DialogContent className="sm:max-w-5xl">
+          {chartStat && SERIES[chartStat.key] && (
+            <MetricChart
+              key={chartStat.key}
+              studio={studio}
+              stat={chartStat}
+              def={SERIES[chartStat.key]!}
+              periodEnd={toDate ?? today}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
+  );
+}
+
+const GRANULARITIES: { value: Granularity; label: string; span: string; unit: string }[] = [
+  { value: "month", label: "По месяцам", span: "12 месяцев", unit: "месяц" },
+  { value: "week", label: "По неделям", span: "12 недель", unit: "неделю" },
+  { value: "day", label: "По дням", span: "30 дней", unit: "день" },
+];
+
+type ChartType = "bar" | "line" | "area";
+
+const CHART_TYPES: { value: ChartType; label: string; icon: typeof ChartColumn }[] = [
+  { value: "bar", label: "Столбцы", icon: ChartColumn },
+  { value: "line", label: "Линия", icon: ChartLine },
+  { value: "area", label: "Область", icon: ChartArea },
+];
+
+const compactNumber = new Intl.NumberFormat("ru-RU", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/**
+ * Окно графика показателя: разбивка (табы) и вид графика. Окно графика
+ * заканчивается периодом, выбранным на дашборде (см. SeriesDef.future).
+ */
+function MetricChart({
+  studio,
+  stat,
+  def,
+  periodEnd,
+}: {
+  studio: Studio;
+  stat: StatDef;
+  def: SeriesDef;
+  periodEnd: Date;
+}) {
+  const [granularity, setGranularity] = useState<Granularity>("month");
+  const [chartType, setChartType] = useState<ChartType>("bar");
+  const isMobile = useIsMobile();
+  const gradientId = `chart-fill-${useId().replace(/:/g, "")}`;
+
+  const anchor = def.future ? periodEnd : min([periodEnd, new Date()]);
+  const anchorISO = toISO(anchor);
+  const buckets = useMemo(
+    () => buildBuckets(granularity, new Date(`${anchorISO}T00:00:00`)),
+    [granularity, anchorISO],
+  );
+  const from = buckets[0].from;
+  const to = buckets[buckets.length - 1].to;
+
+  const query = useQuery({
+    queryKey: ["dashboard", studio.id, "series", stat.key, granularity, from, to],
+    queryFn: async () => {
+      const points = await loadSeries(def, studio.id, from, to);
+      return aggregate(granularity, buckets, points, def.kind);
+    },
+    // Пока грузится другая разбивка — прежний график, а не пустое место.
+    placeholderData: keepPreviousData,
+    meta: { errorMessage: `${studio.name}: не удалось загрузить график «${stat.label}»` },
+  });
+
+  const values = query.data;
+  const g = GRANULARITIES.find((x) => x.value === granularity)!;
+  const fmt = (n: number) => (stat.format === "money" ? formatMoney(n) : formatNumber(n));
+  const color = studio.brand_color || "var(--brand)";
+
+  const data = (values ?? []).map((v) => ({
+    tick: v.bucket.tick,
+    label: v.bucket.label,
+    value: v.value,
+    n: v.n,
+  }));
+  const filled = (values ?? []).filter((v) => v.value !== null && v.value !== 0);
+  const total = values ? seriesTotal(def.kind, values) : null;
+  const best = filled.reduce<(typeof filled)[number] | null>(
+    (b, v) => (b === null || v.value! > b.value! ? v : b),
+    null,
+  );
+
+  const summary = [
+    {
+      label: def.kind === "avg" ? `Средний за ${g.span}` : `Итого за ${g.span}`,
+      value: total === null ? "—" : fmt(total),
+    },
+    def.kind === "avg"
+      ? {
+          label: `Продаж за ${g.span}`,
+          value: formatNumber((values ?? []).reduce((s, v) => s + v.n, 0)),
+        }
+      : {
+          label: `В среднем за ${g.unit}`,
+          // Штуки в среднем — целым числом: «1 196,833 посещения» не читается.
+          value:
+            total === null
+              ? "—"
+              : fmt(
+                  def.kind === "count"
+                    ? Math.round(total / buckets.length)
+                    : total / buckets.length,
+                ),
+        },
+    {
+      label: "Максимум",
+      value: best ? fmt(best.value!) : "—",
+      note: best?.bucket.label,
+    },
+  ];
+
+  const axis = {
+    tick: { fontSize: 11, fill: "var(--muted-foreground)" },
+    tickLine: false,
+    axisLine: false,
+  };
+  const tooltip = (
+    <Tooltip
+      cursor={
+        chartType === "bar"
+          ? { fill: "var(--muted)", opacity: 0.6 }
+          : { stroke: "var(--border)", strokeWidth: 1 }
+      }
+      content={({ active, payload }) => {
+        const row = active ? payload?.[0]?.payload : null;
+        if (!row) return null;
+        return (
+          <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
+            <div className="font-medium first-letter:uppercase">{row.label}</div>
+            <div className="mt-1 text-sm font-semibold tabular-nums">
+              {row.value === null ? "нет продаж" : fmt(row.value)}
+            </div>
+            {def.kind === "avg" && row.n > 0 && (
+              <div className="text-muted-foreground">продаж: {formatNumber(row.n)}</div>
+            )}
+          </div>
+        );
+      }}
+    />
+  );
+  const common = { data, margin: { top: 8, right: 8, bottom: 0, left: 0 } };
+  const grid = <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />;
+  const xAxis = (
+    <XAxis dataKey="tick" {...axis} interval="preserveStartEnd" minTickGap={12} tickMargin={8} />
+  );
+  const yAxis = (
+    <YAxis {...axis} width={64} allowDecimals={false} tickFormatter={compactNumber.format} />
+  );
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{stat.label}</DialogTitle>
+        <DialogDescription>
+          {studio.name} · {def.description}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Tabs value={granularity} onValueChange={(v) => setGranularity(v as Granularity)}>
+            <TabsList>
+              {GRANULARITIES.map((x) => (
+                <TabsTrigger key={x.value} value={x.value}>
+                  {x.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <div
+            role="radiogroup"
+            aria-label="Вид графика"
+            className="inline-flex items-center gap-1 rounded-lg border p-1"
+          >
+            {CHART_TYPES.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={chartType === value}
+                aria-label={label}
+                title={label}
+                onClick={() => setChartType(value)}
+                className={cn(
+                  "inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  chartType === value && "bg-muted text-foreground",
+                )}
+              >
+                <Icon className="size-4" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* На телефоне итоги — строками «подпись · значение»: в трети ширины
+            суммы вида «18 222 313 GEL» обрезались. */}
+        <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
+          {summary.map((s) => (
+            <div
+              key={s.label}
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border px-3 py-2 sm:grid-cols-1 sm:content-start sm:p-3"
+            >
+              <div className="text-xs text-muted-foreground">{s.label}</div>
+              {values ? (
+                <div className="whitespace-nowrap text-base font-semibold tabular-nums max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1 sm:truncate sm:text-lg">
+                  {s.value}
+                </div>
+              ) : (
+                <Skeleton className="h-6 w-20 max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1.5" />
+              )}
+              {s.note && (
+                <div className="truncate text-xs text-muted-foreground first-letter:uppercase">
+                  {s.note}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div
+          className={cn("relative transition-opacity", query.isPlaceholderData && "opacity-50")}
+          style={{ height: isMobile ? 260 : 340 }}
+        >
+          {!values ? (
+            query.isError ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Не удалось загрузить график
+              </div>
+            ) : (
+              <Skeleton className="h-full w-full" />
+            )
+          ) : filled.length === 0 && !query.isPlaceholderData ? (
+            <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+              Нет данных за {g.span}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              {chartType === "bar" ? (
+                <BarChart {...common}>
+                  {grid}
+                  {xAxis}
+                  {yAxis}
+                  {tooltip}
+                  <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} />
+                </BarChart>
+              ) : chartType === "line" ? (
+                <LineChart {...common}>
+                  {grid}
+                  {xAxis}
+                  {yAxis}
+                  {tooltip}
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={granularity === "day" ? false : { r: 3, fill: color }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              ) : (
+                <AreaChart {...common}>
+                  <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  {grid}
+                  {xAxis}
+                  {yAxis}
+                  {tooltip}
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={color}
+                    strokeWidth={2}
+                    fill={`url(#${gradientId})`}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              )}
+            </ResponsiveContainer>
+          )}
+        </div>
+      </DialogBody>
+    </>
   );
 }

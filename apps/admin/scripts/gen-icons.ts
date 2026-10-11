@@ -26,6 +26,11 @@ const MANUAL: Record<string, string> = {
   AlertTriangle: "Alert02Icon", // псевдоним AlertTriangle — кружок, а не треугольник
   BarChart3: "BarChart",
   Cat: "CatIcon",
+  // Вид графика на дашборде: псевдонимы ChartColumn/ChartArea — не те фигуры,
+  // берём одно семейство «оси + фигура».
+  ChartArea: "ChartAreaIcon",
+  ChartColumn: "ChartColumnIcon",
+  ChartLine: "ChartLineIcon",
   CheckCircle2: "CheckCircle",
   ChevronsUpDown: "UnfoldMoreIcon", // псевдоним — стрелки ↑↓, нужен «раскрыть»
   GripVertical: "DragDropVerticalIcon", // псевдоним — рука, нужны точки-ручка
@@ -56,7 +61,7 @@ writeFileSync(
  * components/ui/*, которые лучше держать близко к upstream shadcn.
  *
  * Hugeicons именует иконки по-своему (Search01Icon, Delete02Icon), но заодно
- * отдаёт псевдонимы под именами lucide — по ним и импортируем. Девять
+ * отдаёт псевдонимы под именами lucide — по ним и импортируем. Часть
  * псевдонимов оказались неточными (AlertTriangle рисовался кружком,
  * RefreshCwOff не отличался от RefreshCw, Send был конвертом) — для них
  * иконка выбрана вручную, см. MANUAL в scripts/gen-icons.ts.

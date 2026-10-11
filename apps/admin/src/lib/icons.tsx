@@ -6,7 +6,7 @@
  * components/ui/*, которые лучше держать близко к upstream shadcn.
  *
  * Hugeicons именует иконки по-своему (Search01Icon, Delete02Icon), но заодно
- * отдаёт псевдонимы под именами lucide — по ним и импортируем. Девять
+ * отдаёт псевдонимы под именами lucide — по ним и импортируем. Часть
  * псевдонимов оказались неточными (AlertTriangle рисовался кружком,
  * RefreshCwOff не отличался от RefreshCw, Send был конвертом) — для них
  * иконка выбрана вручную, см. MANUAL в scripts/gen-icons.ts.
@@ -23,8 +23,12 @@ import {
   ArrowDown as ArrowDownArt,
   ArrowLeft as ArrowLeftArt,
   ArrowUp as ArrowUpArt,
+  ArrowUpRight as ArrowUpRightArt,
   CalendarIcon as CalendarIconArt,
   CatIcon as CatArt,
+  ChartAreaIcon as ChartAreaArt,
+  ChartColumnIcon as ChartColumnArt,
+  ChartLineIcon as ChartLineArt,
   Check as CheckArt,
   CheckCircle as CheckCircle2Art,
   ChevronDown as ChevronDownArt,
@@ -92,8 +96,12 @@ export const AlertTriangle = icon(AlertTriangleArt, "AlertTriangle");
 export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
 export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
+export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");
 export const Cat = icon(CatArt, "Cat");
+export const ChartArea = icon(ChartAreaArt, "ChartArea");
+export const ChartColumn = icon(ChartColumnArt, "ChartColumn");
+export const ChartLine = icon(ChartLineArt, "ChartLine");
 export const Check = icon(CheckArt, "Check");
 export const CheckCircle2 = icon(CheckCircle2Art, "CheckCircle2");
 export const ChevronDown = icon(ChevronDownArt, "ChevronDown");
