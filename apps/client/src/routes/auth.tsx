@@ -190,7 +190,7 @@ function AuthPage() {
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black leading-tight">Добро пожаловать</h1>
+          <h1 className="text-3xl font-semibold leading-tight">Добро пожаловать</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {step === "otp"
               ? `Введите код, отправленный на ${email}`

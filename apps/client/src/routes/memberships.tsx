@@ -409,7 +409,7 @@ function MembershipsPage() {
       scrollKey={activeTab}
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-black">Абонементы</h1>
+          <h1 className="text-3xl font-semibold">Абонементы</h1>
           <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
           {!loading &&
             user &&
@@ -737,7 +737,7 @@ function MembershipCard({
         }
       >
         <div ref={onTopRef} style={{ minHeight: topMinHeight }}>
-          <h3 className="text-xl font-bold leading-tight">{membership.name}</h3>
+          <h3 className="text-xl font-semibold leading-tight">{membership.name}</h3>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-4xl font-black tracking-tight">
               {Number(membership.price).toLocaleString("ru-RU")} ₾

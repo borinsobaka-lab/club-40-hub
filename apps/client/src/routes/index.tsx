@@ -427,7 +427,7 @@ function HomePage() {
         <div className="bg-muted">
           {/* Тренировки */}
           <section className="bg-background rounded-b-[14px] pb-5">
-            <h2 className="px-4 text-2xl font-black mb-3">Тренировки</h2>
+            <h2 className="px-4 text-2xl font-semibold mb-3">Тренировки</h2>
             {bookingsError ? (
               <Card className="mx-4 p-4 text-sm text-destructive">
                 Не удалось загрузить ваши записи. Обновите страницу.
@@ -514,7 +514,7 @@ function HomePage() {
 
           {/* Услуги */}
           <section className="bg-background rounded-t-[14px] pt-5 pb-0">
-            <h2 className="px-4 text-2xl font-black">Услуги</h2>
+            <h2 className="px-4 text-2xl font-semibold">Услуги</h2>
             <p className="px-4 text-sm text-muted-foreground mb-3">
               Дополнительные возможности для участников клуба
             </p>

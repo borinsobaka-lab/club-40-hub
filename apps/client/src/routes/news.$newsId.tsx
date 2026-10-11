@@ -119,7 +119,7 @@ function NewsDetailPage() {
         </div>
 
         <div className="px-4 mt-5 space-y-3">
-          <h1 className="text-2xl font-bold leading-tight">{title}</h1>
+          <h1 className="text-2xl font-semibold leading-tight">{title}</h1>
           {item.description && (
             <p className="text-muted-foreground text-base">{item.description}</p>
           )}

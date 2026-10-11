@@ -348,7 +348,7 @@ export function StatsSection() {
   if (!user) {
     return (
       <section className="bg-background rounded-t-[14px] rounded-b-[14px] pt-5 pb-5">
-        <h2 className="px-4 text-2xl font-bold">Статистика</h2>
+        <h2 className="px-4 text-2xl font-semibold">Статистика</h2>
         <p className="px-4 text-sm text-muted-foreground mb-3">Прогресс, рекорды и ориентиры</p>
         <p className="px-4 text-sm text-muted-foreground">
           Войдите, чтобы видеть свою персональную статистику тренировок.
@@ -359,7 +359,7 @@ export function StatsSection() {
 
   return (
     <section className="bg-background rounded-t-[14px] rounded-b-[14px] pt-5 pb-5">
-      <h2 className="px-4 text-2xl font-bold">Статистика</h2>
+      <h2 className="px-4 text-2xl font-semibold">Статистика</h2>
       <p className="px-4 text-sm text-muted-foreground mb-3">Прогресс, рекорды и ориентиры</p>
 
       {loading ? (
