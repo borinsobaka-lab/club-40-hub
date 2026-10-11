@@ -233,7 +233,13 @@ function SalesPage() {
         .eq("studio_id", studioId!);
       if (term) q = q.ilike("search_text", `%${term}%`);
       if (kind !== "all") q = q.eq("sale_kind", kind);
-      return q.order("sold_at", { ascending: false }).range(from, to);
+      // sold_at — дата, у многих продаж одна: без уникального хвоста строки
+      // на границе страниц дублируются или пропадают.
+      return q
+        .order("sold_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to);
     },
     enabled: !!studioId,
     errorMessage: "Не удалось загрузить продажи",
@@ -526,9 +532,12 @@ function RefundForm({
   onSaved,
 }: Omit<RefundDialogProps, "open"> & { sale: Sale }) {
   const { ensure: ensureStaff } = useStaffProfile();
+  const queryClient = useQueryClient();
   // Уже оформленные возвраты по продаже: сумма всех возвратов не должна
-  // превышать сумму продажи.
-  const { data: refunded, isLoading: loadingRefunded } = useQuery({
+  // превышать сумму продажи. Пока сумма перечитывается (isFetching, а не
+  // только первая загрузка), кнопка заблокирована — проверка шла бы по
+  // устаревшему остатку.
+  const { data: refunded, isFetching: loadingRefunded } = useQuery({
     queryKey: ["refunds", "by-sale", sale.id],
     queryFn: async () => {
       const rows = await unwrap<{ amount: number | string | null }[]>(
@@ -583,6 +592,8 @@ function RefundForm({
         return;
       }
       toast.success("Возврат зафиксирован");
+      // Остаток к возврату по продаже — перечитать при следующем возврате.
+      queryClient.invalidateQueries({ queryKey: ["refunds"] });
       onOpenChange(false);
       onSaved();
     } finally {

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ import { useServerTable } from "@/hooks/use-server-table";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { supabase } from "@/integrations/supabase/client";
+import { unwrap } from "@/lib/query";
 import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHODS,
@@ -23,7 +24,7 @@ import {
 import {
   clientName,
   formatDate,
-  formatMoney,
+  formatMoneyPrecise,
   phoneSearchTerm,
   sanitizeSearch,
   todayISO,
@@ -232,14 +233,27 @@ function ClientMembershipsPage() {
   // Выбран только первый день диапазона — это и есть «одно число».
   const payTo = nextPayment?.to ? isoDay(nextPayment.to) : payFrom;
 
+  // Досчитать очередь продлений: у кого срок текущего абонемента вышел без
+  // записей, продление становится действующим (packages_settle_studio). Один
+  // раз на студию при открытии раздела (и по «Обновить»), а не на каждую
+  // страницу и фильтр; список его не ждёт — после досчёта перечитывается.
+  useQuery({
+    queryKey: ["packages_settle_studio", studioId],
+    queryFn: async () => {
+      await unwrap(supabase.rpc("packages_settle_studio", { p_studio_id: studioId! }));
+      void queryClient.invalidateQueries({ queryKey: ["client_packages_list", studioId] });
+      return true;
+    },
+    enabled: !!studioId,
+    staleTime: Infinity,
+    gcTime: 0,
+    meta: { errorMessage: "Не удалось досчитать очередь продлений" },
+  });
+
   const term = sanitizeSearch(useDebouncedValue(search));
   const table = useServerTable<Row>({
     queryKey: ["client_packages_list", studioId, term, state, payFrom, payTo],
-    queryFn: async ({ from, to }) => {
-      // Досчитать очередь продлений: у кого срок текущего абонемента вышел без
-      // записей, продление становится действующим (packages_settle_studio).
-      // Ошибку не показываем — список грузится и без этого.
-      await supabase.rpc("packages_settle_studio", { p_studio_id: studioId! });
+    queryFn: ({ from, to }) => {
       let q = supabase
         .from("client_packages_list")
         .select(COLUMNS, { count: "exact" })
@@ -255,6 +269,7 @@ function ClientMembershipsPage() {
       return q
         .order("sold_at", { ascending: false })
         .order("created_at", { ascending: false })
+        .order("id")
         .range(from, to);
     },
     enabled: !!studioId,
@@ -661,7 +676,7 @@ function PaymentCell({ payment, onSaved }: { payment?: Payment; onSaved: () => v
   const overdue = !payment.paid && payment.due_date < todayISO();
   const summary = (
     <>
-      <div className="font-medium tabular-nums">{formatMoney(Number(payment.amount))}</div>
+      <div className="font-medium tabular-nums">{formatMoneyPrecise(Number(payment.amount))}</div>
       <div
         className={cn(
           "flex items-center gap-1 whitespace-nowrap text-xs",

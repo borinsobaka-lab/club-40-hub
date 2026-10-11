@@ -290,10 +290,13 @@ function ClientCard<C extends ClientLike>({
     meta: { errorMessage: "Не удалось загрузить анкету клиента" },
   });
 
-  // Правка абонемента меняет и его статус в истории продаж (эмбед в sales).
+  // Правка абонемента меняет и его статус в истории продаж (эмбед в sales),
+  // и статус клиента в «Клиентах», и строку в «Абонементах» пакетной студии.
   const reloadMemberships = () => {
     queryClient.invalidateQueries({ queryKey: membershipsKey });
     queryClient.invalidateQueries({ queryKey: salesKey });
+    queryClient.invalidateQueries({ queryKey: ["clients_with_status"] });
+    queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
   };
 
   // Продажа из карточки меняет и историю, и абонемент, и статус клиента в списках.

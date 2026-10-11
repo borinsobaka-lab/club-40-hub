@@ -622,7 +622,13 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
   const [trainerId, setTrainerId] = useState("");
   const [kind, setKind] = useState<AdjustmentKind>("deduction");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(todayISO());
+  // Дата по умолчанию — в открытом месяце: сегодня, если смотрим текущий,
+  // иначе 1-е число. Выбранная вручную дата держится, пока месяц тот же.
+  const today = todayISO();
+  const defaultDate = monthOf(today) === month ? today : monthBounds(month).from;
+  const [picked, setPicked] = useState<{ month: MonthKey; date: string } | null>(null);
+  const date = picked?.month === month ? picked.date : defaultDate;
+  const setDate = (value: string) => setPicked({ month, date: value });
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 

@@ -6,6 +6,7 @@ import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { AdminShell, FloatingActions } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useServerTable } from "@/hooks/use-server-table";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { SellerSelect } from "@/components/seller-select";
 import { SELLER_TIP, useStudioStaff } from "@/lib/studio-staff";
@@ -223,20 +224,23 @@ function SalesTab({
   const queryClient = useQueryClient();
   const { data: items = [], isLoading: itemsLoading } = useSaleItems(studioId);
 
-  const { data: rows = [], isLoading: loading } = useQuery({
+  // Серверная пагинация: прежний limit(500) молча прятал старые продажи.
+  // Порядок с уникальным хвостом (id) — иначе строки с одной датой и временем
+  // на границе страниц дублируются или пропадают.
+  const table = useServerTable<OtherSale>({
     queryKey: ["other_sales", studioId],
-    queryFn: () =>
-      unwrap<OtherSale[]>(
-        supabase
-          .from("other_sales")
-          .select("*, clients(first_name, last_name, full_name)")
-          .eq("studio_id", studioId)
-          .order("sold_at", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(500),
-      ),
-    meta: { errorMessage: "Не удалось загрузить продажи" },
+    queryFn: ({ from, to }) =>
+      supabase
+        .from("other_sales")
+        .select("*, clients(first_name, last_name, full_name)", { count: "exact" })
+        .eq("studio_id", studioId)
+        .order("sold_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    errorMessage: "Не удалось загрузить продажи",
   });
+  const { rows, loading } = table;
   const reload = () => queryClient.invalidateQueries({ queryKey: ["other_sales"] });
 
   const handleDelete = async (s: OtherSale) => {
@@ -256,11 +260,10 @@ function SalesTab({
     reload();
   };
 
-  const pg = usePagination(rows);
   const crmLinkOf = useCrmLinks(
     studioId,
     "id",
-    pg.paged.map((s) => s.client_id),
+    rows.map((s) => s.client_id),
   );
 
   return (
@@ -300,7 +303,7 @@ function SalesTab({
                 </TableCell>
               </TableRow>
             ) : (
-              pg.paged.map((s) => (
+              rows.map((s) => (
                 <RowContextMenu
                   key={s.id}
                   actions={[
@@ -347,7 +350,7 @@ function SalesTab({
             )}
           </TableBody>
         </Table>
-        <DataPagination {...pg} loading={loading} />
+        <DataPagination {...table.pagination} />
       </div>
 
       <AddSaleDialog

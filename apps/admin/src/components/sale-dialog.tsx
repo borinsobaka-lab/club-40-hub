@@ -24,7 +24,7 @@ import {
   type SaleKind,
 } from "@/lib/payments";
 import { celebrateSale } from "@/lib/confetti";
-import { clientName, formatDate, formatMoney, todayISO } from "@/lib/format";
+import { clientName, formatDate, formatMoney, formatMoneyPrecise, todayISO } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
@@ -100,11 +100,15 @@ function addMonthsISO(iso: string, months: number) {
   return `${ny}-${String(nm + 1).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
 }
 
+// Делим в тетри: доли — с округлением вниз, остаток — последнему платежу.
+// Округление доли вверх при маленьком остатке давало последнему платежу минус
+// (0,10 на 12 платежей: 11 × 0,01 = 0,11 → последний −0,01).
 function splitAmount(total: number, parts: number) {
-  const part = Math.round((total / parts) * 100) / 100;
-  const arr = Array(parts).fill(part);
-  arr[parts - 1] = Math.round((total - part * (parts - 1)) * 100) / 100;
-  return arr.map((v) => Math.round(v * 100) / 100);
+  const cents = Math.max(0, Math.round(total * 100));
+  const part = Math.floor(cents / parts);
+  const arr: number[] = Array(parts).fill(part / 100);
+  arr[parts - 1] = (cents - part * (parts - 1)) / 100;
+  return arr;
 }
 
 // ---------------------------------------------------------------------------
@@ -402,7 +406,22 @@ function SaleForm({
         }));
         const { error: instErr } = await supabase.from("sale_installments").insert(rows);
         if (instErr) {
-          toast.error("Продажа создана, но не записан график: " + instErr.message);
+          // Без графика продажа с рассрочкой неполная — убираем её (выданный по
+          // ней абонемент удаляет триггер, прежний возвращается:
+          // db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql), форма
+          // остаётся открытой, чтобы повторить.
+          const { error: delErr } = await supabase.from("sales").delete().eq("id", sale.id);
+          toast.error(
+            delErr
+              ? `Не записан график платежей (${instErr.message}), и продажу не удалось отменить (${delErr.message}) — удалите её в «Продажах» и внесите заново`
+              : "Продажа не сохранена: не записан график платежей — " + instErr.message,
+          );
+          if (delErr) {
+            // Продажа осталась в базе — списки должны её показать.
+            queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
+            onSaved();
+          }
+          return;
         }
       }
       toast.success("Продажа создана");
@@ -587,7 +606,7 @@ function SaleForm({
                               {p.isDownPayment && " (сегодня, в клубе)"}
                             </span>
                             <span className="font-medium tabular-nums text-foreground">
-                              {formatMoney(p.amount)}
+                              {formatMoneyPrecise(p.amount)}
                             </span>
                           </li>
                         ))}
@@ -641,7 +660,7 @@ function SaleForm({
                             {formatDate(p.date)}
                           </span>
                           <span className="font-medium tabular-nums text-foreground">
-                            {formatMoney(p.amount)}
+                            {formatMoneyPrecise(p.amount)}
                           </span>
                         </li>
                       ))}

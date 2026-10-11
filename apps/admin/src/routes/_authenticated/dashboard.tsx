@@ -123,9 +123,12 @@ const MISSING_TABLE = new Set(["PGRST205", "42P01"]);
 /**
  * Запросы метрик независимы: упавший даёт undefined только своим метрикам
  * (текст ошибки — в общий тост), соседние карточки считаются как обычно.
+ * `load` — запрос с count (строки не нужны), `loadRows` — все строки
+ * источника постранично: суммы считаются по строкам, а PostgREST отдаёт не
+ * больше 1000 строк на ответ.
  */
 function makeLoader(errors: string[]) {
-  return async function load(query: PromiseLike<SupabaseResult>) {
+  async function load(query: PromiseLike<SupabaseResult>) {
     const { data, error, count } = await query;
     if (error) {
       if (error.code && MISSING_TABLE.has(error.code)) return { rows: [], count: 0 };
@@ -133,12 +136,24 @@ function makeLoader(errors: string[]) {
       return undefined;
     }
     return { rows: (data ?? []) as Record<string, unknown>[], count: count ?? 0 };
-  };
+  }
+  async function loadRows(source: SeriesSource) {
+    try {
+      return { rows: await loadAllRows(source) };
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : String(e));
+      return undefined;
+    }
+  }
+  return { load, loadRows };
 }
 
 function sum(rows: Record<string, unknown>[], column: string) {
   return rows.reduce<number>((s, r) => s + Number(r[column] ?? 0), 0);
 }
+
+/** Статусы абонементов в «Заканчивается абонементов» — карточка и график. */
+const EXPIRING_STATUSES = ["active", "frozen", "expired"];
 
 async function loadPeriodMetrics(
   studioId: string,
@@ -146,71 +161,43 @@ async function loadPeriodMetrics(
   to: string,
 ): Promise<Loaded<PeriodMetrics>> {
   const errors: string[] = [];
-  const load = makeLoader(errors);
-  const [sales, signups, expiring, visits, debtRows, otherSales, refunds] = await Promise.all([
-    load(
-      supabase
-        .from("sales")
-        .select("total_amount, sold_at")
-        .eq("studio_id", studioId)
-        .gte("sold_at", from)
-        .lte("sold_at", to),
-    ),
-    load(
-      supabase
-        .from("clients")
-        .select("id", { count: "exact", head: true })
-        .eq("studio_id", studioId)
-        .gte("registration_date", from)
-        .lte("registration_date", to),
-    ),
-    load(
-      supabase
-        .from("client_memberships")
-        .select("id", { count: "exact", head: true })
-        .eq("studio_id", studioId)
-        .eq("status", "active")
-        .gte("ends_at", from)
-        .lte("ends_at", to),
-    ),
-    load(
-      supabase
-        .from("bookings_log")
-        .select("id", { count: "exact", head: true })
-        .eq("studio_id", studioId)
-        .eq("status", "attended")
-        .gte("starts_at", dayStartISO(from))
-        .lt("starts_at", nextDayStartISO(to)),
-    ),
-    // Задолженность за период — неоплаченные взносы со сроком в диапазоне
-    load(
-      supabase
-        .from("sale_installments")
-        .select("amount, sales!inner(studio_id)")
-        .eq("paid", false)
-        .eq("sales.studio_id", studioId)
-        .gte("due_date", from)
-        .lte("due_date", to),
-    ),
-    // Продажи услуг и товаров — отдельная таблица, но выручка общая.
-    load(
-      supabase
-        .from("other_sales")
-        .select("total_amount")
-        .eq("studio_id", studioId)
-        .gte("sold_at", from)
-        .lte("sold_at", to),
-    ),
-    // Возвраты уменьшают выручку за период.
-    load(
-      supabase
-        .from("refunds")
-        .select("amount")
-        .eq("studio_id", studioId)
-        .gte("refunded_at", dayStartISO(from))
-        .lt("refunded_at", nextDayStartISO(to)),
-    ),
-  ]);
+  const { load, loadRows } = makeLoader(errors);
+  const [saleRows, signups, expiring, visits, debtRows, otherSaleRows, refundRows] =
+    await Promise.all([
+      loadRows(sales(studioId, from, to)),
+      load(
+        supabase
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .eq("studio_id", studioId)
+          .gte("registration_date", from)
+          .lte("registration_date", to),
+      ),
+      load(
+        supabase
+          .from("client_memberships")
+          .select("id", { count: "exact", head: true })
+          .eq("studio_id", studioId)
+          .in("status", EXPIRING_STATUSES)
+          .gte("ends_at", from)
+          .lte("ends_at", to),
+      ),
+      load(
+        supabase
+          .from("bookings_log")
+          .select("id", { count: "exact", head: true })
+          .eq("studio_id", studioId)
+          .eq("status", "attended")
+          .gte("starts_at", dayStartISO(from))
+          .lt("starts_at", nextDayStartISO(to)),
+      ),
+      // Задолженность за период — неоплаченные взносы со сроком в диапазоне
+      loadRows(unpaidInstallments(studioId, from, to)),
+      // Продажи услуг и товаров — отдельная таблица, но выручка общая.
+      loadRows(otherSales(studioId, from, to)),
+      // Возвраты уменьшают выручку за период.
+      loadRows(refunds(studioId, from, to)),
+    ]);
 
   const metrics: Partial<PeriodMetrics> = {
     signups: signups?.count,
@@ -218,43 +205,39 @@ async function loadPeriodMetrics(
     visits: visits?.count,
     debtPeriod: debtRows && sum(debtRows.rows, "amount"),
   };
-  if (sales) {
-    const revenue = sum(sales.rows, "total_amount");
-    metrics.avgMembership = sales.rows.length ? revenue / sales.rows.length : 0;
+  if (saleRows) {
+    const revenue = sum(saleRows.rows, "total_amount");
+    metrics.avgMembership = saleRows.rows.length ? revenue / saleRows.rows.length : 0;
   }
-  if (otherSales) {
-    const revenue = sum(otherSales.rows, "total_amount");
-    metrics.avgServices = otherSales.rows.length ? revenue / otherSales.rows.length : 0;
+  if (otherSaleRows) {
+    const revenue = sum(otherSaleRows.rows, "total_amount");
+    metrics.avgServices = otherSaleRows.rows.length ? revenue / otherSaleRows.rows.length : 0;
   }
-  if (sales && otherSales) {
-    const revenue = sum(sales.rows, "total_amount") + sum(otherSales.rows, "total_amount");
-    const deals = sales.rows.length + otherSales.rows.length;
+  if (saleRows && otherSaleRows) {
+    const revenue = sum(saleRows.rows, "total_amount") + sum(otherSaleRows.rows, "total_amount");
+    const deals = saleRows.rows.length + otherSaleRows.rows.length;
     metrics.avgTotal = deals ? revenue / deals : 0;
     // Выручка — абонементы плюс услуги и товары, минус возвраты.
-    if (refunds) metrics.revenue = revenue - sum(refunds.rows, "amount");
+    if (refundRows) metrics.revenue = revenue - sum(refundRows.rows, "amount");
   }
   return { metrics, errors };
 }
 
 async function loadSnapshotMetrics(studioId: string): Promise<Loaded<SnapshotMetrics>> {
   const errors: string[] = [];
-  const load = makeLoader(errors);
+  const { loadRows } = makeLoader(errors);
   const [active, debtRows] = await Promise.all([
-    load(
-      supabase
-        .from("client_memberships")
-        .select("client_id, ends_at, status")
-        .eq("studio_id", studioId)
-        .eq("status", "active"),
-    ),
+    loadRows({
+      date: "ends_at",
+      page: (lo, hi) =>
+        select("client_memberships", "client_id, ends_at", lo)
+          .eq("studio_id", studioId)
+          .eq("status", "active")
+          .order("id")
+          .range(lo, hi),
+    }),
     // Общая задолженность — все неоплаченные взносы по студии
-    load(
-      supabase
-        .from("sale_installments")
-        .select("amount, sales!inner(studio_id)")
-        .eq("paid", false)
-        .eq("sales.studio_id", studioId),
-    ),
+    loadRows(unpaidInstallments(studioId)),
   ]);
 
   const today = toISO(new Date());
@@ -336,6 +319,22 @@ function salesSource(table: "sales" | "other_sales") {
 const sales = salesSource("sales");
 const otherSales = salesSource("other_sales");
 
+/** Неоплаченные взносы студии: со сроком в from–to или (без границ) все. */
+function unpaidInstallments(studioId: string, from?: string, to?: string): SeriesSource {
+  return {
+    date: "due_date",
+    amount: "amount",
+    page: (lo, hi) => {
+      let q = select("sale_installments", "due_date, amount, sales!inner(studio_id)", lo)
+        .eq("paid", false)
+        .eq("sales.studio_id", studioId);
+      if (from) q = q.gte("due_date", from);
+      if (to) q = q.lte("due_date", to);
+      return q.order("due_date").order("id").range(lo, hi);
+    },
+  };
+}
+
 function refunds(studioId: string, from: string, to: string): SeriesSource {
   return {
     date: "refunded_at",
@@ -390,7 +389,7 @@ const SERIES: Partial<Record<keyof Metrics, SeriesDef>> = {
         page: (lo, hi) =>
           select("client_memberships", "ends_at", lo)
             .eq("studio_id", studioId)
-            .in("status", ["active", "frozen", "expired"])
+            .in("status", EXPIRING_STATUSES)
             .gte("ends_at", from)
             .lte("ends_at", to)
             .order("ends_at")
@@ -437,21 +436,7 @@ const SERIES: Partial<Record<keyof Metrics, SeriesDef>> = {
     kind: "sum",
     description: "неоплаченные взносы по сроку оплаты",
     future: true,
-    sources: (studioId, from, to) => [
-      {
-        date: "due_date",
-        amount: "amount",
-        page: (lo, hi) =>
-          select("sale_installments", "due_date, amount, sales!inner(studio_id)", lo)
-            .eq("paid", false)
-            .eq("sales.studio_id", studioId)
-            .gte("due_date", from)
-            .lte("due_date", to)
-            .order("due_date")
-            .order("id")
-            .range(lo, hi),
-      },
-    ],
+    sources: (studioId, from, to) => [unpaidInstallments(studioId, from, to)],
   },
 };
 

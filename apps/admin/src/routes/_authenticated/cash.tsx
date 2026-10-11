@@ -118,6 +118,7 @@ function CashPage() {
         .select("*", { count: "exact" })
         .eq("studio_id", studioId!)
         .order("occurred_at", { ascending: false })
+        .order("id")
         .range(from, to),
     enabled: !!studioId,
     errorMessage: "Не удалось загрузить операции",

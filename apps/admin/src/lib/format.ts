@@ -30,6 +30,10 @@ export function formatMoneyPrecise(n: number) {
 export function formatDate(v: string | null | undefined) {
   if (!v) return "—";
   try {
+    // «YYYY-MM-DD» new Date() читает как полночь UTC — западнее Гринвича это
+    // вчерашний день. Дату без времени собираем как локальную.
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString("ru-RU");
     return new Date(v).toLocaleDateString("ru-RU");
   } catch {
     return v;
