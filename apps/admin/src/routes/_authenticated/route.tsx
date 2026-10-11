@@ -56,14 +56,14 @@ function AuthenticatedLayout() {
       {/* h-dvh, а не h-screen: в мобильном Safari 100vh выше видимой области
           (под адресной строкой), и низ страницы с пагинацией уезжал за экран. */}
       {/*
-        С md фон каркаса — цвет меню, а рабочая область лежит поверх него
-        скруглённой панелью с тонкой тёмной рамкой сверху, справа и снизу:
-        рамка продолжает меню. Слева отступа нет — там само меню. До md меню
-        в шторке, рамка только съела бы ширину телефона — панель во весь экран.
+        С md фон каркаса — цвет меню, а рабочая область прилегает к краям окна
+        и скруглена только слева: тёмный фон меню виден в левых углах, и
+        панель читается лежащей поверх него. До md меню в шторке — панель во
+        весь экран без скруглений.
       */}
-      <div className="flex h-dvh w-full overflow-hidden bg-canvas md:bg-sidebar md:py-1.5 md:pr-1.5">
+      <div className="flex h-dvh w-full overflow-hidden bg-canvas md:bg-sidebar">
         <AppSidebar />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas md:rounded-xl">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas md:rounded-l-xl">
           <AccessGate />
         </div>
       </div>
