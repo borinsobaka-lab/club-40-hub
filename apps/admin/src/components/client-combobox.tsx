@@ -34,15 +34,18 @@ export function ClientCombobox({
   onChange,
   placeholder = "Выбрать клиента",
   clearable = false,
+  initialClient = null,
 }: {
   studioId: string | null;
   value: string;
   onChange: (id: string, client: ClientOption | null) => void;
   placeholder?: string;
   clearable?: boolean;
+  /** Клиент, выбранный заранее: его имя видно, даже если его нет в первой странице списка. */
+  initialClient?: ClientOption | null;
 }) {
   const [search, setSearch] = useState("");
-  const [picked, setPicked] = useState<ClientOption | null>(null);
+  const [picked, setPicked] = useState<ClientOption | null>(initialClient);
   const term = sanitizeSearch(useDebouncedValue(search, 250));
 
   const { data: clients = [], isFetching } = useQuery({
