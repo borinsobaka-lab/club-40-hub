@@ -176,7 +176,12 @@ export function AppSidebar() {
     currentPath === path || (!exact && currentPath.startsWith(`${path}/`));
 
   return (
-    <Sidebar className="border-r-0">
+    /*
+      Граница справа у shadcn задана с префиксом (group-data-[side=left]:border-r),
+      голый border-r-0 её не перекрывал — между меню и рабочей областью
+      оставалась светлая полоса, тёмный каркас разрывался.
+    */
+    <Sidebar className="border-r-0 group-data-[side=left]:border-r-0">
       {/*
         Слева — рейка разделов (AppRail; там же «Сотрудники», «Мобильное
         приложение», «Доступы» и «Студии»), справа — меню клуба или меню
