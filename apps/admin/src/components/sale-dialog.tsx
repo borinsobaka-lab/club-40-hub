@@ -5,6 +5,8 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
+import { SellerSelect } from "@/components/seller-select";
+import { SELLER_TIP, useStudioStaff } from "@/lib/studio-staff";
 import { useStudios } from "@/hooks/use-studios";
 import { unwrap } from "@/lib/query";
 import {
@@ -65,10 +67,10 @@ import { useConfirm } from "@/components/confirm-dialog";
 // Ещё в пакетной студии — «Тренер» (sales.trainer_id + снимок имени
 // trainer_name): кто был тренером при продаже, ему начисляется бонус. Продажи
 // с тренером и рассрочкой видны в разделе «Абонементы».
-
-/** Сотрудник студии для поля «Тренер» — те же колонки, что у расписания (общий кэш). */
-type StaffRow = { id: string; full_name: string; role: string };
-const STAFF_COLS = "id, full_name, role, trainer_studios!inner(studio_id)";
+//
+// «Администратор» (оба формата) — выбирается из администраторов студии
+// (lib/studio-staff.ts, components/seller-select.tsx): sales.seller_id + снимок admin_name;
+// admin_id — тот, кто внёс продажу.
 /** Значение «Без тренера»: у пунктов Radix Select пустой строки быть не может. */
 const NO_TRAINER = "none";
 
@@ -126,6 +128,8 @@ type SaleFields = {
   comment: string;
   /** Пакетный формат: тренер при продаже; NO_TRAINER — не было. */
   trainerId: string;
+  /** Администратор, который продал (сотрудник справочника). */
+  sellerId: string;
 };
 
 /** Суммы продажи по форме: итог, первый взнос, скидка от тарифа, график рассрочки. */
@@ -203,7 +207,7 @@ function SaleForm({
 }: SaleDialogProps) {
   const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
-  const { data: staff, ensure: ensureStaff } = useStaffProfile();
+  const { ensure: ensureStaff } = useStaffProfile();
   const { data: studios } = useStudios();
   const isPackages = studios?.find((s) => s.id === studioId)?.format === "packages";
   const isTrial = isPackages && kind === "trial";
@@ -222,6 +226,7 @@ function SaleForm({
     promoCode: "",
     comment: "",
     trainerId: NO_TRAINER,
+    sellerId: "",
   }));
   const set = <K extends keyof SaleFields>(key: K, value: SaleFields[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -243,22 +248,13 @@ function SaleForm({
     meta: { errorMessage: "Не удалось загрузить абонементы" },
   });
 
-  // Тренеры студии (пакетный формат): кто был с клиентом при продаже.
-  const { data: staffRows = [] } = useQuery({
-    queryKey: ["trainers", studioId, STAFF_COLS],
-    queryFn: () =>
-      unwrap<StaffRow[]>(
-        supabase
-          .from("trainers")
-          .select(STAFF_COLS)
-          .eq("trainer_studios.studio_id", studioId!)
-          .order("full_name"),
-      ),
-    enabled: !!studioId && isPackages,
-    meta: { errorMessage: "Не удалось загрузить тренеров" },
-  });
+  // Сотрудники студии: администраторы — кто продал, тренеры (пакетный
+  // формат) — кто был с клиентом при продаже.
+  const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(studioId);
   const trainers = staffRows.filter((r) => r.role === "trainer");
   const trainer = trainers.find((r) => r.id === form.trainerId) ?? null;
+  const admins = staffRows.filter((r) => r.role === "admin");
+  const seller = admins.find((r) => r.id === form.sellerId) ?? null;
 
   // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты.
   const options = isPackages
@@ -306,6 +302,7 @@ function SaleForm({
   const handleSave = async () => {
     if (!studioId || saving) return;
     const invalid =
+      (!seller ? "Выберите администратора, который продал" : null) ??
       saleFormError(form, t) ??
       (isPackages && form.paymentsCount > maxPayments
         ? `Этот пакет можно оплатить не больше чем ${maxPayments} платежами`
@@ -362,8 +359,10 @@ function SaleForm({
           studio_id: studioId,
           client_id: form.clientId,
           membership_id: form.membershipId,
+          // admin_id — кто внёс, seller_id / admin_name — кто продал.
           admin_id: admin?.id ?? null,
-          admin_name: admin?.displayName || null,
+          seller_id: seller?.id ?? null,
+          admin_name: seller?.full_name ?? null,
           sold_at: form.soldAt,
           total_amount: t.total,
           down_payment_amount: t.down,
@@ -449,9 +448,22 @@ function SaleForm({
                   onChange={(e) => set("soldAt", e.target.value)}
                 />
               </FormField>
-              {/* Только для чтения — продажу записываем на того, кто вошёл. */}
-              <FormField label="Администратор" tip={SALE_TIPS.admin} htmlFor={null}>
-                <div className="flex h-10 items-center text-sm">{staff?.displayName || "—"}</div>
+              <FormField
+                label="Администратор"
+                tip={SELLER_TIP}
+                required
+                hint={
+                  !staffLoading && admins.length === 0
+                    ? "В этой студии нет администраторов — отметьте студию у сотрудника с ролью «Администратор» в «Сотрудниках»."
+                    : undefined
+                }
+              >
+                <SellerSelect
+                  admins={admins}
+                  loading={staffLoading}
+                  value={form.sellerId}
+                  onChange={(v) => set("sellerId", v)}
+                />
               </FormField>
             </div>
 

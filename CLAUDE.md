@@ -182,12 +182,17 @@ AUTH_SETUP.md.
   Зарплаты пакетных студий (раздел «Сотрудники»):
   `db/migrations/2026-10-11_zzz_staff_payroll.sql` — `admin_shifts` (график
   администраторов по студиям), `payroll_adjustments` (вычеты/надбавки),
-  `payroll_payouts` (отметка «выплачено» за половину месяца), `trainers.user_id`
-  (учётная запись админки сотрудника — по ней его продажи `sales.admin_id` идут
-  в зарплату; список для выбора — RPC `staff_accounts_for_link`), расчёт — RPC
+  `payroll_payouts` (отметка «выплачено» за половину месяца), расчёт — RPC
   `payroll_lines` (security definer: оклад общий по всем пакетным студиям
   сотрудника, отдаёт только сотрудников студий вызывающего). Доступ — раздел
   рейки `staff` + роль в студии сотрудника (`can_manage_employee`).
+  Продавец в продажах: `db/migrations/2026-10-11_zzzz_sales_seller.sql` —
+  `sales.seller_id` / `other_sales.seller_id` (администратор из справочника,
+  выбирается в форме; `admin_name` — снимок имени, `admin_id` — кто внёс);
+  `trainers.user_id` и `staff_accounts_for_link` удалены; `payroll_lines`
+  переопределена (актуальное определение — здесь): продажи в зарплату —
+  поступившие за период платежи (`sale_installments.paid_at`, без графика —
+  вся сумма в день продажи).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

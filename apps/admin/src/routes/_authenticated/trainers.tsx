@@ -62,16 +62,7 @@ const TIPS = {
   role: "Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах».",
   studios: "Где работает сотрудник. Только в этих студиях его можно поставить на занятие.",
   bank: "Для выплат сотруднику. Видят только сотрудники, клиентам в приложении они недоступны.",
-  account:
-    "С какой учётной записи сотрудник входит в админку. Продажи, которые он вносит в «Продажи», идут ему в зарплату (бонус 5 %).",
 };
-
-/** «Без учётной записи» в выборе — у Select не бывает пустого value. */
-const NO_ACCOUNT = "none";
-
-type StaffAccount = { user_id: string; full_name: string | null; email: string | null };
-
-const accountLabel = (a: StaffAccount) => a.full_name || a.email || "Без имени";
 
 export const Route = createFileRoute("/_authenticated/trainers")({
   head: () => ({ meta: [{ title: "Сотрудники — Base40 Admin" }] }),
@@ -112,7 +103,7 @@ function StaffPage() {
   const { data: employees = [], isLoading } = useEmployees();
   const reload = () => {
     queryClient.invalidateQueries({ queryKey: ["trainers"] });
-    // Учётная запись сотрудника решает, чьи продажи идут ему в «Зарплаты».
+    // Роль и студии сотрудника меняют «Зарплаты».
     queryClient.invalidateQueries({ queryKey: ["payroll_lines"] });
   };
 
@@ -303,15 +294,7 @@ function EmployeeForm({
     bank?.account_number ? formatIban(bank.account_number) : "",
   );
   const [accountHolder, setAccountHolder] = useState(bank?.account_holder ?? "");
-  const [userId, setUserId] = useState(employee?.user_id ?? NO_ACCOUNT);
   const [saving, setSaving] = useState(false);
-  // Учётные записи сотрудников ваших студий (profiles других студий RLS не
-  // отдаёт — список собирает RPC).
-  const { data: accounts = [] } = useQuery({
-    queryKey: ["staff_accounts_for_link"],
-    queryFn: () => unwrap<StaffAccount[]>(supabase.rpc("staff_accounts_for_link")),
-    meta: { errorMessage: "Не удалось загрузить учётные записи" },
-  });
 
   const manageable = new Set(myStudios.map((s) => s.id));
   const otherStudios = (employee?.trainer_studios ?? []).filter(
@@ -356,7 +339,6 @@ function EmployeeForm({
         role,
         telegram: telegram.trim() || null,
         photo_url: photoUrl,
-        user_id: userId === NO_ACCOUNT ? null : userId,
       };
       let id = employee?.id;
       if (id) {
@@ -481,29 +463,6 @@ function EmployeeForm({
                 onChange={(e) => setTelegram(e.target.value)}
                 placeholder="@username или ссылка"
               />
-            </FormField>
-
-            <FormField label="Учётная запись в админке" tip={TIPS.account} optional>
-              <Select value={userId} onValueChange={setUserId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_ACCOUNT}>Нет учётной записи</SelectItem>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.user_id} value={a.user_id}>
-                      {accountLabel(a)}
-                      {a.full_name && a.email && (
-                        <span className="text-muted-foreground"> · {a.email}</span>
-                      )}
-                    </SelectItem>
-                  ))}
-                  {/* Привязана учётная запись не из ваших студий — показываем как есть. */}
-                  {userId !== NO_ACCOUNT && !accounts.some((a) => a.user_id === userId) && (
-                    <SelectItem value={userId}>Учётная запись другой студии</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
             </FormField>
 
             <FormField label="Студии" tip={TIPS.studios} htmlFor={null} required>

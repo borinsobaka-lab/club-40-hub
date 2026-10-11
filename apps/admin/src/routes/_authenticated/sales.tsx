@@ -5,6 +5,7 @@ import { Plus, Loader2, Trash2, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
+import { SELLER_TIP } from "@/lib/studio-staff";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
@@ -78,7 +79,7 @@ import {
 } from "@/components/membership-status-badge";
 
 /** Подсказки «?» колонок — те же, что у полей формы продажи. */
-const TIPS = SALE_TIPS;
+const TIPS = { ...SALE_TIPS, admin: SELLER_TIP };
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({ meta: [{ title: "Продажи — Base40 Admin" }] }),

@@ -7,6 +7,8 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
+import { SellerSelect } from "@/components/seller-select";
+import { SELLER_TIP, useStudioStaff } from "@/lib/studio-staff";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { PAYMENT_METHOD_LABEL, PAYMENT_METHODS, type PaymentMethod } from "@/lib/payments";
@@ -60,6 +62,7 @@ const TIPS = {
   item: "Справочник — на вкладке «Позиции». Неактивные позиции здесь не показываются.",
   unitPrice: "Подставляется из позиции. Можно изменить — например, для скидки.",
   payment: "Как платил клиент. В «Кассу» продажа сама не попадает.",
+  seller: SELLER_TIP,
   catalogPrice: "Цена по умолчанию. При продаже её можно изменить.",
 };
 
@@ -281,15 +284,16 @@ function SalesTab({
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead tip={TIPS.payment}>Оплата</TableHead>
               <TableHead>Дата</TableHead>
+              <TableHead tip={TIPS.seller}>Администратор</TableHead>
               <TableHead>Комментарий</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableSkeletonRows columns={9} />
+              <TableSkeletonRows columns={10} />
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
                   Пока нет продаж. Нажмите «Добавить продажу».
                 </TableCell>
               </TableRow>
@@ -331,6 +335,7 @@ function SalesTab({
                       {s.payment_method ? PAYMENT_METHOD_LABEL[s.payment_method] : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.admin_name ?? "—"}</TableCell>
                     <TableCell>
                       <CommentCell text={s.comment} />
                     </TableCell>
@@ -384,12 +389,16 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
     payment: "cash" as PaymentMethod,
     soldAt: todayISO(),
     comment: "",
+    sellerId: "",
   }));
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
   const [saving, setSaving] = useState(false);
 
   const selectedItem = items.find((i) => i.id === form.itemId) ?? null;
+  const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(studioId);
+  const admins = staffRows.filter((r) => r.role === "admin");
+  const seller = admins.find((r) => r.id === form.sellerId) ?? null;
 
   // Цену позиции подставляем при выборе, а не эффектом по itemId.
   const pickItem = (id: string) => {
@@ -425,6 +434,10 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
       toast.error("Укажите дату продажи");
       return;
     }
+    if (!seller) {
+      toast.error("Выберите администратора, который продал");
+      return;
+    }
     setSaving(true);
     try {
       const staff = await ensureStaff();
@@ -434,8 +447,10 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
         item_kind: selectedItem.kind,
         item_name: selectedItem.name,
         client_id: form.clientId || null,
+        // admin_id — кто внёс, seller_id / admin_name — кто продал.
         admin_id: staff?.id ?? null,
-        admin_name: staff?.displayName || null,
+        seller_id: seller.id,
+        admin_name: seller.full_name,
         quantity: qty,
         unit_price: price,
         total_amount: total,
@@ -549,6 +564,24 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
                 />
               </FormField>
             </div>
+
+            <FormField
+              label="Администратор"
+              tip={TIPS.seller}
+              required
+              hint={
+                !staffLoading && admins.length === 0
+                  ? "В этой студии нет администраторов — отметьте студию у сотрудника с ролью «Администратор» в «Сотрудниках»."
+                  : undefined
+              }
+            >
+              <SellerSelect
+                admins={admins}
+                loading={staffLoading}
+                value={form.sellerId}
+                onChange={(v) => set("sellerId", v)}
+              />
+            </FormField>
 
             <FormField label="Комментарий" optional>
               <Textarea
