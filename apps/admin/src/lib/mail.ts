@@ -9,6 +9,11 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 export const MAIL_FROM_EMAIL = "noreply@base40.fit";
 export const MAIL_FROM_NAME = "Base40";
 
+// Сколько ждём ответа провайдера. GoTrue ждёт хук писем ~5 секунд и при
+// неудаче повторяет его; если зависший провайдер всё же отправит письмо
+// позже, человек получит два кода. Обрываем раньше и отвечаем ошибкой.
+const MAIL_TIMEOUT_MS = 4000;
+
 export type MailMessage = {
   to: string | string[];
   subject: string;
@@ -74,6 +79,7 @@ export async function sendMail(msg: MailMessage, env: Env = process.env): Promis
           Accept: "application/json",
         },
         body: JSON.stringify({ message }),
+        signal: AbortSignal.timeout(MAIL_TIMEOUT_MS),
       });
       const raw = await res.text().catch(() => "");
       let data: { status?: string; message?: string; code?: number | string } | null = null;
@@ -110,6 +116,7 @@ export async function sendMail(msg: MailMessage, env: Env = process.env): Promis
           html: msg.html,
           ...(msg.replyTo ? { reply_to: msg.replyTo } : {}),
         }),
+        signal: AbortSignal.timeout(MAIL_TIMEOUT_MS),
       });
       if (res.ok) return { ok: true };
       const error = `Resend ${res.status}: ${await res.text().catch(() => "")}`;

@@ -11,6 +11,7 @@ type Call = {
   url: string;
   headers: Record<string, string>;
   body: { message?: Record<string, unknown>; from?: string };
+  signal?: AbortSignal | null;
 };
 function mockFetch(status: number, reply: unknown) {
   const calls: Call[] = [];
@@ -19,6 +20,7 @@ function mockFetch(status: number, reply: unknown) {
       url,
       headers: opts.headers as Record<string, string>,
       body: JSON.parse(opts.body as string),
+      signal: opts.signal,
     });
     return new Response(JSON.stringify(reply), { status });
   }) as unknown as typeof fetch;
@@ -74,6 +76,31 @@ describe("sendMail", () => {
     expect(r.ok).toBe(true);
     expect(calls[0].url).toBe("https://api.resend.com/emails");
     expect(calls[0].body.from).toBe("Base40 <noreply@base40.fit>");
+  });
+});
+
+describe("sendMail: таймаут провайдера", () => {
+  test("у запроса есть сигнал отмены — оба провайдера", async () => {
+    const calls = mockFetch(200, { status: "success" });
+    await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { UNISENDER_GO_API_KEY: "k" });
+    await sendMail({ to: "a@b.ru", subject: "s", html: "h" }, { RESEND_API_KEY: "r" });
+    expect(calls).toHaveLength(2);
+    for (const c of calls) expect(c.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test("провайдер не ответил вовремя — не ok, без исключения", async () => {
+    globalThis.fetch = (async () => {
+      throw new DOMException("The operation timed out.", "TimeoutError");
+    }) as unknown as typeof fetch;
+    const origErr = console.error;
+    console.error = () => {};
+    const r = await sendMail(
+      { to: "a@b.ru", subject: "s", html: "h" },
+      { UNISENDER_GO_API_KEY: "k" },
+    );
+    console.error = origErr;
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("timed out");
   });
 });
 

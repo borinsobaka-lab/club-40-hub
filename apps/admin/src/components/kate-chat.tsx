@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { Cat, Send, Loader2, Mic, Square } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ChoiceCard } from "@/components/ui/choice-card";
@@ -197,13 +197,34 @@ function MessageBubble({ message }: { message: UIMessage }) {
           <div className="whitespace-pre-wrap">{text}</div>
         ) : (
           <div className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-2 prose-ul:my-2 prose-ol:my-2 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              disallowedElements={MARKDOWN_DISALLOWED}
+              components={MARKDOWN_COMPONENTS}
+            >
+              {text}
+            </ReactMarkdown>
           </div>
         )}
       </div>
     </div>
   );
 }
+
+/**
+ * Ответ модели — недоверенный текст: в него может попасть инъекция из данных
+ * (имена, заметки клиентов). Картинки не рендерим — браузер сам загрузил бы
+ * URL и унёс бы в его параметрах данные из чата; ссылки открываются только
+ * по клику, в новой вкладке и без Referer/opener.
+ */
+const MARKDOWN_DISALLOWED = ["img"];
+const MARKDOWN_COMPONENTS: Components = {
+  a: ({ href, children }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+};
 
 /** Выключает микрофон: пока дорожки потока живы, браузер держит его занятым. */
 function stopTracks(stream: MediaStream | null) {

@@ -37,4 +37,6 @@ EXPOSE 3000
 # start-period — запас на выполнение миграций до старта сервера.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
   CMD bun -e "fetch('http://127.0.0.1:3000/auth').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
-CMD ["sh", "-c", "bun db/migrate.ts && exec bun .output/server/index.mjs"]
+# DATABASE_URL (прямой доступ к Postgres в обход RLS) нужен только мигратору —
+# веб-серверу его не передаём.
+CMD ["sh", "-c", "bun db/migrate.ts && exec env -u DATABASE_URL bun .output/server/index.mjs"]

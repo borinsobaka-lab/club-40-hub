@@ -11,6 +11,14 @@ import { authenticateStaff } from "@/lib/staff-auth.server";
 // Типичный вопрос — 1–3 вызова; потолок ограничивает стоимость зацикливания.
 const MAX_STEPS = 12;
 
+// Потолок запроса: история чата целиком уходит модели (и в счёт за токены).
+// В истории едут и ответы инструментов (до 500 строк на вызов), поэтому
+// запас — мегабайт; больше — 413.
+const MAX_BODY_BYTES = 1024 * 1024;
+const MAX_MESSAGES = 100;
+const tooLarge = () =>
+  new Response("Слишком длинный разговор с ассистентом — начните новый", { status: 413 });
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
@@ -32,7 +40,20 @@ export const Route = createFileRoute("/api/chat")({
           const { supabase, studioId } = auth.staff;
           const tools = createAssistantTools(supabase, studioId);
 
-          const body = (await request.json().catch(() => null)) as { messages?: unknown } | null;
+          const declared = Number(request.headers.get("content-length") ?? "0");
+          if (!Number.isFinite(declared) || declared > MAX_BODY_BYTES) return tooLarge();
+          // Content-Length может не быть (chunked) — проверяем и прочитанное.
+          const raw = await request.text();
+          if (Buffer.byteLength(raw) > MAX_BODY_BYTES) return tooLarge();
+          let body: { messages?: unknown } | null = null;
+          try {
+            body = JSON.parse(raw) as { messages?: unknown } | null;
+          } catch {
+            body = null;
+          }
+          if (Array.isArray(body?.messages) && body.messages.length > MAX_MESSAGES) {
+            return tooLarge();
+          }
           const parsed = await safeValidateUIMessages({ messages: body?.messages });
           if (!parsed.success) {
             return new Response("Некорректный запрос к ассистенту", { status: 400 });

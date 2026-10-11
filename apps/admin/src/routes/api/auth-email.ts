@@ -41,6 +41,33 @@ function verifySignature(secretRaw: string, id: string, ts: string, sig: string,
   });
 }
 
+// Полезная нагрузка хука — пользователь и данные письма, единицы килобайт.
+// Роут открыт в интернет, а тело читается до проверки подписи, поэтому
+// размер ограничиваем: больше — 413, не дочитывая.
+const MAX_BODY_BYTES = 64 * 1024;
+
+/** Тело запроса текстом, если оно не больше maxBytes; иначе null. */
+async function readBodyLimited(request: Request, maxBytes: number): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (!Number.isFinite(declared) || declared > maxBytes) return null;
+  if (!request.body) return "";
+  // Content-Length может не быть (chunked) или он может врать — считаем сами.
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 export const Route = createFileRoute("/api/auth-email")({
   server: {
     handlers: {
@@ -53,7 +80,8 @@ export const Route = createFileRoute("/api/auth-email")({
           return new Response("hook not configured", { status: 500 });
         }
 
-        const body = await request.text();
+        const body = await readBodyLimited(request, MAX_BODY_BYTES);
+        if (body === null) return new Response("payload too large", { status: 413 });
         const id = request.headers.get("webhook-id") ?? "";
         const ts = request.headers.get("webhook-timestamp") ?? "";
         const sig = request.headers.get("webhook-signature") ?? "";

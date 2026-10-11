@@ -73,12 +73,15 @@ async function sendCode(email: string, redirectTo: string) {
   // Нет такого пользователя (shouldCreateUser: false) — молчим, как и для
   // не-сотрудника.
   if (error && !/signups not allowed|user not found/i.test(error.message)) {
-    // Частая причина — лимит GoTrue на повторную отправку.
-    throw new Error(
-      /seconds|rate limit/i.test(error.message)
-        ? "Письмо уже отправлено. Повторить можно через минуту."
-        : `Не удалось отправить письмо: ${error.message}`,
-    );
+    // Лимит GoTrue на повторную отправку бывает только у сотрудника (прочим
+    // письмо не шлём вовсе), поэтому отдельная ошибка выдавала бы, чья почта
+    // принадлежит сотруднику. Отвечаем как всем — прежний код ещё действует —
+    // а причину пишем в лог сервера.
+    if (/seconds|rate limit/i.test(error.message)) {
+      console.warn("[auth] лимит повторной отправки кода:", error.message);
+      return { ok: true };
+    }
+    throw new Error(`Не удалось отправить письмо: ${error.message}`);
   }
   // Только признак успеха: код в ответ не попадает никогда.
   return { ok: true };

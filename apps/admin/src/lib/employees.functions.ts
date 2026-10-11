@@ -210,6 +210,13 @@ function parseOrThrow<T>(schema: z.ZodType<T>, data: unknown): T {
  * Записать права человека в студиях владельца. Роль в отмеченных студиях
  * сначала выдаётся, потом снимаются прочие — доступ не пропадает посреди
  * сохранения. Студии вне управления владельца не трогаем.
+ *
+ * Нет строки прав — открыто всё, поэтому порядок записи важен (запросы не в
+ * одной транзакции, обрыв посередине возможен): ограничивающие строки прав
+ * пишутся ДО выдачи роли, а удаляются — ПОСЛЕ снятия роли или выдачи
+ * владельца (ему строки не нужны). Тогда обрыв оставляет либо прежнюю роль
+ * с новыми (или прежними) ограничениями, либо лишние строки без роли — но не
+ * роль без ограничений.
  */
 async function applyAccess(
   admin: SupabaseClient,
@@ -229,6 +236,26 @@ async function applyAccess(
     if (error) throw new Error(error.message);
   };
 
+  // 1. Ограничения — до роли.
+  if (!isOwnerRole) {
+    check(
+      await admin
+        .from("admin_permissions")
+        .upsert({ user_id: userId, sections: railSections(input.rail), updated_at: now }),
+    );
+    check(
+      await admin.from("admin_studio_permissions").upsert(
+        studios.map((s) => ({
+          user_id: userId,
+          studio_id: s.studio_id,
+          sections: [...new Set(s.sections)],
+          updated_at: now,
+        })),
+      ),
+    );
+  }
+
+  // 2. Роли.
   check(
     await admin.from("user_roles").upsert(
       selected.map((studio_id) => ({ user_id: userId, studio_id, role: input.role })),
@@ -257,7 +284,8 @@ async function applyAccess(
     );
   }
 
-  // Владельцу в его студиях открыто всё — строки прав ему не нужны.
+  // 3. Лишние строки прав — после роли: у снятых студий роли уже нет, а
+  // владельцу в его студиях открыто всё — строки прав ему не нужны.
   const dropStudioPerms = isOwnerRole ? ownedStudioIds : unselected;
   if (dropStudioPerms.length) {
     check(
@@ -268,26 +296,9 @@ async function applyAccess(
         .in("studio_id", dropStudioPerms),
     );
   }
-  if (!isOwnerRole) {
-    check(
-      await admin.from("admin_studio_permissions").upsert(
-        studios.map((s) => ({
-          user_id: userId,
-          studio_id: s.studio_id,
-          sections: [...new Set(s.sections)],
-          updated_at: now,
-        })),
-      ),
-    );
+  if (isOwnerRole) {
+    check(await admin.from("admin_permissions").delete().eq("user_id", userId));
   }
-
-  check(
-    isOwnerRole
-      ? await admin.from("admin_permissions").delete().eq("user_id", userId)
-      : await admin
-          .from("admin_permissions")
-          .upsert({ user_id: userId, sections: railSections(input.rail), updated_at: now }),
-  );
 }
 
 /** Есть ли у человека доступ хоть в одной студии владельца. */
@@ -453,20 +464,50 @@ export const updateEmployee = createServerFn({ method: "POST" })
     const emailChanged = (current.user.email ?? "").toLowerCase() !== profile.email;
 
     if (emailChanged) {
-      // Почта — это логин: коды входа приходят на неё. Сменить её сотруднику,
-      // у которого есть доступ в чужих клубах, значило бы забрать его вход и
-      // туда — такое меняет только сам человек или владелец того клуба.
-      const { data: foreign, error: foreignErr } = await admin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user_id)
-        .not("studio_id", "in", `(${ownedStudioIds.join(",")})`)
-        .in("role", STAFF_ROLES)
-        .limit(1);
-      if (foreignErr) throw new Error(foreignErr.message);
-      if (foreign?.length) {
+      // Почта — это логин: коды входа приходят на неё, и в админку, и в
+      // клиентское приложение. Сменить её человеку, связанному с чужими
+      // клубами, значило бы забрать его вход и туда: createEmployee выдаёт
+      // доступ любой найденной по почте учётной записи, и без этой проверки
+      // владелец мог бы добавить себе клиента чужого клуба, переписать ему
+      // почту на свою и войти в приложение под ним. Поэтому почту не меняем,
+      // если вне клубов владельца есть хоть что-то: любая роль (и member
+      // клиента), профиль, карточка клиента (абонементы висят на ней) или
+      // записи на занятия. Анкета member_profiles к клубу не привязана — по
+      // ней чужого клиента не отличить, его выдают роль и карточка.
+      // Клиенту своего клуба почту менять можно.
+      const notOwned = `(${ownedStudioIds.join(",")})`;
+      const foreignLinks = await Promise.all([
+        admin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user_id)
+          .not("studio_id", "in", notOwned)
+          .limit(1),
+        admin
+          .from("profiles")
+          .select("id")
+          .eq("id", data.user_id)
+          .not("studio_id", "in", notOwned)
+          .limit(1),
+        admin
+          .from("clients")
+          .select("id")
+          .eq("user_id", data.user_id)
+          .not("studio_id", "in", notOwned)
+          .limit(1),
+        admin
+          .from("schedule_bookings")
+          .select("id")
+          .eq("user_id", data.user_id)
+          .not("studio_id", "in", notOwned)
+          .limit(1),
+      ]);
+      for (const { error: foreignErr } of foreignLinks) {
+        if (foreignErr) throw new Error(foreignErr.message);
+      }
+      if (foreignLinks.some(({ data: rows }) => rows?.length)) {
         throw new Error(
-          "Почту не изменить: у сотрудника есть доступ в других клубах — её меняет их владелец",
+          "Почту не изменить: человек есть в других клубах (сотрудник или клиент) — её меняет он сам или владелец того клуба",
         );
       }
       const pattern = profile.email.replace(/[\\%_]/g, "\\$&");
