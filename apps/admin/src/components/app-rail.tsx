@@ -10,6 +10,7 @@ import {
 } from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
 import { RailSkeleton } from "@/components/skeletons";
+import { RailAccount } from "@/components/rail-account";
 
 function RailItem({
   section,
@@ -126,7 +127,9 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
         justify-center обрезал бы верхние без возможности прокрутить к ним.
       */}
       <div className="my-auto flex w-full flex-col items-center gap-1">{renderGroup(SECTIONS)}</div>
+      {/* Внизу: кто вошёл (аватарка, по нажатию — выход), «Доступы», «Клубы». */}
       <div className="flex w-full flex-col items-center gap-1 border-t border-white/10 pt-2">
+        <RailAccount />
         {renderGroup(ADMIN_SECTIONS)}
       </div>
     </nav>
