@@ -101,7 +101,10 @@ saving new user», экран показывает «почта не найде�
 Граница — в базе, не во фронтенде. `GOTRUE_DISABLE_SIGNUP` должен быть
 `false`, иначе впервые войти нельзя. После входа — онбординг (`/onboarding`,
 `member_profiles`): ответы видны на портале в карточке клиента, вкладка
-«Анкета».
+«Анкета». У пакетного приложения анкета своя —
+`src/formats/packages/onboarding.tsx` (общие шаги —
+`src/components/onboarding.tsx`, выбор — по `APP_FORMAT` в
+`src/routes/onboarding.tsx`); подробно — STUDIO_FORMATS.md.
 
 Паролей у клиентов НЕТ; настройка писем и длины кода в Supabase — см.
 AUTH_SETUP.md в корне репозитория. Письма уходят с noreply@base40.fit через

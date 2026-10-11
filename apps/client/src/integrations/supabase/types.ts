@@ -118,12 +118,14 @@ export type Database = {
       };
       member_profiles: {
         Row: {
+          birth_date: string | null; /* patched: 2026-10-11_packages_onboarding.sql */
           birth_year: number | null;
           created_at: string;
           current_weekly_activity: number | null;
           desired_frequency: number | null;
           experience_level: string | null;
           gender: string | null;
+          goal_other: string | null; /* patched: 2026-10-11_packages_onboarding.sql */
           goal_motivation: string | null;
           health_flags: string[];
           health_notes: string | null;
@@ -139,12 +141,14 @@ export type Database = {
           weight_kg: number | null;
         };
         Insert: {
+          birth_date?: string | null; /* patched: 2026-10-11_packages_onboarding.sql */
           birth_year?: number | null;
           created_at?: string;
           current_weekly_activity?: number | null;
           desired_frequency?: number | null;
           experience_level?: string | null;
           gender?: string | null;
+          goal_other?: string | null; /* patched: 2026-10-11_packages_onboarding.sql */
           goal_motivation?: string | null;
           health_flags?: string[];
           health_notes?: string | null;
@@ -160,12 +164,14 @@ export type Database = {
           weight_kg?: number | null;
         };
         Update: {
+          birth_date?: string | null; /* patched: 2026-10-11_packages_onboarding.sql */
           birth_year?: number | null;
           created_at?: string;
           current_weekly_activity?: number | null;
           desired_frequency?: number | null;
           experience_level?: string | null;
           gender?: string | null;
+          goal_other?: string | null; /* patched: 2026-10-11_packages_onboarding.sql */
           goal_motivation?: string | null;
           health_flags?: string[];
           health_notes?: string | null;

@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { AltArrowLeft, Refresh, CheckCircle } from "@solar-icons/react";
-import confetti from "canvas-confetti";
+import { Refresh, CheckCircle } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -10,17 +9,42 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RulerPicker } from "@/components/ui/ruler-picker";
+import {
+  OnboardingLoading,
+  OptionButton,
+  Shell,
+  StepActivity,
+  StepExperience,
+  StepFooter,
+  StepHeader,
+  StepHealth,
+  StepLogistics,
+  StepReferral,
+  StepTitle,
+  type Experience,
+  type HealthFlag,
+  type PrefTime,
+  type Referral,
+} from "@/components/onboarding";
+import { fireConfetti } from "@/lib/confetti";
+import { PackagesOnboardingPage } from "@/formats/packages/onboarding";
 import { Mars, Venus } from "lucide-react";
-import { CLUB } from "@/lib/terms";
+import { CLUB, IS_PACKAGES } from "@/lib/terms";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
     meta: [
       { title: "Знакомство — Base40" },
-      { name: "description", content: "Пара вопросов, чтобы настроить тренировки под вас." },
+      {
+        name: "description",
+        content: IS_PACKAGES
+          ? "Пара вопросов, чтобы следить за вашим прогрессом."
+          : "Пара вопросов, чтобы настроить тренировки под вас.",
+      },
     ],
   }),
-  component: OnboardingPage,
+  // У пакетного приложения своя анкета (решение владельца 2026-10-11).
+  component: IS_PACKAGES ? PackagesOnboardingPage : OnboardingPage,
 });
 
 type Gender = "female" | "male" | "other";
@@ -32,16 +56,6 @@ type Goal =
   | "stress_habit"
   | "event_prep";
 type Timeframe = "no_rush" | "few_months" | "event_date";
-type Experience = "beginner" | "occasional" | "regular" | "advanced";
-type HealthFlag =
-  | "back_joints"
-  | "cardio_pressure"
-  | "recent_injury"
-  | "pregnancy"
-  | "chronic"
-  | "none";
-type PrefTime = "morning" | "day" | "evening";
-type Referral = "instagram" | "referral" | "walk_by" | "search" | "other";
 
 type FormData = {
   primary_goal: Goal | null;
@@ -213,12 +227,7 @@ function OnboardingPage() {
     const ok = await persist({ onboarding_completed_at: new Date().toISOString() });
     setSaving(false);
     if (ok) {
-      const fire = (opts: confetti.Options) =>
-        confetti({ particleCount: 80, spread: 70, startVelocity: 45, ...opts });
-      fire({ origin: { x: 0.2, y: 0.7 }, angle: 60 });
-      fire({ origin: { x: 0.8, y: 0.7 }, angle: 120 });
-      setTimeout(() => fire({ origin: { x: 0.5, y: 0.6 }, spread: 100 }), 200);
-
+      fireConfetti();
       toast.success("Анкета сохранена");
       navigate({ to: "/schedule", replace: true });
     }
@@ -242,11 +251,7 @@ function OnboardingPage() {
   }, [step, form]);
 
   if (authLoading || (!bootstrapped && user)) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center">
-        <Refresh className="h-6 w-6 text-muted-foreground animate-spin" weight="BoldDuotone" />
-      </div>
-    );
+    return <OnboardingLoading />;
   }
 
   if (step === 0) {
@@ -295,34 +300,13 @@ function OnboardingPage() {
     );
   }
 
-  const progress = (step / TOTAL_STEPS) * 100;
-
   return (
     <Shell>
-      {/* Header */}
-      <div className="px-4 pt-3 pb-2">
-        <div className="flex items-center gap-3 mb-3">
-          <button
-            type="button"
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-            className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
-            aria-label="Назад"
-          >
-            <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
-          </button>
-          <div className="flex-1">
-            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {step}/{TOTAL_STEPS}
-          </span>
-        </div>
-      </div>
+      <StepHeader
+        step={step}
+        total={TOTAL_STEPS}
+        onBack={() => setStep((s) => Math.max(0, s - 1))}
+      />
 
       {/* Step content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col justify-center [&>*]:w-full">
@@ -391,62 +375,13 @@ function OnboardingPage() {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="px-4 pb-6 pt-2 space-y-2 border-t border-border/40">
-        <Button
-          className="w-full h-12 text-base font-semibold"
-          disabled={!stepValid || saving}
-          onClick={() => goNext(step + 1)}
-        >
-          {saving ? (
-            <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-          ) : step === TOTAL_STEPS ? (
-            "Завершить"
-          ) : (
-            "Далее"
-          )}
-        </Button>
-      </div>
+      <StepFooter
+        disabled={!stepValid}
+        saving={saving}
+        last={step === TOTAL_STEPS}
+        onNext={() => goNext(step + 1)}
+      />
     </Shell>
-  );
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-col h-[100dvh] bg-background">{children}</div>;
-}
-
-/* ===== Reusable controls ===== */
-
-function OptionButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left px-4 py-4 rounded-xl border transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground border-primary font-semibold"
-          : "bg-card text-card-foreground border-border hover:border-foreground/30"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function StepTitle({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="mb-5">
-      <h2 className="text-2xl font-semibold leading-tight">{title}</h2>
-      {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
-    </div>
   );
 }
 
@@ -519,60 +454,6 @@ function StepTimeframe({
   );
 }
 
-function StepExperience({
-  value,
-  onChange,
-}: {
-  value: Experience | null;
-  onChange: (v: Experience) => void;
-}) {
-  const opts: { v: Experience; label: string }[] = [
-    { v: "beginner", label: "Новичок или большой перерыв" },
-    { v: "occasional", label: "Тренируюсь время от времени" },
-    { v: "regular", label: "Регулярно, 2–3 раза в неделю" },
-    { v: "advanced", label: "Опытный, тренируюсь интенсивно" },
-  ];
-  return (
-    <div>
-      <StepTitle title="Какой у вас опыт тренировок?" />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StepActivity({
-  value,
-  onChange,
-}: {
-  value: number | null;
-  onChange: (v: number) => void;
-}) {
-  const opts = [
-    { v: 0, label: "Почти не двигаюсь" },
-    { v: 1, label: "1 раз в неделю" },
-    { v: 3, label: "2–3 раза в неделю" },
-    { v: 5, label: "4 и больше" },
-  ];
-  return (
-    <div>
-      <StepTitle title="Сколько раз в неделю вы сейчас двигаетесь или тренируетесь?" />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function StepGroup({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
   return (
     <div>
@@ -585,71 +466,6 @@ function StepGroup({ value, onChange }: { value: boolean | null; onChange: (v: b
           Нет, будет впервые
         </OptionButton>
       </div>
-    </div>
-  );
-}
-
-function StepHealth({
-  flags,
-  notes,
-  onFlagsChange,
-  onNotesChange,
-}: {
-  flags: HealthFlag[];
-  notes: string;
-  onFlagsChange: (v: HealthFlag[]) => void;
-  onNotesChange: (v: string) => void;
-}) {
-  const opts: { v: HealthFlag; label: string }[] = [
-    { v: "back_joints", label: "Спина или суставы" },
-    { v: "cardio_pressure", label: "Сердце или давление" },
-    { v: "recent_injury", label: "Недавняя травма или операция" },
-    { v: "pregnancy", label: "Беременность" },
-    { v: "chronic", label: "Хроническое заболевание" },
-  ];
-
-  const toggle = (f: HealthFlag) => {
-    if (f === "none") {
-      onFlagsChange(["none"]);
-      return;
-    }
-    const next = flags.includes(f)
-      ? flags.filter((x) => x !== f)
-      : [...flags.filter((x) => x !== "none"), f];
-    onFlagsChange(next);
-  };
-
-  const hasReal = flags.some((f) => f !== "none");
-
-  return (
-    <div>
-      <StepTitle
-        title="Есть что-то, о чём стоит знать тренеру?"
-        subtitle="Отметьте, если актуально — тренер скорректирует нагрузку. Это не заменяет консультацию врача."
-      />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={flags.includes(o.v)} onClick={() => toggle(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
-        <OptionButton active={flags.includes("none")} onClick={() => toggle("none")}>
-          Ничего из перечисленного
-        </OptionButton>
-      </div>
-      {hasReal && (
-        <div className="mt-5 space-y-2">
-          <Label htmlFor="health_notes">Кратко опишите, что важно учесть</Label>
-          <Textarea
-            id="health_notes"
-            value={notes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            placeholder="Необязательно"
-            rows={3}
-            className="resize-none"
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -726,98 +542,6 @@ function StepBody({
             })}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function StepLogistics({
-  frequency,
-  times,
-  onFreqChange,
-  onTimesChange,
-}: {
-  frequency: number | null;
-  times: PrefTime[];
-  onFreqChange: (v: number) => void;
-  onTimesChange: (v: PrefTime[]) => void;
-}) {
-  const timeOpts: { v: PrefTime; label: string }[] = [
-    { v: "morning", label: "Утро" },
-    { v: "day", label: "День" },
-    { v: "evening", label: "Вечер" },
-  ];
-  const toggleTime = (t: PrefTime) =>
-    onTimesChange(times.includes(t) ? times.filter((x) => x !== t) : [...times, t]);
-
-  return (
-    <div className="space-y-6">
-      <StepTitle title="Как планируете заниматься?" />
-      <div>
-        <Label className="text-sm">Сколько раз в неделю хотите ходить?</Label>
-        <div className="mt-2 grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onFreqChange(n)}
-              className={`h-12 rounded-xl border font-semibold transition-colors ${
-                frequency === n
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card border-border hover:border-foreground/30"
-              }`}
-            >
-              {n === 4 ? "4+" : n}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <Label className="text-sm">Удобное время</Label>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {timeOpts.map((t) => (
-            <button
-              key={t.v}
-              type="button"
-              onClick={() => toggleTime(t.v)}
-              className={`h-12 rounded-xl border font-semibold transition-colors ${
-                times.includes(t.v)
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card border-border hover:border-foreground/30"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StepReferral({
-  value,
-  onChange,
-}: {
-  value: Referral | null;
-  onChange: (v: Referral) => void;
-}) {
-  const opts: { v: Referral; label: string }[] = [
-    { v: "instagram", label: "Instagram / соцсети" },
-    { v: "referral", label: "Рекомендация друга" },
-    { v: "walk_by", label: "Проходил(а) мимо" },
-    { v: "search", label: "Поиск / карты" },
-    { v: "other", label: "Другое" },
-  ];
-  return (
-    <div>
-      <StepTitle title="Откуда вы о нас узнали?" />
-      <div className="space-y-2">
-        {opts.map((o) => (
-          <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
-          </OptionButton>
-        ))}
       </div>
     </div>
   );
