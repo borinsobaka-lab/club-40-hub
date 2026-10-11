@@ -48,18 +48,34 @@ export type SaleKind = "new" | "trial" | "upsell" | "renewal";
 
 export const SALE_KIND_LABEL: Record<SaleKind, string> = {
   new: "Новая продажа",
-  trial: "Пробное",
+  trial: "Оплата пробного",
   upsell: "Допродажа",
   renewal: "Продление",
 };
 export const SALE_KINDS: SaleKind[] = ["new", "trial", "upsell", "renewal"];
 
-/** Цветной кружок типа продажи — на кнопках «Продаж» и в колонке «Тип продажи». */
+/** Цветной кружок типа продажи — в выборе типа и в колонке «Тип продажи». */
 export const SALE_KIND_DOT: Record<SaleKind, string> = {
   new: "bg-emerald-500",
   trial: "bg-emerald-500",
   upsell: "bg-blue-500",
   renewal: "bg-violet-500",
+};
+
+/** Светлая плашка под кружком на плитке выбора типа — тот же цвет. */
+export const SALE_KIND_TINT: Record<SaleKind, string> = {
+  new: "bg-emerald-500/15",
+  trial: "bg-emerald-500/15",
+  upsell: "bg-blue-500/15",
+  renewal: "bg-violet-500/15",
+};
+
+/** Короткое пояснение на плитке выбора типа продажи. */
+export const SALE_KIND_DESCRIPTION: Record<SaleKind, string> = {
+  new: "Продажа пакета в студии",
+  trial: "Пробное посещение из «Номенклатур»",
+  upsell: "Продали позже — например, в чате",
+  renewal: "Новый пакет клиенту, у которого уже были абонементы",
 };
 
 /** Пояснение под заголовком диалога продажи — по типу. */

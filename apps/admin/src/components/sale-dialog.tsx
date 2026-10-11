@@ -13,6 +13,7 @@ import {
   PAYMENT_TYPE_LABEL,
   PAYMENT_TYPES,
   SALE_KIND_HINT,
+  SALE_KIND_LABEL,
   SALE_TIPS,
   type MembershipKind,
   type PaymentMethod,
@@ -82,14 +83,6 @@ type MembershipRow = {
   max_payments: number;
   /** Пакетный формат: пакет тренировок или пробное посещение. */
   kind: MembershipKind;
-};
-
-/** Заголовок диалога в пакетной студии — по типу продажи. */
-const SALE_KIND_TITLE: Record<SaleKind, string> = {
-  new: "Новая продажа",
-  trial: "Пробное посещение",
-  upsell: "Допродажа",
-  renewal: "Продление",
 };
 
 // Календарная арифметика по Y-M-D: без Date-парсинга (он читает дату как UTC)
@@ -416,7 +409,7 @@ function SaleForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{isPackages ? SALE_KIND_TITLE[kind] : "Новая продажа"}</DialogTitle>
+        <DialogTitle>{isPackages ? SALE_KIND_LABEL[kind] : "Новая продажа"}</DialogTitle>
         <DialogDescription>
           {isPackages
             ? SALE_KIND_HINT[kind]

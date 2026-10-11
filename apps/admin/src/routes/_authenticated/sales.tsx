@@ -17,8 +17,10 @@ import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHODS,
   PAYMENT_TYPE_LABEL,
+  SALE_KIND_DESCRIPTION,
   SALE_KIND_DOT,
   SALE_KIND_LABEL,
+  SALE_KIND_TINT,
   SALE_KINDS,
   SALE_TIPS,
   saleSourceLabel,
@@ -140,6 +142,55 @@ function SaleKindDot({ kind }: { kind: SaleKind }) {
   );
 }
 
+/** Выбор типа продажи (пакетная студия) — плитки с цветными кружками; дальше форма продажи. */
+function SaleKindPickerDialog({
+  open,
+  onOpenChange,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onPick: (kind: SaleKind) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Какая продажа?</DialogTitle>
+          <DialogDescription>Выберите тип продажи.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {SALE_KINDS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => onPick(k)}
+                className="group flex items-center gap-3 rounded-lg border p-3 text-left transition hover:border-foreground/30 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
+              >
+                <span
+                  className={cn(
+                    "flex size-11 shrink-0 items-center justify-center rounded-xl",
+                    SALE_KIND_TINT[k],
+                  )}
+                >
+                  <span className={cn("size-3.5 rounded-full", SALE_KIND_DOT[k])} />
+                </span>
+                <span className="space-y-1">
+                  <span className="block text-sm font-semibold">{SALE_KIND_LABEL[k]}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {SALE_KIND_DESCRIPTION[k]}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function SourceBadge({ source }: { source: Sale["source"] | null }) {
   return (
     <span
@@ -165,18 +216,23 @@ function SalesPage() {
   const [search, setSearch] = useState("");
   const [saleOpen, setSaleOpen] = useState(false);
   const [saleKind, setSaleKind] = useState<SaleKind>("new");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Фильтр «Тип продажи» (пакетная студия): "all" или SaleKind.
+  const [kindFilter, setKindFilter] = useState<"all" | SaleKind>("all");
+  const kind = isPackages ? kindFilter : "all";
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundSale, setRefundSale] = useState<Sale | null>(null);
 
   const term = useDebouncedValue(search).trim();
   const table = useServerTable<Sale>({
-    queryKey: ["sales_list", studioId, term],
+    queryKey: ["sales_list", studioId, term, kind],
     queryFn: ({ from, to }) => {
       let q = supabase
         .from("sales_list")
         .select(SALE_COLUMNS, { count: "exact" })
         .eq("studio_id", studioId!);
       if (term) q = q.ilike("search_text", `%${term}%`);
+      if (kind !== "all") q = q.eq("sale_kind", kind);
       return q.order("sold_at", { ascending: false }).range(from, to);
     },
     enabled: !!studioId,
@@ -207,6 +263,7 @@ function SalesPage() {
   };
 
   const openSale = (k: SaleKind) => {
+    setPickerOpen(false);
     setSaleKind(k);
     setSaleOpen(true);
   };
@@ -221,16 +278,11 @@ function SalesPage() {
       title="Продажи"
       actions={
         isPackages ? (
-          // Обёртка с отступами: на широком экране .shell-actions — не flex,
-          // и кнопки без неё слипались; до lg её раскладывает .shell-actions > div.
-          <div className="flex flex-wrap gap-2">
-            {SALE_KINDS.map((k) => (
-              <Button key={k} onClick={() => openSale(k)} disabled={!studioId}>
-                <SaleKindDot kind={k} />
-                {SALE_KIND_LABEL[k]}
-              </Button>
-            ))}
-          </div>
+          // Одна кнопка — тип продажи выбирается в окне, как тип занятия в «Расписании».
+          <Button onClick={() => setPickerOpen(true)} disabled={!studioId}>
+            <Plus />
+            Продажа
+          </Button>
         ) : (
           <Button onClick={() => openSale("new")} disabled={!studioId}>
             <Plus />
@@ -247,6 +299,27 @@ function SalesPage() {
               onChange={setSearch}
               placeholder="Поиск по клиенту или абонементу"
             />
+            {isPackages && (
+              <Select
+                value={kindFilter}
+                onValueChange={(v) => setKindFilter(v as "all" | SaleKind)}
+              >
+                <SelectTrigger className="w-48" aria-label="Тип продажи">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все типы продаж</SelectItem>
+                  {SALE_KINDS.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      <span className="flex items-center gap-2">
+                        <SaleKindDot kind={k} />
+                        {SALE_KIND_LABEL[k]}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </TableToolbar>
 
           <div className="rounded-lg border bg-background">
@@ -282,7 +355,9 @@ function SalesPage() {
                       colSpan={columns}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
-                      {term ? "Ничего не найдено." : "Продаж пока нет. Нажмите «Новая продажа»."}
+                      {term || kind !== "all"
+                        ? "Ничего не найдено."
+                        : `Продаж пока нет. Нажмите «${isPackages ? "Продажа" : "Новая продажа"}».`}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -391,6 +466,7 @@ function SalesPage() {
         </RequireStudio>
       </div>
 
+      <SaleKindPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={openSale} />
       <SaleDialog
         open={saleOpen}
         onOpenChange={setSaleOpen}
