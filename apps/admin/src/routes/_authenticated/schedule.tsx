@@ -1262,7 +1262,7 @@ function EntryForm({
     return toDateTimeLocalValue(end);
   });
   const [trainerIds, setTrainerIds] = useState<string[]>(() => (entry ? trainerIdsOf(entry) : []));
-  // Участники нового занятия: записываются после его создания. У созданного —
+  // Клиенты нового занятия: записываются после его создания. У созданного —
   // панель записей, там запись сразу.
   const [pending, setPending] = useState<PickedClient[]>([]);
   const [saving, setSaving] = useState(false);
@@ -1348,7 +1348,7 @@ function EntryForm({
           .eq("entry_id", entry.id)
           .in("status", ["booked", "attended"]);
         if (!count) {
-          toast.error("Добавьте клиента — кнопка «Добавить участника» ниже");
+          toast.error("Добавьте клиента — кнопка «Записать клиента» ниже");
           return;
         }
       }
@@ -1372,7 +1372,7 @@ function EntryForm({
         } else {
           toast.success(text.added);
         }
-        // Участники — после создания: запись идёт по id занятия.
+        // Клиенты — после создания: запись идёт по id занятия.
         const failed: string[] = [];
         for (const c of pending) {
           const err = await bookClient(res.ids[0], c.id);
@@ -1408,9 +1408,7 @@ function EntryForm({
           {entry ? text.edit : text.create}
         </DialogTitle>
         <DialogDescription>
-          {entry && kind !== "other"
-            ? "Настройки занятия, ниже — записанные участники."
-            : text.hint}
+          {entry && kind !== "other" ? "Настройки занятия, ниже — записанные клиенты." : text.hint}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
@@ -1529,7 +1527,7 @@ function EntryForm({
 
             {!entry && kind !== "other" && (
               <FormField
-                label="Участники"
+                label="Клиенты"
                 tip={kind === "personal" ? TIPS.personalClients : TIPS.groupClients}
                 required={kind === "personal"}
                 optional={kind === "group"}
@@ -1721,7 +1719,7 @@ async function bookClient(entryId: string, clientId: string): Promise<string | n
 type PickedClient = { id: string; name: string };
 
 /**
- * «Добавить участника» — выбор клиента студии; «Пробное посещение» (у
+ * «Записать клиента» — выбор клиента студии; «Записать пробника» (у
  * групповых) — новая карточка клиента: он попадает в «Клиенты» потенциальным
  * членом клуба. Оба отдают клиента наверх — там его записывают.
  */
@@ -1748,7 +1746,7 @@ function ParticipantActions({
           disabled={disabled || !studioId}
         >
           <UserPlus />
-          Добавить участника
+          Записать клиента
         </Button>
         {trial && (
           <Button
@@ -1758,7 +1756,7 @@ function ParticipantActions({
             disabled={disabled || !studioId}
           >
             <Plus />
-            Пробное посещение
+            Записать пробника
           </Button>
         )}
       </div>
@@ -1779,7 +1777,7 @@ function ParticipantActions({
         onOpenChange={setTrialOpen}
         studioId={studioId}
         client={null}
-        createTitle="Пробное посещение"
+        createTitle="Записать пробника"
         createDescription="Новый клиент появится в «Клиентах» как потенциальный член клуба и будет записан на это занятие."
         onSaved={(c) => onPick({ id: c.id, name: clientName(c) })}
       />
@@ -1807,7 +1805,7 @@ function PickClientForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Добавить участника</DialogTitle>
+        <DialogTitle>Записать клиента</DialogTitle>
         <DialogDescription>Клиент студии — поиск по имени, телефону или почте.</DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSubmit}>
@@ -1824,7 +1822,7 @@ function PickClientForm({
           <Button variant="outline" onClick={onCancel}>
             Отмена
           </Button>
-          <Button type="submit">Добавить</Button>
+          <Button type="submit">Записать</Button>
         </DialogFooter>
       </DialogForm>
     </>
@@ -1938,7 +1936,7 @@ function BookingsPanel({
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs font-medium uppercase text-muted-foreground">
-            Записанные участники
+            Записанные клиенты
           </div>
           <span className="text-xs tabular-nums text-muted-foreground">
             {booked.length}
@@ -1961,7 +1959,7 @@ function BookingsPanel({
         ) : booked.length === 0 ? (
           <InfoNote variant="empty">
             {entry.kind === "personal"
-              ? "Клиент не выбран — нажмите «Добавить участника»."
+              ? "Клиент не выбран — нажмите «Записать клиента»."
               : "Пока никто не записан."}
           </InfoNote>
         ) : (
