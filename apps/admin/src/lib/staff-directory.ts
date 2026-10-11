@@ -52,6 +52,8 @@ export type Employee = {
   role: TrainerRole;
   photo_url: string | null;
   telegram: string | null;
+  /** Биография для приложения (текст с разметкой, lib/formatted-text.tsx). */
+  bio: string | null;
   trainer_studios: { studio_id: string; studio: { name: string } | null }[];
   // Связь один к одному: PostgREST отдаёт объект, но на всякий случай
   // принимаем и массив.
@@ -59,7 +61,7 @@ export type Employee = {
 };
 
 const EMPLOYEE_SELECT =
-  "id, full_name, role, photo_url, telegram, trainer_studios(studio_id, studio:studios(name)), bank_details:trainer_bank_details(bank, account_number, account_holder)";
+  "id, full_name, role, photo_url, telegram, bio, trainer_studios(studio_id, studio:studios(name)), bank_details:trainer_bank_details(bank, account_number, account_holder)";
 
 /** Все сотрудники справочника — общий кэш обеих страниц раздела. */
 export function useEmployees() {

@@ -24,6 +24,8 @@ export const STORAGE_BUCKETS = {
   avatars: { id: "avatars", access: "public" },
   // Иконки клиентского приложения (lib/app-icons.ts): папка на каждую загрузку.
   appIcons: { id: "app-icons", access: "public" },
+  // Фото клуба для раздела «Студия» в приложении («Контакты и правила»).
+  studioPhotos: { id: "studio-photos", access: "public" },
 } as const;
 
 export type StorageBucket = keyof typeof STORAGE_BUCKETS;

@@ -5,6 +5,7 @@ import { Plus, Loader2, Pencil, Trash2, MessageCircle } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { ImageUploadField } from "@/components/image-upload-field";
+import { FormattedTextarea } from "@/components/formatted-textarea";
 import { useStudios } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -62,6 +63,7 @@ const TIPS = {
   name: "Имя тренера клиенты видят в расписании приложения.",
   role: "Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах».",
   studios: "Где работает сотрудник. Только в этих клубах его можно поставить на занятие.",
+  bio: "Биография — клиенты читают её в приложении: «Студия» → «Тренеры». Можно выделять жирным, делать списки и ссылки.",
   bank: "Для выплат сотруднику. Видят только сотрудники, клиентам в приложении они недоступны.",
 };
 
@@ -290,6 +292,7 @@ function EmployeeForm({
   const [fullName, setFullName] = useState(employee?.full_name ?? "");
   const [telegram, setTelegram] = useState(employee?.telegram ?? "");
   const [photoUrl, setPhotoUrl] = useState(employee?.photo_url ?? null);
+  const [bio, setBio] = useState(employee?.bio ?? "");
   const [studioIds, setStudioIds] = useState<string[]>(initialStudioIds);
   const [bankCode, setBankCode] = useState<string>(bank?.bank ?? "");
   const [accountNumber, setAccountNumber] = useState(
@@ -341,6 +344,7 @@ function EmployeeForm({
         role,
         telegram: telegram.trim() || null,
         photo_url: photoUrl,
+        bio: bio.trim() || null,
       };
       let id = employee?.id;
       if (id) {
@@ -466,6 +470,16 @@ function EmployeeForm({
                 placeholder="@username или ссылка"
               />
             </FormField>
+
+            {role === "trainer" && (
+              <FormField label="О тренере" tip={TIPS.bio} optional>
+                <FormattedTextarea
+                  value={bio}
+                  onChange={setBio}
+                  placeholder="Опыт, специализация, достижения…"
+                />
+              </FormField>
+            )}
 
             <FormField label="Клубы" tip={TIPS.studios} htmlFor={null} required>
               {myStudios.length === 0 && otherStudios.length === 0 ? (

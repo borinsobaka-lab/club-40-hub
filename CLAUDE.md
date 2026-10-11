@@ -261,6 +261,14 @@ AUTH_SETUP.md.
   (папки с нарезанными PNG, запись — раздел рейки `app`) и колонки
   `club_settings.app_name`/`app_icon_path` — с `…_app_content_by_studio.sql`
   не читаются, настройки в `app_install_settings` (у каждого приложения свои).
+  Приложение пакетных студий (правки 2026-10-11):
+  `db/migrations/2026-10-11_zzzzzzzzzzz_packages_app_studio.sql` —
+  `studio_app_settings.about/photo_path/google_maps_url/yandex_maps_url/instagram_url`
+  (раздел «Студия» в приложении, бакет `studio-photos`), `trainers.bio`,
+  `memberships.sort_order` (порядок в админке и приложении), политики
+  `… client browse` + `client_can_browse_studio`: клиент читает расписание,
+  тренировки, тренеров и показываемые абонементы другой студии того же
+  формата (переключатель студий; записаться — только в своей).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

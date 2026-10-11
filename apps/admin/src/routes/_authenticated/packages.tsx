@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type DragEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2, Copy } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Copy, GripVertical } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -13,7 +13,8 @@ import { formatMoney } from "@/lib/format";
 import { MEMBERSHIP_KIND_LABEL, MEMBERSHIP_KINDS, type MembershipKind } from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FormattedTextarea } from "@/components/formatted-textarea";
+import { stripFormatting } from "@/lib/formatted-text";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
@@ -37,7 +38,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -58,7 +58,10 @@ const TIPS = {
   duration: "Считается от даты продажи.",
   price:
     "Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет.",
-  description: "Видно клиентам в карточке пакета в приложении.",
+  description:
+    "Видно клиентам в карточке пакета в приложении. Можно выделять жирным, делать списки и ссылки.",
+  order:
+    "Перетащите строку за ручку, чтобы поменять порядок: в таком же порядке абонементы стоят в приложении.",
   payments:
     "Сколькими ежемесячными платежами можно оплатить пакет (внутренняя рассрочка). 1 — только сразу. При продаже можно выбрать меньше.",
 };
@@ -95,13 +98,15 @@ type Package = {
   /** Персональных: у пакета тренировок — подарочные, у пакета персональных — количество. */
   personal_count: number;
   is_active: boolean;
+  /** Порядок в таблице и в приложении (по возрастанию, перетаскивание строк). */
+  sort_order: number;
 };
 
 /** Поля, которыми можно предзаполнить новый пакет (дублирование). */
-type PackageDraft = Omit<Package, "id" | "studio_id">;
+type PackageDraft = Omit<Package, "id" | "studio_id" | "sort_order">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order";
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
@@ -133,17 +138,21 @@ function PackagesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Package | null>(null);
   const [draft, setDraft] = useState<PackageDraft | null>(null);
+  // Перетаскивание строк: какая строка тянется и над какой сейчас.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const queryKey = ["memberships", studioId, "packages"];
 
   const { data: items = [], isLoading: loading } = useQuery({
-    queryKey: ["memberships", studioId, "packages"],
+    queryKey,
     queryFn: () =>
       unwrap<Package[]>(
         supabase
           .from("memberships")
           .select(COLUMNS)
           .eq("studio_id", studioId!)
-          .order("name")
-          .order("visits_count"),
+          .order("sort_order")
+          .order("name"),
       ),
     enabled: !!studioId,
     meta: { errorMessage: "Не удалось загрузить номенклатуры" },
@@ -183,6 +192,64 @@ function PackagesPage() {
     reload();
   };
 
+  /**
+   * Строку dragged поставить на место target. Порядок пишется в
+   * memberships.sort_order заново 1…N (только изменившимся строкам), сразу
+   * показывается локально; при ошибке — перезагрузка с сервера.
+   */
+  const moveRow = async (draggedId: string, targetId: string) => {
+    if (draggedId === targetId) return;
+    const from = items.findIndex((p) => p.id === draggedId);
+    const to = items.findIndex((p) => p.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const reordered = next.map((p, i) => ({ ...p, sort_order: i + 1 }));
+    const changed = reordered.filter(
+      (p) => items.find((o) => o.id === p.id)?.sort_order !== p.sort_order,
+    );
+    queryClient.setQueryData<Package[]>(queryKey, reordered);
+    const results = await Promise.all(
+      changed.map((p) =>
+        supabase.from("memberships").update({ sort_order: p.sort_order }).eq("id", p.id),
+      ),
+    );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) {
+      toast.error("Не удалось сохранить порядок: " + failed.error.message);
+      reload();
+    }
+  };
+
+  const dragProps = (p: Package) =>
+    canDrag
+      ? {
+          draggable: true,
+          onDragStart: (e: DragEvent) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", p.id);
+            setDragId(p.id);
+          },
+          onDragOver: (e: DragEvent) => {
+            if (!dragId) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            if (overId !== p.id) setOverId(p.id);
+          },
+          onDrop: (e: DragEvent) => {
+            e.preventDefault();
+            if (dragId) moveRow(dragId, p.id);
+            setDragId(null);
+            setOverId(null);
+          },
+          onDragEnd: () => {
+            setDragId(null);
+            setOverId(null);
+          },
+        }
+      : {};
+
   const openCreate = (initial: PackageDraft | null = null) => {
     setEditing(null);
     setDraft(initial);
@@ -200,8 +267,8 @@ function PackagesPage() {
         (p) => p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q),
       )
     : items;
-
-  const pg = usePagination(filtered);
+  // Порядок меняется только по полному списку: при поиске строки не тянутся.
+  const canDrag = !q && items.length > 1;
 
   return (
     <AdminShell
@@ -227,6 +294,9 @@ function PackagesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10" tip={TIPS.order}>
+                    <span className="sr-only">Порядок</span>
+                  </TableHead>
                   <TableHead>Название</TableHead>
                   <TableHead tip={TIPS.kind}>Тип</TableHead>
                   <TableHead tip={TIPS.trainings}>Тренировок</TableHead>
@@ -239,11 +309,11 @@ function PackagesPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeletonRows columns={8} />
+                  <TableSkeletonRows columns={9} />
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={9}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       {items.length === 0
@@ -252,7 +322,7 @@ function PackagesPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  pg.paged.map((p) => (
+                  filtered.map((p) => (
                     <RowContextMenu
                       key={p.id}
                       actions={[
@@ -271,7 +341,22 @@ function PackagesPage() {
                         },
                       ]}
                     >
-                      <TableRow className={p.is_active ? "" : "opacity-60"}>
+                      <TableRow
+                        {...dragProps(p)}
+                        className={[
+                          p.is_active ? "" : "opacity-60",
+                          dragId === p.id ? "opacity-40" : "",
+                          overId === p.id && dragId !== p.id
+                            ? "outline-2 -outline-offset-2 outline-brand"
+                            : "",
+                        ].join(" ")}
+                      >
+                        <TableCell className="w-10 pr-0">
+                          <GripVertical
+                            className={`size-4 text-muted-foreground ${canDrag ? "cursor-grab" : "opacity-30"}`}
+                            aria-label="Перетащить"
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{p.name}</TableCell>
                         <TableCell>
                           {p.kind !== "package" ? (
@@ -291,7 +376,7 @@ function PackagesPage() {
                         </TableCell>
                         <TableCell>{p.max_payments > 1 ? `до ${p.max_payments}` : "1"}</TableCell>
                         <TableCell className="max-w-[300px] truncate text-muted-foreground">
-                          {p.description ?? "—"}
+                          {p.description ? stripFormatting(p.description) : "—"}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -312,7 +397,6 @@ function PackagesPage() {
                 )}
               </TableBody>
             </Table>
-            <DataPagination {...pg} loading={loading} />
           </div>
         </RequireStudio>
       </div>
@@ -323,6 +407,7 @@ function PackagesPage() {
         studioId={studioId}
         item={editing}
         draft={draft}
+        nextSortOrder={items.reduce((m, p) => Math.max(m, p.sort_order), 0) + 1}
         onSaved={reload}
       />
       {confirmDialog}
@@ -338,6 +423,8 @@ type DialogProps = {
   item: Package | null;
   /** Предзаполнение новой записи (дублирование). */
   draft: PackageDraft | null;
+  /** sort_order новой записи — в конец списка. */
+  nextSortOrder: number;
   onSaved: () => void;
 };
 
@@ -358,7 +445,7 @@ function positiveInt(v: string): number | null {
   return v.trim() !== "" && Number.isInteger(n) && n > 0 ? n : null;
 }
 
-function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogProps) {
+function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSaved }: DialogProps) {
   const init = item ?? draft;
   const [name, setName] = useState(init?.name ?? "");
   const [description, setDescription] = useState(init?.description ?? "");
@@ -452,7 +539,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
       };
       const { error } = item
         ? await supabase.from("memberships").update(payload).eq("id", item.id)
-        : await supabase.from("memberships").insert(payload);
+        : await supabase.from("memberships").insert({ ...payload, sort_order: nextSortOrder });
       if (error) {
         toast.error("Ошибка сохранения: " + error.message);
         return;
@@ -580,11 +667,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, onSaved }: DialogPro
             )}
 
             <FormField label="Описание" tip={TIPS.description} optional>
-              <Textarea
-                rows={2}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              <FormattedTextarea rows={4} value={description} onChange={setDescription} />
             </FormField>
 
             <SwitchRow

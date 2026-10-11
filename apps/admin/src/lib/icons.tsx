@@ -25,6 +25,7 @@ import {
   ArrowUp as ArrowUpArt,
   ArrowUpRight as ArrowUpRightArt,
   BanIcon as BanArt,
+  Bold as BoldArt,
   Building2 as Building2Art,
   CalendarIcon as CalendarIconArt,
   CatIcon as CatArt,
@@ -48,10 +49,16 @@ import {
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
   FlaskConical as FlaskConicalArt,
+  DragDropVerticalIcon as GripVerticalArt,
+  Heading2 as Heading2Art,
   HelpCircleIcon as HelpCircleArt,
   ImageIcon as ImageIconArt,
   Info as InfoArt,
+  Italic as ItalicArt,
+  Link as LinkArt,
   Link2 as Link2Art,
+  List as ListArt,
+  ListOrdered as ListOrderedArt,
   LoaderCircle as Loader2Art,
   LogIn as LogInArt,
   MessageCircle as MessageCircleArt,
@@ -105,6 +112,7 @@ export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
 export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
 export const Ban = icon(BanArt, "Ban");
+export const Bold = icon(BoldArt, "Bold");
 export const Building2 = icon(Building2Art, "Building2");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");
 export const Cat = icon(CatArt, "Cat");
@@ -128,10 +136,16 @@ export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
 export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
+export const GripVertical = icon(GripVerticalArt, "GripVertical");
+export const Heading2 = icon(Heading2Art, "Heading2");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
 export const Info = icon(InfoArt, "Info");
+export const Italic = icon(ItalicArt, "Italic");
+export const Link = icon(LinkArt, "Link");
 export const Link2 = icon(Link2Art, "Link2");
+export const List = icon(ListArt, "List");
+export const ListOrdered = icon(ListOrderedArt, "ListOrdered");
 export const Loader2 = icon(Loader2Art, "Loader2");
 export const LogIn = icon(LogInArt, "LogIn");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");

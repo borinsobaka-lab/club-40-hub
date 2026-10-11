@@ -715,7 +715,9 @@ export function PackagesPageSkeleton() {
       title="Номенклатуры"
       actions={[{ label: "Добавить" }]}
       toolbar={{}}
+      pagination={false}
       headers={[
+        "",
         "Название",
         "Тип",
         "Тренировок",
