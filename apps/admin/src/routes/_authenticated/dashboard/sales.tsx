@@ -11,7 +11,7 @@ import {
   SERIES_COLORS,
   type Slice,
 } from "@/components/dashboard/chart-panel";
-import { DashboardShell, type StudioView } from "@/components/dashboard/dashboard-shell";
+import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { useSalesHistory } from "@/components/dashboard/queries";
 import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
 import {
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/sales")({
 function SalesPage() {
   return (
     <DashboardShell title={DASHBOARD_TITLES.sales} skeleton={<DashboardSalesSkeleton />}>
-      {(view) => <StudioSales {...view} />}
+      {(view) => <SalesBody {...view} />}
     </DashboardShell>
   );
 }
@@ -95,10 +95,11 @@ function salesSeries(history: SalesHistory): Record<SalesKey, SeriesDef> {
   };
 }
 
-function StudioSales({ studio, period, prev, periodEnd }: StudioView) {
-  const history = useSalesHistory(studio);
+function SalesBody(view: DashboardView) {
+  const { period, prev, periodEnd } = view;
+  const history = useSalesHistory(view);
   const h = history.data;
-  const color = studio.brand_color || "var(--brand)";
+  const color = view.color;
 
   const stats = useMemo<StatDef<SalesKey>[]>(() => {
     const series = h ? salesSeries(h) : null;
@@ -202,7 +203,7 @@ function StudioSales({ studio, period, prev, periodEnd }: StudioView) {
   return (
     <>
       <StatGrid
-        studio={studio}
+        target={view}
         stats={stats}
         current={current}
         previous={previous}

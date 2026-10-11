@@ -25,6 +25,7 @@ import {
   ArrowUp as ArrowUpArt,
   ArrowUpRight as ArrowUpRightArt,
   BanIcon as BanArt,
+  Building2 as Building2Art,
   CalendarIcon as CalendarIconArt,
   CatIcon as CatArt,
   ChartAreaIcon as ChartAreaArt,
@@ -104,6 +105,7 @@ export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
 export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
 export const Ban = icon(BanArt, "Ban");
+export const Building2 = icon(Building2Art, "Building2");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");
 export const Cat = icon(CatArt, "Cat");
 export const ChartArea = icon(ChartAreaArt, "ChartArea");

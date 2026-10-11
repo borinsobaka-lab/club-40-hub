@@ -116,7 +116,7 @@ function sum(rows: Row[], column: string) {
 const EXPIRING_STATUSES = ["active", "frozen", "expired"];
 
 export async function loadPeriodMetrics(
-  studioId: string,
+  studioIds: string[],
   from: string,
   to: string,
 ): Promise<Loaded<PeriodMetrics>> {
@@ -124,12 +124,12 @@ export async function loadPeriodMetrics(
   const { load, loadRows } = makeLoader(errors);
   const [saleRows, signups, expiring, visits, debtRows, otherSaleRows, refundRows] =
     await Promise.all([
-      loadRows(sales(studioId, from, to)),
+      loadRows(sales(studioIds, from, to)),
       load(
         supabase
           .from("clients")
           .select("id", { count: "exact", head: true })
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .gte("registration_date", from)
           .lte("registration_date", to),
       ),
@@ -137,7 +137,7 @@ export async function loadPeriodMetrics(
         supabase
           .from("client_memberships")
           .select("id", { count: "exact", head: true })
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .in("status", EXPIRING_STATUSES)
           .gte("ends_at", from)
           .lte("ends_at", to),
@@ -146,17 +146,17 @@ export async function loadPeriodMetrics(
         supabase
           .from("bookings_log")
           .select("id", { count: "exact", head: true })
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .eq("status", "attended")
           .gte("starts_at", dayStartISO(from))
           .lt("starts_at", nextDayStartISO(to)),
       ),
       // Задолженность за период — неоплаченные взносы со сроком в диапазоне
-      loadRows(unpaidInstallments(studioId, from, to)),
+      loadRows(unpaidInstallments(studioIds, from, to)),
       // Продажи услуг и товаров — отдельная таблица, но выручка общая.
-      loadRows(otherSales(studioId, from, to)),
+      loadRows(otherSales(studioIds, from, to)),
       // Возвраты уменьшают выручку за период.
-      loadRows(refunds(studioId, from, to)),
+      loadRows(refunds(studioIds, from, to)),
     ]);
 
   const metrics: Partial<PeriodMetrics> = {
@@ -183,7 +183,7 @@ export async function loadPeriodMetrics(
   return { metrics, errors };
 }
 
-export async function loadSnapshotMetrics(studioId: string): Promise<Loaded<SnapshotMetrics>> {
+export async function loadSnapshotMetrics(studioIds: string[]): Promise<Loaded<SnapshotMetrics>> {
   const errors: string[] = [];
   const { loadRows } = makeLoader(errors);
   const [active, debtRows] = await Promise.all([
@@ -191,13 +191,13 @@ export async function loadSnapshotMetrics(studioId: string): Promise<Loaded<Snap
       date: "ends_at",
       page: (lo, hi) =>
         select("client_memberships", "client_id, ends_at", lo)
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .eq("status", "active")
           .order("id")
           .range(lo, hi),
     }),
     // Общая задолженность — все неоплаченные взносы по студии
-    loadRows(unpaidInstallments(studioId)),
+    loadRows(unpaidInstallments(studioIds)),
   ]);
 
   const today = toISO(new Date());
@@ -245,7 +245,7 @@ export type SeriesDef = {
    * будущие корзины выручки и посещений всегда пустые.
    */
   future?: boolean;
-  load: (studioId: string, from: string, to: string) => Promise<SeriesPoint[]>;
+  load: (studioIds: string[], from: string, to: string) => Promise<SeriesPoint[]>;
 };
 
 const PAGE_SIZE = 1000;
@@ -255,12 +255,12 @@ function select(table: string, columns: string, lo: number) {
 }
 
 function salesSource(table: "sales" | "other_sales") {
-  return (studioId: string, from: string, to: string): SeriesSource => ({
+  return (studioIds: string[], from: string, to: string): SeriesSource => ({
     date: "sold_at",
     amount: "total_amount",
     page: (lo, hi) =>
       select(table, "sold_at, total_amount", lo)
-        .eq("studio_id", studioId)
+        .in("studio_id", studioIds)
         .gte("sold_at", from)
         .lte("sold_at", to)
         .order("sold_at")
@@ -273,14 +273,14 @@ const sales = salesSource("sales");
 const otherSales = salesSource("other_sales");
 
 /** Неоплаченные взносы студии: со сроком в from–to или (без границ) все. */
-function unpaidInstallments(studioId: string, from?: string, to?: string): SeriesSource {
+function unpaidInstallments(studioIds: string[], from?: string, to?: string): SeriesSource {
   return {
     date: "due_date",
     amount: "amount",
     page: (lo, hi) => {
       let q = select("sale_installments", "due_date, amount, sales!inner(studio_id)", lo)
         .eq("paid", false)
-        .eq("sales.studio_id", studioId);
+        .in("sales.studio_id", studioIds);
       if (from) q = q.gte("due_date", from);
       if (to) q = q.lte("due_date", to);
       return q.order("due_date").order("id").range(lo, hi);
@@ -288,7 +288,7 @@ function unpaidInstallments(studioId: string, from?: string, to?: string): Serie
   };
 }
 
-function refunds(studioId: string, from: string, to: string): SeriesSource {
+function refunds(studioIds: string[], from: string, to: string): SeriesSource {
   return {
     date: "refunded_at",
     timestamp: true,
@@ -297,7 +297,7 @@ function refunds(studioId: string, from: string, to: string): SeriesSource {
     deal: false,
     page: (lo, hi) =>
       select("refunds", "refunded_at, amount", lo)
-        .eq("studio_id", studioId)
+        .in("studio_id", studioIds)
         .gte("refunded_at", dayStartISO(from))
         .lt("refunded_at", nextDayStartISO(to))
         .order("refunded_at")
@@ -306,13 +306,13 @@ function refunds(studioId: string, from: string, to: string): SeriesSource {
   };
 }
 
-function attendedVisits(studioId: string, from: string, to: string, columns = "starts_at") {
+function attendedVisits(studioIds: string[], from: string, to: string, columns = "starts_at") {
   return {
     date: "starts_at",
     timestamp: true,
     page: (lo: number, hi: number) =>
       select("bookings_log", columns, lo)
-        .eq("studio_id", studioId)
+        .in("studio_id", studioIds)
         .eq("status", "attended")
         .gte("starts_at", dayStartISO(from))
         .lt("starts_at", nextDayStartISO(to))
@@ -342,11 +342,11 @@ async function loadAllRows(source: Pick<SeriesSource, "page">) {
 
 /** Точки графика из таблиц: дата, сумма (со знаком) и вклад в число продаж. */
 function sourcesSeries(
-  sources: (studioId: string, from: string, to: string) => SeriesSource[],
+  sources: (studioIds: string[], from: string, to: string) => SeriesSource[],
 ): SeriesDef["load"] {
-  return async (studioId, from, to) => {
+  return async (studioIds, from, to) => {
     const chunks = await Promise.all(
-      sources(studioId, from, to).map(async (source): Promise<SeriesPoint[]> => {
+      sources(studioIds, from, to).map(async (source): Promise<SeriesPoint[]> => {
         const rows = await loadAllRows(source);
         return rows.map((r) => ({
           date: source.timestamp
@@ -371,12 +371,12 @@ export const OVERVIEW_SERIES: Partial<Record<keyof OverviewMetrics, SeriesDef>> 
   signups: {
     kind: "count",
     description: "клиенты по дате регистрации",
-    load: sourcesSeries((studioId, from, to) => [
+    load: sourcesSeries((studioIds, from, to) => [
       {
         date: "registration_date",
         page: (lo, hi) =>
           select("clients", "registration_date", lo)
-            .eq("studio_id", studioId)
+            .in("studio_id", studioIds)
             .gte("registration_date", from)
             .lte("registration_date", to)
             .order("registration_date")
@@ -391,12 +391,12 @@ export const OVERVIEW_SERIES: Partial<Record<keyof OverviewMetrics, SeriesDef>> 
     // и истёкшие; заменённые новой покупкой и отменённые не считаем.
     description: "абонементы по дате окончания, кроме отменённых и продлённых досрочно",
     future: true,
-    load: sourcesSeries((studioId, from, to) => [
+    load: sourcesSeries((studioIds, from, to) => [
       {
         date: "ends_at",
         page: (lo, hi) =>
           select("client_memberships", "ends_at", lo)
-            .eq("studio_id", studioId)
+            .in("studio_id", studioIds)
             .in("status", EXPIRING_STATUSES)
             .gte("ends_at", from)
             .lte("ends_at", to)
@@ -409,7 +409,7 @@ export const OVERVIEW_SERIES: Partial<Record<keyof OverviewMetrics, SeriesDef>> 
   visits: {
     kind: "count",
     description: "отмеченные посещения занятий",
-    load: sourcesSeries((studioId, from, to) => [attendedVisits(studioId, from, to)]),
+    load: sourcesSeries((studioIds, from, to) => [attendedVisits(studioIds, from, to)]),
   },
   avgMembership: {
     kind: "avg",
@@ -430,7 +430,7 @@ export const OVERVIEW_SERIES: Partial<Record<keyof OverviewMetrics, SeriesDef>> 
     kind: "sum",
     description: "неоплаченные взносы по сроку оплаты",
     future: true,
-    load: sourcesSeries((studioId, from, to) => [unpaidInstallments(studioId, from, to)]),
+    load: sourcesSeries((studioIds, from, to) => [unpaidInstallments(studioIds, from, to)]),
   },
 };
 
@@ -451,7 +451,7 @@ const one = <T>(v: T | T[] | null | undefined): T | null =>
  * покупки клиента, LTV от периода не зависит. Расчёты по периоду дальше идут
  * по этим строкам в браузере — смена периода не ходит в базу.
  */
-export async function loadSalesHistory(studioId: string): Promise<SalesHistory> {
+export async function loadSalesHistory(studioIds: string[]): Promise<SalesHistory> {
   const [saleRows, otherRows, refundRows] = await Promise.all([
     loadAllRows({
       page: (lo, hi) =>
@@ -462,7 +462,7 @@ export async function loadSalesHistory(studioId: string): Promise<SalesHistory> 
             "sale_installments(amount, paid, paid_at, due_date, payment_method)",
           lo,
         )
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .order("sold_at")
           .order("id")
           .range(lo, hi),
@@ -470,7 +470,7 @@ export async function loadSalesHistory(studioId: string): Promise<SalesHistory> 
     loadAllRows({
       page: (lo, hi) =>
         select("other_sales", "client_id, sold_at, total_amount, payment_method, item_name", lo)
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .order("sold_at")
           .order("id")
           .range(lo, hi),
@@ -478,7 +478,7 @@ export async function loadSalesHistory(studioId: string): Promise<SalesHistory> 
     loadAllRows({
       page: (lo, hi) =>
         select("refunds", "refunded_at, amount, sale_id, other_sale_id", lo)
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .order("refunded_at")
           .order("id")
           .range(lo, hi),
@@ -537,8 +537,8 @@ export async function loadSalesHistory(studioId: string): Promise<SalesHistory> 
 }
 
 /** Посещения за период по дням (отмеченные занятия). */
-export async function loadVisitDates(studioId: string, from: string, to: string) {
-  const rows = await loadAllRows(attendedVisits(studioId, from, to));
+export async function loadVisitDates(studioIds: string[], from: string, to: string) {
+  const rows = await loadAllRows(attendedVisits(studioIds, from, to));
   return rows.map((r) => localDate(String(r.starts_at)));
 }
 
@@ -560,19 +560,19 @@ export type ClientsData = {
   memberIds: Set<string>;
 };
 
-export async function loadClientsData(studioId: string): Promise<ClientsData> {
+export async function loadClientsData(studioIds: string[]): Promise<ClientsData> {
   const [clientRows, termRows] = await Promise.all([
     loadAllRows({
       page: (lo, hi) =>
         select("clients", "user_id, first_name, last_name, full_name, birthday", lo)
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .order("id")
           .range(lo, hi),
     }),
     loadAllRows({
       page: (lo, hi) =>
         select("client_memberships", "client_id, status, ends_at", lo)
-          .eq("studio_id", studioId)
+          .in("studio_id", studioIds)
           .in("status", ["active", "frozen"])
           .order("id")
           .range(lo, hi),
@@ -598,10 +598,14 @@ export async function loadClientsData(studioId: string): Promise<ClientsData> {
 }
 
 /** Отмеченные посещения за период: кто ходил (карточка, учётная запись, имя из журнала). */
-export async function loadVisits(studioId: string, from: string, to: string): Promise<VisitRow[]> {
+export async function loadVisits(
+  studioIds: string[],
+  from: string,
+  to: string,
+): Promise<VisitRow[]> {
   const rows = await loadAllRows(
     attendedVisits(
-      studioId,
+      studioIds,
       from,
       to,
       "starts_at, client_id, user_id, client_first_name, client_last_name, client_full_name",

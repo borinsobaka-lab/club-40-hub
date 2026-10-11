@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { CategoryPlot, ChartArea, ChartPanel, RankList } from "@/components/dashboard/chart-panel";
-import { DashboardShell, type StudioView } from "@/components/dashboard/dashboard-shell";
+import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { useSalesHistory } from "@/components/dashboard/queries";
 import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
 import {
@@ -33,33 +33,33 @@ const STATS: StatDef<ClientsKey>[] = CLIENTS_STATS;
 function ClientsPage() {
   return (
     <DashboardShell title={DASHBOARD_TITLES.clients} skeleton={<DashboardClientsSkeleton />}>
-      {(view) => <StudioClients {...view} />}
+      {(view) => <ClientsBody {...view} />}
     </DashboardShell>
   );
 }
 
-function StudioClients({ studio, period, prev, periodEnd }: StudioView) {
-  const studioId = studio.id;
-  const color = studio.brand_color || "var(--brand)";
+function ClientsBody(view: DashboardView) {
+  const { period, prev, periodEnd } = view;
+  const color = view.color;
 
   const clientsQuery = useQuery({
-    queryKey: ["dashboard", studioId, "clients"],
-    queryFn: () => loadClientsData(studioId),
-    meta: { errorMessage: `${studio.name}: не удалось загрузить клиентов для дашборда` },
+    queryKey: ["dashboard", view.scope, "clients"],
+    queryFn: () => loadClientsData(view.clubIds),
+    meta: { errorMessage: `${view.name}: не удалось загрузить клиентов для дашборда` },
   });
   const visitsQuery = useQuery({
-    queryKey: ["dashboard", studioId, "visits", period?.from, period?.to],
+    queryKey: ["dashboard", view.scope, "visits", period?.from, period?.to],
     queryFn: async () => {
       const [current, previous] = await Promise.all([
-        loadVisits(studioId, period!.from, period!.to),
-        loadVisits(studioId, prev!.from, prev!.to),
+        loadVisits(view.clubIds, period!.from, period!.to),
+        loadVisits(view.clubIds, prev!.from, prev!.to),
       ]);
       return { current, previous };
     },
     enabled: !!period,
-    meta: { errorMessage: `${studio.name}: не удалось загрузить посещения` },
+    meta: { errorMessage: `${view.name}: не удалось загрузить посещения` },
   });
-  const history = useSalesHistory(studio);
+  const history = useSalesHistory(view);
 
   const clients = clientsQuery.data;
   const people = useMemo(() => {
@@ -139,7 +139,7 @@ function StudioClients({ studio, period, prev, periodEnd }: StudioView) {
   return (
     <>
       <StatGrid
-        studio={studio}
+        target={view}
         stats={STATS}
         current={current}
         previous={previous}

@@ -10,6 +10,7 @@ import {
   type ControlSkeleton,
   type HeaderSkeleton,
 } from "@/components/skeletons";
+import { FieldHint } from "@/components/ui/field-hint";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ import {
   CLIENTS_GRID,
   CLIENTS_STATS,
   DASHBOARD_CHART_HEIGHT,
+  DASHBOARD_FILTERS,
   DASHBOARD_PIE_HEIGHT,
   DASHBOARD_RANK_HEIGHT,
   DASHBOARD_TITLES,
@@ -272,20 +274,43 @@ export function DashboardPieSkeleton({ height, rows = 3 }: { height: number; row
   );
 }
 
-/** Блок одного клуба: название, период и тело подраздела. */
-export function DashboardStudioSkeleton({ children }: { children: ReactNode }) {
+/**
+ * Поле плашки фильтров дашборда с подписью и «?» над ним (решение владельца
+ * 2026-10-11: в остальных плашках подписей нет). Ширина — как у фильтра, w-48.
+ */
+export function DashboardFilterField({
+  label,
+  tip,
+  children,
+}: {
+  label: string;
+  tip: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Skeleton className="size-2.5 rounded-full" />
-        <Skeleton className="h-6 w-40" />
-      </div>
-      <ToolbarSkeleton
-        search={false}
-        controls={["toolbar-full w-48", { label: "Текущий месяц", icon: false }]}
-      />
+    <div className="grid w-48 gap-1">
+      <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+        {label}
+        <FieldHint>{tip}</FieldHint>
+      </span>
       {children}
-    </section>
+    </div>
+  );
+}
+
+/** Плашка фильтров дашборда («Период», «Клубы») и тело подраздела. */
+export function DashboardBodySkeleton({ children }: { children: ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div className="table-toolbar flex flex-wrap items-end gap-2 rounded-lg border bg-background p-2 sm:px-3">
+        {[DASHBOARD_FILTERS.period, DASHBOARD_FILTERS.clubs].map((f) => (
+          <DashboardFilterField key={f.label} {...f}>
+            <Skeleton className="h-10 w-full" />
+          </DashboardFilterField>
+        ))}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -318,9 +343,9 @@ export function DashboardOverviewSkeleton() {
 export function DashboardPageSkeleton() {
   return (
     <ShellSkeleton title={DASHBOARD_TITLES.overview}>
-      <DashboardStudioSkeleton>
+      <DashboardBodySkeleton>
         <DashboardOverviewSkeleton />
-      </DashboardStudioSkeleton>
+      </DashboardBodySkeleton>
     </ShellSkeleton>
   );
 }
@@ -351,9 +376,9 @@ export function DashboardSalesSkeleton() {
 export function DashboardSalesPageSkeleton() {
   return (
     <ShellSkeleton title={DASHBOARD_TITLES.sales}>
-      <DashboardStudioSkeleton>
+      <DashboardBodySkeleton>
         <DashboardSalesSkeleton />
-      </DashboardStudioSkeleton>
+      </DashboardBodySkeleton>
     </ShellSkeleton>
   );
 }
@@ -379,9 +404,9 @@ export function DashboardClientsSkeleton() {
 export function DashboardClientsPageSkeleton() {
   return (
     <ShellSkeleton title={DASHBOARD_TITLES.clients}>
-      <DashboardStudioSkeleton>
+      <DashboardBodySkeleton>
         <DashboardClientsSkeleton />
-      </DashboardStudioSkeleton>
+      </DashboardBodySkeleton>
     </ShellSkeleton>
   );
 }

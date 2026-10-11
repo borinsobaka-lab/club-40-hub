@@ -10,7 +10,7 @@ import {
   RatesPlot,
   SERIES_COLORS,
 } from "@/components/dashboard/chart-panel";
-import { DashboardShell, type StudioView } from "@/components/dashboard/dashboard-shell";
+import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { useSalesHistory } from "@/components/dashboard/queries";
 import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
 import { DashboardOverviewSkeleton, DashboardPageSkeleton } from "@/components/page-skeletons";
@@ -57,7 +57,7 @@ const RATE_COLORS = { renewal: SERIES_COLORS[0], returnRate: SERIES_COLORS[1] };
 function OverviewPage() {
   return (
     <DashboardShell title={DASHBOARD_TITLES.overview} skeleton={<DashboardOverviewSkeleton />}>
-      {(view) => <StudioOverview {...view} />}
+      {(view) => <OverviewBody {...view} />}
     </DashboardShell>
   );
 }
@@ -71,49 +71,49 @@ function untilToday(period: Period): Period {
   return period.from <= today && period.to > today ? { from: period.from, to: today } : period;
 }
 
-function StudioOverview({ studio, period, prev, periodEnd }: StudioView) {
-  const studioId = studio.id;
+function OverviewBody(view: DashboardView) {
+  const { period, prev, periodEnd } = view;
 
   // Выбранный и предыдущий периоды меняются вместе (по выбору дат) — один
   // запрос; ответ на уже неактуальный период React Query отбросит сам.
   const periodQuery = useQuery({
-    queryKey: ["dashboard", studioId, "overview", period?.from, period?.to],
+    queryKey: ["dashboard", view.scope, "overview", period?.from, period?.to],
     queryFn: async () => {
       const [current, previous] = await Promise.all([
-        loadPeriodMetrics(studioId, period!.from, period!.to),
-        loadPeriodMetrics(studioId, prev!.from, prev!.to),
+        loadPeriodMetrics(view.clubIds, period!.from, period!.to),
+        loadPeriodMetrics(view.clubIds, prev!.from, prev!.to),
       ]);
-      reportErrors(`${studio.name}: часть показателей за период не загрузилась`, [
+      reportErrors(`${view.name}: часть показателей за период не загрузилась`, [
         ...current.errors,
         ...previous.errors,
       ]);
       return { current: current.metrics, previous: previous.metrics };
     },
     enabled: !!period,
-    meta: { errorMessage: `${studio.name}: не удалось загрузить показатели за период` },
+    meta: { errorMessage: `${view.name}: не удалось загрузить показатели за период` },
   });
 
   // Метрики «на сейчас» от периода не зависят: грузим их один раз, а не для
   // каждого из двух периодов при каждой смене дат.
   const snapshotQuery = useQuery({
-    queryKey: ["dashboard", studioId, "snapshot"],
+    queryKey: ["dashboard", view.scope, "snapshot"],
     queryFn: async () => {
-      const { metrics, errors } = await loadSnapshotMetrics(studioId);
-      reportErrors(`${studio.name}: часть текущих показателей не загрузилась`, errors);
+      const { metrics, errors } = await loadSnapshotMetrics(view.clubIds);
+      reportErrors(`${view.name}: часть текущих показателей не загрузилась`, errors);
       return metrics;
     },
-    meta: { errorMessage: `${studio.name}: не удалось загрузить текущие показатели` },
+    meta: { errorMessage: `${view.name}: не удалось загрузить текущие показатели` },
   });
 
   const chartPeriod = period && untilToday(period);
   const chartFrom = chartPeriod?.from;
   const chartTo = chartPeriod?.to;
-  const history = useSalesHistory(studio);
+  const history = useSalesHistory(view);
   const visitsQuery = useQuery({
-    queryKey: ["dashboard", studioId, "visit-dates", chartFrom, chartTo],
-    queryFn: () => loadVisitDates(studioId, chartFrom!, chartTo!),
+    queryKey: ["dashboard", view.scope, "visit-dates", chartFrom, chartTo],
+    queryFn: () => loadVisitDates(view.clubIds, chartFrom!, chartTo!),
     enabled: !!chartPeriod,
-    meta: { errorMessage: `${studio.name}: не удалось загрузить посещения по дням` },
+    meta: { errorMessage: `${view.name}: не удалось загрузить посещения по дням` },
   });
 
   const revenue = useMemo(() => {
@@ -148,14 +148,14 @@ function StudioOverview({ studio, period, prev, periodEnd }: StudioView) {
   // Нет данных (ошибка загрузки, период не выбран) — в карточке «—», а не 0.
   const current: Partial<OverviewMetrics> = { ...periodQuery.data?.current, ...snapshotQuery.data };
   const previous: Partial<OverviewMetrics> = periodQuery.data?.previous ?? {};
-  const color = studio.brand_color || "var(--brand)";
+  const color = view.color;
   const revenueTotal = revenue?.reduce((s, d) => s + d.value, 0);
   const visitsTotal = visits?.reduce((s, d) => s + d.value, 0);
 
   return (
     <>
       <StatGrid
-        studio={studio}
+        target={view}
         stats={STATS}
         current={current}
         previous={previous}

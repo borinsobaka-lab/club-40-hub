@@ -24,7 +24,6 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ChartType } from "@/components/metric-chart-plot";
 import { DashboardStatsSkeleton } from "@/components/page-skeletons";
-import type { Studio } from "@/hooks/use-studios";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toISO, type SeriesDef } from "@/lib/dashboard-data";
 import { aggregate, buildBuckets, seriesTotal, type Granularity } from "@/lib/dashboard-series";
@@ -38,6 +37,9 @@ import { cn } from "@/lib/utils";
  * с предыдущим периодом. Плитка с графиком открывает окно с разбивкой по
  * месяцам / неделям / дням.
  */
+
+/** Выбранные клубы: по ним грузится график, их название — в окне. */
+type ChartTarget = { clubIds: string[]; scope: string; name: string; color: string };
 
 /** Плитка: подпись, подсказка и вид значения (lib/dashboard-stats.ts) и график в окне. */
 export type StatDef<K extends string = string> = StatInfo<K> & {
@@ -83,7 +85,7 @@ function Delta({
 }
 
 export function StatGrid<K extends string>({
-  studio,
+  target,
   stats,
   current,
   previous,
@@ -91,7 +93,8 @@ export function StatGrid<K extends string>({
   periodEnd,
   className,
 }: {
-  studio: Studio;
+  /** Чьи показатели: выбранные клубы (DashboardView) — для окна графика. */
+  target: ChartTarget;
   stats: StatDef<K>[];
   current: Partial<Record<K, number>>;
   previous: Partial<Record<K, number>>;
@@ -149,7 +152,7 @@ export function StatGrid<K extends string>({
           {chartStat?.series && (
             <MetricChart
               key={chartStat.key}
-              studio={studio}
+              target={target}
               stat={chartStat}
               def={chartStat.series}
               periodEnd={periodEnd}
@@ -242,12 +245,12 @@ const CHART_TYPES: { value: ChartType; label: string; icon: typeof ChartColumn }
  * заканчивается периодом, выбранным на дашборде (см. SeriesDef.future).
  */
 function MetricChart({
-  studio,
+  target,
   stat,
   def,
   periodEnd,
 }: {
-  studio: Studio;
+  target: ChartTarget;
   stat: StatDef;
   def: SeriesDef;
   periodEnd: Date;
@@ -266,20 +269,20 @@ function MetricChart({
   const to = buckets[buckets.length - 1].to;
 
   const query = useQuery({
-    queryKey: ["dashboard", studio.id, "series", stat.key, granularity, from, to],
+    queryKey: ["dashboard", target.scope, "series", stat.key, granularity, from, to],
     queryFn: async () => {
-      const points = await def.load(studio.id, from, to);
+      const points = await def.load(target.clubIds, from, to);
       return aggregate(granularity, buckets, points, def.kind);
     },
     // Пока грузится другая разбивка — прежний график, а не пустое место.
     placeholderData: keepPreviousData,
-    meta: { errorMessage: `${studio.name}: не удалось загрузить график «${stat.label}»` },
+    meta: { errorMessage: `${target.name}: не удалось загрузить график «${stat.label}»` },
   });
 
   const values = query.data;
   const g = GRANULARITIES.find((x) => x.value === granularity)!;
   const fmt = (n: number) => formatStat(stat.format, n);
-  const color = studio.brand_color || "var(--brand)";
+  const color = target.color;
 
   const data = (values ?? []).map((v) => ({
     tick: v.bucket.tick,
@@ -328,7 +331,7 @@ function MetricChart({
       <DialogHeader>
         <DialogTitle>{stat.label}</DialogTitle>
         <DialogDescription>
-          {studio.name} · {def.description}
+          {target.name} · {def.description}
         </DialogDescription>
       </DialogHeader>
       <DialogBody className="space-y-4">
