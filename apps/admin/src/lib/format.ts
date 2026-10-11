@@ -114,3 +114,12 @@ export function genderLabel(v: string | null | undefined) {
 export function sanitizeSearch(value: string) {
   return value.trim().replace(/[,()]/g, " ").replace(/\s+/g, " ").trim();
 }
+
+/**
+ * Строка поиска по телефону: номера хранятся без пробелов (+995555123456),
+ * поэтому «555 12-34» ищем как «5551234». Не номер — как есть.
+ */
+export function phoneSearchTerm(term: string) {
+  const digits = term.replace(/[\s-]/g, "");
+  return /^\+?\d+$/.test(digits) ? digits : term;
+}
