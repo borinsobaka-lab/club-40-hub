@@ -20,6 +20,13 @@ import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { AppSettingsFormSkeleton, AppSettingsPageSkeleton } from "@/components/page-skeletons";
 import { cn } from "@/lib/utils";
+import { useStudios } from "@/hooks/use-studios";
+import {
+  STUDIO_FORMATS,
+  STUDIO_FORMAT_APP_URL,
+  STUDIO_FORMAT_LABEL,
+  type StudioFormat,
+} from "@/lib/studio-formats";
 
 export const Route = createFileRoute("/_authenticated/app-settings")({
   head: () => ({ meta: [{ title: "Настройки приложения — Base40 Admin" }] }),
@@ -33,6 +40,7 @@ const TIPS = {
 };
 
 type Settings = {
+  format: StudioFormat;
   app_name: string | null;
   app_icon_path: string | null;
 };
@@ -47,62 +55,74 @@ function toFormValues(s: Settings | null | undefined): FormValues {
   return { name: s?.app_name ?? "", iconPath: s?.app_icon_path ?? null };
 }
 
-// club_settings — глобальный синглтон (id = true), тот же кэш, что у
-// «Контактов и правил» (/club-settings).
-const QUERY_KEY = ["club_settings"];
+// У каждого клиентского приложения (формата клубов) своя строка —
+// app_install_settings (db/migrations/2026-10-11_zzzzzzzzzz_app_content_by_studio.sql).
+// Показываем приложения форматов, где у сотрудника есть клубы (так же пускает RLS).
+const TABLE = "app_install_settings";
+const QUERY_KEY = [TABLE];
 
 const FORM_ID = "app-settings-form";
 
 function AppSettingsPage() {
   const queryClient = useQueryClient();
-  const { data: settings, isPending: loading } = useQuery({
+  const { data: studios = [], isPending: studiosLoading } = useStudios();
+  const { data: rows = [], isPending: rowsLoading } = useQuery({
     queryKey: QUERY_KEY,
-    queryFn: () =>
-      unwrap<Settings | null>(
-        supabase.from("club_settings").select("*").eq("id", true).maybeSingle(),
-      ),
+    queryFn: () => unwrap<Settings[]>(supabase.from(TABLE).select("*")),
     meta: { errorMessage: "Не удалось загрузить настройки" },
   });
+  const loading = studiosLoading || rowsLoading;
+  const formats = STUDIO_FORMATS.filter((f) => studios.some((s) => s.format === f));
 
   // Как в «Контактах и правилах»: правки отдельно от загруженного, пока поле
   // не трогали — форма показывает данные с сервера.
-  const [draft, setDraft] = useState<FormValues | null>(null);
-  const form = draft ?? toFormValues(settings);
-  const setField = <K extends keyof FormValues>(field: K, value: FormValues[K]) =>
-    setDraft({ ...form, [field]: value });
+  const [drafts, setDrafts] = useState<Partial<Record<StudioFormat, FormValues>>>({});
+  const formOf = (f: StudioFormat) => drafts[f] ?? toFormValues(rows.find((r) => r.format === f));
+  const setField = <K extends keyof FormValues>(f: StudioFormat, field: K, value: FormValues[K]) =>
+    setDrafts((prev) => ({ ...prev, [f]: { ...formOf(f), ...prev[f], [field]: value } }));
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    const name = form.name.trim();
-    if (name.length > APP_NAME_MAX) {
+    const changed = formats.filter((f) => drafts[f]);
+    if (changed.length === 0) {
+      toast.success("Настройки сохранены");
+      return;
+    }
+    if (changed.some((f) => formOf(f).name.trim().length > APP_NAME_MAX)) {
       toast.error(`Подпись — не длиннее ${APP_NAME_MAX} символов`);
       return;
     }
     setSaving(true);
     try {
-      const saved = { app_name: name || null, app_icon_path: form.iconPath };
-      const { error } = await supabase
-        .from("club_settings")
-        .upsert({ id: true, ...saved, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      const saved: Settings[] = changed.map((f) => ({
+        format: f,
+        app_name: formOf(f).name.trim() || null,
+        app_icon_path: formOf(f).iconPath,
+      }));
+      const { error } = await supabase.from(TABLE).upsert(
+        saved.map((r) => ({ ...r, updated_at: new Date().toISOString() })),
+        { onConflict: "format" },
+      );
       if (error) {
         toast.error("Не удалось сохранить", { description: error.message });
         return;
       }
-      queryClient.setQueryData<Settings | null>(QUERY_KEY, (prev) => ({ ...prev, ...saved }));
-      setDraft(null);
+      queryClient.setQueryData<Settings[]>(QUERY_KEY, (prev = []) => [
+        ...prev.filter((r) => !changed.includes(r.format)),
+        ...saved,
+      ]);
+      setDrafts({});
       toast.success("Настройки сохранены");
     } finally {
       setSaving(false);
     }
   };
 
-  const shownName = form.name.trim() || APP_NAME_DEFAULT;
-
   return (
     <AdminShell
       title="Настройки приложения"
       actions={
-        <Button type="submit" form={FORM_ID} disabled={saving || loading}>
+        <Button type="submit" form={FORM_ID} disabled={saving || loading || formats.length === 0}>
           {saving ? <Loader2 className="animate-spin" /> : <Save />}
           Сохранить
         </Button>
@@ -110,6 +130,10 @@ function AppSettingsPage() {
     >
       {loading ? (
         <AppSettingsFormSkeleton />
+      ) : formats.length === 0 ? (
+        <InfoNote variant="empty" className="max-w-2xl">
+          У вас нет клубов — настраивать нечего.
+        </InfoNote>
       ) : (
         <form
           id={FORM_ID}
@@ -120,54 +144,82 @@ function AppSettingsPage() {
           }}
           className="max-w-2xl space-y-8"
         >
-          <section className="space-y-4 rounded-lg border bg-background p-6">
-            <div>
-              <h2 className="text-lg font-semibold">Установка приложения</h2>
-              <p className="text-sm text-muted-foreground">
-                Как приложение выглядит во вкладке браузера и на рабочем столе, когда клиент
-                сохраняет его на телефон или компьютер. Одни настройки для app.base40.fit и
-                pack.base40.fit.
-              </p>
-            </div>
-
-            <FormField
-              label="Иконка приложения"
-              tip={TIPS.icon}
-              hint={`Квадрат PNG, JPG или SVG от ${APP_ICON_MIN_SIZE}×${APP_ICON_MIN_SIZE} px, без скруглённых углов — телефон скруглит сам. Важное — ближе к центру: Android может обрезать края кругом. Без своей — иконка Base40.`}
-              htmlFor={null}
-            >
-              <AppIconField value={form.iconPath} onChange={(path) => setField("iconPath", path)} />
-            </FormField>
-
-            <FormField
-              label="Подпись под значком"
-              tip={TIPS.name}
-              hint={
-                shownName.length > APP_NAME_FITS
-                  ? `Длиннее ${APP_NAME_FITS} символов — на телефоне подпись обрежется многоточием.`
-                  : `Пусто — «${APP_NAME_DEFAULT}».`
-              }
-            >
-              <Input
-                placeholder={APP_NAME_DEFAULT}
-                maxLength={APP_NAME_MAX}
-                value={form.name}
-                onChange={(e) => setField("name", e.target.value)}
-                className="max-w-80"
-              />
-            </FormField>
-
-            <HomeScreenPreview iconPath={form.iconPath} name={shownName} />
-
-            <InfoNote>
-              Уже установленные приложения подхватывают новую иконку и подпись не сразу: Android
-              проверяет их сам, обычно в течение суток; на iPhone значок обновится только после
-              повторного «На экран „Домой“».
-            </InfoNote>
-          </section>
+          {formats.map((f) => (
+            <AppInstallSection
+              key={f}
+              format={f}
+              clubs={studios.filter((s) => s.format === f).map((s) => s.name)}
+              form={formOf(f)}
+              onName={(v) => setField(f, "name", v)}
+              onIcon={(v) => setField(f, "iconPath", v)}
+            />
+          ))}
+          <InfoNote>
+            Уже установленные приложения подхватывают новую иконку и подпись не сразу: Android
+            проверяет их сам, обычно в течение суток; на iPhone значок обновится только после
+            повторного «На экран „Домой“».
+          </InfoNote>
         </form>
       )}
     </AdminShell>
+  );
+}
+
+/** Карточка одного клиентского приложения: иконка, подпись, предпросмотр. */
+function AppInstallSection({
+  format,
+  clubs,
+  form,
+  onName,
+  onIcon,
+}: {
+  format: StudioFormat;
+  clubs: string[];
+  form: FormValues;
+  onName: (v: string) => void;
+  onIcon: (v: string | null) => void;
+}) {
+  const host = STUDIO_FORMAT_APP_URL[format].replace(/^https?:\/\//, "");
+  const shownName = form.name.trim() || APP_NAME_DEFAULT;
+  return (
+    <section className="space-y-4 rounded-lg border bg-background p-6">
+      <div>
+        <h2 className="text-lg font-semibold">Приложение {host}</h2>
+        <p className="text-sm text-muted-foreground">
+          {STUDIO_FORMAT_LABEL[format]}: {clubs.join(", ")}. Как приложение выглядит во вкладке
+          браузера и на рабочем столе, когда клиент сохраняет его на телефон или компьютер.
+        </p>
+      </div>
+
+      <FormField
+        label="Иконка приложения"
+        tip={TIPS.icon}
+        hint={`Квадрат PNG, JPG или SVG от ${APP_ICON_MIN_SIZE}×${APP_ICON_MIN_SIZE} px, без скруглённых углов — телефон скруглит сам. Важное — ближе к центру: Android может обрезать края кругом. Без своей — иконка Base40.`}
+        htmlFor={null}
+      >
+        <AppIconField value={form.iconPath} onChange={onIcon} />
+      </FormField>
+
+      <FormField
+        label="Подпись под значком"
+        tip={TIPS.name}
+        hint={
+          shownName.length > APP_NAME_FITS
+            ? `Длиннее ${APP_NAME_FITS} символов — на телефоне подпись обрежется многоточием.`
+            : `Пусто — «${APP_NAME_DEFAULT}».`
+        }
+      >
+        <Input
+          placeholder={APP_NAME_DEFAULT}
+          maxLength={APP_NAME_MAX}
+          value={form.name}
+          onChange={(e) => onName(e.target.value)}
+          className="max-w-80"
+        />
+      </FormField>
+
+      <HomeScreenPreview iconPath={form.iconPath} name={shownName} host={host} />
+    </section>
   );
 }
 
@@ -257,7 +309,15 @@ function AppIconField({
 }
 
 /** Как значок будет выглядеть на рабочем столе телефона и во вкладке браузера. */
-function HomeScreenPreview({ iconPath, name }: { iconPath: string | null; name: string }) {
+function HomeScreenPreview({
+  iconPath,
+  name,
+  host,
+}: {
+  iconPath: string | null;
+  name: string;
+  host: string;
+}) {
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium uppercase text-muted-foreground">Предпросмотр</p>
@@ -272,7 +332,7 @@ function HomeScreenPreview({ iconPath, name }: { iconPath: string | null; name: 
         </div>
         <div className="flex h-9 w-56 items-center gap-2 rounded-t-lg border border-b-0 bg-muted/60 px-3">
           <AppIcon iconPath={iconPath} className="h-4 w-4 rounded-sm" />
-          <span className="truncate text-xs text-foreground">Base40</span>
+          <span className="truncate text-xs text-foreground">{host}</span>
         </div>
       </div>
     </div>

@@ -938,6 +938,7 @@ function ShowcaseSkeleton({ title, add }: { title: string; add: string }) {
         { label: "Картинка", className: "w-[100px]" },
         { label: "Баннер", className: "w-[140px]" },
         "Заголовок",
+        { label: "Клубы", className: "w-[180px]" },
         "Описание",
         { label: "Кнопка", className: "w-[140px]" },
       ]}
@@ -953,6 +954,7 @@ export function PushPageSkeleton() {
       toolbar={null}
       headers={[
         "Заголовок",
+        { label: "Клубы", className: "w-[180px]" },
         "Сегмент",
         "Отправка",
         "Статус",
@@ -1003,39 +1005,57 @@ export function ClubSettingsFormSkeleton() {
   );
 }
 
+/** Выбор клуба над формой «Контактов и правил». */
+export function ClubPickerSkeleton() {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-4 w-12" />
+      <Skeleton className="h-10 w-64 max-w-full" />
+    </div>
+  );
+}
+
 export function ClubSettingsPageSkeleton() {
   return (
     <ShellSkeleton title="Контакты и правила" actions={[{ label: "Сохранить" }]}>
-      <ClubSettingsFormSkeleton />
+      <div className="max-w-2xl space-y-6">
+        <ClubPickerSkeleton />
+        <ClubSettingsFormSkeleton />
+      </div>
     </ShellSkeleton>
   );
 }
 
-/** Форма «Настроек приложения»: иконка, подпись, предпросмотр. */
-export function AppSettingsFormSkeleton() {
+/**
+ * Форма «Настроек приложения»: по карточке на клиентское приложение
+ * (иконка, подпись, предпросмотр). До загрузки клубов — две.
+ */
+export function AppSettingsFormSkeleton({ apps = 2 }: { apps?: number }) {
   return (
     <div className="max-w-2xl space-y-8">
-      <div className="space-y-4 rounded-lg border bg-background p-6">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-1/2" />
-          <Skeleton className="h-4 w-3/4" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-1/3" />
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-16 w-16 rounded-[22%]" />
-            <Skeleton className="h-8 w-24 rounded-full" />
+      {Array.from({ length: apps }).map((_, i) => (
+        <div key={i} className="space-y-4 rounded-lg border bg-background p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-1/2" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-16 w-16 rounded-[22%]" />
+              <Skeleton className="h-8 w-24 rounded-full" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-10 w-full max-w-80" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-36 w-44 rounded-xl" />
           </div>
         </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-1/3" />
-          <Skeleton className="h-10 w-full max-w-80" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-36 w-44 rounded-xl" />
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

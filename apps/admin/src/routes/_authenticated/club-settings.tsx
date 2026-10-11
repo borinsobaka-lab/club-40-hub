@@ -8,9 +8,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/ui/form-field";
+import { FormField, InfoNote } from "@/components/ui/form-field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { ClubSettingsFormSkeleton, ClubSettingsPageSkeleton } from "@/components/page-skeletons";
+import {
+  ClubPickerSkeleton,
+  ClubSettingsFormSkeleton,
+  ClubSettingsPageSkeleton,
+} from "@/components/page-skeletons";
+import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useStudios } from "@/hooks/use-studios";
+
+const TIPS = {
+  club: "У каждого клуба свои ссылки и правила: клиент видит настройки своего клуба.",
+};
 
 export const Route = createFileRoute("/_authenticated/club-settings")({
   head: () => ({ meta: [{ title: "Контакты и правила — Base40 Admin" }] }),
@@ -19,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/club-settings")({
 });
 
 type Settings = {
-  id: boolean;
+  studio_id: string;
   write_url: string | null;
   call_url: string | null;
   feedback_url: string | null;
@@ -42,21 +59,86 @@ function toFormValues(s: Settings | null | undefined): FormValues {
   };
 }
 
-// «Контакты и правила» (раньше «Настройки клуба»; URL прежний — по таблице).
-// club_settings — глобальный синглтон (id = true), не привязан к студии; в нём
-// же иконка и подпись приложения — страница «Настройки» (/app-settings).
-const QUERY_KEY = ["club_settings"];
+// «Контакты и правила» (раньше «Настройки клуба»; URL прежний). У каждого
+// клуба свои — studio_app_settings (строка на клуб,
+// db/migrations/2026-10-11_zzzzzzzzzz_app_content_by_studio.sql); выбрать
+// можно только свои клубы. Строки может и не быть (новый клуб) — тогда
+// значения по умолчанию, как в приложении, сохранение её создаст.
+const TABLE = "studio_app_settings";
 
-// Кнопка «Сохранить» живёт в шапке страницы, вне формы, — связана с ней по id.
+// Кнопка «Сохранить» живёт вне формы (плавающие действия) — связана по id.
 const FORM_ID = "club-settings-form";
 
 function ClubSettingsPage() {
+  const { data: studios = [], isPending: studiosLoading } = useStudios();
+  const activeId = useActiveStudioId();
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  // По умолчанию — клуб из шапки (если он свой), иначе первый.
+  const studioId =
+    studios.find((s) => s.id === pickedId)?.id ??
+    studios.find((s) => s.id === activeId)?.id ??
+    studios[0]?.id ??
+    null;
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <AdminShell
+      title="Контакты и правила"
+      actions={
+        <Button type="submit" form={FORM_ID} disabled={saving || !studioId}>
+          {saving ? <Loader2 className="animate-spin" /> : <Save />}
+          Сохранить
+        </Button>
+      }
+    >
+      <div className="max-w-2xl space-y-6">
+        {studiosLoading ? (
+          <ClubPickerSkeleton />
+        ) : studioId ? (
+          <FormField label="Клуб" tip={TIPS.club}>
+            <Select value={studioId} onValueChange={setPickedId}>
+              <SelectTrigger className="w-64 max-w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {studios.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        ) : (
+          <InfoNote variant="empty">У вас нет клубов — настраивать нечего.</InfoNote>
+        )}
+        {studiosLoading ? (
+          <ClubSettingsFormSkeleton />
+        ) : (
+          studioId && (
+            // key: у каждого клуба свои правки, при смене клуба форма заново.
+            <ClubSettingsForm key={studioId} studioId={studioId} onSavingChange={setSaving} />
+          )
+        )}
+      </div>
+    </AdminShell>
+  );
+}
+
+function ClubSettingsForm({
+  studioId,
+  onSavingChange,
+}: {
+  studioId: string;
+  onSavingChange: (saving: boolean) => void;
+}) {
   const queryClient = useQueryClient();
+  const queryKey = [TABLE, studioId];
   const { data: settings, isPending: loading } = useQuery({
-    queryKey: QUERY_KEY,
+    queryKey,
     queryFn: () =>
       unwrap<Settings | null>(
-        supabase.from("club_settings").select("*").eq("id", true).maybeSingle(),
+        supabase.from(TABLE).select("*").eq("studio_id", studioId).maybeSingle(),
       ),
     meta: { errorMessage: "Не удалось загрузить настройки" },
   });
@@ -68,7 +150,6 @@ function ClubSettingsPage() {
   const form = draft ?? toFormValues(settings);
   const setField = (field: keyof FormValues, value: string) =>
     setDraft({ ...form, [field]: value });
-  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     const minutes = Number.parseInt(form.cancelMinutes, 10);
@@ -76,121 +157,109 @@ function ClubSettingsPage() {
       toast.error("Укажите корректное число минут");
       return;
     }
-    setSaving(true);
+    onSavingChange(true);
     try {
       const saved = {
-        id: true,
+        studio_id: studioId,
         write_url: form.writeUrl.trim() || null,
         call_url: form.callUrl.trim() || null,
         feedback_url: form.feedbackUrl.trim() || null,
         cancel_booking_minutes: minutes,
       };
       const { error } = await supabase
-        .from("club_settings")
-        .upsert({ ...saved, updated_at: new Date().toISOString() }, { onConflict: "id" });
+        .from(TABLE)
+        .upsert({ ...saved, updated_at: new Date().toISOString() }, { onConflict: "studio_id" });
       if (error) {
         toast.error("Не удалось сохранить", { description: error.message });
         return;
       }
       // Сохранённое становится «серверным» состоянием формы — без лишнего запроса.
-      queryClient.setQueryData<Settings | null>(QUERY_KEY, (prev) => ({ ...prev, ...saved }));
+      queryClient.setQueryData<Settings | null>(queryKey, saved);
       setDraft(null);
       toast.success("Настройки сохранены");
     } finally {
-      setSaving(false);
+      onSavingChange(false);
     }
   };
 
-  return (
-    <AdminShell
-      title="Контакты и правила"
-      actions={
-        <Button type="submit" form={FORM_ID} disabled={saving || loading}>
-          {saving ? <Loader2 className="animate-spin" /> : <Save />}
-          Сохранить
-        </Button>
-      }
-    >
-      {loading ? (
-        <ClubSettingsFormSkeleton />
-      ) : (
-        // Форма — чтобы Enter в любом поле сохранял настройки.
-        <form
-          id={FORM_ID}
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSave();
-          }}
-          className="max-w-2xl space-y-8"
-        >
-          <section className="space-y-4 rounded-lg border bg-background p-6">
-            <div>
-              <h2 className="text-lg font-semibold">Кнопки на главном экране</h2>
-              <p className="text-sm text-muted-foreground">
-                Ссылки для кнопок «Написать», «Позвонить» и «Обратная связь» в мобильном приложении.
-              </p>
-            </div>
-            <FormField
-              label="Ссылка для кнопки «Написать»"
-              tip="Пусто — кнопки в приложении не будет."
-              hint="Например, ссылка на WhatsApp-чат клуба."
-            >
-              <Input
-                placeholder="https://wa.me/79991234567"
-                value={form.writeUrl}
-                onChange={(e) => setField("writeUrl", e.target.value)}
-              />
-            </FormField>
-            <FormField
-              label="Ссылка для кнопки «Позвонить»"
-              tip="Пусто — кнопки в приложении не будет."
-              hint="Телефонный номер в формате tel:."
-            >
-              <Input
-                placeholder="tel:+79991234567"
-                value={form.callUrl}
-                onChange={(e) => setField("callUrl", e.target.value)}
-              />
-            </FormField>
-            <FormField
-              label="Ссылка для кнопки «Обратная связь»"
-              tip="Например, Google-форма. Пусто — кнопки «Фидбэк» в приложении не будет."
-            >
-              <Input
-                placeholder="https://forms.example.com/feedback"
-                value={form.feedbackUrl}
-                onChange={(e) => setField("feedbackUrl", e.target.value)}
-              />
-            </FormField>
-          </section>
+  if (loading) return <ClubSettingsFormSkeleton />;
 
-          <section className="space-y-4 rounded-lg border bg-background p-6">
-            <div>
-              <h2 className="text-lg font-semibold">Отмена бронирования тренировок</h2>
-              <p className="text-sm text-muted-foreground">
-                За сколько минут до начала тренировки пользователь ещё может её отменить. После
-                этого времени в приложении кнопка отмены недоступна.
-              </p>
-            </div>
-            <FormField
-              label="Минут до начала тренировки"
-              required
-              tip="Действует для всех занятий. Позже отменить запись может только сотрудник в расписании."
-              hint="Например, 180 — отменить можно не позже чем за 3 часа до начала."
-            >
-              <Input
-                type="number"
-                min={0}
-                step={1}
-                value={form.cancelMinutes}
-                onChange={(e) => setField("cancelMinutes", e.target.value)}
-                className="max-w-48"
-              />
-            </FormField>
-          </section>
-        </form>
-      )}
-    </AdminShell>
+  return (
+    // Форма — чтобы Enter в любом поле сохранял настройки.
+    <form
+      id={FORM_ID}
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSave();
+      }}
+      className="space-y-8"
+    >
+      <section className="space-y-4 rounded-lg border bg-background p-6">
+        <div>
+          <h2 className="text-lg font-semibold">Кнопки на главном экране</h2>
+          <p className="text-sm text-muted-foreground">
+            Ссылки для кнопок «Написать», «Позвонить» и «Обратная связь» в мобильном приложении.
+          </p>
+        </div>
+        <FormField
+          label="Ссылка для кнопки «Написать»"
+          tip="Пусто — кнопки в приложении не будет."
+          hint="Например, ссылка на WhatsApp-чат клуба."
+        >
+          <Input
+            placeholder="https://wa.me/79991234567"
+            value={form.writeUrl}
+            onChange={(e) => setField("writeUrl", e.target.value)}
+          />
+        </FormField>
+        <FormField
+          label="Ссылка для кнопки «Позвонить»"
+          tip="Пусто — кнопки в приложении не будет."
+          hint="Телефонный номер в формате tel:."
+        >
+          <Input
+            placeholder="tel:+79991234567"
+            value={form.callUrl}
+            onChange={(e) => setField("callUrl", e.target.value)}
+          />
+        </FormField>
+        <FormField
+          label="Ссылка для кнопки «Обратная связь»"
+          tip="Например, Google-форма. Пусто — кнопки «Фидбэк» в приложении не будет."
+        >
+          <Input
+            placeholder="https://forms.example.com/feedback"
+            value={form.feedbackUrl}
+            onChange={(e) => setField("feedbackUrl", e.target.value)}
+          />
+        </FormField>
+      </section>
+
+      <section className="space-y-4 rounded-lg border bg-background p-6">
+        <div>
+          <h2 className="text-lg font-semibold">Отмена бронирования тренировок</h2>
+          <p className="text-sm text-muted-foreground">
+            За сколько минут до начала тренировки пользователь ещё может её отменить. После этого
+            времени в приложении кнопка отмены недоступна.
+          </p>
+        </div>
+        <FormField
+          label="Минут до начала тренировки"
+          required
+          tip="Действует для всех занятий клуба. Позже отменить запись может только сотрудник в расписании."
+          hint="Например, 180 — отменить можно не позже чем за 3 часа до начала."
+        >
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            value={form.cancelMinutes}
+            onChange={(e) => setField("cancelMinutes", e.target.value)}
+            className="max-w-48"
+          />
+        </FormField>
+      </section>
+    </form>
   );
 }

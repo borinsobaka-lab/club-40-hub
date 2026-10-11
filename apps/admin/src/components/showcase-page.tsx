@@ -33,11 +33,14 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { AppStudiosField, StudioNamesCell } from "@/components/app-studios-field";
+import { splitStudioIds, useDefaultStudioIds, useMyStudioIds } from "@/hooks/use-app-studios";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
   image: "В списке на главном экране приложения. Если нет баннера — и вверху открытой страницы.",
   banner: "Широкая картинка вверху открытой страницы. Не задан — там будет превью.",
+  studios: "Клиенты каких клубов увидят карточку в приложении.",
 };
 
 /**
@@ -77,8 +80,8 @@ export type ShowcaseConfig = {
 
 type ShowcaseItem = {
   id: string;
-  /** Прежняя привязка к студии; приложение общее, поле не используется. */
-  studio_id: string | null;
+  /** Клубы, в приложении которых карточка показывается. */
+  studio_ids: string[];
   position: number;
   image_url: string | null;
   banner_url: string | null;
@@ -99,23 +102,34 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
   const [editing, setEditing] = useState<ShowcaseItem | null>(null);
   const [reordering, setReordering] = useState(false);
 
-  // Мобильное приложение общее для всех студий — записи без фильтра по студии.
-  const queryKey = [table, "all"];
-  const { data: items = [], isLoading: loading } = useQuery({
+  // Записи, где есть хоть один мой клуб (их же пускает править RLS).
+  const myStudioIds = useMyStudioIds();
+  const queryKey = [table, "by-studios", myStudioIds?.join(",") ?? ""];
+  const { data: items = [], isPending: loading } = useQuery({
     queryKey,
     queryFn: () =>
       unwrap<ShowcaseItem[]>(
         supabase
           .from(table)
           .select("*")
+          .overlaps("studio_ids", myStudioIds ?? [])
           .order("position", { ascending: true })
           .order("created_at", { ascending: false }),
       ),
+    enabled: !!myStudioIds,
     meta: { errorMessage: texts.loadError },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: [table] });
 
   const handleDelete = async (n: ShowcaseItem) => {
+    // Удалить можно только из своих клубов целиком (RLS молча не удалит).
+    const { locked } = splitStudioIds(n.studio_ids, myStudioIds);
+    if (locked.length > 0) {
+      toast.error("Удалить нельзя: карточка есть и в клубах, к которым у вас нет доступа", {
+        description: "Уберите из неё свои клубы в «Редактировать» — у вас она пропадёт.",
+      });
+      return;
+    }
     if (
       !(await confirm({
         title: texts.deleteTitle,
@@ -203,16 +217,19 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
                   Баннер
                 </TableHead>
                 <TableHead>Заголовок</TableHead>
+                <TableHead className="w-[180px]" tip={TIPS.studios}>
+                  Клубы
+                </TableHead>
                 <TableHead>Описание</TableHead>
                 <TableHead className="w-[140px]">Кнопка</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableSkeletonRows columns={6} />
+                <TableSkeletonRows columns={7} />
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                     {texts.empty}
                   </TableCell>
                 </TableRow>
@@ -270,6 +287,9 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
                           />
                         </TableCell>
                         <TableCell className="font-medium">{n.title}</TableCell>
+                        <TableCell>
+                          <StudioNamesCell ids={n.studio_ids} />
+                        </TableCell>
                         <TableCell
                           className="truncate text-muted-foreground"
                           style={{ maxWidth: config.descriptionWidth }}
@@ -325,6 +345,9 @@ function ShowcaseDialog(props: DialogProps) {
 
 function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: DialogProps) {
   const { table, bucket, texts } = config;
+  const defaultStudioIds = useDefaultStudioIds();
+  const split = splitStudioIds(item?.studio_ids ?? [], useMyStudioIds());
+  const [studioIds, setStudioIds] = useState(item ? split.mine : defaultStudioIds);
   const [title, setTitle] = useState(item?.title ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
   const [fullTitle, setFullTitle] = useState(item?.full_title ?? "");
@@ -338,6 +361,12 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
   const handleSave = async () => {
     if (!title.trim()) {
       toast.error("Укажите заголовок");
+      return;
+    }
+    // Убрать все свои клубы у карточки, которая есть и в чужих, можно —
+    // у нас она пропадёт; новая же без клубов никому не видна.
+    if (studioIds.length === 0 && split.locked.length === 0) {
+      toast.error("Выберите хотя бы один клуб");
       return;
     }
     const bt = buttonText.trim();
@@ -357,6 +386,7 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
         button_url: bu || null,
         image_url: imageUrl,
         banner_url: bannerUrl,
+        studio_ids: [...studioIds, ...split.locked],
         updated_at: new Date().toISOString(),
       };
       const { error } = item
@@ -383,6 +413,13 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
+            <AppStudiosField
+              value={studioIds}
+              onChange={setStudioIds}
+              locked={split.locked}
+              tip={TIPS.studios}
+            />
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Картинка (превью)" tip={TIPS.image} htmlFor={null} optional>
                 <ImageUploadField

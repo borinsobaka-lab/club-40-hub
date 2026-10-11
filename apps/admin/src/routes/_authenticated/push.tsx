@@ -38,12 +38,15 @@ import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { PushPageSkeleton } from "@/components/page-skeletons";
+import { AppStudiosField, StudioNamesCell } from "@/components/app-studios-field";
+import { splitStudioIds, useDefaultStudioIds, useMyStudioIds } from "@/hooks/use-app-studios";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
   title: "Жирная первая строка. Держите коротким — длинный обрежется на экране блокировки.",
   segments:
     "ЧК — есть действующий абонемент, БЧК — был, но закончился, ПЧК — ещё ни разу не покупал.",
+  studios: "Клиентам каких клубов уйдёт уведомление.",
 };
 
 export const Route = createFileRoute("/_authenticated/push")({
@@ -57,8 +60,8 @@ type PushStatus = "draft" | "scheduled" | "sent";
 
 type PushNotification = {
   id: string;
-  /** Прежняя привязка к студии; приложение общее, поле не используется. */
-  studio_id: string | null;
+  /** Клубы, клиентам которых уходит уведомление. */
+  studio_ids: string[];
   title: string;
   message: string | null;
   action_url: string | null;
@@ -99,18 +102,31 @@ function PushPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PushNotification | null>(null);
 
-  const { data: items = [], isLoading: loading } = useQuery({
-    // Мобильное приложение общее для всех студий — уведомления тоже.
-    queryKey: ["push_notifications", "all"],
+  // Уведомления, где есть хоть один мой клуб (чужие RLS и не отдаст).
+  const myStudioIds = useMyStudioIds();
+  const { data: items = [], isPending: loading } = useQuery({
+    queryKey: ["push_notifications", "by-studios", myStudioIds?.join(",") ?? ""],
     queryFn: () =>
       unwrap<PushNotification[]>(
-        supabase.from("push_notifications").select("*").order("created_at", { ascending: false }),
+        supabase
+          .from("push_notifications")
+          .select("*")
+          .overlaps("studio_ids", myStudioIds ?? [])
+          .order("created_at", { ascending: false }),
       ),
+    enabled: !!myStudioIds,
     meta: { errorMessage: "Не удалось загрузить уведомления" },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["push_notifications"] });
 
   const handleDelete = async (p: PushNotification) => {
+    // Удалить можно только из своих клубов целиком (RLS молча не удалит).
+    if (splitStudioIds(p.studio_ids, myStudioIds).locked.length > 0) {
+      toast.error("Удалить нельзя: уведомление и для клубов, к которым у вас нет доступа", {
+        description: "Уберите из него свои клубы в «Редактировать» — у вас оно пропадёт.",
+      });
+      return;
+    }
     if (
       !(await confirm({
         title: "Удалить уведомление?",
@@ -150,6 +166,9 @@ function PushPage() {
             <TableHeader>
               <TableRow>
                 <TableHead tip={TIPS.title}>Заголовок</TableHead>
+                <TableHead className="w-[180px]" tip={TIPS.studios}>
+                  Клубы
+                </TableHead>
                 <TableHead tip={TIPS.segments}>Сегмент</TableHead>
                 <TableHead>Отправка</TableHead>
                 <TableHead>Статус</TableHead>
@@ -160,10 +179,10 @@ function PushPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableSkeletonRows columns={7} />
+                <TableSkeletonRows columns={8} />
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
                     Пока нет уведомлений. Нажмите «Добавить уведомление».
                   </TableCell>
                 </TableRow>
@@ -187,6 +206,9 @@ function PushPage() {
                         {p.message ? (
                           <div className="truncate text-xs text-muted-foreground">{p.message}</div>
                         ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <StudioNamesCell ids={p.studio_ids} />
                       </TableCell>
                       <TableCell>{renderSegments(p.segments)}</TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
@@ -250,6 +272,9 @@ function PushForm({
   onSaved: () => void;
 }) {
   const initialSegments = item?.segments ?? ["all"];
+  const defaultStudioIds = useDefaultStudioIds();
+  const split = splitStudioIds(item?.studio_ids ?? [], useMyStudioIds());
+  const [studioIds, setStudioIds] = useState(item ? split.mine : defaultStudioIds);
   // Запланированное (но не отправленное) открываем в режиме планирования.
   const scheduled = item?.scheduled_at && item.status !== "sent" ? item.scheduled_at : null;
 
@@ -279,6 +304,10 @@ function PushForm({
       toast.error("Укажите заголовок");
       return;
     }
+    if (studioIds.length === 0 && split.locked.length === 0) {
+      toast.error("Выберите хотя бы один клуб");
+      return;
+    }
     if (!allSelected && segments.length === 0) {
       toast.error("Выберите хотя бы один сегмент");
       return;
@@ -296,6 +325,7 @@ function PushForm({
       title: title.trim(),
       message: message.trim() || null,
       segments: allSelected ? ["all"] : segments,
+      studio_ids: [...studioIds, ...split.locked],
       action_url: actionUrl.trim() || null,
       scheduled_at: sendNow ? null : new Date(scheduledAt).toISOString(),
       sent_at: sendNow ? new Date().toISOString() : null,
@@ -325,7 +355,7 @@ function PushForm({
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать уведомление" : "Новое пуш-уведомление"}</DialogTitle>
         <DialogDescription>
-          Уведомление будет отправлено выбранным клиентам в мобильное приложение.
+          Уведомление будет отправлено клиентам выбранных клубов в мобильное приложение.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
@@ -363,6 +393,13 @@ function PushForm({
                 placeholder="https://… или внутренний раздел"
               />
             </FormField>
+
+            <AppStudiosField
+              value={studioIds}
+              onChange={setStudioIds}
+              locked={split.locked}
+              tip={TIPS.studios}
+            />
 
             <FormField label="Статус клиентов" tip={TIPS.segments} htmlFor={null} required>
               <div className="space-y-2 rounded-md border p-3">

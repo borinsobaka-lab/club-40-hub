@@ -402,34 +402,37 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     }),
 
     // ====== НОВОСТИ ======
-    // Мобильное приложение общее для всех студий: новости, услуги и пуши — без
-    // фильтра по студии.
+    // Новости, услуги и пуши выбирают клубы (studio_ids) — берём те, что
+    // показываются в текущем клубе.
     list_news: tool({
       description:
-        "Новости мобильного приложения (общие для всех клубов): заголовок, описание, кнопка, картинки.",
+        "Новости мобильного приложения, которые показываются в текущем клубе: заголовок, описание, кнопка, картинки, клубы (studio_ids).",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
           supabase
             .from("news")
             .select(
-              "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, created_at, updated_at",
+              "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, studio_ids, created_at, updated_at",
             )
+            .contains("studio_ids", [studioId])
             .limit(limit),
         ),
     }),
 
     // ====== УСЛУГИ ======
     list_services: tool({
-      description: "Услуги мобильного приложения (карточки услуг, общие для всех клубов).",
+      description:
+        "Услуги мобильного приложения (карточки услуг), которые показываются в текущем клубе.",
       inputSchema: z.object({ limit: limit(200, 100) }),
       execute: async ({ limit }) =>
         listResult(
           supabase
             .from("services")
             .select(
-              "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, created_at",
+              "id, position, title, description, full_title, full_text, button_text, button_url, image_url, banner_url, studio_ids, created_at",
             )
+            .contains("studio_ids", [studioId])
             .limit(limit),
         ),
     }),
@@ -437,7 +440,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== ПУШ-УВЕДОМЛЕНИЯ ======
     list_push_notifications: tool({
       description:
-        "Пуш-уведомления (общие для всех клубов): заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
+        "Пуш-уведомления клиентам текущего клуба: заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
       inputSchema: z.object({
         status: z.enum(["draft", "scheduled", "sent"]).optional(),
         limit: limit(500, 200),
@@ -446,8 +449,9 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
         let q = supabase
           .from("push_notifications")
           .select(
-            "id, title, message, action_url, segments, status, scheduled_at, sent_at, sent_count, delivered_count, read_count, created_at, updated_at",
+            "id, title, message, action_url, segments, studio_ids, status, scheduled_at, sent_at, sent_count, delivered_count, read_count, created_at, updated_at",
           )
+          .contains("studio_ids", [studioId])
           .order("created_at", { ascending: false })
           .limit(limit);
         if (status) q = q.eq("status", status);
@@ -555,19 +559,31 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== НАСТРОЙКИ КЛУБА ======
     get_club_settings: tool({
       description:
-        "Контакты и правила мобильного приложения: ссылки кнопок, минуты для отмены брони, подпись и иконка приложения.",
+        "Контакты и правила мобильного приложения в текущем клубе: ссылки кнопок «Написать», «Позвонить», «Обратная связь» и минуты для отмены брони.",
       inputSchema: z.object({}),
       execute: async () => {
-        const { data, error } = await supabase.from("club_settings").select("*").maybeSingle();
+        const { data, error } = await supabase
+          .from("studio_app_settings")
+          .select("write_url, call_url, feedback_url, cancel_booking_minutes, updated_at")
+          .eq("studio_id", studioId)
+          .maybeSingle();
         if (error) return { error: error.message };
-        return data ?? {};
+        // Строки нет — в приложении значения по умолчанию.
+        return (
+          data ?? {
+            write_url: null,
+            call_url: null,
+            feedback_url: null,
+            cancel_booking_minutes: 180,
+          }
+        );
       },
     }),
 
     // ====== СВОДКА ======
     counts_overview: tool({
       description:
-        "Сводка по клубу: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, фидбэка, ответов NPS; новости, услуги и пуши — общие для всех клубов.",
+        "Сводка по клубу: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, фидбэка, ответов NPS, новостей и услуг в приложении клуба, отправленных пушей.",
       inputSchema: z.object({}),
       execute: async () => {
         const head = { count: "exact" as const, head: true };
@@ -584,9 +600,13 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
           active_client_memberships: byStudio("client_memberships").eq("status", "active"),
           sales_last_30d: byStudio("sales").gte("sold_at", addDays(studioToday(), -30)),
           cash_operations: byStudio("cash_operations"),
-          news: supabase.from("news").select("id", head),
-          services: supabase.from("services").select("id", head),
-          push_sent: supabase.from("push_notifications").select("id", head).eq("status", "sent"),
+          news: supabase.from("news").select("id", head).contains("studio_ids", [studioId]),
+          services: supabase.from("services").select("id", head).contains("studio_ids", [studioId]),
+          push_sent: supabase
+            .from("push_notifications")
+            .select("id", head)
+            .contains("studio_ids", [studioId])
+            .eq("status", "sent"),
           feedback_pending: supabase
             .from("feedback")
             .select("id", head)

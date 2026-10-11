@@ -130,9 +130,19 @@ AUTH_SETUP.md.
   (нет строки — открыто всё; владельцу — всё). RLS проверяет разделы рейки
   (`has_admin_section`: правка сотрудников, реквизиты и ставки; новости,
   услуги, пуши, `club_settings`), разделы клуба скрывает только интерфейс —
-  их таблицы общие, граница там по-прежнему студия. Мобильное приложение общее для студий:
-  `db/migrations/2026-10-10_app_content_shared.sql` — `news`/`services`/
-  `push_notifications` без привязки к студии, правка — `is_staff`.
+  их таблицы общие, граница там по-прежнему студия. Мобильное приложение — по
+  студиям (решение владельца 2026-10-11, отменило «общее для студий» из
+  `2026-10-10_app_content_shared.sql`):
+  `db/migrations/2026-10-11_zzzzzzzzzz_app_content_by_studio.sql` —
+  `news`/`services`/`push_notifications.studio_ids uuid[]` (старым записям —
+  все студии; `studio_id` больше не используется); сотрудник видит и правит
+  запись, где есть хоть одна его студия, добавляет и убирает только свои
+  (триггер `app_content_studios_guard`), удаляет — только если все студии
+  его; хелперы `staff_has_all_studios`/`staff_has_any_studio`; удалённая
+  студия уходит из списков, запись без студий удаляется. «Контакты и
+  правила» — `studio_app_settings` (строка на студию, заполнена из
+  `club_settings`); иконка и подпись PWA — `app_install_settings` (строка на
+  формат = приложение). Обе читаются публично.
   «Скрипты LS» (скрипты администраторов Lady Stretch, перенос из
   «Аудиоаналитики»): `db/migrations/2026-10-10_scripts_ls.sql` — таблицы
   `scripts_*` без studio_id (раздел общий для студий), доступ — разделы рейки
@@ -247,10 +257,10 @@ AUTH_SETUP.md.
   — `profiles.avatar_url` (путь в бакете `avatars`, папка `staff/`, ставит
   владелец в «Доступах» серверной функцией).
   Установка клиентского приложения (PWA):
-  `db/migrations/2026-10-11_app_install_settings.sql` — `club_settings.app_name`
-  (подпись под значком) и `app_icon_path` (папка с нарезанными PNG в
-  публичном бакете `app-icons`, запись — раздел рейки `app`); одни на обе
-  сборки клиента.
+  `db/migrations/2026-10-11_app_install_settings.sql` — бакет `app-icons`
+  (папки с нарезанными PNG, запись — раздел рейки `app`) и колонки
+  `club_settings.app_name`/`app_icon_path` — с `…_app_content_by_studio.sql`
+  не читаются, настройки в `app_install_settings` (у каждого приложения свои).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`
@@ -288,7 +298,8 @@ AUTH_SETUP.md.
   вшит в бандл, любой может дёргать PostgREST напрямую. Guard'ы роутов —
   только UX. Все клиентские таблицы читаются по принципу «своя строка или
   сотрудник» (`is_trainer`/`has_role`); витринные `news`/`services`/
-  `club_settings` — публичны намеренно. Каждый новый пользователь получает роль
+  `club_settings`/`studio_app_settings`/`app_install_settings` — публичны
+  намеренно. Каждый новый пользователь получает роль
   `member` (auth_trigger.sql), поэтому «просто авторизован» ≠ «сотрудник» —
   проверять роль явно. Хелперы: `has_role`, `is_trainer`, `is_staff` (staff в
   любой студии — для пулов без studio_id: feedback/nps). Правки доступа собраны
