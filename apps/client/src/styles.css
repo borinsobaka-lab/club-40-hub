@@ -664,7 +664,7 @@ html body [data-sonner-toast][data-type="warning"] {
 }
 
 /* Пакетное приложение: жёлтые пятна шапки, свечение кнопки ассистента и
-   жёлтая надпись логотипа-заглушки (.brand-art, assets/frame-13.svg) —
+   жёлтая надпись логотипа-заглушки (.brand-art, assets/brand-placeholder.webp) —
    в розовый #F763FC (поворот тона подобран под основной жёлтый пятен). */
 :root[data-app-format="packages"] .gradient-blobs,
 :root[data-app-format="packages"] .brand-art {

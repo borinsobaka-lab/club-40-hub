@@ -61,16 +61,14 @@ function iconUrls(folder: string): AppInstall["icons"] {
 }
 
 // Читается на каждый серверный рендер (head корня) и манифестом: держим
-// минуту в памяти процесса, чтобы не ходить в базу на каждую страницу.
+// в памяти процесса. Устаревшее значение (старше минуты) отдаём сразу, а
+// обновляем фоном: раньше раз в минуту очередная страница ждала ответа базы
+// (до 2 секунд) перед тем, как начать отдаваться.
 const TTL_MS = 60_000;
 let cached: { value: AppInstall; at: number } | null = null;
+let refreshing: Promise<AppInstall> | null = null;
 
-/**
- * Настройки установки. Никогда не бросает: при ошибке или медленной базе —
- * Base40 по умолчанию (иконка не должна ронять или задерживать страницу).
- */
-export async function fetchAppInstall(): Promise<AppInstall> {
-  if (cached && Date.now() - cached.at < TTL_MS) return cached.value;
+async function loadAppInstall(): Promise<AppInstall> {
   try {
     // У каждого приложения (формата клубов) своя строка.
     const { data, error } = await supabase
@@ -91,6 +89,21 @@ export async function fetchAppInstall(): Promise<AppInstall> {
     // Ошибку не кэшируем: следующий запрос попробует снова.
     return cached?.value ?? DEFAULT_APP_INSTALL;
   }
+}
+
+/**
+ * Настройки установки. Никогда не бросает: при ошибке или медленной базе —
+ * Base40 по умолчанию (иконка не должна ронять или задерживать страницу).
+ */
+export async function fetchAppInstall(): Promise<AppInstall> {
+  if (cached && Date.now() - cached.at < TTL_MS) return cached.value;
+  if (!refreshing) {
+    refreshing = loadAppInstall().finally(() => {
+      refreshing = null;
+    });
+  }
+  // Есть прежнее значение — не ждём базу.
+  return cached ? cached.value : refreshing;
 }
 
 /** Веб-манифест (/manifest.webmanifest). */

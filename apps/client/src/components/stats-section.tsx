@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Fire,
@@ -277,31 +278,16 @@ function aggregate(rows: BookingRow[]): Aggregated {
 
 export function StatsSection() {
   const { user } = useAuth();
-  const [rows, setRows] = useState<BookingRow[] | null>(null);
-  const [mv, setMv] = useState<StatsMv | null>(null);
-  const [hasWeight, setHasWeight] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  // Ошибка истории посещений — не «пока нет тренировок».
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    if (!user) {
-      setRows(null);
-      setMv(null);
-      setHasWeight(null);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setFailed(false);
-
-    (async () => {
-      const [logs, stats, profile] = await Promise.all([
+  const userId = user?.id ?? null;
+  // Кэш React Query (и между запусками): статистика на главной видна сразу.
+  const stats = useQuery({
+    queryKey: ["stats", userId],
+    queryFn: async () => {
+      const [logs, mvRes, profile] = await Promise.all([
         (supabase as unknown as { from: (t: string) => any })
           .from("bookings_log")
           .select("starts_at,duration_min,calories,workout_id,workout_type,studio_id")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .eq("status", "attended")
           .order("starts_at", { ascending: false })
           .limit(2000),
@@ -309,30 +295,25 @@ export function StatsSection() {
         // работает, а select был выдан всем вошедшим). Свою строку получаем
         // через SECURITY DEFINER-функцию my_stats_30d.
         (supabase as unknown as { rpc: (fn: string) => any }).rpc("my_stats_30d").maybeSingle(),
-        supabase.from("member_profiles").select("weight_kg").eq("user_id", user.id).maybeSingle(),
+        supabase.from("member_profiles").select("weight_kg").eq("user_id", userId!).maybeSingle(),
       ]);
-
-      if (cancelled) return;
       // Без истории статистика пустая — это ошибка, а не ноль тренировок.
       // Матвью и профиль необязательны: без них карточки работают.
       if (logs.error) throw logs.error;
-      setRows((logs.data ?? []) as BookingRow[]);
-      setMv((stats.data ?? null) as StatsMv | null);
-      setHasWeight(profile.data?.weight_kg != null);
-      setLoading(false);
-    })().catch(() => {
-      if (cancelled) return;
-      setRows([]);
-      setMv(null);
-      setHasWeight(null);
-      setFailed(true);
-      setLoading(false);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+      return {
+        rows: (logs.data ?? []) as BookingRow[],
+        mv: (mvRes.data ?? null) as StatsMv | null,
+        hasWeight: profile.data?.weight_kg != null,
+      };
+    },
+    enabled: !!userId,
+  });
+  const rows = stats.data?.rows ?? null;
+  const mv = stats.data?.mv ?? null;
+  const hasWeight = stats.data?.hasWeight ?? null;
+  const loading = !!userId && stats.isPending;
+  // Ошибка истории посещений — не «пока нет тренировок».
+  const failed = !stats.data && stats.isError;
 
   const agg = useMemo(() => (rows ? aggregate(rows) : null), [rows]);
 

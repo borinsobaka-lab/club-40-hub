@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { Calendar } from "@solar-icons/react";
 import { toast } from "sonner";
-import logoSrc from "@/assets/frame-13.svg";
+// Заглушка без фото тренировки: PNG/WebP 336×336 вместо прежнего SVG на 1,4 МБ
+// (тысячи контуров карты — долго грузился и рисовался при открытии шторки).
+import logoSrc from "@/assets/brand-placeholder.webp";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { formatCancelDeadline } from "@/hooks/use-club-settings";
 import {

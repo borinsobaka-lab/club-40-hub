@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   SquircleAvatar,
   SquircleAvatarFallback,
@@ -19,17 +20,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { untypedDb } from "@/lib/untyped-db";
 import { mediaUrl } from "@/lib/media";
+import { clientCardQuery } from "@/lib/client-card";
+import { homeBookingsQuery, type MyBooking } from "@/lib/home-queries";
 import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { useNotifications } from "@/lib/notifications";
 import { IS_PACKAGES } from "@/lib/terms";
-import {
-  PACK_ENTRY_SELECT,
-  packEntryToDrawerData,
-  type PackEntry,
-} from "@/formats/packages/entries";
+import { packEntryToDrawerData, type PackEntry } from "@/formats/packages/entries";
 import { PackWorkoutCard } from "@/formats/packages/workout-card";
 import { StudioSwitcher } from "@/formats/packages/studio-switcher";
 
@@ -96,36 +96,11 @@ type Service = {
   position: number;
 };
 
-type Trainer = { id: string; full_name: string | null; photo_url: string | null };
-type MyBooking = {
-  entry_id: string;
-  entry: {
-    id: string;
-    starts_at: string;
-    ends_at: string;
-    workout: {
-      name: string;
-      type: string | null;
-      description: string | null;
-      photo_url: string | null;
-    } | null;
-    trainers: { trainer: Trainer | null }[] | null;
-  } | null;
-};
-
 function HomePage() {
   const { user } = useAuth();
-  const [fullName, setFullName] = useState<string>("Участник");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [news, setNews] = useState<News[] | null>(null);
+  const queryClient = useQueryClient();
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
-  const [services, setServices] = useState<Service[] | null>(null);
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
-  const [myBookings, setMyBookings] = useState<MyBooking[] | null>(null);
-  // Ошибки загрузки — отдельно: иначе они выглядели как «пусто».
-  const [bookingsError, setBookingsError] = useState(false);
-  const [newsError, setNewsError] = useState(false);
-  const [servicesError, setServicesError] = useState(false);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   // Кнопки «Написать/Позвонить/Фидбэк» — смотримой студии; срок отмены записи
@@ -136,51 +111,26 @@ function HomePage() {
   // Новости и услуги — смотримой студии (переключатель пакетного приложения;
   // в подписочном — всегда своя).
   const { studioId, studioReady } = useViewedStudioId();
+  const userId = user?.id ?? null;
 
-  useEffect(() => {
-    if (!user) {
-      setMyBookings([]);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      // Явный фильтр по user_id: RLS позволяет тренеру видеть все брони студии,
-      // и без него у сотрудника в клиентском приложении чужие записи выглядели
-      // бы как его собственные.
-      // Только предстоящие (через !inner-связь с занятием) — без всей истории
-      // броней; групповые неотменённые — как в расписании.
-      const { data, error } = await (supabase as any)
-        .from("schedule_bookings")
-        .select(
-          IS_PACKAGES
-            ? // Пакетное — карточка как в расписании: цвет, места, фото тренеров.
-              `entry_id, entry:schedule_entries!inner(${PACK_ENTRY_SELECT})`
-            : "entry_id, entry:schedule_entries!inner(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))",
-        )
-        .eq("user_id", user.id)
-        .eq("status", "booked")
-        .gte("entry.starts_at", new Date().toISOString())
-        .eq("entry.kind", "group")
-        .is("entry.cancelled_at", null)
-        .limit(50);
-      if (cancelled) return;
-      if (error) {
-        setBookingsError(true);
-        return;
-      }
-      setBookingsError(false);
-      const rows = ((data as MyBooking[] | null) ?? [])
-        .filter((r) => r.entry && new Date(r.entry.starts_at).getTime() >= Date.now())
-        .sort(
-          (a, b) => new Date(a.entry!.starts_at).getTime() - new Date(b.entry!.starts_at).getTime(),
-        );
-      setMyBookings(rows);
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  // Данные главной — в кэше React Query (сохраняется и между запусками,
+  // src/lib/query-persist.ts): при возврате на главную и при повторном
+  // открытии приложения всё видно сразу, свежее подтягивается фоном.
+  // Ошибки — отдельно от «пусто», но уже показанные данные при сбое
+  // обновления не стираются.
+  const bookingsQuery = useQuery(homeBookingsQuery(userId));
+  const bookingsError = !bookingsQuery.data && bookingsQuery.isError;
+  // Прошедшие отсекаем при показе: данные из кэша могут быть вчерашними.
+  const myBookings = useMemo(() => {
+    if (!userId) return [];
+    if (!bookingsQuery.data) return null;
+    const now = Date.now();
+    return bookingsQuery.data
+      .filter((r) => r.entry && new Date(r.entry.starts_at).getTime() >= now)
+      .sort(
+        (a, b) => new Date(a.entry!.starts_at).getTime() - new Date(b.entry!.starts_at).getTime(),
+      );
+  }, [userId, bookingsQuery.data]);
 
   const groupedBookings = useMemo(() => {
     if (!myBookings) return null;
@@ -213,7 +163,12 @@ function HomePage() {
     }
     const res = data as { ok: boolean; reason?: string } | null;
     if (res?.ok) {
-      setMyBookings((prev) => (prev ?? []).filter((b) => b.entry_id !== entryId));
+      queryClient.setQueryData<MyBooking[]>(["home-bookings", userId], (prev) =>
+        prev?.filter((b) => b.entry_id !== entryId),
+      );
+      // Расписание (места и отметка «Вы записаны») — обновится при переходе.
+      queryClient.invalidateQueries({ queryKey: ["pack-schedule"] });
+      queryClient.invalidateQueries({ queryKey: ["pack-my-bookings"] });
       setOpenEntry(null);
       toast.success("Запись отменена");
     } else if (res?.reason) {
@@ -221,104 +176,71 @@ function HomePage() {
     }
   }
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    supabase
-      .from("clients")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const row = data as {
-          full_name?: string | null;
-          first_name?: string | null;
-          last_name?: string | null;
-          photo_url?: string | null;
-        } | null;
-        const name =
-          row?.first_name?.trim() ||
-          firstNameOnly(row?.full_name) ||
-          firstNameOnly(user.user_metadata?.first_name as string | undefined) ||
-          firstNameOnly(user.user_metadata?.full_name as string | undefined) ||
-          "Участник";
-        setFullName(name);
-        setAvatarUrl(row?.photo_url ?? null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  // Имя и аватар — та же карточка клиента, что у «Профиля» (общий кэш).
+  const { data: client } = useQuery(clientCardQuery(userId));
+  const fullName =
+    client?.first_name?.trim() ||
+    firstNameOnly(client?.full_name) ||
+    firstNameOnly(user?.user_metadata?.first_name as string | undefined) ||
+    firstNameOnly(user?.user_metadata?.full_name as string | undefined) ||
+    "Участник";
+  const avatarUrl = client?.photo_url ?? null;
 
-  useEffect(() => {
-    if (!studioReady) return;
-    let cancelled = false;
-    const load = () => {
-      // Новости — тех студий, что выбраны у новости в админке (studio_ids);
-      // клиент без карточки (студия неизвестна) видит все.
+  // Новости — тех студий, что выбраны у новости в админке (studio_ids);
+  // клиент без карточки (студия неизвестна) видит все.
+  const newsQuery = useQuery({
+    queryKey: ["news", studioId],
+    queryFn: async (): Promise<News[]> => {
       let q = supabase.from("news").select("id,title,description,image_url,position");
       if (studioId) q = q.contains("studio_ids", [studioId]);
-      return q
+      const { data, error } = await q
         .order("position", { ascending: true })
-        .order("created_at", { ascending: false })
-        .then(({ data, error }) => {
-          if (cancelled) return;
-          // При ошибке обновления уже показанные новости не стираем.
-          if (error) {
-            setNewsError(true);
-            return;
-          }
-          setNewsError(false);
-          setNews((data as News[] | null) ?? []);
-        });
-    };
-    load();
-    // Уникальное имя канала: supabase.channel() с тем же именем возвращает
-    // ещё не закрытый (leaving) канал из прошлого эффекта, и subscribe() на
-    // нём молча ничего не делает — обновления переставали приходить.
-    const channel = supabase
-      .channel(`news-feed-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "news" }, () => load())
-      .subscribe();
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [studioReady, studioId]);
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as News[] | null) ?? [];
+    },
+    enabled: studioReady,
+  });
+  const news = newsQuery.data ?? null;
+  const newsError = newsQuery.isError;
 
-  useEffect(() => {
-    if (!studioReady) return;
-    let cancelled = false;
-    const load = () => {
-      // Услуги — по студиям, как и новости.
-      let q = (supabase as any)
+  // Услуги — по студиям, как и новости.
+  const servicesQuery = useQuery({
+    queryKey: ["services", studioId],
+    queryFn: async (): Promise<Service[]> => {
+      let q = untypedDb
         .from("services")
         .select("id,title,description,image_url,button_text,button_url,position");
       if (studioId) q = q.contains("studio_ids", [studioId]);
-      return q
+      const { data, error } = await q
         .order("position", { ascending: true })
-        .order("created_at", { ascending: false })
-        .then(({ data, error }: { data: Service[] | null; error: unknown }) => {
-          if (cancelled) return;
-          if (error) {
-            setServicesError(true);
-            return;
-          }
-          setServicesError(false);
-          setServices((data as Service[] | null) ?? []);
-        });
-    };
-    load();
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as Service[] | null) ?? [];
+    },
+    enabled: studioReady,
+  });
+  const services = servicesQuery.data ?? null;
+  const servicesError = servicesQuery.isError;
+
+  // Правки новостей и услуг в админке — сразу на открытой главной.
+  // Уникальное имя канала: supabase.channel() с тем же именем возвращает
+  // ещё не закрытый (leaving) канал из прошлого эффекта, и subscribe() на
+  // нём молча ничего не делает — обновления переставали приходить.
+  useEffect(() => {
     const channel = supabase
-      .channel(`services-feed-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => load())
+      .channel(`home-feed-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "news" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["news"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["services"] }),
+      )
       .subscribe();
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [studioReady, studioId]);
+  }, [queryClient]);
 
   return (
     <PageShell

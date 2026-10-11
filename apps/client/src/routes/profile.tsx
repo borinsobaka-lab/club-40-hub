@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
 
 export const Route = createFileRoute("/profile")({
@@ -45,17 +47,7 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-type ClientRow = {
-  id?: string;
-  full_name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  birthday?: string | null;
-  gender?: string | null;
-  photo_url?: string | null;
-};
+type ClientRow = ClientCard;
 
 type ClientUpdate = {
   first_name?: string;
@@ -194,30 +186,21 @@ async function saveClient(
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
-  const [client, setClient] = useState<ClientRow | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  // Карточка — из общего с главной кэша (src/lib/client-card.ts): профиль
+  // открывается сразу, свежие данные подтягиваются фоном.
+  const cardQuery = clientCardQuery(user?.id ?? null);
+  const { data: cardData, isPending } = useQuery(cardQuery);
+  const client = cardData ?? null;
+  const loading = !!user && isPending;
+  const setClient = (fn: (prev: ClientRow | null) => ClientRow) =>
+    queryClient.setQueryData(cardQuery.queryKey, (prev) => fn(prev ?? null));
   const [editOpen, setEditOpen] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
-    let cancelled = false;
-
-    const load = async () => {
-      const { data } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!cancelled) {
-        setClient((data as ClientRow | null) ?? null);
-        setLoading(false);
-      }
-    };
-
-    load();
-
     // Уникальное имя канала: с прежним именем supabase.channel() отдавал
     // ещё закрывающийся канал прошлого эффекта, и подписка молча умирала.
     const channel = supabase
@@ -225,15 +208,14 @@ function ProfilePage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "clients", filter: `user_id=eq.${user.id}` },
-        () => load(),
+        () => queryClient.invalidateQueries({ queryKey: ["client-card", user.id] }),
       )
       .subscribe();
 
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, queryClient]);
 
   const fullName =
     composeFullName(client) || (user?.user_metadata?.full_name as string) || "Участник";

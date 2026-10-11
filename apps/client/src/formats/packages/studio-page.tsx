@@ -12,11 +12,11 @@ import {
   SquircleAvatarFallback,
   SquircleAvatarImage,
 } from "@/components/ui/squircle-avatar";
-import { untypedDb } from "@/lib/untyped-db";
 import { useViewedStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { FormattedText } from "@/lib/formatted-text";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
+import { studioInfoQuery, studioTrainersQuery, type StudioTrainer } from "./queries";
 
 /**
  * «Студия» пакетного приложения (до 2026-10-11 — заглушка «Клуб»): вкладки
@@ -25,22 +25,6 @@ import { trainerInitials } from "./entries";
  * «Тренеры» (тренеры студии с биографией — «Сотрудники» в админке).
  * Студия — смотримая (переключатель на главной).
  */
-
-type StudioInfo = {
-  about: string | null;
-  photo_path: string | null;
-  google_maps_url: string | null;
-  yandex_maps_url: string | null;
-  instagram_url: string | null;
-};
-
-type StudioTrainer = {
-  id: string;
-  full_name: string;
-  photo_url: string | null;
-  bio: string | null;
-  role: string | null;
-};
 
 const TABS = [
   { key: "info", label: "Информация" },
@@ -76,19 +60,7 @@ export function PackagesStudioPage() {
 
 function StudioInfoTab() {
   const { studioId, studioReady } = useViewedStudioId();
-  const { data, isPending, error } = useQuery({
-    queryKey: ["studio-info", studioId],
-    queryFn: async (): Promise<StudioInfo | null> => {
-      const { data, error } = await untypedDb
-        .from("studio_app_settings")
-        .select("about, photo_path, google_maps_url, yandex_maps_url, instagram_url")
-        .eq("studio_id", studioId)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as StudioInfo | null) ?? null;
-    },
-    enabled: studioReady && !!studioId,
-  });
+  const { data, isPending, error } = useQuery(studioInfoQuery(studioId, studioReady));
 
   if (!studioReady || (isPending && !!studioId)) {
     return (
@@ -173,21 +145,7 @@ function StudioInfoTab() {
 function TrainersTab() {
   const { studioId, studioReady } = useViewedStudioId();
   const [open, setOpen] = useState<StudioTrainer | null>(null);
-  const { data, isPending, error } = useQuery({
-    queryKey: ["studio-trainers", studioId],
-    queryFn: async (): Promise<StudioTrainer[]> => {
-      const { data, error } = await untypedDb
-        .from("trainer_studios")
-        .select("trainer:trainers(id, full_name, photo_url, bio, role)")
-        .eq("studio_id", studioId);
-      if (error) throw error;
-      return ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
-        .map((r) => r.trainer)
-        .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
-        .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"));
-    },
-    enabled: studioReady && !!studioId,
-  });
+  const { data, isPending, error } = useQuery(studioTrainersQuery(studioId, studioReady));
 
   if (!studioReady || (isPending && !!studioId)) {
     return (

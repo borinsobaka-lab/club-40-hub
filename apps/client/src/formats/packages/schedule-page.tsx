@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { AltArrowDown, CheckCircle, CloseCircle } from "@solar-icons/react";
 import { toast } from "sonner";
@@ -11,7 +12,6 @@ import {
   SquircleAvatarImage,
 } from "@/components/ui/squircle-avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { untypedDb } from "@/lib/untyped-db";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
 import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
@@ -21,7 +21,6 @@ import { useHomeStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio"
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
 import {
-  PACK_ENTRY_SELECT,
   entryColor,
   entryTrainers,
   packEntryToDrawerData,
@@ -30,6 +29,15 @@ import {
   type PackEntry,
 } from "./entries";
 import { PackWorkoutCard } from "./workout-card";
+import {
+  SCHEDULE_DAYS,
+  SCHEDULE_DAYS_BEFORE,
+  addDays,
+  packMyBookingsQuery,
+  packScheduleQuery,
+  startOfDay,
+  type MyScheduleBookings,
+} from "./queries";
 
 /**
  * «Расписание» пакетного приложения (до 2026-10-11 — «Бронь», общий экран с
@@ -47,32 +55,19 @@ type TabKey = (typeof TABS)[number]["key"];
 
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-
 type FilterKind = "workout" | "trainer";
 type FilterOption = { id: string; label: string; color?: string | null; photo?: string | null };
 
 export function PackagesSchedulePage() {
   const navigate = useNavigate();
   const today = useMemo(() => startOfDay(new Date()), []);
-  const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
-  const [activeIdx, setActiveIdx] = useState(3);
+  const days = useMemo(
+    () => Array.from({ length: SCHEDULE_DAYS }, (_, i) => addDays(today, i - SCHEDULE_DAYS_BEFORE)),
+    [today],
+  );
+  const [activeIdx, setActiveIdx] = useState(SCHEDULE_DAYS_BEFORE);
   const [activeTab, setActiveTab] = useState<TabKey>("class");
 
-  const [entries, setEntries] = useState<PackEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
-  const [waitlistedIds, setWaitlistedIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [workoutFilter, setWorkoutFilter] = useState<string | null>(null);
@@ -111,60 +106,32 @@ export function PackagesSchedulePage() {
     setTrainerFilter(null);
   }, [studioId]);
 
+  // Занятия и свои записи — из кэша React Query (src/formats/packages/queries.ts):
+  // повторный переход на «Расписание» открывается сразу, свежие данные — фоном.
+  const queryClient = useQueryClient();
+  const scheduleQuery = packScheduleQuery(studioId, today, studioReady);
+  const myBookingsQuery = packMyBookingsQuery(user?.id ?? null, today);
+  const schedule = useQuery(scheduleQuery);
+  const myBookings = useQuery(myBookingsQuery);
+  const entries = useMemo(() => schedule.data ?? [], [schedule.data]);
+  // Как и раньше, список — вместе с отметками своих записей: иначе карточка
+  // на миг предлагала «Записаться» на занятие, где клиент уже записан.
+  const loading = schedule.isPending || (!!user && myBookings.isPending);
+  const error = !schedule.data && schedule.error ? schedule.error.message : null;
+  const bookedIds = useMemo(() => new Set(myBookings.data?.booked ?? []), [myBookings.data]);
+  const waitlistedIds = useMemo(() => new Set(myBookings.data?.waitlist ?? []), [myBookings.data]);
+
+  const bookingsError = myBookings.error?.message;
   useEffect(() => {
-    if (!studioReady) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      const from = addDays(today, -3).toISOString();
-      const to = addDays(today, 7).toISOString();
-      let query = supabase
-        .from("schedule_entries")
-        .select(PACK_ENTRY_SELECT)
-        .gte("starts_at", from)
-        .lt("starts_at", to)
-        // Клиенту RLS отдаёт только групповые неотменённые; сотруднику в
-        // приложении — все, поэтому фильтруем явно.
-        .eq("kind", "group")
-        .is("cancelled_at", null);
-      if (studioId) query = query.eq("studio_id", studioId);
+    if (bookingsError) toast.error(`Не удалось загрузить ваши записи: ${bookingsError}`);
+  }, [bookingsError]);
 
-      // Свои записи — явный фильтр по user_id (RLS даёт тренеру все брони студии).
-      const bookingsQuery = user
-        ? untypedDb
-            .from("schedule_bookings")
-            .select("entry_id, status, schedule_entries!inner(starts_at)")
-            .eq("user_id", user.id)
-            .in("status", ["booked", "waitlist"])
-            .gte("schedule_entries.starts_at", from)
-            .lt("schedule_entries.starts_at", to)
-        : null;
-
-      const [{ data, error }, bookings] = await Promise.all([
-        query.order("starts_at"),
-        bookingsQuery,
-      ]);
-      if (cancelled) return;
-      if (error) setError(error.message);
-      else setEntries((data as unknown as PackEntry[]) ?? []);
-      setLoading(false);
-
-      if (bookings?.error) {
-        toast.error(`Не удалось загрузить ваши записи: ${bookings.error.message}`);
-      }
-      const rows = bookings?.data as { entry_id: string; status: string }[] | null | undefined;
-      if (rows) {
-        setBookedIds(new Set(rows.filter((r) => r.status === "booked").map((r) => r.entry_id)));
-        setWaitlistedIds(
-          new Set(rows.filter((r) => r.status === "waitlist").map((r) => r.entry_id)),
-        );
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [today, studioReady, studioId, user]);
+  const updateMine = (fn: (m: MyScheduleBookings) => MyScheduleBookings) =>
+    queryClient.setQueryData(myBookingsQuery.queryKey, (prev) =>
+      fn(prev ?? { booked: [], waitlist: [] }),
+    );
+  const addTo = (list: "booked" | "waitlist", entryId: string) =>
+    updateMine((m) => (m[list].includes(entryId) ? m : { ...m, [list]: [...m[list], entryId] }));
 
   useEffect(() => {
     const container = daysContainerRef.current;
@@ -239,21 +206,17 @@ export function PackagesSchedulePage() {
       booked_count?: number;
     } | null;
     const setCount = (count: (e: PackEntry) => number) =>
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? { ...e, booked_count: count(e) } : e)),
+      queryClient.setQueryData(scheduleQuery.queryKey, (prev) =>
+        prev?.map((e) => (e.id === entryId ? { ...e, booked_count: count(e) } : e)),
       );
     if (res?.ok) {
+      // Записи на главной — из другого запроса: обновятся при возврате на неё.
+      queryClient.invalidateQueries({ queryKey: ["home-bookings"] });
       if (isActive) {
-        setBookedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(entryId);
-          return next;
-        });
-        setWaitlistedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(entryId);
-          return next;
-        });
+        updateMine((m) => ({
+          booked: m.booked.filter((id) => id !== entryId),
+          waitlist: m.waitlist.filter((id) => id !== entryId),
+        }));
         if (wasBooked) {
           setCount((e) =>
             typeof res.booked_count === "number"
@@ -263,23 +226,23 @@ export function PackagesSchedulePage() {
         }
         toast.success(wasWaitlisted ? "Вы вышли из листа ожидания" : "Запись отменена");
       } else if (res.waitlisted) {
-        setWaitlistedIds((prev) => new Set(prev).add(entryId));
+        addTo("waitlist", entryId);
         toast.success("Мест нет — вы в листе ожидания");
       } else {
-        setBookedIds((prev) => new Set(prev).add(entryId));
+        addTo("booked", entryId);
         setCount((e) =>
           typeof res.booked_count === "number" ? res.booked_count : e.booked_count + 1,
         );
         toast.success("Вы записаны на тренировку");
       }
     } else if (res?.reason === "already_booked") {
-      setBookedIds((prev) => new Set(prev).add(entryId));
+      addTo("booked", entryId);
       if (typeof res.booked_count === "number") {
         const n = res.booked_count;
         setCount(() => n);
       }
     } else if (res?.reason === "already_waitlisted") {
-      setWaitlistedIds((prev) => new Set(prev).add(entryId));
+      addTo("waitlist", entryId);
     } else if (res?.reason === "no_membership" || res?.reason === "no_visits_left") {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });

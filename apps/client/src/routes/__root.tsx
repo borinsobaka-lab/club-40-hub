@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -18,10 +18,57 @@ import { resetPageScrollPosition } from "@/lib/page-scroll";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useClientStudio, type Studio } from "@/hooks/use-studios";
+import { useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { APP_FORMAT, FORMAT_APP_URL } from "@/lib/app-format";
 import { DEFAULT_APP_INSTALL, fetchAppInstall } from "@/lib/app-install";
+import { clientCardQuery } from "@/lib/client-card";
+import { homeBookingsQuery } from "@/lib/home-queries";
+import { IS_PACKAGES } from "@/lib/terms";
+import {
+  packCatalogQuery,
+  packMyBookingsQuery,
+  packMyMembershipsQuery,
+  packScheduleQuery,
+  startOfDay,
+  studioInfoQuery,
+  studioTrainersQuery,
+} from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+
+// Адрес API Supabase — для preconnect: соединение (DNS + TLS) с базой
+// открывается параллельно с загрузкой JS, а не после неё.
+const SUPABASE_ORIGIN = (() => {
+  try {
+    return new URL(import.meta.env.VITE_SUPABASE_URL as string).origin;
+  } catch {
+    return null;
+  }
+})();
+
+/**
+ * Старая вкладка после деплоя: файлы прежней сборки с сервера уже удалены, и
+ * переход в ещё не загруженный раздел падал с «Страница не загрузилась».
+ * Перезагружаем страницу (не чаще раза в 10 секунд, чтобы не зациклиться).
+ */
+function isStaleChunkError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS/i.test(
+    message,
+  );
+}
+function reloadForStaleChunks(): boolean {
+  try {
+    const key = "base40.chunkReloadAt";
+    const last = Number(window.sessionStorage.getItem(key) ?? 0);
+    if (Date.now() - last < 10_000) return false;
+    window.sessionStorage.setItem(key, String(Date.now()));
+  } catch {
+    return false;
+  }
+  window.location.reload();
+  return true;
+}
 
 function NotFoundComponent() {
   return (
@@ -48,6 +95,10 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+
+  useEffect(() => {
+    if (isStaleChunkError(error)) reloadForStaleChunks();
+  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -129,6 +180,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           rel: "stylesheet",
           href: appCss,
         },
+        // Два preconnect: запросы к API идут в режиме CORS без cookie
+        // (crossorigin), картинки из storage — без него; у браузера это
+        // разные соединения.
+        ...(SUPABASE_ORIGIN
+          ? [
+              { rel: "preconnect", href: SUPABASE_ORIGIN, crossOrigin: "anonymous" as const },
+              { rel: "preconnect", href: SUPABASE_ORIGIN },
+            ]
+          : []),
         { rel: "icon", type: "image/png", sizes: "32x32", href: app.icons.favicon32 },
         // /favicon.ico (Base40) — только без своей иконки: иначе часть браузеров
         // предпочла бы его.
@@ -161,6 +221,24 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    const onPreloadError = (event: Event) => {
+      if (reloadForStaleChunks()) event.preventDefault();
+    };
+    window.addEventListener("vite:preloadError", onPreloadError);
+    return () => window.removeEventListener("vite:preloadError", onPreloadError);
+  }, []);
+
+  // Service worker (public/sw.js): файлы сборки — из кэша телефона, без сети,
+  // поэтому повторный запуск не ждёт загрузки JS и CSS. Пока только у
+  // пакетного приложения.
+  useEffect(() => {
+    if (!import.meta.env.PROD || !IS_PACKAGES || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // без service worker приложение работает как раньше
+    });
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -267,6 +345,87 @@ function OtherAppScreen({ studio }: { studio: Studio }) {
   );
 }
 
+// Анкета пройдена — помним на телефоне (по пользователю): раньше каждый
+// запуск приложения ждал под спиннером запрос member_profiles, прежде чем
+// показать главную. Пройденная анкета обратно не сбрасывается.
+const ONBOARDED_KEY = "base40.onboarded";
+function readOnboarded(userId: string) {
+  try {
+    return window.localStorage.getItem(ONBOARDED_KEY) === userId;
+  } catch {
+    return false;
+  }
+}
+function markOnboarded(userId: string) {
+  try {
+    window.localStorage.setItem(ONBOARDED_KEY, userId);
+  } catch {
+    // приватный режим — проверим анкету при следующем запуске
+  }
+}
+
+/**
+ * Пока клиент смотрит первый экран, фоном подгружаются код остальных разделов
+ * и (в пакетном приложении) их данные: переход по нижнему меню открывает
+ * экран сразу, без скелетона и ожидания сети. Данные главной (карточка,
+ * записи) запрашиваются ещё раньше — сразу после входа, параллельно с
+ * проверкой анкеты.
+ */
+function usePrefetchScreens(ready: boolean) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { studioId, studioReady } = useViewedStudioId();
+  const userId = user?.id ?? null;
+
+  useEffect(() => {
+    if (!userId) return;
+    queryClient.prefetchQuery(clientCardQuery(userId));
+    queryClient.prefetchQuery(homeBookingsQuery(userId));
+  }, [userId, queryClient]);
+
+  useEffect(() => {
+    if (!ready || !userId || !studioReady) return;
+    let timer: number | null = null;
+    let idleId: number | null = null;
+    const run = () => {
+      for (const to of ["/", "/schedule", "/club", "/memberships", "/profile"] as const) {
+        router.preloadRoute({ to }).catch(() => {});
+      }
+      if (!IS_PACKAGES) return;
+      const today = startOfDay(new Date());
+      queryClient.prefetchQuery(packScheduleQuery(studioId, today));
+      queryClient.prefetchQuery(packMyBookingsQuery(userId, today));
+      queryClient.prefetchQuery(packCatalogQuery(studioId));
+      queryClient.prefetchQuery(packMyMembershipsQuery(userId));
+      if (studioId) {
+        queryClient.prefetchQuery(studioInfoQuery(studioId));
+        queryClient.prefetchQuery(studioTrainersQuery(studioId));
+      }
+    };
+    // Сначала — запросы самого экрана (ждём, пока догрузятся, но не дольше
+    // ~5 секунд), потом, когда браузер свободен, — остальное.
+    let attempts = 0;
+    const waitForScreen = () => {
+      timer = null;
+      if (queryClient.isFetching() > 0 && attempts++ < 20) {
+        timer = window.setTimeout(waitForScreen, 250);
+        return;
+      }
+      if ("requestIdleCallback" in window) {
+        idleId = window.requestIdleCallback(run, { timeout: 2000 });
+      } else {
+        run();
+      }
+    };
+    timer = window.setTimeout(waitForScreen, 300);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      if (idleId !== null) window.cancelIdleCallback(idleId);
+    };
+  }, [ready, userId, studioId, studioReady, router, queryClient]);
+}
+
 function AppShell() {
   const { session, user, loading } = useAuth();
   const studio = useClientStudio();
@@ -294,7 +453,7 @@ function AppShell() {
   useEffect(() => {
     if (loading || !user) return;
     if (onAuthRoute) return;
-    if (onOnboardingRoute) {
+    if (onOnboardingRoute || readOnboarded(user.id)) {
       setOnboardingChecked(true);
       return;
     }
@@ -316,6 +475,7 @@ function AppShell() {
       if (!data || !data.onboarding_completed_at) {
         navigate({ to: "/onboarding", replace: true });
       } else {
+        markOnboarded(user.id);
         setOnboardingChecked(true);
       }
     })();
@@ -323,6 +483,15 @@ function AppShell() {
       cancelled = true;
     };
   }, [loading, user, onAuthRoute, onOnboardingRoute, navigate]);
+
+  const onboardedCached = !!user && readOnboarded(user.id);
+  usePrefetchScreens(
+    !loading &&
+      !!session &&
+      !onAuthRoute &&
+      !onOnboardingRoute &&
+      (onboardingChecked || onboardedCached),
+  );
 
   if (onAuthRoute) {
     return (
@@ -354,7 +523,7 @@ function AppShell() {
     );
   }
 
-  const showAppLoading = loading || (!!session && !onboardingChecked);
+  const showAppLoading = loading || (!!session && !onboardingChecked && !onboardedCached);
 
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">

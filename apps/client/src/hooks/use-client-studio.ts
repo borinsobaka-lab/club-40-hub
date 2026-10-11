@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -13,23 +13,17 @@ import { useAuth } from "@/hooks/use-auth";
 // карточки» — в этом случае страницы оставляют запросы нефильтрованными,
 // то есть поведение при одной студии не меняется.
 //
-// Кэш на модуль: значение стабильно в рамках сессии, перезапрашивается только
-// при смене пользователя.
+// Кэш — React Query по пользователю (ключ с user.id: студия прежнего
+// пользователя новому не достаётся), он же сохраняется между запусками и
+// деплоями (src/lib/query-persist.ts, meta.persist = "stable"): при повторном
+// открытии приложения студия известна сразу и контент грузится без ожидания
+// этого запроса.
 
 type State = { studioId: string | null; studioReady: boolean };
 
-let cacheUserId: string | null = null;
-let cacheStudioId: string | null = null;
-// Запрос в полёте храним вместе с пользователем, для которого он начат:
-// раньше промис был общий на модуль, и при смене сессии (выход/вход или
-// обновление токена) второй вызов переиспользовал чужой запрос — новый клиент
-// получал студию предыдущего и до конца сессии смотрел его расписание.
-let inflight: { userId: string; promise: Promise<string | null> } | null = null;
-
-// Ошибки запросов пробрасываем, а не превращаем в null: результат .then()
-// кэшируется на всю сессию, и разовый сбой сети навсегда отключал фильтр по
-// студии (клиент видел расписание и новости всех студий). Через .catch()
-// значение не кэшируется и при следующем монтировании запрашивается снова.
+// Ошибки запросов пробрасываем, а не превращаем в null: разовый сбой сети
+// не должен закэшироваться как «студии нет» (клиент видел бы расписание и
+// новости всех студий). Ошибка не кэшируется и запрашивается снова.
 async function fetchStudioId(userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("clients")
@@ -52,49 +46,22 @@ async function fetchStudioId(userId: string): Promise<string | null> {
 
 export function useClientStudioId(): State {
   const { user, loading } = useAuth();
-  const [state, setState] = useState<State>(() =>
-    user && cacheUserId === user.id
-      ? { studioId: cacheStudioId, studioReady: true }
-      : { studioId: null, studioReady: false },
-  );
+  const userId = user?.id ?? null;
+  const q = useQuery({
+    queryKey: ["client-studio-id", userId],
+    queryFn: () => fetchStudioId(userId!),
+    enabled: !loading && !!userId,
+    staleTime: 10 * 60_000,
+    // Переживает деплой (src/lib/query-persist.ts): от студии зависят все
+    // остальные запросы главной.
+    meta: { persist: "stable" },
+  });
 
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      setState({ studioId: null, studioReady: true });
-      return;
-    }
-    if (cacheUserId === user.id) {
-      setState({ studioId: cacheStudioId, studioReady: true });
-      return;
-    }
-    const userId = user.id;
-    let cancelled = false;
-    // Студия прежнего пользователя не должна оставаться «готовой», пока
-    // грузится студия нового.
-    setState({ studioId: null, studioReady: false });
-    if (!inflight || inflight.userId !== userId) {
-      inflight = { userId, promise: fetchStudioId(userId) };
-    }
-    const current = inflight;
-    current.promise
-      .then((sid) => {
-        cacheUserId = userId;
-        cacheStudioId = sid;
-        if (!cancelled) setState({ studioId: sid, studioReady: true });
-      })
-      .catch(() => {
-        // Не оставляем приложение в вечном скелетоне: без карточки клиента
-        // страницы просто не фильтруют по студии — как для гостя.
-        if (!cancelled) setState({ studioId: null, studioReady: true });
-      })
-      .finally(() => {
-        if (inflight === current) inflight = null;
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, loading]);
-
-  return state;
+  if (loading) return { studioId: null, studioReady: false };
+  if (!userId) return { studioId: null, studioReady: true };
+  if (q.data !== undefined) return { studioId: q.data, studioReady: true };
+  // Не оставляем приложение в вечном скелетоне: без карточки клиента
+  // страницы просто не фильтруют по студии — как для гостя.
+  if (q.isError) return { studioId: null, studioReady: true };
+  return { studioId: null, studioReady: false };
 }

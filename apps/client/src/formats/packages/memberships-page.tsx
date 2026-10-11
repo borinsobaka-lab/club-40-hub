@@ -6,11 +6,10 @@ import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
 import { Card } from "@/components/ui/card";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
-import { untypedDb } from "@/lib/untyped-db";
 import { useAuth } from "@/hooks/use-auth";
 import { useViewedStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { FormattedText } from "@/lib/formatted-text";
-import { settlePackageMemberships } from "@/lib/packages-memberships";
+import { packCatalogQuery, packMyMembershipsQuery, type MyMembership, type Pack } from "./queries";
 
 /**
  * «Абонементы» пакетного приложения (решение владельца 2026-10-11): вкладки
@@ -21,37 +20,11 @@ import { settlePackageMemberships } from "@/lib/packages-memberships";
  * Номенклатура — смотримой студии (переключатель на главной).
  */
 
-type MembershipKind = "package" | "trial" | "personal";
-
-type Pack = {
-  id: string;
-  name: string;
-  description: string | null;
-  kind: MembershipKind | null;
-  visits_count: number | null;
-  personal_count: number | null;
-  duration_days: number | null;
-  price: number;
-  max_payments: number | null;
-};
-
-type MyMembership = {
-  id: string;
-  status: string;
-  ends_at: string | null;
-  visits_left: number | null;
-  personal_left: number | null;
-  balance_kind: "group" | "personal" | null;
-  memberships: { name: string } | null;
-};
-
 const TABS = [
   { key: "packages", label: "Абонементы" },
   { key: "personal", label: "Персональные занятия" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
-
-const db = untypedDb;
 
 function plural(n: number, one: string, few: string, many: string) {
   const m100 = n % 100;
@@ -78,66 +51,14 @@ function formatLongDate(value: string) {
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
 }
 
-/** Сегодня по Тбилиси (ends_at — дата, как считает база). */
-function tbilisiDateISO() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tbilisi",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
 export function PackagesMembershipsPage() {
   const [tab, setTab] = useState<TabKey>("packages");
   const { user, loading: authLoading } = useAuth();
   const { studioId, studioReady } = useViewedStudioId();
   const studioName = useViewedStudioName();
 
-  const catalog = useQuery({
-    queryKey: ["pack-memberships", studioId],
-    queryFn: async (): Promise<Pack[]> => {
-      let q = db
-        .from("memberships")
-        .select(
-          "id, name, description, kind, visits_count, personal_count, duration_days, price, max_payments",
-        )
-        .eq("is_active", true);
-      if (studioId) q = q.eq("studio_id", studioId);
-      const { data, error } = await q
-        .order("sort_order", { ascending: true })
-        .order("price", { ascending: true });
-      if (error) throw error;
-      return (data as Pack[] | null) ?? [];
-    },
-    enabled: studioReady,
-  });
-
-  // Свои абонементы — по карточке клиента (своя студия), не по смотримой.
-  const mine = useQuery({
-    queryKey: ["pack-my-memberships", user?.id],
-    queryFn: async (): Promise<MyMembership[]> => {
-      await settlePackageMemberships();
-      const { data: client, error: cErr } = await db
-        .from("clients")
-        .select("id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      if (cErr) throw cErr;
-      if (!client) return [];
-      const { data, error } = await db
-        .from("client_memberships")
-        .select("id, status, ends_at, visits_left, personal_left, balance_kind, memberships(name)")
-        .eq("client_id", client.id)
-        .in("status", ["active", "frozen", "pending"])
-        .or(`ends_at.is.null,ends_at.gte.${tbilisiDateISO()},status.eq.frozen`)
-        .order("balance_kind", { ascending: true })
-        .order("status", { ascending: true });
-      if (error) throw error;
-      return (data as unknown as MyMembership[] | null) ?? [];
-    },
-    enabled: !!user,
-  });
+  const catalog = useQuery(packCatalogQuery(studioId, studioReady));
+  const mine = useQuery(packMyMembershipsQuery(user?.id ?? null));
 
   const items = (catalog.data ?? []).filter((m) =>
     // Пробное посещение в приложении не показываем (решение владельца 2026-10-11).

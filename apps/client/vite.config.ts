@@ -9,8 +9,13 @@ import { nitro } from "nitro/vite";
 // Значения Supabase больше не захардкожены здесь: они приходят из .env
 // (локально) или из переменных окружения сборки (Coolify) — см. .env.example.
 
+// Номер сборки: сохранённый в браузере кэш данных (src/lib/query-persist.ts)
+// после деплоя не используется — новый код может ждать другие поля.
+const BUILD_ID = Date.now().toString(36);
+
 export default defineConfig(({ command }) => ({
   server: { host: "::", port: 8080 },
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   // Vite uses PostCSS in dev and Lightning CSS only at build; running Lightning
   // CSS in both keeps the dev preview identical to the built output.
   css: { transformer: "lightningcss" },
@@ -51,7 +56,11 @@ export default defineConfig(({ command }) => ({
     }),
     // Nitro packages the SSR app as a standalone node-server bundle
     // (.output/server/index.mjs) — то, что запускает Dockerfile.
-    ...(command === "build" ? [nitro({ preset: "node-server" })] : []),
+    // compressPublicAssets — заранее сжатые .gz/.br копии бандла: сервер
+    // отдаёт их браузеру вместо несжатых (JS главной ~460 КБ → ~135 КБ).
+    ...(command === "build"
+      ? [nitro({ preset: "node-server", compressPublicAssets: { gzip: true, brotli: true } })]
+      : []),
     viteReact(),
   ],
 }));

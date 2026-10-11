@@ -1,7 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { APP_FORMAT } from "@/lib/app-format";
+import {
+  clearPersistedQueryCache,
+  persistQueryCache,
+  restoreQueryCache,
+} from "@/lib/query-persist";
 
 type AuthCtx = {
   session: Session | null;
@@ -36,24 +42,75 @@ function sameUser(a: User | null, b: User | null) {
   return a?.id === b?.id && a?.updated_at === b?.updated_at;
 }
 
+/**
+ * Сессия, сохранённая supabase-js в localStorage, — без сети. getSession()
+ * при истёкшем токене (приложение не открывали дольше часа) сначала
+ * обновляет его запросом к серверу, и всё приложение ждало этот запрос под
+ * спиннером. Пользователь из сохранённой сессии позволяет сразу показать
+ * экран с данными из кэша; запросы к базе сами дождутся свежего токена, а
+ * если сессия больше недействительна — придёт SIGNED_OUT и вход.
+ */
+function readStoredSession(): Session | null {
+  try {
+    const key = (supabase.auth as unknown as { storageKey?: string }).storageKey;
+    const raw = key ? window.localStorage.getItem(key) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Session | null;
+    return parsed?.access_token && parsed.refresh_token && parsed.user?.id ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Кэш данных (src/lib/query-persist.ts) — только текущего пользователя:
+    // при смене пользователя или выходе прежние данные стираются, иначе
+    // следующий вошедший на этом телефоне увидел бы чужие записи.
+    let activeUserId: string | null = null;
+    let stopPersisting: (() => void) | null = null;
+    const switchUser = (userId: string | null) => {
+      if (userId === activeUserId) return;
+      stopPersisting?.();
+      stopPersisting = null;
+      if (activeUserId !== null) queryClient.clear();
+      activeUserId = userId;
+      if (userId) {
+        restoreQueryCache(queryClient, userId);
+        stopPersisting = persistQueryCache(queryClient, userId);
+      } else {
+        clearPersistedQueryCache();
+      }
+    };
+
     const apply = (s: Session | null) => {
+      // Кэш — до обновления состояния: экраны монтируются уже с данными.
+      switchUser(s?.user?.id ?? null);
       setSession((prev) => (sameSession(prev, s) ? prev : s));
       const nextUser = s?.user ?? null;
       setUser((prev) => (sameUser(prev, nextUser) ? prev : nextUser));
     };
+
+    const stored = readStoredSession();
+    if (stored) {
+      apply(stored);
+      setLoading(false);
+    }
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => apply(s));
     supabase.auth.getSession().then(({ data }) => {
       apply(data.session);
       setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    return () => {
+      sub.subscription.unsubscribe();
+      stopPersisting?.();
+    };
+  }, [queryClient]);
 
   const value: AuthCtx = {
     session,
