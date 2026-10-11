@@ -93,6 +93,21 @@ export const SALE_KIND_HINT: Record<SaleKind, string> = {
 };
 
 /** Подсказки «?»: у полей формы продажи и у колонок таблицы «Продаж». */
+/**
+ * Подтверждение удаления продажи абонемента («Продажи», «Абонементы»):
+ * продажа и выданный по ней абонемент клиента удаляются вместе
+ * (db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql).
+ */
+export function saleDeleteDescription(clientName: string | null, membershipName: string | null) {
+  const what = [clientName, membershipName && `«${membershipName}»`].filter(Boolean).join(", ");
+  return (
+    (what ? `${what}. ` : "") +
+    "Продажа и выданный по ней абонемент удалятся вместе: абонемент пропадёт у клиента в приложении, " +
+    "удалятся и платежи рассрочки, и возвраты по продаже. Отмеченные посещения останутся. " +
+    "Если продажа заменила прежний абонемент клиента и его срок не вышел, прежний снова станет действующим."
+  );
+}
+
 export const SALE_TIPS = {
   soldAt: "С этой даты начинается абонемент: от неё считается срок действия и график рассрочки.",
   membership:

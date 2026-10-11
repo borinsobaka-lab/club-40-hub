@@ -24,6 +24,7 @@ import {
   SALE_KIND_TINT,
   SALE_KINDS,
   SALE_TIPS,
+  saleDeleteDescription,
   saleSourceLabel,
   type PaymentMethod,
   type PaymentType,
@@ -250,7 +251,10 @@ function SalesPage() {
     if (
       !(await confirm({
         title: "Удалить продажу?",
-        description: "Продажа будет удалена. Выданный по ней абонемент останется у клиента.",
+        description: saleDeleteDescription(
+          s.clients ? clientName(s.clients) : null,
+          s.memberships?.name ?? null,
+        ),
       }))
     )
       return;
@@ -259,8 +263,15 @@ function SalesPage() {
       toast.error("Ошибка удаления: " + error.message);
       return;
     }
-    toast.success("Продажа удалена");
-    reload();
+    toast.success(s.client_memberships?.length ? "Продажа и абонемент удалены" : "Продажа удалена");
+    // Вместе с продажей удалился абонемент клиента (триггер в базе).
+    for (const key of [
+      "sales_list",
+      "client_packages_list",
+      "client_memberships",
+      "clients_with_status",
+    ])
+      queryClient.invalidateQueries({ queryKey: [key] });
   };
 
   const openSale = (k: SaleKind) => {
