@@ -355,8 +355,8 @@ function WorkoutForm({
       return;
     }
     const capacityNum = capacity.trim() === "" ? null : Number(capacity);
-    if (capacityNum != null && (!Number.isFinite(capacityNum) || capacityNum < 0)) {
-      toast.error("Вместимость должна быть неотрицательным числом");
+    if (capacityNum != null && (!Number.isInteger(capacityNum) || capacityNum < 0)) {
+      toast.error("Вместимость должна быть целым неотрицательным числом");
       return;
     }
     const metNum = metValue.trim() === "" ? null : Number(metValue);

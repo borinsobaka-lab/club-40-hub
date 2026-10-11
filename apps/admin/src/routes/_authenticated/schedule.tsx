@@ -155,7 +155,10 @@ const ADMIN_CANCEL_REASONS = [
   "Другое",
 ];
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22
+// Часы сетки по умолчанию — 7..22; занятие раньше или позже расширяет сетку
+// (иначе оно было бы в базе, но не на экране).
+const FIRST_HOUR = 7;
+const LAST_HOUR = 22;
 // Высота часа с занятиями — по самой высокой карточке (две строки названия +
 // строка тренеров или «тренер + клиент» в две строки). Меняешь вёрстку
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
@@ -448,7 +451,11 @@ function SchedulePage() {
       busyHours.add(start.getHours());
       perDay[(start.getDay() + 6) % 7]++;
     }
-    return { cells, busyHours, perDay };
+    const hourList = [...busyHours];
+    const first = Math.min(FIRST_HOUR, ...hourList);
+    const last = Math.max(LAST_HOUR, ...hourList);
+    const hours = Array.from({ length: last - first + 1 }, (_, i) => i + first);
+    return { cells, busyHours, perDay, hours };
   }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   const openSlot = (day: Date, hour: number) => {
@@ -576,10 +583,11 @@ function SchedulePage() {
     if (
       !(await confirm({
         title: "Удалить занятие?",
-        // Брони (schedule_bookings) удаляются каскадом, а журнал переводит в
-        // «Отменено» триггер db/migrations/…_schedule_entry_delete.sql.
+        // Брони (schedule_bookings) удаляются каскадом: списанное возвращает
+        // триггер …_zzzzzzzz_review_fixes.sql, журнал переводит в «Отменено»
+        // …_schedule_entry_delete.sql.
         description:
-          "Записи клиентов на него будут отменены — в истории записей они останутся со статусом «Отменено».",
+          "Записи клиентов на него будут отменены, списанные тренировки вернутся на абонементы. Если занятие состоялось или переносится, лучше «Отменить» — оно останется в расписании.",
       }))
     )
       return false;
@@ -808,7 +816,7 @@ function SchedulePage() {
                 </>
               )}
 
-              {HOURS.map((hour) => {
+              {grid.hours.map((hour) => {
                 const rowHeight =
                   grid.busyHours.has(hour) || (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour))
                     ? SLOT_PX_FULL
@@ -851,15 +859,21 @@ function SchedulePage() {
                           {entriesPending && isScheduleSkeletonCell(hour, di, isMobile) && (
                             <EntryCardSkeleton />
                           )}
-                          {grid.cells.get(cellKey(day, hour))?.map((e) => (
-                            <EntryCard
-                              key={e.id}
-                              entry={e}
-                              packages={packages}
-                              onOpen={() => openEdit(e)}
-                              onCopy={() => startCopy(e)}
-                            />
-                          ))}
+                          {/* Несколько занятий в одном часе — рядом, а не друг на друге.
+                              Обёртка пропускает клики в промежутках к кнопке слота. */}
+                          {grid.cells.has(cellKey(day, hour)) && (
+                            <div className="pointer-events-none absolute inset-1 flex gap-1">
+                              {grid.cells.get(cellKey(day, hour))?.map((e) => (
+                                <EntryCard
+                                  key={e.id}
+                                  entry={e}
+                                  packages={packages}
+                                  onOpen={() => openEdit(e)}
+                                  onCopy={() => startCopy(e)}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -894,7 +908,9 @@ function SchedulePage() {
         trainers={trainers}
         staff={staff}
         packages={packages}
-        entry={editing}
+        // Свежая строка из списка: после записи клиентов в окне booked_count
+        // у снимка `editing` устаревает (предупреждение в «Отменить тренировку»).
+        entry={editing ? (entries.find((x) => x.id === editing.id) ?? editing) : null}
         presetStart={presetStart}
         onSaved={reloadEntries}
         onDelete={handleDelete}
@@ -1068,7 +1084,7 @@ function EntryCard({
     return (
       <div
         className={cn(
-          "absolute inset-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs",
+          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs",
           cancelled && "schedule-cancelled",
         )}
         title={cancelled ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}` : undefined}
@@ -1130,7 +1146,7 @@ function EntryCard({
   const colorClasses = color ? `${color.bg} ${color.text}` : "bg-primary text-primary-foreground";
   return (
     <div
-      className={`absolute inset-1 overflow-hidden rounded-md text-[11px] leading-tight ${colorClasses}`}
+      className={`pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md text-[11px] leading-tight ${colorClasses}`}
     >
       <button
         type="button"
@@ -1418,11 +1434,15 @@ function EntryForm({
       if (entry && kind === "personal" && !cancelled) {
         // Персональное без клиента не сохраняем: клиент записан в панели ниже.
         // У отменённого записей уже нет — его можно править и так.
-        const { count } = await supabase
+        const { count, error: countError } = await supabase
           .from("schedule_bookings")
           .select("id", { count: "exact", head: true })
           .eq("entry_id", entry.id)
           .in("status", ["booked", "attended"]);
+        if (countError) {
+          toast.error("Не удалось проверить запись клиента: " + countError.message);
+          return;
+        }
         if (!count) {
           toast.error("Добавьте клиента — кнопка «Записать клиента» ниже");
           return;
@@ -2139,6 +2159,19 @@ function PickClientForm({
  * уже отменена и т. п.), а не ошибка запроса. Тост об ошибке показываем здесь;
  * true — успех.
  */
+/** Коды отказа RPC записи (db/migrations, booking_waitlist.sql) — по-русски, а не как есть. */
+const BOOKING_RPC_REASONS: Record<string, string> = {
+  not_found: "запись не найдена",
+  wrong_status: "у записи уже другой статус — обновите окно",
+  already_cancelled: "запись уже отменена",
+  not_booked: "клиент не записан",
+  excuse_required: "укажите, уважительная ли причина",
+  comment_required: "напишите причину",
+  forbidden: "нет прав в этом клубе",
+  unauthorized: "нет прав",
+  past: "занятие уже прошло",
+};
+
 async function bookingRpc(
   fn:
     | "mark_booking_attended"
@@ -2155,7 +2188,8 @@ async function bookingRpc(
   }
   const result = data as { ok?: boolean; reason?: string } | null;
   if (!result?.ok) {
-    toast.error(`${messages.failed}: ${result?.reason ?? "неизвестно"}`);
+    const reason = result?.reason ?? "";
+    toast.error(`${messages.failed}: ${BOOKING_RPC_REASONS[reason] ?? (reason || "неизвестно")}`);
     return false;
   }
   return true;

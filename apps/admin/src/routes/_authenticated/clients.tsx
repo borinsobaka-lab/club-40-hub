@@ -191,7 +191,12 @@ function ClientsPage() {
       return;
     const { error } = await supabase.from("clients").delete().eq("id", c.id);
     if (error) {
-      toast.error("Ошибка удаления: " + error.message);
+      // Продажи абонементов держат клиента внешним ключом (on delete restrict).
+      toast.error(
+        error.code === "23503"
+          ? "Клиента нельзя удалить: у него есть продажи абонементов. Сначала удалите их."
+          : "Ошибка удаления: " + error.message,
+      );
       return;
     }
     toast.success("Клиент удалён");
