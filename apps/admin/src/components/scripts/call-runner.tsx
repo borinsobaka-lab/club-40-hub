@@ -271,7 +271,9 @@ function Runner({
   const cardRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = cardRef.current;
-    if (el && el.getBoundingClientRect().top < scrollParentTop(el))
+    // Под закреплённой панелью поиска карточка тоже считается уехавшей.
+    const margin = el ? parseFloat(getComputedStyle(el).scrollMarginTop) || 0 : 0;
+    if (el && el.getBoundingClientRect().top < scrollParentTop(el) + margin)
       el.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [current.id]);
 
@@ -388,7 +390,7 @@ function Runner({
           ref={cardRef}
           aria-live="polite"
           className={cn(
-            "order-first scroll-mt-3 rounded-lg border bg-background lg:order-none",
+            "order-first scroll-mt-36 sm:scroll-mt-28 rounded-lg border bg-background lg:order-none",
             isObjection && "border-amber-300",
           )}
         >

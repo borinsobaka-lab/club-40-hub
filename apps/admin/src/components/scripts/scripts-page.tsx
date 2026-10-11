@@ -529,64 +529,71 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
   return (
     <AdminShell title={title} actions={actions || undefined}>
       <div className={isCall && !searching ? "space-y-3" : "mx-auto max-w-4xl space-y-3"}>
-        <TableToolbar>
-          <div className="toolbar-search relative w-full max-w-96">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchRef}
-              inputMode="search"
-              value={query}
-              placeholder="Поиск: «дорого», «адрес», «шпагат»…"
-              aria-label="Поиск по скриптам"
-              className="pr-9 pl-9"
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setQuery("");
-              }}
-            />
-            {query ? (
-              <button
-                type="button"
-                aria-label="Очистить поиск"
-                className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setQuery("");
-                  searchRef.current?.focus();
+        {/* Поиск, язык и студия закреплены над прокруткой: нашли скрипт в
+            длинном списке — язык меняется здесь же, без пути наверх.
+            Липкость считается от паддинга main: отрицательные top и отступ
+            забирают его, чтобы карточки уходили под полосу канвы, а не
+            просвечивали над панелью. */}
+        <div className="sticky -top-3 z-20 -mx-1 sm:-top-4 lg:-top-6 -mt-3 bg-canvas px-1 pt-3 pb-2 sm:-mt-4 sm:pt-4 lg:-mt-6 lg:pt-6">
+          <TableToolbar>
+            <div className="toolbar-search relative w-full max-w-96">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchRef}
+                inputMode="search"
+                value={query}
+                placeholder="Поиск: «дорого», «адрес», «шпагат»…"
+                aria-label="Поиск по скриптам"
+                className="pr-9 pl-9"
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setQuery("");
                 }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            ) : (
-              // Одна клавиша «/» быстрее, чем дотянуться до поля мышью.
-              <kbd
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border px-1.5 text-xs text-muted-foreground max-sm:hidden"
-              >
-                /
-              </kbd>
-            )}
-          </div>
-          <Tabs value={lang} onValueChange={(v) => setLang(v as ScriptLang)}>
-            <TabsList aria-label="Язык текста">
-              {LANGS.map((l) => (
-                <TabsTrigger key={l.key} value={l.key} title={l.name}>
-                  {l.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          {studios.length > 1 && (
-            <Tabs value={activeStudio} onValueChange={setStudio}>
-              <TabsList aria-label="Студия">
-                {studios.map((s) => (
-                  <TabsTrigger key={s} value={s}>
-                    {s}
+              />
+              {query ? (
+                <button
+                  type="button"
+                  aria-label="Очистить поиск"
+                  className="absolute top-1/2 right-2 inline-flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setQuery("");
+                    searchRef.current?.focus();
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : (
+                // Одна клавиша «/» быстрее, чем дотянуться до поля мышью.
+                <kbd
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border px-1.5 text-xs text-muted-foreground max-sm:hidden"
+                >
+                  /
+                </kbd>
+              )}
+            </div>
+            <Tabs value={lang} onValueChange={(v) => setLang(v as ScriptLang)}>
+              <TabsList aria-label="Язык текста">
+                {LANGS.map((l) => (
+                  <TabsTrigger key={l.key} value={l.key} title={l.name}>
+                    {l.label}
                   </TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
-          )}
-        </TableToolbar>
+            {studios.length > 1 && (
+              <Tabs value={activeStudio} onValueChange={setStudio}>
+                <TabsList aria-label="Студия">
+                  {studios.map((s) => (
+                    <TabsTrigger key={s} value={s}>
+                      {s}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
+          </TableToolbar>
+        </div>
         {!isLoading && access && <p className="text-sm text-muted-foreground">{hint}</p>}
         {content}
       </div>

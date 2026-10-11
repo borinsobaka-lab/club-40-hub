@@ -205,7 +205,8 @@ export function ScriptCard({
     <article
       id={`script-${item.id}`}
       className={cn(
-        "scroll-mt-4 overflow-hidden rounded-lg border bg-background transition-shadow duration-700",
+        // Отступ при прокрутке к карточке — под закреплённой панелью поиска.
+        "scroll-mt-36 sm:scroll-mt-28 overflow-hidden rounded-lg border bg-background transition-shadow duration-700",
         flash && "ring-2 ring-brand",
       )}
     >
