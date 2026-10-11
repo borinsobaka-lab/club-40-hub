@@ -24,7 +24,7 @@ import {
 
 /*
  * Скелетоны страниц админки — по одному на раздел, каждый повторяет
- * структуру СВОЕЙ страницы: заголовок и кнопки шапки, плашку фильтров с теми
+ * структуру СВОЕЙ страницы: заголовок, плавающие кнопки действий, плашку фильтров с теми
  * же контролами, заголовки колонок, плитки, карточки, вкладки. Статичные
  * подписи (вкладки, колонки, названия плиток) — настоящим текстом, болванки
  * — только на месте данных.
@@ -409,12 +409,9 @@ export function ClientMembershipsPageSkeleton() {
 
 export function OtherSalesPageSkeleton() {
   return (
-    <ShellSkeleton title="Прочие продажи">
+    <ShellSkeleton title="Прочие продажи" actions={[{ label: "Добавить продажу" }]}>
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsSkeleton labels={["Продажи", "Позиции"]} />
-          <Skeleton className="h-10 w-44" />
-        </div>
+        <TabsSkeleton labels={["Продажи", "Позиции"]} />
         <TableCardSkeleton
           pagination
           headers={[

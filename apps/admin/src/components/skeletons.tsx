@@ -103,7 +103,7 @@ export function ControlSkeletonView({ control }: { control: ControlSkeleton }) {
 
 /**
  * Шапка страницы как в AdminShell: та же разметка и классы, настоящий
- * заголовок раздела, вместо кнопок действий — болванки по их тексту.
+ * заголовок раздела; плавающие кнопки действий — болванки по их тексту.
  * Хуков нет — можно рисовать до загрузки чего угодно (каркас до входа).
  */
 export function ShellSkeleton({
@@ -119,37 +119,49 @@ export function ShellSkeleton({
   return (
     <>
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
-        {/* Кнопка меню на узком экране — как SidebarTrigger. */}
-        <span className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center md:hidden">
-          <PanelLeft className="size-4" />
-        </span>
-        <h1 className="min-w-0 flex-1 truncate text-xl font-semibold leading-tight lg:flex-initial lg:text-2xl">
-          {title}
-        </h1>
-        <span className="inline-flex size-10 shrink-0 items-center justify-center">
-          <RefreshCw className="h-5 w-5" />
-        </span>
-        {actions.length > 0 && (
-          <div className="shell-actions order-last w-full lg:order-none lg:ml-auto lg:w-auto">
-            {/* До lg кнопки делят строку поровну (как .shell-actions у страницы),
-                а не тянутся по полному тексту — на телефоне он короче. */}
-            <div className="flex gap-2 max-lg:[&>*]:min-w-0 max-lg:[&>*]:flex-1 max-lg:[&>*]:basis-0 max-lg:[&>*]:overflow-hidden">
-              {actions.map((a, i) => (
-                <ControlSkeletonView key={i} control={a} />
-              ))}
-            </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2 lg:basis-0">
+          {/* Кнопка меню на узком экране — как SidebarTrigger. */}
+          <span className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center md:hidden">
+            <PanelLeft className="size-4" />
+          </span>
+          <h1 className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl">
+            {title}
+          </h1>
+          <span className="inline-flex size-10 shrink-0 items-center justify-center">
+            <RefreshCw className="h-5 w-5" />
+          </span>
+        </div>
+        {/* Поиск клиента — как HeaderClientSearch. */}
+        <Skeleton className="order-last h-10 w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+        <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
+          <Skeleton className="h-10 w-10 shrink-0 sm:w-20 lg:h-9" />
+          {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
+          <div className="hidden items-center gap-2 lg:flex">
+            <Skeleton className="h-10 w-44" />
           </div>
-        )}
-        <Skeleton
-          className={cn("h-10 w-10 shrink-0 sm:w-20 lg:h-9", actions.length === 0 && "lg:ml-auto")}
-        />
-        {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
-        <div className="hidden items-center gap-2 lg:flex">
-          <Skeleton className="h-10 w-44" />
         </div>
       </header>
-      <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6" aria-busy="true">
+      <main className="admin-main flex-1 overflow-auto p-3 sm:p-4 lg:p-6" aria-busy="true">
         {children}
+        {/* Плавающие действия — как FloatingActions: тот же контейнер,
+            «пилюли» размера .fab-actions button. */}
+        {actions.length > 0 && (
+          <div className="fab-actions fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-end gap-3 sm:right-6 sm:bottom-6 lg:right-8 lg:bottom-8">
+            {actions.map((a, i) => (
+              <ControlSkeletonView
+                key={i}
+                control={
+                  typeof a === "string"
+                    ? cn("h-12 rounded-full", a)
+                    : {
+                        ...a,
+                        className: cn("h-12 rounded-full px-5 text-[0.9375rem]", a.className),
+                      }
+                }
+              />
+            ))}
+          </div>
+        )}
       </main>
     </>
   );
