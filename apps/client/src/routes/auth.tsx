@@ -1,13 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FloatingLabelInput, FloatingLabelSelect } from "@/components/ui/floating-input";
-import { SelectItem } from "@/components/ui/select";
+import { FloatingLabelInput } from "@/components/ui/floating-input";
 import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
-import { useFormatStudios } from "@/hooks/use-studios";
-import { APP_FORMAT } from "@/lib/app-format";
 
 function formatCooldown(sec: number) {
   const m = Math.floor(sec / 60);
@@ -15,13 +12,20 @@ function formatCooldown(sec: number) {
   return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s} сек`;
 }
 
-function humanizeAuthError(message: string, isSignup: boolean): string {
+const NOT_A_MEMBER = "Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.";
+
+function humanizeAuthError(message: string): string {
   const m = message.toLowerCase();
-  if (m.includes("signups not allowed") || m.includes("otp_disabled")) {
-    return "Аккаунт с этой почтой не найден. Зарегистрируйтесь.";
-  }
-  if (m.includes("already registered") || m.includes("already exists")) {
-    return "Эта почта уже зарегистрирована. Войдите по коду.";
+  // Учётная запись создаётся при первом входе, но только для почты из
+  // карточки клиента на портале — иначе триггер handle_new_user отказывает
+  // (db/migrations/…_client_signin_only.sql), и GoTrue отвечает
+  // «Database error saving new user».
+  if (
+    m.includes("database error saving new user") ||
+    m.includes("signups not allowed") ||
+    m.includes("otp_disabled")
+  ) {
+    return NOT_A_MEMBER;
   }
   // Проверка формата email — раньше общего «invalid»: сообщение Supabase
   // «Unable to validate email address: invalid format» тоже содержит
@@ -35,7 +39,7 @@ function humanizeAuthError(message: string, isSignup: boolean): string {
   if (m.includes("rate limit") || m.includes("after ")) {
     return "Слишком часто. Подождите минуту и попробуйте ещё раз.";
   }
-  return isSignup ? "Не удалось отправить код: " + message : message;
+  return "Не удалось отправить код: " + message;
 }
 
 // Длина кода из письма. Supabase не даёт настраивать Email OTP Length —
@@ -49,7 +53,7 @@ const emptyOtp = () => Array<string>(OTP_LENGTH).fill("");
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [{ title: "Регистрация — Base40" }],
+    meta: [{ title: "Вход — Base40" }],
   }),
   component: AuthPage,
 });
@@ -57,12 +61,8 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { requestOtp, verifyOtp, session, loading } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
   const [step, setStep] = useState<"form" | "otp">("form");
   const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(emptyOtp);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,13 +71,6 @@ function AuthPage() {
   // На какой адрес ушёл последний код: «Изменить данные» → «Получить код» с
   // тем же адресом не должен обходить паузу между отправками.
   const [sentTo, setSentTo] = useState<string | null>(null);
-  // Студии формата этого приложения: новый клиент записывается в одну из
-  // них (одна — без вопроса, несколько — выбирает сам). undefined — список не
-  // загрузился (или база ещё без форматов студий): регистрация идёт как раньше.
-  const { data: formatStudios } = useFormatStudios();
-  const [pickedStudioId, setPickedStudioId] = useState("");
-  const signupStudioId =
-    formatStudios?.length === 1 ? formatStudios[0].id : pickedStudioId || undefined;
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
@@ -90,35 +83,9 @@ function AuthPage() {
     return () => clearInterval(id);
   }, [cooldown]);
 
-  const isSignup = mode === "signup";
-
   const requestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (isSignup) {
-      if (firstName.trim().length < 1 || lastName.trim().length < 1) {
-        setError("Укажите фамилию и имя");
-        return;
-      }
-      if (phone.trim().length < 5) {
-        setError("Укажите номер телефона");
-        return;
-      }
-      // Пакетному приложению без студии регистрироваться нельзя: триггер
-      // записал бы клиента в самую старую — подписочную — студию.
-      if (!formatStudios && APP_FORMAT === "packages") {
-        setError("Не удалось загрузить список студий. Обновите страницу.");
-        return;
-      }
-      if (formatStudios?.length === 0) {
-        setError("Регистрация пока закрыта: студия ещё не открылась.");
-        return;
-      }
-      if (formatStudios && !signupStudioId) {
-        setError("Выберите студию");
-        return;
-      }
-    }
     if (!email.trim()) {
       setError("Укажите email");
       return;
@@ -131,16 +98,10 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    const { error: sendError } = await requestOtp(email.trim(), {
-      signup: isSignup,
-      firstName,
-      lastName,
-      phone,
-      studioId: signupStudioId,
-    });
+    const { error: sendError } = await requestOtp(email.trim());
     setBusy(false);
     if (sendError) {
-      setError(humanizeAuthError(sendError, isSignup));
+      setError(humanizeAuthError(sendError));
       return;
     }
     setSentTo(email.trim());
@@ -154,16 +115,10 @@ function AuthPage() {
     if (busy || cooldown > 0) return;
     setError(null);
     setBusy(true);
-    const { error: sendError } = await requestOtp(email.trim(), {
-      signup: isSignup,
-      firstName,
-      lastName,
-      phone,
-      studioId: signupStudioId,
-    });
+    const { error: sendError } = await requestOtp(email.trim());
     setBusy(false);
     if (sendError) {
-      setError(humanizeAuthError(sendError, isSignup));
+      setError(humanizeAuthError(sendError));
       return;
     }
     setOtp(emptyOtp());
@@ -180,7 +135,7 @@ function AuthPage() {
     setBusy(true);
     // Успешная проверка создаёт сессию — редирект сработает через useEffect выше.
     const { error: verifyError } = await verifyOtp(email.trim(), otp.join(""));
-    if (verifyError) setError(humanizeAuthError(verifyError, isSignup));
+    if (verifyError) setError(humanizeAuthError(verifyError));
     setBusy(false);
   };
 
@@ -221,7 +176,7 @@ function AuthPage() {
         className="absolute -top-40 left-1/2 -translate-x-1/2 h-[420px] w-[420px] rounded-full pointer-events-none"
         style={{
           background:
-            "radial-gradient(closest-side, rgba(255,229,0,0.28), rgba(255,229,0,0.08) 55%, transparent 75%)",
+            "radial-gradient(closest-side, color-mix(in srgb, var(--primary) 28%, transparent), color-mix(in srgb, var(--primary) 8%, transparent) 55%, transparent 75%)",
         }}
       />
 
@@ -235,57 +190,16 @@ function AuthPage() {
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black uppercase leading-tight">Добро пожаловать</h1>
+          <h1 className="text-3xl font-black leading-tight">Добро пожаловать</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {step === "otp"
               ? `Введите код, отправленный на ${email}`
-              : isSignup
-                ? "Зарегистрируйтесь для старта"
-                : "Войдите в аккаунт"}
+              : "Войдите по почте, которую вы указали в клубе"}
           </p>
         </div>
 
         {step === "form" ? (
           <form onSubmit={requestCode} className="space-y-3 max-w-sm w-full mx-auto">
-            {isSignup && (
-              <>
-                {formatStudios && formatStudios.length > 1 && (
-                  <FloatingLabelSelect
-                    label="Студия"
-                    value={pickedStudioId}
-                    onValueChange={setPickedStudioId}
-                  >
-                    {formatStudios.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </FloatingLabelSelect>
-                )}
-                <FloatingLabelInput
-                  label="Фамилия"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  autoComplete="family-name"
-                  required
-                />
-                <FloatingLabelInput
-                  label="Имя"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  autoComplete="given-name"
-                  required
-                />
-                <FloatingLabelInput
-                  label="Телефон"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  autoComplete="tel"
-                  required
-                />
-              </>
-            )}
             <FloatingLabelInput
               label="Email"
               type="email"
@@ -376,24 +290,7 @@ function AuthPage() {
               }}
               className="w-full text-center text-sm text-muted-foreground"
             >
-              Изменить данные
-            </button>
-          </div>
-        )}
-
-        {/* Mode switch */}
-        {step === "form" && (
-          <div className="mt-auto pt-8 text-center text-sm text-muted-foreground">
-            {isSignup ? "Уже есть аккаунт?" : "Нет аккаунта?"}{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(isSignup ? "signin" : "signup");
-                setError(null);
-              }}
-              className="text-foreground font-bold"
-            >
-              {isSignup ? "Войти" : "Зарегистрироваться"}
+              Изменить почту
             </button>
           </div>
         )}

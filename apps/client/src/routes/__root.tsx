@@ -145,7 +145,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="ru">
+    // Формат приложения — для фирменного цвета (styles.css, --brand).
+    <html lang="ru" data-app-format={APP_FORMAT}>
       <head>
         <HeadContent />
       </head>
