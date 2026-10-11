@@ -578,7 +578,7 @@ function NoteCell({
           className={cn(
             "line-clamp-2 min-w-[140px] max-w-[200px] cursor-pointer whitespace-pre-wrap break-words text-left",
             value
-              ? cn(noteChipClass, "hover:border-note-foreground/40")
+              ? cn(noteChipClass, "hover:bg-note")
               : "text-muted-foreground hover:text-foreground",
           )}
         >

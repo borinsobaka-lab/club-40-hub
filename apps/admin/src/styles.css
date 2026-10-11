@@ -109,6 +109,7 @@
   --color-canvas: var(--canvas);
   --color-field: var(--field);
   --color-note: var(--note);
+  --color-note-soft: var(--note-soft);
   --color-note-border: var(--note-border);
   --color-note-foreground: var(--note-foreground);
 }
@@ -173,13 +174,16 @@
   --field: color-mix(in oklab, var(--muted) 40%, white);
 
   /* Заметки и комментарии — «бумажка» (решение владельца 2026-10-11): тёплый
-     тон старой бумаги, чтобы заметку о клиенте было видно сразу, а не искать
-     среди обычных полей. Поле ввода — с тенью (`Textarea note`), в таблицах
-     и карточках — тот же цвет без тени (`noteChipClass`, comment-cell.tsx). */
-  --note: #fbf3de;
-  --note-border: #e9d8ad;
-  --note-foreground: #4a3f26;
-  --note-shadow: 0 1px 2px rgb(120 90 30 / 0.12), 0 6px 14px -8px rgb(120 90 30 / 0.35);
+     тон бумаги, чтобы заметку было видно среди обычных полей. Тон близко к
+     белому — заметка не должна перетягивать на себя весь экран (правка
+     владельца 2026-10-11). Поле и заметка в окне — `--note` с рамкой и
+     лёгкой тенью (`Textarea note`, `noteCardClass`); в таблицах и списках —
+     ещё светлее, без рамки и тени (`--note-soft`, `noteChipClass`). */
+  --note: #fcf6e6;
+  --note-soft: #fdf9f0;
+  --note-border: #efe3c4;
+  --note-foreground: #3f382a;
+  --note-shadow: 0 1px 2px rgb(120 90 30 / 0.06), 0 4px 10px -6px rgb(120 90 30 / 0.16);
 }
 
 .dark {
@@ -265,7 +269,7 @@ textarea[data-note]:focus-visible {
   box-shadow: var(--note-shadow);
 }
 textarea[data-note]::placeholder {
-  color: rgb(120 100 60 / 0.6);
+  color: rgb(120 100 60 / 0.5);
 }
 
 /* Отменённое занятие в расписании — белая карточка в наклонную светло-серую

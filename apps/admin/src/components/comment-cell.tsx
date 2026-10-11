@@ -2,15 +2,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 /**
- * Заметка или комментарий в таблице, списке, карточке — тот же тёплый
- * «бумажный» тон, что у поля заметки (`Textarea note`), но без тени
- * (решение владельца 2026-10-11): так заметки сразу видно.
+ * Заметка или комментарий в таблице и списке — едва тёплая подложка без
+ * рамки и тени (решение владельца 2026-10-11: в таблице заметка не должна
+ * перетягивать на себя внимание, только отличаться от остального текста).
  */
-export const noteChipClass =
-  "rounded-md border border-note-border bg-note px-2 py-1 text-note-foreground";
+export const noteChipClass = "rounded-md bg-note-soft px-2 py-1";
 
-/** Заметка, которую ищут глазами (карточка клиента), — «записка» с тенью, как поле. */
-export const noteCardClass = `${noteChipClass} px-3 py-2.5 shadow-[var(--note-shadow)]`;
+/** Заметка в окне (обработка обратной связи) — тон поля заметки, с рамкой, без тени. */
+export const noteBoxClass =
+  "rounded-md border border-note-border bg-note px-3 py-2.5 text-note-foreground";
+
+/** Заметка, которую ищут глазами (карточка клиента), — как поле заметки, с лёгкой тенью. */
+export const noteCardClass = `${noteBoxClass} shadow-[var(--note-shadow)]`;
 
 /**
  * Комментарий в ячейке таблицы: в строке — первые две строки текста, по
@@ -29,7 +32,7 @@ export function CommentCell({ text }: { text: string | null | undefined }) {
           title="Показать комментарий целиком"
           className={cn(
             noteChipClass,
-            "line-clamp-2 min-w-[160px] max-w-[260px] cursor-pointer whitespace-pre-wrap break-words text-left hover:border-note-foreground/40",
+            "line-clamp-2 min-w-[160px] max-w-[260px] cursor-pointer whitespace-pre-wrap break-words text-left hover:bg-note",
           )}
         >
           {value}

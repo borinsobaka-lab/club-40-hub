@@ -12,7 +12,7 @@ import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import { noteChipClass } from "@/components/comment-cell";
+import { noteBoxClass } from "@/components/comment-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
@@ -581,7 +581,7 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
                 ` · ${format(new Date(item.resolved_at), "d MMM yyyy", { locale: ru })}`}
             </p>
             {item.resolution_comment && (
-              <p className={cn(noteChipClass, "whitespace-pre-wrap text-sm")}>
+              <p className={cn(noteBoxClass, "whitespace-pre-wrap text-sm")}>
                 {item.resolution_comment}
               </p>
             )}
