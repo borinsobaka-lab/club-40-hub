@@ -293,6 +293,9 @@ AUTH_SETUP.md.
   Адрес студии: `db/migrations/2026-10-11_zzzzzzzzzzzz_studio_address.sql` —
   `studios.address` (публичное чтение колонки, правит владелец; плашка
   студии в приложении пакетов).
+  Мессенджеры студии: `db/migrations/2026-10-12_studio_messengers.sql` —
+  `studio_app_settings.whatsapp_url/messenger_url` («Контакты и правила» →
+  «О клубе»; в приложении пакетов — «Студия» → «Информация»).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

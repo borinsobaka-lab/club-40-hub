@@ -51,6 +51,8 @@ type Settings = {
   google_maps_url: string | null;
   yandex_maps_url: string | null;
   instagram_url: string | null;
+  whatsapp_url: string | null;
+  messenger_url: string | null;
 };
 
 type FormValues = {
@@ -63,6 +65,8 @@ type FormValues = {
   googleMapsUrl: string;
   yandexMapsUrl: string;
   instagramUrl: string;
+  whatsappUrl: string;
+  messengerUrl: string;
 };
 
 function toFormValues(s: Settings | null | undefined): FormValues {
@@ -76,6 +80,8 @@ function toFormValues(s: Settings | null | undefined): FormValues {
     googleMapsUrl: s?.google_maps_url ?? "",
     yandexMapsUrl: s?.yandex_maps_url ?? "",
     instagramUrl: s?.instagram_url ?? "",
+    whatsappUrl: s?.whatsapp_url ?? "",
+    messengerUrl: s?.messenger_url ?? "",
   };
 }
 
@@ -190,6 +196,8 @@ function ClubSettingsForm({
         google_maps_url: form.googleMapsUrl.trim() || null,
         yandex_maps_url: form.yandexMapsUrl.trim() || null,
         instagram_url: form.instagramUrl.trim() || null,
+        whatsapp_url: form.whatsappUrl.trim() || null,
+        messenger_url: form.messengerUrl.trim() || null,
       };
       const { error } = await supabase
         .from(TABLE)
@@ -303,6 +311,24 @@ function ClubSettingsForm({
             placeholder="https://instagram.com/…"
             value={form.instagramUrl}
             onChange={(e) => setField("instagramUrl", e.target.value)}
+          />
+        </FormField>
+        <FormField label="WhatsApp" optional hint="Ссылка на чат: wa.me и номер без «+».">
+          <Input
+            placeholder="https://wa.me/995555123456"
+            value={form.whatsappUrl}
+            onChange={(e) => setField("whatsappUrl", e.target.value)}
+          />
+        </FormField>
+        <FormField
+          label="Facebook Messenger"
+          optional
+          hint="Ссылка m.me на страницу клуба в Facebook."
+        >
+          <Input
+            placeholder="https://m.me/…"
+            value={form.messengerUrl}
+            onChange={(e) => setField("messengerUrl", e.target.value)}
           />
         </FormField>
       </section>
