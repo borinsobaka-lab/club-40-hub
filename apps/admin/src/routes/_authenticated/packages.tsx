@@ -17,6 +17,7 @@ import { FormattedTextarea } from "@/components/formatted-textarea";
 import { stripFormatting } from "@/lib/formatted-text";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -64,7 +65,32 @@ const TIPS = {
     "Перетащите строку за ручку, чтобы поменять порядок: в таком же порядке абонементы стоят в приложении.",
   payments:
     "Сколькими ежемесячными платежами можно оплатить пакет (внутренняя рассрочка). 1 — только сразу. При продаже можно выбрать меньше.",
+  tag: "Короткая пометка справа от названия в приложении: «Популярно», «Максимум», «Старт». Пусто — без тега. Яркий — розовая плашка с белым текстом, бледный — светлая.",
+  gift: "Блок «В подарок» под составом пакета в приложении (заголовок всегда «В подарок»). Например: **Персональная тренировка** — 110 ₾. Персональные в подарок отдельной строкой в составе не показываются — напишите их здесь.",
 };
+
+type TagStyle = "soft" | "bright";
+
+const TAG_STYLES: { value: TagStyle; label: string }[] = [
+  { value: "soft", label: "Бледный" },
+  { value: "bright", label: "Яркий" },
+];
+
+/**
+ * Тег номенклатуры — как в приложении: бледный или яркий. Цвет — основной
+ * цвет пакетного приложения (#F763FC, apps/client), а не бренд клуба.
+ */
+function PackageTag({ text, style }: { text: string; style: TagStyle | null }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+        style === "bright" ? "bg-[#F763FC] text-white" : "bg-[#F763FC]/15 text-[#B41FBA]"
+      }`}
+    >
+      {text}
+    </span>
+  );
+}
 
 /** Предел платежей — как ограничение memberships.max_payments в БД. */
 const MAX_PAYMENTS_LIMIT = 12;
@@ -100,13 +126,18 @@ type Package = {
   is_active: boolean;
   /** Порядок в таблице и в приложении (по возрастанию, перетаскивание строк). */
   sort_order: number;
+  /** Тег справа от названия в приложении и его вид. */
+  tag_text: string | null;
+  tag_style: TagStyle | null;
+  /** Блок «В подарок» в приложении (текст с разметкой). */
+  gift_text: string | null;
 };
 
 /** Поля, которыми можно предзаполнить новый пакет (дублирование). */
 type PackageDraft = Omit<Package, "id" | "studio_id" | "sort_order">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order, tag_text, tag_style, gift_text";
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
@@ -357,7 +388,12 @@ function PackagesPage() {
                             aria-label="Перетащить"
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <span className="flex flex-wrap items-center gap-2">
+                            {p.name}
+                            {p.tag_text && <PackageTag text={p.tag_text} style={p.tag_style} />}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           {p.kind !== "package" ? (
                             <Badge variant="outline">{MEMBERSHIP_KIND_LABEL[p.kind]}</Badge>
@@ -467,6 +503,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
   const [kind, setKind] = useState<MembershipKind>(init?.kind ?? "package");
   const [maxPayments, setMaxPayments] = useState(String(init?.max_payments ?? 1));
   const [isActive, setIsActive] = useState(init?.is_active ?? true);
+  const [tagText, setTagText] = useState(init?.tag_text ?? "");
+  const [tagStyle, setTagStyle] = useState<TagStyle>(init?.tag_style ?? "soft");
+  const [giftText, setGiftText] = useState(init?.gift_text ?? "");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -531,6 +570,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         max_payments: payments,
         kind,
         is_active: isActive,
+        tag_text: tagText.trim() || null,
+        tag_style: tagText.trim() ? tagStyle : null,
+        gift_text: giftText.trim() || null,
         auto_renew: false,
         installment_enabled: false,
         for_couple: false,
@@ -668,6 +710,34 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
 
             <FormField label="Описание" tip={TIPS.description} optional>
               <FormattedTextarea rows={4} value={description} onChange={setDescription} />
+            </FormField>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+              <FormField label="Тег" tip={TIPS.tag} optional>
+                <Input
+                  value={tagText}
+                  maxLength={24}
+                  onChange={(e) => setTagText(e.target.value)}
+                  placeholder="Например: Популярно"
+                />
+              </FormField>
+              <FormField label="Вид тега" htmlFor={null}>
+                <SegmentedControl
+                  aria-label="Вид тега"
+                  value={tagStyle}
+                  onChange={setTagStyle}
+                  options={TAG_STYLES}
+                />
+              </FormField>
+            </div>
+            {tagText.trim() && (
+              <div className="-mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                В приложении: <PackageTag text={tagText.trim()} style={tagStyle} />
+              </div>
+            )}
+
+            <FormField label="В подарок" tip={TIPS.gift} optional>
+              <FormattedTextarea rows={3} value={giftText} onChange={setGiftText} />
             </FormField>
 
             <SwitchRow

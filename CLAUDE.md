@@ -235,6 +235,18 @@ AUTH_SETUP.md.
   пользователь GoTrue; у сотрудника — только клиентская часть). Разово
   стёрты «фантомные» учётные записи — входили, но карточки нет; клиентов с
   карточкой (продажи, абонементы, анкета) очистка не трогала.
+  Правки приложения пакетов 2026-10-12:
+  `db/migrations/2026-10-12_zz_packages_app_fixes.sql` — `memberships.tag_text`
+  / `tag_style` (`soft` / `bright`) / `gift_text` (тег и «В подарок» в
+  карточке пакета); политики папки клиента `{uid}/` в бакете `avatars` и
+  «clients self update» (на self-hosted их не было — `db/storage_avatars.sql`
+  с невалидным `create policy if not exists`); калории — триггер
+  `schedule_bookings_log_kcal_aiu` при переходе записи в `attended` (не
+  зависит от версии `mark_booking_attended`) и `member_profiles_fill_calories_aiu`
+  (вес указан позже — досчитывает посещения без снимка),
+  `bookings_log_fill_calories` переопределена здесь; RPC
+  `my_studio_visit_stats` — сравнение со студией в статистике приложения;
+  `refresh_client_stats_30d` — только service_role.
   Онбординг пакетного приложения: `db/migrations/2026-10-11_packages_onboarding.sql`
   — `member_profiles.goal_other` (текст цели «Другое»), `birth_date`, новые
   значения enum `fitness_goal` (`flexibility`/`stress_relief`/`body_shape`/`other`).
