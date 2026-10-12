@@ -16,6 +16,9 @@ import { Input } from "@/components/ui/input";
 import { FormattedTextarea } from "@/components/formatted-textarea";
 import { stripFormatting } from "@/lib/formatted-text";
 import { BenefitsEditor } from "@/components/benefits-editor";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
+import { useContentTranslations } from "@/hooks/use-content-translations";
+import { TRANSLATED_LANGS, translationText, type ContentTranslations } from "@/lib/content-i18n";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -136,13 +139,15 @@ type Package = {
   gift_text: string | null;
   /** «Что входит» в приложении — пункты по одному. */
   benefits: string[] | null;
+  /** Переводы для приложения: {en|ka: {name, description, tag_text, gift_text, benefits[]}}. */
+  translations: ContentTranslations;
 };
 
 /** Поля, которыми можно предзаполнить новый пакет (дублирование). */
 type PackageDraft = Omit<Package, "id" | "studio_id" | "sort_order">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order, tag_text, tag_style, gift_text, benefits";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order, tag_text, tag_style, gift_text, benefits, translations";
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
@@ -512,11 +517,19 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
   const [tagStyle, setTagStyle] = useState<TagStyle>(init?.tag_style ?? "soft");
   const [giftText, setGiftText] = useState(init?.gift_text ?? "");
   const [benefits, setBenefits] = useState<string[]>(init?.benefits ?? []);
+  const tr = useContentTranslations(init?.translations);
+  const { ruHint: benefitsRuHint, ...benefitsField } = tr.list(
+    "benefits",
+    benefits,
+    setBenefits,
+    "Например: 2 диагностики тела — и нажмите +",
+  );
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!studioId) return;
     if (!name.trim()) {
+      tr.setLang("ru");
       toast.error("Укажите название");
       return;
     }
@@ -560,6 +573,12 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       return;
     }
 
+    const translations = tr.cleaned();
+    // Вид тега нужен, если тег есть хоть на одном языке.
+    const hasTag =
+      !!tagText.trim() ||
+      TRANSLATED_LANGS.some((l) => translationText(translations, l, "tag_text"));
+
     setSaving(true);
     try {
       // Всё, чего у пакетов нет, — явно выключено: строка в общей таблице
@@ -577,13 +596,14 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         kind,
         is_active: isActive,
         tag_text: tagText.trim() || null,
-        tag_style: tagText.trim() ? tagStyle : null,
+        tag_style: hasTag ? tagStyle : null,
         gift_text: giftText.trim() || null,
         auto_renew: false,
         installment_enabled: false,
         for_couple: false,
         freeze_days_allowed: 0,
         benefits,
+        translations,
       };
       const { error } = item
         ? await supabase.from("memberships").update(payload).eq("id", item.id)
@@ -600,6 +620,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
     }
   };
 
+  // Тег в предпросмотре — на языке формы; перевода нет — русский тег.
+  const tagPreview = tr.input("tag_text", tagText, setTagText).value.trim() || tagText.trim();
+
   return (
     <>
       <DialogHeader>
@@ -609,10 +632,12 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
           тренировок) или персональных с тренером (пакет персональных). Пробное посещение продаётся
           типом «Пробное» в «Продажах».
         </DialogDescription>
+        <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
+            <ContentLangNote lang={tr.lang} />
             <FormField label="Тип" tip={TIPS.kind} htmlFor={null} required>
               <RadioGroup
                 value={kind}
@@ -628,17 +653,21 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </RadioGroup>
             </FormField>
 
-            <FormField label="Название" required>
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Название</ContentLangLabel>}
+              required={tr.lang === "ru"}
+            >
               <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={
+                {...tr.input(
+                  "name",
+                  name,
+                  setName,
                   kind === "trial"
                     ? "Например: Пробное занятие"
                     : kind === "personal"
                       ? "Например: 5 персональных"
-                      : "Например: 8 тренировок"
-                }
+                      : "Например: 8 тренировок",
+                )}
               />
             </FormField>
 
@@ -714,17 +743,26 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </FormField>
             )}
 
-            <FormField label="Описание" tip={TIPS.description} optional>
-              <FormattedTextarea rows={4} value={description} onChange={setDescription} />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Описание</ContentLangLabel>}
+              tip={TIPS.description}
+              optional
+            >
+              <FormattedTextarea
+                rows={4}
+                {...tr.text("description", description, setDescription)}
+              />
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
-              <FormField label="Тег" tip={TIPS.tag} optional>
+              <FormField
+                label={<ContentLangLabel lang={tr.lang}>Тег</ContentLangLabel>}
+                tip={TIPS.tag}
+                optional
+              >
                 <Input
-                  value={tagText}
                   maxLength={24}
-                  onChange={(e) => setTagText(e.target.value)}
-                  placeholder="Например: Популярно"
+                  {...tr.input("tag_text", tagText, setTagText, "Например: Популярно")}
                 />
               </FormField>
               <FormField label="Вид тега" htmlFor={null}>
@@ -736,22 +774,28 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
                 />
               </FormField>
             </div>
-            {tagText.trim() && (
+            {tagPreview && (
               <div className="-mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                В приложении: <PackageTag text={tagText.trim()} style={tagStyle} />
+                В приложении: <PackageTag text={tagPreview} style={tagStyle} />
               </div>
             )}
 
-            <FormField label="Что входит" tip={TIPS.benefits} optional>
-              <BenefitsEditor
-                value={benefits}
-                onChange={setBenefits}
-                placeholder="Например: 2 диагностики тела — и нажмите +"
-              />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Что входит</ContentLangLabel>}
+              tip={TIPS.benefits}
+              optional
+              hint={benefitsRuHint}
+            >
+              {/* key: недописанный пункт не переезжает на другой язык. */}
+              <BenefitsEditor key={tr.lang} {...benefitsField} />
             </FormField>
 
-            <FormField label="В подарок" tip={TIPS.gift} optional>
-              <FormattedTextarea rows={3} value={giftText} onChange={setGiftText} />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>В подарок</ContentLangLabel>}
+              tip={TIPS.gift}
+              optional
+            >
+              <FormattedTextarea rows={3} {...tr.text("gift_text", giftText, setGiftText)} />
             </FormField>
 
             <SwitchRow

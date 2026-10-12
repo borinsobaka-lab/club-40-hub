@@ -9,6 +9,13 @@ export type SegmentedOption<T extends string> = {
   label: string;
   /** Иконка; с `iconOnly` подпись уходит в aria-label и title. */
   icon?: React.ComponentType<{ className?: string }>;
+  /** Всплывающая подпись (полное название при короткой подписи). */
+  title?: string;
+  /**
+   * Точка-отметка после подписи (язык, на котором уже есть перевод); строка —
+   * её смысл для скринридера.
+   */
+  dot?: string;
 };
 
 /**
@@ -88,7 +95,7 @@ export function SegmentedControl<T extends string>({
             role="radio"
             aria-checked={checked}
             aria-label={iconOnly ? o.label : undefined}
-            title={iconOnly ? o.label : undefined}
+            title={o.title ?? (iconOnly ? o.label : undefined)}
             tabIndex={checked || (selectedIndex < 0 && i === 0) ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cn(
@@ -100,6 +107,11 @@ export function SegmentedControl<T extends string>({
           >
             {o.icon && <o.icon />}
             {!iconOnly && o.label}
+            {o.dot && (
+              <span className="size-1.5 shrink-0 rounded-full bg-brand">
+                <span className="sr-only">{o.dot}</span>
+              </span>
+            )}
           </button>
         );
       })}

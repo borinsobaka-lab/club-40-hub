@@ -16,6 +16,9 @@ import { Input } from "@/components/ui/input";
 import { FormattedTextarea } from "@/components/formatted-textarea";
 import { stripFormatting } from "@/lib/formatted-text";
 import { BenefitsEditor } from "@/components/benefits-editor";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
+import { useContentTranslations } from "@/hooks/use-content-translations";
+import type { ContentTranslations } from "@/lib/content-i18n";
 import { CheckboxOption, FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +93,8 @@ type Membership = {
   cover_url: string | null;
   for_couple: boolean;
   freeze_days_allowed: number;
+  /** Переводы для приложения: {en|ka: {name, description, benefits[]}}. */
+  translations: ContentTranslations;
 };
 
 /** Поля, которыми можно предзаполнить новый абонемент (дублирование). */
@@ -383,11 +388,15 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
   const [isActive, setIsActive] = useState(init?.is_active ?? true);
   const [coverUrl, setCoverUrl] = useState(init?.cover_url ?? null);
   const [forCouple, setForCouple] = useState(init?.for_couple ?? false);
+  const tr = useContentTranslations(init?.translations);
   const [saving, setSaving] = useState(false);
+
+  const { ruHint: benefitsRuHint, ...benefitsField } = tr.list("benefits", benefits, setBenefits);
 
   const handleSave = async () => {
     if (!studioId) return;
     if (!name.trim()) {
+      tr.setLang("ru");
       toast.error("Укажите название");
       return;
     }
@@ -416,6 +425,7 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
         name: name.trim(),
         description: description.trim() || null,
         benefits,
+        translations: tr.cleaned(),
         visits_count: visits,
         duration_days: durationDays ? Number(durationDays) : null,
         auto_renew: autoRenew,
@@ -446,16 +456,17 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
       <DialogHeader>
         <DialogTitle>{item ? "Редактировать абонемент" : "Новый абонемент"}</DialogTitle>
         <DialogDescription>Заполните параметры номенклатуры.</DialogDescription>
+        <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Название" required>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Например: Безлимит на месяц"
-              />
+            <ContentLangNote lang={tr.lang} />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Название</ContentLangLabel>}
+              required={tr.lang === "ru"}
+            >
+              <Input {...tr.input("name", name, setName, "Например: Безлимит на месяц")} />
             </FormField>
 
             <FormField
@@ -475,12 +486,25 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
               />
             </FormField>
 
-            <FormField label="Описание" tip={TIPS.description} optional>
-              <FormattedTextarea rows={4} value={description} onChange={setDescription} />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Описание</ContentLangLabel>}
+              tip={TIPS.description}
+              optional
+            >
+              <FormattedTextarea
+                rows={4}
+                {...tr.text("description", description, setDescription)}
+              />
             </FormField>
 
-            <FormField label="Преимущества" tip={TIPS.benefits} optional>
-              <BenefitsEditor value={benefits} onChange={setBenefits} />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Преимущества</ContentLangLabel>}
+              tip={TIPS.benefits}
+              optional
+              hint={benefitsRuHint}
+            >
+              {/* key: недописанный пункт не переезжает на другой язык. */}
+              <BenefitsEditor key={tr.lang} {...benefitsField} />
             </FormField>
 
             <FormField label="Количество посещений" tip={TIPS.visits} required={!unlimited}>

@@ -5,6 +5,7 @@ import { ExternalLink, Loader2, LogIn, Pencil, Plus, Trash2 } from "lucide-react
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { TableSkeletonRows } from "@/components/skeletons";
@@ -39,6 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
+import { useContentTranslations } from "@/hooks/use-content-translations";
 import { useStudios, type Studio } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrapPage } from "@/lib/query";
@@ -385,10 +387,12 @@ function StudioForm({
   const [color, setColor] = useState(item?.brand_color ?? DEFAULT_BRAND_COLOR);
   const [logo, setLogo] = useState<string | null>(item?.logo_url ?? null);
   const [address, setAddress] = useState(item?.address ?? "");
+  const tr = useContentTranslations(item?.translations);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim()) {
+      tr.setLang("ru");
       toast.error("Укажите название клуба");
       return;
     }
@@ -402,6 +406,7 @@ function StudioForm({
       // Формат после создания не меняется: под ним у студии свои абонементы,
       // расписание и данные, переключение — это миграция, а не правка поля.
       const addressValue = address.trim() || null;
+      const translations = tr.cleaned();
       let error;
       if (item) {
         ({ error } = await supabase
@@ -411,6 +416,7 @@ function StudioForm({
             brand_color: brandColor,
             logo_url: logo,
             address: addressValue,
+            translations,
           })
           .eq("id", item.id));
       } else {
@@ -421,12 +427,12 @@ function StudioForm({
           _logo_url: logo,
         });
         error = created.error;
-        // create_studio адрес не принимает — дописываем: создатель уже
-        // владелец новой студии и может её править.
-        if (!error && addressValue && created.data) {
+        // create_studio адрес и переводы не принимает — дописываем:
+        // создатель уже владелец новой студии и может её править.
+        if (!error && (addressValue || Object.keys(translations).length > 0) && created.data) {
           ({ error } = await supabase
             .from("studios")
-            .update({ address: addressValue })
+            .update({ address: addressValue, translations })
             .eq("id", created.data as string));
         }
       }
@@ -453,24 +459,25 @@ function StudioForm({
         <DialogDescription>
           Логотип и основной цвет видны в админке, пока открыт этот клуб.
         </DialogDescription>
+        <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Название" required>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Base40 Ваке"
-              />
+            <ContentLangNote lang={tr.lang} />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Название</ContentLangLabel>}
+              required={tr.lang === "ru"}
+            >
+              <Input {...tr.input("name", name, setName, "Base40 Ваке")} />
             </FormField>
 
-            <FormField label="Адрес" optional tip={TIPS.address}>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Тбилиси, ул. Палиашвили, 40"
-              />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Адрес</ContentLangLabel>}
+              optional
+              tip={TIPS.address}
+            >
+              <Input {...tr.input("address", address, setAddress, "Тбилиси, ул. Палиашвили, 40")} />
             </FormField>
 
             {item ? (
