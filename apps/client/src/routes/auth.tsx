@@ -9,6 +9,7 @@ import { CLUB, IS_PACKAGES } from "@/lib/terms";
 import { DarkFrame, Illustration } from "@/formats/packages/dark-frame";
 import packagesLogo from "@/assets/packages-logo.svg";
 import loginEmailArt from "@/assets/login-email.webp";
+import loginCodeArt from "@/assets/login-code.webp";
 
 function formatCooldown(sec: number) {
   const m = Math.floor(sec / 60);
@@ -266,7 +267,7 @@ function AuthPage() {
               alt="Логотип студии"
               className="mt-4 h-auto w-[150px] shrink-0"
             />
-            <Illustration src={loginEmailArt} />
+            <Illustration src={step === "otp" ? loginCodeArt : loginEmailArt} />
             <h1 className="mt-2 text-3xl font-semibold leading-tight">Добро пожаловать</h1>
             <p className="mt-2 text-sm text-white/70">{subtitle}</p>
           </div>

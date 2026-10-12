@@ -677,3 +677,10 @@ google_maps_url / yandex_maps_url / instagram_url`, бакет `studio-photos`;
   рисунок (`.art-glow-over`, `styles.css`). Белая панель — по
   содержимому. На шагах анкеты со списками иллюстраций нет. Логотип на
   входе — 150px.
+- 2026-10-12 — все иллюстрации на месте (`apps/client/src/assets/`):
+  `login-email` и `login-code` — вход (почта / код), `onboarding-intro` и
+  `onboarding-final` — вступление и финал анкеты, `onboarding-schedule` —
+  шаг «Как планируете заниматься?» (`STEP_ART` в
+  `formats/packages/onboarding.tsx`: шаг с картинкой становится tall —
+  картинка в тёмной зоне, белая панель по содержимому). На финале картинка
+  заменила розовый кружок с галочкой.

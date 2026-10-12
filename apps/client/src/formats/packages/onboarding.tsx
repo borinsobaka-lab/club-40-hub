@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Children, useEffect, useMemo, useState, type ReactNode } from "react";
-import { AltArrowLeft, CheckCircle, Refresh } from "@solar-icons/react";
+import { AltArrowLeft, Refresh } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RulerPicker } from "@/components/ui/ruler-picker";
 import { Textarea } from "@/components/ui/textarea";
-import { DarkFrame as Frame } from "@/formats/packages/dark-frame";
+import { DarkFrame as Frame, Illustration } from "@/formats/packages/dark-frame";
+import introArt from "@/assets/onboarding-intro.webp";
+import finalArt from "@/assets/onboarding-final.webp";
+import scheduleArt from "@/assets/onboarding-schedule.webp";
 import {
   ActivityOptions,
   ExperienceOptions,
@@ -252,8 +255,9 @@ export function PackagesOnboardingPage() {
       <Frame
         tall
         header={
-          <div className="px-6 pb-10">
-            <h1 className="text-3xl font-semibold leading-tight">
+          <div className="flex min-h-0 flex-1 flex-col px-6 pb-10">
+            <Illustration src={introArt} />
+            <h1 className="mt-2 text-3xl font-semibold leading-tight">
               Пара вопросов — и вы сможете следить за своим прогрессом
             </h1>
           </div>
@@ -273,11 +277,9 @@ export function PackagesOnboardingPage() {
       <Frame
         tall
         header={
-          <div className="px-6 pb-10">
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-              <CheckCircle className="h-9 w-9 text-primary-foreground" weight="BoldDuotone" />
-            </div>
-            <h1 className="text-3xl font-semibold leading-tight">
+          <div className="flex min-h-0 flex-1 flex-col px-6 pb-10">
+            <Illustration src={finalArt} />
+            <h1 className="mt-2 text-3xl font-semibold leading-tight">
               Спасибо, что поделились с нами!
             </h1>
           </div>
@@ -294,11 +296,13 @@ export function PackagesOnboardingPage() {
   }
 
   const titles = STEP_HEADERS[step];
+  const art = STEP_ART[step];
 
   return (
     <Frame
+      tall={!!art}
       header={
-        <div className="px-4 pb-8">
+        <div className={art ? "flex min-h-0 flex-1 flex-col px-4 pb-8" : "px-4 pb-8"}>
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -310,6 +314,7 @@ export function PackagesOnboardingPage() {
             </button>
             <Progress step={step} total={TOTAL_STEPS} />
           </div>
+          {art && <Illustration src={art} />}
           <h1 className="mt-5 text-2xl font-semibold leading-tight">{titles.title}</h1>
           {titles.subtitle && <p className="mt-2 text-sm text-white/70">{titles.subtitle}</p>}
         </div>
@@ -424,6 +429,14 @@ export function PackagesOnboardingPage() {
     </Frame>
   );
 }
+
+/**
+ * Иллюстрации шагов, где мало полей (на шагах со списками их нет): шаг
+ * становится tall — картинка в тёмной зоне, белая панель по содержимому.
+ */
+const STEP_ART: Record<number, string> = {
+  6: scheduleArt,
+};
 
 /** Вопрос шага — в тёмной шапке. */
 const STEP_HEADERS: Record<number, { title: string; subtitle?: string }> = {
