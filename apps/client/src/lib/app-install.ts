@@ -26,6 +26,13 @@ export type AppInstall = {
 
 const DEFAULT_NAME = "Base40";
 
+/**
+ * Цвет строки состояния телефона (время, заряд) в установленном приложении —
+ * как фон шапки (HeaderBackdrop в components/page-shell.tsx), чтобы полоса
+ * сверху не была чёрной. Meta theme-color и theme_color манифеста.
+ */
+export const APP_THEME_COLOR = "#2A2B2F";
+
 const DEFAULT_ICONS: AppInstall["icons"] = {
   icon192: "/icon-192.png",
   icon512: "/icon-512.png",
@@ -118,7 +125,7 @@ export function buildManifest(app: AppInstall) {
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#0a0a0a",
+    theme_color: APP_THEME_COLOR,
     icons: [
       { src: app.icons.icon192, sizes: "192x192", type: "image/png", purpose: "any" },
       { src: app.icons.icon512, sizes: "512x512", type: "image/png", purpose: "any" },

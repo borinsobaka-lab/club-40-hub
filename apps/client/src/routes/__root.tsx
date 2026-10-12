@@ -20,7 +20,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useClientStudio, type Studio } from "@/hooks/use-studios";
 import { useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { APP_FORMAT, FORMAT_APP_URL } from "@/lib/app-format";
-import { DEFAULT_APP_INSTALL, fetchAppInstall } from "@/lib/app-install";
+import { APP_THEME_COLOR, DEFAULT_APP_INSTALL, fetchAppInstall } from "@/lib/app-install";
 import { clientCardQuery } from "@/lib/client-card";
 import { homeBookingsQuery } from "@/lib/home-queries";
 import { IS_PACKAGES } from "@/lib/terms";
@@ -150,7 +150,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           content:
             "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
         },
-        { name: "theme-color", content: "#0a0a0a" },
+        { name: "theme-color", content: APP_THEME_COLOR },
         // Подпись под значком: Android берёт её из манифеста, iOS — отсюда.
         { name: "application-name", content: app.name },
         { name: "apple-mobile-web-app-title", content: app.name },
