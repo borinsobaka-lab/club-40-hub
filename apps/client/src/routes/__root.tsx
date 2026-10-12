@@ -36,6 +36,8 @@ import {
 } from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { I18nProvider, getTranslator, loadDictionary } from "@/i18n";
+import { getRequestLocale } from "@/i18n/request-locale";
 
 // Адрес API Supabase — для preconnect: соединение (DNS + TLS) с базой
 // открывается параллельно с загрузкой JS, а не после неё.
@@ -133,23 +135,30 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Язык интерфейса (cookie) и его словарь — до рендера: сервер сразу рисует
+  // страницу на нём. В браузере словарь уже в памяти (hydrate в router.tsx).
+  beforeLoad: async () => {
+    const locale = getRequestLocale();
+    await loadDictionary(locale);
+    return { locale };
+  },
   // Иконка и подпись приложения из админки (src/lib/app-install.ts) — для
   // фавикона и установки на рабочий стол. Грузятся при серверном рендере;
   // переходы внутри приложения их не перезапрашивают.
   loader: () => fetchAppInstall(),
   staleTime: Infinity,
-  head: ({ loaderData }) => {
+  head: ({ loaderData, match }) => {
     const app = loaderData ?? DEFAULT_APP_INSTALL;
+    const t = getTranslator(match.context.locale);
+    const description = t(
+      "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
+    );
     return {
       meta: [
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
         { title: "Base40" },
-        {
-          name: "description",
-          content:
-            "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
-        },
+        { name: "description", content: description },
         { name: "theme-color", content: APP_THEME_COLOR },
         // Подпись под значком: Android берёт её из манифеста, iOS — отсюда.
         { name: "application-name", content: app.name },
@@ -158,19 +167,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-status-bar-style", content: "default" },
         { property: "og:title", content: "Base40" },
-        {
-          property: "og:description",
-          content:
-            "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
-        },
+        { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary" },
         { name: "twitter:title", content: "Base40" },
-        {
-          name: "twitter:description",
-          content:
-            "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
-        },
+        { name: "twitter:description", content: description },
       ],
       links: [
         // Шрифт (Roboto) самохостится и подключён в styles.css. Обращений к
@@ -206,9 +207,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const { locale } = Route.useRouteContext();
   return (
     // Формат приложения — для фирменного цвета (styles.css, --brand).
-    <html lang="ru" data-app-format={APP_FORMAT}>
+    <html lang={locale} data-app-format={APP_FORMAT}>
       <head>
         <HeadContent />
       </head>
@@ -221,7 +223,7 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  const { queryClient, locale } = Route.useRouteContext();
 
   useEffect(() => {
     const onPreloadError = (event: Event) => {
@@ -242,14 +244,16 @@ function RootComponent() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SolarProvider value={{ weight: "BoldDuotone" }}>
-          <AppShell />
-          <Toaster />
-        </SolarProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <I18nProvider initialLocale={locale}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SolarProvider value={{ weight: "BoldDuotone" }}>
+            <AppShell />
+            <Toaster />
+          </SolarProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </I18nProvider>
   );
 }
 

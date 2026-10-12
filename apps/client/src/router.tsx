@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { loadDictionary, readDocumentLocale } from "@/i18n";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
@@ -25,6 +26,11 @@ export const getRouter = () => {
     // Код раздела подгружается при наведении/касании ссылки, до перехода.
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    // Словарь выбранного языка — до гидратации: сервер отрисовал страницу на
+    // нём, и первый рендер в браузере должен совпасть (src/i18n/).
+    hydrate: async () => {
+      await loadDictionary(readDocumentLocale());
+    },
   });
 
   return router;

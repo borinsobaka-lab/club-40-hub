@@ -198,7 +198,7 @@ function HomePage() {
   const newsQuery = useQuery({
     queryKey: ["news", studioId],
     queryFn: async (): Promise<News[]> => {
-      let q = supabase.from("news").select("id,title,description,image_url,position");
+      let q = supabase.from("news").select("id,title,description,image_url,position,translations");
       if (studioId) q = q.contains("studio_ids", [studioId]);
       const { data, error } = await q
         .order("position", { ascending: true })
@@ -217,7 +217,7 @@ function HomePage() {
     queryFn: async (): Promise<Service[]> => {
       let q = untypedDb
         .from("services")
-        .select("id,title,description,image_url,button_text,button_url,position");
+        .select("id,title,description,image_url,button_text,button_url,position,translations");
       if (studioId) q = q.contains("studio_ids", [studioId]);
       const { data, error } = await q
         .order("position", { ascending: true })

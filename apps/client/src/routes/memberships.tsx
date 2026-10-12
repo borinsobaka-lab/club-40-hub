@@ -114,7 +114,7 @@ async function fetchActiveMembership(clientId: string) {
   let query = db
     .from("client_memberships")
     .select(
-      `id, ends_at, visits_left, auto_renew, ${isPackages ? "balance_kind, personal_left, " : ""}memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)`,
+      `id, ends_at, visits_left, auto_renew, ${isPackages ? "balance_kind, personal_left, " : ""}memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed, translations)`,
     )
     .eq("client_id", clientId)
     .in("status", ["active", "frozen"])
@@ -283,7 +283,7 @@ function MembershipsPage() {
         // держит триггер на clients (db/client_app_fixes.sql).
 
         const membershipSelect =
-          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple, freeze_days_allowed";
+          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple, freeze_days_allowed, translations";
         const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
           db
             .from("memberships")

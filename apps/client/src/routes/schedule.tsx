@@ -133,7 +133,7 @@ function SchedulePage() {
       let query = supabase
         .from("schedule_entries")
         .select(
-          "id, starts_at, ends_at, capacity, booked_count, workout:workouts(name, type, description, photo_url, capacity), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))",
+          "id, starts_at, ends_at, capacity, booked_count, workout:workouts(name, type, description, photo_url, capacity, translations), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, translations))",
         )
         .gte("starts_at", from)
         .lt("starts_at", to)

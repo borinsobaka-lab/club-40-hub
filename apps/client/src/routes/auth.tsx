@@ -11,6 +11,7 @@ import { takeSignInRefused } from "@/lib/sign-in-refused";
 import { cancelHomeConfetti, queueHomeConfetti } from "@/lib/confetti";
 import { DarkFrame } from "@/formats/packages/dark-frame";
 import packagesLogo from "@/assets/packages-logo.svg";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import loginEmailArt from "@/assets/login-email.webp";
 import loginCodeArt from "@/assets/login-code.webp";
 
@@ -318,7 +319,13 @@ function AuthPage() {
     return (
       <DarkFrame
         tall
-        top={<img src={packagesLogo} alt="Логотип студии" className="mx-6 mt-4 h-auto w-[150px]" />}
+        top={
+          // Язык — справа от логотипа: его выбирают при первом открытии.
+          <div className="mx-6 mt-4 flex items-center justify-between gap-3">
+            <img src={packagesLogo} alt="Логотип студии" className="h-auto w-[150px]" />
+            <LanguageSwitcher />
+          </div>
+        }
         art={step === "otp" ? loginCodeArt : loginEmailArt}
         header={
           <div className="px-6 pt-2 pb-10">
@@ -387,11 +394,12 @@ function AuthPage() {
       />
 
       <div className="relative flex flex-col min-h-[100dvh] px-6 pt-16 pb-8">
-        {/* Brand */}
-        <div className="flex flex-col items-center mb-10">
+        {/* Brand; язык — справа от логотипа */}
+        <div className="relative flex flex-col items-center mb-10">
           <div className="text-2xl font-black tracking-widest">
             Base<span className="text-primary">40</span>
           </div>
+          <LanguageSwitcher tone="light" className="absolute right-0 top-1/2 -translate-y-1/2" />
         </div>
 
         {/* Heading */}

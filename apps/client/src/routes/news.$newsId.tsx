@@ -43,7 +43,7 @@ function NewsDetailPage() {
     supabase
       .from("news")
       .select(
-        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url",
+        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url,translations",
       )
       .eq("id", newsId)
       .maybeSingle()

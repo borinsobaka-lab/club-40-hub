@@ -42,7 +42,7 @@ export function homeBookingsQuery(userId: string | null) {
           IS_PACKAGES
             ? // Пакетное — карточка как в расписании: цвет, места, фото тренеров.
               `entry_id, entry:schedule_entries!inner(${PACK_ENTRY_SELECT})`
-            : "entry_id, entry:schedule_entries!inner(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url)))",
+            : "entry_id, entry:schedule_entries!inner(id, starts_at, ends_at, workout:workouts(name, type, description, photo_url, translations), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, translations)))",
         )
         .eq("user_id", userId)
         .eq("status", "booked")

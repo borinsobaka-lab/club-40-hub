@@ -1,4 +1,5 @@
 import type { WorkoutDrawerData } from "@/components/workout-drawer";
+import type { ContentTranslations } from "@/i18n";
 import { mediaUrl } from "@/lib/media";
 
 /**
@@ -13,6 +14,8 @@ export type PackTrainer = {
   /** Средний рейтинг (numeric — приходит строкой) и число оценок. */
   rating_avg?: number | string | null;
   rating_count?: number | null;
+  /** Переводы имени (src/i18n/content.ts). */
+  translations?: ContentTranslations | null;
 };
 
 export type PackEntry = {
@@ -29,13 +32,14 @@ export type PackEntry = {
     description: string | null;
     photo_url: string | null;
     capacity: number | null;
+    translations?: ContentTranslations | null;
   } | null;
   trainers: { trainer: PackTrainer | null }[] | null;
 };
 
 /** select для schedule_entries (и вложенного entry в schedule_bookings). */
 export const PACK_ENTRY_SELECT =
-  "id, studio_id, starts_at, ends_at, capacity, booked_count, workout:workouts(id, name, color, description, photo_url, capacity), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, rating_avg, rating_count))";
+  "id, studio_id, starts_at, ends_at, capacity, booked_count, workout:workouts(id, name, color, description, photo_url, capacity, translations), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, rating_avg, rating_count, translations))";
 
 export function entryTrainers(e: PackEntry): PackTrainer[] {
   return (e.trainers ?? []).map((t) => t.trainer).filter((t): t is PackTrainer => !!t);
