@@ -290,7 +290,9 @@ export function PackagesOnboardingPage() {
           </PrimaryButton>
         }
       >
-        <p className="px-6 pt-6 text-base text-muted-foreground">До встречи в студии.</p>
+        <p className="px-6 pt-6 text-base text-muted-foreground">
+          Теперь вы сможете следить за своим прогрессом — ждём вас на тренировке в студии!
+        </p>
       </Frame>
     );
   }
