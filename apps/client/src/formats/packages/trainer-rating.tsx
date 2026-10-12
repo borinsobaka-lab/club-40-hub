@@ -90,8 +90,8 @@ export function TrainerRatingLine({
   );
 }
 
-/** «Поблагодарить тренера» — ссылка на внешний сервис чаевых. */
-export function TipButton({ url }: { url: string }) {
+/** «Поблагодарить тренера» (администратора, массажиста) — ссылка на внешний сервис чаевых. */
+export function TipButton({ url, label }: { url: string; label: string }) {
   const t = useT();
   return (
     <a
@@ -104,7 +104,7 @@ export function TipButton({ url }: { url: string }) {
         <HandHeart className="h-6 w-6" weight="BoldDuotone" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{t("Поблагодарить тренера")}</span>
+        <span className="block font-semibold">{label}</span>
         <span className="block text-sm text-muted-foreground">{t("Оставить чаевые")}</span>
       </span>
       <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -113,10 +113,10 @@ export function TipButton({ url }: { url: string }) {
 }
 
 /**
- * «Оцените тренера»: ещё не оценивал — звёзды и «Отправить»; оценил — своя
- * оценка и «Изменить». Гостю не показывается.
+ * «Оцените тренера» (массажиста — title): ещё не оценивал — звёзды и
+ * «Отправить»; оценил — своя оценка и «Изменить». Гостю не показывается.
  */
-export function RateTrainer({ trainerId }: { trainerId: string }) {
+export function RateTrainer({ trainerId, title }: { trainerId: string; title: string }) {
   const t = useT();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -167,7 +167,7 @@ export function RateTrainer({ trainerId }: { trainerId: string }) {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="font-semibold">{rated ? t("Ваша оценка") : t("Оцените тренера")}</div>
+      <div className="font-semibold">{rated ? t("Ваша оценка") : title}</div>
       {showForm ? (
         <>
           <div

@@ -66,7 +66,7 @@ type Workout = { id: string; name: string; type?: string | null; capacity?: numb
 type Trainer = {
   id: string;
   full_name: string;
-  /** trainer | admin — справочник «Сотрудники». */
+  /** trainer | admin | masseur — справочник «Сотрудники». */
   role?: string;
   /** Фото из справочника — аватарка в выпадающих списках. */
   photo_url?: string | null;
@@ -1268,7 +1268,7 @@ function parsePayRate(v: string) {
   return Number.isFinite(n) && n >= 0 ? n : NaN;
 }
 
-/** Галочки сотрудников; с byRole — тренеры и администраторы отдельными группами. */
+/** Галочки сотрудников; с byRole — тренеры, массажисты и администраторы отдельными группами. */
 function TrainerChecks({
   options,
   value,
@@ -1293,24 +1293,34 @@ function TrainerChecks({
       ))}
     </div>
   );
-  const admins = byRole ? options.filter((t) => t.role === "admin") : [];
-  if (admins.length === 0) return <div className="rounded-md border p-3">{checks(options)}</div>;
-  const others = options.filter((t) => t.role !== "admin");
+  // Неизвестная роль — к тренерам.
+  const groups = ROLE_GROUPS.map((g) => ({
+    ...g,
+    list: options.filter(
+      (t) => (t.role && ROLE_GROUP_KEYS.has(t.role) ? t.role : "trainer") === g.role,
+    ),
+  })).filter((g) => g.list.length > 0);
+  if (!byRole || groups.length < 2) {
+    return <div className="rounded-md border p-3">{checks(options)}</div>;
+  }
   return (
     <div className="space-y-3 rounded-md border p-3">
-      {others.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">Тренеры</div>
-          {checks(others)}
+      {groups.map((g) => (
+        <div key={g.role} className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">{g.label}</div>
+          {checks(g.list)}
         </div>
-      )}
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground">Администраторы</div>
-        {checks(admins)}
-      </div>
+      ))}
     </div>
   );
 }
+
+const ROLE_GROUPS = [
+  { role: "trainer", label: "Тренеры" },
+  { role: "masseur", label: "Массажисты" },
+  { role: "admin", label: "Администраторы" },
+] as const;
+const ROLE_GROUP_KEYS = new Set<string>(ROLE_GROUPS.map((g) => g.role));
 
 function NoTrainersNote({ staff }: { staff?: boolean }) {
   return (

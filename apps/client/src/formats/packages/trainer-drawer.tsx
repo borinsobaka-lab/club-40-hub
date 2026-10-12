@@ -12,15 +12,22 @@ import { useLocalize, useT } from "@/i18n";
 import { FormattedText } from "@/lib/formatted-text";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
-import { trainerCardQuery, type StudioTrainer } from "./queries";
+import {
+  STAFF_ROLE_TEXT,
+  staffHasRating,
+  staffRole,
+  trainerCardQuery,
+  type StudioTrainer,
+} from "./queries";
 import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
 
 /**
- * Карточка тренера пакетного приложения — шторка: фото, имя, рейтинг,
- * «Поблагодарить тренера» (чаевые), под ними «Оцените тренера» (решение
- * владельца 2026-10-12: оценка выше биографии), биография. Открывается из
- * «Студии» → «Тренеры» и из окна тренировки (там — вложенной шторкой,
- * nested, поверх окна).
+ * Карточка сотрудника пакетного приложения — шторка: фото, роль, имя,
+ * рейтинг, «Поблагодарить …» (чаевые), под ними «Оцените …» (решение
+ * владельца 2026-10-12: оценка выше биографии), биография. У администратора
+ * (2026-10-12) — без рейтинга и оценки: только описание и чаевые; массажист
+ * — как тренер. Открывается из вкладок «Студии» и из окна тренировки (там —
+ * вложенной шторкой, nested, поверх окна).
  *
  * Данные — trainerCardQuery по id; из списка тренеров приходят сразу
  * (initial), из окна тренировки догружаются.
@@ -100,8 +107,11 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
   const t = useT();
   const loc = useLocalize();
   const trainer = loc(row);
+  const role = staffRole(row);
+  const text = STAFF_ROLE_TEXT[role];
   const photo = mediaUrl(trainer.photo_url, "trainer-photos");
   const tipUrl = trainer.tip_url?.trim() ?? "";
+  const hasTip = /^https?:\/\//i.test(tipUrl);
   return (
     <>
       <div className="flex items-center gap-4">
@@ -112,27 +122,31 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
           </SquircleAvatarFallback>
         </SquircleAvatar>
         <div className="min-w-0">
-          <div className="text-sm text-muted-foreground">{t("Тренер")}</div>
+          <div className="text-sm text-muted-foreground">{t(text.label)}</div>
           <DrawerPrimitive.Title className="text-2xl font-semibold leading-tight">
             {trainer.full_name}
           </DrawerPrimitive.Title>
-          <div className="mt-1.5">
-            <TrainerRatingLine
-              avg={trainer.rating_avg}
-              count={trainer.rating_count}
-              starClass="h-4 w-4"
-            />
-          </div>
+          {staffHasRating(role) && (
+            <div className="mt-1.5">
+              <TrainerRatingLine
+                avg={trainer.rating_avg}
+                count={trainer.rating_count}
+                starClass="h-4 w-4"
+              />
+            </div>
+          )}
         </div>
       </div>
-      {/^https?:\/\//i.test(tipUrl) && (
+      {hasTip && (
         <div className="mt-5">
-          <TipButton url={tipUrl} />
+          <TipButton url={tipUrl} label={t(text.tip)} />
         </div>
       )}
-      <div className={/^https?:\/\//i.test(tipUrl) ? "mt-3" : "mt-5"}>
-        <RateTrainer key={trainer.id} trainerId={trainer.id} />
-      </div>
+      {text.rate && (
+        <div className={hasTip ? "mt-3" : "mt-5"}>
+          <RateTrainer key={trainer.id} trainerId={trainer.id} title={t(text.rate)} />
+        </div>
+      )}
       {trainer.bio?.trim() ? (
         <FormattedText
           text={trainer.bio}
@@ -140,9 +154,7 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
           linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
         />
       ) : (
-        <p className="mt-5 text-sm text-muted-foreground">
-          {t("Рассказ о тренере скоро появится.")}
-        </p>
+        <p className="mt-5 text-sm text-muted-foreground">{t(text.noBio)}</p>
       )}
     </>
   );

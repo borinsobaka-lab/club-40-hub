@@ -1099,7 +1099,7 @@ export function AppAboutFormSkeleton() {
       ))}
       <div className="space-y-4 rounded-lg border bg-background p-6">
         {title}
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className="space-y-2">
             {label}
             <Skeleton className="h-10 w-48" />

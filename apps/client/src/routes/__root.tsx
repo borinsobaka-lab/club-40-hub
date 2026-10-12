@@ -32,7 +32,7 @@ import {
   packMyMembershipsQuery,
   packScheduleQuery,
   startOfDay,
-  studioTrainersQuery,
+  studioStaffQuery,
 } from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
@@ -420,7 +420,7 @@ function usePrefetchScreens(ready: boolean) {
       queryClient.prefetchQuery(packCatalogQuery(studioId));
       queryClient.prefetchQuery(packMyMembershipsQuery(userId));
       queryClient.prefetchQuery(aboutQuery());
-      if (studioId) queryClient.prefetchQuery(studioTrainersQuery(studioId));
+      if (studioId) queryClient.prefetchQuery(studioStaffQuery(studioId));
     };
     // Сначала — запросы самого экрана (ждём, пока догрузятся, но не дольше
     // ~5 секунд), потом, когда браузер свободен, — остальное.

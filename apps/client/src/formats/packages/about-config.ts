@@ -1,5 +1,5 @@
 import placeholderPhoto from "@/assets/about-placeholder.webp";
-import { msg } from "@/i18n";
+import { msg, type Translator } from "@/i18n";
 
 /**
  * Раздел «О нас» пакетного приложения (решение владельца 2026-10-12): история
@@ -88,6 +88,18 @@ export const ABOUT_COMMUNITY = {
     { key: "group_trainings_count", label: msg("групповых тренировок проведено") },
     { key: "visits_count", label: msg("посещений тренировок") },
   ] as const,
+  /**
+   * Команда (app_about_settings.specialists_count, 2026-10-12: 18) — точное
+   * число, без плюса; подпись склоняется по числу. Плитка — после цифр.
+   */
+  specialists: {
+    key: "specialists_count" as const,
+    label: (t: Translator, n: number) =>
+      t.plural(
+        n,
+        "специалист работает над тем, чтобы делать жизнь наших клиенток лучше|специалиста работают над тем, чтобы делать жизнь наших клиенток лучше|специалистов работают над тем, чтобы делать жизнь наших клиенток лучше",
+      ),
+  },
   /** «с 2023» — шаблон: порядок слов в языках разный (en «since», ka «… წლიდან»). */
   since: {
     year: 2023,

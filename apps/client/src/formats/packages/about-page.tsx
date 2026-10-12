@@ -172,15 +172,19 @@ function Chapter({
 function Community({ settings }: { settings: AboutSettings | null | undefined }) {
   const t = useT();
   const c = ABOUT_COMMUNITY;
-  // Плитки 2 в ряд: студии и цифры из админки (без числа — плитки нет),
-  // «с 2023 года» — во всю ширину последней строкой. Цифры «набегают» от
+  // Плитки 2 в ряд: студии, цифры и команда из админки (без числа — плитки
+  // нет), «с 2023 года» — во всю ширину последней строкой. Цифры «набегают» от
   // нуля, когда плитки доезжают до экрана (CountUp).
+  const team = settings?.[c.specialists.key];
   const tiles = [
     { value: c.studios.count, plus: false, label: t(c.studios.label) },
     ...c.counts.flatMap((k) => {
       const n = settings?.[k.key];
       return n && n > 0 ? [{ value: n, plus: true, label: t(k.label) }] : [];
     }),
+    ...(team && team > 0
+      ? [{ value: team, plus: false, label: c.specialists.label(t, team) }]
+      : []),
   ];
   // «с 2023» / «since 2023» / «2023 წლიდან»: год крупно, слова вокруг — мельче.
   const [sinceBefore, sinceAfter = ""] = t(c.since.template)

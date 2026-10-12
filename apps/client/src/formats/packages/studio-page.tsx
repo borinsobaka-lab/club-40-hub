@@ -16,29 +16,58 @@ import { msg, useLocalize, useT } from "@/i18n";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
 import { AboutTab } from "./about-page";
-import { studioTrainersQuery } from "./queries";
+import {
+  STAFF_ROLE_TEXT,
+  staffHasRating,
+  staffRole,
+  studioStaffQuery,
+  type StaffRole,
+} from "./queries";
 import { TrainerDrawer } from "./trainer-drawer";
 import { TrainerRatingLine } from "./trainer-rating";
 
 /**
  * «Студия» пакетного приложения (до 2026-10-11 — заглушка «Клуб»): вкладки
- * «Тренеры» (тренеры смотримой студии — переключатель на главной — с
- * биографией, рейтингом и чаевыми; «Сотрудники» в админке; карточка —
- * trainer-drawer.tsx) и «О нас» (история бренда Lady Stretch, общая для
- * студий — about-page.tsx; до 2026-10-12 здесь была «О студии» с фото,
- * картами и соцсетями каждой студии).
+ * сотрудников смотримой студии (переключатель на главной; «Сотрудники» в
+ * админке, роль — trainers.role) и «О нас».
+ *
+ * - «Тренеры» — биография, рейтинг и чаевые;
+ * - «Администраторы» (2026-10-12) — описание и чаевые, без рейтинга: их не
+ *   оценивают;
+ * - «Массажисты» (2026-10-12) — как тренеры: рейтинг (прежний сервис +
+ *   оценки клиентов) и чаевые;
+ * - «О нас» — история бренда Lady Stretch, общая для студий (about-page.tsx;
+ *   до 2026-10-12 здесь была «О студии» с фото, картами и соцсетями каждой
+ *   студии).
+ *
+ * Карточка сотрудника — шторка trainer-drawer.tsx.
  */
 
 const TABS = [
-  { key: "trainers", label: msg("Тренеры") },
+  { key: "trainer", label: msg("Тренеры") },
+  { key: "admin", label: msg("Администраторы") },
+  { key: "masseur", label: msg("Массажисты") },
   { key: "about", label: msg("О нас") },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
+/** Тексты вкладки сотрудников: подзаголовок без названия студии и пустой список. */
+const STAFF_TEXT: Record<StaffRole, { subtitle: string; empty: string }> = {
+  trainer: { subtitle: msg("Тренеры студии"), empty: msg("Тренеры студии скоро появятся") },
+  admin: {
+    subtitle: msg("Администраторы студии"),
+    empty: msg("Администраторы студии скоро появятся"),
+  },
+  masseur: {
+    subtitle: msg("Массажисты студии"),
+    empty: msg("Массажисты студии скоро появятся"),
+  },
+};
+
 export function PackagesStudioPage() {
   const t = useT();
   const loc = useLocalize();
-  const [tab, setTab] = useState<TabKey>("trainers");
+  const [tab, setTab] = useState<TabKey>("trainer");
   const { studioId } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
   const studioName = loc(studios.find((s) => s.id === studioId))?.name ?? null;
@@ -53,7 +82,7 @@ export function PackagesStudioPage() {
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-semibold">{t("Студия")}</h1>
           <p className="text-sm text-white/70">
-            {tab === "about" ? t("Наша история") : (studioName ?? t("Тренеры студии"))}
+            {tab === "about" ? t("Наша история") : (studioName ?? t(STAFF_TEXT[tab].subtitle))}
           </p>
         </div>
       }
@@ -65,31 +94,32 @@ export function PackagesStudioPage() {
         className="px-4 pt-4"
         gapClass="gap-6"
       />
-      {tab === "trainers" ? (
-        <div className="p-4">
-          <TrainersTab />
-        </div>
-      ) : (
+      {tab === "about" ? (
         <AboutTab />
+      ) : (
+        <div className="p-4">
+          <StaffTab role={tab} />
+        </div>
       )}
     </PageShell>
   );
 }
 
-function TrainersTab() {
+function StaffTab({ role }: { role: StaffRole }) {
   const { studioId, studioReady } = useViewedStudioId();
   // id, а не строка: после оценки список перезагружается с новым рейтингом.
   const [openId, setOpenId] = useState<string | null>(null);
   const t = useT();
   const loc = useLocalize();
-  const { data: rows, isPending, error } = useQuery(studioTrainersQuery(studioId, studioReady));
+  const { data: rows, isPending, error } = useQuery(studioStaffQuery(studioId, studioReady));
   // Имена — на языке клиента, порядок — по переведённому имени.
   const data = useMemo(
     () =>
       rows
-        ?.map((row) => ({ row, tr: loc(row) }))
+        ?.filter((row) => staffRole(row) === role)
+        .map((row) => ({ row, tr: loc(row) }))
         .sort((a, b) => a.tr.full_name.localeCompare(b.tr.full_name, t.intl)),
-    [rows, loc, t],
+    [rows, role, loc, t],
   );
 
   if (!studioReady || (isPending && !!studioId)) {
@@ -110,7 +140,7 @@ function TrainersTab() {
   if (error) {
     return (
       <Card className="p-4 text-sm text-destructive">
-        {t("Не удалось загрузить тренеров. Обновите страницу.")}
+        {t("Не удалось загрузить сотрудников. Обновите страницу.")}
       </Card>
     );
   }
@@ -119,7 +149,7 @@ function TrainersTab() {
     return (
       <Card className="flex flex-col items-center gap-3 p-8 text-center text-sm text-muted-foreground">
         <UsersGroupRounded className="h-10 w-10" weight="BoldDuotone" />
-        {t("Тренеры студии скоро появятся")}
+        {t(STAFF_TEXT[role].empty)}
       </Card>
     );
   }
@@ -146,12 +176,18 @@ function TrainersTab() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-base font-semibold">{tr.full_name}</div>
                   <div className="mt-1">
-                    <TrainerRatingLine
-                      avg={tr.rating_avg}
-                      count={tr.rating_count}
-                      starClass="h-3.5 w-3.5"
-                      textClass="text-xs"
-                    />
+                    {staffHasRating(role) ? (
+                      <TrainerRatingLine
+                        avg={tr.rating_avg}
+                        count={tr.rating_count}
+                        starClass="h-3.5 w-3.5"
+                        textClass="text-xs"
+                      />
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        {t(STAFF_ROLE_TEXT[role].label)}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />

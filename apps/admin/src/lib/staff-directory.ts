@@ -9,7 +9,8 @@ import { unwrap } from "@/lib/query";
 
 /**
  * Справочник сотрудников — общий над студиями (раздел рейки «Сотрудники»):
- * тренеры и администраторы (таблица trainers, роль — trainers.role). Один
+ * тренеры, администраторы и массажисты (таблица trainers, роль —
+ * trainers.role; массажист — с 2026-10-12, db/migrations/2026-10-12_zzzzzzz_staff_masseurs.sql). Один
  * сотрудник может работать в нескольких студиях (trainer_studios); в
  * расписании студии выбираются только её сотрудники. Реквизиты
  * (trainer_bank_details) и зарплатные ставки (trainer_pay_rates) — отдельные
@@ -19,12 +20,16 @@ import { unwrap } from "@/lib/query";
  * lib/payroll.ts).
  */
 
-export type TrainerRole = "trainer" | "admin";
+export type TrainerRole = "trainer" | "admin" | "masseur";
 
 export const TRAINER_ROLES: Record<TrainerRole, { label: string; badge: string }> = {
   trainer: { label: "Тренер", badge: "bg-sky-100 text-sky-700" },
   admin: { label: "Администратор", badge: "bg-violet-100 text-violet-700" },
+  masseur: { label: "Массажист", badge: "bg-emerald-100 text-emerald-700" },
 };
+
+/** Рейтинг в приложении (оценки клиентов) — у тренеров и массажистов, не у администраторов. */
+export const hasRating = (role: string) => role === "trainer" || role === "masseur";
 
 export type BankCode = "bog" | "tbc" | "credo";
 

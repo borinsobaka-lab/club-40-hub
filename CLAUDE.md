@@ -340,6 +340,12 @@ AUTH_SETUP.md.
   Адрес студии: `db/migrations/2026-10-11_zzzzzzzzzzzz_studio_address.sql` —
   `studios.address` (публичное чтение колонки, правит владелец; плашка
   студии в приложении пакетов).
+  Массажисты и вкладки сотрудников приложения пакетов:
+  `db/migrations/2026-10-12_zzzzzzz_staff_masseurs.sql` — роль
+  `trainers.role = 'masseur'` (проверка `trainers_role_check`), оценки
+  (`trainer_reviews`) — только тренерам и массажистам
+  (`client_can_rate_trainer` — актуальное определение здесь),
+  `app_about_settings.specialists_count` (плитка «О нас», пакетам — 18).
   Мессенджеры студии: `db/migrations/2026-10-12_studio_messengers.sql` —
   `studio_app_settings.whatsapp_url/messenger_url` (с 2026-10-12 не
   используются, как и `about/photo_path/…_maps_url/instagram_url` — «О

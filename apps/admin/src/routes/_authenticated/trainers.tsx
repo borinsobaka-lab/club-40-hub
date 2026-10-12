@@ -19,6 +19,7 @@ import {
   bankLabel,
   bankOf,
   formatIban,
+  hasRating,
   useEmployees,
   type Employee,
   type TrainerRole,
@@ -65,12 +66,12 @@ const TIPS = {
   name: "Имя тренера клиенты видят в расписании приложения.",
   role: "Кем работает сотрудник. Доступ в админку выдаётся отдельно — в «Доступах».",
   studios: "Где работает сотрудник. Только в этих клубах его можно поставить на занятие.",
-  bio: "Биография — клиенты читают её в приложении: «Студия» → «Тренеры». Можно выделять жирным, делать списки и ссылки.",
+  bio: "Описание — клиенты читают его в приложении: «Студия» → «Тренеры», «Администраторы» или «Массажисты». Можно выделять жирным, делать списки и ссылки.",
   rating:
-    "Средняя оценка до сотых и число отзывов: отзывы из прежнего сервиса и оценки клиентов в приложении («Студия» → «Тренеры»).",
+    "Средняя оценка до сотых и число отзывов: отзывы из прежнего сервиса и оценки клиентов в приложении («Студия» → «Тренеры» / «Массажисты»). Администраторов клиенты не оценивают.",
   ratingBase:
     "Рейтинг из прежнего сервиса — считается как уже оставленные отзывы, к нему добавляются оценки клиентов в приложении.",
-  tip: "Ссылка на сервис чаевых — в карточке тренера в приложении появится кнопка «Поблагодарить тренера».",
+  tip: "Ссылка на сервис чаевых — в карточке сотрудника в приложении появится кнопка «Поблагодарить».",
   bank: "Для выплат сотруднику. Видят только сотрудники, клиентам в приложении они недоступны.",
 };
 
@@ -81,7 +82,7 @@ export const Route = createFileRoute("/_authenticated/trainers")({
 });
 
 /**
- * «Сотрудники» — справочник тренеров и администраторов над студиями
+ * «Сотрудники» — справочник тренеров, администраторов и массажистов над студиями
  * (lib/staff-directory.ts): карточка, студии, реквизиты. Ставки — соседняя
  * страница раздела, «Зарплатные ставки» (pay-rates.tsx). Доступ в админку —
  * отдельно, в «Доступах».
@@ -100,11 +101,18 @@ function isValidGeIban(iban: string) {
   return rest === 1;
 }
 
+/** Подпись поля описания — по роли (в приложении карточка своя у каждой вкладки). */
+const BIO_LABEL: Record<TrainerRole, string> = {
+  trainer: "О тренере",
+  admin: "Об администраторе",
+  masseur: "О массажисте",
+};
+
 const ratingFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
 /** Оценка и отзывы: 4,99 · 56. */
 function RatingCell({ e }: { e: Employee }) {
-  if (e.role !== "trainer") return <span className="text-muted-foreground">—</span>;
+  if (!hasRating(e.role)) return <span className="text-muted-foreground">—</span>;
   if (e.rating_avg == null || e.rating_count === 0) {
     return <span className="text-sm text-muted-foreground">Нет отзывов</span>;
   }
@@ -536,30 +544,26 @@ function EmployeeForm({
               />
             </FormField>
 
-            {role === "trainer" && (
-              <FormField
-                label={<ContentLangLabel lang={tr.lang}>О тренере</ContentLangLabel>}
-                tip={TIPS.bio}
-                optional
-              >
-                <FormattedTextarea
-                  {...tr.text("bio", bio, setBio, "Опыт, специализация, достижения…")}
-                />
-              </FormField>
-            )}
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>{BIO_LABEL[role]}</ContentLangLabel>}
+              tip={TIPS.bio}
+              optional
+            >
+              <FormattedTextarea
+                {...tr.text("bio", bio, setBio, "Опыт, специализация, достижения…")}
+              />
+            </FormField>
 
-            {role === "trainer" && (
-              <FormField label="Ссылка на чаевые" tip={TIPS.tip} optional>
-                <Input
-                  value={tipUrl}
-                  onChange={(e) => setTipUrl(e.target.value)}
-                  placeholder="https://…"
-                  inputMode="url"
-                />
-              </FormField>
-            )}
+            <FormField label="Ссылка на чаевые" tip={TIPS.tip} optional>
+              <Input
+                value={tipUrl}
+                onChange={(e) => setTipUrl(e.target.value)}
+                placeholder="https://…"
+                inputMode="url"
+              />
+            </FormField>
 
-            {role === "trainer" && (
+            {hasRating(role) && (
               <FormField
                 label="Рейтинг из прежнего сервиса"
                 tip={TIPS.ratingBase}

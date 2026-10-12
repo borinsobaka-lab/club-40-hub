@@ -41,6 +41,8 @@ const dict: Dictionary = {
   "девушек уже посетили наши тренировки": "women have already come to our workouts",
   "групповых тренировок проведено": "group workouts held",
   "посещений тренировок": "workout visits",
+  "специалист работает над тем, чтобы делать жизнь наших клиенток лучше|специалиста работают над тем, чтобы делать жизнь наших клиенток лучше|специалистов работают над тем, чтобы делать жизнь наших клиенток лучше":
+    "specialist works to make our clients' lives better|specialists work to make our clients' lives better",
   "с {year}": "since {year}",
   "создаём пространство для движения и заботы о себе":
     "creating a space for movement and self-care",

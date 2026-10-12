@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
-import type { ContentTranslations } from "@/i18n";
+import { msg, type ContentTranslations } from "@/i18n";
 import { APP_FORMAT } from "@/lib/app-format";
 import { untypedDb } from "@/lib/untyped-db";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
@@ -185,6 +185,46 @@ export function packMyMembershipsQuery(userId: string | null) {
 
 // ---- «Студия» ----
 
+/**
+ * Кем работает сотрудник (trainers.role, «Сотрудники» в админке): у каждой
+ * роли своя вкладка «Студии»; массажисты — с 2026-10-12
+ * (db/migrations/2026-10-12_zzzzzzz_staff_masseurs.sql).
+ */
+export type StaffRole = "trainer" | "admin" | "masseur";
+
+/** Роль строки; неизвестная или пустая — тренер. */
+export function staffRole(row: { role: string | null }): StaffRole {
+  return row.role === "admin" || row.role === "masseur" ? row.role : "trainer";
+}
+
+/** Рейтинг и оценки — у тренеров и массажистов; администраторов не оценивают. */
+export const staffHasRating = (role: StaffRole) => role !== "admin";
+
+/** Подписи карточки сотрудника по роли (переводятся при показе — t(…)). */
+export const STAFF_ROLE_TEXT: Record<
+  StaffRole,
+  { label: string; tip: string; rate: string | null; noBio: string }
+> = {
+  trainer: {
+    label: msg("Тренер"),
+    tip: msg("Поблагодарить тренера"),
+    rate: msg("Оцените тренера"),
+    noBio: msg("Рассказ о тренере скоро появится."),
+  },
+  admin: {
+    label: msg("Администратор"),
+    tip: msg("Поблагодарить администратора"),
+    rate: null,
+    noBio: msg("Рассказ об администраторе скоро появится."),
+  },
+  masseur: {
+    label: msg("Массажист"),
+    tip: msg("Поблагодарить массажиста"),
+    rate: msg("Оцените массажиста"),
+    noBio: msg("Рассказ о массажисте скоро появится."),
+  },
+};
+
 export type StudioTrainer = {
   id: string;
   full_name: string;
@@ -206,7 +246,7 @@ function normalizeTrainer(t: StudioTrainer): StudioTrainer {
   return { ...t, rating_avg: t.rating_avg == null ? null : Number(t.rating_avg) };
 }
 
-/** Карточка одного тренера (шторка тренера из окна тренировки). */
+/** Карточка одного сотрудника (шторка тренера из окна тренировки). */
 export function trainerCardQuery(trainerId: string | null) {
   return queryOptions({
     queryKey: ["trainer-card", trainerId],
@@ -234,6 +274,8 @@ export type AboutSettings = {
   visitors_count: number | null;
   group_trainings_count: number | null;
   visits_count: number | null;
+  /** «N специалистов работают…» — с 2026-10-12_zzzzzzz_staff_masseurs.sql; до неё не приходит. */
+  specialists_count?: number | null;
   instagram_followers: number | null;
   instagram_posts: AboutInstagramPost[];
 };
@@ -251,9 +293,9 @@ export function aboutQuery() {
     queryFn: async (): Promise<AboutSettings | null> => {
       const { data, error } = await untypedDb
         .from("app_about_settings")
-        .select(
-          "cover_photo_path, first_studio_photos, second_studio_photos, community_photo_path, visitors_count, group_trainings_count, visits_count, instagram_followers, instagram_posts",
-        )
+        // «*», а не список колонок: specialists_count (миграция 2026-10-12)
+        // приходит, когда она есть в базе, и не ломает запрос до её выкатки.
+        .select("*")
         .eq("format", APP_FORMAT)
         .maybeSingle();
       if (error) throw error;
@@ -262,7 +304,11 @@ export function aboutQuery() {
   });
 }
 
-export function studioTrainersQuery(studioId: string | null, enabled = true) {
+/**
+ * Сотрудники студии — все роли одним запросом, вкладки «Студии» делят их по
+ * staffRole. Ключ прежний: после оценки его обновляет RateTrainer.
+ */
+export function studioStaffQuery(studioId: string | null, enabled = true) {
   return queryOptions({
     queryKey: ["studio-trainers", studioId],
     queryFn: async (): Promise<StudioTrainer[]> => {
@@ -273,7 +319,7 @@ export function studioTrainersQuery(studioId: string | null, enabled = true) {
       if (error) throw error;
       return ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
         .map((r) => r.trainer)
-        .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
+        .filter((t): t is StudioTrainer => !!t)
         .map(normalizeTrainer)
         .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"));
     },
