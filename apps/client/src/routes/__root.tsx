@@ -24,6 +24,7 @@ import { DEFAULT_APP_INSTALL, fetchAppInstall } from "@/lib/app-install";
 import { clientCardQuery } from "@/lib/client-card";
 import { homeBookingsQuery } from "@/lib/home-queries";
 import { IS_PACKAGES } from "@/lib/terms";
+import { DarkSplash } from "@/formats/packages/dark-frame";
 import {
   packCatalogQuery,
   packMyBookingsQuery,
@@ -469,7 +470,8 @@ function AppShell() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    let retry = 0;
+    const check = async (attempt: number) => {
       const { data, error } = await supabase
         .from("member_profiles")
         .select("onboarding_completed_at")
@@ -478,9 +480,15 @@ function AppShell() {
       if (cancelled) return;
       // Ошибку запроса нельзя трактовать как «анкета не заполнена»: иначе
       // разовый сбой сети уводит уже прошедшего онбординг клиента в опросник,
-      // а его завершение перезаписывает анкету пустыми ответами.
+      // а его завершение перезаписывает анкету пустыми ответами. И сразу
+      // пускать на главную тоже нельзя — у нового клиента она мелькала перед
+      // анкетой: сначала несколько повторов, и только без сети — главная.
       if (error) {
-        setOnboardingChecked(true);
+        if (attempt < 3) {
+          retry = window.setTimeout(() => void check(attempt + 1), 800 * (attempt + 1));
+        } else {
+          setOnboardingChecked(true);
+        }
         return;
       }
       if (!data || !data.onboarding_completed_at) {
@@ -489,9 +497,11 @@ function AppShell() {
         markOnboarded(user.id);
         setOnboardingChecked(true);
       }
-    })();
+    };
+    void check(0);
     return () => {
       cancelled = true;
+      window.clearTimeout(retry);
     };
   }, [loading, user, onAuthRoute, onOnboardingRoute, navigate]);
 
@@ -505,6 +515,8 @@ function AppShell() {
   );
 
   if (onAuthRoute) {
+    // Пакетное: вместо белой пелены поверх тёмного экрана входа — заставка.
+    if (IS_PACKAGES && loading) return <DarkSplash />;
     return (
       <div className="min-h-screen bg-background text-foreground flex justify-center">
         <div className="w-full max-w-md flex flex-col min-h-screen relative">
@@ -535,6 +547,13 @@ function AppShell() {
   }
 
   const showAppLoading = loading || (!!session && !onboardingChecked && !onboardedCached);
+
+  // Пакетное приложение: пока вход и анкета не проверены — тёмная заставка
+  // во весь экран, а не каркас главной (иначе новый клиент видел главную
+  // перед онбордингом); без сессии — тоже она, пока не откроется вход.
+  if (IS_PACKAGES && (showAppLoading || !session)) {
+    return <DarkSplash />;
+  }
 
   return (
     <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">

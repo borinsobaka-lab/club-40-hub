@@ -76,6 +76,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(emptyOtp);
   const [busy, setBusy] = useState(false);
+  const [otpFocused, setOtpFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [cooldown, setCooldown] = useState(0);
@@ -200,6 +201,48 @@ function AuthPage() {
     />
   );
 
+  // Пакетное: одно невидимое поле на весь код поверх ячеек. С отдельным полем
+  // на цифру фокус прыгал после каждой цифры, Android заново поднимал
+  // клавиатуру, и экран моргал. Ячейки только показывают цифры.
+  const otpValue = otp.join("");
+  const otpSingle = (
+    <div className="relative mx-auto flex w-max gap-2">
+      <input
+        ref={(el) => {
+          otpRefs.current[0] = el;
+        }}
+        value={otpValue}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH);
+          setOtp(Array.from({ length: OTP_LENGTH }, (_, i) => digits[i] ?? ""));
+        }}
+        onFocus={() => setOtpFocused(true)}
+        onBlur={() => setOtpFocused(false)}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={OTP_LENGTH}
+        aria-label="Код из письма"
+        className="absolute inset-0 z-10 h-full w-full cursor-text bg-transparent text-base text-transparent caret-transparent opacity-0 outline-none"
+      />
+      {otp.map((d, i) => {
+        const current =
+          otpFocused &&
+          (i === otpValue.length || (otpValue.length === OTP_LENGTH && i === OTP_LENGTH - 1));
+        return (
+          <div
+            key={i}
+            aria-hidden="true"
+            className={`flex h-14 w-11 items-center justify-center rounded-xl border bg-card text-xl font-bold ${
+              current ? "border-primary ring-2 ring-primary" : "border-border"
+            }`}
+          >
+            {d}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const otpInputs = (
     <div className="flex justify-center gap-2">
       {otp.map((d, i) => (
@@ -318,7 +361,7 @@ function AuthPage() {
           </form>
         ) : (
           <div className="space-y-4 px-4 pt-6 pb-2">
-            {otpInputs}
+            {otpSingle}
             {errorText}
             {otpLinks}
           </div>

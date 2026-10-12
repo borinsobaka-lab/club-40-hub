@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { GlowBlobs } from "@/components/page-shell";
+import packagesLogo from "@/assets/packages-logo.svg";
 
 /**
  * Полноэкранный экран пакетного приложения в оформлении разделов (PageShell):
@@ -126,6 +127,20 @@ export function DarkFrame({
   );
 }
 
+/**
+ * Заставка пакетного приложения: тёмный экран с огоньками и логотипом — пока
+ * идёт вход и проверка анкеты (__root.tsx) и пока анкета загружается. Раньше
+ * в это время был виден каркас главной, и она мелькала перед онбордингом.
+ */
+export function DarkSplash() {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#2A2B2F]">
+      <GlowBlobs />
+      <img src={packagesLogo} alt="" className="relative w-[180px] max-w-[60%]" />
+    </div>
+  );
+}
+
 /** Меньше — картинку не показываем вовсе (ужатая до крохи только мешает). */
 const ART_MIN_PX = 160;
 
@@ -147,26 +162,56 @@ function useVisualViewportFrame(rootRef: React.RefObject<HTMLDivElement | null>)
     const vv = window.visualViewport;
     const el = rootRef.current;
     if (!vv || !el) return;
-    // Ввод с телефона: картинку прячем сразу при фокусе, не дожидаясь, пока
-    // клавиатура выедет и ужмёт кадр. На компьютере — не трогаем.
+
+    // Клавиатура определяется по видимой области: она ниже обычной высоты
+    // (самой большой без клавиатуры) больше чем на KB_PX. innerHeight не
+    // годится: в установленном приложении Android ужимает и его.
+    const KB_PX = 120;
+    let base = vv.height;
+    let kbOpen = false;
+
+    // Картинку прячем уже при нажатии на поле (data-typing), не дожидаясь
+    // клавиатуры, — но возвращает её закрытие клавиатуры, а не потеря
+    // фокуса: на Android клавиатуру убирают «назад» или тапом мимо, и поле
+    // остаётся в фокусе. Если клавиатура так и не появилась (внешняя,
+    // компьютер), через секунду возвращаем сами.
     const touch = window.matchMedia("(pointer: coarse)").matches;
-    const onFocusIn = (e: FocusEvent) => {
-      if (touch && opensKeyboard(e.target)) el.dataset.typing = "";
+    let fallback = 0;
+    const startTyping = (t: EventTarget | null) => {
+      if (!touch || !opensKeyboard(t)) return;
+      el.dataset.typing = "";
+      window.clearTimeout(fallback);
+      fallback = window.setTimeout(() => {
+        if (!kbOpen) delete el.dataset.typing;
+      }, 1000);
     };
-    const onFocusOut = () => {
+    const stopTyping = () => {
+      window.clearTimeout(fallback);
       delete el.dataset.typing;
     };
+    const onFocusIn = (e: FocusEvent) => startTyping(e.target);
+    // Повторное нажатие на поле, уже бывшее в фокусе: focusin не придёт.
+    const onPointerDown = (e: PointerEvent) => startTyping(e.target);
+    const onFocusOut = () => {
+      if (!kbOpen) stopTyping();
+    };
     el.addEventListener("focusin", onFocusIn);
+    el.addEventListener("pointerdown", onPointerDown);
     el.addEventListener("focusout", onFocusOut);
+
     let raf = 0;
     let lastHeight = vv.height;
     const apply = () => {
       raf = 0;
       el.style.height = `${vv.height}px`;
       el.style.top = `${vv.offsetTop}px`;
-      // Клавиатура открыта: видимая область заметно ниже окна.
-      if (window.innerHeight - vv.height > 120) el.dataset.kb = "";
+      const wasOpen = kbOpen;
+      kbOpen = base - vv.height > KB_PX;
+      if (!kbOpen) base = Math.max(base, vv.height);
+      if (kbOpen) el.dataset.kb = "";
       else delete el.dataset.kb;
+      // Клавиатуру убрали — картинка возвращается, даже если поле в фокусе.
+      if (wasOpen && !kbOpen) stopTyping();
       const shrank = vv.height < lastHeight;
       lastHeight = vv.height;
       const active = document.activeElement;
@@ -177,14 +222,23 @@ function useVisualViewportFrame(rootRef: React.RefObject<HTMLDivElement | null>)
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(apply);
     };
+    // Поворот экрана меняет обычную высоту — меряем заново.
+    const onOrientation = () => {
+      base = 0;
+      schedule();
+    };
     apply();
     vv.addEventListener("resize", schedule);
     vv.addEventListener("scroll", schedule);
+    window.addEventListener("orientationchange", onOrientation);
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      window.clearTimeout(fallback);
       vv.removeEventListener("resize", schedule);
       vv.removeEventListener("scroll", schedule);
+      window.removeEventListener("orientationchange", onOrientation);
       el.removeEventListener("focusin", onFocusIn);
+      el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("focusout", onFocusOut);
       el.style.height = "";
       el.style.top = "";

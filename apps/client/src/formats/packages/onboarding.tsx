@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RulerPicker } from "@/components/ui/ruler-picker";
 import { Textarea } from "@/components/ui/textarea";
-import { DarkFrame as Frame } from "@/formats/packages/dark-frame";
+import { DarkFrame as Frame, DarkSplash } from "@/formats/packages/dark-frame";
 import introArt from "@/assets/onboarding-intro.webp";
 import finalArt from "@/assets/onboarding-final.webp";
 import scheduleArt from "@/assets/onboarding-schedule.webp";
@@ -19,7 +19,6 @@ import {
   FrequencyPicker,
   HealthNotesInput,
   HealthOptions,
-  OnboardingLoading,
   OptionButton,
   ReferralOptions,
   TimesPicker,
@@ -247,7 +246,7 @@ export function PackagesOnboardingPage() {
   }, [step, form]);
 
   if (authLoading || (!bootstrapped && user)) {
-    return <OnboardingLoading />;
+    return <DarkSplash />;
   }
 
   if (step === 0) {
