@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { FormattedTextarea } from "@/components/formatted-textarea";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
+import { useContentTranslations } from "@/hooks/use-content-translations";
+import type { ContentTranslations } from "@/lib/content-i18n";
 import {
   Table,
   TableBody,
@@ -92,6 +95,8 @@ type ShowcaseItem = {
   full_text: string | null;
   button_text: string | null;
   button_url: string | null;
+  /** Переводы для приложения: {en|ka: {title, description, full_title, full_text, button_text}}. */
+  translations: ContentTranslations;
   created_at: string;
 };
 
@@ -357,10 +362,12 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
   const [buttonUrl, setButtonUrl] = useState(item?.button_url ?? "");
   const [imageUrl, setImageUrl] = useState(item?.image_url ?? null);
   const [bannerUrl, setBannerUrl] = useState(item?.banner_url ?? null);
+  const tr = useContentTranslations(item?.translations);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!title.trim()) {
+      tr.setLang("ru");
       toast.error("Укажите заголовок");
       return;
     }
@@ -373,6 +380,7 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
     const bt = buttonText.trim();
     const bu = buttonUrl.trim();
     if (config.requireButtonPair && !bt !== !bu) {
+      tr.setLang("ru");
       toast.error("Заполните оба поля кнопки или оставьте оба пустыми");
       return;
     }
@@ -387,6 +395,7 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
         button_url: bu || null,
         image_url: imageUrl,
         banner_url: bannerUrl,
+        translations: tr.cleaned(),
         studio_ids: [...studioIds, ...split.locked],
         updated_at: new Date().toISOString(),
       };
@@ -410,10 +419,12 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
       <DialogHeader>
         <DialogTitle>{item ? texts.editTitle : texts.createTitle}</DialogTitle>
         <DialogDescription>{texts.dialogDescription}</DialogDescription>
+        <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
+            <ContentLangNote lang={tr.lang} />
             <AppStudiosField
               value={studioIds}
               onChange={setStudioIds}
@@ -449,49 +460,47 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
               </FormField>
             </div>
 
-            <FormField label="Заголовок" required>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Краткий заголовок для списка"
-              />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Заголовок</ContentLangLabel>}
+              required={tr.lang === "ru"}
+            >
+              <Input {...tr.input("title", title, setTitle, "Краткий заголовок для списка")} />
             </FormField>
 
             <FormField
-              label="Описание"
+              label={<ContentLangLabel lang={tr.lang}>Описание</ContentLangLabel>}
               tip="Строка под заголовком в списке на главном экране — без форматирования."
               optional
             >
               <Textarea
                 rows={2}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Короткое описание для превью"
+                {...tr.input(
+                  "description",
+                  description,
+                  setDescription,
+                  "Короткое описание для превью",
+                )}
               />
             </FormField>
 
             <FormField
-              label="Полный заголовок"
+              label={<ContentLangLabel lang={tr.lang}>Полный заголовок</ContentLangLabel>}
               tip="Вверху открытой страницы. Пусто — возьмётся обычный заголовок."
               optional
             >
               <Input
-                value={fullTitle}
-                onChange={(e) => setFullTitle(e.target.value)}
-                placeholder={texts.fullTitlePlaceholder}
+                {...tr.input("full_title", fullTitle, setFullTitle, texts.fullTitlePlaceholder)}
               />
             </FormField>
 
             <FormField
-              label="Полный текст"
+              label={<ContentLangLabel lang={tr.lang}>Полный текст</ContentLangLabel>}
               tip="На открытой странице. Можно выделять жирным, делать списки и ссылки."
               optional
             >
               <FormattedTextarea
                 rows={8}
-                value={fullText}
-                onChange={setFullText}
-                placeholder={texts.fullTextPlaceholder}
+                {...tr.text("full_text", fullText, setFullText, texts.fullTextPlaceholder)}
               />
             </FormField>
 
@@ -506,13 +515,11 @@ function ShowcaseForm({ config, onOpenChange, item, nextPosition, onSaved }: Dia
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormField
-                  label="Текст на кнопке"
-                  required={config.requireButtonPair && !!buttonUrl.trim()}
+                  label={<ContentLangLabel lang={tr.lang}>Текст на кнопке</ContentLangLabel>}
+                  required={tr.lang === "ru" && config.requireButtonPair && !!buttonUrl.trim()}
                 >
                   <Input
-                    value={buttonText}
-                    onChange={(e) => setButtonText(e.target.value)}
-                    placeholder={texts.buttonPlaceholder}
+                    {...tr.input("button_text", buttonText, setButtonText, texts.buttonPlaceholder)}
                   />
                 </FormField>
                 <FormField

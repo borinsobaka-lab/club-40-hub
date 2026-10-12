@@ -19,6 +19,9 @@ import {
 import { toast } from "sonner";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { FormattedTextarea } from "@/components/formatted-textarea";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
+import { useContentTranslationsValue } from "@/hooks/use-content-translations";
+import { parseTranslations, type ContentTranslations } from "@/lib/content-i18n";
 import {
   ClubPickerSkeleton,
   ClubSettingsFormSkeleton,
@@ -53,6 +56,8 @@ type Settings = {
   instagram_url: string | null;
   whatsapp_url: string | null;
   messenger_url: string | null;
+  /** Переводы для приложения: {en|ka: {about}}. */
+  translations?: ContentTranslations;
 };
 
 type FormValues = {
@@ -67,6 +72,7 @@ type FormValues = {
   instagramUrl: string;
   whatsappUrl: string;
   messengerUrl: string;
+  translations: ContentTranslations;
 };
 
 function toFormValues(s: Settings | null | undefined): FormValues {
@@ -82,6 +88,7 @@ function toFormValues(s: Settings | null | undefined): FormValues {
     instagramUrl: s?.instagram_url ?? "",
     whatsappUrl: s?.whatsapp_url ?? "",
     messengerUrl: s?.messenger_url ?? "",
+    translations: parseTranslations(s?.translations),
   };
 }
 
@@ -176,6 +183,8 @@ function ClubSettingsForm({
   const form = draft ?? toFormValues(settings);
   const setField = <K extends keyof FormValues>(field: K, value: FormValues[K]) =>
     setDraft({ ...form, [field]: value });
+  // Переводы «О клубе» — часть черновика; язык правки — свой у формы.
+  const tr = useContentTranslationsValue(form.translations, (t) => setField("translations", t));
 
   const handleSave = async () => {
     const minutes = Number.parseInt(form.cancelMinutes, 10);
@@ -198,6 +207,7 @@ function ClubSettingsForm({
         instagram_url: form.instagramUrl.trim() || null,
         whatsapp_url: form.whatsappUrl.trim() || null,
         messenger_url: form.messengerUrl.trim() || null,
+        translations: tr.cleaned(),
       };
       const { error } = await supabase
         .from(TABLE)
@@ -270,13 +280,17 @@ function ClubSettingsForm({
       </section>
 
       <section className="space-y-4 rounded-lg border bg-background p-6">
-        <div>
-          <h2 className="text-lg font-semibold">О клубе</h2>
-          <p className="text-sm text-muted-foreground">
-            Раздел «Студия» в приложении пакетных клубов, вкладка «Информация»: фото, описание и
-            ссылки. Пустые поля в приложении не показываются.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 basis-64">
+            <h2 className="text-lg font-semibold">О клубе</h2>
+            <p className="text-sm text-muted-foreground">
+              Раздел «Студия» в приложении пакетных клубов, вкладка «Информация»: фото, описание и
+              ссылки. Пустые поля в приложении не показываются.
+            </p>
+          </div>
+          <ContentLangSwitch tr={tr} className="mt-0" />
         </div>
+        <ContentLangNote lang={tr.lang} />
         <FormField label="Фото" tip={TIPS.photo} htmlFor={null} optional>
           <ImageUploadField
             bucket="studioPhotos"
@@ -285,11 +299,18 @@ function ClubSettingsForm({
             onChange={(path) => setField("photoPath", path)}
           />
         </FormField>
-        <FormField label="Описание" tip={TIPS.about} optional>
+        <FormField
+          label={<ContentLangLabel lang={tr.lang}>Описание</ContentLangLabel>}
+          tip={TIPS.about}
+          optional
+        >
           <FormattedTextarea
-            value={form.about}
-            onChange={(v) => setField("about", v)}
-            placeholder="Пара слов о клубе: формат, атмосфера, как добраться"
+            {...tr.text(
+              "about",
+              form.about,
+              (v) => setField("about", v),
+              "Пара слов о клубе: формат, атмосфера, как добраться",
+            )}
           />
         </FormField>
         <FormField label="Google Карты" optional hint="Ссылка «Поделиться» на точку клуба.">

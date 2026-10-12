@@ -61,7 +61,7 @@ comment on column public.news.translations is
 comment on column public.services.translations is
   'Переводы для клиентского приложения: {"en": {поле: текст}, "ka": {…}}; русский — в своих колонках.';
 comment on column public.push_notifications.translations is
-  'Переводы пуша: {"en": {"title", "body"}, "ka": {…}}; русский — в своих колонках.';
+  'Переводы пуша: {"en": {"title", "message"}, "ka": {…}}; русский — в своих колонках.';
 comment on column public.memberships.translations is
   'Переводы для клиентского приложения: {"en": {name, description, tag_text, gift_text, benefits[]}, "ka": {…}}.';
 comment on column public.workouts.translations is
