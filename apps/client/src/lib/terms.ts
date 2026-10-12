@@ -1,6 +1,6 @@
 import { APP_FORMAT } from "@/lib/app-format";
 
-/** Пакетное приложение (pack.base40.fit). */
+/** Пакетное приложение (app.lady-stretch.one). */
 export const IS_PACKAGES = APP_FORMAT === "packages";
 
 /**
