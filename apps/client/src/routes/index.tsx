@@ -14,7 +14,6 @@ import {
   Star,
   ClipboardText,
   Ghost,
-  HeartBroken,
 } from "@solar-icons/react";
 import giftIcon from "@/assets/gift.png";
 import inviteGiftButton from "@/assets/invite-gift-button.webp";
@@ -415,14 +414,7 @@ function HomePage() {
               <CarouselSkeleton cards={2} className="h-24 w-56" />
             ) : myBookings.length === 0 ? (
               <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
-                {IS_PACKAGES ? (
-                  <HeartBroken
-                    weight="Bold"
-                    className="h-14 w-14 text-muted-foreground ghost-nudge"
-                  />
-                ) : (
-                  <Ghost className="h-14 w-14 text-muted-foreground ghost-nudge" />
-                )}
+                <Ghost className="h-14 w-14 text-muted-foreground ghost-nudge" />
                 <div className="text-sm text-muted-foreground">
                   У вас нет запланированных тренировок
                 </div>
