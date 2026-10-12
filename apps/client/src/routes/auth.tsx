@@ -10,6 +10,7 @@ import { IS_PACKAGES } from "@/lib/terms";
 import { takeSignInRefused } from "@/lib/sign-in-refused";
 import { cancelHomeConfetti, queueHomeConfetti } from "@/lib/confetti";
 import { DarkFrame } from "@/formats/packages/dark-frame";
+import { StudioContactButtons } from "@/formats/packages/studio-contacts";
 import packagesLogo from "@/assets/packages-logo.svg";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { getTranslator, useT, type Translator } from "@/i18n";
@@ -28,6 +29,17 @@ function notAMember(t: Translator) {
     : t("Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.");
 }
 
+/** Почта не найдена среди клиентов (учётную запись не создали / код не шлют). */
+function isNotAMemberError(message: string) {
+  const m = message.toLowerCase();
+  return (
+    m.includes("not_a_club_member") ||
+    m.includes("database error saving new user") ||
+    m.includes("signups not allowed") ||
+    m.includes("otp_disabled")
+  );
+}
+
 function humanizeAuthError(message: string, t: Translator): string {
   const m = message.toLowerCase();
   // Учётная запись создаётся при первом входе, но только для почты из
@@ -35,14 +47,7 @@ function humanizeAuthError(message: string, t: Translator): string {
   // (db/migrations/…_client_signin_only.sql), и GoTrue отвечает
   // «Database error saving new user». Учётная запись уже есть, а карточки
   // нет — хук писем не шлёт код (not_a_club_member).
-  if (
-    m.includes("not_a_club_member") ||
-    m.includes("database error saving new user") ||
-    m.includes("signups not allowed") ||
-    m.includes("otp_disabled")
-  ) {
-    return notAMember(t);
-  }
+  if (isNotAMemberError(message)) return notAMember(t);
   // Проверка формата email — раньше общего «invalid»: сообщение Supabase
   // «Unable to validate email address: invalid format» тоже содержит
   // «invalid», и клиенту с опечаткой в почте показывалось «неверный код».
@@ -85,6 +90,8 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [otpFocused, setOtpFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Почта не найдена — под сообщением кнопки связи со студией (пакетное).
+  const [notMember, setNotMember] = useState(false);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [cooldown, setCooldown] = useState(0);
   // На какой адрес ушёл последний код: «Изменить данные» → «Получить код» с
@@ -111,6 +118,7 @@ function AuthPage() {
   const requestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotMember(false);
     if (!email.trim()) {
       setError(t("Укажите email"));
       return;
@@ -127,6 +135,7 @@ function AuthPage() {
     setBusy(false);
     if (sendError) {
       setError(humanizeAuthError(sendError, t));
+      setNotMember(isNotAMemberError(sendError));
       return;
     }
     setSentTo(email.trim());
@@ -379,6 +388,8 @@ function AuthPage() {
               required
             />
             {errorText}
+            {/* Почта не найдена — сразу способы связаться со студией. */}
+            {error && notMember && <StudioContactButtons />}
           </form>
         ) : (
           <div className="space-y-4 px-4 pt-6 pb-2">

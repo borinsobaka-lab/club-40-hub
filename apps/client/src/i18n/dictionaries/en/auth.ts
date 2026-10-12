@@ -8,6 +8,7 @@ const dict: Dictionary = {
     "We couldn't find this email among the studio's clients. Please contact the studio administrator.",
   "Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.":
     "We couldn't find this email among the club's members. Please contact the club administrator.",
+  "Напишите нам — поможем войти": "Message us — we’ll help you sign in",
   "Проверьте формат email.": "Please check the email format.",
   "Неверный или устаревший код. Запросите новый.": "Invalid or expired code. Request a new one.",
   "Слишком часто. Подождите минуту и попробуйте ещё раз.":
