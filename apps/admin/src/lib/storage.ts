@@ -24,7 +24,8 @@ export const STORAGE_BUCKETS = {
   avatars: { id: "avatars", access: "public" },
   // Иконки клиентского приложения (lib/app-icons.ts): папка на каждую загрузку.
   appIcons: { id: "app-icons", access: "public" },
-  // Фото клуба для раздела «Студия» в приложении («Контакты и правила»).
+  // Фото раздела «О нас» приложения пакетных клубов, папка about/
+  // (db/migrations/2026-10-12_zzzzzz_app_about_page.sql).
   studioPhotos: { id: "studio-photos", access: "public" },
 } as const;
 
@@ -79,28 +80,53 @@ export async function uploadToStorage(bucket: StorageBucket, folder: string, fil
 export async function squareImage(file: File, size = 256): Promise<File> {
   const bitmap = await createImageBitmap(file);
   const side = Math.min(bitmap.width, bitmap.height);
+  const out = Math.min(size, side);
+  return drawToWebp(
+    bitmap,
+    [(bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side],
+    out,
+    out,
+    "avatar",
+  );
+}
+
+/**
+ * Уменьшенная копия фото (WebP, длинная сторона не больше maxSide, пропорции
+ * те же) — для фото в приложении: оригинал с камеры весит мегабайты, а
+ * телефону клиента хватает ~1600 px.
+ */
+export async function fitImage(file: File, maxSide = 1600): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  return drawToWebp(
+    bitmap,
+    [0, 0, bitmap.width, bitmap.height],
+    Math.round(bitmap.width * scale),
+    Math.round(bitmap.height * scale),
+    "photo",
+  );
+}
+
+async function drawToWebp(
+  bitmap: ImageBitmap,
+  [sx, sy, sw, sh]: [number, number, number, number],
+  width: number,
+  height: number,
+  name: string,
+): Promise<File> {
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = Math.min(size, side);
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Браузер не умеет обрабатывать картинки");
-  ctx.drawImage(
-    bitmap,
-    (bitmap.width - side) / 2,
-    (bitmap.height - side) / 2,
-    side,
-    side,
-    0,
-    0,
-    canvas.width,
-    canvas.height,
-  );
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, width, height);
   bitmap.close();
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/webp", 0.85),
   );
   if (!blob) throw new Error("Не удалось обработать картинку");
   // Без поддержки WebP браузер отдаёт PNG — расширение по факту.
-  return new File([blob], blob.type === "image/webp" ? "avatar.webp" : "avatar.png", {
+  return new File([blob], blob.type === "image/webp" ? `${name}.webp` : `${name}.png`, {
     type: blob.type,
   });
 }

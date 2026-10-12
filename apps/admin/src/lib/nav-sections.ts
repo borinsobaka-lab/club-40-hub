@@ -18,6 +18,7 @@ import {
   DocumentText,
   Dumbbell,
   GraphUp,
+  HandHeart,
   History,
   HomeSmile,
   MoneyBag,
@@ -214,6 +215,8 @@ export const MOBILE_APP_ITEMS: NavItem[] = [
   { title: "Триггеры", url: "/push-triggers", icon: Bolt },
   // Ссылки кнопок главного экрана и срок отмены записи (club_settings).
   { title: "Контакты и правила", url: "/club-settings", icon: ClipboardCheck },
+  // История бренда в приложении пакетных клубов: фото, цифры, Instagram.
+  { title: "О нас", url: "/app-about", icon: HandHeart },
   // Установка приложения: иконка и подпись под значком (PWA).
   { title: "Настройки", url: "/app-settings", icon: Settings },
 ];

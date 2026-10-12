@@ -341,8 +341,17 @@ AUTH_SETUP.md.
   `studios.address` (публичное чтение колонки, правит владелец; плашка
   студии в приложении пакетов).
   Мессенджеры студии: `db/migrations/2026-10-12_studio_messengers.sql` —
-  `studio_app_settings.whatsapp_url/messenger_url` («Контакты и правила» →
-  «О клубе»; в приложении пакетов — «Студия» → «Информация»).
+  `studio_app_settings.whatsapp_url/messenger_url` (с 2026-10-12 не
+  используются, как и `about/photo_path/…_maps_url/instagram_url` — «О
+  студии» заменён разделом «О нас»).
+  Раздел «О нас» приложения пакетов: `db/migrations/2026-10-12_zzzzzz_app_about_page.sql`
+  — `app_about_settings` (строка на формат, как `app_install_settings`;
+  публичное чтение, правка — раздел рейки `app` + студия формата): фото
+  обложки, галереи первой и второй студий, фото сообщества, цифры
+  (`visitors_count`, `group_trainings_count`, `visits_count`;
+  null — не показываются), `instagram_followers`, `instagram_posts` (jsonb
+  `[{path, url}]`, вручную); фото — бакет `studio-photos`, папка `about/`.
+  Тексты раздела — в коде клиента (`formats/packages/about-config.ts`).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`

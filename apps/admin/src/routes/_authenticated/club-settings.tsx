@@ -17,8 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ImageUploadField } from "@/components/image-upload-field";
-import { FormattedTextarea } from "@/components/formatted-textarea";
 import {
   ClubPickerSkeleton,
   ClubSettingsFormSkeleton,
@@ -29,9 +27,6 @@ import { useStudios } from "@/hooks/use-studios";
 
 const TIPS = {
   club: "У каждого клуба свои ссылки и правила: клиент видит настройки своего клуба.",
-  about:
-    "Краткое описание клуба на вкладке «Информация». Можно выделять жирным, делать списки и ссылки.",
-  photo: "Фото в шапке вкладки «Информация». Лучше горизонтальное, от 1200 px по ширине.",
 };
 
 export const Route = createFileRoute("/_authenticated/club-settings")({
@@ -46,13 +41,6 @@ type Settings = {
   call_url: string | null;
   feedback_url: string | null;
   cancel_booking_minutes: number;
-  about: string | null;
-  photo_path: string | null;
-  google_maps_url: string | null;
-  yandex_maps_url: string | null;
-  instagram_url: string | null;
-  whatsapp_url: string | null;
-  messenger_url: string | null;
 };
 
 type FormValues = {
@@ -60,13 +48,6 @@ type FormValues = {
   callUrl: string;
   feedbackUrl: string;
   cancelMinutes: string;
-  about: string;
-  photoPath: string | null;
-  googleMapsUrl: string;
-  yandexMapsUrl: string;
-  instagramUrl: string;
-  whatsappUrl: string;
-  messengerUrl: string;
 };
 
 function toFormValues(s: Settings | null | undefined): FormValues {
@@ -75,13 +56,6 @@ function toFormValues(s: Settings | null | undefined): FormValues {
     callUrl: s?.call_url ?? "",
     feedbackUrl: s?.feedback_url ?? "",
     cancelMinutes: String(s?.cancel_booking_minutes ?? 180),
-    about: s?.about ?? "",
-    photoPath: s?.photo_path ?? null,
-    googleMapsUrl: s?.google_maps_url ?? "",
-    yandexMapsUrl: s?.yandex_maps_url ?? "",
-    instagramUrl: s?.instagram_url ?? "",
-    whatsappUrl: s?.whatsapp_url ?? "",
-    messengerUrl: s?.messenger_url ?? "",
   };
 }
 
@@ -191,13 +165,6 @@ function ClubSettingsForm({
         call_url: form.callUrl.trim() || null,
         feedback_url: form.feedbackUrl.trim() || null,
         cancel_booking_minutes: minutes,
-        about: form.about.trim() || null,
-        photo_path: form.photoPath,
-        google_maps_url: form.googleMapsUrl.trim() || null,
-        yandex_maps_url: form.yandexMapsUrl.trim() || null,
-        instagram_url: form.instagramUrl.trim() || null,
-        whatsapp_url: form.whatsappUrl.trim() || null,
-        messenger_url: form.messengerUrl.trim() || null,
       };
       const { error } = await supabase
         .from(TABLE)
@@ -265,70 +232,6 @@ function ClubSettingsForm({
             placeholder="https://forms.example.com/feedback"
             value={form.feedbackUrl}
             onChange={(e) => setField("feedbackUrl", e.target.value)}
-          />
-        </FormField>
-      </section>
-
-      <section className="space-y-4 rounded-lg border bg-background p-6">
-        <div>
-          <h2 className="text-lg font-semibold">О клубе</h2>
-          <p className="text-sm text-muted-foreground">
-            Раздел «Студия» в приложении пакетных клубов, вкладка «Информация»: фото, описание и
-            ссылки. Пустые поля в приложении не показываются.
-          </p>
-        </div>
-        <FormField label="Фото" tip={TIPS.photo} htmlFor={null} optional>
-          <ImageUploadField
-            bucket="studioPhotos"
-            folder={studioId}
-            value={form.photoPath}
-            onChange={(path) => setField("photoPath", path)}
-          />
-        </FormField>
-        <FormField label="Описание" tip={TIPS.about} optional>
-          <FormattedTextarea
-            value={form.about}
-            onChange={(v) => setField("about", v)}
-            placeholder="Пара слов о клубе: формат, атмосфера, как добраться"
-          />
-        </FormField>
-        <FormField label="Google Карты" optional hint="Ссылка «Поделиться» на точку клуба.">
-          <Input
-            placeholder="https://maps.app.goo.gl/…"
-            value={form.googleMapsUrl}
-            onChange={(e) => setField("googleMapsUrl", e.target.value)}
-          />
-        </FormField>
-        <FormField label="Яндекс Карты" optional>
-          <Input
-            placeholder="https://yandex.ru/maps/-/…"
-            value={form.yandexMapsUrl}
-            onChange={(e) => setField("yandexMapsUrl", e.target.value)}
-          />
-        </FormField>
-        <FormField label="Instagram" optional>
-          <Input
-            placeholder="https://instagram.com/…"
-            value={form.instagramUrl}
-            onChange={(e) => setField("instagramUrl", e.target.value)}
-          />
-        </FormField>
-        <FormField label="WhatsApp" optional hint="Ссылка на чат: wa.me и номер без «+».">
-          <Input
-            placeholder="https://wa.me/995555123456"
-            value={form.whatsappUrl}
-            onChange={(e) => setField("whatsappUrl", e.target.value)}
-          />
-        </FormField>
-        <FormField
-          label="Facebook Messenger"
-          optional
-          hint="Ссылка m.me на страницу клуба в Facebook."
-        >
-          <Input
-            placeholder="https://m.me/…"
-            value={form.messengerUrl}
-            onChange={(e) => setField("messengerUrl", e.target.value)}
           />
         </FormField>
       </section>

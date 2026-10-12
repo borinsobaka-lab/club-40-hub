@@ -26,12 +26,12 @@ import { homeBookingsQuery } from "@/lib/home-queries";
 import { IS_PACKAGES } from "@/lib/terms";
 import { DarkSplash } from "@/formats/packages/dark-frame";
 import {
+  aboutQuery,
   packCatalogQuery,
   packMyBookingsQuery,
   packMyMembershipsQuery,
   packScheduleQuery,
   startOfDay,
-  studioInfoQuery,
   studioTrainersQuery,
 } from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
@@ -409,10 +409,8 @@ function usePrefetchScreens(ready: boolean) {
       queryClient.prefetchQuery(packMyBookingsQuery(userId, today));
       queryClient.prefetchQuery(packCatalogQuery(studioId));
       queryClient.prefetchQuery(packMyMembershipsQuery(userId));
-      if (studioId) {
-        queryClient.prefetchQuery(studioInfoQuery(studioId));
-        queryClient.prefetchQuery(studioTrainersQuery(studioId));
-      }
+      queryClient.prefetchQuery(aboutQuery());
+      if (studioId) queryClient.prefetchQuery(studioTrainersQuery(studioId));
     };
     // Сначала — запросы самого экрана (ждём, пока догрузятся, но не дольше
     // ~5 секунд), потом, когда браузер свободен, — остальное.

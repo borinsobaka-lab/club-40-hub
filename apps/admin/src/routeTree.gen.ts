@@ -41,6 +41,7 @@ import { Route as AuthenticatedBookingsLogRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAutorenewCancellationsRouteImport } from './routes/_authenticated/autorenew-cancellations'
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app-settings'
+import { Route as AuthenticatedAppAboutRouteImport } from './routes/_authenticated/app-about'
 import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenticated/admin-shifts'
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
@@ -217,6 +218,11 @@ const AuthenticatedAppSettingsRoute =
     path: '/app-settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAppAboutRoute = AuthenticatedAppAboutRouteImport.update({
+  id: '/app-about',
+  path: '/app-about',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminShiftsRoute =
   AuthenticatedAdminShiftsRouteImport.update({
     id: '/admin-shifts',
@@ -276,6 +282,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/app-about': typeof AuthenticatedAppAboutRoute
   '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
@@ -317,6 +324,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/app-about': typeof AuthenticatedAppAboutRoute
   '/app-settings': typeof AuthenticatedAppSettingsRoute
   '/assistant': typeof AuthenticatedAssistantRoute
   '/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
@@ -361,6 +369,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin-shifts': typeof AuthenticatedAdminShiftsRoute
+  '/_authenticated/app-about': typeof AuthenticatedAppAboutRoute
   '/_authenticated/app-settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/autorenew-cancellations': typeof AuthenticatedAutorenewCancellationsRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin-shifts'
+    | '/app-about'
     | '/app-settings'
     | '/assistant'
     | '/autorenew-cancellations'
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/admin-shifts'
+    | '/app-about'
     | '/app-settings'
     | '/assistant'
     | '/autorenew-cancellations'
@@ -490,6 +501,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin-shifts'
+    | '/_authenticated/app-about'
     | '/_authenticated/app-settings'
     | '/_authenticated/assistant'
     | '/_authenticated/autorenew-cancellations'
@@ -764,6 +776,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/app-about': {
+      id: '/_authenticated/app-about'
+      path: '/app-about'
+      fullPath: '/app-about'
+      preLoaderRoute: typeof AuthenticatedAppAboutRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin-shifts': {
       id: '/_authenticated/admin-shifts'
       path: '/admin-shifts'
@@ -832,6 +851,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminShiftsRoute: typeof AuthenticatedAdminShiftsRoute
+  AuthenticatedAppAboutRoute: typeof AuthenticatedAppAboutRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedAutorenewCancellationsRoute: typeof AuthenticatedAutorenewCancellationsRoute
@@ -871,6 +891,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminShiftsRoute: AuthenticatedAdminShiftsRoute,
+  AuthenticatedAppAboutRoute: AuthenticatedAppAboutRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedAutorenewCancellationsRoute:

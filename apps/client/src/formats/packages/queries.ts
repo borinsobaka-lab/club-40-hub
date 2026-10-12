@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import { APP_FORMAT } from "@/lib/app-format";
 import { untypedDb } from "@/lib/untyped-db";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
 import { PACK_ENTRY_SELECT, type PackEntry } from "./entries";
@@ -179,16 +180,6 @@ export function packMyMembershipsQuery(userId: string | null) {
 
 // ---- «Студия» ----
 
-export type StudioInfo = {
-  about: string | null;
-  photo_path: string | null;
-  google_maps_url: string | null;
-  yandex_maps_url: string | null;
-  instagram_url: string | null;
-  whatsapp_url: string | null;
-  messenger_url: string | null;
-};
-
 export type StudioTrainer = {
   id: string;
   full_name: string;
@@ -225,21 +216,41 @@ export function trainerCardQuery(trainerId: string | null) {
   });
 }
 
-export function studioInfoQuery(studioId: string | null, enabled = true) {
+export type AboutInstagramPost = { path: string; url: string | null };
+
+/** «О нас» — фото, цифры и Instagram из админки (app_about_settings). */
+export type AboutSettings = {
+  cover_photo_path: string | null;
+  first_studio_photos: string[];
+  second_studio_photos: string[];
+  community_photo_path: string | null;
+  visitors_count: number | null;
+  group_trainings_count: number | null;
+  visits_count: number | null;
+  instagram_followers: number | null;
+  instagram_posts: AboutInstagramPost[];
+};
+
+/**
+ * Строка приложения (формата) в app_about_settings. Ошибку (в том числе
+ * «таблицы ещё нет» — миграция не выкачена) не пробрасываем: раздел
+ * показывается с временными фото, без числа и без сетки Instagram.
+ */
+export function aboutQuery() {
   return queryOptions({
-    queryKey: ["studio-info", studioId],
-    queryFn: async (): Promise<StudioInfo | null> => {
+    queryKey: ["app-about", APP_FORMAT],
+    queryFn: async (): Promise<AboutSettings | null> => {
       const { data, error } = await untypedDb
-        .from("studio_app_settings")
+        .from("app_about_settings")
         .select(
-          "about, photo_path, google_maps_url, yandex_maps_url, instagram_url, whatsapp_url, messenger_url",
+          "cover_photo_path, first_studio_photos, second_studio_photos, community_photo_path, visitors_count, group_trainings_count, visits_count, instagram_followers, instagram_posts",
         )
-        .eq("studio_id", studioId)
+        .eq("format", APP_FORMAT)
         .maybeSingle();
-      if (error) throw error;
-      return (data as StudioInfo | null) ?? null;
+      if (error) return null;
+      return (data as AboutSettings | null) ?? null;
     },
-    enabled: enabled && !!studioId,
+    staleTime: 10 * 60_000,
   });
 }
 
