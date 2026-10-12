@@ -2,6 +2,8 @@ import type { Dictionary } from "../types";
 
 /** Общее: каркас, переключатель языка. */
 const dict: Dictionary = {
+  Расписание: "Schedule",
+  Бронь: "Booking",
   Язык: "Language",
   "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.":
     "Base40 client app — schedule, booking and workout results.",
