@@ -16,32 +16,50 @@ import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
 import { IS_PACKAGES, SCHEDULE_TITLE } from "@/lib/terms";
 import { PackagesSchedulePage } from "@/formats/packages/schedule-page";
+import {
+  type ContentTranslations,
+  type Translator,
+  currentT,
+  getTranslator,
+  msg,
+  useLocalize,
+  useT,
+} from "@/i18n";
 
 export const Route = createFileRoute("/schedule")({
-  head: () => ({
-    meta: [
-      { title: `${SCHEDULE_TITLE} — Base40` },
-      { name: "description", content: "Расписание и запись на занятия Base40." },
-    ],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return {
+      meta: [
+        { title: `${t(SCHEDULE_TITLE)} — Base40` },
+        { name: "description", content: t("Расписание и запись на занятия Base40.") },
+      ],
+    };
+  },
   // Пакетное приложение — свой экран (src/formats/packages/).
   component: IS_PACKAGES ? PackagesSchedulePage : SchedulePage,
 });
 
 const TABS = [
-  { key: "class", label: "Классы" },
-  { key: "personal", label: "Персональные" },
-  { key: "diagnostics", label: "Диагностика" },
+  { key: "class", label: msg("Классы") },
+  { key: "personal", label: msg("Персональные") },
+  { key: "diagnostics", label: msg("Диагностика") },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-type Trainer = { id: string; full_name: string | null; photo_url: string | null };
+type Trainer = {
+  id: string;
+  full_name: string | null;
+  photo_url: string | null;
+  translations?: ContentTranslations | null;
+};
 type Workout = {
   name: string;
   type: string | null;
   description: string | null;
   photo_url: string | null;
   capacity: number | null;
+  translations?: ContentTranslations | null;
 };
 type Entry = {
   id: string;
@@ -53,7 +71,11 @@ type Entry = {
   trainers: { trainer: Trainer | null }[] | null;
 };
 
-const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+/** «Пн» / «Mon» / «ორშ» — короткое название дня недели на языке клиента. */
+function dayName(d: Date, t: Translator) {
+  const name = d.toLocaleDateString(t.intl, { weekday: "short" });
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -65,23 +87,17 @@ function addDays(d: Date, n: number) {
   x.setDate(x.getDate() + n);
   return x;
 }
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+function fmtTime(iso: string, t: Translator) {
+  return new Date(iso).toLocaleTimeString(t.intl, { hour: "2-digit", minute: "2-digit" });
 }
 // Вместимость null или 0 — без ограничения (как в RPC записи).
 function remainingSpots(capacity: number | null, booked: number) {
   if (capacity == null || capacity <= 0) return null;
   return Math.max(0, capacity - booked);
 }
-function pluralSeats(n: number) {
-  if (n % 100 >= 11 && n % 100 <= 14) return "мест";
-  const r = n % 10;
-  if (r === 1) return "место";
-  if (r >= 2 && r <= 4) return "места";
-  return "мест";
-}
-
 function SchedulePage() {
+  const t = useT();
+  const loc = useLocalize();
   const navigate = useNavigate();
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(() => Array.from({ length: 10 }, (_, i) => addDays(today, i - 3)), [today]);
@@ -172,7 +188,10 @@ function SchedulePage() {
 
       // Ошибка броней — не «вы никуда не записаны»: говорим о ней, а не молчим.
       if (bookings?.error) {
-        toast.error(`Не удалось загрузить ваши записи: ${bookings.error.message}`);
+        const t = currentT();
+        toast.error(
+          t("Не удалось загрузить ваши записи: {error}", { error: bookings.error.message }),
+        );
       }
       const rows = bookings?.data as { entry_id: string; status: string }[] | null | undefined;
       if (rows) {
@@ -242,18 +261,22 @@ function SchedulePage() {
     );
     setPendingId(null);
     if (error) {
-      toast.error(`Не удалось ${isActive ? "отменить запись" : "записаться"}: ${error.message}`);
+      toast.error(
+        isActive
+          ? t("Не удалось отменить запись: {error}", { error: error.message })
+          : t("Не удалось записаться: {error}", { error: error.message }),
+      );
       return;
     }
     const reasonMessages: Record<string, string> = {
-      unauthorized: "Войдите в аккаунт, чтобы записаться",
-      no_client: "Профиль клиента не найден. Обратитесь к администратору.",
-      no_membership: "Нет активного абонемента. Купите абонемент, чтобы записаться.",
-      no_visits_left: "На абонементе закончились посещения",
-      not_found: "Тренировка не найдена",
-      past: "Эта тренировка уже прошла",
-      full: "Свободных мест больше нет",
-      not_booked: "Вы не были записаны на эту тренировку",
+      unauthorized: t("Войдите в аккаунт, чтобы записаться"),
+      no_client: t("Профиль клиента не найден. Обратитесь к администратору."),
+      no_membership: t("Нет активного абонемента. Купите абонемент, чтобы записаться."),
+      no_visits_left: t("На абонементе закончились посещения"),
+      not_found: t("Тренировка не найдена"),
+      past: t("Эта тренировка уже прошла"),
+      full: t("Свободных мест больше нет"),
+      not_booked: t("Вы не были записаны на эту тренировку"),
     };
     const res = data as {
       ok: boolean;
@@ -290,10 +313,10 @@ function SchedulePage() {
             ),
           );
         }
-        toast.success(wasWaitlisted ? "Вы вышли из листа ожидания" : "Запись отменена");
+        toast.success(wasWaitlisted ? t("Вы вышли из листа ожидания") : t("Запись отменена"));
       } else if (res.waitlisted) {
         setWaitlistedIds((prev) => new Set(prev).add(entryId));
-        toast.success("Мест нет — вы в листе ожидания");
+        toast.success(t("Мест нет — вы в листе ожидания"));
       } else {
         setBookedIds((prev) => new Set(prev).add(entryId));
         setEntries((prev) =>
@@ -307,7 +330,7 @@ function SchedulePage() {
               : e,
           ),
         );
-        toast.success("Вы записаны на тренировку");
+        toast.success(t("Вы записаны на тренировку"));
       }
     } else if (res?.reason === "already_booked") {
       setBookedIds((prev) => new Set(prev).add(entryId));
@@ -323,7 +346,10 @@ function SchedulePage() {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });
     } else if (res?.reason) {
-      toast.error(reasonMessages[res.reason] ?? `Не удалось выполнить действие: ${res.reason}`);
+      toast.error(
+        reasonMessages[res.reason] ??
+          t("Не удалось выполнить действие: {reason}", { reason: res.reason }),
+      );
     }
   }
 
@@ -332,28 +358,39 @@ function SchedulePage() {
   const availableTypes = useMemo(() => {
     const set = new Set<string>();
     entries.forEach((e) => {
-      const t = e.workout?.type?.toLowerCase().trim();
-      if (t) set.add(t);
+      const type = e.workout?.type?.toLowerCase().trim();
+      if (type) set.add(type);
     });
-    return TYPE_ORDER.filter((t) => set.has(t));
+    return TYPE_ORDER.filter((type) => set.has(type));
   }, [entries]);
+
+  // Название тренировки и имена тренеров — на языке клиента (контент админки).
+  const shownEntries = useMemo(
+    () =>
+      entries.map((e) => ({
+        ...e,
+        workout: loc(e.workout),
+        trainers: e.trainers?.map((row) => ({ trainer: loc(row.trainer) })) ?? null,
+      })),
+    [entries, loc],
+  );
 
   const entriesByDay = useMemo(
     () =>
       days.map((day) =>
-        entries.filter((e) => {
+        shownEntries.filter((e) => {
           const d = startOfDay(new Date(e.starts_at));
           if (d.getTime() !== day.getTime()) return false;
           if (activeType === "all") return true;
           return (e.workout?.type?.toLowerCase().trim() ?? "") === activeType;
         }),
       ),
-    [days, entries, activeType],
+    [days, shownEntries, activeType],
   );
 
   const typeFilters = [
-    { key: "all", label: "Все" },
-    ...availableTypes.map((t) => ({ key: t, label: workoutTypeMeta(t).label })),
+    { key: "all", label: t("Все") },
+    ...availableTypes.map((type) => ({ key: type, label: t(workoutTypeMeta(type).label) })),
   ];
 
   return (
@@ -361,23 +398,23 @@ function SchedulePage() {
       scrollKey="schedule"
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-semibold">Бронь</h1>
-          <p className="text-sm text-white/70">Выберите день и забронируйте тренировку</p>
+          <h1 className="text-3xl font-semibold">{t(SCHEDULE_TITLE)}</h1>
+          <p className="text-sm text-white/70">{t("Выберите день и забронируйте тренировку")}</p>
         </div>
       }
     >
       <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pt-4 pb-0">
-        {TABS.map((t) => {
-          const active = activeTab === t.key;
+        {TABS.map((tab) => {
+          const active = activeTab === tab.key;
           return (
             <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
                 active ? "text-foreground" : "text-muted-foreground"
               }`}
             >
-              {t.label}
+              {t(tab.label)}
               {active && (
                 <span className="absolute left-0 right-0 -bottom-px h-1 bg-primary rounded-full" />
               )}
@@ -389,13 +426,13 @@ function SchedulePage() {
       {activeTab === "personal" ? (
         <div className="p-4">
           <Card className="p-8 text-center text-sm text-muted-foreground">
-            Совсем скоро мы начнем принимать заявки на персональные тренировки
+            {t("Совсем скоро мы начнем принимать заявки на персональные тренировки")}
           </Card>
         </div>
       ) : activeTab !== "class" ? (
         <div className="p-4">
           <Card className="p-8 text-center text-sm text-muted-foreground">
-            Функционал скоро будет доступен
+            {t("Функционал скоро будет доступен")}
           </Card>
         </div>
       ) : (
@@ -422,7 +459,7 @@ function SchedulePage() {
                   <span
                     className={`text-xs font-medium ${i === activeIdx ? "" : "text-muted-foreground"}`}
                   >
-                    {DAY_NAMES[d.getDay()]}
+                    {dayName(d, t)}
                   </span>
                   <span className="text-lg font-bold">{d.getDate()}</span>
                 </button>
@@ -431,14 +468,14 @@ function SchedulePage() {
           </div>
 
           <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
-            {typeFilters.map((t) => {
-              const active = activeType === t.key;
-              const meta = t.key === "all" ? null : workoutTypeMeta(t.key);
+            {typeFilters.map((filter) => {
+              const active = activeType === filter.key;
+              const meta = filter.key === "all" ? null : workoutTypeMeta(filter.key);
               const Icon = meta?.icon;
               return (
                 <button
-                  key={t.key}
-                  onClick={() => setActiveType(t.key)}
+                  key={filter.key}
+                  onClick={() => setActiveType(filter.key)}
                   className={`shrink-0 inline-flex items-center gap-1.5 px-3 h-7 rounded-full border text-xs font-medium transition-colors ${
                     active
                       ? "bg-foreground text-background border-foreground"
@@ -446,7 +483,7 @@ function SchedulePage() {
                   }`}
                 >
                   {Icon && <Icon className={`h-3.5 w-3.5 ${meta!.color}`} />}
-                  {t.label}
+                  {filter.label}
                 </button>
               );
             })}
@@ -457,7 +494,9 @@ function SchedulePage() {
               <ScheduleListSkeleton />
             </div>
           ) : error ? (
-            <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
+            <Card className="p-4 text-sm text-destructive">
+              {t("Ошибка загрузки: {error}", { error })}
+            </Card>
           ) : (
             <div
               ref={swipeAreaRef}
@@ -509,7 +548,7 @@ function SchedulePage() {
                   <div key={days[dayIdx].toISOString()} className="w-full shrink-0 px-4">
                     {dayList.length === 0 ? (
                       <Card className="p-6 text-center text-sm text-muted-foreground">
-                        На этот день тренировок пока нет
+                        {t("На этот день тренировок пока нет")}
                       </Card>
                     ) : (
                       <div className="relative">
@@ -544,21 +583,21 @@ function SchedulePage() {
                                 >
                                   <div className="flex flex-col items-center justify-center w-12 shrink-0">
                                     <div className="text-base font-black tabular-nums leading-tight text-center">
-                                      {fmtTime(c.starts_at)}
+                                      {fmtTime(c.starts_at, t)}
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0 ml-1">
                                     <div className="font-medium break-words leading-snug">
-                                      {c.workout?.name ?? "Занятие"}
+                                      {c.workout?.name ?? t("Занятие")}
                                     </div>
                                     {isWaitlisted && (
                                       <div className="text-xs mt-0.5 font-semibold text-blue-600 dark:text-blue-400">
-                                        В листе ожидания
+                                        {t("В листе ожидания")}
                                       </div>
                                     )}
                                     {(() => {
                                       const names = (c.trainers ?? [])
-                                        .map((t) => t.trainer?.full_name)
+                                        .map((row) => row.trainer?.full_name)
                                         .filter((n): n is string => !!n);
                                       if (names.length === 0) return null;
                                       return (
@@ -584,7 +623,9 @@ function SchedulePage() {
                                               className="h-3.5 w-3.5 shrink-0"
                                               weight="BoldDuotone"
                                             />
-                                            <span className="leading-none mt-0.5">Мест нет</span>
+                                            <span className="leading-none mt-0.5">
+                                              {t("Мест нет")}
+                                            </span>
                                           </div>
                                         );
                                       }
@@ -595,7 +636,10 @@ function SchedulePage() {
                                             weight="BoldDuotone"
                                           />
                                           <span className="leading-none mt-0.5">
-                                            Осталось {left} {pluralSeats(left)}
+                                            {t.plural(
+                                              left,
+                                              "Осталось {n} место|Осталось {n} места|Осталось {n} мест",
+                                            )}
                                           </span>
                                         </div>
                                       );
@@ -613,7 +657,7 @@ function SchedulePage() {
                                     className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-primary text-primary-foreground ${
                                       isPending ? "opacity-60" : ""
                                     }`}
-                                    aria-label="Записаться"
+                                    aria-label={t("Записаться")}
                                   >
                                     {isPending ? (
                                       <Refresh
