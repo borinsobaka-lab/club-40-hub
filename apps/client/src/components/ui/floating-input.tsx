@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { fieldClass } from "@/components/ui/input";
 
 /* ───────── Floating label input ───────── */
 interface FloatingLabelInputProps extends React.ComponentProps<"input"> {
@@ -23,10 +24,9 @@ const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLabelInput
           // Плейсхолдер — только когда подпись поднята, иначе они накладываются.
           placeholder={active ? placeholder : undefined}
           className={cn(
-            "flex h-14 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-none transition-colors",
+            "flex h-14",
+            fieldClass,
             "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
-            "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-            "disabled:cursor-not-allowed disabled:opacity-50",
             active ? "pt-5 pb-1" : "py-1",
             className,
           )}
@@ -42,10 +42,10 @@ const FloatingLabelInput = React.forwardRef<HTMLInputElement, FloatingLabelInput
         />
         <label
           className={cn(
-            "absolute left-3 pointer-events-none transition-all duration-200 origin-left",
+            "absolute left-4 pointer-events-none transition-all duration-200 origin-left",
             active
               ? "top-1.5 text-[11px] text-muted-foreground"
-              : "top-1/2 -translate-y-1/2 text-base text-muted-foreground",
+              : "top-1/2 -translate-y-1/2 text-base text-field-placeholder",
           )}
         >
           {label}
@@ -94,10 +94,10 @@ const FloatingLabelSelect = React.forwardRef<HTMLButtonElement, FloatingLabelSel
         </SelectRootWrapper>
         <span
           className={cn(
-            "absolute left-3 pointer-events-none transition-all duration-200 origin-left",
+            "absolute left-4 pointer-events-none transition-all duration-200 origin-left",
             active
               ? "top-1.5 text-[11px] text-muted-foreground"
-              : "top-1/2 -translate-y-1/2 text-base text-muted-foreground",
+              : "top-1/2 -translate-y-1/2 text-base text-field-placeholder",
           )}
         >
           {label}
@@ -138,9 +138,9 @@ const SelectRootWrapper = React.forwardRef<HTMLButtonElement, SelectRootWrapperP
         <SelectTrigger
           ref={ref}
           className={cn(
-            "flex h-14 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 shadow-none ring-offset-background cursor-pointer",
-            "data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring",
-            "disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+            "flex h-14 items-center justify-between whitespace-nowrap cursor-pointer",
+            fieldClass,
+            "data-[placeholder]:text-field-placeholder data-[state=open]:bg-field-focus focus:ring-0 [&>span]:line-clamp-1",
             active ? "pt-5 pb-1" : "py-1",
           )}
           onFocus={() => setFocused(true)}

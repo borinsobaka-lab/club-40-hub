@@ -232,8 +232,8 @@ function AuthPage() {
           <div
             key={i}
             aria-hidden="true"
-            className={`flex h-14 w-11 items-center justify-center rounded-xl border bg-card text-xl font-bold ${
-              current ? "border-primary ring-2 ring-primary" : "border-border"
+            className={`flex h-14 w-11 items-center justify-center rounded-xl text-xl font-bold transition-colors ${
+              current ? "bg-field-focus" : "bg-field"
             }`}
           >
             {d}
@@ -270,7 +270,7 @@ function AuthPage() {
               otpRefs.current[i - 1]?.focus();
             }
           }}
-          className="h-14 w-11 text-center text-xl font-bold rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
+          className="h-14 w-11 rounded-xl bg-field text-center text-xl font-bold outline-none transition-colors focus:bg-field-focus"
         />
       ))}
     </div>
@@ -343,8 +343,7 @@ function AuthPage() {
         }
       >
         {step === "form" ? (
-          // pb — запас под рамку и подсветку фокуса: прокрутка панели срезала
-          // нижний край поля.
+          // pb — запас снизу: прокрутка панели срезала нижний край поля.
           <form id="auth-email-form" onSubmit={requestCode} className="space-y-3 px-4 pt-6 pb-2">
             <Input
               type="email"
@@ -355,7 +354,6 @@ function AuthPage() {
               autoComplete="email"
               inputMode="email"
               required
-              className="h-14 text-base"
             />
             {errorText}
           </form>
