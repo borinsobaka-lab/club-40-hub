@@ -49,12 +49,10 @@ const BLOB_STYLES = (() => {
  * пересоздаётся (main с key={pathname}), подложка — нет, поэтому огоньки
  * не дёргаются.
  */
-export function HeaderBackdrop({ full = false }: { full?: boolean }) {
-  // full — огоньки на всю высоту (экраны, где тёмная зона выше 320px:
-  // вход и онбординг пакетного приложения), иначе видна граница слоя.
+export function HeaderBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0 bg-[#2A2B2F]" aria-hidden="true">
-      <div className={full ? "absolute inset-0" : "absolute inset-x-0 top-0 h-[320px]"}>
+      <div className="absolute inset-x-0 top-0 h-[320px]">
         <GlowBlobs />
       </div>
     </div>
@@ -63,8 +61,8 @@ export function HeaderBackdrop({ full = false }: { full?: boolean }) {
 
 /**
  * Сами огоньки — слой на весь родитель (position: relative/absolute).
- * Отдельно от подложки — для огоньков поверх иллюстраций (Illustration в
- * formats/packages/dark-frame.tsx).
+ * Отдельно от подложки — для экранов со своим порядком слоёв (DarkFrame в
+ * formats/packages/dark-frame.tsx: огоньки поверх иллюстрации).
  */
 export function GlowBlobs({ className = "" }: { className?: string }) {
   return (

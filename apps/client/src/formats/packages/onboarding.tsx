@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RulerPicker } from "@/components/ui/ruler-picker";
 import { Textarea } from "@/components/ui/textarea";
-import { DarkFrame as Frame, Illustration } from "@/formats/packages/dark-frame";
+import { DarkFrame as Frame } from "@/formats/packages/dark-frame";
 import introArt from "@/assets/onboarding-intro.webp";
 import finalArt from "@/assets/onboarding-final.webp";
 import scheduleArt from "@/assets/onboarding-schedule.webp";
@@ -254,10 +254,10 @@ export function PackagesOnboardingPage() {
     return (
       <Frame
         tall
+        art={introArt}
         header={
-          <div className="flex min-h-0 flex-1 flex-col px-6 pb-10">
-            <Illustration src={introArt} />
-            <h1 className="mt-2 text-3xl font-semibold leading-tight">
+          <div className="px-6 pt-2 pb-10">
+            <h1 className="text-3xl font-semibold leading-tight">
               Пара вопросов — и вы сможете следить за своим прогрессом
             </h1>
           </div>
@@ -276,10 +276,10 @@ export function PackagesOnboardingPage() {
     return (
       <Frame
         tall
+        art={finalArt}
         header={
-          <div className="flex min-h-0 flex-1 flex-col px-6 pb-10">
-            <Illustration src={finalArt} />
-            <h1 className="mt-2 text-3xl font-semibold leading-tight">
+          <div className="px-6 pt-2 pb-10">
+            <h1 className="text-3xl font-semibold leading-tight">
               Спасибо, что поделились с нами!
             </h1>
           </div>
@@ -301,8 +301,9 @@ export function PackagesOnboardingPage() {
   return (
     <Frame
       tall={!!art}
-      header={
-        <div className={art ? "flex min-h-0 flex-1 flex-col px-4 pb-8" : "px-4 pb-8"}>
+      art={art}
+      top={
+        <div className="px-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -314,8 +315,11 @@ export function PackagesOnboardingPage() {
             </button>
             <Progress step={step} total={TOTAL_STEPS} />
           </div>
-          {art && <Illustration src={art} />}
-          <h1 className="mt-5 text-2xl font-semibold leading-tight">{titles.title}</h1>
+        </div>
+      }
+      header={
+        <div className="px-4 pt-5 pb-8">
+          <h1 className="text-2xl font-semibold leading-tight">{titles.title}</h1>
           {titles.subtitle && <p className="mt-2 text-sm text-white/70">{titles.subtitle}</p>}
         </div>
       }

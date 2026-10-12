@@ -106,7 +106,9 @@ saving new user», экран показывает «почта не найде�
 `src/components/onboarding.tsx`, тексты и типы — `src/lib/onboarding.ts`,
 выбор — по `IS_PACKAGES` в `src/routes/onboarding.tsx`); оформлена как
 разделы приложения (тёмная шапка с огоньками, белая панель, разделители
-блоков) — каркас `src/formats/packages/dark-frame.tsx`, в нём же экран входа
+блоков) — каркас `src/formats/packages/dark-frame.tsx` (огоньки поверх
+иллюстрации, высота — по `visualViewport`, чтобы клавиатура не закрывала
+поля), в нём же экран входа
 пакетного приложения (`src/routes/auth.tsx`, ветка `IS_PACKAGES`);
 подробно — STUDIO_FORMATS.md.
 
