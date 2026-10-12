@@ -15,12 +15,19 @@ export const APP_ICON_FILES = {
   /** Манифест, purpose any. */
   icon512: { name: "icon-512.png", size: 512 },
   icon192: { name: "icon-192.png", size: 192 },
-  /** Манифест, purpose maskable: Android сам обрезает края кругом/скруглением. */
-  maskable512: { name: "icon-maskable-512.png", size: 512, opaque: true },
+  /**
+   * Манифест, purpose maskable: Android обрезает края кругом/скруглением и
+   * гарантирует только центральный круг диаметром 80% — картинка ужимается
+   * до MASKABLE_SCALE, поля заливаются цветом её угла.
+   */
+  maskable512: { name: "icon-maskable-512.png", size: 512, opaque: true, maskable: true },
   /** iOS: прозрачное он заливает чёрным, поэтому — на белом. */
   appleTouch: { name: "apple-touch-icon.png", size: 180, opaque: true },
   favicon32: { name: "favicon-32.png", size: 32 },
 } as const;
+
+/** Доля стороны maskable-иконки под картинку: квадрат 66% почти целиком в круге 80%. */
+const MASKABLE_SCALE = 0.66;
 
 /** Меньше — значок на рабочем столе будет мыльным. */
 export const APP_ICON_MIN_SIZE = 512;
@@ -49,25 +56,69 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   }).finally(() => URL.revokeObjectURL(url));
 }
 
-/** Квадрат size×size из центра картинки; opaque — на белом фоне. */
-function renderSquare(img: HTMLImageElement, size: number, opaque: boolean): Promise<Blob> {
+/**
+ * Цвет фона картинки — её левый верхний пиксель (на белом, если прозрачный):
+ * им заливаются поля maskable-иконки, чтобы рамки не было видно.
+ */
+function backgroundColor(img: HTMLImageElement): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 64;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return "#ffffff";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 64, 64);
+  drawCenterSquare(ctx, img, 64);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/** Квадрат из центра картинки в квадрат size×size с левым верхним углом (x, y). */
+function drawCenterSquare(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  size: number,
+  x = 0,
+  y = 0,
+) {
   // SVG без width/height бывает с нулевым размером — тогда рисуем целиком.
-  const w = img.naturalWidth || size;
-  const h = img.naturalHeight || size;
-  const side = Math.min(w, h);
+  if (img.naturalWidth && img.naturalHeight) {
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const side = Math.min(w, h);
+    ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, x, y, size, size);
+  } else {
+    ctx.drawImage(img, x, y, size, size);
+  }
+}
+
+/**
+ * Квадрат size×size из центра картинки; opaque — на белом фоне; maskable —
+ * картинка ужата в безопасную зону Android, поля — цветом её фона.
+ */
+function renderSquare(
+  img: HTMLImageElement,
+  size: number,
+  opaque: boolean,
+  maskable: boolean,
+): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Браузер не умеет обрабатывать картинки");
-  if (opaque) {
-    ctx.fillStyle = "#ffffff";
+  if (opaque || maskable) {
+    ctx.fillStyle = maskable ? backgroundColor(img) : "#ffffff";
     ctx.fillRect(0, 0, size, size);
   }
   ctx.imageSmoothingQuality = "high";
-  if (img.naturalWidth && img.naturalHeight) {
-    ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, size, size);
+  if (maskable) {
+    const inner = Math.round(size * MASKABLE_SCALE);
+    const offset = Math.round((size - inner) / 2);
+    // Под прозрачные места картинки — белый, как у остальных непрозрачных.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(offset, offset, inner, inner);
+    drawCenterSquare(ctx, img, inner, offset, offset);
   } else {
-    ctx.drawImage(img, 0, 0, size, size);
+    drawCenterSquare(ctx, img, size);
   }
   return new Promise((resolve, reject) =>
     canvas.toBlob(
@@ -94,7 +145,9 @@ export async function uploadAppIcon(file: File): Promise<string> {
   const folder = crypto.randomUUID();
   const files = Object.values(APP_ICON_FILES);
   const blobs = await Promise.all(
-    files.map((f) => renderSquare(img, f.size, "opaque" in f && f.opaque)),
+    files.map((f) =>
+      renderSquare(img, f.size, "opaque" in f && f.opaque, "maskable" in f && f.maskable),
+    ),
   );
   await Promise.all(
     files.map(async (f, i) => {

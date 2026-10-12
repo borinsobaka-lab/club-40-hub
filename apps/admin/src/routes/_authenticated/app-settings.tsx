@@ -194,7 +194,7 @@ function AppInstallSection({
       <FormField
         label="Иконка приложения"
         tip={TIPS.icon}
-        hint={`Квадрат PNG, JPG или SVG от ${APP_ICON_MIN_SIZE}×${APP_ICON_MIN_SIZE} px, без скруглённых углов — телефон скруглит сам. Важное — ближе к центру: Android может обрезать края кругом. Без своей — иконка Base40.`}
+        hint={`Квадрат PNG, JPG или SVG от ${APP_ICON_MIN_SIZE}×${APP_ICON_MIN_SIZE} px, без скруглённых углов — телефон скруглит сам. Для Android картинка сама ужимается к центру с полями цвета её фона — края кругом не обрежутся. Без своей — иконка Base40.`}
         htmlFor={null}
       >
         <AppIconField value={form.iconPath} onChange={onIcon} />
