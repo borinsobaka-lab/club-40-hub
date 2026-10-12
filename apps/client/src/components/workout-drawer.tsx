@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { Calendar } from "@solar-icons/react";
+import { Calendar, CloseCircle, MapPoint, UsersGroupRounded } from "@solar-icons/react";
 import { toast } from "sonner";
 // Заглушка без фото тренировки: PNG/WebP 336×336 вместо прежнего SVG на 1,4 МБ
 // (тысячи контуров карты — долго грузился и рисовался при открытии шторки).
 import logoSrc from "@/assets/brand-placeholder.webp";
 import { workoutTypeMeta } from "@/lib/workout-types";
 import { formatCancelDeadline } from "@/hooks/use-club-settings";
+import { useFormatStudios } from "@/hooks/use-viewed-studio";
 import {
   SquircleAvatar,
   SquircleAvatarFallback,
@@ -35,6 +36,8 @@ export type WorkoutDrawerData = {
   trainers?: { id: string; name: string; photo: string | null }[];
   spotsLabel?: string | null;
   spotsLeft?: number | null;
+  /** Студия занятия — название и адрес в шторке (куда записывается клиент). */
+  studioId?: string | null;
 };
 
 function initialsOf(name: string) {
@@ -92,6 +95,8 @@ export function WorkoutDrawer({
   const isPack = !!data?.trainers;
   const typeMeta = data && !isPack ? workoutTypeMeta(data.type) : null;
   const TypeIcon = typeMeta?.icon ?? null;
+  const { data: studios } = useFormatStudios();
+  const studio = isPack && data?.studioId ? studios?.find((s) => s.id === data.studioId) : null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
 
@@ -193,9 +198,35 @@ export function WorkoutDrawer({
 
                     {isPack && data.spotsLabel && (
                       <div
-                        className={`mt-1 text-sm font-semibold ${data.spotsLeft === 0 ? "text-red-500" : "text-foreground"}`}
+                        className={`mt-1.5 flex items-center gap-1.5 text-sm font-semibold ${data.spotsLeft === 0 ? "text-red-500" : "text-foreground"}`}
                       >
+                        {data.spotsLeft === 0 ? (
+                          <CloseCircle
+                            className="h-[18px] w-[18px] shrink-0"
+                            weight="BoldDuotone"
+                          />
+                        ) : (
+                          <UsersGroupRounded
+                            className="h-[18px] w-[18px] shrink-0 text-primary"
+                            weight="BoldDuotone"
+                          />
+                        )}
                         {data.spotsLabel}
+                      </div>
+                    )}
+
+                    {studio && (
+                      <div className="mt-1.5 flex items-start gap-1.5 text-sm">
+                        <MapPoint
+                          className="mt-px h-[18px] w-[18px] shrink-0 text-primary"
+                          weight="BoldDuotone"
+                        />
+                        <div className="min-w-0">
+                          <span className="font-semibold">{studio.name}</span>
+                          {studio.address && (
+                            <span className="block text-muted-foreground">{studio.address}</span>
+                          )}
+                        </div>
                       </div>
                     )}
 

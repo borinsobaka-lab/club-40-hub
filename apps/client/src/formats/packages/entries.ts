@@ -107,5 +107,6 @@ export function packEntryToDrawerData(e: PackEntry): WorkoutDrawerData {
     })),
     spotsLabel: spotsLabel(e),
     spotsLeft: spotsLeft(e),
+    studioId: e.studio_id,
   };
 }
