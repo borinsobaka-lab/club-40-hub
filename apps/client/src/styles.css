@@ -674,12 +674,21 @@ html body [data-sonner-toast][data-type="warning"] {
   filter: blur(5px) hue-rotate(263deg) saturate(1.3);
 }
 
-/* Иллюстрации на тёмной зоне (пакетное приложение, вход и онбординг): фон
-   картинки — тёмный, но не точь-в-точь #2A2B2F и без огоньков. lighten
-   оставляет от картинки только то, что светлее подложки (стекло и свечение),
-   а маска растворяет края — квадрат картинки не виден. */
-.art-on-dark {
-  mix-blend-mode: lighten;
-  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
-  mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
+/* Иллюстрации на тёмной зоне (пакетное приложение: вход, онбординг —
+   Illustration в formats/packages/dark-frame.tsx). Края картинки
+   растворяются в фоне (.art-fade), огоньки идут поверх неё, но не в центре,
+   где сам рисунок, и гаснут к краям блока (.art-glow-over — маска-кольцо). */
+.art-fade {
+  -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 70%, transparent 100%);
+}
+.art-glow-over {
+  -webkit-mask-image: radial-gradient(
+    closest-side,
+    transparent 40%,
+    #000 70%,
+    #000 80%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(closest-side, transparent 40%, #000 70%, #000 80%, transparent 100%);
 }

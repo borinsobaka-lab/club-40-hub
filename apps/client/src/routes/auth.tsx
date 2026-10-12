@@ -6,7 +6,7 @@ import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { CLUB, IS_PACKAGES } from "@/lib/terms";
-import { DarkFrame } from "@/formats/packages/dark-frame";
+import { DarkFrame, Illustration } from "@/formats/packages/dark-frame";
 import packagesLogo from "@/assets/packages-logo.svg";
 import loginEmailArt from "@/assets/login-email.webp";
 
@@ -266,14 +266,8 @@ function AuthPage() {
               alt="Логотип студии"
               className="mt-4 h-auto w-[150px] shrink-0"
             />
-            <div className="relative my-2 min-h-0 flex-1">
-              <img
-                src={loginEmailArt}
-                alt=""
-                className="art-on-dark absolute inset-0 m-auto h-full max-h-[400px] w-full object-contain"
-              />
-            </div>
-            <h1 className="text-3xl font-semibold leading-tight">Добро пожаловать</h1>
+            <Illustration src={loginEmailArt} />
+            <h1 className="mt-2 text-3xl font-semibold leading-tight">Добро пожаловать</h1>
             <p className="mt-2 text-sm text-white/70">{subtitle}</p>
           </div>
         }

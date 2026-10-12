@@ -55,12 +55,23 @@ export function HeaderBackdrop({ full = false }: { full?: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0 bg-[#2A2B2F]" aria-hidden="true">
       <div className={full ? "absolute inset-0" : "absolute inset-x-0 top-0 h-[320px]"}>
-        <div className="gradient-blobs">
-          {BLOB_STYLES.map((style, i) => (
-            <span key={i} style={style} />
-          ))}
-        </div>
+        <GlowBlobs />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Сами огоньки — слой на весь родитель (position: relative/absolute).
+ * Отдельно от подложки — для огоньков поверх иллюстраций (Illustration в
+ * formats/packages/dark-frame.tsx).
+ */
+export function GlowBlobs({ className = "" }: { className?: string }) {
+  return (
+    <div className={`gradient-blobs ${className}`}>
+      {BLOB_STYLES.map((style, i) => (
+        <span key={i} style={style} />
+      ))}
     </div>
   );
 }

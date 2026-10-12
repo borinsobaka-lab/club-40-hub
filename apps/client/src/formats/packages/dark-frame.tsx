@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { HeaderBackdrop } from "@/components/page-shell";
+import { GlowBlobs, HeaderBackdrop } from "@/components/page-shell";
 
 /**
  * Полноэкранный экран пакетного приложения в оформлении разделов (PageShell):
@@ -42,6 +42,25 @@ export function DarkFrame({
         </div>
         <div className="px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1.5rem)]">{footer}</div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Иллюстрация в тёмной зоне (вход, вступление и финал анкеты): занимает
+ * свободное место между логотипом и заголовком, не выше 400px. Края картинки
+ * растворяются в фоне, а огоньки идут поверх неё по краям — в центре, где
+ * сам рисунок, их нет (маски — .art-fade и .art-glow-over в styles.css).
+ */
+export function Illustration({ src }: { src: string }) {
+  return (
+    <div className="relative my-auto min-h-0 w-full max-h-[400px] flex-1">
+      <img
+        src={src}
+        alt=""
+        className="art-fade absolute inset-0 m-auto h-full w-full object-contain"
+      />
+      <GlowBlobs className="art-glow-over" />
     </div>
   );
 }
