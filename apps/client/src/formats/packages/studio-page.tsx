@@ -21,7 +21,8 @@ import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
 
 /**
  * «Студия» пакетного приложения (до 2026-10-11 — заглушка «Клуб»): вкладки
- * «Информация» (фото, описание, карты, Instagram — studio_app_settings,
+ * «Информация» (фото, описание, карты, Instagram, WhatsApp, Messenger —
+ * studio_app_settings,
  * правятся в админке: «Мобильное приложение» → «Контакты и правила») и
  * «Тренеры» (тренеры студии с биографией, рейтингом и чаевыми —
  * «Сотрудники» в админке; рейтинг и оценка — trainer-rating.tsx).
@@ -94,6 +95,12 @@ function StudioInfoTab() {
       icon: <MapPoint className="h-5 w-5" weight="BoldDuotone" />,
     },
     { label: "Instagram", href: data?.instagram_url, icon: <InstagramIcon className="h-5 w-5" /> },
+    { label: "WhatsApp", href: data?.whatsapp_url, icon: <WhatsAppIcon className="h-5 w-5" /> },
+    {
+      label: "Messenger",
+      href: data?.messenger_url,
+      icon: <MessengerIcon className="h-5 w-5" />,
+    },
   ].filter((l) => !!l.href?.trim());
 
   if (!photo && !data?.about?.trim() && links.length === 0) {
@@ -304,6 +311,42 @@ function InstagramIcon({ className }: { className?: string }) {
       <rect x="3" y="3" width="18" height="18" rx="5" />
       <circle cx="12" cy="12" r="4" />
       <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M3.5 20.5l1.3-4A8.5 8.5 0 1 1 8 19.6z" />
+      <path d="M9 8.5c0 3.3 3.2 6.5 6.5 6.5l1-1.5-2-1-1 .8a5 5 0 0 1-2.8-2.8l.8-1-1-2z" />
+    </svg>
+  );
+}
+
+function MessengerIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 3c-5 0-9 3.7-9 8.4 0 2.6 1.2 4.9 3.2 6.4V21l3-1.6c.9.2 1.8.4 2.8.4 5 0 9-3.7 9-8.4S17 3 12 3z" />
+      <path d="M7.5 13.5l3-3 2.2 2 3.8-2.5-3 3-2.2-2z" />
     </svg>
   );
 }

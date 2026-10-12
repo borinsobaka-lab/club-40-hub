@@ -178,6 +178,8 @@ export type StudioInfo = {
   google_maps_url: string | null;
   yandex_maps_url: string | null;
   instagram_url: string | null;
+  whatsapp_url: string | null;
+  messenger_url: string | null;
 };
 
 export type StudioTrainer = {
@@ -197,7 +199,9 @@ export function studioInfoQuery(studioId: string | null, enabled = true) {
     queryFn: async (): Promise<StudioInfo | null> => {
       const { data, error } = await untypedDb
         .from("studio_app_settings")
-        .select("about, photo_path, google_maps_url, yandex_maps_url, instagram_url")
+        .select(
+          "about, photo_path, google_maps_url, yandex_maps_url, instagram_url, whatsapp_url, messenger_url",
+        )
         .eq("studio_id", studioId)
         .maybeSingle();
       if (error) throw error;
