@@ -141,7 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: error?.message ?? null };
     },
     signOut: async () => {
-      await supabase.auth.signOut();
+      // scope local: учётная запись у сотрудника-клиента общая с админкой, а
+      // глобальный выход (по умолчанию) отозвал бы и его сессии в админке.
+      await supabase.auth.signOut({ scope: "local" });
     },
   };
 

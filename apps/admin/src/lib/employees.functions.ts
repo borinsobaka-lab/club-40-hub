@@ -564,13 +564,12 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     // другой студии), а удаление auth-пользователя каскадом сносит его
     // записи, анкету и роли во всех студиях. Поэтому аккаунт удаляем, только
     // если он ни к чему больше не привязан: не сотрудник студии вне управления
-    // владельца, не пользователь клиентского приложения (анкета
-    // member_profiles, записи на занятия) и без выданных абонементов. Сама
-    // карточка clients — не признак: триггер handle_new_user
-    // (client_app_fixes.sql) заводит её каждому новому пользователю, сотрудникам
-    // тоже; при удалении аккаунта она остаётся, лишь отвязывается
-    // (user_id -> null). Проверяем до изменений, чтобы ошибка проверки не
-    // оставила сотрудника наполовину удалённым.
+    // владельца и не клиент — нет привязанной карточки clients (сотрудникам
+    // карточки больше не заводятся: она есть, только если человек и правда
+    // клиент), анкеты member_profiles и записей на занятия. Снятие доступа
+    // забирает только служебную часть, вход в клиентское приложение остаётся.
+    // Проверяем до изменений, чтобы ошибка проверки не оставила сотрудника
+    // наполовину удалённым.
     const links = await Promise.all([
       admin
         .from("user_roles")
@@ -581,11 +580,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
         .limit(1),
       admin.from("member_profiles").select("user_id").eq("user_id", data.user_id).limit(1),
       admin.from("schedule_bookings").select("id").eq("user_id", data.user_id).limit(1),
-      admin
-        .from("clients")
-        .select("id, client_memberships!inner(id)")
-        .eq("user_id", data.user_id)
-        .limit(1),
+      admin.from("clients").select("id").eq("user_id", data.user_id).limit(1),
     ]);
     for (const { error: linkErr } of links) {
       if (linkErr) throw new Error(linkErr.message);

@@ -42,7 +42,9 @@ async function fetchStudioId(userId: string): Promise<string | null> {
   );
   if (isNotMemberError(ensureError)) {
     markSignInRefused();
-    await supabase.auth.signOut();
+    // Только эта вкладка: сотрудника без карточки клиента не выкидываем из
+    // админки (учётная запись у них общая).
+    await supabase.auth.signOut({ scope: "local" });
   }
   if (ensureError) throw ensureError;
   const row = Array.isArray(ensured) ? ensured[0] : ensured;

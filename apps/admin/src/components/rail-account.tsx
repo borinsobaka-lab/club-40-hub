@@ -32,7 +32,9 @@ export function RailAccount() {
       destructive: false,
     });
     if (!ok) return;
-    const { error } = await supabase.auth.signOut();
+    // scope local: учётная запись у сотрудника-клиента общая с клиентским
+    // приложением, глобальный выход (по умолчанию) выкинул бы и оттуда.
+    const { error } = await supabase.auth.signOut({ scope: "local" });
     if (error) {
       toast.error(error.message);
       return;
