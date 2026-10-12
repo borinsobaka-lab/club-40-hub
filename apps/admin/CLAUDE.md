@@ -46,7 +46,10 @@ src/lib/mail.ts с noreply@base40.fit через Resend (`RESEND_API_KEY`).
 человек может быть и админом, и клиентом. Признак — хост в redirect_to (оба
 приложения задают emailRedirectTo явно): admin.base40.fit -> «вход в
 админ-панель», всё остальное (включая нераспознанный redirect) -> клиентское
-письмо. Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
+письмо. Код входа в клиентское приложение уходит только члену клуба — есть
+карточка клиента с этой почтой (RPC `client_app_sign_in_allowed` сервис-ключом,
+`needsClubMembership`); иначе хук отвечает GoTrue ошибкой `not_a_club_member`.
+Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
 опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
 в корне репозитория.
 

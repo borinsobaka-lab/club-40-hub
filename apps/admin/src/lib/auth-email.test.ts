@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildEmail, buildEmails, isAdminApp, type HookPayload } from "./auth-email";
+import {
+  buildEmail,
+  buildEmails,
+  isAdminApp,
+  needsClubMembership,
+  type HookPayload,
+} from "./auth-email";
 
 const payload = (redirect_to: string, email_action_type = "magiclink"): HookPayload => ({
   user: { id: "u1", email: "owner@example.com" },
@@ -124,4 +130,16 @@ describe("смена почты — код уходит на новый адре
     expect(emails).toHaveLength(1);
     expect(emails[0].to).toBe("owner@example.com");
   });
+});
+
+describe("код входа в клиентское приложение — только члену клуба", () => {
+  test("вход и регистрация из клиентского приложения — проверяем карточку", () => {
+    expect(needsClubMembership(payload(CLIENT), false)).toBe(true);
+    expect(needsClubMembership(payload(CLIENT, "signup"), false)).toBe(true);
+    expect(needsClubMembership(payload(CLIENT, "recovery"), false)).toBe(true);
+  });
+  test("админка — без проверки карточки", () =>
+    expect(needsClubMembership(payload(ADMIN), true)).toBe(false));
+  test("смена почты вошедшим клиентом — без проверки", () =>
+    expect(needsClubMembership(payload(CLIENT, "email_change"), false)).toBe(false));
 });

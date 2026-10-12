@@ -34,6 +34,21 @@ export function isAdminApp(redirectTo: string | undefined): boolean {
   }
 }
 
+// Письма входа в КЛИЕНТСКОЕ приложение, которые уходят только члену клуба
+// (есть карточка клиента — привязанная или свободная с той же почтой). Новую
+// учётную запись без карточки не создаст handle_new_user, но уже
+// существующей GoTrue шлёт код как есть — её и останавливает хук
+// (db/migrations/2026-10-12_client_account_wipe.sql). Смена почты и
+// переподтверждение — у вошедшего клиента, их не трогаем.
+const CLIENT_SIGN_IN_ACTIONS = new Set(["magiclink", "signup", "recovery", "invite"]);
+
+export function needsClubMembership(payload: HookPayload, fromAdminApp: boolean): boolean {
+  return !fromAdminApp && CLIENT_SIGN_IN_ACTIONS.has(payload.email_data.email_action_type);
+}
+
+/** Сообщение для приложения: тот же признак, что у ensure_client_profile. */
+export const NOT_A_CLUB_MEMBER = "not_a_club_member";
+
 // ---------------------------------------------------------------------------
 // Письма. Инлайновые стили и литеральные цвета здесь уместны: это HTML почты,
 // токены дизайн-системы приложения на неё не распространяются.

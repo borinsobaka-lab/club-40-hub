@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { buildEmails, isAdminApp, type HookPayload } from "@/lib/auth-email";
+import {
+  buildEmails,
+  isAdminApp,
+  NOT_A_CLUB_MEMBER,
+  needsClubMembership,
+  type HookPayload,
+} from "@/lib/auth-email";
+import { getSupabaseAdmin, hasSupabaseAdmin } from "@/integrations/supabase/client.server";
 import { mailProvider, sendMail } from "@/lib/mail";
 
 // Send Email Hook для Supabase Auth: GoTrue не шлёт письма сам, а дёргает
@@ -23,6 +30,22 @@ import { mailProvider, sendMail } from "@/lib/mail";
 // ключ почты — в окружении админки (SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY). Пока они не заданы, роут отвечает 500 и письма не
 // уходят вовсе (запасной отправки у GoTrue при включённом хуке нет) — хук
 // включать только после задания переменных.
+
+// Код входа в клиентское приложение — только члену клуба (карточка клиента
+// с этой почтой). Ошибка проверки (нет сервис-ключа, нет функции в базе) —
+// письмо уходит: в приложение без карточки всё равно не пустит
+// ensure_client_profile.
+async function isClubMember(userId: string): Promise<boolean> {
+  if (!hasSupabaseAdmin()) return true;
+  const { data, error } = await getSupabaseAdmin().rpc("client_app_sign_in_allowed", {
+    _user_id: userId,
+  });
+  if (error) {
+    console.error("[auth-email] проверка карточки клиента:", error.message);
+    return true;
+  }
+  return data !== false;
+}
 
 // Подпись standardized-webhooks: HMAC-SHA256(base64secret, "{id}.{ts}.{body}").
 function verifySignature(secretRaw: string, id: string, ts: string, sig: string, body: string) {
@@ -101,6 +124,12 @@ export const Route = createFileRoute("/api/auth-email")({
         }
 
         const fromAdminApp = isAdminApp(payload.email_data.redirect_to);
+
+        // Ошибка хука в формате GoTrue: код не отправляется, сообщение
+        // получает приложение (signInWithOtp -> error.message).
+        if (needsClubMembership(payload, fromAdminApp) && !(await isClubMember(payload.user.id))) {
+          return Response.json({ error: { http_code: 403, message: NOT_A_CLUB_MEMBER } });
+        }
 
         for (const email of buildEmails(payload, fromAdminApp)) {
           const sent = await sendMail(email);

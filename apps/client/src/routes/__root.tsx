@@ -347,13 +347,23 @@ function OtherAppScreen({ studio }: { studio: Studio }) {
 
 // Анкета пройдена — помним на телефоне (по пользователю): раньше каждый
 // запуск приложения ждал под спиннером запрос member_profiles, прежде чем
-// показать главную. Пройденная анкета обратно не сбрасывается.
+// показать главную. Пройденная анкета обратно не сбрасывается, но при выходе
+// флаг стирается: анкету стирают вместе с карточкой клиента
+// (db/migrations/2026-10-12_client_account_wipe.sql), и после новой карточки
+// тот же user.id должен пройти её заново.
 const ONBOARDED_KEY = "base40.onboarded";
 function readOnboarded(userId: string) {
   try {
     return window.localStorage.getItem(ONBOARDED_KEY) === userId;
   } catch {
     return false;
+  }
+}
+function clearOnboarded() {
+  try {
+    window.localStorage.removeItem(ONBOARDED_KEY);
+  } catch {
+    // приватный режим — флага и не было
   }
 }
 function markOnboarded(userId: string) {
@@ -447,7 +457,8 @@ function AppShell() {
   // Reset when user changes / signs out
   useEffect(() => {
     if (!user) setOnboardingChecked(false);
-  }, [user]);
+    if (!loading && !user) clearOnboarded();
+  }, [user, loading]);
 
   // Onboarding gate: if logged in and member_profiles.onboarding_completed_at IS NULL → /onboarding
   useEffect(() => {

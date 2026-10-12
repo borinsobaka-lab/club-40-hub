@@ -6,6 +6,7 @@ import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { CLUB, IS_PACKAGES } from "@/lib/terms";
+import { takeSignInRefused } from "@/lib/sign-in-refused";
 import { DarkFrame, Illustration } from "@/formats/packages/dark-frame";
 import packagesLogo from "@/assets/packages-logo.svg";
 import loginEmailArt from "@/assets/login-email.webp";
@@ -26,8 +27,10 @@ function humanizeAuthError(message: string): string {
   // Учётная запись создаётся при первом входе, но только для почты из
   // карточки клиента на портале — иначе триггер handle_new_user отказывает
   // (db/migrations/…_client_signin_only.sql), и GoTrue отвечает
-  // «Database error saving new user».
+  // «Database error saving new user». Учётная запись уже есть, а карточки
+  // нет — хук писем не шлёт код (not_a_club_member).
   if (
+    m.includes("not_a_club_member") ||
     m.includes("database error saving new user") ||
     m.includes("signups not allowed") ||
     m.includes("otp_disabled")
@@ -82,6 +85,11 @@ function AuthPage() {
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
   }, [loading, session, navigate]);
+
+  // Вошёл, но карточки клиента нет — приложение вышло само (use-client-studio).
+  useEffect(() => {
+    if (takeSignInRefused()) setError(NOT_A_MEMBER);
+  }, []);
 
   // Обратный отсчёт до следующей возможной отправки кода.
   useEffect(() => {

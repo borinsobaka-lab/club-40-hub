@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { isNotMemberError, markSignInRefused } from "@/lib/sign-in-refused";
 
 // Студия текущего клиента (clients.studio_id).
 //
@@ -33,12 +34,16 @@ async function fetchStudioId(userId: string): Promise<string | null> {
   if (error) throw error;
   if (data?.studio_id) return data.studio_id;
 
-  // Карточки клиента нет — заводим её на сервере. Так бывает у тех, кто
-  // зарегистрировался до появления автосоздания: триггер срабатывает только
-  // на нового пользователя, а повторный вход нового пользователя не создаёт.
+  // Карточки по user_id нет — сервер привязывает свободную карточку с той же
+  // почтой (её могли завести на портале позже учётной записи). Нет и такой —
+  // человек не член клуба: выходим, экран входа покажет причину.
   const { data: ensured, error: ensureError } = await (supabase as any).rpc(
     "ensure_client_profile",
   );
+  if (isNotMemberError(ensureError)) {
+    markSignInRefused();
+    await supabase.auth.signOut();
+  }
   if (ensureError) throw ensureError;
   const row = Array.isArray(ensured) ? ensured[0] : ensured;
   return row?.studio_id ?? null;

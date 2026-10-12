@@ -98,7 +98,12 @@ OTP_LENGTH и RESEND_COOLDOWN_SEC = 60 в src/routes/auth.tsx — повторн
 `handle_new_user` (`db/migrations/2026-10-11_zzzzzzzzz_client_signin_only.sql`)
 привязывает её к карточке или отказывает — GoTrue отвечает «Database error
 saving new user», экран показывает «почта не найдена среди членов клуба».
-Граница — в базе, не во фронтенде. `GOTRUE_DISABLE_SIGNUP` должен быть
+Граница — в базе, не во фронтенде. Уже существующую учётную запись без
+карточки (давнюю или после удаления клиента на портале) останавливают хук
+писем (код не уходит, ошибка `not_a_club_member`) и `ensure_client_profile`
+(`db/migrations/2026-10-12_client_account_wipe.sql`): приложение выходит
+(`use-client-studio.ts`), экран входа показывает ту же «почта не найдена»
+(`src/lib/sign-in-refused.ts`). `GOTRUE_DISABLE_SIGNUP` должен быть
 `false`, иначе впервые войти нельзя. После входа — онбординг (`/onboarding`,
 `member_profiles`): ответы видны на портале в карточке клиента, вкладка
 «Анкета». У пакетного приложения анкета своя —
