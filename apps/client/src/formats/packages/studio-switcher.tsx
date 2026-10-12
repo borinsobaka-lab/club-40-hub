@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { AltArrowDown, CheckCircle, MapPoint } from "@solar-icons/react";
+import { AltArrowDown, CheckCircle } from "@solar-icons/react";
 
 import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 
@@ -24,22 +24,16 @@ export function StudioSwitcher() {
       <button
         type="button"
         onClick={() => canSwitch && setOpen(true)}
-        className="flex w-full items-center gap-2.5 rounded-2xl bg-white/10 px-3 py-2 text-left backdrop-blur-md transition active:scale-[0.99]"
+        className="flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2.5 text-left backdrop-blur-md transition active:scale-[0.99]"
       >
-        <MapPoint className="h-5 w-5 shrink-0 text-white" weight="BoldDuotone" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold leading-tight text-white">
-            {current.name}
-          </span>
-          {current.address && (
-            <span className="block truncate text-[11px] leading-tight text-white/70">
-              {current.address}
-            </span>
-          )}
+        {/* Только название (решение владельца 2026-10-12: без адреса и метки),
+            адрес — в списке студий. */}
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-white">
+          {current.name}
         </span>
         {canSwitch && (
           <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-white/80">
-            Сменить
+            Сменить студию
             <AltArrowDown className="h-4 w-4" />
           </span>
         )}

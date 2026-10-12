@@ -692,3 +692,10 @@ html body [data-sonner-toast][data-type="warning"] {
   -webkit-mask-image: none !important;
   mask-image: none !important;
 }
+
+/* Слой огоньков шапки (HeaderBackdrop, page-shell.tsx): нижний край гаснет
+   плавно, а не обрезает огоньки прямой линией. */
+.backdrop-fade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent);
+  mask-image: linear-gradient(to bottom, #000 80%, transparent);
+}

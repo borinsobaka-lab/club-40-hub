@@ -1,6 +1,8 @@
 import { useLocation } from "@tanstack/react-router";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 
+import { IS_PACKAGES } from "@/lib/terms";
+
 function seededRandom(seed: string) {
   let h = 1779033703 ^ seed.length;
   for (let i = 0; i < seed.length; i++) {
@@ -52,7 +54,12 @@ const BLOB_STYLES = (() => {
 export function HeaderBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0 bg-[#2A2B2F]" aria-hidden="true">
-      <div className="absolute inset-x-0 top-0 h-[320px]">
+      {/* Высота — под самую высокую шапку: у главной пакетного приложения под
+          быстрыми кнопками ещё плашка студии, и на 320px огоньки резались
+          прямой линией по кнопкам. Низ слоя гаснет плавно (.backdrop-fade). */}
+      <div
+        className={`backdrop-fade absolute inset-x-0 top-0 ${IS_PACKAGES ? "h-[440px]" : "h-[320px]"}`}
+      >
         <GlowBlobs />
       </div>
     </div>
