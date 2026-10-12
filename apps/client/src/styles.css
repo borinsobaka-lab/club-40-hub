@@ -682,3 +682,13 @@ html body [data-sonner-toast][data-type="warning"] {
   -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent 100%);
   mask-image: radial-gradient(closest-side, #000 70%, transparent 100%);
 }
+/* Ввод с телефона (клавиатура): картинку прячем, огоньки — без «дырки». */
+[data-dark-frame][data-typing] .frame-art,
+[data-dark-frame][data-kb] .frame-art {
+  display: none;
+}
+[data-dark-frame][data-typing] .frame-blobs,
+[data-dark-frame][data-kb] .frame-blobs {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}

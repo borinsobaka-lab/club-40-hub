@@ -16,8 +16,10 @@ import { GlowBlobs } from "@/components/page-shell";
  *
  * Клавиатура: кадр фиксирован и по высоте равен видимой области
  * (visualViewport) — при открытой клавиатуре он ужимается за счёт тёмной
- * зоны и картинки, поле и кнопка остаются видны (Android по умолчанию
- * клавиатуру только накладывает, и 100dvh её не учитывает).
+ * зоны, поле и кнопка остаются видны (Android по умолчанию клавиатуру
+ * только накладывает, и 100dvh её не учитывает). Картинку при вводе с
+ * телефона прячем сразу (data-typing / data-kb на кадре, без перерисовки
+ * React), а не ужимаем; так же — если места под неё меньше ART_MIN_PX.
  */
 export function DarkFrame({
   tall = false,
@@ -64,19 +66,22 @@ export function DarkFrame({
     return () => ro.disconnect();
   }, [art]);
 
+  // До замера (в т.ч. на сервере) картинку показываем.
+  const artTooSmall = !!hole && hole.r * 2 < ART_MIN_PX;
   const holeMask =
-    art && hole
+    art && hole && !artTooSmall
       ? `radial-gradient(circle at ${hole.x}px ${hole.y}px, transparent ${hole.r * 0.45}px, #000 ${hole.r * 0.85}px)`
       : undefined;
 
   return (
     <div
       ref={rootRef}
+      data-dark-frame=""
       className="fixed inset-x-0 top-0 mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-[#2A2B2F]"
     >
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute z-[2] ${
+        className={`frame-blobs pointer-events-none absolute z-[2] ${
           tall ? "inset-0" : "inset-x-0 top-0 h-[320px]"
         }`}
         style={holeMask ? { WebkitMaskImage: holeMask, maskImage: holeMask } : undefined}
@@ -93,14 +98,13 @@ export function DarkFrame({
         {top && <div className="relative z-[3] shrink-0">{top}</div>}
         {art ? (
           <div ref={artRef} className="relative z-[1] mx-6 my-auto min-h-0 max-h-[400px] flex-1">
-            {/* Ужатую клавиатурой до крохи картинку прячем — она только мешает. */}
-            <img
-              src={art}
-              alt=""
-              className={`art-fade absolute inset-0 m-auto h-full w-full object-contain transition-opacity duration-200 ${
-                hole && hole.r < 56 ? "opacity-0" : "opacity-100"
-              }`}
-            />
+            {artTooSmall ? null : (
+              <img
+                src={art}
+                alt=""
+                className="frame-art art-fade absolute inset-0 m-auto h-full w-full object-contain"
+              />
+            )}
           </div>
         ) : (
           tall && <div className="flex-1" />
@@ -122,6 +126,16 @@ export function DarkFrame({
   );
 }
 
+/** Меньше — картинку не показываем вовсе (ужатая до крохи только мешает). */
+const ART_MIN_PX = 160;
+
+/** Поля, на которых телефон открывает клавиатуру. */
+function opensKeyboard(t: EventTarget | null) {
+  if (t instanceof HTMLTextAreaElement) return true;
+  if (!(t instanceof HTMLInputElement)) return false;
+  return !["date", "checkbox", "radio", "button", "submit", "range"].includes(t.type);
+}
+
 /**
  * Высота и сдвиг кадра — по видимой области (visualViewport): открытая
  * клавиатура уменьшает её, кадр ужимается следом (раз в кадр анимации, без
@@ -133,12 +147,26 @@ function useVisualViewportFrame(rootRef: React.RefObject<HTMLDivElement | null>)
     const vv = window.visualViewport;
     const el = rootRef.current;
     if (!vv || !el) return;
+    // Ввод с телефона: картинку прячем сразу при фокусе, не дожидаясь, пока
+    // клавиатура выедет и ужмёт кадр. На компьютере — не трогаем.
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    const onFocusIn = (e: FocusEvent) => {
+      if (touch && opensKeyboard(e.target)) el.dataset.typing = "";
+    };
+    const onFocusOut = () => {
+      delete el.dataset.typing;
+    };
+    el.addEventListener("focusin", onFocusIn);
+    el.addEventListener("focusout", onFocusOut);
     let raf = 0;
     let lastHeight = vv.height;
     const apply = () => {
       raf = 0;
       el.style.height = `${vv.height}px`;
       el.style.top = `${vv.offsetTop}px`;
+      // Клавиатура открыта: видимая область заметно ниже окна.
+      if (window.innerHeight - vv.height > 120) el.dataset.kb = "";
+      else delete el.dataset.kb;
       const shrank = vv.height < lastHeight;
       lastHeight = vv.height;
       const active = document.activeElement;
@@ -156,6 +184,8 @@ function useVisualViewportFrame(rootRef: React.RefObject<HTMLDivElement | null>)
       if (raf) cancelAnimationFrame(raf);
       vv.removeEventListener("resize", schedule);
       vv.removeEventListener("scroll", schedule);
+      el.removeEventListener("focusin", onFocusIn);
+      el.removeEventListener("focusout", onFocusOut);
       el.style.height = "";
       el.style.top = "";
     };

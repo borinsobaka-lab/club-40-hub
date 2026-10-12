@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FloatingLabelInput } from "@/components/ui/floating-input";
+import { Input } from "@/components/ui/input";
 import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -299,12 +300,24 @@ function AuthPage() {
         }
       >
         {step === "form" ? (
-          <form id="auth-email-form" onSubmit={requestCode} className="space-y-3 px-4 pt-6">
-            {emailInput}
+          // pb — запас под рамку и подсветку фокуса: прокрутка панели срезала
+          // нижний край поля.
+          <form id="auth-email-form" onSubmit={requestCode} className="space-y-3 px-4 pt-6 pb-2">
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Введите ваш email"
+              aria-label="Email"
+              autoComplete="email"
+              inputMode="email"
+              required
+              className="h-14 text-base"
+            />
             {errorText}
           </form>
         ) : (
-          <div className="space-y-4 px-4 pt-6">
+          <div className="space-y-4 px-4 pt-6 pb-2">
             {otpInputs}
             {errorText}
             {otpLinks}
