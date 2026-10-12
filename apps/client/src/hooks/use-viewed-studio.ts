@@ -6,6 +6,7 @@ import { useClientStudioId } from "@/hooks/use-client-studio";
 import { APP_FORMAT } from "@/lib/app-format";
 import { IS_PACKAGES } from "@/lib/terms";
 import type { Studio } from "@/hooks/use-studios";
+import { useLocalize } from "@/i18n";
 
 /**
  * Студия, которую клиент сейчас смотрит (пакетное приложение, переключатель
@@ -93,16 +94,18 @@ export function useViewedStudioId(): ViewedStudio {
   };
 }
 
-/** Название смотримой студии (заголовки «Студии» и подсказки записи). */
+/** Название смотримой студии (заголовки «Студии» и подсказки записи) — на языке клиента. */
 export function useViewedStudioName(): string | null {
+  const loc = useLocalize();
   const { studioId } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
-  return studios.find((s) => s.id === studioId)?.name ?? null;
+  return loc(studios.find((s) => s.id === studioId))?.name ?? null;
 }
 
-/** Название своей студии клиента. */
+/** Название своей студии клиента — на языке клиента. */
 export function useHomeStudioName(): string | null {
+  const loc = useLocalize();
   const { homeStudioId } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
-  return studios.find((s) => s.id === homeStudioId)?.name ?? null;
+  return loc(studios.find((s) => s.id === homeStudioId))?.name ?? null;
 }

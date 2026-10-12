@@ -8,6 +8,7 @@ import {
   SquircleAvatarFallback,
   SquircleAvatarImage,
 } from "@/components/ui/squircle-avatar";
+import { useLocalize, useT } from "@/i18n";
 import { FormattedText } from "@/lib/formatted-text";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
@@ -35,6 +36,7 @@ export function TrainerDrawer({
   onClose: () => void;
   nested?: boolean;
 }) {
+  const t = useT();
   // Пока шторка закрывается (анимация), в ней остаётся последний тренер.
   const [shown, setShown] = useState<{ id: string | null; initial?: StudioTrainer | null }>({
     id: trainerId,
@@ -68,14 +70,14 @@ export function TrainerDrawer({
               <TrainerCard trainer={trainer} />
             ) : query.isError ? (
               <>
-                <DrawerPrimitive.Title className="sr-only">Тренер</DrawerPrimitive.Title>
+                <DrawerPrimitive.Title className="sr-only">{t("Тренер")}</DrawerPrimitive.Title>
                 <p className="py-6 text-center text-sm text-destructive">
-                  Не удалось загрузить карточку тренера. Попробуйте ещё раз.
+                  {t("Не удалось загрузить карточку тренера. Попробуйте ещё раз.")}
                 </p>
               </>
             ) : (
               <>
-                <DrawerPrimitive.Title className="sr-only">Тренер</DrawerPrimitive.Title>
+                <DrawerPrimitive.Title className="sr-only">{t("Тренер")}</DrawerPrimitive.Title>
                 <div className="flex items-center gap-4">
                   <Skeleton className="h-[88px] w-[88px] rounded-3xl" />
                   <div className="flex-1 space-y-2">
@@ -94,7 +96,10 @@ export function TrainerDrawer({
   );
 }
 
-function TrainerCard({ trainer }: { trainer: StudioTrainer }) {
+function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
+  const t = useT();
+  const loc = useLocalize();
+  const trainer = loc(row);
   const photo = mediaUrl(trainer.photo_url, "trainer-photos");
   const tipUrl = trainer.tip_url?.trim() ?? "";
   return (
@@ -107,7 +112,7 @@ function TrainerCard({ trainer }: { trainer: StudioTrainer }) {
           </SquircleAvatarFallback>
         </SquircleAvatar>
         <div className="min-w-0">
-          <div className="text-sm text-muted-foreground">Тренер</div>
+          <div className="text-sm text-muted-foreground">{t("Тренер")}</div>
           <DrawerPrimitive.Title className="text-2xl font-semibold leading-tight">
             {trainer.full_name}
           </DrawerPrimitive.Title>
@@ -135,7 +140,9 @@ function TrainerCard({ trainer }: { trainer: StudioTrainer }) {
           linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
         />
       ) : (
-        <p className="mt-5 text-sm text-muted-foreground">Рассказ о тренере скоро появится.</p>
+        <p className="mt-5 text-sm text-muted-foreground">
+          {t("Рассказ о тренере скоро появится.")}
+        </p>
       )}
     </>
   );

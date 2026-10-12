@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AltArrowRight, MapPoint, UsersGroupRounded } from "@solar-icons/react";
 
@@ -11,7 +11,8 @@ import {
   SquircleAvatarFallback,
   SquircleAvatarImage,
 } from "@/components/ui/squircle-avatar";
-import { useViewedStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { msg, useLocalize, useT } from "@/i18n";
 import { FormattedText } from "@/lib/formatted-text";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
@@ -30,14 +31,19 @@ import { TrainerRatingLine } from "./trainer-rating";
  */
 
 const TABS = [
-  { key: "trainers", label: "Тренеры" },
-  { key: "info", label: "О студии" },
+  { key: "trainers", label: msg("Тренеры") },
+  { key: "info", label: msg("О студии") },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
 export function PackagesStudioPage() {
+  const t = useT();
+  const loc = useLocalize();
   const [tab, setTab] = useState<TabKey>("trainers");
-  const studioName = useViewedStudioName();
+  const { studioId } = useViewedStudioId();
+  const { data: studios = [] } = useFormatStudios();
+  const studioName = loc(studios.find((s) => s.id === studioId))?.name ?? null;
+  const tabs = useMemo(() => TABS.map((x) => ({ ...x, label: t(x.label) })), [t]);
 
   return (
     // scrollKey не зависит от вкладки: иначе смена вкладки пересоздавала
@@ -46,13 +52,13 @@ export function PackagesStudioPage() {
       scrollKey="studio"
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-semibold">Студия</h1>
-          <p className="text-sm text-white/70">{studioName ?? "О студии и тренерах"}</p>
+          <h1 className="text-3xl font-semibold">{t("Студия")}</h1>
+          <p className="text-sm text-white/70">{studioName ?? t("О студии и тренерах")}</p>
         </div>
       }
     >
       <UnderlineTabs
-        tabs={TABS}
+        tabs={tabs}
         value={tab}
         onChange={setTab}
         className="px-4 pt-4"
@@ -64,8 +70,12 @@ export function PackagesStudioPage() {
 }
 
 function StudioInfoTab() {
+  const t = useT();
+  const loc = useLocalize();
   const { studioId, studioReady } = useViewedStudioId();
-  const { data, isPending, error } = useQuery(studioInfoQuery(studioId, studioReady));
+  const query = useQuery(studioInfoQuery(studioId, studioReady));
+  const { isPending, error } = query;
+  const data = loc(query.data);
 
   if (!studioReady || (isPending && !!studioId)) {
     return (
@@ -79,7 +89,7 @@ function StudioInfoTab() {
   if (error) {
     return (
       <Card className="p-4 text-sm text-destructive">
-        Не удалось загрузить информацию о студии. Обновите страницу.
+        {t("Не удалось загрузить информацию о студии. Обновите страницу.")}
       </Card>
     );
   }
@@ -87,12 +97,12 @@ function StudioInfoTab() {
   const photo = mediaUrl(data?.photo_path, "studio-photos");
   const links = [
     {
-      label: "Google Карты",
+      label: t("Google Карты"),
       href: data?.google_maps_url,
       icon: <MapPoint className="h-5 w-5" weight="BoldDuotone" />,
     },
     {
-      label: "Яндекс Карты",
+      label: t("Яндекс Карты"),
       href: data?.yandex_maps_url,
       icon: <MapPoint className="h-5 w-5" weight="BoldDuotone" />,
     },
@@ -108,7 +118,7 @@ function StudioInfoTab() {
   if (!photo && !data?.about?.trim() && links.length === 0) {
     return (
       <Card className="p-8 text-center text-sm text-muted-foreground">
-        Информация о студии скоро появится
+        {t("Информация о студии скоро появится")}
       </Card>
     );
   }
@@ -158,7 +168,17 @@ function TrainersTab() {
   const { studioId, studioReady } = useViewedStudioId();
   // id, а не строка: после оценки список перезагружается с новым рейтингом.
   const [openId, setOpenId] = useState<string | null>(null);
-  const { data, isPending, error } = useQuery(studioTrainersQuery(studioId, studioReady));
+  const t = useT();
+  const loc = useLocalize();
+  const { data: rows, isPending, error } = useQuery(studioTrainersQuery(studioId, studioReady));
+  // Имена — на языке клиента, порядок — по переведённому имени.
+  const data = useMemo(
+    () =>
+      rows
+        ?.map((row) => ({ row, tr: loc(row) }))
+        .sort((a, b) => a.tr.full_name.localeCompare(b.tr.full_name, t.intl)),
+    [rows, loc, t],
+  );
 
   if (!studioReady || (isPending && !!studioId)) {
     return (
@@ -178,16 +198,16 @@ function TrainersTab() {
   if (error) {
     return (
       <Card className="p-4 text-sm text-destructive">
-        Не удалось загрузить тренеров. Обновите страницу.
+        {t("Не удалось загрузить тренеров. Обновите страницу.")}
       </Card>
     );
   }
-  const open = data?.find((t) => t.id === openId) ?? null;
+  const open = rows?.find((tr) => tr.id === openId) ?? null;
   if (!data || data.length === 0) {
     return (
       <Card className="flex flex-col items-center gap-3 p-8 text-center text-sm text-muted-foreground">
         <UsersGroupRounded className="h-10 w-10" weight="BoldDuotone" />
-        Тренеры студии скоро появятся
+        {t("Тренеры студии скоро появятся")}
       </Card>
     );
   }
@@ -195,28 +215,28 @@ function TrainersTab() {
   return (
     <>
       <div className="space-y-3">
-        {data.map((t) => {
-          const photo = mediaUrl(t.photo_url, "trainer-photos");
+        {data.map(({ tr }) => {
+          const photo = mediaUrl(tr.photo_url, "trainer-photos");
           return (
             <button
-              key={t.id}
+              key={tr.id}
               type="button"
-              onClick={() => setOpenId(t.id)}
+              onClick={() => setOpenId(tr.id)}
               className="w-full text-left transition active:scale-[0.99]"
             >
               <Card className="flex items-center gap-3 p-3">
                 <SquircleAvatar size={56} className="shrink-0">
-                  {photo && <SquircleAvatarImage src={photo} alt={t.full_name} />}
+                  {photo && <SquircleAvatarImage src={photo} alt={tr.full_name} />}
                   <SquircleAvatarFallback className="bg-muted text-base font-semibold text-muted-foreground">
-                    {trainerInitials(t.full_name)}
+                    {trainerInitials(tr.full_name)}
                   </SquircleAvatarFallback>
                 </SquircleAvatar>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-base font-semibold">{t.full_name}</div>
+                  <div className="truncate text-base font-semibold">{tr.full_name}</div>
                   <div className="mt-1">
                     <TrainerRatingLine
-                      avg={t.rating_avg}
-                      count={t.rating_count}
+                      avg={tr.rating_avg}
+                      count={tr.rating_count}
                       starClass="h-3.5 w-3.5"
                       textClass="text-xs"
                     />

@@ -41,29 +41,36 @@ import { entryToDrawerData, workoutTypeMeta } from "@/lib/workout-types";
 import { toast } from "sonner";
 import { CarouselSkeleton } from "@/components/content-skeletons";
 import { fireQueuedHomeConfetti } from "@/lib/confetti";
+import {
+  getTranslator,
+  useLocalize,
+  useT,
+  type ContentTranslations,
+  type Translator,
+} from "@/i18n";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Главное — Base40" },
-      {
-        name: "description",
-        content: "Главная страница Base40: новости, акции и быстрый доступ к профилю.",
-      },
-    ],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return {
+      meta: [
+        { title: t("Главное — Base40") },
+        {
+          name: "description",
+          content: t("Главная страница Base40: новости, акции и быстрый доступ к профилю."),
+        },
+      ],
+    };
+  },
   component: HomePage,
 });
 
-const DAY_NAMES_FULL = [
-  "Воскресенье",
-  "Понедельник",
-  "Вторник",
-  "Среда",
-  "Четверг",
-  "Пятница",
-  "Суббота",
-];
+/** «Понедельник, 12 октября» — день недели с заглавной, на языке клиента. */
+function dayHeading(d: Date, t: Translator) {
+  const weekday = t.date(d, { weekday: "long" });
+  const date = t.date(d, { day: "2-digit", month: "long" });
+  return `${t.capitalize(weekday)}, ${date}`;
+}
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -86,6 +93,7 @@ type News = {
   description: string | null;
   image_url: string | null;
   position: number;
+  translations?: ContentTranslations | null;
 };
 
 type Service = {
@@ -96,10 +104,13 @@ type Service = {
   button_text: string | null;
   button_url: string | null;
   position: number;
+  translations?: ContentTranslations | null;
 };
 
 function HomePage() {
   const { user } = useAuth();
+  const t = useT();
+  const loc = useLocalize();
   const queryClient = useQueryClient();
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
@@ -165,7 +176,7 @@ function HomePage() {
     });
     setPendingId(null);
     if (error) {
-      toast.error(`Не удалось отменить запись: ${error.message}`);
+      toast.error(t("Не удалось отменить запись: {error}", { error: error.message }));
       return;
     }
     const res = data as { ok: boolean; reason?: string } | null;
@@ -177,9 +188,9 @@ function HomePage() {
       queryClient.invalidateQueries({ queryKey: ["pack-schedule"] });
       queryClient.invalidateQueries({ queryKey: ["pack-my-bookings"] });
       setOpenEntry(null);
-      toast.success("Запись отменена");
+      toast.success(t("Запись отменена"));
     } else if (res?.reason) {
-      toast.error(`Не удалось отменить запись: ${res.reason}`);
+      toast.error(t("Не удалось отменить запись: {error}", { error: res.reason }));
     }
   }
 
@@ -190,7 +201,7 @@ function HomePage() {
     firstNameOnly(client?.full_name) ||
     firstNameOnly(user?.user_metadata?.first_name as string | undefined) ||
     firstNameOnly(user?.user_metadata?.full_name as string | undefined) ||
-    "Участник";
+    t("Участник");
   const avatarUrl = client?.photo_url ?? null;
 
   // Новости — тех студий, что выбраны у новости в админке (studio_ids);
@@ -279,7 +290,7 @@ function HomePage() {
                 // стеклянный подарок, ведёт в «Пригласи подругу».
                 <Link
                   to="/invite"
-                  aria-label="Пригласи подругу"
+                  aria-label={t("Пригласи подругу")}
                   className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/20 shadow-lg shadow-primary/40 active:scale-95 transition-transform"
                 >
                   <img src={inviteGiftButton} alt="" className="h-full w-full object-cover" />
@@ -287,15 +298,17 @@ function HomePage() {
               ) : (
                 <button
                   type="button"
-                  aria-label="Подарки"
+                  aria-label={t("Подарки")}
                   className="h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 active:opacity-90 transition-opacity shadow-md"
                 >
-                  <img src={giftIcon} alt="Подарки" className="h-5 w-5 object-contain" />
+                  <img src={giftIcon} alt={t("Подарки")} className="h-5 w-5 object-contain" />
                 </button>
               )}
               <Link
                 to="/notifications"
-                aria-label={unread > 0 ? `Уведомления: непрочитанных ${unread}` : "Уведомления"}
+                aria-label={
+                  unread > 0 ? t("Уведомления: непрочитанных {n}", { n: unread }) : t("Уведомления")
+                }
                 className="relative h-10 w-10 rounded-full flex items-center justify-center bg-white/10 active:bg-white/20 transition-colors"
               >
                 <Bell className="h-5 w-5 text-white" />
@@ -312,52 +325,55 @@ function HomePage() {
           <section className="mt-3">
             {news === null && newsError ? (
               <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex items-center justify-center text-center px-4 text-sm text-destructive bg-background/40">
-                Не удалось загрузить новости. Обновите страницу.
+                {t("Не удалось загрузить новости. Обновите страницу.")}
               </div>
             ) : news === null ? (
               <CarouselSkeleton cards={3} className="h-44 w-32" />
             ) : news.length === 0 ? (
               <div className="mx-4 h-44 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2 bg-background/40">
                 <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
-                <span className="text-sm">Пока нет новостей</span>
+                <span className="text-sm">{t("Пока нет новостей")}</span>
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto px-4 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
-                {news.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    onClick={() => setOpenNewsId(n.id)}
-                    className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform"
-                  >
-                    {(() => {
-                      const url = mediaUrl(n.image_url);
-                      return url ? (
-                        <img
-                          src={url}
-                          alt={n.title}
-                          className="absolute inset-0 h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
-                      );
-                    })()}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                {news.map((item) => {
+                  const n = loc(item);
+                  return (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => setOpenNewsId(n.id)}
+                      className="relative shrink-0 snap-start w-32 h-44 rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform"
+                    >
+                      {(() => {
+                        const url = mediaUrl(n.image_url);
+                        return url ? (
+                          <img
+                            src={url}
+                            alt={n.title}
+                            className="absolute inset-0 h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                        );
+                      })()}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-                    <div className="absolute inset-0 flex flex-col justify-end p-2.5">
-                      <div className="text-white text-xs font-semibold leading-tight">
-                        {n.title}
-                      </div>
-                      {n.description && (
-                        <div className="text-white/80 text-[11px] leading-tight mt-0.5">
-                          {n.description}
+                      <div className="absolute inset-0 flex flex-col justify-end p-2.5">
+                        <div className="text-white text-xs font-semibold leading-tight">
+                          {n.title}
                         </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                        {n.description && (
+                          <div className="text-white/80 text-[11px] leading-tight mt-0.5">
+                            {n.description}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -369,9 +385,9 @@ function HomePage() {
               <div className="rounded-2xl bg-white/10 p-1.5">
                 <div className="flex items-stretch justify-between gap-2">
                   {[
-                    { icon: ChatSquare, label: "Написать", href: clubSettings.write_url },
-                    { icon: Phone, label: "Позвонить", href: clubSettings.call_url },
-                    { icon: Star, label: "Фидбэк", href: clubSettings.feedback_url },
+                    { icon: ChatSquare, label: t("Написать"), href: clubSettings.write_url },
+                    { icon: Phone, label: t("Позвонить"), href: clubSettings.call_url },
+                    { icon: Star, label: t("Фидбэк"), href: clubSettings.feedback_url },
                   ]
                     .filter((item) => !!item.href)
                     .map((item) => (
@@ -405,10 +421,10 @@ function HomePage() {
         <div className="bg-muted">
           {/* Тренировки */}
           <section className="bg-background rounded-b-[14px] pb-5">
-            <h2 className="px-4 text-2xl font-semibold mb-3">Тренировки</h2>
+            <h2 className="px-4 text-2xl font-semibold mb-3">{t("Тренировки")}</h2>
             {bookingsError ? (
               <Card className="mx-4 p-4 text-sm text-destructive">
-                Не удалось загрузить ваши записи. Обновите страницу.
+                {t("Не удалось загрузить ваши записи. Обновите страницу.")}
               </Card>
             ) : myBookings === null ? (
               <CarouselSkeleton cards={2} className="h-24 w-56" />
@@ -416,25 +432,20 @@ function HomePage() {
               <div className="mx-4 rounded-2xl border border-border bg-card p-5 flex flex-col items-center text-center gap-3">
                 <Ghost className="h-14 w-14 text-muted-foreground ghost-nudge" />
                 <div className="text-sm text-muted-foreground">
-                  У вас нет запланированных тренировок
+                  {t("У вас нет запланированных тренировок")}
                 </div>
                 <Button asChild className="text-sm font-bold">
-                  <Link to="/schedule">{IS_PACKAGES ? "Записаться" : "Забронировать"}</Link>
+                  <Link to="/schedule">{IS_PACKAGES ? t("Записаться") : t("Забронировать")}</Link>
                 </Button>
               </div>
             ) : (
               <div className="px-4 space-y-5">
                 {groupedBookings!.map((group) => {
                   const d = new Date(group.ts);
-                  const weekday = DAY_NAMES_FULL[d.getDay()];
-                  const dateLabel = d.toLocaleDateString("ru-RU", {
-                    day: "2-digit",
-                    month: "long",
-                  });
                   return (
                     <div key={group.ts} className="space-y-2">
                       <div className="text-xs font-semibold text-muted-foreground">
-                        {weekday}, {dateLabel}
+                        {dayHeading(d, t)}
                       </div>
                       {group.items.map((b) => {
                         const e = b.entry!;
@@ -446,23 +457,21 @@ function HomePage() {
                               entry={pe}
                               isBooked
                               canBook={false}
-                              onOpen={() => setOpenEntry(packEntryToDrawerData(pe))}
+                              onOpen={() => setOpenEntry(packEntryToDrawerData(pe, t))}
                             />
                           );
                         }
                         const meta = workoutTypeMeta(e.workout?.type);
-                        const timeLabel = new Date(e.starts_at).toLocaleTimeString("ru-RU", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
+                        const timeLabel = t.time(e.starts_at);
+                        const workout = loc(e.workout);
                         const trainerNames = (e.trainers ?? [])
-                          .map((t) => t.trainer?.full_name)
+                          .map((tr) => loc(tr.trainer)?.full_name)
                           .filter((n): n is string => !!n);
                         return (
                           <button
                             key={b.entry_id}
                             type="button"
-                            onClick={() => setOpenEntry(entryToDrawerData(e))}
+                            onClick={() => setOpenEntry(entryToDrawerData(e, t))}
                             className="w-full text-left active:opacity-80 transition-opacity"
                           >
                             <Card className="relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg bg-primary text-primary-foreground border-primary">
@@ -476,7 +485,7 @@ function HomePage() {
                               </div>
                               <div className="flex-1 min-w-0 ml-1">
                                 <div className="font-medium break-words leading-snug">
-                                  {e.workout?.name ?? "Занятие"}
+                                  {workout?.name ?? t("Занятие")}
                                 </div>
                                 {trainerNames.length > 0 && (
                                   <div className="text-xs mt-0.5 truncate text-primary-foreground/70">
@@ -504,25 +513,28 @@ function HomePage() {
 
           {/* Услуги */}
           <section className="bg-background rounded-t-[14px] pt-5 pb-0">
-            <h2 className="px-4 text-2xl font-semibold">Услуги</h2>
+            <h2 className="px-4 text-2xl font-semibold">{t("Услуги")}</h2>
             <p className="px-4 text-sm text-muted-foreground mb-3">
-              Дополнительные возможности для {IS_PACKAGES ? "клиентов студии" : "участников клуба"}
+              {IS_PACKAGES
+                ? t("Дополнительные возможности для клиентов студии")
+                : t("Дополнительные возможности для участников клуба")}
             </p>
             {services === null && servicesError ? (
               <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex items-center justify-center text-center px-4 text-sm text-destructive">
-                Не удалось загрузить услуги. Обновите страницу.
+                {t("Не удалось загрузить услуги. Обновите страницу.")}
               </div>
             ) : services === null ? (
               <CarouselSkeleton cards={3} className="h-32 w-56" />
             ) : services.length === 0 ? (
               <div className="mx-4 h-32 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-2">
                 <ClipboardText className="h-6 w-6" weight="BoldDuotone" />
-                <span className="text-sm">Пока нет услуг</span>
+                <span className="text-sm">{t("Пока нет услуг")}</span>
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar scroll-pl-4 scroll-pr-4">
                 <div className="w-1 shrink-0 snap-none" aria-hidden="true" />
-                {services.map((s) => {
+                {services.map((item) => {
+                  const s = loc(item);
                   const url = mediaUrl(s.image_url, "services-media");
                   return (
                     <button

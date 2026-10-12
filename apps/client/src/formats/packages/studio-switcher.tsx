@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { AltArrowDown, CheckCircle } from "@solar-icons/react";
 
+import { useLocalize, useT } from "@/i18n";
 import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 
 /**
@@ -11,10 +12,12 @@ import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/
  * абонементы (useViewedStudioId).
  */
 export function StudioSwitcher() {
+  const t = useT();
+  const loc = useLocalize();
   const { studioId, homeStudioId } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
   const [open, setOpen] = useState(false);
-  const current = studios.find((s) => s.id === studioId);
+  const current = loc(studios.find((s) => s.id === studioId));
   const canSwitch = studios.length > 1;
 
   if (!current) return null;
@@ -33,7 +36,7 @@ export function StudioSwitcher() {
         </span>
         {canSwitch && (
           <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-white/80">
-            Сменить студию
+            {t("Сменить студию")}
             <AltArrowDown className="h-4 w-4" />
           </span>
         )}
@@ -49,13 +52,13 @@ export function StudioSwitcher() {
             <div className="mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
             <div className="overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">
               <DrawerPrimitive.Title className="text-xl font-semibold">
-                Выберите студию
+                {t("Выберите студию")}
               </DrawerPrimitive.Title>
               <p className="mt-1 text-sm text-muted-foreground">
-                Новости, услуги, расписание и абонементы покажем для выбранной студии.
+                {t("Новости, услуги, расписание и абонементы покажем для выбранной студии.")}
               </p>
               <ul className="mt-4 space-y-2">
-                {studios.map((s) => {
+                {studios.map(loc).map((s) => {
                   const active = s.id === studioId;
                   return (
                     <li key={s.id}>
@@ -79,7 +82,7 @@ export function StudioSwitcher() {
                           )}
                           {s.id === homeStudioId && (
                             <span className="block text-xs text-muted-foreground">
-                              Ваша студия — здесь можно записываться
+                              {t("Ваша студия — здесь можно записываться")}
                             </span>
                           )}
                         </span>

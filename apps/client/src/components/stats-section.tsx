@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -19,7 +19,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CLUB, IS_PACKAGES } from "@/lib/terms";
+import { IS_PACKAGES } from "@/lib/terms";
+import { msg, useLocalize, useT, type ContentTranslations, type Translator } from "@/i18n";
 
 // ---- Types ----
 
@@ -60,11 +61,11 @@ type StatsMv = {
 type WorkoutType = "cardio" | "strength" | "hybrid" | "recovery" | "unknown";
 
 const TYPE_LABEL: Record<WorkoutType, string> = {
-  cardio: "Кардио",
-  strength: "Сила",
-  hybrid: "Гибрид",
-  recovery: "Восст.",
-  unknown: "Прочее",
+  cardio: msg("Кардио"),
+  strength: msg("Сила"),
+  hybrid: msg("Гибрид"),
+  recovery: msg("Восст."),
+  unknown: msg("Прочее"),
 };
 
 const TYPE_COLOR: Record<WorkoutType, string> = {
@@ -73,6 +74,14 @@ const TYPE_COLOR: Record<WorkoutType, string> = {
   hybrid: "bg-violet-500",
   recovery: "bg-emerald-500",
   unknown: "bg-muted-foreground",
+};
+
+/** Тренировка студии (пакетное приложение): цвет полоски и имя с переводами. */
+type WorkoutInfo = {
+  id: string;
+  color: string | null;
+  name: string;
+  translations?: ContentTranslations | null;
 };
 
 /** Тренировка студии (пакетное приложение): вместо типа — сама тренировка и её цвет. */
@@ -107,10 +116,6 @@ function monthKey(d: Date) {
 function weekKey(d: Date) {
   const w = startOfWeek(d);
   return `${w.getFullYear()}-${String(w.getMonth() + 1).padStart(2, "0")}-${String(w.getDate()).padStart(2, "0")}`;
-}
-
-function formatNumber(n: number) {
-  return n.toLocaleString("ru-RU");
 }
 
 // ---- Small UI helpers ----
@@ -215,10 +220,11 @@ function Card({
 }
 
 function EmptyState() {
+  const t = useT();
   return (
     <div className="mx-4 rounded-2xl bg-card border border-border/40 p-5 text-center">
       <div className="text-sm text-muted-foreground">
-        Чтобы увидеть прогресс, посети первый класс — статистика появится автоматически.
+        {t("Чтобы увидеть прогресс, посети первый класс — статистика появится автоматически.")}
       </div>
     </div>
   );
@@ -241,7 +247,16 @@ type Aggregated = {
   calories30dHasNull: boolean;
 };
 
-function aggregate(rows: BookingRow[], colors: Record<string, string | null> = {}): Aggregated {
+/**
+ * names — имя тренировки на языке клиента, если у неё есть перевод; иначе —
+ * снимок workout_name из журнала (как раньше).
+ */
+function aggregate(
+  rows: BookingRow[],
+  t: Translator,
+  colors: Record<string, string | null> = {},
+  names: Record<string, string> = {},
+): Aggregated {
   const now = new Date();
   const monthCounts = new Map<string, number>();
   const weekSet = new Set<string>();
@@ -274,8 +289,8 @@ function aggregate(rows: BookingRow[], colors: Record<string, string | null> = {
     monthCounts.set(mk, (monthCounts.get(mk) ?? 0) + 1);
     if (mk === thisMonthKey) thisMonth += 1;
     weekSet.add(weekKey(d));
-    const t = normalizeType(r.workout_type);
-    typeCounts.set(t, (typeCounts.get(t) ?? 0) + 1);
+    const type = normalizeType(r.workout_type);
+    typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1);
     if (!firstVisit || d < firstVisit) firstVisit = d;
     // Занятие без тренировки (персональное) — отдельной строкой.
     const wKey = r.workout_id ?? "other";
@@ -284,7 +299,9 @@ function aggregate(rows: BookingRow[], colors: Record<string, string | null> = {
     else
       workoutCounts.set(wKey, {
         key: wKey,
-        label: r.workout_id ? (r.workout_name ?? "Тренировка") : "Персональные",
+        label: r.workout_id
+          ? (names[r.workout_id] ?? r.workout_name ?? t("Тренировка"))
+          : t("Персональные"),
         count: 1,
         color: r.workout_id ? (colors[r.workout_id] ?? null) : null,
       });
@@ -317,9 +334,9 @@ function aggregate(rows: BookingRow[], colors: Record<string, string | null> = {
   }
 
   const byType: { type: WorkoutType; count: number }[] = [];
-  (["cardio", "strength", "hybrid", "recovery", "unknown"] as WorkoutType[]).forEach((t) => {
-    const c = typeCounts.get(t) ?? 0;
-    if (c > 0) byType.push({ type: t, count: c });
+  (["cardio", "strength", "hybrid", "recovery", "unknown"] as WorkoutType[]).forEach((type) => {
+    const c = typeCounts.get(type) ?? 0;
+    if (c > 0) byType.push({ type, count: c });
   });
 
   return {
@@ -340,6 +357,8 @@ function aggregate(rows: BookingRow[], colors: Record<string, string | null> = {
 
 export function StatsSection() {
   const { user } = useAuth();
+  const t = useT();
+  const loc = useLocalize();
   const userId = user?.id ?? null;
   // Кэш React Query (и между запусками): статистика на главной видна сразу.
   const stats = useQuery({
@@ -368,23 +387,22 @@ export function StatsSection() {
       // Матвью и профиль необязательны: без них карточки работают.
       if (logs.error) throw logs.error;
       const rows = (logs.data ?? []) as BookingRow[];
-      // Пакетное: цвета тренировок — для полоски «Тренировки» (как в расписании).
-      let colors: Record<string, string | null> = {};
+      // Пакетное: цвета тренировок — для полоски «Тренировки» (как в расписании),
+      // имена с переводами — для подписей под ней.
+      let workouts: WorkoutInfo[] = [];
       if (IS_PACKAGES) {
         const ids = [...new Set(rows.map((r) => r.workout_id).filter(Boolean))] as string[];
         if (ids.length > 0) {
-          const { data } = await untypedDb.from("workouts").select("id, color").in("id", ids);
-          colors = Object.fromEntries(
-            ((data as { id: string; color: string | null }[] | null) ?? []).map((w) => [
-              w.id,
-              w.color && /^#[0-9a-f]{6}$/i.test(w.color.trim()) ? w.color.trim() : null,
-            ]),
-          );
+          const { data } = await untypedDb
+            .from("workouts")
+            .select("id, color, name, translations")
+            .in("id", ids);
+          workouts = (data as WorkoutInfo[] | null) ?? [];
         }
       }
       return {
         rows,
-        colors,
+        workouts,
         mv: (mvRes.data ?? null) as StatsMv | null,
         hasWeight: profile.data?.weight_kg != null,
         // Нет RPC (миграция ещё не выкачена) — просто без сравнения.
@@ -400,9 +418,32 @@ export function StatsSection() {
   // Ошибка истории посещений — не «пока нет тренировок».
   const failed = !stats.data && stats.isError;
 
-  const colors = stats.data?.colors;
+  const workouts = stats.data?.workouts;
+  const colors = useMemo(
+    () =>
+      Object.fromEntries(
+        (workouts ?? []).map((w) => [
+          w.id,
+          w.color && /^#[0-9a-f]{6}$/i.test(w.color.trim()) ? w.color.trim() : null,
+        ]),
+      ),
+    [workouts],
+  );
+  // Имя — только если для языка клиента есть перевод (loc вернул новую
+  // строку); иначе остаётся снимок из журнала, как было.
+  const names = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const w of workouts ?? []) {
+      const lw = loc(w);
+      if (lw !== w && lw.name) out[w.id] = lw.name;
+    }
+    return out;
+  }, [workouts, loc]);
   const compare = stats.data?.compare ?? null;
-  const agg = useMemo(() => (rows ? aggregate(rows, colors) : null), [rows, colors]);
+  const agg = useMemo(
+    () => (rows ? aggregate(rows, t, colors, names) : null),
+    [rows, t, colors, names],
+  );
 
   const cohortOk = !!mv && mv.cohort_size >= 11;
   const visitsPct =
@@ -417,10 +458,12 @@ export function StatsSection() {
   if (!user) {
     return (
       <section className="bg-background rounded-t-[14px] rounded-b-[14px] pt-5 pb-5">
-        <h2 className="px-4 text-2xl font-semibold">Статистика</h2>
-        <p className="px-4 text-sm text-muted-foreground mb-3">Прогресс, рекорды и ориентиры</p>
+        <h2 className="px-4 text-2xl font-semibold">{t("Статистика")}</h2>
+        <p className="px-4 text-sm text-muted-foreground mb-3">
+          {t("Прогресс, рекорды и ориентиры")}
+        </p>
         <p className="px-4 text-sm text-muted-foreground">
-          Войдите, чтобы видеть свою персональную статистику тренировок.
+          {t("Войдите, чтобы видеть свою персональную статистику тренировок.")}
         </p>
       </section>
     );
@@ -428,8 +471,10 @@ export function StatsSection() {
 
   return (
     <section className="bg-background rounded-t-[14px] rounded-b-[14px] pt-5 pb-5">
-      <h2 className="px-4 text-2xl font-semibold">Статистика</h2>
-      <p className="px-4 text-sm text-muted-foreground mb-3">Прогресс, рекорды и ориентиры</p>
+      <h2 className="px-4 text-2xl font-semibold">{t("Статистика")}</h2>
+      <p className="px-4 text-sm text-muted-foreground mb-3">
+        {t("Прогресс, рекорды и ориентиры")}
+      </p>
 
       {loading ? (
         <div className="grid grid-cols-2 gap-3 px-4">
@@ -442,7 +487,7 @@ export function StatsSection() {
         </div>
       ) : failed ? (
         <p className="px-4 text-sm text-destructive">
-          Не удалось загрузить статистику. Обновите страницу.
+          {t("Не удалось загрузить статистику. Обновите страницу.")}
         </p>
       ) : !agg || agg.total === 0 ? (
         <EmptyState />
@@ -453,9 +498,11 @@ export function StatsSection() {
             <Card
               icon={<Fire size={18} weight="Bold" />}
               accent="bg-orange-500/15 text-orange-500"
-              value={`${agg.streakWeeks} нед.`}
+              value={t.plural(agg.streakWeeks, "{n} нед.")}
               label={
-                agg.streakWeeks > 0 ? "недель подряд с тренировками 🔥" : "начни новую серию недель"
+                agg.streakWeeks > 0
+                  ? t("недель подряд с тренировками 🔥")
+                  : t("начни новую серию недель")
               }
               right={<Sparkline data={agg.sparkline} />}
             />
@@ -464,11 +511,14 @@ export function StatsSection() {
             <Card
               icon={<DumbbellLargeMinimalistic size={18} weight="Bold" />}
               value={`${agg.total}`}
-              label="тренировок за всё время"
+              label={t("тренировок за всё время")}
               hint={
                 IS_PACKAGES
-                  ? packTotalHint(compare, agg.firstVisit)
-                  : `до ${nextMilestone(agg.total)} осталось ${nextMilestone(agg.total) - agg.total}`
+                  ? packTotalHint(compare, agg.firstVisit, t)
+                  : t("до {goal} осталось {left}", {
+                      goal: nextMilestone(agg.total),
+                      left: nextMilestone(agg.total) - agg.total,
+                    })
               }
             />
 
@@ -477,13 +527,13 @@ export function StatsSection() {
               icon={<ChartSquare size={18} weight="Bold" />}
               accent="bg-blue-500/15 text-blue-500"
               value={`${agg.thisMonth}`}
-              label="тренировок в этом месяце"
+              label={t("тренировок в этом месяце")}
               hint={
                 IS_PACKAGES
-                  ? packMonthHint(compare, agg.thisMonth)
+                  ? packMonthHint(compare, agg.thisMonth, t)
                   : visitsPct !== null
-                    ? `активнее, чем ${visitsPct}% клиентов ${CLUB.gen}`
-                    : "сравнение с клубом появится позже"
+                    ? t("активнее, чем {pct}% клиентов клуба", { pct: visitsPct })
+                    : t("сравнение с клубом появится позже")
               }
             />
 
@@ -496,17 +546,19 @@ export function StatsSection() {
               value={
                 hasWeight === false && agg.calories30d === 0
                   ? "—"
-                  : `≈ ${formatNumber(agg.calories30d)}`
+                  : `≈ ${t.number(agg.calories30d)}`
               }
-              label="ккал сожжено за 30 дней"
+              label={t("ккал сожжено за 30 дней")}
               hint={
                 hasWeight === false
-                  ? "укажите вес в профиле для расчёта"
+                  ? t("укажите вес в профиле для расчёта")
                   : caloriesPct !== null
-                    ? `больше, чем у ${caloriesPct}% клиентов ${CLUB.gen}`
+                    ? IS_PACKAGES
+                      ? t("больше, чем у {pct}% клиентов студии", { pct: caloriesPct })
+                      : t("больше, чем у {pct}% клиентов клуба", { pct: caloriesPct })
                     : IS_PACKAGES
-                      ? "оценка по интенсивности и длительности тренировок"
-                      : "оценка по типу и длительности тренировки"
+                      ? t("оценка по интенсивности и длительности тренировок")
+                      : t("оценка по типу и длительности тренировки")
               }
               footer={
                 hasWeight === false ? (
@@ -514,7 +566,7 @@ export function StatsSection() {
                     to="/profile"
                     className="mt-2 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
                   >
-                    Перейти в профиль →
+                    {t("Перейти в профиль →")}
                   </Link>
                 ) : null
               }
@@ -525,8 +577,8 @@ export function StatsSection() {
               <Card
                 icon={<DonutIcon size={18} weight="Bold" />}
                 accent="bg-violet-500/15 text-violet-500"
-                value={`${agg.byType.length} тип${agg.byType.length === 1 ? "" : agg.byType.length < 5 ? "а" : "ов"}`}
-                label="разных видов тренировок"
+                value={t.plural(agg.byType.length, "{n} тип|{n} типа|{n} типов")}
+                label={t("разных видов тренировок")}
                 footer={
                   <div className="mt-2 flex flex-col gap-1.5">
                     <TypeBar parts={agg.byType} />
@@ -536,7 +588,7 @@ export function StatsSection() {
                           <span
                             className={`inline-block w-1.5 h-1.5 rounded-full ${TYPE_COLOR[p.type]}`}
                           />
-                          {TYPE_LABEL[p.type]} {p.count}
+                          {t(TYPE_LABEL[p.type])} {p.count}
                         </span>
                       ))}
                     </div>
@@ -550,11 +602,13 @@ export function StatsSection() {
               icon={<Cup size={18} weight="Bold" />}
               accent="bg-emerald-500/15 text-emerald-500"
               value={`${agg.bestMonth}`}
-              label="тренировок в лучшем месяце"
+              label={t("тренировок в лучшем месяце")}
               hint={
                 agg.thisMonth >= agg.bestMonth && agg.bestMonth > 0
-                  ? "это твой личный рекорд!"
-                  : `до рекорда осталось ${Math.max(0, agg.bestMonth - agg.thisMonth + 1)}`
+                  ? t("это твой личный рекорд!")
+                  : t("до рекорда осталось {n}", {
+                      n: Math.max(0, agg.bestMonth - agg.thisMonth + 1),
+                    })
               }
             />
 
@@ -565,7 +619,10 @@ export function StatsSection() {
                 icon={<DonutIcon size={18} weight="Bold" />}
                 accent="bg-violet-500/15 text-violet-500"
                 value={`${agg.byWorkout.length}`}
-                label={`${plural(agg.byWorkout.length, "вид", "вида", "видов")} тренировок`}
+                label={t.plural(
+                  agg.byWorkout.length,
+                  "вид тренировок|вида тренировок|видов тренировок",
+                )}
                 footer={
                   <div className="mt-1 flex flex-col gap-2">
                     <WorkoutBar parts={agg.byWorkout} />
@@ -595,100 +652,97 @@ export function StatsSection() {
   );
 }
 
-function plural(n: number, one: string, few: string, many: string) {
-  const m100 = n % 100;
-  const m10 = n % 10;
-  if (m100 >= 11 && m100 <= 14) return many;
-  if (m10 === 1) return one;
-  if (m10 >= 2 && m10 <= 4) return few;
-  return many;
-}
-
-const MONTHS_GEN = [
-  "января",
-  "февраля",
-  "марта",
-  "апреля",
-  "мая",
-  "июня",
-  "июля",
-  "августа",
-  "сентября",
-  "октября",
-  "ноября",
-  "декабря",
-];
-
 /**
  * «Тренировок за всё время» в пакетном приложении (решение владельца
  * 2026-10-12: вместо «до 10 осталось 9» — место в студии): топ N % по
  * посещениям, если клиентка в верхней половине; иначе — «с нами с …».
  */
-function packTotalHint(compare: StudioCompare | null, firstVisit: Date | null) {
+function packTotalHint(compare: StudioCompare | null, firstVisit: Date | null, t: Translator) {
   const top = compare?.total_top_pct;
-  if (top != null && top <= 50) return `вы в топ-${top}% студии по посещениям`;
+  if (top != null && top <= 50) return t("вы в топ-{pct}% студии по посещениям", { pct: top });
   if (firstVisit) {
-    return `с нами с ${firstVisit.getDate()} ${MONTHS_GEN[firstVisit.getMonth()]} ${firstVisit.getFullYear()}`;
+    // Год отдельно: у ru-RU с year Intl добавляет «г.».
+    const dayMonth = t.date(firstVisit, { day: "numeric", month: "long" });
+    return t("с нами с {date}", { date: `${dayMonth} ${firstVisit.getFullYear()}` });
   }
   return null;
 }
 
-const avgFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
-
 /** «Тренировок в этом месяце» — сравнение со студией за этот же месяц. */
-function packMonthHint(compare: StudioCompare | null, thisMonth: number) {
+function packMonthHint(compare: StudioCompare | null, thisMonth: number, t: Translator) {
   const avg = compare?.month_avg;
-  if (avg == null) return "сравнение со студией появится, когда наберётся статистика за месяц";
+  if (avg == null) return t("сравнение со студией появится, когда наберётся статистика за месяц");
   const pct = compare?.month_better_pct;
   if (thisMonth > 0 && pct != null && pct >= 50) {
-    return `активнее, чем ${pct}% клиенток студии`;
+    return t("активнее, чем {pct}% клиенток студии", { pct });
   }
-  return `в среднем по студии — ${avgFormat.format(avg)} за месяц`;
+  const avgText = t.number(avg, { maximumFractionDigits: 1 });
+  return t("в среднем по студии — {avg} за месяц", { avg: avgText });
+}
+
+/** Текст с <b>…</b> из словаря — жирные части как <strong>. */
+function rich(text: string) {
+  return text
+    .split(/<b>(.*?)<\/b>/g)
+    .map((part, i) =>
+      i % 2 ? <strong key={i}>{part}</strong> : <Fragment key={i}>{part}</Fragment>,
+    );
 }
 
 function CaloriesInfoLink() {
+  const t = useT();
   return (
     <Dialog>
       <DialogTrigger asChild>
         <button type="button" className="hover:text-foreground transition-colors">
-          Как считаются калории?
+          {t("Как считаются калории?")}
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Как мы считаем калории</DialogTitle>
+          <DialogTitle>{t("Как мы считаем калории")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 text-foreground text-[15px] leading-relaxed">
           <p>
-            Калории в приложении — это оценка. Точную цифру может дать только пульсометр или умные
-            часы, но даже без них можно посчитать расход достаточно близко по проверенной методике,
-            которую используют большинство фитнес-приложений.
+            {t(
+              "Калории в приложении — это оценка. Точную цифру может дать только пульсометр или умные часы, но даже без них можно посчитать расход достаточно близко по проверенной методике, которую используют большинство фитнес-приложений.",
+            )}
           </p>
           <p>
-            Мы опираемся на три параметра:{" "}
-            <strong>{IS_PACKAGES ? "интенсивность" : "тип"} тренировки</strong>, её{" "}
-            <strong>длительность</strong> и ваш <strong>вес из профиля</strong>.{" "}
-            {IS_PACKAGES
-              ? "У каждой тренировки студии своя интенсивность"
-              : "У каждого типа занятия (кардио, силовая, гибрид, восстановление) своя интенсивность"}{" "}
-            — коэффициент <strong>MET</strong> (Metabolic Equivalent of Task), который показывает,
-            во сколько раз активнее работает организм по сравнению с состоянием покоя. Чем выше
-            интенсивность и дольше занятие — тем больше расход.
+            {rich(
+              IS_PACKAGES
+                ? t(
+                    "Мы опираемся на три параметра: <b>интенсивность тренировки</b>, её <b>длительность</b> и ваш <b>вес из профиля</b>. У каждой тренировки студии своя интенсивность — коэффициент <b>MET</b> (Metabolic Equivalent of Task), который показывает, во сколько раз активнее работает организм по сравнению с состоянием покоя. Чем выше интенсивность и дольше занятие — тем больше расход.",
+                  )
+                : t(
+                    "Мы опираемся на три параметра: <b>тип тренировки</b>, её <b>длительность</b> и ваш <b>вес из профиля</b>. У каждого типа занятия (кардио, силовая, гибрид, восстановление) своя интенсивность — коэффициент <b>MET</b> (Metabolic Equivalent of Task), который показывает, во сколько раз активнее работает организм по сравнению с состоянием покоя. Чем выше интенсивность и дольше занятие — тем больше расход.",
+                  ),
+            )}
           </p>
           <p>
-            Важно, что калории фиксируются <strong>персонально для вас</strong> в момент каждой
-            тренировки и <strong>навсегда сохраняются в истории</strong>. То есть если вы измените
-            вес в профиле, прошлые тренировки не пересчитаются — каждая запись хранит ваш реальный
-            показатель на тот день. Именно из этой истории и складывается вся ваша статистика.
+            {rich(
+              t(
+                "Важно, что калории фиксируются <b>персонально для вас</b> в момент каждой тренировки и <b>навсегда сохраняются в истории</b>. То есть если вы измените вес в профиле, прошлые тренировки не пересчитаются — каждая запись хранит ваш реальный показатель на тот день. Именно из этой истории и складывается вся ваша статистика.",
+              ),
+            )}
           </p>
           <p>
-            Сравнение со средним по {CLUB.dat} полностью <strong>анонимно</strong> — мы показываем
-            только обобщённые цифры, без чьих-либо имён, и обновляем их раз в сутки.
+            {rich(
+              IS_PACKAGES
+                ? t(
+                    "Сравнение со средним по студии полностью <b>анонимно</b> — мы показываем только обобщённые цифры, без чьих-либо имён, и обновляем их раз в сутки.",
+                  )
+                : t(
+                    "Сравнение со средним по клубу полностью <b>анонимно</b> — мы показываем только обобщённые цифры, без чьих-либо имён, и обновляем их раз в сутки.",
+                  ),
+            )}
           </p>
           <p>
-            Помните: это <strong>ориентир</strong>, а не точное измерение. Реальный расход зависит
-            ещё и от вашего пульса, состава тела и того, насколько вы выкладываетесь. Но для
-            отслеживания динамики и сравнения с собой прошлым этой оценки более чем достаточно.
+            {rich(
+              t(
+                "Помните: это <b>ориентир</b>, а не точное измерение. Реальный расход зависит ещё и от вашего пульса, состава тела и того, насколько вы выкладываетесь. Но для отслеживания динамики и сравнения с собой прошлым этой оценки более чем достаточно.",
+              ),
+            )}
           </p>
         </div>
       </DialogContent>

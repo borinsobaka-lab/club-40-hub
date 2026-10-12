@@ -165,7 +165,7 @@ function tbilisiDateISO() {
 function formatLongDate(value: string, t: Translator) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
-  return d.toLocaleDateString(t.intl, { day: "numeric", month: "long", year: "numeric" });
+  return t.date(d, { day: "numeric", month: "long", year: "numeric" });
 }
 
 /** Локальная дата YYYY-MM-DD (toISOString() дала бы UTC — в первые часы суток вчерашнюю). */
@@ -783,7 +783,7 @@ function MembershipCard({
           <h3 className="text-xl font-semibold leading-tight">{membership.name}</h3>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-4xl font-black tracking-tight">
-              {Number(membership.price).toLocaleString(t.intl)} ₾
+              {t.number(Number(membership.price))} ₾
             </span>
             <span className="text-sm text-muted-foreground">
               {formatPeriod(membership.duration_days, t)}
@@ -919,7 +919,7 @@ function CheckoutSheet({
                 </div>
               </div>
               <div className="text-lg font-black shrink-0">
-                {Number(membership.price).toLocaleString(t.intl)} ₾
+                {t.number(Number(membership.price))} ₾
               </div>
             </div>
 
@@ -975,7 +975,7 @@ function CheckoutSheet({
             </div>
             {promoApplied && (
               <div className="mt-1 text-xs text-emerald-600">
-                {t("Скидка −{sum} ₾", { sum: promoApplied.discount.toLocaleString(t.intl) })}
+                {t("Скидка −{sum} ₾", { sum: t.number(promoApplied.discount) })}
               </div>
             )}
 
@@ -1009,9 +1009,7 @@ function CheckoutSheet({
             {/* Total + Pay */}
             <div className="mt-5 flex items-end justify-between">
               <div className="text-xs text-muted-foreground">{t("К оплате")}</div>
-              <div className="text-2xl font-black tabular-nums">
-                {total.toLocaleString(t.intl)} ₾
-              </div>
+              <div className="text-2xl font-black tabular-nums">{t.number(total)} ₾</div>
             </div>
 
             <Button
@@ -1022,8 +1020,8 @@ function CheckoutSheet({
               {purchasing
                 ? t("Оплачиваем…")
                 : hasActive
-                  ? t("Оплатить и перейти · {sum} ₾", { sum: total.toLocaleString(t.intl) })
-                  : t("Оплатить · {sum} ₾", { sum: total.toLocaleString(t.intl) })}
+                  ? t("Оплатить и перейти · {sum} ₾", { sum: t.number(total) })
+                  : t("Оплатить · {sum} ₾", { sum: t.number(total) })}
             </Button>
 
             <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">

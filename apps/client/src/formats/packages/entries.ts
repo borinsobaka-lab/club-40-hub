@@ -1,5 +1,5 @@
 import type { WorkoutDrawerData } from "@/components/workout-drawer";
-import type { ContentTranslations } from "@/i18n";
+import { currentT, localizeRow, type ContentTranslations, type Translator } from "@/i18n";
 import { mediaUrl } from "@/lib/media";
 
 /**
@@ -80,51 +80,48 @@ export function spotsLeft(e: PackEntry): number | null {
   return Math.max(0, cap - e.booked_count);
 }
 
-export function pluralSeats(n: number) {
-  if (n % 100 >= 11 && n % 100 <= 14) return "мест";
-  const r = n % 10;
-  if (r === 1) return "место";
-  if (r >= 2 && r <= 4) return "места";
-  return "мест";
-}
-
 /** «Свободно 5 мест» / «Мест нет»; без ограничения — null. */
-export function spotsLabel(e: PackEntry): string | null {
+export function spotsLabel(e: PackEntry, t: Translator = currentT()): string | null {
   const left = spotsLeft(e);
   if (left === null) return null;
-  if (left === 0) return "Мест нет";
-  return `Свободно ${left} ${pluralSeats(left)}`;
+  if (left === 0) return t("Мест нет");
+  return t.plural(left, "Свободно {n} место|Свободно {n} места|Свободно {n} мест");
 }
 
-export function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+export function fmtTime(iso: string, t: Translator = currentT()) {
+  return t.time(iso);
 }
 
-/** Данные шторки тренировки. */
-export function packEntryToDrawerData(e: PackEntry): WorkoutDrawerData {
-  const trainers = entryTrainers(e);
+/**
+ * Данные шторки тренировки — на языке клиента (переводы тренировки и
+ * тренеров, src/i18n/content.ts). t — из компонента (useT()); по умолчанию —
+ * текущий язык браузера.
+ */
+export function packEntryToDrawerData(e: PackEntry, t: Translator = currentT()): WorkoutDrawerData {
+  const workout = localizeRow(e.workout, t.locale);
+  const trainers = entryTrainers(e).map((tr) => localizeRow(tr, t.locale));
   return {
     id: e.id,
-    name: e.workout?.name ?? "Тренировка",
+    name: workout?.name ?? t("Тренировка"),
     type: null,
-    description: e.workout?.description ?? null,
-    photo: mediaUrl(e.workout?.photo_url, "workout-photos"),
+    description: workout?.description ?? null,
+    photo: mediaUrl(workout?.photo_url, "workout-photos"),
     trainerName:
       trainers
-        .map((t) => t.full_name)
+        .map((tr) => tr.full_name)
         .filter(Boolean)
         .join(", ") || null,
     trainerPhoto: trainers.map(trainerPhoto).find(Boolean) ?? null,
     startsAt: e.starts_at,
     endsAt: e.ends_at,
     color: entryColor(e),
-    trainers: trainers.map((t) => ({
-      id: t.id,
-      name: t.full_name ?? "Тренер",
-      photo: trainerPhoto(t),
-      rating: trainerRating(t),
+    trainers: trainers.map((tr) => ({
+      id: tr.id,
+      name: tr.full_name ?? t("Тренер"),
+      photo: trainerPhoto(tr),
+      rating: trainerRating(tr),
     })),
-    spotsLabel: spotsLabel(e),
+    spotsLabel: spotsLabel(e, t),
     spotsLeft: spotsLeft(e),
     studioId: e.studio_id,
   };

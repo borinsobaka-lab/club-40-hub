@@ -36,7 +36,7 @@ import {
 } from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
-import { I18nProvider, getTranslator, loadDictionary } from "@/i18n";
+import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
 
 // Адрес API Supabase — для preconnect: соединение (DNS + TLS) с базой
@@ -74,20 +74,21 @@ function reloadForStaleChunks(): boolean {
 }
 
 function NotFoundComponent() {
+  const t = useT();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Страница не найдена</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">{t("Страница не найдена")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Запрошенная страница не существует или была перемещена.
+          {t("Запрошенная страница не существует или была перемещена.")}
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            На главную
+            {t("На главную")}
           </Link>
         </div>
       </div>
@@ -98,6 +99,7 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const t = useT();
 
   useEffect(() => {
     if (isStaleChunkError(error)) reloadForStaleChunks();
@@ -107,10 +109,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Страница не загрузилась
+          {t("Страница не загрузилась")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Что-то пошло не так. Попробуйте обновить или вернуться на главную.
+          {t("Что-то пошло не так. Попробуйте обновить или вернуться на главную.")}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -120,13 +122,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Попробовать снова
+            {t("Попробовать снова")}
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            На главную
+            {t("На главную")}
           </a>
         </div>
       </div>
@@ -320,29 +322,33 @@ function useInternalNavigationScrollReset() {
  * (src/lib/app-format.ts), здесь его расписание и абонементы не работают.
  */
 function OtherAppScreen({ studio }: { studio: Studio }) {
+  const t = useT();
+  const loc = useLocalize();
   const { signOut } = useAuth();
   const url = FORMAT_APP_URL[studio.format];
   return (
     <div className="min-h-[100dvh] bg-background text-foreground flex items-center justify-center px-6">
       <div className="max-w-sm text-center">
-        <h1 className="text-xl font-semibold">Ваша студия — в другом приложении</h1>
+        <h1 className="text-xl font-semibold">{t("Ваша студия — в другом приложении")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Студия «{studio.name}» работает в приложении {url.replace(/^https?:\/\//, "")}. Войдите
-          там с той же почтой.
+          {t("Студия «{name}» работает в приложении {app}. Войдите там с той же почтой.", {
+            name: loc(studio).name,
+            app: url.replace(/^https?:\/\//, ""),
+          })}
         </p>
         <div className="mt-6 flex flex-col gap-2">
           <a
             href={url}
             className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
           >
-            Открыть приложение студии
+            {t("Открыть приложение студии")}
           </a>
           <button
             type="button"
             onClick={() => signOut()}
             className="h-12 text-sm text-muted-foreground"
           >
-            Выйти
+            {t("Выйти")}
           </button>
         </div>
       </div>

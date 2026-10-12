@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { APP_FORMAT } from "@/lib/app-format";
+import type { Translator } from "@/i18n";
 
 /**
  * Иконка и подпись приложения для установки (PWA, «На экран „Домой“») и
@@ -113,14 +114,14 @@ export async function fetchAppInstall(): Promise<AppInstall> {
   return cached ? cached.value : refreshing;
 }
 
-/** Веб-манифест (/manifest.webmanifest). */
-export function buildManifest(app: AppInstall) {
+/** Веб-манифест (/manifest.webmanifest) на языке клиента. */
+export function buildManifest(app: AppInstall, t: Translator) {
   return {
     id: "/",
     name: app.name,
     short_name: app.name,
-    description: "Расписание, запись на тренировки и абонементы.",
-    lang: "ru",
+    description: t("Расписание, запись на тренировки и абонементы."),
+    lang: t.locale,
     start_url: "/",
     scope: "/",
     display: "standalone",

@@ -1,10 +1,16 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { PACK_ENTRY_SELECT } from "@/formats/packages/entries";
+import type { ContentTranslations } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
 import { IS_PACKAGES } from "@/lib/terms";
 
-type Trainer = { id: string; full_name: string | null; photo_url: string | null };
+type Trainer = {
+  id: string;
+  full_name: string | null;
+  photo_url: string | null;
+  translations?: ContentTranslations | null;
+};
 
 export type MyBooking = {
   entry_id: string;
@@ -17,6 +23,7 @@ export type MyBooking = {
       type: string | null;
       description: string | null;
       photo_url: string | null;
+      translations?: ContentTranslations | null;
     } | null;
     trainers: { trainer: Trainer | null }[] | null;
   } | null;

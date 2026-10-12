@@ -1,6 +1,7 @@
 import { CloseCircle, Refresh, UsersGroupRounded } from "@solar-icons/react";
 
 import { Card } from "@/components/ui/card";
+import { useLocalize, useT } from "@/i18n";
 import {
   SquircleAvatar,
   SquircleAvatarFallback,
@@ -41,11 +42,13 @@ export function PackWorkoutCard({
   onOpen: () => void;
   onBook?: () => void;
 }) {
+  const t = useT();
+  const loc = useLocalize();
   const color = entryColor(entry);
-  const trainers = entryTrainers(entry);
+  const trainers = entryTrainers(entry).map(loc);
   const minutes = durationMinutes(entry);
   const left = spotsLeft(entry);
-  const spots = spotsLabel(entry);
+  const spots = spotsLabel(entry, t);
   const muted = isBooked ? "text-primary-foreground/75" : "text-muted-foreground";
 
   return (
@@ -69,34 +72,36 @@ export function PackWorkoutCard({
       >
         <div className="flex w-12 shrink-0 flex-col items-center justify-center">
           <div className="text-center text-base font-black leading-tight tabular-nums">
-            {fmtTime(entry.starts_at)}
+            {fmtTime(entry.starts_at, t)}
           </div>
           {minutes != null && (
-            <div className={`mt-0.5 text-xs font-medium tabular-nums ${muted}`}>{minutes} мин</div>
+            <div className={`mt-0.5 text-xs font-medium tabular-nums ${muted}`}>
+              {t("{n} мин", { n: minutes })}
+            </div>
           )}
         </div>
         <div className="ml-1 min-w-0 flex-1">
           <div className="break-words font-semibold leading-snug">
-            {entry.workout?.name ?? "Тренировка"}
+            {loc(entry.workout)?.name ?? t("Тренировка")}
           </div>
           {isWaitlisted && (
             <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
-              В листе ожидания
+              {t("В листе ожидания")}
             </div>
           )}
           {trainers.length > 0 && (
             <div className="mt-1.5 flex flex-col gap-1">
-              {trainers.map((t) => (
-                <div key={t.id} className="flex min-w-0 items-center gap-2">
+              {trainers.map((tr) => (
+                <div key={tr.id} className="flex min-w-0 items-center gap-2">
                   <SquircleAvatar size={26} className="shrink-0">
-                    {trainerPhoto(t) && (
-                      <SquircleAvatarImage src={trainerPhoto(t)!} alt={t.full_name ?? ""} />
+                    {trainerPhoto(tr) && (
+                      <SquircleAvatarImage src={trainerPhoto(tr)!} alt={tr.full_name ?? ""} />
                     )}
                     <SquircleAvatarFallback className="bg-muted text-[10px] font-semibold text-muted-foreground">
-                      {trainerInitials(t.full_name)}
+                      {trainerInitials(tr.full_name)}
                     </SquircleAvatarFallback>
                   </SquircleAvatar>
-                  <span className={`truncate text-sm font-medium ${muted}`}>{t.full_name}</span>
+                  <span className={`truncate text-sm font-medium ${muted}`}>{tr.full_name}</span>
                 </div>
               ))}
             </div>
@@ -128,7 +133,7 @@ export function PackWorkoutCard({
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors ${
             isPending ? "opacity-60" : ""
           }`}
-          aria-label="Записаться"
+          aria-label={t("Записаться")}
         >
           {isPending ? (
             <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />

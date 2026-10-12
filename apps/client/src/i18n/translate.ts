@@ -1,4 +1,5 @@
 import type { Dictionary } from "./dictionaries/types";
+import { formatDate, formatNumber, formatTime } from "./format";
 import {
   DEFAULT_LOCALE,
   type Locale,
@@ -99,8 +100,19 @@ export type Translator = {
    */
   plural: (n: number, forms: string, vars?: Vars) => string;
   locale: Locale;
-  /** Тег Intl для дат и чисел: d.toLocaleDateString(t.intl, …). */
+  /** Тег Intl (en-GB / ka-GE / ru-RU) — для localeCompare; даты и числа — t.date/t.time/t.number. */
   intl: string;
+  /** Дата на языке клиента: t.date(d, { day: "numeric", month: "long" }) (src/i18n/format.ts). */
+  date: (value: Date | string | number, options: Intl.DateTimeFormatOptions) => string;
+  /** Время «19:00». */
+  time: (value: Date | string | number, options?: Intl.DateTimeFormatOptions) => string;
+  /** Число с разделителями языка: t.number(1200) → «1,200» / «1 200». */
+  number: (value: number, options?: Intl.NumberFormatOptions) => string;
+  /**
+   * Первая буква заглавной («пн» → «Пн»). В грузинском заглавных нет —
+   * toUpperCase() дал бы буквы мтаврули, поэтому текст как есть.
+   */
+  capitalize: (text: string) => string;
 };
 
 const translators = new Map<Locale, Translator>();
@@ -117,6 +129,10 @@ export function getTranslator(locale: Locale): Translator {
   };
   t.locale = locale;
   t.intl = intlLocale(locale);
+  t.date = (value, options) => formatDate(locale, value, options);
+  t.time = (value, options) => formatTime(locale, value, options);
+  t.number = (value, options) => formatNumber(locale, value, options);
+  t.capitalize = (text) => (locale === "ka" ? text : text.charAt(0).toUpperCase() + text.slice(1));
   // До загрузки словаря не кэшируем: иначе запомнился бы переводчик без него.
   if (loaded[locale]) translators.set(locale, t);
   return t;

@@ -4,6 +4,7 @@ import { AltArrowRight, HandHeart, Star } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/use-auth";
+import { useT, type Translator } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
 
 /**
@@ -15,21 +16,13 @@ import { untypedDb } from "@/lib/untyped-db";
  * trainers.tip_url (задаётся в админке, «Сотрудники»).
  */
 
-const ratingFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
+/** 4,99 · 5 · 4,8 — до сотых, без лишних нулей (разделитель — по языку). */
+export function formatRating(avg: number, t: Translator) {
+  return t.number(avg, { maximumFractionDigits: 2 });
+}
 
-/** 4,99 · 5 · 4,8 — до сотых, без лишних нулей. */
-const formatRating = (avg: number) => ratingFormat.format(avg);
-
-function reviewsLabel(n: number) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  const word =
-    mod10 === 1 && mod100 !== 11
-      ? "отзыв"
-      : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
-        ? "отзыва"
-        : "отзывов";
-  return `${n} ${word}`;
+function reviewsLabel(n: number, t: Translator) {
+  return t.plural(n, "{n} отзыв|{n} отзыва|{n} отзывов");
 }
 
 /** Золотые звёзды; дробная часть заполняет звезду частично (4,5 — половинка). */
@@ -77,17 +70,21 @@ export function TrainerRatingLine({
   starClass?: string;
   textClass?: string;
 }) {
+  const t = useT();
   if (avg == null || count === 0) {
-    return <div className={`${textClass} text-muted-foreground`}>Пока нет отзывов</div>;
+    return <div className={`${textClass} text-muted-foreground`}>{t("Пока нет отзывов")}</div>;
   }
   return (
     <div
       className="flex items-center gap-2"
-      aria-label={`Рейтинг ${formatRating(avg)} из 5, ${reviewsLabel(count)}`}
+      aria-label={t("Рейтинг {value} из 5, {reviews}", {
+        value: formatRating(avg, t),
+        reviews: reviewsLabel(count, t),
+      })}
     >
       <RatingStars value={avg} className={starClass} />
       <span className={`${textClass} text-muted-foreground tabular-nums`}>
-        {formatRating(avg)} ({reviewsLabel(count)})
+        {formatRating(avg, t)} ({reviewsLabel(count, t)})
       </span>
     </div>
   );
@@ -95,6 +92,7 @@ export function TrainerRatingLine({
 
 /** «Поблагодарить тренера» — ссылка на внешний сервис чаевых. */
 export function TipButton({ url }: { url: string }) {
+  const t = useT();
   return (
     <a
       href={url}
@@ -106,8 +104,8 @@ export function TipButton({ url }: { url: string }) {
         <HandHeart className="h-6 w-6" weight="BoldDuotone" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold">Поблагодарить тренера</span>
-        <span className="block text-sm text-muted-foreground">Оставить чаевые</span>
+        <span className="block font-semibold">{t("Поблагодарить тренера")}</span>
+        <span className="block text-sm text-muted-foreground">{t("Оставить чаевые")}</span>
       </span>
       <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
     </a>
@@ -119,6 +117,7 @@ export function TipButton({ url }: { url: string }) {
  * оценка и «Изменить». Гостю не показывается.
  */
 export function RateTrainer({ trainerId }: { trainerId: string }) {
+  const t = useT();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -156,9 +155,9 @@ export function RateTrainer({ trainerId }: { trainerId: string }) {
       queryClient.invalidateQueries({ queryKey: ["trainer-card", trainerId] });
       queryClient.invalidateQueries({ queryKey: ["pack-schedule"] });
       setEditing(false);
-      toast.success(mine == null ? "Спасибо за оценку!" : "Оценка изменена");
+      toast.success(mine == null ? t("Спасибо за оценку!") : t("Оценка изменена"));
     },
-    onError: () => toast.error("Не удалось отправить оценку. Попробуйте ещё раз."),
+    onError: () => toast.error(t("Не удалось отправить оценку. Попробуйте ещё раз.")),
   });
 
   if (!user || isPending) return null;
@@ -168,17 +167,21 @@ export function RateTrainer({ trainerId }: { trainerId: string }) {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="font-semibold">{rated ? "Ваша оценка" : "Оцените тренера"}</div>
+      <div className="font-semibold">{rated ? t("Ваша оценка") : t("Оцените тренера")}</div>
       {showForm ? (
         <>
-          <div className="mt-3 flex justify-center gap-2" role="radiogroup" aria-label="Оценка">
+          <div
+            className="mt-3 flex justify-center gap-2"
+            role="radiogroup"
+            aria-label={t("Оценка")}
+          >
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 type="button"
                 role="radio"
                 aria-checked={picked === n}
-                aria-label={`${n} из 5`}
+                aria-label={t("{n} из 5", { n })}
                 onClick={() => setPicked(n)}
                 className="p-1 transition active:scale-90"
               >
@@ -199,7 +202,7 @@ export function RateTrainer({ trainerId }: { trainerId: string }) {
                 disabled={save.isPending}
                 className="h-12 flex-1 rounded-full border border-border font-semibold transition active:scale-[0.99] disabled:opacity-60"
               >
-                Отмена
+                {t("Отмена")}
               </button>
             )}
             <button
@@ -208,7 +211,7 @@ export function RateTrainer({ trainerId }: { trainerId: string }) {
               disabled={picked === 0 || save.isPending || (rated && picked === mine)}
               className="h-12 flex-1 rounded-full bg-primary font-bold text-primary-foreground transition active:scale-[0.99] disabled:opacity-60"
             >
-              {save.isPending ? "Отправляем…" : rated ? "Сохранить" : "Отправить"}
+              {save.isPending ? t("Отправляем…") : rated ? t("Сохранить") : t("Отправить")}
             </button>
           </div>
         </>
@@ -223,7 +226,7 @@ export function RateTrainer({ trainerId }: { trainerId: string }) {
             }}
             className="text-sm font-semibold text-primary"
           >
-            Изменить
+            {t("Изменить")}
           </button>
         </div>
       )}

@@ -6,7 +6,13 @@ import type { Locale } from "./locales";
  * Флаги языков в кружке (переключатель языка). Свои SVG, а не эмодзи:
  * эмодзи-флагов нет на Windows, и рисуются они на разных телефонах по-разному.
  */
-export function LocaleFlag({ locale, className = "h-5 w-5" }: { locale: Locale; className?: string }) {
+export function LocaleFlag({
+  locale,
+  className = "h-5 w-5",
+}: {
+  locale: Locale;
+  className?: string;
+}) {
   return (
     <span
       className={`inline-block shrink-0 overflow-hidden rounded-full ring-1 ring-black/10 ${className}`}

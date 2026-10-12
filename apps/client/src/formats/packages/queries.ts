@@ -167,7 +167,9 @@ export function packMyMembershipsQuery(userId: string | null) {
       if (!client) return [];
       const { data, error } = await untypedDb
         .from("client_memberships")
-        .select("id, status, ends_at, visits_left, personal_left, balance_kind, memberships(name, translations)")
+        .select(
+          "id, status, ends_at, visits_left, personal_left, balance_kind, memberships(name, translations)",
+        )
         .eq("client_id", (client as { id: string }).id)
         .in("status", ["active", "frozen", "pending"])
         .or(`ends_at.is.null,ends_at.gte.${tbilisiDateISO()},status.eq.frozen`)

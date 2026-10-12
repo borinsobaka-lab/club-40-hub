@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormattedText } from "@/lib/formatted-text";
+import { useLocalize, useT, type ContentTranslations } from "@/i18n";
 
 type ContentItem = {
   id: string;
@@ -18,6 +19,7 @@ type ContentItem = {
   full_text: string | null;
   button_text: string | null;
   button_url: string | null;
+  translations?: ContentTranslations | null;
 };
 
 /** Откуда берётся карточка: таблица и бакет с её картинками. */
@@ -39,6 +41,8 @@ export function ContentDrawer({
   itemId: string | null;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useT();
+  const loc = useLocalize();
   const open = itemId !== null;
   const { table, bucket } = SOURCES[kind];
   // Результат запоминаем вместе с id, для которого он получен: пока ответ на
@@ -46,7 +50,7 @@ export function ContentDrawer({
   const [result, setResult] = useState<{ id: string; item: ContentItem | null } | null>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
   const loading = itemId !== null && result?.id !== itemId;
-  const item = loading ? null : (result?.item ?? null);
+  const item = loc(loading ? null : (result?.item ?? null));
 
   useEffect(() => {
     if (!itemId) return;
@@ -56,7 +60,7 @@ export function ContentDrawer({
     (supabase as any)
       .from(table)
       .select(
-        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url",
+        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url,translations",
       )
       .eq("id", itemId)
       .maybeSingle()
@@ -99,10 +103,10 @@ export function ContentDrawer({
               // случае скелетон крутился бесконечно.
               <div className="px-4 pt-10 text-center">
                 <DrawerPrimitive.Title className="text-lg font-semibold">
-                  Не удалось открыть
+                  {t("Не удалось открыть")}
                 </DrawerPrimitive.Title>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Запись не найдена или временно недоступна.
+                  {t("Запись не найдена или временно недоступна.")}
                 </p>
               </div>
             ) : (

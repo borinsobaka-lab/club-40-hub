@@ -42,16 +42,51 @@ function decode(literal: string): string {
   if (quote === '"') return JSON.parse(literal.replace(/\\'/g, "'"));
   if (quote === "'") return JSON.parse('"' + body.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"');
   // шаблон без подстановок
-  return body.replace(/\\`/g, "`").replace(/\\\$/g, "$").replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+  return body
+    .replace(/\\`/g, "`")
+    .replace(/\\\$/g, "$")
+    .replace(/\\n/g, "\n")
+    .replace(/\\\\/g, "\\");
 }
 
 type Found = { key: string; file: string; line: number };
 
-/** Комментарии — пробелами (позиции и номера строк сохраняются). */
+/**
+ * Комментарии — пробелами (позиции и номера строк сохраняются). Строки и
+ * шаблоны пропускаются целиком: "image/*" или "https://…" — не комментарий.
+ */
 function stripComments(text: string) {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-    .replace(/(^|[^:"'`\\])\/\/.*$/gm, (m, p) => p + " ".repeat(m.length - p.length));
+  const out = text.split("");
+  let i = 0;
+  const blank = (from: number, to: number) => {
+    for (let k = from; k < to; k++) if (out[k] !== "\n") out[k] = " ";
+  };
+  while (i < text.length) {
+    const c = text[i];
+    if (c === '"' || c === "'" || c === "`") {
+      // до закрывающей кавычки (в шаблоне ${…} не разбираем — ключи без подстановок)
+      i++;
+      while (i < text.length && text[i] !== c) {
+        if (text[i] === "\\") i++;
+        else if (c !== "`" && text[i] === "\n") break;
+        i++;
+      }
+      i++;
+    } else if (c === "/" && text[i + 1] === "*") {
+      const close = text.indexOf("*/", i + 2);
+      const to = close < 0 ? text.length : close + 2;
+      blank(i, to);
+      i = to;
+    } else if (c === "/" && text[i + 1] === "/") {
+      const nl = text.indexOf("\n", i);
+      const to = nl < 0 ? text.length : nl;
+      blank(i, to);
+      i = to;
+    } else {
+      i++;
+    }
+  }
+  return out.join("");
 }
 
 function lineOf(text: string, index: number) {
@@ -71,7 +106,9 @@ for (const file of files) {
       try {
         found.push({ key: decode(m[1]), file, line: lineOf(text, m.index) });
       } catch {
-        console.warn(`! не разобрать строку: ${path.relative(ROOT, file)}:${lineOf(text, m.index)}`);
+        console.warn(
+          `! не разобрать строку: ${path.relative(ROOT, file)}:${lineOf(text, m.index)}`,
+        );
       }
     }
   }
@@ -106,7 +143,9 @@ for (const [lang, dict] of Object.entries(dictionaries)) {
     const keyVars = vars(key);
     // У плюралов в каждой форме свои подстановки — сверяем объединение.
     if (vars(value) !== keyVars && !key.includes("|")) {
-      console.log(`! ${lang}: подстановки не совпадают: ${JSON.stringify(key)} → ${JSON.stringify(value)}`);
+      console.log(
+        `! ${lang}: подстановки не совпадают: ${JSON.stringify(key)} → ${JSON.stringify(value)}`,
+      );
     }
     if (!value.trim()) console.log(`! ${lang}: пустой перевод: ${JSON.stringify(key)}`);
   }

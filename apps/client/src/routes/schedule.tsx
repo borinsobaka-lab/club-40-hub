@@ -73,8 +73,8 @@ type Entry = {
 
 /** «Пн» / «Mon» / «ორშ» — короткое название дня недели на языке клиента. */
 function dayName(d: Date, t: Translator) {
-  const name = d.toLocaleDateString(t.intl, { weekday: "short" });
-  return name.charAt(0).toUpperCase() + name.slice(1);
+  const name = t.date(d, { weekday: "short" });
+  return t.capitalize(name);
 }
 
 function startOfDay(d: Date) {
@@ -88,7 +88,7 @@ function addDays(d: Date, n: number) {
   return x;
 }
 function fmtTime(iso: string, t: Translator) {
-  return new Date(iso).toLocaleTimeString(t.intl, { hour: "2-digit", minute: "2-digit" });
+  return t.time(iso);
 }
 // Вместимость null или 0 — без ограничения (как в RPC записи).
 function remainingSpots(capacity: number | null, booked: number) {
@@ -578,7 +578,7 @@ function SchedulePage() {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => setOpenEntry(entryToDrawerData(c))}
+                                  onClick={() => setOpenEntry(entryToDrawerData(c, t))}
                                   className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
                                 >
                                   <div className="flex flex-col items-center justify-center w-12 shrink-0">

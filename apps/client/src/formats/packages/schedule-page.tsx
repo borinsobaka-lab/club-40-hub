@@ -17,7 +17,8 @@ import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { useClubSettings } from "@/hooks/use-club-settings";
-import { useHomeStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { msg, useLocalize, useT, type Translator } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
 import {
@@ -29,6 +30,7 @@ import {
   trainerRating,
   type PackEntry,
 } from "./entries";
+import { formatRating } from "./trainer-rating";
 import { PackWorkoutCard } from "./workout-card";
 import {
   SCHEDULE_DAYS,
@@ -48,13 +50,11 @@ import {
  */
 
 const TABS = [
-  { key: "class", label: "Тренировки" },
-  { key: "personal", label: "Персональные" },
-  { key: "diagnostics", label: "Диагностика" },
+  { key: "class", label: msg("Тренировки") },
+  { key: "personal", label: msg("Персональные") },
+  { key: "diagnostics", label: msg("Диагностика") },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
-
-const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
 type FilterKind = "workout" | "trainer";
 type FilterOption = {
@@ -66,9 +66,9 @@ type FilterOption = {
   rating?: number | null;
 };
 
-const ratingFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
-
 export function PackagesSchedulePage() {
+  const t = useT();
+  const loc = useLocalize();
   const navigate = useNavigate();
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(
@@ -85,8 +85,10 @@ export function PackagesSchedulePage() {
   const [filterSheet, setFilterSheet] = useState<FilterKind | null>(null);
   const clubSettings = useClubSettings("home");
   const { user } = useAuth();
-  const { studioId, studioReady, isHome } = useViewedStudioId();
-  const homeStudioName = useHomeStudioName();
+  const { studioId, studioReady, isHome, homeStudioId } = useViewedStudioId();
+  const { data: studios = [] } = useFormatStudios();
+  const homeStudioName = loc(studios.find((s) => s.id === homeStudioId))?.name ?? null;
+  const tabs = useMemo(() => TABS.map((x) => ({ ...x, label: t(x.label) })), [t]);
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const gestureStartRef = useRef<{ x: number; y: number; idx: number } | null>(null);
@@ -98,8 +100,10 @@ export function PackagesSchedulePage() {
   const bookingNote = isHome
     ? null
     : homeStudioName
-      ? `Записаться можно только в вашей студии — «${homeStudioName}». Сменить студию — на главной.`
-      : "Записаться можно только в вашей студии. Сменить студию — на главной.";
+      ? t("Записаться можно только в вашей студии — «{name}». Сменить студию — на главной.", {
+          name: homeStudioName,
+        })
+      : t("Записаться можно только в вашей студии. Сменить студию — на главной.");
 
   const selectDay = useCallback(
     (idx: number) => setActiveIdx(Math.max(0, Math.min(days.length - 1, idx))),
@@ -133,8 +137,9 @@ export function PackagesSchedulePage() {
 
   const bookingsError = myBookings.error?.message;
   useEffect(() => {
-    if (bookingsError) toast.error(`Не удалось загрузить ваши записи: ${bookingsError}`);
-  }, [bookingsError]);
+    if (bookingsError)
+      toast.error(t("Не удалось загрузить ваши записи: {error}", { error: bookingsError }));
+  }, [bookingsError, t]);
 
   const updateMine = (fn: (m: MyScheduleBookings) => MyScheduleBookings) =>
     queryClient.setQueryData(myBookingsQuery.queryKey, (prev) =>
@@ -196,18 +201,22 @@ export function PackagesSchedulePage() {
     );
     setPendingId(null);
     if (error) {
-      toast.error(`Не удалось ${isActive ? "отменить запись" : "записаться"}: ${error.message}`);
+      toast.error(
+        isActive
+          ? t("Не удалось отменить запись: {error}", { error: error.message })
+          : t("Не удалось записаться: {error}", { error: error.message }),
+      );
       return;
     }
     const reasonMessages: Record<string, string> = {
-      unauthorized: "Войдите в аккаунт, чтобы записаться",
-      no_client: "Профиль клиента не найден. Обратитесь к администратору.",
-      no_membership: "Нет действующего абонемента — обратитесь к администратору студии.",
-      no_visits_left: "На абонементе закончились тренировки",
-      not_found: "Тренировка не найдена",
-      past: "Эта тренировка уже прошла",
-      full: "Свободных мест больше нет",
-      not_booked: "Вы не были записаны на эту тренировку",
+      unauthorized: t("Войдите в аккаунт, чтобы записаться"),
+      no_client: t("Профиль клиента не найден. Обратитесь к администратору."),
+      no_membership: t("Нет действующего абонемента — обратитесь к администратору студии."),
+      no_visits_left: t("На абонементе закончились тренировки"),
+      not_found: t("Тренировка не найдена"),
+      past: t("Эта тренировка уже прошла"),
+      full: t("Свободных мест больше нет"),
+      not_booked: t("Вы не были записаны на эту тренировку"),
     };
     const res = data as {
       ok: boolean;
@@ -234,16 +243,16 @@ export function PackagesSchedulePage() {
               : Math.max(0, e.booked_count - 1),
           );
         }
-        toast.success(wasWaitlisted ? "Вы вышли из листа ожидания" : "Запись отменена");
+        toast.success(wasWaitlisted ? t("Вы вышли из листа ожидания") : t("Запись отменена"));
       } else if (res.waitlisted) {
         addTo("waitlist", entryId);
-        toast.success("Мест нет — вы в листе ожидания");
+        toast.success(t("Мест нет — вы в листе ожидания"));
       } else {
         addTo("booked", entryId);
         setCount((e) =>
           typeof res.booked_count === "number" ? res.booked_count : e.booked_count + 1,
         );
-        toast.success("Вы записаны на тренировку");
+        toast.success(t("Вы записаны на тренировку"));
       }
     } else if (res?.reason === "already_booked") {
       addTo("booked", entryId);
@@ -257,7 +266,10 @@ export function PackagesSchedulePage() {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });
     } else if (res?.reason) {
-      toast.error(reasonMessages[res.reason] ?? `Не удалось выполнить действие: ${res.reason}`);
+      toast.error(
+        reasonMessages[res.reason] ??
+          t("Не удалось выполнить действие: {reason}", { reason: res.reason }),
+      );
     }
   }
 
@@ -266,27 +278,31 @@ export function PackagesSchedulePage() {
     const map = new Map<string, FilterOption>();
     for (const e of entries) {
       if (e.workout && !map.has(e.workout.id)) {
-        map.set(e.workout.id, { id: e.workout.id, label: e.workout.name, color: entryColor(e) });
+        map.set(e.workout.id, {
+          id: e.workout.id,
+          label: loc(e.workout).name,
+          color: entryColor(e),
+        });
       }
     }
-    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label, "ru"));
-  }, [entries]);
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label, t.intl));
+  }, [entries, loc, t]);
   const trainerOptions = useMemo<FilterOption[]>(() => {
     const map = new Map<string, FilterOption>();
     for (const e of entries) {
-      for (const t of entryTrainers(e)) {
-        if (!map.has(t.id)) {
-          map.set(t.id, {
-            id: t.id,
-            label: t.full_name ?? "Тренер",
-            photo: trainerPhoto(t),
-            rating: trainerRating(t),
+      for (const tr of entryTrainers(e)) {
+        if (!map.has(tr.id)) {
+          map.set(tr.id, {
+            id: tr.id,
+            label: loc(tr).full_name ?? t("Тренер"),
+            photo: trainerPhoto(tr),
+            rating: trainerRating(tr),
           });
         }
       }
     }
-    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label, "ru"));
-  }, [entries]);
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label, t.intl));
+  }, [entries, loc, t]);
 
   const entriesByDay = useMemo(
     () =>
@@ -294,7 +310,8 @@ export function PackagesSchedulePage() {
         entries.filter((e) => {
           if (startOfDay(new Date(e.starts_at)).getTime() !== day.getTime()) return false;
           if (workoutFilter && e.workout?.id !== workoutFilter) return false;
-          if (trainerFilter && !entryTrainers(e).some((t) => t.id === trainerFilter)) return false;
+          if (trainerFilter && !entryTrainers(e).some((tr) => tr.id === trainerFilter))
+            return false;
           return true;
         }),
       ),
@@ -312,13 +329,13 @@ export function PackagesSchedulePage() {
       scrollKey="schedule"
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-semibold">Расписание</h1>
-          <p className="text-sm text-white/70">Выберите день и запишитесь на тренировку</p>
+          <h1 className="text-3xl font-semibold">{t("Расписание")}</h1>
+          <p className="text-sm text-white/70">{t("Выберите день и запишитесь на тренировку")}</p>
         </div>
       }
     >
       <UnderlineTabs
-        tabs={TABS}
+        tabs={tabs}
         value={activeTab}
         onChange={setActiveTab}
         className="px-4 pt-4"
@@ -328,13 +345,13 @@ export function PackagesSchedulePage() {
       {activeTab === "personal" ? (
         <div className="p-4">
           <Card className="p-8 text-center text-sm text-muted-foreground">
-            Совсем скоро мы начнем принимать заявки на персональные тренировки
+            {t("Совсем скоро мы начнем принимать заявки на персональные тренировки")}
           </Card>
         </div>
       ) : activeTab !== "class" ? (
         <div className="p-4">
           <Card className="p-8 text-center text-sm text-muted-foreground">
-            Функционал скоро будет доступен
+            {t("Функционал скоро будет доступен")}
           </Card>
         </div>
       ) : (
@@ -360,7 +377,7 @@ export function PackagesSchedulePage() {
                   <span
                     className={`text-xs font-medium ${active ? "text-primary-foreground" : "text-muted-foreground"}`}
                   >
-                    {DAY_NAMES[d.getDay()]}
+                    {dayName(d, t)}
                   </span>
                   <span className="text-lg font-bold">{d.getDate()}</span>
                 </button>
@@ -370,12 +387,12 @@ export function PackagesSchedulePage() {
 
           <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
             <FilterChip
-              label={workoutLabel ?? "Все тренировки"}
+              label={workoutLabel ?? t("Все тренировки")}
               active={!!workoutFilter}
               onClick={() => setFilterSheet("workout")}
             />
             <FilterChip
-              label={trainerLabel ?? "Все тренеры"}
+              label={trainerLabel ?? t("Все тренеры")}
               active={!!trainerFilter}
               onClick={() => setFilterSheet("trainer")}
             />
@@ -389,7 +406,7 @@ export function PackagesSchedulePage() {
                 className="shrink-0 inline-flex items-center gap-1 px-3 h-8 rounded-full text-xs font-medium text-muted-foreground"
               >
                 <CloseCircle className="h-4 w-4" weight="BoldDuotone" />
-                Сбросить
+                {t("Сбросить")}
               </button>
             )}
           </div>
@@ -399,7 +416,9 @@ export function PackagesSchedulePage() {
               <ScheduleListSkeleton />
             </div>
           ) : error ? (
-            <Card className="p-4 text-sm text-destructive">Ошибка загрузки: {error}</Card>
+            <Card className="p-4 text-sm text-destructive">
+              {t("Ошибка загрузки: {error}", { error })}
+            </Card>
           ) : (
             <div
               ref={swipeAreaRef}
@@ -452,8 +471,8 @@ export function PackagesSchedulePage() {
                     {dayList.length === 0 ? (
                       <Card className="p-6 text-center text-sm text-muted-foreground">
                         {filtered
-                          ? "На этот день таких тренировок нет"
-                          : "На этот день тренировок пока нет"}
+                          ? t("На этот день таких тренировок нет")
+                          : t("На этот день тренировок пока нет")}
                       </Card>
                     ) : (
                       <div className="relative">
@@ -470,7 +489,7 @@ export function PackagesSchedulePage() {
                                 isWaitlisted={waitlistedIds.has(c.id)}
                                 isPending={pendingId === c.id}
                                 canBook={isHome}
-                                onOpen={() => setOpenEntry(packEntryToDrawerData(c))}
+                                onOpen={() => setOpenEntry(packEntryToDrawerData(c, t))}
                                 onBook={() => toggleBooking(c.id)}
                               />
                             </div>
@@ -499,14 +518,14 @@ export function PackagesSchedulePage() {
       />
 
       <WorkoutDrawer
-        data={openEntryRow ? packEntryToDrawerData(openEntryRow) : openEntry}
+        data={openEntryRow ? packEntryToDrawerData(openEntryRow, t) : openEntry}
         open={openEntry !== null}
         onOpenChange={(o) => {
           if (!o) setOpenEntry(null);
         }}
         isBooked={openEntry ? bookedIds.has(openEntry.id) : false}
         isWaitlisted={openEntry ? waitlistedIds.has(openEntry.id) : false}
-        isFull={openEntryRow ? packEntryToDrawerData(openEntryRow).spotsLeft === 0 : false}
+        isFull={openEntryRow ? packEntryToDrawerData(openEntryRow, t).spotsLeft === 0 : false}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
         bookingNote={bookingNote}
@@ -516,6 +535,12 @@ export function PackagesSchedulePage() {
       />
     </PageShell>
   );
+}
+
+/** «Пн» / «Mon» / «ორშ» — короткий день недели на языке клиента. */
+function dayName(d: Date, t: Translator) {
+  const raw = t.date(d, { weekday: "short" });
+  return t.capitalize(raw);
 }
 
 function FilterChip({
@@ -556,7 +581,8 @@ function FilterSheet({
   onChange: (id: string | null) => void;
   onClose: () => void;
 }) {
-  const all = kind === "trainer" ? "Все тренеры" : "Все тренировки";
+  const t = useT();
+  const all = kind === "trainer" ? t("Все тренеры") : t("Все тренировки");
   const rows: (FilterOption | null)[] = [null, ...options];
   return (
     <DrawerPrimitive.Root
@@ -575,11 +601,11 @@ function FilterSheet({
           <div className="mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
           <div className="overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">
             <DrawerPrimitive.Title className="text-xl font-semibold">
-              {kind === "trainer" ? "Тренер" : "Тренировка"}
+              {kind === "trainer" ? t("Тренер") : t("Тренировка")}
             </DrawerPrimitive.Title>
             {options.length === 0 && (
               <p className="mt-2 text-sm text-muted-foreground">
-                В ближайшие дни в расписании пусто.
+                {t("В ближайшие дни в расписании пусто.")}
               </p>
             )}
             <ul className="mt-3 divide-y divide-border">
@@ -612,10 +638,12 @@ function FilterSheet({
                       {o?.rating != null && (
                         <span
                           className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold tabular-nums"
-                          aria-label={`Рейтинг ${ratingFormat.format(o.rating)} из 5`}
+                          aria-label={t("Рейтинг {value} из 5", {
+                            value: formatRating(o.rating, t),
+                          })}
                         >
                           <Star className="h-4 w-4 text-amber-400" weight="Bold" />
-                          {ratingFormat.format(o.rating)}
+                          {formatRating(o.rating, t)}
                         </span>
                       )}
                       {active && (
