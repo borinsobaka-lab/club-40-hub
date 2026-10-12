@@ -8,7 +8,7 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
 - `apps/admin/` — админ-панель, https://admin.base40.fit. Свой **CLAUDE.md**
   (код, слой данных, auth-письма, сервер) — читать перед правками в админке.
 - `apps/client/` — клиентское приложение: https://app.base40.fit
-  (подписочный формат) и pack.base40.fit (пакетный, `VITE_APP_FORMAT=packages`)
+  (подписочный формат) и app.lady-stretch.one (пакетный, `VITE_APP_FORMAT=packages`)
   — одна кодовая база, две сборки. Свой **CLAUDE.md**.
 - `db/` — схема БД, общая для обоих приложений: `db/migrations/` + мигратор
   `db/migrate.ts` (выполняется при старте контейнера админки).
@@ -83,11 +83,11 @@ Coolify на Hetzner, все приложения — из этого репоз
 **Пуш в `main` автоматически деплоится в прод.** Контекст сборки Docker —
 корень репозитория (общий `.dockerignore`), Dockerfile — в папке приложения:
 
-| Ресурс Coolify           | Адрес                    | Dockerfile                | Watch Paths              |
-| ------------------------ | ------------------------ | ------------------------- | ------------------------ |
-| `club40-admin`           | https://admin.base40.fit | `/apps/admin/Dockerfile`  | `apps/admin/**`, `db/**` |
-| `club40-client`          | https://app.base40.fit   | `/apps/client/Dockerfile` | `apps/client/**`         |
-| `club40-client-packages` | https://pack.base40.fit  | `/apps/client/Dockerfile` | `apps/client/**`         |
+| Ресурс Coolify           | Адрес                        | Dockerfile                | Watch Paths              |
+| ------------------------ | ---------------------------- | ------------------------- | ------------------------ |
+| `club40-admin`           | https://admin.base40.fit     | `/apps/admin/Dockerfile`  | `apps/admin/**`, `db/**` |
+| `club40-client`          | https://app.base40.fit       | `/apps/client/Dockerfile` | `apps/client/**`         |
+| `club40-client-packages` | https://app.lady-stretch.one | `/apps/client/Dockerfile` | `apps/client/**`         |
 
 Watch Paths — чтобы правка одного приложения не пересобирала другие.
 Переменные окружения каждого приложения — в его CLAUDE.md; переключение

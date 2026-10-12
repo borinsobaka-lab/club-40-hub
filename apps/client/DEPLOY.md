@@ -89,9 +89,11 @@ Coolify (ресурс Supabase на coolify.base40.fit), а не через Dash
 `VITE_APP_FORMAT`. Существующее `club40-client` (app.base40.fit) — подписочный
 формат, его НЕ трогаем.
 
-Адрес нового приложения — `pack.base40.fit` (предварительный; если владелец
-выберет другой — поменять в `apps/client/src/lib/app-format.ts` и в
-`apps/admin/src/lib/studio-formats.ts`).
+Адрес приложения — `app.lady-stretch.one` (с 2026-10-12; DNS — у
+регистратора `lady-stretch.one`, переезд — AGENT_TASKS.md, Задача 12).
+Развёрнуто оно было на `pack.base40.fit` — шаги ниже записаны для того адреса.
+Адрес в коде — `apps/client/src/lib/app-format.ts` и
+`apps/admin/src/lib/studio-formats.ts`.
 
 1. **DNS**: A-запись `pack.base40.fit` → 62.238.104.251 (как у app.base40.fit).
 2. **Coolify** → проект **club40** → **production** → **+ New Resource** →

@@ -17,7 +17,7 @@ export const STUDIO_FORMAT_LABEL: Record<StudioFormat, string> = {
 /** Адрес клиентского приложения формата. */
 export const STUDIO_FORMAT_APP_URL: Record<StudioFormat, string> = {
   subscription: "https://app.base40.fit",
-  packages: "https://pack.base40.fit",
+  packages: "https://app.lady-stretch.one",
 };
 
 /** Цвет новой студии — прежний фирменный розовый (он же --brand в styles.css). */

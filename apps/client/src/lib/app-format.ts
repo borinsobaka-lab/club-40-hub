@@ -15,5 +15,5 @@ export const APP_FORMAT: StudioFormat =
 /** Адреса приложений форматов. Те же значения — в studio-formats.ts админки. */
 export const FORMAT_APP_URL: Record<StudioFormat, string> = {
   subscription: "https://app.base40.fit",
-  packages: "https://pack.base40.fit",
+  packages: "https://app.lady-stretch.one",
 };

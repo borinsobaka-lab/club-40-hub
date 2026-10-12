@@ -16,7 +16,7 @@ TanStack Start (SSR) + React 19 + Tailwind 4 + shadcn/radix. Пакетный
 «Зал с пакетами тренировок» (`packages`, в разработке). Подробно —
 **STUDIO_FORMATS.md в корне репозитория**. Из `apps/client` собираются **два
 приложения**: app.base40.fit (подписочный, `VITE_APP_FORMAT` не задан) и
-pack.base40.fit (адрес предварительный, `VITE_APP_FORMAT=packages`) —
+app.lady-stretch.one (до 2026-10-12 — pack.base40.fit, `VITE_APP_FORMAT=packages`) —
 `src/lib/app-format.ts` (`APP_FORMAT`, `FORMAT_APP_URL`). Деплой второго —
 DEPLOY.md, раздел «Второе приложение».
 
