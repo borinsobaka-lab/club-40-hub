@@ -352,6 +352,9 @@ AUTH_SETUP.md.
   null — не показываются), `instagram_followers`, `instagram_posts` (jsonb
   `[{path, url}]`, вручную); фото — бакет `studio-photos`, папка `about/`.
   Тексты раздела — в коде клиента (`formats/packages/about-config.ts`).
+  Галерея главы «Массажный кабинет» (июнь 2026) —
+  `app_about_settings.massage_photos`
+  (`db/migrations/2026-10-12_zzzzzzz_app_about_massage.sql`).
   Переводы контента (решение владельца 2026-10-12: клиентское приложение
   на английском, грузинском и русском):
   `db/migrations/2026-10-12_zzzzzz_content_translations.sql` — колонка
