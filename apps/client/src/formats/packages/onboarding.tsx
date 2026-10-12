@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RulerPicker } from "@/components/ui/ruler-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { DarkFrame as Frame, DarkSplash } from "@/formats/packages/dark-frame";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/onboarding";
 import { queueHomeConfetti } from "@/lib/confetti";
 import { CLUB } from "@/lib/terms";
+import { untypedDb } from "@/lib/untyped-db";
 
 // Анкета приложения пакетных студий (решение владельца 2026-10-11). Тренировки
 // в этих студиях одни для всех, поэтому анкета — про прогресс и рекомендации
@@ -66,6 +68,11 @@ type FormData = {
   desired_frequency: number | null;
   preferred_times: PrefTime[];
   referral_source: Referral | null;
+  // Последний шаг — карточка клиента (clients), не анкета: подставляются из
+  // карточки, при переходе дальше пишутся в неё.
+  last_name: string;
+  first_name: string;
+  phone: string;
 };
 
 const EMPTY: FormData = {
@@ -80,9 +87,12 @@ const EMPTY: FormData = {
   desired_frequency: null,
   preferred_times: [],
   referral_source: null,
+  last_name: "",
+  first_name: "",
+  phone: "",
 };
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 const GOAL_OTHER_MAX = 500;
 const BIRTH_MIN = "1940-01-01";
 
@@ -95,6 +105,18 @@ function birthMax() {
 
 function validBirthDate(s: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) && s >= BIRTH_MIN && s <= birthMax();
+}
+
+/** Телефон заполнен, если в нём хотя бы 7 цифр. */
+function validPhone(s: string) {
+  return s.replace(/\D/g, "").length >= 7;
+}
+
+/** Имя и фамилия из full_name, если в карточке нет раздельных («Фамилия Имя»). */
+function splitFullName(full: string | null | undefined) {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return { last: "", first: parts[0] ?? "" };
+  return { last: parts[0], first: parts.slice(1).join(" ") };
 }
 
 function buildPayload(form: FormData) {
@@ -134,7 +156,12 @@ export function PackagesOnboardingPage() {
     (async () => {
       const [profileRes, clientRes] = await Promise.all([
         supabase.from("member_profiles").select("*").eq("user_id", user.id).maybeSingle(),
-        supabase.from("clients").select("birthday").eq("user_id", user.id).maybeSingle(),
+        supabase
+          .from("clients")
+          .select("birthday, first_name, last_name, full_name, phone")
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle(),
       ]);
       if (cancelled) return;
       // Как в гейте: при ошибке нельзя показывать пустую анкету — сохранение
@@ -148,7 +175,14 @@ export function PackagesOnboardingPage() {
         navigate({ to: "/", replace: true });
         return;
       }
-      const cardBirthday = clientRes.data?.birthday?.slice(0, 10) ?? "";
+      const card = clientRes.data;
+      const cardBirthday = card?.birthday?.slice(0, 10) ?? "";
+      const split = splitFullName(card?.full_name);
+      const contacts = {
+        last_name: card?.last_name ?? split.last,
+        first_name: card?.first_name ?? split.first,
+        phone: card?.phone ?? "",
+      };
       if (data) {
         // В БД поля анкеты — text/enum; локальные юнионы — клиентское сужение.
         const goal = GOALS.some((g) => g.v === data.primary_goal)
@@ -166,9 +200,10 @@ export function PackagesOnboardingPage() {
           desired_frequency: data.desired_frequency ?? null,
           preferred_times: (data.preferred_times as PrefTime[] | null) ?? [],
           referral_source: (data.referral_source as Referral | null) ?? null,
+          ...contacts,
         });
-      } else if (cardBirthday) {
-        setForm((f) => ({ ...f, birth_date: cardBirthday }));
+      } else {
+        setForm((f) => ({ ...f, birth_date: cardBirthday, ...contacts }));
       }
       setBootstrapped(true);
     })();
@@ -208,16 +243,53 @@ export function PackagesOnboardingPage() {
     return true;
   }
 
+  /** Фамилия, имя и телефон — в карточку клиента (её видит студия на портале). */
+  async function saveContacts() {
+    if (!user) return false;
+    const last = form.last_name.trim();
+    const first = form.first_name.trim();
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        last_name: last,
+        first_name: first,
+        full_name: `${last} ${first}`,
+        phone: form.phone.trim(),
+      })
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error(`Не удалось сохранить данные: ${error.message}`);
+      return false;
+    }
+    return true;
+  }
+
   async function goNext(nextStep: number) {
     setSaving(true);
-    const ok = await persist();
+    const ok = (await persist()) && (step !== CONTACTS_STEP || (await saveContacts()));
     setSaving(false);
     if (ok) setStep(nextStep);
   }
 
   async function finish() {
     setSaving(true);
-    const ok = await persist({ onboarding_completed_at: new Date().toISOString() });
+    const completedAt = new Date().toISOString();
+    const ok = await persist({ onboarding_completed_at: completedAt });
+    // Вес из анкеты — первая запись истории веса, датой отправки
+    // (client_weights; повторная запись «onboarding» не создастся — 23505).
+    // Сбой не мешает завершить анкету: вес остаётся и в самой анкете.
+    if (ok && user) {
+      const weight = Number(form.weight_kg.replace(",", "."));
+      if (Number.isFinite(weight) && weight >= 20 && weight <= 300) {
+        const { error } = await untypedDb.from("client_weights").insert({
+          user_id: user.id,
+          weight_kg: weight,
+          measured_at: completedAt,
+          source: "onboarding",
+        });
+        if (error && error.code !== "23505") console.warn("client_weights:", error.message);
+      }
+    }
     setSaving(false);
     if (ok) {
       // Анкета пройдена — на главную, там салют.
@@ -241,6 +313,10 @@ export function PackagesOnboardingPage() {
         return form.health_flags.length > 0;
       case 5:
         return form.weight_kg.trim() !== "" && validBirthDate(form.birth_date);
+      case CONTACTS_STEP:
+        return (
+          form.last_name.trim() !== "" && form.first_name.trim() !== "" && validPhone(form.phone)
+        );
       default:
         return true;
     }
@@ -302,7 +378,7 @@ export function PackagesOnboardingPage() {
 
   return (
     <Frame
-      tall={!!art}
+      tall={!!art || step === CONTACTS_STEP}
       art={art}
       top={
         <div className="px-4">
@@ -322,7 +398,9 @@ export function PackagesOnboardingPage() {
       header={
         <div className="px-4 pt-5 pb-8">
           <h1 className="text-2xl font-semibold leading-tight">{titles.title}</h1>
-          {titles.subtitle && <p className="mt-2 text-sm text-white/70">{titles.subtitle}</p>}
+          {titles.subtitle && (
+            <p className="frame-hide-typing mt-2 text-sm text-white/70">{titles.subtitle}</p>
+          )}
         </div>
       }
       footer={
@@ -432,6 +510,37 @@ export function PackagesOnboardingPage() {
           </Block>
         </Blocks>
       )}
+      {step === CONTACTS_STEP && (
+        <Blocks>
+          <Block>
+            <div className="space-y-4">
+              <ContactField
+                id="last_name"
+                label="Фамилия"
+                value={form.last_name}
+                onChange={(v) => update("last_name", v)}
+                autoComplete="family-name"
+              />
+              <ContactField
+                id="first_name"
+                label="Имя"
+                value={form.first_name}
+                onChange={(v) => update("first_name", v)}
+                autoComplete="given-name"
+              />
+              <ContactField
+                id="phone"
+                label="Номер телефона"
+                value={form.phone}
+                onChange={(v) => update("phone", v)}
+                autoComplete="tel"
+                type="tel"
+                inputMode="tel"
+              />
+            </div>
+          </Block>
+        </Blocks>
+      )}
     </Frame>
   );
 }
@@ -456,7 +565,14 @@ const STEP_HEADERS: Record<number, { title: string; subtitle?: string }> = {
   },
   6: STEP_TITLES.logistics,
   7: STEP_TITLES.referral,
+  8: {
+    title: "Последний шаг — заполните свои данные",
+    subtitle: `Фамилия, имя и номер телефона — чтобы администратор ${CLUB.gen} мог с вами связаться. Что уже есть в ${CLUB.prep}, мы подставили.`,
+  },
 };
+
+/** Шаг с фамилией, именем и телефоном — последний перед «Спасибо». */
+const CONTACTS_STEP = 8;
 
 /** Прогресс анкеты: «Шаг N из M» и полоска по шагам. */
 function Progress({ step, total }: { step: number; total: number }) {
@@ -541,6 +657,34 @@ function GoalOptions({ value, onChange }: { value: Goal | null; onChange: (v: Go
           {o.label}
         </OptionButton>
       ))}
+    </div>
+  );
+}
+
+function ContactField({
+  id,
+  label,
+  value,
+  onChange,
+  ...rest
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+} & Pick<React.ComponentProps<"input">, "autoComplete" | "type" | "inputMode">) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={60}
+        // Запас при докрутке к полю в фокусе — не прилипает к краю панели.
+        className="h-12 scroll-my-6 text-base"
+        {...rest}
+      />
     </div>
   );
 }

@@ -1066,9 +1066,12 @@ html body [data-sonner-toast][data-type="warning"] {
 .gradient-blobs.blobs-small > span {
   scale: 0.45;
 }
-/* Ввод с телефона (клавиатура): картинку прячем, огоньки — без «дырки». */
+/* Ввод с телефона (клавиатура): картинку и длинные подзаголовки
+   (.frame-hide-typing) прячем — место полям; огоньки — без «дырки». */
 [data-dark-frame][data-typing] .frame-art,
-[data-dark-frame][data-kb] .frame-art {
+[data-dark-frame][data-kb] .frame-art,
+[data-dark-frame][data-typing] .frame-hide-typing,
+[data-dark-frame][data-kb] .frame-hide-typing {
   display: none;
 }
 [data-dark-frame][data-typing] .frame-blobs,

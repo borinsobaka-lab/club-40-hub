@@ -115,7 +115,7 @@ export function DarkFrame({
 
       <div
         className={`relative z-10 -mt-4 flex flex-col overflow-hidden rounded-t-3xl bg-background shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)] ${
-          tall ? "max-h-[70%] shrink-0" : "min-h-0 flex-1"
+          tall ? "max-h-[85%] shrink-0" : "min-h-0 flex-1"
         }`}
       >
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
