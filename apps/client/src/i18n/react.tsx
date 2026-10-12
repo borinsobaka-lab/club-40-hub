@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { localizeRow, type Localizable } from "./content";
-import { type Locale, writeDocumentLocale } from "./locales";
+import { type Locale, readDocumentLocale, writeDocumentLocale } from "./locales";
 import {
   type Translator,
   currentT,
@@ -20,9 +20,10 @@ type I18nValue = {
 const I18nContext = createContext<I18nValue | null>(null);
 
 /**
- * Язык интерфейса. Начальный — из cookie (на сервере — из запроса, в браузере
- * — из document.cookie); словарь к этому моменту уже загружен: на сервере —
- * в beforeLoad корня, в браузере — до гидратации (hydrate в router.tsx).
+ * Язык интерфейса. Начальный — из cookie (на сервере — из запроса через
+ * beforeLoad корня, в браузере — document.cookie); словарь к этому моменту
+ * уже загружен: на сервере — в beforeLoad корня, в браузере — до гидратации
+ * (hydrate в router.tsx).
  */
 export function I18nProvider({
   initialLocale,
@@ -32,8 +33,13 @@ export function I18nProvider({
   children: ReactNode;
 }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window !== "undefined") setClientLocale(initialLocale);
-    return initialLocale;
+    if (typeof document === "undefined") return initialLocale;
+    // В браузере — cookie: её словарь загружен до гидратации. Обычно это
+    // тот же язык, что у сервера; иначе (страница из кэша service worker'а
+    // без сети) React перерисует расхождение сам.
+    const cookieLocale = readDocumentLocale();
+    setClientLocale(cookieLocale);
+    return cookieLocale;
   });
 
   const setLocale = useCallback(async (next: Locale) => {

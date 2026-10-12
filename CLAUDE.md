@@ -343,6 +343,15 @@ AUTH_SETUP.md.
   Мессенджеры студии: `db/migrations/2026-10-12_studio_messengers.sql` —
   `studio_app_settings.whatsapp_url/messenger_url` («Контакты и правила» →
   «О клубе»; в приложении пакетов — «Студия» → «Информация»).
+  Переводы контента (решение владельца 2026-10-12: клиентское приложение
+  на английском, грузинском и русском):
+  `db/migrations/2026-10-12_zzzzzz_content_translations.sql` — колонка
+  `translations jsonb` (`{"en": {поле: текст}, "ka": {…}}`, русский — в
+  прежних колонках) у `news`, `services`, `push_notifications`,
+  `memberships`, `workouts`, `trainers`, `studio_app_settings`, `studios`
+  (у `studios` — в публичном гранте колонок); админка пишет её из окон
+  редактирования (переключатель языков в шапке), клиент показывает язык
+  клиента → английский → русский (`apps/client/CLAUDE.md`, «Языки»).
   Форматы и брендинг студий: `db/migrations/2026-10-09_studio_formats.sql` (`format`, `brand_color`,
   `logo_url`, публичное чтение `studios`, RPC `create_studio`, бакет
   `studio-logos`). Удаление студии — RPC `delete_studio`
