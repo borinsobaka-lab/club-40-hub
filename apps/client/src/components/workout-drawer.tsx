@@ -27,6 +27,8 @@ import appleCalIcon from "@/assets/apple-calendar.png.asset.json";
 import outlookIcon from "@/assets/outlook.png.asset.json";
 import { FormattedText } from "@/lib/formatted-text";
 import { TrainerDrawer } from "@/formats/packages/trainer-drawer";
+import { formatRating } from "@/formats/packages/trainer-rating";
+import { msg, useLocalize, useT, type Translator } from "@/i18n";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -59,22 +61,28 @@ function initialsOf(name: string) {
 }
 
 /** «Пн, 13 октября · 19:00–20:00 · 60 мин». */
-function whenLabel(startsAt: string, endsAt: string | null | undefined) {
+function whenLabel(startsAt: string, endsAt: string | null | undefined, t: Translator) {
   const start = new Date(startsAt);
-  const raw = start.toLocaleDateString("ru-RU", {
+  const raw = t.date(start, {
     weekday: "short",
     day: "numeric",
     month: "long",
   });
-  const day = raw.charAt(0).toUpperCase() + raw.slice(1);
-  const time = (d: Date) => d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const day = t.capitalize(raw);
+  const time = (d: Date) => t.time(d);
   if (!endsAt) return `${day} · ${time(start)}`;
   const end = new Date(endsAt);
   const minutes = Math.round((end.getTime() - start.getTime()) / 60_000);
-  return `${day} · ${time(start)}–${time(end)}${minutes > 0 ? ` · ${minutes} мин` : ""}`;
+  return `${day} · ${time(start)}–${time(end)}${minutes > 0 ? ` · ${t("{n} мин", { n: minutes })}` : ""}`;
 }
 
-const CANCEL_REASONS = ["Заболел(а)", "Не получается прийти", "Изменились планы", "Другое"];
+// Причина уходит в базу по-русски (её читают в админке) — показывается перевод.
+const CANCEL_REASONS = [
+  msg("Заболел(а)"),
+  msg("Не получается прийти"),
+  msg("Изменились планы"),
+  msg("Другое"),
+];
 
 export function WorkoutDrawer({
   data,
@@ -100,11 +108,14 @@ export function WorkoutDrawer({
   /** Записаться нельзя (другая студия) — текст вместо кнопки «Записаться». */
   bookingNote?: string | null;
 }) {
+  const t = useT();
+  const loc = useLocalize();
   const isPack = !!data?.trainers;
   const typeMeta = data && !isPack ? workoutTypeMeta(data.type) : null;
   const TypeIcon = typeMeta?.icon ?? null;
   const { data: studios } = useFormatStudios();
-  const studio = isPack && data?.studioId ? studios?.find((s) => s.id === data.studioId) : null;
+  const studio =
+    isPack && data?.studioId ? loc(studios?.find((s) => s.id === data.studioId)) : null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   // Карточка тренера (пакетное) — вложенной шторкой поверх окна тренировки.
@@ -140,12 +151,12 @@ export function WorkoutDrawer({
   const calendarOptions = calendarEvent
     ? [
         {
-          label: "Google Календарь",
+          label: t("Google Календарь"),
           icon: googleCalIcon.url,
           onClick: () => openExternal(googleCalendarUrl(calendarEvent)),
         },
         {
-          label: "Apple Календарь",
+          label: t("Apple Календарь"),
           icon: appleCalIcon.url,
           onClick: () => {
             downloadICS(calendarEvent);
@@ -158,7 +169,7 @@ export function WorkoutDrawer({
           onClick: () => openExternal(outlookLiveUrl(calendarEvent)),
         },
         {
-          label: "Другой (.ics файл)",
+          label: t("Другой (.ics файл)"),
           icon: null,
           onClick: () => {
             downloadICS(calendarEvent);
@@ -194,7 +205,7 @@ export function WorkoutDrawer({
                           className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${typeMeta.bg} ${typeMeta.color}`}
                         >
                           {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
-                          {typeMeta.label}
+                          {t(typeMeta.label)}
                         </div>
                       )}
 
@@ -242,7 +253,7 @@ export function WorkoutDrawer({
                 {isBooked ? (
                   <div className="mt-6">
                     <div className="mb-2 text-xs font-semibold text-muted-foreground">
-                      Причина отмены (по желанию)
+                      {t("Причина отмены (по желанию)")}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {CANCEL_REASONS.map((r) => (
@@ -256,14 +267,16 @@ export function WorkoutDrawer({
                               : "bg-muted text-foreground"
                           }`}
                         >
-                          {r}
+                          {t(r)}
                         </button>
                       ))}
                     </div>
                   </div>
                 ) : isWaitlisted ? (
                   <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                    Вы в листе ожидания. Если освободится место, с вами свяжется администратор.
+                    {t(
+                      "Вы в листе ожидания. Если освободится место, с вами свяжется администратор.",
+                    )}
                   </div>
                 ) : bookingNote ? (
                   <div className="mt-6 rounded-2xl bg-muted p-4 text-sm text-muted-foreground">
@@ -282,7 +295,9 @@ export function WorkoutDrawer({
                     onClick={() => {
                       if (cancelLocked) {
                         toast.error(
-                          `Тренировку можно отменить не позже чем за ${formatCancelDeadline(cancelMinutes!)} до начала`,
+                          t("Тренировку можно отменить не позже чем за {time} до начала", {
+                            time: formatCancelDeadline(cancelMinutes!, t),
+                          }),
                         );
                         return;
                       }
@@ -291,7 +306,7 @@ export function WorkoutDrawer({
                     disabled={isPending}
                     className={`flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
                   >
-                    {isPending ? "..." : "Отменить запись"}
+                    {isPending ? "..." : t("Отменить запись")}
                   </button>
                   <button
                     type="button"
@@ -299,7 +314,8 @@ export function WorkoutDrawer({
                     disabled={!calendarEvent}
                     className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
                   >
-                    <Calendar className="h-5 w-5" weight="BoldDuotone" />В календарь
+                    <Calendar className="h-5 w-5" weight="BoldDuotone" />
+                    {t("В календарь")}
                   </button>
                 </div>
               ) : isWaitlisted ? (
@@ -309,7 +325,7 @@ export function WorkoutDrawer({
                   disabled={isPending}
                   className="w-full h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
                 >
-                  {isPending ? "..." : "Выйти из очереди"}
+                  {isPending ? "..." : t("Выйти из очереди")}
                 </button>
               ) : (
                 <button
@@ -318,7 +334,7 @@ export function WorkoutDrawer({
                   disabled={isPending}
                   className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
                 >
-                  {isPending ? "..." : isFull ? "Встать в очередь" : "Записаться"}
+                  {isPending ? "..." : isFull ? t("Встать в очередь") : t("Записаться")}
                 </button>
               )}
             </div>
@@ -331,7 +347,7 @@ export function WorkoutDrawer({
       <Dialog open={calendarPickerOpen} onOpenChange={setCalendarPickerOpen}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Выберите календарь</DialogTitle>
+            <DialogTitle>{t("Выберите календарь")}</DialogTitle>
           </DialogHeader>
           <div className="mt-2 flex flex-col gap-2">
             {calendarOptions.map((opt) => (
@@ -358,8 +374,6 @@ export function WorkoutDrawer({
   );
 }
 
-const ratingFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
-
 /**
  * Шапка окна тренировки пакетного приложения (решение владельца 2026-10-12):
  * название (и фото тренировки справа), под ним — плашка: дата и время,
@@ -376,13 +390,14 @@ function PackHeader({
   studio: { name: string; address?: string | null } | null;
   onOpenTrainer: (id: string) => void;
 }) {
+  const t = useT();
   const full = data.spotsLeft === 0;
   const rows = [
     data.startsAt
       ? {
           key: "when",
           icon: <Calendar className="h-[18px] w-[18px]" weight="BoldDuotone" />,
-          content: <span className="font-medium">{whenLabel(data.startsAt, data.endsAt)}</span>,
+          content: <span className="font-medium">{whenLabel(data.startsAt, data.endsAt, t)}</span>,
         }
       : null,
     data.spotsLabel
@@ -448,30 +463,30 @@ function PackHeader({
 
       {data.trainers!.length > 0 && (
         <div className="mt-4 flex flex-col gap-2">
-          {data.trainers!.map((t) => (
+          {data.trainers!.map((tr) => (
             <button
-              key={t.id}
+              key={tr.id}
               type="button"
-              onClick={() => onOpenTrainer(t.id)}
+              onClick={() => onOpenTrainer(tr.id)}
               className="-mx-1 flex items-center gap-3 rounded-2xl px-1 py-1 text-left transition active:bg-muted"
             >
               <SquircleAvatar size={48}>
-                {t.photo && <SquircleAvatarImage src={t.photo} alt={t.name} />}
+                {tr.photo && <SquircleAvatarImage src={tr.photo} alt={tr.name} />}
                 <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
-                  {initialsOf(t.name)}
+                  {initialsOf(tr.name)}
                 </SquircleAvatarFallback>
               </SquircleAvatar>
               <div className="min-w-0 flex-1">
-                <div className="text-xs text-muted-foreground">Тренер</div>
+                <div className="text-xs text-muted-foreground">{t("Тренер")}</div>
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-base font-semibold">{t.name}</span>
-                  {t.rating != null && (
+                  <span className="truncate text-base font-semibold">{tr.name}</span>
+                  {tr.rating != null && (
                     <span
                       className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold tabular-nums"
-                      aria-label={`Рейтинг ${ratingFormat.format(t.rating)} из 5`}
+                      aria-label={t("Рейтинг {value} из 5", { value: formatRating(tr.rating, t) })}
                     >
                       <Star className="h-4 w-4 text-amber-400" weight="Bold" />
-                      {ratingFormat.format(t.rating)}
+                      {formatRating(tr.rating, t)}
                     </span>
                   )}
                 </div>

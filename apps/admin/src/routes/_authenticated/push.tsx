@@ -39,6 +39,9 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { PushPageSkeleton } from "@/components/page-skeletons";
 import { AppStudiosField, StudioNamesCell } from "@/components/app-studios-field";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
+import { useContentTranslations } from "@/hooks/use-content-translations";
+import type { ContentTranslations } from "@/lib/content-i18n";
 import { splitStudioIds, useDefaultStudioIds, useMyStudioIds } from "@/hooks/use-app-studios";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
@@ -65,6 +68,8 @@ type PushNotification = {
   title: string;
   message: string | null;
   action_url: string | null;
+  /** Переводы для приложения: {en|ka: {title, message}}. */
+  translations: ContentTranslations;
   segments: Segment[];
   scheduled_at: string | null;
   sent_at: string | null;
@@ -281,6 +286,7 @@ function PushForm({
   const [title, setTitle] = useState(item?.title ?? "");
   const [message, setMessage] = useState(item?.message ?? "");
   const [actionUrl, setActionUrl] = useState(item?.action_url ?? "");
+  const tr = useContentTranslations(item?.translations);
   const [allSelected, setAllSelected] = useState(initialSegments.includes("all"));
   const [segments, setSegments] = useState<ClubStatus[]>(() =>
     initialSegments.includes("all")
@@ -301,6 +307,7 @@ function PushForm({
 
   const handleSave = async () => {
     if (!title.trim()) {
+      tr.setLang("ru");
       toast.error("Укажите заголовок");
       return;
     }
@@ -324,6 +331,7 @@ function PushForm({
     const payload = {
       title: title.trim(),
       message: message.trim() || null,
+      translations: tr.cleaned(),
       segments: allSelected ? ["all"] : segments,
       studio_ids: [...studioIds, ...split.locked],
       action_url: actionUrl.trim() || null,
@@ -357,27 +365,29 @@ function PushForm({
         <DialogDescription>
           Уведомление будет отправлено клиентам выбранных клубов в мобильное приложение.
         </DialogDescription>
+        <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Заголовок" tip={TIPS.title} required>
+            <ContentLangNote lang={tr.lang} />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Заголовок</ContentLangLabel>}
+              tip={TIPS.title}
+              required={tr.lang === "ru"}
+            >
               <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Например: Скидка 20% на абонементы"
+                {...tr.input("title", title, setTitle, "Например: Скидка 20% на абонементы")}
               />
             </FormField>
 
             <FormField
-              label="Сообщение"
+              label={<ContentLangLabel lang={tr.lang}>Сообщение</ContentLangLabel>}
               tip="На экране блокировки видно 2–3 строки — главное пишите в начале."
               optional
             >
               <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Текст пуш-уведомления"
+                {...tr.input("message", message, setMessage, "Текст пуш-уведомления")}
                 rows={4}
               />
             </FormField>

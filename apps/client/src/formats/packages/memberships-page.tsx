@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AddCircle, Ticket } from "@solar-icons/react";
 
@@ -7,7 +7,8 @@ import { UnderlineTabs } from "@/components/underline-tabs";
 import { Card } from "@/components/ui/card";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
 import { useAuth } from "@/hooks/use-auth";
-import { useViewedStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { msg, useLocalize, useT, type Translator } from "@/i18n";
 import { FormattedText } from "@/lib/formatted-text";
 import { packCatalogQuery, packMyMembershipsQuery, type MyMembership, type Pack } from "./queries";
 
@@ -21,41 +22,33 @@ import { packCatalogQuery, packMyMembershipsQuery, type MyMembership, type Pack 
  */
 
 const TABS = [
-  { key: "packages", label: "Абонементы" },
-  { key: "personal", label: "Персональные занятия" },
+  { key: "packages", label: msg("Абонементы") },
+  { key: "personal", label: msg("Персональные занятия") },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-function plural(n: number, one: string, few: string, many: string) {
-  const m100 = n % 100;
-  const m10 = n % 10;
-  if (m100 >= 11 && m100 <= 14) return many;
-  if (m10 === 1) return one;
-  if (m10 >= 2 && m10 <= 4) return few;
-  return many;
-}
-
-function durationLabel(days: number | null) {
+function durationLabel(days: number | null, t: Translator) {
   if (!days) return null;
-  if (days % 30 === 0) {
-    const m = days / 30;
-    return `${m} ${plural(m, "месяц", "месяца", "месяцев")}`;
-  }
-  return `${days} ${plural(days, "день", "дня", "дней")}`;
+  if (days % 30 === 0) return t.plural(days / 30, "{n} месяц|{n} месяца|{n} месяцев");
+  return t.plural(days, "{n} день|{n} дня|{n} дней");
 }
 
 /** «12 октября 2026»; дату YYYY-MM-DD читаем как местную. */
-function formatLongDate(value: string) {
+function formatLongDate(value: string, t: Translator) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  return t.date(d, { day: "numeric", month: "long", year: "numeric" });
 }
 
 export function PackagesMembershipsPage() {
+  const t = useT();
+  const loc = useLocalize();
   const [tab, setTab] = useState<TabKey>("packages");
   const { user, loading: authLoading } = useAuth();
   const { studioId, studioReady } = useViewedStudioId();
-  const studioName = useViewedStudioName();
+  const { data: studios = [] } = useFormatStudios();
+  const studioName = loc(studios.find((s) => s.id === studioId))?.name ?? null;
+  const tabs = useMemo(() => TABS.map((x) => ({ ...x, label: t(x.label) })), [t]);
 
   const catalog = useQuery(packCatalogQuery(studioId, studioReady));
   const mine = useQuery(packMyMembershipsQuery(user?.id ?? null));
@@ -72,9 +65,11 @@ export function PackagesMembershipsPage() {
       scrollKey="memberships"
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-semibold">Абонементы</h1>
+          <h1 className="text-3xl font-semibold">{t("Абонементы")}</h1>
           <p className="text-sm text-white/70">
-            {studioName ? `Пакеты тренировок студии «${studioName}»` : "Пакеты тренировок"}
+            {studioName
+              ? t("Пакеты тренировок студии «{name}»", { name: studioName })
+              : t("Пакеты тренировок")}
           </p>
           {(mine.data ?? []).length > 0 && (
             <div className="mt-4 space-y-2">
@@ -87,7 +82,7 @@ export function PackagesMembershipsPage() {
       }
     >
       <UnderlineTabs
-        tabs={TABS}
+        tabs={tabs}
         value={tab}
         onChange={setTab}
         className="px-4 pt-4"
@@ -97,17 +92,19 @@ export function PackagesMembershipsPage() {
       <div className="space-y-3 p-4 pb-24">
         {!user && !authLoading ? (
           <Card className="p-4 text-sm text-muted-foreground">
-            Войдите в аккаунт, чтобы увидеть абонементы.
+            {t("Войдите в аккаунт, чтобы увидеть абонементы.")}
           </Card>
         ) : catalog.isPending ? (
           <MembershipCardsSkeleton />
         ) : catalog.error ? (
           <Card className="p-4 text-sm text-destructive">
-            Не удалось загрузить абонементы. Обновите страницу.
+            {t("Не удалось загрузить абонементы. Обновите страницу.")}
           </Card>
         ) : items.length === 0 ? (
           <Card className="p-6 text-center text-sm text-muted-foreground">
-            {tab === "personal" ? "Пакетов персональных занятий пока нет" : "Абонементов пока нет"}
+            {tab === "personal"
+              ? t("Пакетов персональных занятий пока нет")
+              : t("Абонементов пока нет")}
           </Card>
         ) : (
           <>
@@ -115,7 +112,7 @@ export function PackagesMembershipsPage() {
               <PackCard key={m.id} m={m} />
             ))}
             <p className="px-1 pt-1 text-center text-xs text-muted-foreground">
-              Оформить абонемент можно у администратора студии
+              {t("Оформить абонемент можно у администратора студии")}
             </p>
           </>
         )}
@@ -132,7 +129,10 @@ export function PackagesMembershipsPage() {
  * тёмный блок «В подарок» (текст из админки) и срок действия внизу.
  * Подарочные персональные в «Что входит» не пишутся — их пишут в «В подарок».
  */
-function PackCard({ m }: { m: Pack }) {
+function PackCard({ m: row }: { m: Pack }) {
+  const t = useT();
+  const loc = useLocalize();
+  const m = loc(row);
   const visits = m.visits_count ?? 0;
   const personal = m.personal_count ?? 0;
   // «Что входит» задают в админке по пунктам; не задано — число тренировок
@@ -140,16 +140,21 @@ function PackCard({ m }: { m: Pack }) {
   const custom = (m.benefits ?? []).map((b) => b.trim()).filter(Boolean);
   const auto = [
     m.kind === "personal"
-      ? `${personal} ${plural(personal, "персональная тренировка", "персональные тренировки", "персональных тренировок")}`
+      ? t.plural(
+          personal,
+          "{n} персональная тренировка|{n} персональные тренировки|{n} персональных тренировок",
+        )
       : m.kind === "trial"
-        ? "Пробное посещение"
-        : `${visits} ${plural(visits, "тренировка", "тренировки", "тренировок")}`,
-    (m.max_payments ?? 1) > 1 ? `Можно оплатить частями — до ${m.max_payments} платежей` : null,
+        ? t("Пробное посещение")
+        : t.plural(visits, "{n} тренировка|{n} тренировки|{n} тренировок"),
+    (m.max_payments ?? 1) > 1
+      ? t("Можно оплатить частями — до {n} платежей", { n: m.max_payments ?? 1 })
+      : null,
   ].filter(Boolean) as string[];
   const features = custom.length > 0 ? custom : auto;
   const tag = m.tag_text?.trim();
   const bright = !!tag && m.tag_style === "bright";
-  const duration = durationLabel(m.duration_days);
+  const duration = durationLabel(m.duration_days, t);
 
   return (
     <Card
@@ -175,10 +180,10 @@ function PackCard({ m }: { m: Pack }) {
         />
       )}
       <div className="mt-3 text-4xl font-black tracking-tight tabular-nums">
-        {Number(m.price).toLocaleString("ru-RU")} ₾
+        {t.number(Number(m.price))} ₾
       </div>
       <div className="mt-4 border-t border-border pt-4">
-        <div className="text-sm font-semibold">Что входит:</div>
+        <div className="text-sm font-semibold">{t("Что входит:")}</div>
         <ul className="mt-2 space-y-1.5">
           {features.map((f) => (
             <li key={f} className="flex items-start gap-2 text-sm">
@@ -190,7 +195,7 @@ function PackCard({ m }: { m: Pack }) {
       </div>
       {m.gift_text?.trim() && (
         <div className="mt-4 rounded-xl bg-[#2A2B2F] p-4 text-white">
-          <div className="text-xs text-white/60">В подарок</div>
+          <div className="text-xs text-white/60">{t("В подарок")}</div>
           <FormattedText
             text={m.gift_text}
             className="mt-1.5 text-sm leading-snug"
@@ -199,30 +204,34 @@ function PackCard({ m }: { m: Pack }) {
         </div>
       )}
       {duration && (
-        <div className="mt-4 text-sm text-muted-foreground">Срок действия — {duration}</div>
+        <div className="mt-4 text-sm text-muted-foreground">
+          {t("Срок действия — {duration}", { duration })}
+        </div>
       )}
     </Card>
   );
 }
 
 function MyMembershipCard({ m }: { m: MyMembership }) {
+  const t = useT();
+  const loc = useLocalize();
   const isPersonal = m.balance_kind === "personal";
   const left = isPersonal ? (m.personal_left ?? 0) : (m.visits_left ?? 0);
   const balance = isPersonal
-    ? `${left} ${plural(left, "персональная", "персональные", "персональных")}`
-    : `${left} ${plural(left, "тренировка", "тренировки", "тренировок")}`;
+    ? t.plural(left, "{n} персональная|{n} персональные|{n} персональных")
+    : t.plural(left, "{n} тренировка|{n} тренировки|{n} тренировок");
   const gift =
     !isPersonal && (m.personal_left ?? 0) > 0
-      ? ` + ${m.personal_left} ${plural(m.personal_left!, "персональная", "персональные", "персональных")}`
+      ? " + " + t.plural(m.personal_left!, "{n} персональная|{n} персональные|{n} персональных")
       : "";
   const status =
     m.status === "pending"
-      ? "Продление — начнётся, когда закончится текущий"
+      ? t("Продление — начнётся, когда закончится текущий")
       : m.status === "frozen"
-        ? "Заморожен"
+        ? t("Заморожен")
         : m.ends_at
-          ? `Действует до ${formatLongDate(m.ends_at)}`
-          : "Срок — с первого посещения";
+          ? t("Действует до {date}", { date: formatLongDate(m.ends_at, t) })
+          : t("Срок — с первого посещения");
   return (
     <Card className="flex items-center gap-3 border-0 bg-background p-4">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15">
@@ -230,11 +239,10 @@ function MyMembershipCard({ m }: { m: MyMembership }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-base font-semibold text-foreground">
-          {m.memberships?.name ?? "Абонемент"}
+          {loc(m.memberships)?.name ?? t("Абонемент")}
         </div>
         <div className="text-sm font-medium text-foreground">
-          Осталось: {balance}
-          {gift}
+          {t("Осталось: {balance}", { balance: balance + gift })}
         </div>
         <div className="text-xs text-muted-foreground">{status}</div>
       </div>

@@ -1,10 +1,11 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowRight } from "@solar-icons/react";
+import { ArrowDown } from "@solar-icons/react";
 
 import packagesLogo from "@/assets/packages-logo.svg";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT, type Translator } from "@/i18n";
 import { mediaUrl } from "@/lib/media";
 import {
   ABOUT_CHAPTERS,
@@ -74,6 +75,7 @@ export function AboutTab() {
 // ---- Блоки ------------------------------------------------------------------
 
 function Intro({ settings }: { settings: AboutSettings | null | undefined }) {
+  const t = useT();
   return (
     <>
       <Reveal>
@@ -92,7 +94,7 @@ function Intro({ settings }: { settings: AboutSettings | null | undefined }) {
             decoding="async"
           />
           <h2 className="absolute inset-x-5 bottom-5 text-[26px] font-semibold leading-tight text-white">
-            {ABOUT_INTRO.title}
+            {t(ABOUT_INTRO.title)}
           </h2>
         </div>
       </Reveal>
@@ -100,7 +102,7 @@ function Intro({ settings }: { settings: AboutSettings | null | undefined }) {
         <Paragraphs items={ABOUT_INTRO.paragraphs} />
       </Reveal>
       <Reveal className="mt-6 flex items-center gap-1.5 text-sm font-semibold text-primary">
-        Наша история
+        {t("Наша история")}
         <ArrowDown className="h-4 w-4" weight="Linear" />
       </Reveal>
     </>
@@ -120,6 +122,7 @@ function TimelineItem({
   last?: boolean;
   children: ReactNode;
 }) {
+  const t = useT();
   return (
     <li className="relative pr-4 pb-10 pl-11">
       {!last && (
@@ -132,7 +135,7 @@ function TimelineItem({
         aria-hidden
       />
       <Reveal>
-        <div className="text-sm font-semibold text-primary">{date}</div>
+        <div className="text-sm font-semibold text-primary">{t(date)}</div>
       </Reveal>
       {children}
     </li>
@@ -146,65 +149,68 @@ function Chapter({
   chapter: AboutChapter;
   settings: AboutSettings | null | undefined;
 }) {
+  const t = useT();
+  const caption = t(chapter.galleryCaption);
   return (
     <>
       <Reveal>
-        <h2 className="mt-1 text-2xl font-semibold">{chapter.title}</h2>
+        <h2 className="mt-1 text-2xl font-semibold">{t(chapter.title)}</h2>
         <Paragraphs items={chapter.paragraphs} className="mt-3" />
       </Reveal>
       <Reveal className="mt-6">
-        <div className="mb-3 text-sm font-medium text-muted-foreground">
-          {chapter.galleryCaption}
-        </div>
-        <Gallery
-          photos={galleryPhotos(settings, chapter.photosKey)}
-          label={chapter.galleryCaption}
-        />
+        <div className="mb-3 text-sm font-medium text-muted-foreground">{caption}</div>
+        <Gallery photos={galleryPhotos(settings, chapter.photosKey)} label={caption} />
       </Reveal>
     </>
   );
 }
 
 function Community({ settings }: { settings: AboutSettings | null | undefined }) {
+  const t = useT();
   const c = ABOUT_COMMUNITY;
   // Плитки 2 в ряд: студии и цифры из админки (без числа — плитки нет),
   // «с 2023 года» — во всю ширину последней строкой.
   const tiles = [
-    { value: c.studios.value, label: c.studios.label },
+    { value: c.studios.value, label: t(c.studios.label) },
     ...c.counts.flatMap((k) => {
       const n = settings?.[k.key];
-      return n && n > 0 ? [{ value: plusCount(n), label: k.label }] : [];
+      return n && n > 0 ? [{ value: plusCount(t, n), label: t(k.label) }] : [];
     }),
   ];
+  // «с 2023» / «since 2023» / «2023 წლიდან»: год крупно, слова вокруг — мельче.
+  const [sinceBefore, sinceAfter = ""] = t(c.since.template)
+    .split("{year}")
+    .map((x) => x.trim());
   return (
     <>
       <Reveal>
-        <h2 className="mt-1 text-2xl font-semibold">{c.title}</h2>
+        <h2 className="mt-1 text-2xl font-semibold">{t(c.title)}</h2>
         <Paragraphs items={c.paragraphs} className="mt-3" />
       </Reveal>
       <Reveal className="mt-6">
         <dl className="grid grid-cols-2 gap-2">
-          {tiles.map((t, i) => (
+          {tiles.map((tile, i) => (
             <div
-              key={t.label}
+              key={tile.label}
               className={`rounded-2xl bg-primary/[0.06] p-4 ${
                 tiles.length % 2 === 1 && i === tiles.length - 1 ? "col-span-2" : ""
               }`}
             >
               <dt className="text-[28px] leading-none font-bold whitespace-nowrap text-primary tabular-nums">
-                {t.value}
+                {tile.value}
               </dt>
-              <dd className="mt-2 text-[13px] leading-snug text-foreground/80">{t.label}</dd>
+              <dd className="mt-2 text-[13px] leading-snug text-foreground/80">{tile.label}</dd>
             </div>
           ))}
           <div className="col-span-2 flex items-center gap-4 rounded-2xl bg-primary/[0.06] p-4">
             <dt className="shrink-0 whitespace-nowrap text-primary">
-              <span className="mr-1 text-lg font-semibold">{c.since.prefix}</span>
+              {sinceBefore && <span className="mr-1 text-lg font-semibold">{sinceBefore}</span>}
               <span className="text-[28px] leading-none font-bold tabular-nums">
-                {c.since.value}
+                {c.since.year}
               </span>
+              {sinceAfter && <span className="ml-1 text-lg font-semibold">{sinceAfter}</span>}
             </dt>
-            <dd className="text-[13px] leading-snug text-foreground/80">{c.since.label}</dd>
+            <dd className="text-[13px] leading-snug text-foreground/80">{t(c.since.label)}</dd>
           </div>
         </dl>
       </Reveal>
@@ -223,6 +229,7 @@ function Community({ settings }: { settings: AboutSettings | null | undefined })
 }
 
 function Instagram({ settings }: { settings: AboutSettings | null | undefined }) {
+  const t = useT();
   const ig = ABOUT_INSTAGRAM;
   const followers = settings?.instagram_followers;
   const posts = (settings?.instagram_posts ?? [])
@@ -235,7 +242,7 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
   return (
     <>
       <Reveal>
-        <h2 className="text-2xl font-semibold">{ig.title}</h2>
+        <h2 className="text-2xl font-semibold">{t(ig.title)}</h2>
         <Paragraphs items={ig.paragraphs} className="mt-3" />
       </Reveal>
       <Reveal className="mt-6">
@@ -250,11 +257,13 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
               <InstagramIcon className="h-6 w-6" />
             </span>
             <span className="min-w-0">
-              <span className="block text-xs text-muted-foreground">{ig.label}</span>
+              <span className="block text-xs text-muted-foreground">{t(ig.label)}</span>
               <span className="block truncate font-semibold">{ig.handle}</span>
               {followers && followers > 0 && (
                 <span className="block text-xs text-muted-foreground">
-                  {plusCount(followers)} {ig.followersLabel}
+                  {t.plural(followers, "{count} подписчик|{count} подписчика|{count} подписчиков", {
+                    count: plusCount(t, followers),
+                  })}
                 </span>
               )}
             </span>
@@ -267,7 +276,7 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
                   href={p.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={`Публикация Instagram ${i + 1}`}
+                  aria-label={t("Публикация Instagram {n}", { n: i + 1 })}
                   className="relative aspect-square overflow-hidden rounded-xl bg-muted transition-transform active:scale-[0.97]"
                 >
                   <Photo src={p.src} className="absolute inset-0 h-full w-full" />
@@ -275,12 +284,11 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
               ))}
             </div>
           ) : (
-            <p className="mt-3 text-sm leading-relaxed text-foreground/80">{ig.fallbackText}</p>
+            <p className="mt-3 text-sm leading-relaxed text-foreground/80">{t(ig.fallbackText)}</p>
           )}
           <Button asChild className="mt-4 h-12 w-full rounded-2xl text-[15px] font-semibold">
             <a href={ig.url} target="_blank" rel="noopener noreferrer">
-              {ig.button}
-              <ArrowRight className="h-5 w-5" weight="Linear" />
+              {t(ig.button)}
             </a>
           </Button>
         </div>
@@ -290,9 +298,10 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
 }
 
 function Thanks() {
+  const t = useT();
   return (
     <Reveal>
-      <h2 className="text-2xl font-semibold">{ABOUT_THANKS.title}</h2>
+      <h2 className="text-2xl font-semibold">{t(ABOUT_THANKS.title)}</h2>
       <Paragraphs
         items={ABOUT_THANKS.paragraphs}
         className="mx-auto mt-4 max-w-sm text-muted-foreground"
@@ -386,9 +395,9 @@ function Gallery({ photos, label }: { photos: (string | null)[]; label: string }
 
 // ---- Мелочи -------------------------------------------------------------------
 
-/** 3500 → «3 500+» (неразрывный пробел между разрядами). */
-function plusCount(n: number): string {
-  return `${n.toLocaleString("ru-RU")}+`;
+/** 3500 → «3 500+» / «3,500+» — разделители разрядов языка. */
+function plusCount(t: Translator, n: number): string {
+  return `${t.number(n)}+`;
 }
 
 /** Фото из админки; нет своего — временное; данных ещё нет (undefined) — null. */
@@ -443,10 +452,11 @@ function Photo({
 }
 
 function Paragraphs({ items, className = "" }: { items: string[]; className?: string }) {
+  const t = useT();
   return (
     <div className={`space-y-3 text-[15px] leading-relaxed text-foreground/80 ${className}`}>
-      {items.map((t) => (
-        <p key={t}>{t}</p>
+      {items.map((text) => (
+        <p key={text}>{t(text)}</p>
       ))}
     </div>
   );

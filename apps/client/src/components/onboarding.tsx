@@ -3,6 +3,7 @@ import { AltArrowLeft, Refresh } from "@solar-icons/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { msg, useT } from "@/i18n";
 import {
   FREQUENCY_LABEL,
   HEALTH_NOTES_LABEL,
@@ -36,6 +37,7 @@ export function StepHeader({
   total: number;
   onBack: () => void;
 }) {
+  const t = useT();
   const progress = (step / total) * 100;
   return (
     <div className="px-4 pt-3 pb-2">
@@ -44,7 +46,7 @@ export function StepHeader({
           type="button"
           onClick={onBack}
           className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
-          aria-label="Назад"
+          aria-label={t("Назад")}
         >
           <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
         </button>
@@ -76,6 +78,7 @@ export function StepFooter({
   last: boolean;
   onNext: () => void;
 }) {
+  const t = useT();
   return (
     <div className="px-4 pb-6 pt-2 space-y-2 border-t border-border/40">
       <Button
@@ -86,9 +89,9 @@ export function StepFooter({
         {saving ? (
           <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
         ) : last ? (
-          "Завершить"
+          t("Завершить")
         ) : (
-          "Далее"
+          t("Далее")
         )}
       </Button>
     </div>
@@ -125,6 +128,7 @@ export function OptionButton({
   );
 }
 
+/** Заголовок шага; title и subtitle — уже переведённые строки. */
 export function StepTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-5">
@@ -148,11 +152,12 @@ function ChoiceList<T extends string | number>({
   isActive: (v: T) => boolean;
   onPick: (v: T) => void;
 }) {
+  const t = useT();
   return (
     <div className="space-y-2">
       {opts.map((o) => (
         <OptionButton key={o.v} active={isActive(o.v)} onClick={() => onPick(o.v)}>
-          {o.label}
+          {t(o.label)}
         </OptionButton>
       ))}
     </div>
@@ -160,10 +165,10 @@ function ChoiceList<T extends string | number>({
 }
 
 const EXPERIENCE_OPTS: { v: Experience; label: string }[] = [
-  { v: "beginner", label: "Новичок или большой перерыв" },
-  { v: "occasional", label: "Тренируюсь время от времени" },
-  { v: "regular", label: "Регулярно, 2–3 раза в неделю" },
-  { v: "advanced", label: "Опытный, тренируюсь интенсивно" },
+  { v: "beginner", label: msg("Новичок или большой перерыв") },
+  { v: "occasional", label: msg("Тренируюсь время от времени") },
+  { v: "regular", label: msg("Регулярно, 2–3 раза в неделю") },
+  { v: "advanced", label: msg("Опытный, тренируюсь интенсивно") },
 ];
 
 export function ExperienceOptions({
@@ -177,10 +182,10 @@ export function ExperienceOptions({
 }
 
 const ACTIVITY_OPTS: { v: number; label: string }[] = [
-  { v: 0, label: "Почти не двигаюсь" },
-  { v: 1, label: "1 раз в неделю" },
-  { v: 3, label: "2–3 раза в неделю" },
-  { v: 5, label: "4 и больше" },
+  { v: 0, label: msg("Почти не двигаюсь") },
+  { v: 1, label: msg("1 раз в неделю") },
+  { v: 3, label: msg("2–3 раза в неделю") },
+  { v: 5, label: msg("4 и больше") },
 ];
 
 export function ActivityOptions({
@@ -194,12 +199,12 @@ export function ActivityOptions({
 }
 
 const HEALTH_OPTS: { v: HealthFlag; label: string }[] = [
-  { v: "back_joints", label: "Спина или суставы" },
-  { v: "cardio_pressure", label: "Сердце или давление" },
-  { v: "recent_injury", label: "Недавняя травма или операция" },
-  { v: "pregnancy", label: "Беременность" },
-  { v: "chronic", label: "Хроническое заболевание" },
-  { v: "none", label: "Ничего из перечисленного" },
+  { v: "back_joints", label: msg("Спина или суставы") },
+  { v: "cardio_pressure", label: msg("Сердце или давление") },
+  { v: "recent_injury", label: msg("Недавняя травма или операция") },
+  { v: "pregnancy", label: msg("Беременность") },
+  { v: "chronic", label: msg("Хроническое заболевание") },
+  { v: "none", label: msg("Ничего из перечисленного") },
 ];
 
 export function HealthOptions({
@@ -229,12 +234,13 @@ export function HealthNotesInput({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const t = useT();
   return (
     <Textarea
       id="health_notes"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="Необязательно"
+      placeholder={t("Необязательно")}
       rows={3}
       className="resize-none"
     />
@@ -273,9 +279,9 @@ export function FrequencyPicker({
 }
 
 const TIME_OPTS: { v: PrefTime; label: string }[] = [
-  { v: "morning", label: "Утро" },
-  { v: "day", label: "День" },
-  { v: "evening", label: "Вечер" },
+  { v: "morning", label: msg("Утро") },
+  { v: "day", label: msg("День") },
+  { v: "evening", label: msg("Вечер") },
 ];
 
 export function TimesPicker({
@@ -285,18 +291,19 @@ export function TimesPicker({
   value: PrefTime[];
   onChange: (v: PrefTime[]) => void;
 }) {
-  const toggle = (t: PrefTime) =>
-    onChange(value.includes(t) ? value.filter((x) => x !== t) : [...value, t]);
+  const t = useT();
+  const toggle = (time: PrefTime) =>
+    onChange(value.includes(time) ? value.filter((x) => x !== time) : [...value, time]);
   return (
     <div className="grid grid-cols-3 gap-2">
-      {TIME_OPTS.map((t) => (
+      {TIME_OPTS.map((o) => (
         <button
-          key={t.v}
+          key={o.v}
           type="button"
-          onClick={() => toggle(t.v)}
-          className={tileClass(value.includes(t.v))}
+          onClick={() => toggle(o.v)}
+          className={tileClass(value.includes(o.v))}
         >
-          {t.label}
+          {t(o.label)}
         </button>
       ))}
     </div>
@@ -304,11 +311,11 @@ export function TimesPicker({
 }
 
 const REFERRAL_OPTS: { v: Referral; label: string }[] = [
-  { v: "instagram", label: "Instagram / соцсети" },
-  { v: "referral", label: "Рекомендация друга" },
-  { v: "walk_by", label: "Проходил(а) мимо" },
-  { v: "search", label: "Поиск / карты" },
-  { v: "other", label: "Другое" },
+  { v: "instagram", label: msg("Instagram / соцсети") },
+  { v: "referral", label: msg("Рекомендация друга") },
+  { v: "walk_by", label: msg("Проходил(а) мимо") },
+  { v: "search", label: msg("Поиск / карты") },
+  { v: "other", label: msg("Другое") },
 ];
 
 export function ReferralOptions({
@@ -323,13 +330,20 @@ export function ReferralOptions({
 
 /* ===== Шаги подписочной анкеты: заголовок + варианты ===== */
 
+/** Заголовок из STEP_TITLES (подписи — msg()) на языке клиента. */
+function TitleOf({ step }: { step: keyof typeof STEP_TITLES }) {
+  const t = useT();
+  const { title, subtitle } = STEP_TITLES[step];
+  return <StepTitle title={t(title)} subtitle={subtitle ? t(subtitle) : undefined} />;
+}
+
 export function StepExperience(props: {
   value: Experience | null;
   onChange: (v: Experience) => void;
 }) {
   return (
     <div>
-      <StepTitle {...STEP_TITLES.experience} />
+      <TitleOf step="experience" />
       <ExperienceOptions {...props} />
     </div>
   );
@@ -338,7 +352,7 @@ export function StepExperience(props: {
 export function StepActivity(props: { value: number | null; onChange: (v: number) => void }) {
   return (
     <div>
-      <StepTitle {...STEP_TITLES.activity} />
+      <TitleOf step="activity" />
       <ActivityOptions {...props} />
     </div>
   );
@@ -355,13 +369,14 @@ export function StepHealth({
   onFlagsChange: (v: HealthFlag[]) => void;
   onNotesChange: (v: string) => void;
 }) {
+  const t = useT();
   return (
     <div>
-      <StepTitle {...STEP_TITLES.health} />
+      <TitleOf step="health" />
       <HealthOptions flags={flags} onChange={onFlagsChange} />
       {hasHealthIssues(flags) && (
         <div className="mt-5 space-y-2">
-          <Label htmlFor="health_notes">{HEALTH_NOTES_LABEL}</Label>
+          <Label htmlFor="health_notes">{t(HEALTH_NOTES_LABEL)}</Label>
           <HealthNotesInput value={notes} onChange={onNotesChange} />
         </div>
       )}
@@ -380,17 +395,18 @@ export function StepLogistics({
   onFreqChange: (v: number) => void;
   onTimesChange: (v: PrefTime[]) => void;
 }) {
+  const t = useT();
   return (
     <div className="space-y-6">
-      <StepTitle {...STEP_TITLES.logistics} />
+      <TitleOf step="logistics" />
       <div>
-        <Label className="text-sm">{FREQUENCY_LABEL}</Label>
+        <Label className="text-sm">{t(FREQUENCY_LABEL)}</Label>
         <div className="mt-2">
           <FrequencyPicker value={frequency} onChange={onFreqChange} />
         </div>
       </div>
       <div>
-        <Label className="text-sm">{TIMES_LABEL}</Label>
+        <Label className="text-sm">{t(TIMES_LABEL)}</Label>
         <div className="mt-2">
           <TimesPicker value={times} onChange={onTimesChange} />
         </div>
@@ -402,7 +418,7 @@ export function StepLogistics({
 export function StepReferral(props: { value: Referral | null; onChange: (v: Referral) => void }) {
   return (
     <div>
-      <StepTitle {...STEP_TITLES.referral} />
+      <TitleOf step="referral" />
       <ReferralOptions {...props} />
     </div>
   );

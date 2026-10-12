@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { type Translator, currentT } from "@/i18n";
 
 export type ClubSettings = {
   write_url: string | null;
@@ -55,10 +56,11 @@ export function useClubSettings(which: "viewed" | "home" = "viewed"): ClubSettin
   return data ?? DEFAULTS;
 }
 
-export function formatCancelDeadline(minutes: number): string {
+/** «3ч», «1ч 30мин», «45мин» — срок отмены записи. t — переводчик экрана (useT()). */
+export function formatCancelDeadline(minutes: number, t: Translator = currentT()): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h && m) return `${h}ч ${m}мин`;
-  if (h) return `${h}ч`;
-  return `${m}мин`;
+  if (h && m) return t("{h}ч {m}мин", { h, m });
+  if (h) return t("{h}ч", { h });
+  return t("{m}мин", { m });
 }

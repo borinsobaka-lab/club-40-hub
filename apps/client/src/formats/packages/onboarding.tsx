@@ -36,7 +36,8 @@ import {
   type Referral,
 } from "@/lib/onboarding";
 import { queueHomeConfetti } from "@/lib/confetti";
-import { CLUB } from "@/lib/terms";
+import { IS_PACKAGES } from "@/lib/terms";
+import { currentT, msg, useT } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
 
 // Анкета приложения пакетных студий (решение владельца 2026-10-11). Тренировки
@@ -50,10 +51,10 @@ import { untypedDb } from "@/lib/untyped-db";
 type Goal = "flexibility" | "stress_relief" | "body_shape" | "other";
 
 const GOALS: { v: Goal; label: string }[] = [
-  { v: "flexibility", label: "Стать гибче" },
-  { v: "stress_relief", label: "Снять напряжение и стресс" },
-  { v: "body_shape", label: "Подтянуть фигуру" },
-  { v: "other", label: "Другое" },
+  { v: "flexibility", label: msg("Стать гибче") },
+  { v: "stress_relief", label: msg("Снять напряжение и стресс") },
+  { v: "body_shape", label: msg("Подтянуть фигуру") },
+  { v: "other", label: msg("Другое") },
 ];
 
 type FormData = {
@@ -141,6 +142,7 @@ function buildPayload(form: FormData) {
 }
 
 export function PackagesOnboardingPage() {
+  const t = useT();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0); // 0=intro, 1..7 steps, 8=final
@@ -167,7 +169,10 @@ export function PackagesOnboardingPage() {
       // Как в гейте: при ошибке нельзя показывать пустую анкету — сохранение
       // затрёт реальные ответы.
       if (profileRes.error) {
-        toast.error("Не удалось загрузить анкету. Обновите страницу.");
+        // Язык на момент ошибки; в зависимости эффекта t не берём — смена
+        // языка не должна перезагружать анкету.
+        const t = currentT();
+        toast.error(t("Не удалось загрузить анкету. Обновите страницу."));
         return;
       }
       const data = profileRes.data;
@@ -222,7 +227,7 @@ export function PackagesOnboardingPage() {
       .from("member_profiles")
       .upsert(payload, { onConflict: "user_id" });
     if (error) {
-      toast.error(`Не удалось сохранить: ${error.message}`);
+      toast.error(t("Не удалось сохранить: {error}", { error: error.message }));
       return false;
     }
 
@@ -258,7 +263,7 @@ export function PackagesOnboardingPage() {
       })
       .eq("user_id", user.id);
     if (error) {
-      toast.error(`Не удалось сохранить данные: ${error.message}`);
+      toast.error(t("Не удалось сохранить данные: {error}", { error: error.message }));
       return false;
     }
     return true;
@@ -294,7 +299,7 @@ export function PackagesOnboardingPage() {
     if (ok) {
       // Анкета пройдена — на главную, там салют.
       queueHomeConfetti();
-      toast.success("Анкета сохранена");
+      toast.success(t("Анкета сохранена"));
       navigate({ to: "/", replace: true });
     }
   }
@@ -334,15 +339,16 @@ export function PackagesOnboardingPage() {
         header={
           <div className="px-6 pt-2 pb-10">
             <h1 className="text-3xl font-semibold leading-tight">
-              Пара вопросов — и вы сможете следить за своим прогрессом
+              {t("Пара вопросов — и вы сможете следить за своим прогрессом")}
             </h1>
           </div>
         }
-        footer={<PrimaryButton onClick={() => setStep(1)}>Начать</PrimaryButton>}
+        footer={<PrimaryButton onClick={() => setStep(1)}>{t("Начать")}</PrimaryButton>}
       >
         <p className="px-6 pt-6 text-base text-muted-foreground">
-          Это займёт около 2 минут. Ответы помогут отслеживать ваш прогресс, а нашим тренерам —
-          давать вам рекомендации.
+          {t(
+            "Это займёт около 2 минут. Ответы помогут отслеживать ваш прогресс, а нашим тренерам — давать вам рекомендации.",
+          )}
         </p>
       </Frame>
     );
@@ -356,18 +362,18 @@ export function PackagesOnboardingPage() {
         header={
           <div className="px-6 pt-2 pb-10">
             <h1 className="text-3xl font-semibold leading-tight">
-              Спасибо, что поделились с нами!
+              {t("Спасибо, что поделились с нами!")}
             </h1>
           </div>
         }
         footer={
           <PrimaryButton onClick={finish} disabled={saving} saving={saving}>
-            Начать
+            {t("Начать")}
           </PrimaryButton>
         }
       >
         <p className="px-6 pt-6 text-base text-muted-foreground">
-          Теперь вы сможете следить за своим прогрессом — ждём вас на тренировке в студии!
+          {t("Теперь вы сможете следить за своим прогрессом — ждём вас на тренировке в студии!")}
         </p>
       </Frame>
     );
@@ -387,7 +393,7 @@ export function PackagesOnboardingPage() {
               type="button"
               onClick={() => setStep((s) => Math.max(0, s - 1))}
               className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors active:bg-white/20"
-              aria-label="Назад"
+              aria-label={t("Назад")}
             >
               <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />
             </button>
@@ -397,9 +403,9 @@ export function PackagesOnboardingPage() {
       }
       header={
         <div className="px-4 pt-5 pb-8">
-          <h1 className="text-2xl font-semibold leading-tight">{titles.title}</h1>
+          <h1 className="text-2xl font-semibold leading-tight">{t(titles.title)}</h1>
           {titles.subtitle && (
-            <p className="frame-hide-typing mt-2 text-sm text-white/70">{titles.subtitle}</p>
+            <p className="frame-hide-typing mt-2 text-sm text-white/70">{t(titles.subtitle)}</p>
           )}
         </div>
       }
@@ -409,7 +415,7 @@ export function PackagesOnboardingPage() {
           disabled={!stepValid || saving}
           saving={saving}
         >
-          {step === TOTAL_STEPS ? "Завершить" : "Далее"}
+          {step === TOTAL_STEPS ? t("Завершить") : t("Далее")}
         </PrimaryButton>
       }
     >
@@ -419,14 +425,14 @@ export function PackagesOnboardingPage() {
             <GoalOptions value={form.primary_goal} onChange={(v) => update("primary_goal", v)} />
           </Block>
           {form.primary_goal === "other" && (
-            <Block title="Расскажите, чего хотите добиться">
+            <Block title={t("Расскажите, чего хотите добиться")}>
               <Textarea
                 value={form.goal_other}
                 onChange={(e) => update("goal_other", e.target.value)}
                 maxLength={GOAL_OTHER_MAX}
                 rows={3}
                 className="resize-none"
-                aria-label="Расскажите, чего хотите добиться"
+                aria-label={t("Расскажите, чего хотите добиться")}
                 autoFocus
               />
             </Block>
@@ -459,7 +465,7 @@ export function PackagesOnboardingPage() {
             <HealthOptions flags={form.health_flags} onChange={(v) => update("health_flags", v)} />
           </Block>
           {hasHealthIssues(form.health_flags) && (
-            <Block title={HEALTH_NOTES_LABEL}>
+            <Block title={t(HEALTH_NOTES_LABEL)}>
               <HealthNotesInput
                 value={form.health_notes}
                 onChange={(v) => update("health_notes", v)}
@@ -470,29 +476,29 @@ export function PackagesOnboardingPage() {
       )}
       {step === 5 && (
         <Blocks>
-          <Block title="Вес">
+          <Block title={t("Вес")}>
             <RulerPicker
               min={30}
               max={200}
               value={form.weight_kg ? Number(form.weight_kg.replace(",", ".")) : null}
               onChange={(v) => update("weight_kg", String(v))}
-              unit="кг"
+              unit={t("кг")}
             />
           </Block>
-          <Block title="Дата рождения">
+          <Block title={t("Дата рождения")}>
             <BirthDateInput value={form.birth_date} onChange={(v) => update("birth_date", v)} />
           </Block>
         </Blocks>
       )}
       {step === 6 && (
         <Blocks>
-          <Block title={FREQUENCY_LABEL}>
+          <Block title={t(FREQUENCY_LABEL)}>
             <FrequencyPicker
               value={form.desired_frequency}
               onChange={(v) => update("desired_frequency", v)}
             />
           </Block>
-          <Block title={TIMES_LABEL}>
+          <Block title={t(TIMES_LABEL)}>
             <TimesPicker
               value={form.preferred_times}
               onChange={(v) => update("preferred_times", v)}
@@ -516,21 +522,21 @@ export function PackagesOnboardingPage() {
             <div className="space-y-4">
               <ContactField
                 id="last_name"
-                label="Фамилия"
+                label={t("Фамилия")}
                 value={form.last_name}
                 onChange={(v) => update("last_name", v)}
                 autoComplete="family-name"
               />
               <ContactField
                 id="first_name"
-                label="Имя"
+                label={t("Имя")}
                 value={form.first_name}
                 onChange={(v) => update("first_name", v)}
                 autoComplete="given-name"
               />
               <ContactField
                 id="phone"
-                label="Номер телефона"
+                label={t("Номер телефона")}
                 value={form.phone}
                 onChange={(v) => update("phone", v)}
                 autoComplete="tel"
@@ -555,19 +561,27 @@ const STEP_ART: Record<number, string> = {
 
 /** Вопрос шага — в тёмной шапке. */
 const STEP_HEADERS: Record<number, { title: string; subtitle?: string }> = {
-  1: { title: "Что для вас главное прямо сейчас?" },
+  1: { title: msg("Что для вас главное прямо сейчас?") },
   2: STEP_TITLES.experience,
   3: STEP_TITLES.activity,
   4: STEP_TITLES.health,
   5: {
-    title: "Базовые параметры — чтобы правильно рассчитать статистику",
-    subtitle: `Эти данные увидите только вы и тренеры ${CLUB.gen}.`,
+    title: msg("Базовые параметры — чтобы правильно рассчитать статистику"),
+    subtitle: IS_PACKAGES
+      ? msg("Эти данные увидите только вы и тренеры студии.")
+      : msg("Эти данные увидите только вы и тренеры клуба."),
   },
   6: STEP_TITLES.logistics,
   7: STEP_TITLES.referral,
   8: {
-    title: "Последний шаг — заполните свои данные",
-    subtitle: `Фамилия, имя и номер телефона — чтобы администратор ${CLUB.gen} мог с вами связаться. Что уже есть в ${CLUB.prep}, мы подставили.`,
+    title: msg("Последний шаг — заполните свои данные"),
+    subtitle: IS_PACKAGES
+      ? msg(
+          "Фамилия, имя и номер телефона — чтобы администратор студии мог с вами связаться. Что уже есть в студии, мы подставили.",
+        )
+      : msg(
+          "Фамилия, имя и номер телефона — чтобы администратор клуба мог с вами связаться. Что уже есть в клубе, мы подставили.",
+        ),
   },
 };
 
@@ -576,10 +590,11 @@ const CONTACTS_STEP = 8;
 
 /** Прогресс анкеты: «Шаг N из M» и полоска по шагам. */
 function Progress({ step, total }: { step: number; total: number }) {
+  const t = useT();
   return (
     <div className="min-w-0 flex-1">
       <div className="mb-1.5 text-xs font-semibold text-white/70 tabular-nums">
-        Шаг {step} из {total}
+        {t("Шаг {step} из {total}", { step, total })}
       </div>
       <div className="flex gap-1">
         {Array.from({ length: total }, (_, i) => (
@@ -650,11 +665,12 @@ function PrimaryButton({
 }
 
 function GoalOptions({ value, onChange }: { value: Goal | null; onChange: (v: Goal) => void }) {
+  const t = useT();
   return (
     <div className="space-y-2">
       {GOALS.map((o) => (
         <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-          {o.label}
+          {t(o.label)}
         </OptionButton>
       ))}
     </div>
@@ -690,6 +706,7 @@ function ContactField({
 }
 
 function BirthDateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT();
   const invalid = value !== "" && !validBirthDate(value);
   return (
     <div>
@@ -699,10 +716,10 @@ function BirthDateInput({ value, onChange }: { value: string; onChange: (v: stri
         min={BIRTH_MIN}
         max={birthMax()}
         onChange={(e) => onChange(e.target.value)}
-        aria-label="Дата рождения"
+        aria-label={t("Дата рождения")}
         className="text-base font-semibold"
       />
-      {invalid && <p className="mt-2 text-xs text-destructive">Проверьте дату рождения</p>}
+      {invalid && <p className="mt-2 text-xs text-destructive">{t("Проверьте дату рождения")}</p>}
     </div>
   );
 }

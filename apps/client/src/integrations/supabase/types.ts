@@ -204,6 +204,7 @@ export type Database = {
           studio_ids: string[]; /* patched: 2026-10-11_zzzzzzzzzz_app_content_by_studio.sql */
           published: boolean;
           title: string;
+          translations: Json; /* patched: 2026-10-12_zzzzzz_content_translations.sql */
           updated_at: string;
         };
         Insert: {
@@ -328,6 +329,7 @@ export type Database = {
           cancel_booking_minutes: number;
           feedback_url: string | null;
           studio_id: string;
+          translations: Json; /* patched: 2026-10-12_zzzzzz_content_translations.sql */
           updated_at: string;
           write_url: string | null;
         };
@@ -358,6 +360,7 @@ export type Database = {
           logo_url: string | null;
           name: string;
           slug: string;
+          translations: Json; /* patched: 2026-10-12_zzzzzz_content_translations.sql */
         };
         Insert: never;
         Update: never;
@@ -369,6 +372,7 @@ export type Database = {
           created_at: string;
           id: string;
           name: string;
+          translations: Json; /* patched: 2026-10-12_zzzzzz_content_translations.sql */
           type: string | null;
         };
         Insert: {

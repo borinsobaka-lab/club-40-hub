@@ -36,14 +36,26 @@ import { mediaUrl } from "@/lib/media";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
 import { PackagesMembershipsPage } from "@/formats/packages/memberships-page";
 import { FormattedText } from "@/lib/formatted-text";
+import {
+  type ContentTranslations,
+  type Translator,
+  currentT,
+  getTranslator,
+  msg,
+  useLocalize,
+  useT,
+} from "@/i18n";
 
 export const Route = createFileRoute("/memberships")({
-  head: () => ({
-    meta: [
-      { title: "Абонементы — Base40" },
-      { name: "description", content: "Абонементы и пакеты занятий Base40." },
-    ],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return {
+      meta: [
+        { title: `${t("Абонементы")} — Base40` },
+        { name: "description", content: t("Абонементы и пакеты занятий Base40.") },
+      ],
+    };
+  },
   // Пакетное приложение — свой экран без покупки (src/formats/packages/).
   component: APP_FORMAT === "packages" ? PackagesMembershipsPage : MembershipsPage,
 });
@@ -61,18 +73,32 @@ type Membership = {
   cover_url: string | null;
   for_couple?: boolean | null;
   freeze_days_allowed?: number | null;
+  translations?: ContentTranslations | null;
 };
 
-function formatPeriod(days: number): string {
-  if (days === 30) return "раз в месяц";
-  if (days === 365 || days === 360) return "раз в год";
+function formatPeriod(days: number, t: Translator): string {
+  if (days === 30) return t("раз в месяц");
+  if (days === 365 || days === 360) return t("раз в год");
   if (days > 0 && days % 30 === 0) {
     const months = days / 30;
-    const word = months === 1 ? "месяц" : months >= 2 && months <= 4 ? "месяца" : "месяцев";
-    return `раз в ${months} ${word}`;
+    return t.plural(months, "раз в {n} месяц|раз в {n} месяца|раз в {n} месяцев");
   }
-  return `на ${days} дней`;
+  return t.plural(days, "на {n} день|на {n} дня|на {n} дней");
 }
+
+/** Строки карточек: срок и заморозка (общие у тарифа и действующего абонемента). */
+function durationLine(days: number, t: Translator) {
+  return t.plural(days, "Срок действия {n} день|Срок действия {n} дня|Срок действия {n} дней");
+}
+function freezeLine(days: number, t: Translator) {
+  return t.plural(days, "Заморозка до {n} дня|Заморозка до {n} дней|Заморозка до {n} дней");
+}
+
+const MEMBERSHIP_TABS = [
+  { key: "unlimited", label: msg("Безлимитные") },
+  { key: "packages", label: msg("Пакеты тренировок") },
+  { key: "couples", label: msg("Для двоих") },
+] as const;
 
 type ActiveMembership = {
   id: string;
@@ -90,6 +116,7 @@ type ActiveMembership = {
     duration_days: number | null;
     price: number | null;
     freeze_days_allowed?: number | null;
+    translations?: ContentTranslations | null;
   } | null;
 };
 
@@ -114,7 +141,7 @@ async function fetchActiveMembership(clientId: string) {
   let query = db
     .from("client_memberships")
     .select(
-      `id, ends_at, visits_left, auto_renew, ${isPackages ? "balance_kind, personal_left, " : ""}memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed)`,
+      `id, ends_at, visits_left, auto_renew, ${isPackages ? "balance_kind, personal_left, " : ""}memberships(name, description, benefits, visits_count, duration_days, price, freeze_days_allowed, translations)`,
     )
     .eq("client_id", clientId)
     .in("status", ["active", "frozen"])
@@ -135,10 +162,10 @@ function tbilisiDateISO() {
 
 /** «12 октября 2026». Дату без времени (YYYY-MM-DD) читаем как местную:
  * new Date("YYYY-MM-DD") — полночь UTC, и западнее Гринвича выходил вчерашний день. */
-function formatLongDate(value: string) {
+function formatLongDate(value: string, t: Translator) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  return t.date(d, { day: "numeric", month: "long", year: "numeric" });
 }
 
 /** Локальная дата YYYY-MM-DD (toISOString() дала бы UTC — в первые часы суток вчерашнюю). */
@@ -148,6 +175,8 @@ function localDateISO(d: Date) {
 }
 
 function MembershipsPage() {
+  const t = useT();
+  const loc = useLocalize();
   const { user, loading: authLoading } = useAuth();
   const [client, setClient] = useState<{ id: string; studio_id: string } | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -247,6 +276,8 @@ function MembershipsPage() {
     }
     let cancelled = false;
     (async () => {
+      // Текст ошибки — на языке на момент загрузки (эффект не зависит от языка).
+      const t = currentT();
       setLoading(true);
       setError(null);
       try {
@@ -270,7 +301,7 @@ function MembershipsPage() {
           if (!cancelled) {
             setClient(null);
             setLoading(false);
-            setError("Профиль клиента не привязан к студии. Обратитесь к администратору.");
+            setError(t("Профиль клиента не привязан к студии. Обратитесь к администратору."));
           }
           return;
         }
@@ -283,7 +314,7 @@ function MembershipsPage() {
         // держит триггер на clients (db/client_app_fixes.sql).
 
         const membershipSelect =
-          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple, freeze_days_allowed";
+          "id, name, description, benefits, visits_count, duration_days, price, installment_enabled, studio_id, cover_url, for_couple, freeze_days_allowed, translations";
         const [{ data: m, error: mErr }, { data: act, error: aErr }] = await Promise.all([
           db
             .from("memberships")
@@ -315,7 +346,7 @@ function MembershipsPage() {
         setMemberships(membershipRows);
         setActive((act as ActiveMembership) ?? null);
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Не удалось загрузить абонементы");
+        if (!cancelled) setError(e?.message ?? t("Не удалось загрузить абонементы"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -373,13 +404,16 @@ function MembershipsPage() {
       fire({ origin: { x: 0.8, y: 0.7 }, angle: 120 });
       setTimeout(() => fire({ origin: { x: 0.5, y: 0.6 }, spread: 100 }), 200);
 
+      const name = loc(selected).name;
       toast.success(
-        active ? `Вы перешли на «${selected.name}»` : `Абонемент «${selected.name}» оформлен!`,
+        active
+          ? t("Вы перешли на «{name}»", { name })
+          : t("Абонемент «{name}» оформлен!", { name }),
       );
       setSelected(null);
       setConfirmSwitchOpen(false);
     } catch (e: any) {
-      toast.error(e?.message ?? "Не удалось оформить абонемент");
+      toast.error(e?.message ?? t("Не удалось оформить абонемент"));
     } finally {
       setPurchasing(false);
     }
@@ -397,10 +431,10 @@ function MembershipsPage() {
       });
       if (rpcErr) throw rpcErr;
       await refreshActive();
-      toast.success("Автопродление отключено");
+      toast.success(t("Автопродление отключено"));
       return true;
     } catch (e: any) {
-      toast.error(e?.message ?? "Не удалось отключить автопродление");
+      toast.error(e?.message ?? t("Не удалось отключить автопродление"));
       return false;
     } finally {
       setCancellingRenew(false);
@@ -412,8 +446,8 @@ function MembershipsPage() {
       scrollKey={activeTab}
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-semibold">Абонементы</h1>
-          <p className="text-sm text-white/70">Выберите подходящий пакет занятий</p>
+          <h1 className="text-3xl font-semibold">{t("Абонементы")}</h1>
+          <p className="text-sm text-white/70">{t("Выберите подходящий пакет занятий")}</p>
           {!loading &&
             user &&
             active &&
@@ -444,15 +478,17 @@ function MembershipsPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-base font-semibold text-foreground truncate">
-                            {active.memberships?.name ?? "Абонемент"}
+                            {loc(active.memberships)?.name ?? t("Абонемент")}
                           </div>
                           {active.ends_at && (
                             <div className="text-sm text-muted-foreground mt-0.5">
-                              Действует до {formatLongDate(active.ends_at)}
+                              {t("Действует до {date}", {
+                                date: formatLongDate(active.ends_at, t),
+                              })}
                             </div>
                           )}
                           <div className="text-sm mt-0.5" style={{ color: accent }}>
-                            {autoOn ? "Автопродление включено" : "Автопродление выключено"}
+                            {autoOn ? t("Автопродление включено") : t("Автопродление выключено")}
                           </div>
                         </div>
                       </div>
@@ -470,7 +506,7 @@ function MembershipsPage() {
       <div className="p-4 space-y-4 pb-24">
         {!user && !authLoading && (
           <Card className="p-4 text-sm text-muted-foreground">
-            Войдите в аккаунт, чтобы увидеть абонементы.
+            {t("Войдите в аккаунт, чтобы увидеть абонементы.")}
           </Card>
         )}
 
@@ -479,7 +515,9 @@ function MembershipsPage() {
         {error && !loading && <Card className="p-4 text-sm text-destructive">{error}</Card>}
 
         {!loading && user && !error && memberships.length === 0 && !active && (
-          <Card className="p-4 text-sm text-muted-foreground">Пока нет доступных абонементов.</Card>
+          <Card className="p-4 text-sm text-muted-foreground">
+            {t("Пока нет доступных абонементов.")}
+          </Card>
         )}
 
         {!loading && user && !error && memberships.length > 0 && (
@@ -488,23 +526,19 @@ function MembershipsPage() {
               data-memberships-tabs
               className="-mx-4 px-4 flex gap-6 overflow-x-auto no-scrollbar mb-4"
             >
-              {[
-                { key: "unlimited", label: "Безлимитные" },
-                { key: "packages", label: "Пакеты тренировок" },
-                { key: "couples", label: "Для двоих" },
-              ].map((t) => {
-                const active = activeTab === t.key;
+              {MEMBERSHIP_TABS.map((tab) => {
+                const active = activeTab === tab.key;
                 return (
                   <button
-                    key={t.key}
+                    key={tab.key}
                     onClick={() => {
-                      setActiveTab(t.key as "unlimited" | "packages" | "couples");
+                      setActiveTab(tab.key);
                     }}
                     className={`shrink-0 relative pt-3 pb-1 text-base font-semibold transition-colors ${
                       active ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    {t.label}
+                    {t(tab.label)}
                     {active && (
                       <span className="absolute left-0 right-0 -bottom-px h-1 bg-primary rounded-full" />
                     )}
@@ -538,7 +572,7 @@ function MembershipsPage() {
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">
-                    Пока нет доступных безлимитных абонементов.
+                    {t("Пока нет доступных безлимитных абонементов.")}
                   </Card>
                 )}
               </>
@@ -569,7 +603,7 @@ function MembershipsPage() {
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">
-                    Пока нет доступных пакетов тренировок.
+                    {t("Пока нет доступных пакетов тренировок.")}
                   </Card>
                 )}
               </>
@@ -600,7 +634,7 @@ function MembershipsPage() {
                   </div>
                 ) : (
                   <Card className="p-4 text-sm text-muted-foreground">
-                    Пока нет доступных абонементов для двоих.
+                    {t("Пока нет доступных абонементов для двоих.")}
                   </Card>
                 )}
               </>
@@ -634,15 +668,16 @@ function MembershipsPage() {
       <AlertDialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Перейти на этот абонемент?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Перейти на этот абонемент?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              У вас уже есть активный абонемент. При переходе текущий абонемент будет аннулирован, а
-              вместо него подключится выбранный.
+              {t(
+                "У вас уже есть активный абонемент. При переходе текущий абонемент будет аннулирован, а вместо него подключится выбранный.",
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={purchasing} className="font-bold">
-              Отмена
+              {t("Отмена")}
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={purchasing}
@@ -652,7 +687,7 @@ function MembershipsPage() {
                 handlePurchase(lastPaidTotal ?? undefined);
               }}
             >
-              {purchasing ? "Переходим…" : "Перейти"}
+              {purchasing ? t("Переходим…") : t("Перейти")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -661,10 +696,11 @@ function MembershipsPage() {
       <Dialog open={confirmManageOpen} onOpenChange={setConfirmManageOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Отключить автопродление?</DialogTitle>
+            <DialogTitle>{t("Отключить автопродление?")}</DialogTitle>
             <DialogDescription>
-              Абонемент останется активным до конца оплаченного периода, но не будет продлён
-              автоматически.
+              {t(
+                "Абонемент останется активным до конца оплаченного периода, но не будет продлён автоматически.",
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
@@ -674,7 +710,7 @@ function MembershipsPage() {
               className="font-bold"
               onClick={() => setConfirmManageOpen(false)}
             >
-              Закрыть
+              {t("Закрыть")}
             </Button>
             <Button
               disabled={cancellingRenew}
@@ -690,7 +726,7 @@ function MembershipsPage() {
                 });
               }}
             >
-              {cancellingRenew ? "Отключаем…" : "Отключить автопродление"}
+              {cancellingRenew ? t("Отключаем…") : t("Отключить автопродление")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -700,7 +736,7 @@ function MembershipsPage() {
 }
 
 function MembershipCard({
-  membership,
+  membership: rawMembership,
   color,
   onSelect,
   topMinHeight,
@@ -716,11 +752,15 @@ function MembershipCard({
   onTopRef?: (el: HTMLDivElement | null) => void;
   onBottomRef?: (el: HTMLDivElement | null) => void;
 }) {
+  const t = useT();
+  const membership = useLocalize()(rawMembership);
   const cover = mediaUrl(membership.cover_url, "memberships-media");
   const features = [
-    membership.visits_count === null ? "Безлимит посещений" : `${membership.visits_count} занятий`,
-    `Срок действия ${membership.duration_days} дней`,
-    membership.freeze_days_allowed ? `Заморозка до ${membership.freeze_days_allowed} дней` : null,
+    membership.visits_count === null
+      ? t("Безлимит посещений")
+      : t.plural(membership.visits_count, "{n} занятие|{n} занятия|{n} занятий"),
+    durationLine(membership.duration_days, t),
+    membership.freeze_days_allowed ? freezeLine(membership.freeze_days_allowed, t) : null,
     ...((membership.benefits ?? []).filter(Boolean) as string[]),
   ].filter(Boolean) as string[];
 
@@ -743,10 +783,10 @@ function MembershipCard({
           <h3 className="text-xl font-semibold leading-tight">{membership.name}</h3>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-4xl font-black tracking-tight">
-              {Number(membership.price).toLocaleString("ru-RU")} ₾
+              {t.number(Number(membership.price))} ₾
             </span>
             <span className="text-sm text-muted-foreground">
-              {formatPeriod(membership.duration_days)}
+              {formatPeriod(membership.duration_days, t)}
             </span>
           </div>
           {membership.description?.trim() && (
@@ -761,7 +801,7 @@ function MembershipCard({
           onClick={onSelect}
           className="mt-5 w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition"
         >
-          Выбрать
+          {t("Выбрать")}
         </Button>
       </div>
 
@@ -771,7 +811,7 @@ function MembershipCard({
         className="p-5 border-t border-card-border"
         style={{ minHeight: bottomMinHeight }}
       >
-        <div className="text-xs font-bold text-muted-foreground mb-3">Преимущества</div>
+        <div className="text-xs font-bold text-muted-foreground mb-3">{t("Преимущества")}</div>
         <div className="space-y-2">
           {features.map((f, i) => (
             <div key={i} className="flex items-start gap-2 text-sm">
@@ -789,7 +829,7 @@ function MembershipCard({
 }
 
 function CheckoutSheet({
-  membership,
+  membership: rawMembership,
   open,
   onOpenChange,
   onPurchase,
@@ -803,6 +843,8 @@ function CheckoutSheet({
   purchasing: boolean;
   hasActive: boolean;
 }) {
+  const t = useT();
+  const membership = useLocalize()(rawMembership);
   const isSubscription = membership.visits_count === null;
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
@@ -846,10 +888,10 @@ function CheckoutSheet({
     // Mock: WELCOME10 → 10% off
     if (code === "WELCOME10") {
       setPromoApplied({ code, discount: Math.round(Number(membership.price) * 0.1) });
-      toast.success("Промокод применён");
+      toast.success(t("Промокод применён"));
     } else {
       setPromoApplied(null);
-      toast.error("Промокод не найден");
+      toast.error(t("Промокод не найден"));
     }
   };
 
@@ -864,7 +906,7 @@ function CheckoutSheet({
           <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+24px)]">
             <DrawerPrimitive.Title className="text-xl font-bold leading-tight">
-              Оформление
+              {t("Оформление")}
             </DrawerPrimitive.Title>
 
             {/* Summary */}
@@ -872,18 +914,20 @@ function CheckoutSheet({
               <div className="min-w-0">
                 <div className="text-sm font-semibold truncate">{membership.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {formatPeriod(membership.duration_days)}
-                  {isSubscription ? " · подписка с автопродлением" : ""}
+                  {formatPeriod(membership.duration_days, t)}
+                  {isSubscription ? ` · ${t("подписка с автопродлением")}` : ""}
                 </div>
               </div>
               <div className="text-lg font-black shrink-0">
-                {Number(membership.price).toLocaleString("ru-RU")} ₾
+                {t.number(Number(membership.price))} ₾
               </div>
             </div>
 
             {/* Card */}
             <div className="mt-4">
-              <div className="text-xs font-bold text-muted-foreground mb-2">Банковская карта</div>
+              <div className="text-xs font-bold text-muted-foreground mb-2">
+                {t("Банковская карта")}
+              </div>
               <Input
                 inputMode="numeric"
                 placeholder="0000 0000 0000 0000"
@@ -893,7 +937,7 @@ function CheckoutSheet({
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <Input
                   inputMode="numeric"
-                  placeholder="MM/ГГ"
+                  placeholder={t("MM/ГГ")}
                   value={expiry}
                   onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                 />
@@ -905,7 +949,7 @@ function CheckoutSheet({
                 />
               </div>
               <Input
-                placeholder="Имя на карте"
+                placeholder={t("Имя на карте")}
                 value={holder}
                 onChange={(e) => setHolder(e.target.value.toUpperCase())}
                 className="mt-2"
@@ -915,7 +959,7 @@ function CheckoutSheet({
             {/* Promo */}
             <div className="mt-4 flex gap-2">
               <Input
-                placeholder="Промокод"
+                placeholder={t("Промокод")}
                 value={promo}
                 onChange={(e) => setPromo(e.target.value)}
                 className="flex-1"
@@ -926,12 +970,12 @@ function CheckoutSheet({
                 onClick={applyPromo}
                 className="px-4 font-bold"
               >
-                Применить
+                {t("Применить")}
               </Button>
             </div>
             {promoApplied && (
               <div className="mt-1 text-xs text-emerald-600">
-                Скидка −{promoApplied.discount.toLocaleString("ru-RU")} ₾
+                {t("Скидка −{sum} ₾", { sum: t.number(promoApplied.discount) })}
               </div>
             )}
 
@@ -943,7 +987,7 @@ function CheckoutSheet({
                 onChange={(e) => setAgreeTerms(e.target.checked)}
                 className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
               />
-              <span>Согласен с условиями оферты и политикой конфиденциальности</span>
+              <span>{t("Согласен с условиями оферты и политикой конфиденциальности")}</span>
             </label>
             {isSubscription && (
               <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
@@ -954,18 +998,18 @@ function CheckoutSheet({
                   className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
                 />
                 <span>
-                  Согласен с регулярными списаниями каждые {membership.duration_days} дн. Отменить
-                  можно в любой момент.
+                  {t(
+                    "Согласен с регулярными списаниями каждые {n} дн. Отменить можно в любой момент.",
+                    { n: membership.duration_days },
+                  )}
                 </span>
               </label>
             )}
 
             {/* Total + Pay */}
             <div className="mt-5 flex items-end justify-between">
-              <div className="text-xs text-muted-foreground">К оплате</div>
-              <div className="text-2xl font-black tabular-nums">
-                {total.toLocaleString("ru-RU")} ₾
-              </div>
+              <div className="text-xs text-muted-foreground">{t("К оплате")}</div>
+              <div className="text-2xl font-black tabular-nums">{t.number(total)} ₾</div>
             </div>
 
             <Button
@@ -974,15 +1018,15 @@ function CheckoutSheet({
               className="mt-3 w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-60"
             >
               {purchasing
-                ? "Оплачиваем…"
+                ? t("Оплачиваем…")
                 : hasActive
-                  ? `Оплатить и перейти · ${total.toLocaleString("ru-RU")} ₾`
-                  : `Оплатить · ${total.toLocaleString("ru-RU")} ₾`}
+                  ? t("Оплатить и перейти · {sum} ₾", { sum: t.number(total) })
+                  : t("Оплатить · {sum} ₾", { sum: t.number(total) })}
             </Button>
 
             <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Защищённый платёж</span>
+              <span>{t("Защищённый платёж")}</span>
             </div>
           </div>
         </DrawerPrimitive.Content>
@@ -1002,21 +1046,25 @@ function ActiveMembershipDrawer({
   onOpenChange: (open: boolean) => void;
   onManage: () => void;
 }) {
-  const m = active.memberships;
+  const t = useT();
+  const m = useLocalize()(active.memberships);
   const autoOn = active.auto_renew !== false;
   // Пакет персональных: visits_count = 0, остаток — в personal_left (иначе «0 из 0»).
   const isPersonal = active.balance_kind === "personal";
   const features = [
     isPersonal
-      ? `Персональных тренировок осталось: ${active.personal_left ?? 0}`
+      ? t("Персональных тренировок осталось: {n}", { n: active.personal_left ?? 0 })
       : m?.visits_count == null
-        ? "Безлимит посещений"
-        : `Осталось ${active.visits_left ?? m.visits_count} из ${m.visits_count} занятий`,
+        ? t("Безлимит посещений")
+        : t("Осталось {left} из {total} занятий", {
+            left: active.visits_left ?? m.visits_count,
+            total: m.visits_count,
+          }),
     !isPersonal && (active.personal_left ?? 0) > 0
-      ? `Персональных тренировок: ${active.personal_left}`
+      ? t("Персональных тренировок: {n}", { n: active.personal_left ?? 0 })
       : null,
-    m?.duration_days ? `Срок действия ${m.duration_days} дней` : null,
-    m?.freeze_days_allowed ? `Заморозка до ${m.freeze_days_allowed} дней` : null,
+    m?.duration_days ? durationLine(m.duration_days, t) : null,
+    m?.freeze_days_allowed ? freezeLine(m.freeze_days_allowed, t) : null,
     ...((m?.benefits ?? []).filter(Boolean) as string[]),
   ].filter(Boolean) as string[];
 
@@ -1033,7 +1081,7 @@ function ActiveMembershipDrawer({
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <DrawerPrimitive.Title className="text-2xl font-bold leading-tight">
-                  {m?.name ?? "Ваш абонемент"}
+                  {m?.name ?? t("Ваш абонемент")}
                 </DrawerPrimitive.Title>
                 {m?.description?.trim() && (
                   <FormattedText
@@ -1084,11 +1132,15 @@ function ActiveMembershipDrawer({
               <span style={{ color: autoOn ? "#15803D" : "#B91C1C" }}>
                 {autoOn
                   ? active.ends_at
-                    ? `Автопродление включено. Следующее списание ${formatLongDate(active.ends_at)}`
-                    : "Автопродление включено"
+                    ? t("Автопродление включено. Следующее списание {date}", {
+                        date: formatLongDate(active.ends_at, t),
+                      })
+                    : t("Автопродление включено")
                   : active.ends_at
-                    ? `Автопродление выключено. Абонемент закончится ${formatLongDate(active.ends_at)}`
-                    : "Автопродление выключено"}
+                    ? t("Автопродление выключено. Абонемент закончится {date}", {
+                        date: formatLongDate(active.ends_at, t),
+                      })
+                    : t("Автопродление выключено")}
               </span>
             </div>
 
@@ -1102,7 +1154,7 @@ function ActiveMembershipDrawer({
                     : "text-foreground hover:opacity-80"
                 }`}
               >
-                Управление
+                {t("Управление")}
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { useStudios } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import type { PayrollAdjustment, MonthKey } from "@/lib/payroll";
 import { monthBounds } from "@/lib/payroll";
+import type { ContentTranslations } from "@/lib/content-i18n";
 import { unwrap } from "@/lib/query";
 
 /**
@@ -54,6 +55,8 @@ export type Employee = {
   telegram: string | null;
   /** Биография для приложения (текст с разметкой, lib/formatted-text.tsx). */
   bio: string | null;
+  /** Переводы для приложения: {en|ka: {full_name, bio}} (lib/content-i18n.ts). */
+  translations: ContentTranslations;
   /** Ссылка на внешний сервис чаевых — кнопка «Поблагодарить тренера» в приложении. */
   tip_url: string | null;
   /**
@@ -73,7 +76,7 @@ export type Employee = {
 };
 
 const EMPLOYEE_SELECT =
-  "id, full_name, role, photo_url, telegram, bio, tip_url, rating_avg, rating_count, rating_base_avg, rating_base_count, trainer_studios(studio_id, studio:studios(name)), bank_details:trainer_bank_details(bank, account_number, account_holder)";
+  "id, full_name, role, photo_url, telegram, bio, translations, tip_url, rating_avg, rating_count, rating_base_avg, rating_base_count, trainer_studios(studio_id, studio:studios(name)), bank_details:trainer_bank_details(bank, account_number, account_holder)";
 
 /** Все сотрудники справочника — общий кэш обеих страниц раздела. */
 export function useEmployees() {

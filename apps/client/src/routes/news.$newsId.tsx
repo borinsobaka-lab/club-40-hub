@@ -6,11 +6,18 @@ import { mediaUrl } from "@/lib/media";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormattedText } from "@/lib/formatted-text";
+import { getTranslator, useLocalize, useT, type ContentTranslations } from "@/i18n";
 
 export const Route = createFileRoute("/news/$newsId")({
-  head: () => ({
-    meta: [{ title: "Новость — Base40" }, { name: "description", content: "Новость Base40." }],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return {
+      meta: [
+        { title: t("Новость — Base40") },
+        { name: "description", content: t("Новость Base40.") },
+      ],
+    };
+  },
   component: NewsDetailPage,
 });
 
@@ -24,6 +31,7 @@ type NewsItem = {
   full_text: string | null;
   button_text: string | null;
   button_url: string | null;
+  translations?: ContentTranslations | null;
 };
 
 // Корень страницы — h-full, а не flex-1: <main> в AppShell не flex-контейнер
@@ -31,8 +39,11 @@ type NewsItem = {
 // внутренний overflow-y-auto рос по контенту, и длинная новость обрезалась
 // без возможности прокрутки.
 function NewsDetailPage() {
+  const t = useT();
+  const loc = useLocalize();
   const { newsId } = Route.useParams();
-  const [item, setItem] = useState<NewsItem | null>(null);
+  const [raw, setItem] = useState<NewsItem | null>(null);
+  const item = loc(raw);
   const [loading, setLoading] = useState(true);
   const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -43,7 +54,7 @@ function NewsDetailPage() {
     supabase
       .from("news")
       .select(
-        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url",
+        "id,title,description,image_url,banner_url,full_title,full_text,button_text,button_url,translations",
       )
       .eq("id", newsId)
       .maybeSingle()
@@ -78,9 +89,9 @@ function NewsDetailPage() {
   if (!item) {
     return (
       <div className="p-6 text-center space-y-3">
-        <div className="text-lg font-semibold">Новость не найдена</div>
+        <div className="text-lg font-semibold">{t("Новость не найдена")}</div>
         <Link to="/" className="text-sm text-primary underline">
-          Вернуться на главную
+          {t("Вернуться на главную")}
         </Link>
       </div>
     );
@@ -112,7 +123,7 @@ function NewsDetailPage() {
           </div>
           <Link
             to="/"
-            aria-label="Назад"
+            aria-label={t("Назад")}
             className="absolute top-3 left-3 h-9 w-9 rounded-full flex items-center justify-center bg-background/85 backdrop-blur active:bg-background transition-colors"
           >
             <AltArrowLeft className="h-5 w-5" weight="BoldDuotone" />

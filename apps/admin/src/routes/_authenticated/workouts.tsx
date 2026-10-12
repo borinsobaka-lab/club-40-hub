@@ -15,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import { ColorInput } from "@/components/ui/color-input";
 import { FormField } from "@/components/ui/form-field";
 import { FormattedTextarea } from "@/components/formatted-textarea";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
+import { useContentTranslations } from "@/hooks/use-content-translations";
+import type { ContentTranslations } from "@/lib/content-i18n";
 import { stripFormatting } from "@/lib/formatted-text";
 import {
   Table,
@@ -86,6 +89,8 @@ type Workout = {
   met_value: number | null;
   /** Пакетный формат: цвет полоски в расписании (#rrggbb). */
   color: string | null;
+  /** Переводы для приложения: {en|ka: {name, description}}. */
+  translations: ContentTranslations;
 };
 
 const NONE_TYPE = "__none__" as const;
@@ -348,11 +353,13 @@ function WorkoutForm({
       )?.hex ??
       WORKOUT_COLORS[0].hex,
   );
+  const tr = useContentTranslations(workout?.translations);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (!studioId) return;
     if (!name.trim()) {
+      tr.setLang("ru");
       toast.error("Укажите название");
       return;
     }
@@ -381,6 +388,7 @@ function WorkoutForm({
         studio_id: studioId,
         name: name.trim(),
         description: description.trim() || null,
+        translations: tr.cleaned(),
         capacity: capacityNum,
         met_value: metNum,
       };
@@ -409,10 +417,12 @@ function WorkoutForm({
       <DialogHeader>
         <DialogTitle>{workout ? "Редактировать тренировку" : "Новая тренировка"}</DialogTitle>
         <DialogDescription>Заполните данные тренировки клуба.</DialogDescription>
+        <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
+            <ContentLangNote lang={tr.lang} />
             {!packages && (
               <FormField label="Иконка" htmlFor={null} optional>
                 <ImageUploadField
@@ -433,20 +443,26 @@ function WorkoutForm({
               </FormField>
             )}
 
-            <FormField label="Название" required>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Например: Силовая базовая"
-              />
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Название</ContentLangLabel>}
+              required={tr.lang === "ru"}
+            >
+              <Input {...tr.input("name", name, setName, "Например: Силовая базовая")} />
             </FormField>
 
-            <FormField label="Описание" tip={TIPS.description} optional>
+            <FormField
+              label={<ContentLangLabel lang={tr.lang}>Описание</ContentLangLabel>}
+              tip={TIPS.description}
+              optional
+            >
               <FormattedTextarea
-                value={description}
-                onChange={setDescription}
                 rows={4}
-                placeholder="Краткое описание тренировки"
+                {...tr.text(
+                  "description",
+                  description,
+                  setDescription,
+                  "Краткое описание тренировки",
+                )}
               />
             </FormField>
 

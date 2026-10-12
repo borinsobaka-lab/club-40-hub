@@ -9,17 +9,21 @@ import { GlowBlobs, PageShell } from "@/components/page-shell";
 import { useAuth } from "@/hooks/use-auth";
 import { useHomeStudioName } from "@/hooks/use-viewed-studio";
 import { clientCardQuery } from "@/lib/client-card";
+import { getTranslator, useT, type Translator } from "@/i18n";
 
 export const Route = createFileRoute("/invite")({
-  head: () => ({
-    meta: [
-      { title: "Пригласи подругу — Base40" },
-      {
-        name: "description",
-        content: "Приведите подругу в студию — и вы обе получите по 2 тренировки в подарок.",
-      },
-    ],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return {
+      meta: [
+        { title: t("Пригласи подругу — Base40") },
+        {
+          name: "description",
+          content: t("Приведите подругу в студию — и вы обе получите по 2 тренировки в подарок."),
+        },
+      ],
+    };
+  },
   component: InvitePage,
 });
 
@@ -34,24 +38,32 @@ const INVITE_URL = "https://lady-stretch.one/hello";
  * пригласившей — чтобы администратор точно понял, от кого подруга, — и
  * ссылка последней строкой.
  */
-function inviteMessage(studio: string, name: string): string {
+function inviteMessage(t: Translator, studio: string, name: string): string {
   return [
-    "Привет! 💗",
+    t("Привет! 💗"),
     "",
-    `Приглашаю тебя в ${studio}!`,
+    t("Приглашаю тебя в {studio}!", { studio }),
     "",
-    `Если при покупке абонемента скажешь, что ты от меня${name ? ` (${name})` : ""}, нам обеим подарят по ${GIFT_TRAININGS} тренировки 🎁`,
+    name
+      ? t(
+          "Если при покупке абонемента скажешь, что ты от меня ({name}), нам обеим подарят по {n} тренировки 🎁",
+          { name, n: GIFT_TRAININGS },
+        )
+      : t(
+          "Если при покупке абонемента скажешь, что ты от меня, нам обеим подарят по {n} тренировки 🎁",
+          { n: GIFT_TRAININGS },
+        ),
     "",
     INVITE_URL,
   ].join("\n");
 }
 
-async function copy(text: string) {
+async function copy(text: string, t: Translator) {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success("Приглашение скопировано — вставьте его в чат с подругой");
+    toast.success(t("Приглашение скопировано — вставьте его в чат с подругой"));
   } catch {
-    toast.error("Не удалось скопировать приглашение");
+    toast.error(t("Не удалось скопировать приглашение"));
   }
 }
 
@@ -112,6 +124,7 @@ const HEADER_BLOBS = [
  * в приложении — только описание и «Пригласить» (системное «Поделиться»).
  */
 function InvitePage() {
+  const t = useT();
   const { user } = useAuth();
   const studioName = useHomeStudioName();
   const { data: client } = useQuery(clientCardQuery(user?.id ?? null));
@@ -120,7 +133,7 @@ function InvitePage() {
     client?.full_name?.trim() ||
     "";
 
-  const message = inviteMessage(studioName ?? "Lady Stretch", fullName);
+  const message = inviteMessage(t, studioName ?? "Lady Stretch", fullName);
 
   // Системное «Поделиться» (на телефоне — выбор мессенджера и сразу
   // человека); где его нет — копируем текст.
@@ -130,11 +143,11 @@ function InvitePage() {
         await navigator.share({ text: message });
         return;
       }
-      await copy(message);
+      await copy(message, t);
     } catch (e) {
       // Закрытое окно «Поделиться» — не ошибка.
       if (e instanceof DOMException && e.name === "AbortError") return;
-      await copy(message);
+      await copy(message, t);
     }
   };
 
@@ -153,16 +166,16 @@ function InvitePage() {
               className="-ml-2 inline-flex h-10 items-center gap-1 rounded-full px-2 text-sm font-medium text-white/80 transition-colors active:bg-white/10"
             >
               <AltArrowLeft className="h-5 w-5" />
-              Назад
+              {t("Назад")}
             </Link>
           </div>
           <div className="mx-auto h-60 w-60">
             <img src={inviteGift} alt="" className="art-fade-soft h-full w-full object-contain" />
           </div>
           <div className="relative z-[2] px-4">
-            <h1 className="text-3xl font-semibold leading-tight">Пригласи подругу</h1>
+            <h1 className="text-3xl font-semibold leading-tight">{t("Пригласи подругу")}</h1>
             <p className="mt-1 text-sm text-white/70">
-              Вам и подруге — по {GIFT_TRAININGS} тренировки в подарок
+              {t("Вам и подруге — по {n} тренировки в подарок", { n: GIFT_TRAININGS })}
             </p>
           </div>
         </div>
@@ -171,43 +184,49 @@ function InvitePage() {
       <Blocks>
         <Block>
           <p className="text-[15px] leading-relaxed text-foreground/90">
-            Тренироваться вместе веселее. Приведите подругу в студию — и, когда она оформит
-            абонемент, мы подарим по {GIFT_TRAININGS} тренировки и ей, и вам.
+            {t(
+              "Тренироваться вместе веселее. Приведите подругу в студию — и, когда она оформит абонемент, мы подарим по {n} тренировки и ей, и вам.",
+              { n: GIFT_TRAININGS },
+            )}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <Reward who="вам" />
-            <Reward who="подруге" />
+            <Reward label={t("тренировки вам")} />
+            <Reward label={t("тренировки подруге")} />
           </div>
         </Block>
 
-        <Block title="Как это работает">
+        <Block title={t("Как это работает")}>
           <ol className="space-y-4">
-            <Step n={1} title="Пригласите подругу">
-              Нажмите «Пригласить» и отправьте ей приглашение — или просто расскажите о студии.
+            <Step n={1} title={t("Пригласите подругу")}>
+              {t(
+                "Нажмите «Пригласить» и отправьте ей приглашение — или просто расскажите о студии.",
+              )}
             </Step>
-            <Step n={2} title="Подруга приходит в студию">
-              Пусть скажет администратору, что пришла от вас, — назовёт ваше имя.
+            <Step n={2} title={t("Подруга приходит в студию")}>
+              {t("Пусть скажет администратору, что пришла от вас, — назовёт ваше имя.")}
             </Step>
-            <Step n={3} title="Подарок обеим" last>
-              Когда подруга оформит абонемент, вам и ей начислят по {GIFT_TRAININGS} бесплатные
-              тренировки.
+            <Step n={3} title={t("Подарок обеим")} last>
+              {t(
+                "Когда подруга оформит абонемент, вам и ей начислят по {n} бесплатные тренировки.",
+                { n: GIFT_TRAININGS },
+              )}
             </Step>
           </ol>
         </Block>
 
-        <Block title="Условия">
+        <Block title={t("Условия")}>
           <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
             <li className="flex gap-2">
               <Dot />
-              Подарок начисляется, когда приглашённая подруга оформит абонемент.
+              {t("Подарок начисляется, когда приглашённая подруга оформит абонемент.")}
             </li>
             <li className="flex gap-2">
               <Dot />
-              Подруга — новая клиентка студии: раньше у нас не занималась.
+              {t("Подруга — новая клиентка студии: раньше у нас не занималась.")}
             </li>
             <li className="flex gap-2">
               <Dot />
-              Тренировки добавляет администратор студии — подробности можно уточнить у него.
+              {t("Тренировки добавляет администратор студии — подробности можно уточнить у него.")}
             </li>
           </ul>
           <button
@@ -216,10 +235,10 @@ function InvitePage() {
             className="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.99]"
           >
             <Share className="h-5 w-5" weight="BoldDuotone" />
-            Пригласить подругу
+            {t("Пригласить подругу")}
           </button>
           <div className="mt-4 text-center text-xs text-muted-foreground">
-            Или отправьте сразу в мессенджер
+            {t("Или отправьте сразу в мессенджер")}
           </div>
           <div className="mt-2 flex justify-center gap-4">
             {MESSENGERS.map((m) => (
@@ -241,13 +260,13 @@ function InvitePage() {
             ))}
             <button
               type="button"
-              onClick={() => copy(message)}
+              onClick={() => copy(message, t)}
               className="flex w-16 flex-col items-center gap-1 text-[11px] text-muted-foreground"
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-foreground transition active:scale-95">
                 <Copy className="h-5 w-5" weight="BoldDuotone" />
               </span>
-              Скопировать
+              {t("Скопировать")}
             </button>
           </div>
         </Block>
@@ -288,13 +307,13 @@ function Block({ title, children }: { title?: string; children: ReactNode }) {
   );
 }
 
-function Reward({ who }: { who: string }) {
+function Reward({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2">
       <span className="text-xl font-black leading-none text-primary tabular-nums">
         +{GIFT_TRAININGS}
       </span>
-      <span className="text-xs font-medium leading-tight">тренировки {who}</span>
+      <span className="text-xs font-medium leading-tight">{label}</span>
     </div>
   );
 }

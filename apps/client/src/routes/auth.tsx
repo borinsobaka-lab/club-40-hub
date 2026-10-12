@@ -6,25 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
-import { CLUB, IS_PACKAGES } from "@/lib/terms";
+import { IS_PACKAGES } from "@/lib/terms";
 import { takeSignInRefused } from "@/lib/sign-in-refused";
 import { cancelHomeConfetti, queueHomeConfetti } from "@/lib/confetti";
 import { DarkFrame } from "@/formats/packages/dark-frame";
 import packagesLogo from "@/assets/packages-logo.svg";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getTranslator, useT, type Translator } from "@/i18n";
 import loginEmailArt from "@/assets/login-email.webp";
 import loginCodeArt from "@/assets/login-code.webp";
 
-function formatCooldown(sec: number) {
+function formatCooldown(sec: number, t: Translator) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
-  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s} сек`;
+  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : t("{s} сек", { s });
 }
 
-const NOT_A_MEMBER = IS_PACKAGES
-  ? "Эта почта не найдена среди клиентов студии. Обратитесь к администратору студии."
-  : "Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.";
+function notAMember(t: Translator) {
+  return IS_PACKAGES
+    ? t("Эта почта не найдена среди клиентов студии. Обратитесь к администратору студии.")
+    : t("Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.");
+}
 
-function humanizeAuthError(message: string): string {
+function humanizeAuthError(message: string, t: Translator): string {
   const m = message.toLowerCase();
   // Учётная запись создаётся при первом входе, но только для почты из
   // карточки клиента на портале — иначе триггер handle_new_user отказывает
@@ -37,21 +41,21 @@ function humanizeAuthError(message: string): string {
     m.includes("signups not allowed") ||
     m.includes("otp_disabled")
   ) {
-    return NOT_A_MEMBER;
+    return notAMember(t);
   }
   // Проверка формата email — раньше общего «invalid»: сообщение Supabase
   // «Unable to validate email address: invalid format» тоже содержит
   // «invalid», и клиенту с опечаткой в почте показывалось «неверный код».
   if (m.includes("invalid format") || m.includes("valid email")) {
-    return "Проверьте формат email.";
+    return t("Проверьте формат email.");
   }
   if (m.includes("expired") || m.includes("invalid")) {
-    return "Неверный или устаревший код. Запросите новый.";
+    return t("Неверный или устаревший код. Запросите новый.");
   }
   if (m.includes("rate limit") || m.includes("after ")) {
-    return "Слишком часто. Подождите минуту и попробуйте ещё раз.";
+    return t("Слишком часто. Подождите минуту и попробуйте ещё раз.");
   }
-  return "Не удалось отправить код: " + message;
+  return t("Не удалось отправить код: {message}", { message });
 }
 
 // Длина кода из письма. Supabase не даёт настраивать Email OTP Length —
@@ -64,13 +68,15 @@ const RESEND_COOLDOWN_SEC = 60;
 const emptyOtp = () => Array<string>(OTP_LENGTH).fill("");
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({
-    meta: [{ title: "Вход — Base40" }],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return { meta: [{ title: t("Вход — Base40") }] };
+  },
   component: AuthPage,
 });
 
 function AuthPage() {
+  const t = useT();
   const { requestOtp, verifyOtp, session, loading } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"form" | "otp">("form");
@@ -91,7 +97,8 @@ function AuthPage() {
 
   // Вошёл, но карточки клиента нет — приложение вышло само (use-client-studio).
   useEffect(() => {
-    if (takeSignInRefused()) setError(NOT_A_MEMBER);
+    if (takeSignInRefused()) setError(notAMember(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- флаг читается один раз
   }, []);
 
   // Обратный отсчёт до следующей возможной отправки кода.
@@ -105,7 +112,7 @@ function AuthPage() {
     e.preventDefault();
     setError(null);
     if (!email.trim()) {
-      setError("Укажите email");
+      setError(t("Укажите email"));
       return;
     }
     if (cooldown > 0 && sentTo === email.trim()) {
@@ -119,7 +126,7 @@ function AuthPage() {
     const { error: sendError } = await requestOtp(email.trim());
     setBusy(false);
     if (sendError) {
-      setError(humanizeAuthError(sendError));
+      setError(humanizeAuthError(sendError, t));
       return;
     }
     setSentTo(email.trim());
@@ -136,7 +143,7 @@ function AuthPage() {
     const { error: sendError } = await requestOtp(email.trim());
     setBusy(false);
     if (sendError) {
-      setError(humanizeAuthError(sendError));
+      setError(humanizeAuthError(sendError, t));
       return;
     }
     setOtp(emptyOtp());
@@ -146,7 +153,7 @@ function AuthPage() {
 
   const submitOtp = async () => {
     if (otp.some((d) => d === "")) {
-      setError(`Введите ${OTP_LENGTH}-значный код`);
+      setError(t("Введите {n}-значный код", { n: OTP_LENGTH }));
       return;
     }
     setError(null);
@@ -157,7 +164,7 @@ function AuthPage() {
     const { error: verifyError } = await verifyOtp(email.trim(), otp.join(""));
     if (verifyError) {
       cancelHomeConfetti();
-      setError(humanizeAuthError(verifyError));
+      setError(humanizeAuthError(verifyError, t));
     }
     setBusy(false);
   };
@@ -193,12 +200,14 @@ function AuthPage() {
 
   const subtitle =
     step === "otp"
-      ? `Введите код, отправленный на ${email}`
-      : `Войдите по почте, которую вы указали в ${CLUB.prep}`;
+      ? t("Введите код, отправленный на {email}", { email })
+      : IS_PACKAGES
+        ? t("Войдите по почте, которую вы указали в студии")
+        : t("Войдите по почте, которую вы указали в клубе");
 
   const emailInput = (
     <FloatingLabelInput
-      label="Email"
+      label={t("Email")}
       type="email"
       value={email}
       onChange={(e) => setEmail(e.target.value)}
@@ -227,7 +236,7 @@ function AuthPage() {
         inputMode="numeric"
         autoComplete="one-time-code"
         maxLength={OTP_LENGTH}
-        aria-label="Код из письма"
+        aria-label={t("Код из письма")}
         className="absolute inset-0 z-10 h-full w-full cursor-text bg-transparent text-base text-transparent caret-transparent opacity-0 outline-none"
       />
       {otp.map((d, i) => {
@@ -291,8 +300,10 @@ function AuthPage() {
         className="w-full text-center text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
       >
         {cooldown > 0
-          ? `Отправить код ещё раз можно через ${formatCooldown(cooldown)}`
-          : "Отправить код ещё раз"}
+          ? t("Отправить код ещё раз можно через {time}", {
+              time: formatCooldown(cooldown, t),
+            })
+          : t("Отправить код ещё раз")}
       </button>
 
       <button
@@ -303,7 +314,7 @@ function AuthPage() {
         }}
         className="w-full text-center text-sm text-muted-foreground"
       >
-        Изменить почту
+        {t("Изменить почту")}
       </button>
     </>
   );
@@ -318,11 +329,17 @@ function AuthPage() {
     return (
       <DarkFrame
         tall
-        top={<img src={packagesLogo} alt="Логотип студии" className="mx-6 mt-4 h-auto w-[150px]" />}
+        top={
+          // Язык — справа от логотипа: его выбирают при первом открытии.
+          <div className="mx-6 mt-4 flex items-center justify-between gap-3">
+            <img src={packagesLogo} alt={t("Логотип студии")} className="h-auto w-[150px]" />
+            <LanguageSwitcher />
+          </div>
+        }
         art={step === "otp" ? loginCodeArt : loginEmailArt}
         header={
           <div className="px-6 pt-2 pb-10">
-            <h1 className="text-3xl font-semibold leading-tight">Добро пожаловать</h1>
+            <h1 className="text-3xl font-semibold leading-tight">{t("Добро пожаловать")}</h1>
             <p className="mt-2 text-sm text-white/70">{subtitle}</p>
           </div>
         }
@@ -334,7 +351,7 @@ function AuthPage() {
               disabled={busy}
               className="h-12 w-full text-base font-semibold"
             >
-              {busy ? spinner : "Получить код"}
+              {busy ? spinner : t("Получить код")}
             </Button>
           ) : (
             <Button
@@ -343,7 +360,7 @@ function AuthPage() {
               disabled={busy}
               className="h-12 w-full text-base font-semibold"
             >
-              {busy ? spinner : "Подтвердить"}
+              {busy ? spinner : t("Подтвердить")}
             </Button>
           )
         }
@@ -355,8 +372,8 @@ function AuthPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Введите ваш email"
-              aria-label="Email"
+              placeholder={t("Введите ваш email")}
+              aria-label={t("Email")}
               autoComplete="email"
               inputMode="email"
               required
@@ -388,6 +405,8 @@ function AuthPage() {
 
       <div className="relative flex flex-col min-h-[100dvh] px-6 pt-16 pb-8">
         {/* Brand */}
+        {/* Логотип по центру, язык — сверху справа (не наезжает на логотип на узком экране). */}
+        <LanguageSwitcher tone="light" className="absolute right-4 top-4" />
         <div className="flex flex-col items-center mb-10">
           <div className="text-2xl font-black tracking-widest">
             Base<span className="text-primary">40</span>
@@ -396,7 +415,7 @@ function AuthPage() {
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-semibold leading-tight">Добро пожаловать</h1>
+          <h1 className="text-3xl font-semibold leading-tight">{t("Добро пожаловать")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         </div>
 
@@ -414,7 +433,7 @@ function AuthPage() {
               {busy ? (
                 <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
               ) : (
-                "Получить код"
+                t("Получить код")
               )}
             </Button>
           </form>
@@ -433,7 +452,7 @@ function AuthPage() {
               {busy ? (
                 <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
               ) : (
-                "Подтвердить"
+                t("Подтвердить")
               )}
             </Button>
 

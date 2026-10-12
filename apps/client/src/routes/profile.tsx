@@ -21,7 +21,7 @@ import {
   Card2,
   ChatRound,
   AltArrowRight,
-  Settings,
+  Global,
   MedalStar,
 } from "@solar-icons/react";
 import { FloatingLabelInput, FloatingLabelSelect } from "@/components/ui/floating-input";
@@ -32,14 +32,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
 import { IS_PACKAGES } from "@/lib/terms";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { currentT, getTranslator, msg, useT, type Translator } from "@/i18n";
 
 export const Route = createFileRoute("/profile")({
-  head: () => ({
-    meta: [
-      { title: "Профиль — Base40" },
-      { name: "description", content: "Профиль участника Base40." },
-    ],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return {
+      meta: [
+        { title: t("Профиль — Base40") },
+        { name: "description", content: t("Профиль участника Base40.") },
+      ],
+    };
+  },
   component: ProfilePage,
 });
 
@@ -60,11 +65,16 @@ type ClientUpdate = {
   gender?: string | null;
 };
 
+// Сообщения — ключи словаря (msg), переводятся при показе.
 const profileSchema = z.object({
-  first_name: z.string().trim().min(1, "Укажите имя").max(60, "Слишком длинное имя"),
-  last_name: z.string().trim().min(1, "Укажите фамилию").max(60, "Слишком длинная фамилия"),
-  phone: z.string().trim().max(32, "Слишком длинный номер").optional().or(z.literal("")),
-  email: z.string().trim().email("Некорректный email").max(255).optional().or(z.literal("")),
+  first_name: z.string().trim().min(1, msg("Укажите имя")).max(60, msg("Слишком длинное имя")),
+  last_name: z
+    .string()
+    .trim()
+    .min(1, msg("Укажите фамилию"))
+    .max(60, msg("Слишком длинная фамилия")),
+  phone: z.string().trim().max(32, msg("Слишком длинный номер")).optional().or(z.literal("")),
+  email: z.string().trim().email(msg("Некорректный email")).max(255).optional().or(z.literal("")),
   birthday: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
 });
@@ -101,13 +111,25 @@ function formFromClient(client: ClientRow) {
  * без времени разбирается как полночь UTC, и западнее Гринвича выходил
  * предыдущий день.
  */
-function formatBirthday(value: string) {
+function formatBirthday(value: string, t: Translator) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : value;
+  if (!m) return value;
+  // Полночь UTC и показ в UTC — тот же день в любом часовом поясе.
+  return t.date(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])), {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 /** Сторона квадратной аватарки после сжатия, px. */
 const AVATAR_SIZE = 512;
+
+// Выбор файла аватарки. Константой, а не литералом в JSX: проверка словарей
+// (scripts/i18n-check.ts) принимала слэш со звёздочкой в этой строке за начало
+// комментария и не видела t() до конца следующего комментария.
+const AVATAR_ACCEPT = "image/*";
 
 /**
  * Фото с телефона — в квадрат 512px WebP (JPEG, если браузер не умеет WebP):
@@ -163,13 +185,14 @@ async function squareAvatar(file: File): Promise<Blob | null> {
  * удалась (ошибку уже показали тостом).
  */
 async function uploadAvatar(userId: string, file: File): Promise<ClientRow | undefined> {
+  const t = currentT();
   if (!file.type.startsWith("image/") && !/\.(heic|heif)$/i.test(file.name)) {
-    toast.error("Выберите изображение");
+    toast.error(t("Выберите изображение"));
     return undefined;
   }
   const blob = await squareAvatar(file);
   if (!blob) {
-    toast.error("Не удалось открыть фото. Выберите снимок в формате JPG или PNG.");
+    toast.error(t("Не удалось открыть фото. Выберите снимок в формате JPG или PNG."));
     return undefined;
   }
   const ext = blob.type === "image/webp" ? "webp" : "jpg";
@@ -180,7 +203,7 @@ async function uploadAvatar(userId: string, file: File): Promise<ClientRow | und
     .from("avatars")
     .upload(path, blob, { contentType: blob.type, cacheControl: "31536000" });
   if (upErr) {
-    toast.error("Не удалось загрузить фото: " + upErr.message);
+    toast.error(t("Не удалось загрузить фото: {error}", { error: upErr.message }));
     return undefined;
   }
   const publicUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
@@ -191,16 +214,16 @@ async function uploadAvatar(userId: string, file: File): Promise<ClientRow | und
     .select()
     .maybeSingle();
   if (dbErr) {
-    toast.error("Не удалось сохранить фото: " + dbErr.message);
+    toast.error(t("Не удалось сохранить фото: {error}", { error: dbErr.message }));
     return undefined;
   }
   // Ни одной строки: карточки нет или правка своей карточки закрыта — без
   // этого показывали «Аватар обновлён», а фото пропадало после обновления.
   if (!updated) {
-    toast.error("Не удалось сохранить фото в профиль. Обратитесь к администратору студии.");
+    toast.error(t("Не удалось сохранить фото в профиль. Обратитесь к администратору студии."));
     return undefined;
   }
-  toast.success("Фото обновлено");
+  toast.success(t("Фото обновлено"));
   return updated as ClientRow;
 }
 
@@ -228,11 +251,14 @@ async function saveClient(
   }
   if (error) return { error: error.message };
   const row = data?.[0];
-  return row ? { row: row as ClientRow } : { error: "карточка клиента не найдена" };
+  if (row) return { row: row as ClientRow };
+  const t = currentT();
+  return { error: t("карточка клиента не найдена") };
 }
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
+  const t = useT();
   const queryClient = useQueryClient();
   // Карточка — из общего с главной кэша (src/lib/client-card.ts): профиль
   // открывается сразу, свежие данные подтягиваются фоном.
@@ -265,7 +291,7 @@ function ProfilePage() {
   }, [user, queryClient]);
 
   const fullName =
-    composeFullName(client) || (user?.user_metadata?.full_name as string) || "Участник";
+    composeFullName(client) || (user?.user_metadata?.full_name as string) || t("Участник");
   const email = client?.email || user?.email || "";
   const phone = client?.phone || "";
   const birthday = client?.birthday || "";
@@ -285,8 +311,8 @@ function ProfilePage() {
     <PageShell
       header={
         <div className="pt-4 pb-8 px-4">
-          <h1 className="text-3xl font-semibold">Профиль</h1>
-          <p className="text-sm text-white/70">Ваши данные и настройки</p>
+          <h1 className="text-3xl font-semibold">{t("Профиль")}</h1>
+          <p className="text-sm text-white/70">{t("Ваши данные и настройки")}</p>
         </div>
       }
     >
@@ -299,7 +325,7 @@ function ProfilePage() {
               onClick={() => setEditOpen(true)}
               disabled={loading || !client}
               className="absolute top-3 right-3 h-9 w-9 rounded-full bg-muted text-muted-foreground flex items-center justify-center disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Редактировать профиль"
+              aria-label={t("Редактировать профиль")}
             >
               <Pen className="h-4 w-4" weight="BoldDuotone" />
             </button>
@@ -310,7 +336,7 @@ function ProfilePage() {
                 disabled={uploadingAvatar || loading}
                 className="relative shrink-0 focus:outline-none disabled:opacity-70"
                 style={{ width: 120, height: 120 }}
-                aria-label="Заменить аватар"
+                aria-label={t("Заменить аватар")}
               >
                 <SquircleAvatar size={120}>
                   {client?.photo_url && (
@@ -342,7 +368,7 @@ function ProfilePage() {
               <input
                 ref={avatarInputRef}
                 type="file"
-                accept="image/*"
+                accept={AVATAR_ACCEPT}
                 className="hidden"
                 onChange={handleAvatarUpload}
               />
@@ -352,15 +378,15 @@ function ProfilePage() {
             </div>
 
             <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
-              <ProfileField label="Телефон" value={phone} />
-              <ProfileField label="Email" value={email} />
+              <ProfileField label={t("Телефон")} value={phone} />
+              <ProfileField label={t("Email")} value={email} />
               <ProfileField
-                label="Дата рождения"
-                value={birthday ? formatBirthday(birthday) : ""}
+                label={t("Дата рождения")}
+                value={birthday ? formatBirthday(birthday, t) : ""}
               />
               <ProfileField
-                label="Пол"
-                value={gender === "male" ? "Мужской" : gender === "female" ? "Женский" : ""}
+                label={t("Пол")}
+                value={gender === "male" ? t("Мужской") : gender === "female" ? t("Женский") : ""}
               />
             </dl>
 
@@ -369,7 +395,7 @@ function ProfilePage() {
               className="w-full mt-5 rounded-[14px] bg-muted px-4 py-3 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <div className="flex flex-col">
-                <span className="font-semibold text-sm">Бонусы</span>
+                <span className="font-semibold text-sm">{t("Бонусы")}</span>
                 <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MedalStar className="h-6 w-6 text-yellow-500" weight="BoldDuotone" />
                   <span className="font-semibold text-foreground text-base">1 250</span>
@@ -386,30 +412,33 @@ function ProfilePage() {
             <ul className="divide-y divide-border">
               <ProfileLink
                 icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
-                label="Правовые документы"
+                label={t("Правовые документы")}
               />
               {/* Оплаты в приложении пакетных студий пока нет (решение владельца
                   2026-10-12) — блок способов оплаты не показываем. */}
               {!IS_PACKAGES && (
                 <ProfileLink
                   icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
-                  label="Способы оплаты"
+                  label={t("Способы оплаты")}
                   sublabel="Mastercard •••• 4242"
                   right={<MastercardBadge />}
                 />
               )}
               <ProfileLink
                 icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />}
-                label="Поддержка"
+                label={t("Поддержка")}
               />
-              <ProfileLink
-                icon={<Settings className="h-5 w-5" weight="BoldDuotone" />}
-                label="Язык"
-                sublabel="Русский"
-              />
+              {/* Язык: строка без перехода — справа переключатель (список языков). */}
+              <li className="flex items-center gap-3 px-4 py-2">
+                <span className="text-muted-foreground">
+                  <Global className="h-5 w-5" weight="BoldDuotone" />
+                </span>
+                <span className="flex-1 min-w-0 text-sm font-medium">{t("Язык")}</span>
+                <LanguageSwitcher tone="light" />
+              </li>
               <ProfileLink
                 icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />}
-                label="О приложении"
+                label={t("О приложении")}
               />
             </ul>
           </section>
@@ -419,7 +448,7 @@ function ProfilePage() {
           {/* Блок: выход */}
           <section className="bg-background rounded-t-[14px] px-4 py-5">
             <Button variant="outline" className="w-full shadow-none" onClick={() => signOut()}>
-              Выйти
+              {t("Выйти")}
             </Button>
           </section>
         </div>
@@ -438,6 +467,7 @@ function ProfilePage() {
 }
 
 function ProfileField({ label, value }: { label: string; value?: string | null }) {
+  const t = useT();
   const isEmpty = !value || value.length === 0;
   return (
     <div className="min-w-0">
@@ -445,7 +475,7 @@ function ProfileField({ label, value }: { label: string; value?: string | null }
       <dd
         className={`mt-0.5 text-sm font-medium break-words ${isEmpty ? "text-muted-foreground/60 italic" : ""}`}
       >
-        {isEmpty ? "не указано" : value}
+        {isEmpty ? t("не указано") : value}
       </dd>
     </div>
   );
@@ -506,6 +536,7 @@ function EditProfileSheet({
   onSaved: (updated: ClientRow) => void;
 }) {
   const { user } = useAuth();
+  const t = useT();
   const [form, setForm] = useState(() => formFromClient(client));
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(client.photo_url ?? null);
@@ -542,7 +573,8 @@ function EditProfileSheet({
     if (!user) return;
     const parsed = profileSchema.safeParse(form);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Проверьте поля");
+      const issue = parsed.error.issues[0]?.message;
+      toast.error(issue ? t(issue) : t("Проверьте поля"));
       return;
     }
     const v = parsed.data;
@@ -561,21 +593,21 @@ function EditProfileSheet({
     const result = await saveClient(user.id, payload);
     setSaving(false);
     if ("error" in result) {
-      toast.error("Не удалось сохранить: " + result.error);
+      toast.error(t("Не удалось сохранить: {error}", { error: result.error }));
       return;
     }
-    toast.success("Профиль обновлён");
+    toast.success(t("Профиль обновлён"));
     onSaved(result.row);
     onOpenChange(false);
   };
 
-  const displayName = composeFullName(client) || "Участник";
+  const displayName = composeFullName(client) || t("Участник");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] overflow-y-auto">
         <SheetHeader className="text-left">
-          <SheetTitle>Редактировать профиль</SheetTitle>
+          <SheetTitle>{t("Редактировать профиль")}</SheetTitle>
         </SheetHeader>
 
         <div className="space-y-4 py-4">
@@ -586,7 +618,7 @@ function EditProfileSheet({
               disabled={uploadingAvatar}
               className="relative focus:outline-none disabled:opacity-70"
               style={{ width: 96, height: 96 }}
-              aria-label="Загрузить аватар"
+              aria-label={t("Загрузить аватар")}
             >
               <SquircleAvatar size={96}>
                 {avatarUrl && <SquircleAvatarImage src={avatarUrl} alt={displayName} />}
@@ -609,7 +641,7 @@ function EditProfileSheet({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={AVATAR_ACCEPT}
               className="hidden"
               onChange={handleAvatarChange}
             />
@@ -619,12 +651,12 @@ function EditProfileSheet({
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
             >
-              {avatarUrl ? "Заменить фото" : "Загрузить фото"}
+              {avatarUrl ? t("Заменить фото") : t("Загрузить фото")}
             </button>
           </div>
 
           <FloatingLabelInput
-            label="Фамилия"
+            label={t("Фамилия")}
             id="last_name"
             value={form.last_name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -635,7 +667,7 @@ function EditProfileSheet({
           />
 
           <FloatingLabelInput
-            label="Имя"
+            label={t("Имя")}
             id="first_name"
             value={form.first_name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -646,7 +678,7 @@ function EditProfileSheet({
           />
 
           <FloatingLabelInput
-            label="Телефон"
+            label={t("Телефон")}
             id="phone"
             type="tel"
             inputMode="tel"
@@ -660,7 +692,7 @@ function EditProfileSheet({
           />
 
           <FloatingLabelInput
-            label="Email"
+            label={t("Email")}
             id="email"
             type="email"
             inputMode="email"
@@ -673,7 +705,7 @@ function EditProfileSheet({
           />
 
           <FloatingLabelInput
-            label="Дата рождения"
+            label={t("Дата рождения")}
             id="birthday"
             type="date"
             value={form.birthday}
@@ -683,15 +715,15 @@ function EditProfileSheet({
           />
 
           <FloatingLabelSelect
-            label="Пол"
+            label={t("Пол")}
             value={form.gender || "unset"}
             onValueChange={(v: string) =>
               setForm((f) => ({ ...f, gender: v === "unset" ? "" : v }))
             }
           >
-            <SelectItem value="unset">Не указано</SelectItem>
-            <SelectItem value="male">Мужской</SelectItem>
-            <SelectItem value="female">Женский</SelectItem>
+            <SelectItem value="unset">{t("Не указано")}</SelectItem>
+            <SelectItem value="male">{t("Мужской")}</SelectItem>
+            <SelectItem value="female">{t("Женский")}</SelectItem>
           </FloatingLabelSelect>
         </div>
 
@@ -702,11 +734,11 @@ function EditProfileSheet({
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
-            Отмена
+            {t("Отмена")}
           </Button>
           <Button className="flex-1 font-bold" onClick={handleSave} disabled={saving}>
             {saving && <Refresh className="h-4 w-4 mr-2 animate-spin" weight="BoldDuotone" />}
-            Сохранить
+            {t("Сохранить")}
           </Button>
         </SheetFooter>
       </SheetContent>

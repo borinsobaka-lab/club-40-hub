@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClientStudioId } from "@/hooks/use-client-studio";
 import type { StudioFormat } from "@/lib/app-format";
+import type { ContentTranslations } from "@/i18n";
 
 export type Studio = {
   id: string;
@@ -14,9 +15,11 @@ export type Studio = {
   logo_url: string | null;
   /** Адрес одной строкой (db/migrations/…_studio_address.sql) — только в useFormatStudios. */
   address?: string | null;
+  /** Переводы названия и адреса (src/i18n/content.ts). */
+  translations?: ContentTranslations | null;
 };
 
-const STUDIO_COLUMNS = "id, name, format, brand_color, logo_url";
+const STUDIO_COLUMNS = "id, name, format, brand_color, logo_url, translations";
 
 // Таблица studios читается публично (db/migrations/2026-10-09_studio_formats.sql), в том числе до
 // входа. Пока миграция не выполнена, колонки format нет и запросы падают —

@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import type { ContentTranslations } from "@/i18n";
 import { APP_FORMAT } from "@/lib/app-format";
 import { untypedDb } from "@/lib/untyped-db";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
@@ -106,6 +107,8 @@ export type Pack = {
   gift_text?: string | null;
   /** «Что входит» — пункты из админки («Номенклатуры»). */
   benefits?: string[] | null;
+  /** Переводы названия, описания, тега, подарка и пунктов (src/i18n/content.ts). */
+  translations?: ContentTranslations | null;
 };
 
 export type MyMembership = {
@@ -115,7 +118,7 @@ export type MyMembership = {
   visits_left: number | null;
   personal_left: number | null;
   balance_kind: "group" | "personal" | null;
-  memberships: { name: string } | null;
+  memberships: { name: string; translations?: ContentTranslations | null } | null;
 };
 
 /** Сегодня по Тбилиси (ends_at — дата, как считает база). */
@@ -165,7 +168,9 @@ export function packMyMembershipsQuery(userId: string | null) {
       if (!client) return [];
       const { data, error } = await untypedDb
         .from("client_memberships")
-        .select("id, status, ends_at, visits_left, personal_left, balance_kind, memberships(name)")
+        .select(
+          "id, status, ends_at, visits_left, personal_left, balance_kind, memberships(name, translations)",
+        )
         .eq("client_id", (client as { id: string }).id)
         .in("status", ["active", "frozen", "pending"])
         .or(`ends_at.is.null,ends_at.gte.${tbilisiDateISO()},status.eq.frozen`)
@@ -189,10 +194,12 @@ export type StudioTrainer = {
   rating_avg: number | null;
   rating_count: number;
   tip_url: string | null;
+  /** Переводы имени и «О тренере» (src/i18n/content.ts). */
+  translations?: ContentTranslations | null;
 };
 
 const TRAINER_CARD_COLUMNS =
-  "id, full_name, photo_url, bio, role, rating_avg, rating_count, tip_url";
+  "id, full_name, photo_url, bio, role, rating_avg, rating_count, tip_url, translations";
 
 /** numeric приходит строкой. */
 function normalizeTrainer(t: StudioTrainer): StudioTrainer {

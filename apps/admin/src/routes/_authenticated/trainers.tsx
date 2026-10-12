@@ -6,6 +6,8 @@ import { Plus, Loader2, Pencil, Trash2, MessageCircle } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { FormattedTextarea } from "@/components/formatted-textarea";
+import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
+import { useContentTranslations } from "@/hooks/use-content-translations";
 import { useStudios } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -334,6 +336,7 @@ function EmployeeForm({
     bank?.account_number ? formatIban(bank.account_number) : "",
   );
   const [accountHolder, setAccountHolder] = useState(bank?.account_holder ?? "");
+  const tr = useContentTranslations(employee?.translations);
   const [saving, setSaving] = useState(false);
 
   const manageable = new Set(myStudios.map((s) => s.id));
@@ -358,6 +361,7 @@ function EmployeeForm({
     const name = fullName.trim();
     const iban = normalizeIban(accountNumber);
     if (!name) {
+      tr.setLang("ru");
       toast.error("Укажите имя");
       return;
     }
@@ -400,6 +404,7 @@ function EmployeeForm({
         telegram: telegram.trim() || null,
         photo_url: photoUrl,
         bio: bio.trim() || null,
+        translations: tr.cleaned(),
         tip_url: tip || null,
         rating_base_avg: avg == null ? null : Math.round(avg * 100) / 100,
         rating_base_count: count,
@@ -481,10 +486,12 @@ function EmployeeForm({
           Сотрудник общий для клубов: отметьте, где он работает, — в расписании клуба можно выбрать
           только его сотрудников.
         </DialogDescription>
+        <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
+            <ContentLangNote lang={tr.lang} />
             <FormField label="Аватарка" htmlFor={null} optional>
               <ImageUploadField
                 bucket="trainers"
@@ -498,12 +505,12 @@ function EmployeeForm({
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Имя" tip={TIPS.name} required>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Иван Иванов"
-                />
+              <FormField
+                label={<ContentLangLabel lang={tr.lang}>Имя</ContentLangLabel>}
+                tip={TIPS.name}
+                required={tr.lang === "ru"}
+              >
+                <Input {...tr.input("full_name", fullName, setFullName, "Иван Иванов")} />
               </FormField>
               <FormField label="Роль" tip={TIPS.role} required>
                 <Select value={role} onValueChange={(v) => setRole(v as TrainerRole)}>
@@ -530,11 +537,13 @@ function EmployeeForm({
             </FormField>
 
             {role === "trainer" && (
-              <FormField label="О тренере" tip={TIPS.bio} optional>
+              <FormField
+                label={<ContentLangLabel lang={tr.lang}>О тренере</ContentLangLabel>}
+                tip={TIPS.bio}
+                optional
+              >
                 <FormattedTextarea
-                  value={bio}
-                  onChange={setBio}
-                  placeholder="Опыт, специализация, достижения…"
+                  {...tr.text("bio", bio, setBio, "Опыт, специализация, достижения…")}
                 />
               </FormField>
             )}

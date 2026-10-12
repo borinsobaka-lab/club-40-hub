@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { unwrap } from "@/lib/query";
 import { STAFF_ROLES, type StaffRole } from "@/lib/roles";
+import type { ContentTranslations } from "@/lib/content-i18n";
 import type { StudioFormat } from "@/lib/studio-formats";
 
 export type Studio = {
@@ -15,6 +16,8 @@ export type Studio = {
   logo_url: string | null;
   /** Адрес одной строкой — для клиентского приложения. */
   address: string | null;
+  /** Переводы для приложения: {en|ka: {name, address}} (lib/content-i18n.ts). */
+  translations: ContentTranslations;
   created_at: string;
   /** Роли текущего сотрудника в этой студии. */
   roles: StaffRole[];
@@ -46,7 +49,7 @@ export const studiosQuery = queryOptions({
     const studios = await unwrap<Omit<Studio, "roles">[]>(
       supabase
         .from("studios")
-        .select("id, name, format, brand_color, logo_url, address, created_at")
+        .select("id, name, format, brand_color, logo_url, address, translations, created_at")
         .in("id", ids)
         .order("created_at"),
     );

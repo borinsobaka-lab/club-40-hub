@@ -1,0 +1,109 @@
+import type { Dictionary } from "../types";
+
+/**
+ * Раздел: пакетное приложение — расписание, карточка тренировки, «Студия»
+ * (тренеры, рейтинг, чаевые), абонементы, переключатель студий.
+ */
+const dict: Dictionary = {
+  "Мест нет": "Full",
+  "Свободно {n} место|Свободно {n} места|Свободно {n} мест": "{n} spot left|{n} spots left",
+  "В листе ожидания": "On the waitlist",
+  Тренировки: "Workouts",
+  Персональные: "Personal",
+  Диагностика: "Assessment",
+  "Записаться можно только в вашей студии — «{name}». Сменить студию — на главной.":
+    "You can only book at your own studio, “{name}”. Switch studios on the home screen.",
+  "Записаться можно только в вашей студии. Сменить студию — на главной.":
+    "You can only book at your own studio. Switch studios on the home screen.",
+  "Не удалось загрузить ваши записи: {error}": "Couldn't load your bookings: {error}",
+  "Не удалось отменить запись: {error}": "Couldn't cancel the booking: {error}",
+  "Не удалось записаться: {error}": "Couldn't book: {error}",
+  "Войдите в аккаунт, чтобы записаться": "Log in to book",
+  "Профиль клиента не найден. Обратитесь к администратору.":
+    "Client profile not found. Please contact the front desk.",
+  "Нет действующего абонемента — обратитесь к администратору студии.":
+    "No active membership — please contact the studio's front desk.",
+  "На абонементе закончились тренировки": "No workouts left on your membership",
+  "Тренировка не найдена": "Workout not found",
+  "Эта тренировка уже прошла": "This workout has already taken place",
+  "Свободных мест больше нет": "No spots left",
+  "Вы не были записаны на эту тренировку": "You weren't booked for this workout",
+  "Вы вышли из листа ожидания": "You've left the waitlist",
+  "Запись отменена": "Booking cancelled",
+  "Мест нет — вы в листе ожидания": "The workout is full — you're on the waitlist",
+  "Вы записаны на тренировку": "You're booked for the workout",
+  "Не удалось выполнить действие: {reason}": "Something went wrong: {reason}",
+  "Выберите день и запишитесь на тренировку": "Pick a day and book a workout",
+  "Совсем скоро мы начнем принимать заявки на персональные тренировки":
+    "We'll start taking personal training requests very soon",
+  "Функционал скоро будет доступен": "Coming soon",
+  "Все тренировки": "All workouts",
+  "Все тренеры": "All trainers",
+  Сбросить: "Reset",
+  "Ошибка загрузки: {error}": "Loading error: {error}",
+  "На этот день таких тренировок нет": "No matching workouts on this day",
+  "На этот день тренировок пока нет": "No workouts on this day yet",
+  "В ближайшие дни в расписании пусто.": "The schedule is empty for the coming days.",
+  "Сменить студию": "Switch studio",
+  "Выберите студию": "Choose a studio",
+  "Новости, услуги, расписание и абонементы покажем для выбранной студии.":
+    "News, services, the schedule and memberships will be shown for the selected studio.",
+  "Ваша студия — здесь можно записываться": "Your studio — you can book here",
+  "Не удалось загрузить карточку тренера. Попробуйте ещё раз.":
+    "Couldn't load the trainer's profile. Please try again.",
+  "Рассказ о тренере скоро появится.": "The trainer's bio is coming soon.",
+  "Пока нет отзывов": "No reviews yet",
+  "Рейтинг {value} из 5, {reviews}": "Rated {value} out of 5, {reviews}",
+  "Поблагодарить тренера": "Thank your trainer",
+  "Оставить чаевые": "Leave a tip",
+  "Спасибо за оценку!": "Thanks for your rating!",
+  "Оценка изменена": "Rating updated",
+  "Не удалось отправить оценку. Попробуйте ещё раз.":
+    "Couldn't send your rating. Please try again.",
+  "Ваша оценка": "Your rating",
+  "Оцените тренера": "Rate your trainer",
+  Оценка: "Rating",
+  "{n} из 5": "{n} out of 5",
+  Отмена: "Cancel",
+  "Отправляем…": "Sending…",
+  Сохранить: "Save",
+  Отправить: "Submit",
+  Изменить: "Edit",
+  "{n} отзыв|{n} отзыва|{n} отзывов": "{n} review|{n} reviews",
+  Тренеры: "Trainers",
+  Студия: "Studio",
+  "Не удалось загрузить тренеров. Обновите страницу.":
+    "Couldn't load trainers. Please refresh the page.",
+  "Тренеры студии скоро появятся": "Studio trainers are coming soon",
+  Абонементы: "Memberships",
+  "Персональные занятия": "Personal training",
+  "Пакеты тренировок студии «{name}»": "Workout packages at “{name}”",
+  "Пакеты тренировок": "Workout packages",
+  "Войдите в аккаунт, чтобы увидеть абонементы.": "Log in to see memberships.",
+  "Не удалось загрузить абонементы. Обновите страницу.":
+    "Couldn't load memberships. Please refresh the page.",
+  "Пакетов персональных занятий пока нет": "No personal training packages yet",
+  "Абонементов пока нет": "No memberships yet",
+  "Оформить абонемент можно у администратора студии":
+    "You can get a membership at the studio's front desk",
+  "Пробное посещение": "Trial class",
+  "Можно оплатить частями — до {n} платежей": "Pay in up to {n} installments",
+  "Что входит:": "What's included:",
+  "В подарок": "Bonus gift",
+  "Срок действия — {duration}": "Valid for {duration}",
+  "Продление — начнётся, когда закончится текущий": "Renewal — starts when the current one ends",
+  Заморожен: "Frozen",
+  "Действует до {date}": "Valid until {date}",
+  "Срок — с первого посещения": "Valid from your first visit",
+  Абонемент: "Membership",
+  "Осталось: {balance}": "Left: {balance}",
+  "{n} месяц|{n} месяца|{n} месяцев": "{n} month|{n} months",
+  "{n} день|{n} дня|{n} дней": "{n} day|{n} days",
+  "{n} персональная тренировка|{n} персональные тренировки|{n} персональных тренировок":
+    "{n} personal training session|{n} personal training sessions",
+  "{n} тренировка|{n} тренировки|{n} тренировок": "{n} workout|{n} workouts",
+  "{n} персональная|{n} персональные|{n} персональных":
+    "{n} personal session|{n} personal sessions",
+};
+
+export default dict;

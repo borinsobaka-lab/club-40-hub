@@ -26,20 +26,24 @@ import { type Experience, type HealthFlag, type PrefTime, type Referral } from "
 import { queueHomeConfetti } from "@/lib/confetti";
 import { PackagesOnboardingPage } from "@/formats/packages/onboarding";
 import { Mars, Venus } from "lucide-react";
-import { CLUB, IS_PACKAGES } from "@/lib/terms";
+import { IS_PACKAGES } from "@/lib/terms";
+import { currentT, getTranslator, msg, useT } from "@/i18n";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({
-    meta: [
-      { title: "Знакомство — Base40" },
-      {
-        name: "description",
-        content: IS_PACKAGES
-          ? "Пара вопросов, чтобы следить за вашим прогрессом."
-          : "Пара вопросов, чтобы настроить тренировки под вас.",
-      },
-    ],
-  }),
+  head: ({ match }) => {
+    const t = getTranslator(match.context.locale);
+    return {
+      meta: [
+        { title: t("Знакомство — Base40") },
+        {
+          name: "description",
+          content: IS_PACKAGES
+            ? t("Пара вопросов, чтобы следить за вашим прогрессом.")
+            : t("Пара вопросов, чтобы настроить тренировки под вас."),
+        },
+      ],
+    };
+  },
   // У пакетного приложения своя анкета (решение владельца 2026-10-11).
   component: IS_PACKAGES ? PackagesOnboardingPage : OnboardingPage,
 });
@@ -117,6 +121,7 @@ function buildPayload(form: FormData) {
 }
 
 function OnboardingPage() {
+  const t = useT();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0); // 0=intro, 1..10 steps, 11=final
@@ -138,7 +143,10 @@ function OnboardingPage() {
       // Та же причина, что и в гейте: при ошибке нельзя показывать пустую
       // анкету — сохранение затрёт реальные ответы.
       if (error) {
-        toast.error("Не удалось загрузить анкету. Обновите страницу.");
+        // Язык на момент ошибки; в зависимости эффекта t не берём — смена
+        // языка не должна перезагружать анкету.
+        const t = currentT();
+        toast.error(t("Не удалось загрузить анкету. Обновите страницу."));
         return;
       }
       if (data) {
@@ -183,7 +191,7 @@ function OnboardingPage() {
       .from("member_profiles")
       .upsert(payload, { onConflict: "user_id" });
     if (error) {
-      toast.error(`Не удалось сохранить: ${error.message}`);
+      toast.error(t("Не удалось сохранить: {error}", { error: error.message }));
       return false;
     }
 
@@ -226,7 +234,7 @@ function OnboardingPage() {
     if (ok) {
       // Анкета пройдена — на главную, там салют.
       queueHomeConfetti();
-      toast.success("Анкета сохранена");
+      toast.success(t("Анкета сохранена"));
       navigate({ to: "/", replace: true });
     }
   }
@@ -257,16 +265,17 @@ function OnboardingPage() {
       <Shell>
         <div className="flex-1 flex flex-col justify-center px-6 text-center">
           <h1 className="text-3xl font-semibold leading-tight">
-            Пара вопросов — и мы подстроим тренировки под вас
+            {t("Пара вопросов — и мы подстроим тренировки под вас")}
           </h1>
           <p className="mt-4 text-base text-muted-foreground">
-            Это займёт около 2 минут. Поможет тренеру подобрать правильную нагрузку с первого
-            занятия.
+            {t(
+              "Это займёт около 2 минут. Поможет тренеру подобрать правильную нагрузку с первого занятия.",
+            )}
           </p>
         </div>
         <div className="px-6 pb-8 pt-4">
           <Button className="w-full h-12 text-base font-semibold" onClick={() => setStep(1)}>
-            Начать
+            {t("Начать")}
           </Button>
         </div>
       </Shell>
@@ -281,9 +290,9 @@ function OnboardingPage() {
             <CheckCircle className="h-9 w-9 text-primary-foreground" weight="BoldDuotone" />
           </div>
           <h1 className="text-2xl font-semibold leading-tight">
-            Готово. Подготовим ваше первое занятие под вас.
+            {t("Готово. Подготовим ваше первое занятие под вас.")}
           </h1>
-          <p className="mt-3 text-base text-muted-foreground">До встречи в студии.</p>
+          <p className="mt-3 text-base text-muted-foreground">{t("До встречи в студии.")}</p>
         </div>
         <div className="px-6 pb-8 pt-4">
           <Button
@@ -291,7 +300,11 @@ function OnboardingPage() {
             onClick={finish}
             disabled={saving}
           >
-            {saving ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : "Начать"}
+            {saving ? (
+              <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
+            ) : (
+              t("Начать")
+            )}
           </Button>
         </div>
       </Shell>
@@ -385,22 +398,24 @@ function OnboardingPage() {
 
 /* ===== Steps ===== */
 
+const GOAL_OPTS: { v: Goal; label: string }[] = [
+  { v: "weight_loss", label: msg("Снизить вес") },
+  { v: "muscle_strength", label: msg("Стать сильнее, набрать мышцы") },
+  { v: "endurance", label: msg("Поднять выносливость и форму") },
+  { v: "energy_wellbeing", label: msg("Больше энергии и хорошее самочувствие") },
+  { v: "stress_habit", label: msg("Снять стресс, выработать привычку") },
+  { v: "event_prep", label: msg("Подготовиться к событию") },
+];
+
 function StepGoal({ value, onChange }: { value: Goal | null; onChange: (v: Goal) => void }) {
-  const opts: { v: Goal; label: string }[] = [
-    { v: "weight_loss", label: "Снизить вес" },
-    { v: "muscle_strength", label: "Стать сильнее, набрать мышцы" },
-    { v: "endurance", label: "Поднять выносливость и форму" },
-    { v: "energy_wellbeing", label: "Больше энергии и хорошее самочувствие" },
-    { v: "stress_habit", label: "Снять стресс, выработать привычку" },
-    { v: "event_prep", label: "Подготовиться к событию" },
-  ];
+  const t = useT();
   return (
     <div>
-      <StepTitle title="Что для вас главное прямо сейчас?" />
+      <StepTitle title={t("Что для вас главное прямо сейчас?")} />
       <div className="space-y-2">
-        {opts.map((o) => (
+        {GOAL_OPTS.map((o) => (
           <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
+            {t(o.label)}
           </OptionButton>
         ))}
       </div>
@@ -409,22 +424,29 @@ function StepGoal({ value, onChange }: { value: Goal | null; onChange: (v: Goal)
 }
 
 function StepMotivation({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT();
   return (
     <div>
       <StepTitle
-        title="Что вас к этому подтолкнуло?"
-        subtitle="Можно в двух словах — это поможет нам лучше понять вас."
+        title={t("Что вас к этому подтолкнуло?")}
+        subtitle={t("Можно в двух словах — это поможет нам лучше понять вас.")}
       />
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Например: хочу чувствовать себя бодрее по утрам"
+        placeholder={t("Например: хочу чувствовать себя бодрее по утрам")}
         rows={5}
         className="resize-none"
       />
     </div>
   );
 }
+
+const TIMEFRAME_OPTS: { v: Timeframe; label: string }[] = [
+  { v: "no_rush", label: msg("Без спешки, в удовольствие") },
+  { v: "few_months", label: msg("Хочу результат за 1–3 месяца") },
+  { v: "event_date", label: msg("Готовлюсь к конкретной дате") },
+];
 
 function StepTimeframe({
   value,
@@ -433,18 +455,14 @@ function StepTimeframe({
   value: Timeframe | null;
   onChange: (v: Timeframe) => void;
 }) {
-  const opts: { v: Timeframe; label: string }[] = [
-    { v: "no_rush", label: "Без спешки, в удовольствие" },
-    { v: "few_months", label: "Хочу результат за 1–3 месяца" },
-    { v: "event_date", label: "Готовлюсь к конкретной дате" },
-  ];
+  const t = useT();
   return (
     <div>
-      <StepTitle title="Есть ли у вас срок?" />
+      <StepTitle title={t("Есть ли у вас срок?")} />
       <div className="space-y-2">
-        {opts.map((o) => (
+        {TIMEFRAME_OPTS.map((o) => (
           <OptionButton key={o.v} active={value === o.v} onClick={() => onChange(o.v)}>
-            {o.label}
+            {t(o.label)}
           </OptionButton>
         ))}
       </div>
@@ -453,15 +471,16 @@ function StepTimeframe({
 }
 
 function StepGroup({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
+  const t = useT();
   return (
     <div>
-      <StepTitle title="Тренировались в групповом формате?" />
+      <StepTitle title={t("Тренировались в групповом формате?")} />
       <div className="space-y-2">
         <OptionButton active={value === true} onClick={() => onChange(true)}>
-          Да, формат знаком
+          {t("Да, формат знаком")}
         </OptionButton>
         <OptionButton active={value === false} onClick={() => onChange(false)}>
-          Нет, будет впервые
+          {t("Нет, будет впервые")}
         </OptionButton>
       </div>
     </div>
@@ -479,29 +498,34 @@ function StepBody({
   gender: Gender | null;
   onChange: (patch: Partial<FormData>) => void;
 }) {
+  const t = useT();
   const currentYear = new Date().getFullYear();
   const weightNum = weight ? Number(weight.replace(",", ".")) : null;
   const yearNum = birthYear ? Number(birthYear) : null;
   return (
     <div>
       <StepTitle
-        title="Базовые параметры — чтобы правильно рассчитать статистику"
-        subtitle={`Эти данные увидите только вы и тренеры ${CLUB.gen}.`}
+        title={t("Базовые параметры — чтобы правильно рассчитать статистику")}
+        subtitle={
+          IS_PACKAGES
+            ? t("Эти данные увидите только вы и тренеры студии.")
+            : t("Эти данные увидите только вы и тренеры клуба.")
+        }
       />
       <div className="space-y-7">
         <div>
-          <Label className="text-sm block text-center mb-3">Вес</Label>
+          <Label className="text-sm block text-center mb-3">{t("Вес")}</Label>
           <RulerPicker
             min={30}
             max={200}
             value={weightNum}
             onChange={(v) => onChange({ weight_kg: String(v) })}
-            unit="кг"
+            unit={t("кг")}
           />
         </div>
 
         <div>
-          <Label className="text-sm block text-center mb-3">Год рождения</Label>
+          <Label className="text-sm block text-center mb-3">{t("Год рождения")}</Label>
           <RulerPicker
             min={1940}
             max={currentYear - 5}
@@ -513,11 +537,11 @@ function StepBody({
         </div>
 
         <div>
-          <Label className="text-sm block text-center mb-3">Пол</Label>
+          <Label className="text-sm block text-center mb-3">{t("Пол")}</Label>
           <div className="grid grid-cols-2 gap-3 max-w-[320px] mx-auto">
             {[
-              { v: "female" as Gender, label: "Женский", Icon: Venus },
-              { v: "male" as Gender, label: "Мужской", Icon: Mars },
+              { v: "female" as Gender, label: t("Женский"), Icon: Venus },
+              { v: "male" as Gender, label: t("Мужской"), Icon: Mars },
             ].map(({ v, label, Icon }) => {
               const active = gender === v;
               return (

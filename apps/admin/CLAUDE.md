@@ -361,6 +361,35 @@ GoTrue и видит только хук писем — в браузер он �
   заголовок, списки, ссылка» и «Как увидит клиент»), разбор и показ —
   `lib/formatted-text.tsx` (+ тест; та же копия в `apps/client`, менять
   синхронно). Хранится обычный текст с разметкой, не HTML.
+- **Переводы контента для клиентского приложения** (2026-10-12; приложение —
+  английский по умолчанию, грузинский, русский). Русский — в прежних
+  колонках (основной язык админки, обязательные поля проверяются на нём),
+  en/ka — колонка `translations jsonb` (`{"en": {"title": "…"}, "ka": {…}}`,
+  имена полей — как у русских колонок, список `benefits` — массив строк;
+  схема — `db/migrations/2026-10-12_zzzzzz_content_translations.sql`).
+  Пустых строк и пустых языков в translations не пишем: приложение берёт
+  язык клиента → английский → русский. Логика — `lib/content-i18n.ts` (+
+  тест: разбор, `cleanTranslations`), хук формы —
+  `hooks/use-content-translations.ts`: `useContentTranslations(item?.translations)`
+  (язык правки, по умолчанию ru) → `tr.input/text/list(…)` (поле, русское
+  значение, его сеттер, плейсхолдер) — биндинги `Input`/`Textarea`, `FormattedTextarea`,
+  `BenefitsEditor` (на en/ka — значение из translations, плейсхолдер —
+  русский текст), `tr.cleaned()` — в payload, `tr.setLang("ru")` перед
+  тостом о пустом обязательном поле; форма страницы с черновиком —
+  `useContentTranslationsValue`. Вид — `components/content-lang.tsx`:
+  `ContentLangSwitch` в `DialogHeader` после описания (решение владельца:
+  языки — в шапке окна; `SegmentedControl` с флагами, точка — есть
+  перевод), `ContentLangNote` первым блоком тела (что заполняется, что
+  увидит клиент при пустом поле), `ContentLangLabel` — флаг у подписи
+  переводимого поля. Нетекстовые поля общие и не скрываются; таблицы — на
+  русском. Формы: новости и услуги (`showcase-page.tsx`: title, description,
+  full_title, full_text, button_text), пуши (title, message), номенклатуры
+  подписочные (name, description, benefits) и пакетные (name, description,
+  tag_text, gift_text, benefits), тренировки (name, description),
+  «Сотрудники» (full_name, bio), «Клубы» (name, address). «О клубе» в
+  «Контактах и правилах» убран 2026-10-12 (раздел «О нас» — тексты в коде
+  приложения, переводятся словарями клиента). Новое поле контента,
+  которое видит клиент, — сразу через `tr` и в select — `translations`.
 - Порядок номенклатуры пакетных клубов — `memberships.sort_order`, строки
   «Номенклатур» перетаскиваются за ручку (HTML5 drag-and-drop, при поиске
   выключено); в таком порядке пакеты стоят в приложении.

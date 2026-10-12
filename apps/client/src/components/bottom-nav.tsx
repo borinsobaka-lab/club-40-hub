@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { resetPageScrollPosition } from "@/lib/page-scroll";
 import { IS_PACKAGES } from "@/lib/terms";
+import { msg, useT } from "@/i18n";
 
 type NavItem = {
   to: "/" | "/schedule" | "/club" | "/memberships";
@@ -20,24 +21,24 @@ type NavItem = {
 };
 
 const mainItems: NavItem[] = [
-  { to: "/", label: "Главное", Icon: Home, exact: true },
-  { to: "/schedule", label: "Бронь", Icon: DumbbellLargeMinimalistic, exact: false },
-  { to: "/club", label: "Клуб", Icon: UsersGroupRounded, exact: false },
+  { to: "/", label: msg("Главное"), Icon: Home, exact: true },
+  { to: "/schedule", label: msg("Бронь"), Icon: DumbbellLargeMinimalistic, exact: false },
+  { to: "/club", label: msg("Клуб"), Icon: UsersGroupRounded, exact: false },
 ];
 
 const moreItems = [
-  { to: "/profile" as const, label: "Профиль", Icon: User },
-  { to: "/memberships" as const, label: "Абонементы", Icon: Card },
+  { to: "/profile" as const, label: msg("Профиль"), Icon: User },
+  { to: "/memberships" as const, label: msg("Абонементы"), Icon: Card },
 ];
 
 // Пакетное приложение (решение владельца 2026-10-11): «Расписание» вместо
 // «Брони», «Студия» вместо «Клуба», «Абонементы» — на месте «Ещё», «Профиль»
 // — правой плиткой вместо ассистента (W).
 const packagesItems: NavItem[] = [
-  { to: "/", label: "Главное", Icon: Home, exact: true },
-  { to: "/schedule", label: "Расписание", Icon: DumbbellLargeMinimalistic, exact: false },
-  { to: "/club", label: "Студия", Icon: MapPointFavourite, exact: false },
-  { to: "/memberships", label: "Абонементы", Icon: Card, exact: false },
+  { to: "/", label: msg("Главное"), Icon: Home, exact: true },
+  { to: "/schedule", label: msg("Расписание"), Icon: DumbbellLargeMinimalistic, exact: false },
+  { to: "/club", label: msg("Студия"), Icon: MapPointFavourite, exact: false },
+  { to: "/memberships", label: msg("Абонементы"), Icon: Card, exact: false },
 ];
 
 export function BottomNav() {
@@ -75,7 +76,7 @@ function PackagesBottomNav() {
             onClick={resetPageScrollPosition}
             className="glass-dark flex w-[72px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[26px] active:bg-white/5"
           >
-            {({ isActive }) => <NavItemBody Icon={User} label="Профиль" active={isActive} />}
+            {({ isActive }) => <NavItemBody Icon={User} label={msg("Профиль")} active={isActive} />}
           </Link>
         </div>
         <div className="h-[env(safe-area-inset-bottom)]" />
@@ -98,6 +99,7 @@ function NavItemBody({
   label: string;
   active: boolean;
 }) {
+  const t = useT();
   return (
     <>
       <span
@@ -112,13 +114,14 @@ function NavItemBody({
           active ? "font-semibold text-white" : "font-medium text-white/70"
         }`}
       >
-        {label}
+        {t(label)}
       </span>
     </>
   );
 }
 
 function SubscriptionBottomNav() {
+  const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);
@@ -170,7 +173,7 @@ function SubscriptionBottomNav() {
                     className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors active:bg-white/5"
                   >
                     <Icon className="h-6 w-6" weight="BoldDuotone" />
-                    <span>{label}</span>
+                    <span>{t(label)}</span>
                   </Link>
                 </li>
               ))}
@@ -186,7 +189,7 @@ function SubscriptionBottomNav() {
                   }`}
                 >
                   <MenuDots className="h-6 w-6" weight="BoldDuotone" />
-                  <span>Ещё</span>
+                  <span>{t("Ещё")}</span>
                 </button>
               </li>
             </ul>
@@ -212,7 +215,7 @@ function SubscriptionBottomNav() {
                     }`}
                   >
                     <Icon className="h-6 w-6" weight="BoldDuotone" />
-                    <span>{label}</span>
+                    <span>{t(label)}</span>
                   </Link>
                 );
               })}
@@ -223,8 +226,8 @@ function SubscriptionBottomNav() {
           <button
             type="button"
             disabled
-            aria-label="Ассистент (скоро)"
-            title="Скоро"
+            aria-label={t("Ассистент (скоро)")}
+            title={t("Скоро")}
             className="assistant-glow glass-dark flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-3xl text-white/70 cursor-not-allowed"
           >
             <span className="glow-orb" />
