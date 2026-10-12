@@ -24,7 +24,7 @@ export function StudioSwitcher() {
       <button
         type="button"
         onClick={() => canSwitch && setOpen(true)}
-        className="flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2.5 text-left backdrop-blur-md transition active:scale-[0.99]"
+        className="flex w-full items-center gap-3 rounded-2xl bg-white/10 px-3 py-2.5 text-left transition active:scale-[0.99]"
       >
         {/* Только название (решение владельца 2026-10-12: без адреса и метки),
             адрес — в списке студий. */}

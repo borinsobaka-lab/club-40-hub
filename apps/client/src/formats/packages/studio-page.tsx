@@ -121,6 +121,7 @@ function StudioInfoTab() {
           alt=""
           className="aspect-[16/10] w-full rounded-2xl bg-muted object-cover"
           loading="lazy"
+          decoding="async"
         />
       )}
       {data?.about && (

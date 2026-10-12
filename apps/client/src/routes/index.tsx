@@ -338,6 +338,7 @@ function HomePage() {
                           alt={n.title}
                           className="absolute inset-0 h-full w-full object-cover"
                           loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
@@ -365,7 +366,7 @@ function HomePage() {
           {/* Пакетное: под кнопками — выбранная студия с переключателем. */}
           {(clubSettings.write_url || clubSettings.call_url || clubSettings.feedback_url) && (
             <section className="px-4 my-3">
-              <div className="rounded-2xl bg-white/10 backdrop-blur-md p-1.5">
+              <div className="rounded-2xl bg-white/10 p-1.5">
                 <div className="flex items-stretch justify-between gap-2">
                   {[
                     { icon: ChatSquare, label: "Написать", href: clubSettings.write_url },
@@ -536,6 +537,7 @@ function HomePage() {
                           alt={s.title}
                           className="absolute inset-0 h-full w-full object-cover"
                           loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
