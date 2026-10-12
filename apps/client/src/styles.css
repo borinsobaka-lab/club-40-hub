@@ -675,20 +675,10 @@ html body [data-sonner-toast][data-type="warning"] {
 }
 
 /* Иллюстрации на тёмной зоне (пакетное приложение: вход, онбординг —
-   Illustration в formats/packages/dark-frame.tsx). Края картинки
-   растворяются в фоне (.art-fade), огоньки идут поверх неё, но не в центре,
-   где сам рисунок, и гаснут к краям блока (.art-glow-over — маска-кольцо). */
+   DarkFrame в formats/packages/dark-frame.tsx): края картинки растворяются
+   в фоне; огоньки — отдельным слоем поверх картинки, с «дыркой» в её центре
+   (маска считается в DarkFrame по замеру картинки). */
 .art-fade {
   -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent 100%);
   mask-image: radial-gradient(closest-side, #000 70%, transparent 100%);
-}
-.art-glow-over {
-  -webkit-mask-image: radial-gradient(
-    closest-side,
-    transparent 40%,
-    #000 70%,
-    #000 80%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(closest-side, transparent 40%, #000 70%, #000 80%, transparent 100%);
 }
