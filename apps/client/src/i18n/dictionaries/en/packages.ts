@@ -75,7 +75,7 @@ const dict: Dictionary = {
   "Не удалось загрузить сотрудников. Обновите страницу.":
     "Couldn't load the team. Please refresh the page.",
   "Тренеры студии скоро появятся": "Studio trainers are coming soon",
-  Администраторы: "Administrators",
+  Админы: "Admins",
   Массажисты: "Massage therapists",
   "Администраторы студии": "Studio administrators",
   "Администраторы студии скоро появятся": "Studio administrators are coming soon",

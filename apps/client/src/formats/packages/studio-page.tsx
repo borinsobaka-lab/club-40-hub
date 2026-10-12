@@ -45,7 +45,7 @@ import { TrainerRatingLine } from "./trainer-rating";
 
 const TABS = [
   { key: "trainer", label: msg("Тренеры") },
-  { key: "admin", label: msg("Администраторы") },
+  { key: "admin", label: msg("Админы") },
   { key: "masseur", label: msg("Массажисты") },
   { key: "about", label: msg("О нас") },
 ] as const;
