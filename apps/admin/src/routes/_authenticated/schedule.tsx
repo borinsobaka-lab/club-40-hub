@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, Plus, ChevronDown, Loader2, Trash2, Copy, Undo2, UserPlus, X } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -26,7 +26,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
-import { ClientCombobox, type ClientOption } from "@/components/client-combobox";
+import { ClientCombobox } from "@/components/client-combobox";
+import { SearchableCombobox } from "@/components/searchable-combobox";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ClientDialog } from "@/components/client-form-dialog";
 import { StaffOption } from "@/components/employee-photo";
 import {
@@ -98,16 +101,20 @@ type Entry = {
   } | null;
   schedule_entry_trainers?: { trainer_id: string; trainer: Trainer | null }[];
   /** Записи с карточками клиентов — для подписи персонального на карточке. */
-  participants?: { status: string; client: ParticipantName | null }[];
+  participants?: { status: string; client_id: string | null; client: ParticipantName | null }[];
 };
 
 type ParticipantName = { first_name: string | null; last_name: string | null; full_name: string };
 
-/** Клиенты персонального занятия: «Фамилия Имя» записанных (не отменённых). */
+/**
+ * Клиенты персонального занятия: «Фамилия Имя» записанных (не отменённых).
+ * Карточку гостя из другого клуба сети RLS не отдаёт — он «Гость» (имя — в
+ * окне занятия).
+ */
 function participantNames(e: Entry) {
   return (e.participants ?? [])
-    .filter((p) => p.client && (p.status === "booked" || p.status === "attended"))
-    .map((p) => clientName(p.client!))
+    .filter((p) => (p.client || p.client_id) && (p.status === "booked" || p.status === "attended"))
+    .map((p) => (p.client ? clientName(p.client) : "Гость"))
     .join(", ");
 }
 
@@ -123,7 +130,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name)), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name))";
+  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name)), participants:schedule_bookings(status, client_id, client:clients(first_name, last_name, full_name))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -1693,6 +1700,8 @@ function EntryForm({
                   <ParticipantActions
                     studioId={studioId}
                     trial={kind === "group"}
+                    packages={packages}
+                    personal={packages && kind === "personal"}
                     onPick={(c) =>
                       setPending((prev) => (prev.some((x) => x.id === c.id) ? prev : [...prev, c]))
                     }
@@ -1913,6 +1922,12 @@ type ClientRow = {
   phone: string | null;
   email: string | null;
   crm_link: string | null;
+  studio_id?: string;
+  studio?: { name: string | null } | null;
+  /** Гость — клиент другого клуба сети (пакетные студии): название его клуба. */
+  home_studio_name?: string | null;
+  /** Карточка гостя закрыта (клуб без доступа): видно имя, телефон и абонемент. */
+  limited?: boolean;
 };
 
 type ActiveMembershipRow = {
@@ -1932,6 +1947,18 @@ type BookingsData = {
   clientsByUser: Map<string, ClientRow>;
   /** У клиента пакетной студии может быть два: пакет тренировок и пакет персональных. */
   membershipsByClient: Map<string, ActiveMembershipRow[]>;
+};
+
+/** Клиент другого клуба сети — как его отдают entry_guest_clients и network_client_search. */
+type GuestClient = {
+  id: string;
+  user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string;
+  phone: string | null;
+  home_studio_name: string | null;
+  memberships: ActiveMembershipRow[];
 };
 
 function bookingClient(data: BookingsData | undefined, b: BookingRow) {
@@ -1966,7 +1993,8 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
 
   // Карточки и абонементы — дополнение: если они не загрузились, записи всё
   // равно показываем (с «Пользователь без анкеты»), а не ошибку на всю панель.
-  const cols = "id, user_id, first_name, last_name, full_name, phone, email, crm_link";
+  const cols =
+    "id, user_id, first_name, last_name, full_name, phone, email, crm_link, studio_id, studio:studios(name)";
   const [byId, byUser] = await Promise.all([
     clientIds.length
       ? supabase.from("clients").select(cols).in("id", clientIds)
@@ -1979,10 +2007,27 @@ async function fetchBookings(entry: Entry): Promise<BookingsData> {
           .in("user_id", userIds)
       : Promise.resolve({ data: [] as ClientRow[] }),
   ]);
-  const clients: ClientRow[] = [...(byId.data ?? []), ...(byUser.data ?? [])];
+  // studio — связь «многие к одному», но разбор select без схемы базы
+  // считает любую связь массивом.
+  const clients = [...(byId.data ?? []), ...(byUser.data ?? [])] as unknown as ClientRow[];
   for (const c of clients) {
+    // Гость, чья карточка видна (у сотрудника есть доступ и в его клуб).
+    if (c.studio_id && c.studio_id !== entry.studio_id) c.home_studio_name = c.studio?.name ?? null;
     clientsById.set(c.id, c);
     if (c.user_id) clientsByUser.set(c.user_id, c);
+  }
+
+  // Гости из других клубов сети: их карточки RLS не отдаёт — имя, телефон,
+  // клуб и действующие абонементы приходят из entry_guest_clients.
+  if (clientIds.some((id) => !clientsById.has(id!))) {
+    const { data: gData } = await supabase.rpc("entry_guest_clients", { p_entry_id: entry.id });
+    for (const g of (gData ?? []) as GuestClient[]) {
+      const { memberships, ...rest } = g;
+      const c: ClientRow = { ...rest, email: null, crm_link: null, limited: true };
+      clientsById.set(c.id, c);
+      if (c.user_id) clientsByUser.set(c.user_id, c);
+      membershipsByClient.set(c.id, memberships);
+    }
   }
   if (clients.length === 0) return empty;
 
@@ -2025,7 +2070,7 @@ const BOOK_REASONS: Record<string, string> = {
   already_booked: "уже записан",
   forbidden: "нет прав в этом клубе",
   not_bookable: "на прочую активность не записывают",
-  client_not_found: "клиент не из этого клуба",
+  client_not_found: "клиент не из этого клуба и не из клубов его сети",
   not_found: "занятие не найдено",
 };
 
@@ -2051,11 +2096,17 @@ type PickedClient = { id: string; name: string };
 function ParticipantActions({
   studioId,
   trial,
+  packages,
+  personal,
   onPick,
   disabled,
 }: {
   studioId: string | null;
   trial: boolean;
+  /** Пакетная студия: можно записать гостя — клиента другого клуба сети. */
+  packages: boolean;
+  /** Персональное: у гостя показываем остаток персональных. */
+  personal: boolean;
   onPick: (c: PickedClient) => void;
   disabled?: boolean;
 }) {
@@ -2089,6 +2140,8 @@ function ParticipantActions({
         <DialogContent className="max-w-md">
           <PickClientForm
             studioId={studioId}
+            packages={packages}
+            personal={personal}
             onCancel={() => setPickOpen(false)}
             onPick={(c) => {
               setPickOpen(false);
@@ -2110,37 +2163,72 @@ function ParticipantActions({
   );
 }
 
+type ClientScope = "own" | "network";
+
 function PickClientForm({
   studioId,
+  packages,
+  personal,
   onPick,
   onCancel,
 }: {
   studioId: string | null;
+  packages: boolean;
+  personal: boolean;
   onPick: (c: PickedClient) => void;
   onCancel: () => void;
 }) {
-  const [picked, setPicked] = useState<ClientOption | null>(null);
+  const [scope, setScope] = useState<ClientScope>("own");
+  const [picked, setPicked] = useState<PickedClient | null>(null);
   const handleSubmit = () => {
     if (!picked) {
       toast.error("Выберите клиента");
       return;
     }
-    onPick({ id: picked.id, name: clientName(picked) });
+    onPick(picked);
   };
   return (
     <>
       <DialogHeader>
         <DialogTitle>Записать клиента</DialogTitle>
-        <DialogDescription>Клиент клуба — поиск по имени, телефону или почте.</DialogDescription>
+        <DialogDescription>
+          {scope === "network"
+            ? "Гость — клиент другого клуба сети: посещение спишется с абонемента его клуба. Поиск по имени, телефону (от 4 цифр) или почте целиком."
+            : "Клиент клуба — поиск по имени, телефону или почте."}
+        </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSubmit}>
         <DialogBody>
-          <FormField label="Клиент" required>
-            <ClientCombobox
-              studioId={studioId}
-              value={picked?.id ?? ""}
-              onChange={(_, c) => setPicked(c)}
+          {packages && (
+            <SegmentedControl
+              aria-label="Чей клиент"
+              fullWidth
+              value={scope}
+              onChange={(v) => {
+                setScope(v);
+                setPicked(null);
+              }}
+              options={[
+                { value: "own", label: "Этот клуб" },
+                { value: "network", label: "Другие клубы сети" },
+              ]}
             />
+          )}
+          <FormField label="Клиент" required>
+            {scope === "network" ? (
+              <NetworkClientCombobox
+                studioId={studioId}
+                personal={personal}
+                value={picked}
+                onChange={setPicked}
+              />
+            ) : (
+              <ClientCombobox
+                studioId={studioId}
+                value={picked?.id ?? ""}
+                onChange={(id, c) => setPicked(c ? { id, name: clientName(c) } : null)}
+              />
+            )}
           </FormField>
         </DialogBody>
         <DialogFooter>
@@ -2151,6 +2239,72 @@ function PickClientForm({
         </DialogFooter>
       </DialogForm>
     </>
+  );
+}
+
+/**
+ * Клиент другого клуба сети (RPC network_client_search): имя, телефон, клуб и
+ * абонемент — карточки чужих клубов сотруднику не видны. Поиск — от 3 символов.
+ */
+function NetworkClientCombobox({
+  studioId,
+  personal,
+  value,
+  onChange,
+}: {
+  studioId: string | null;
+  personal: boolean;
+  value: PickedClient | null;
+  onChange: (c: PickedClient | null) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const term = useDebouncedValue(search, 250).trim();
+  const enabled = !!studioId && term.length >= 3;
+  const { data: found = [], isFetching } = useQuery({
+    queryKey: ["network_client_search", studioId, term],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("network_client_search", {
+        p_studio_id: studioId,
+        p_query: term,
+      });
+      if (error) throw error;
+      return (data ?? []) as GuestClient[];
+    },
+    enabled,
+    placeholderData: keepPreviousData,
+    meta: { errorMessage: "Не удалось найти клиентов других клубов" },
+  });
+  const options = (enabled ? found : []).map((g) => {
+    const m = pickMembership(g.memberships, personal);
+    return {
+      value: g.id,
+      label: clientName(g),
+      hint: [
+        g.home_studio_name,
+        g.phone,
+        m ? membershipSummary(m, personal) : "нет активного абонемента",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      searchText: "",
+    };
+  });
+  return (
+    <SearchableCombobox
+      placeholder="Найти клиента другого клуба"
+      searchPlaceholder="Имя, телефон или почта"
+      emptyText={
+        term.length < 3 ? "Введите от 3 символов" : isFetching ? "Загрузка…" : "Ничего не найдено"
+      }
+      value={value?.id ?? ""}
+      selectedLabel={value?.name}
+      onSearchChange={setSearch}
+      onChange={(id) => {
+        const g = found.find((x) => x.id === id);
+        onChange(g ? { id: g.id, name: clientName(g) } : null);
+      }}
+      options={options}
+    />
   );
 }
 
@@ -2198,9 +2352,28 @@ async function bookingRpc(
 function BookingClientName({ client }: { client: ClientRow | undefined }) {
   if (!client) return <span className="font-medium">Пользователь без анкеты</span>;
   return (
-    <ClientNameLink clientId={client.id} crmLink={client.crm_link}>
-      {clientName(client)}
-    </ClientNameLink>
+    <>
+      {client.limited ? (
+        <span className="font-medium">{clientName(client)}</span>
+      ) : (
+        <ClientNameLink clientId={client.id} crmLink={client.crm_link}>
+          {clientName(client)}
+        </ClientNameLink>
+      )}
+      {client.home_studio_name !== undefined && <GuestBadge studioName={client.home_studio_name} />}
+    </>
+  );
+}
+
+/** Клиент другого клуба сети: посещение спишется с абонемента его клуба. */
+function GuestBadge({ studioName }: { studioName: string | null }) {
+  return (
+    <span
+      className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700"
+      title="Клиент другого клуба сети: посещение спишется с абонемента, купленного в его клубе"
+    >
+      Гость{studioName ? ` · ${studioName}` : ""}
+    </span>
   );
 }
 
@@ -2355,6 +2528,8 @@ function BookingsPanel({
           <ParticipantActions
             studioId={entry.studio_id}
             trial={trial}
+            packages={packages}
+            personal={personalBalance}
             onPick={addParticipant}
             disabled={booking}
           />
@@ -2494,7 +2669,9 @@ function BookingsPanel({
               return (
                 <li key={b.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
                   <div className="min-w-0 flex-1">
-                    <BookingClientName client={c} />
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <BookingClientName client={c} />
+                    </div>
                     <div className="truncate text-xs text-muted-foreground">
                       {c?.phone ?? c?.email ?? "—"}
                     </div>

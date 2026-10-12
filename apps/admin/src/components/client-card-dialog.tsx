@@ -689,6 +689,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 type VisitRow = {
   id: string;
+  studio_id: string;
+  studio: { name: string | null } | null;
   workout_name: string | null;
   starts_at: string;
   status: BookingStatus;
@@ -698,21 +700,27 @@ type VisitRow = {
 /**
  * Записи клиента: по карточке (client_id — и записи администратора клиента без
  * приложения) и по учётной записи (старые строки журнала без client_id).
+ * Пакетные студии: гостевые посещения в других клубах сети тоже здесь —
+ * с колонкой «Клуб», если они есть.
  */
 function VisitsTab({ clientId, userId }: { clientId: string; userId: string | null }) {
+  const studioId = useActiveStudioId();
   const { data: rows = [], isLoading: loading } = useQuery({
     queryKey: ["bookings_log", "by-client", clientId, userId],
     queryFn: () =>
       unwrap<VisitRow[]>(
         supabase
           .from("bookings_log")
-          .select("id, workout_name, starts_at, status, cancelled_at")
+          .select(
+            "id, studio_id, studio:studios(name), workout_name, starts_at, status, cancelled_at",
+          )
           .or(userId ? `client_id.eq.${clientId},user_id.eq.${userId}` : `client_id.eq.${clientId}`)
           .order("starts_at", { ascending: false })
           .limit(500),
       ),
     meta: { errorMessage: "Не удалось загрузить посещения клиента" },
   });
+  const showStudio = rows.some((r) => r.studio_id !== studioId);
 
   if (!loading && rows.length === 0) {
     return <InfoNote variant="empty">Посещений пока нет.</InfoNote>;
@@ -724,6 +732,7 @@ function VisitsTab({ clientId, userId }: { clientId: string; userId: string | nu
         <TableHeader>
           <TableRow>
             <TableHead>Тренировка</TableHead>
+            {showStudio && <TableHead>Клуб</TableHead>}
             <TableHead>Дата и время</TableHead>
             <TableHead>Статус</TableHead>
             <TableHead>Отменена</TableHead>
@@ -731,11 +740,19 @@ function VisitsTab({ clientId, userId }: { clientId: string; userId: string | nu
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableSkeletonRows columns={4} rows={5} />
+            <TableSkeletonRows columns={showStudio ? 5 : 4} rows={5} />
           ) : (
             rows.map((r) => (
               <TableRow key={r.id}>
                 <TableCell>{r.workout_name ?? "Персональное занятие"}</TableCell>
+                {showStudio && (
+                  <TableCell className="whitespace-nowrap">
+                    {r.studio?.name ?? "—"}
+                    {r.studio_id !== studioId && (
+                      <span className="ml-1 text-xs text-muted-foreground">(гость)</span>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell className="whitespace-nowrap">{formatDateTime(r.starts_at)}</TableCell>
                 <TableCell>
                   <BookingStatusBadge status={r.status} />
