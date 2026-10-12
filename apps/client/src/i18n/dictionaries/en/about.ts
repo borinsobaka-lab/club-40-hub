@@ -30,13 +30,13 @@ const dict: Dictionary = {
     "With the second studio our story continued: more workouts, new friendships, smiles and people for whom Lady Stretch has become part of everyday life.",
   "Наша вторая студия": "Our second studio",
   "Июнь 2026": "June 2026",
-  "Забота не только в движении": "Care beyond movement",
-  "В июне 2026 года мы открыли массажный кабинет для клиенток наших студий.":
-    "In June 2026 we opened a massage room for our studios' clients.",
-  "Нам хотелось, чтобы забота о себе не заканчивалась вместе с тренировкой. Теперь после занятия можно задержаться ещё немного: расслабить мышцы, восстановиться и просто побыть в тишине.":
-    "We wanted self-care not to end when the workout does. Now you can stay a little longer after class: relax your muscles, recover and simply enjoy some quiet.",
-  "Массаж стал естественным продолжением того, с чего начинался Lady Stretch, — места, где о вас заботятся.":
-    "Massage has become a natural continuation of what Lady Stretch started as — a place where you're taken care of.",
+  "Время для отдыха": "Time to unwind",
+  "В июне 2026 года мы открыли массажный кабинет NEBA.":
+    "In June 2026 we opened NEBA, our massage room.",
+  "Нам хотелось создать ещё одно уютное пространство, где можно замедлиться, отвлечься от повседневных забот и уделить время себе.":
+    "We wanted to create one more cosy space where you can slow down, take a break from everyday worries and make time for yourself.",
+  "Так массаж стал ещё одной частью Lady Stretch, дополнив наши тренировки возможностью расслабиться, отдохнуть и восстановить силы.":
+    "That's how massage became another part of Lady Stretch, adding to our workouts a chance to relax, rest and recharge.",
   "Наш массажный кабинет": "Our massage room",
   Сегодня: "Today",
   "Больше, чем тренировки": "More than workouts",
