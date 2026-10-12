@@ -280,6 +280,11 @@ AUTH_SETUP.md.
   Онбординг пакетного приложения: `db/migrations/2026-10-11_packages_onboarding.sql`
   — `member_profiles.goal_other` (текст цели «Другое»), `birth_date`, новые
   значения enum `fitness_goal` (`flexibility`/`stress_relief`/`body_shape`/`other`).
+  История веса клиента: `db/migrations/2026-10-12_zzzzz_client_weights.sql` —
+  `client_weights` (user_id, `weight_kg`, `measured_at`, `source`
+  `onboarding`/`manual`; клиент ведёт свою, сотрудник студии читает); вес из
+  анкеты — одна запись `onboarding` датой отправки (уже пройденные анкеты
+  перенесены), дальше — раздел взвешиваний (`manual`).
   Цвет тренировки (пакетный формат, полоска в расписании):
   `db/migrations/2026-10-11_workout_color.sql` — `workouts.color`.
   Типы занятий в расписании (оба формата):
