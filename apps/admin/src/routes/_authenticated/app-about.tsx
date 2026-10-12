@@ -67,6 +67,7 @@ type Settings = {
   cover_photo_path: string | null;
   first_studio_photos: string[];
   second_studio_photos: string[];
+  massage_photos: string[];
   community_photo_path: string | null;
   visitors_count: number | null;
   group_trainings_count: number | null;
@@ -80,6 +81,7 @@ type FormValues = {
   cover: string | null;
   first: string[];
   second: string[];
+  massage: string[];
   community: string | null;
   counts: Record<CountKey, string>;
   followers: string;
@@ -93,6 +95,7 @@ function toFormValues(s: Settings | null | undefined): FormValues {
     cover: s?.cover_photo_path ?? null,
     first: s?.first_studio_photos ?? [],
     second: s?.second_studio_photos ?? [],
+    massage: s?.massage_photos ?? [],
     community: s?.community_photo_path ?? null,
     counts: Object.fromEntries(
       COUNTS.map((c) => [c.key, s?.[c.key] ? String(s[c.key]) : ""]),
@@ -109,7 +112,8 @@ function toFormValues(s: Settings | null | undefined): FormValues {
 // Тексты и даты — в коде приложения (apps/client/src/formats/packages/
 // about-config.ts), здесь — фото, цифры сообщества и Instagram:
 // app_about_settings, строка на формат
-// (db/migrations/2026-10-12_zzzzzz_app_about_page.sql). Пока в приложении
+// (db/migrations/2026-10-12_zzzzzz_app_about_page.sql; галерея массажного
+// кабинета — 2026-10-12_zzzzzzz_app_about_massage.sql). Пока в приложении
 // одна такая история — у пакетного; правит раздел «Мобильное приложение» и
 // сотрудник пакетного клуба (так же пускает RLS).
 const TABLE = "app_about_settings";
@@ -192,6 +196,7 @@ function AppAboutForm({ onSavingChange }: { onSavingChange: (saving: boolean) =>
         cover_photo_path: form.cover,
         first_studio_photos: form.first,
         second_studio_photos: form.second,
+        massage_photos: form.massage,
         community_photo_path: form.community,
         ...counts,
         instagram_followers: followers,
@@ -269,6 +274,17 @@ function AppAboutForm({ onSavingChange }: { onSavingChange: (saving: boolean) =>
             folder={`${FOLDER}/second-studio`}
             value={form.second}
             onChange={(v) => setField("second", v)}
+          />
+        </FormField>
+      </section>
+
+      <section className="space-y-4 rounded-lg border bg-background p-6">
+        <SectionTitle title="Массажный кабинет" text="Для клиенток студий, июнь 2026." />
+        <FormField label="Фото кабинета" tip={TIPS.gallery} htmlFor={null} optional>
+          <GalleryField
+            folder={`${FOLDER}/massage`}
+            value={form.massage}
+            onChange={(v) => setField("massage", v)}
           />
         </FormField>
       </section>

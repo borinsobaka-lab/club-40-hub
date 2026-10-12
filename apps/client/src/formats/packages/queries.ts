@@ -270,6 +270,7 @@ export type AboutSettings = {
   cover_photo_path: string | null;
   first_studio_photos: string[];
   second_studio_photos: string[];
+  massage_photos: string[];
   community_photo_path: string | null;
   visitors_count: number | null;
   group_trainings_count: number | null;

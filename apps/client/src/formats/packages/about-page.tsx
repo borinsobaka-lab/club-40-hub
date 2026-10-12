@@ -315,11 +315,11 @@ function Thanks() {
         items={ABOUT_THANKS.paragraphs}
         className="mx-auto mt-4 max-w-sm text-muted-foreground"
       />
-      {/* Подпись — логотип светло-серым (сам файл белый, для тёмных фонов). */}
+      {/* Подпись — логотип серым (сам файл белый, для тёмных фонов). */}
       <span
         role="img"
         aria-label="Lady Stretch"
-        className="mx-auto mt-10 block aspect-[1064/305] h-7 bg-muted-foreground/30"
+        className="mx-auto mt-10 block aspect-[1064/305] h-7 bg-muted-foreground/70"
         style={{
           maskImage: `url(${packagesLogo})`,
           WebkitMaskImage: `url(${packagesLogo})`,

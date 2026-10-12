@@ -1063,7 +1063,8 @@ export function AppSettingsFormSkeleton({ apps = 2 }: { apps?: number }) {
 }
 
 /**
- * Форма «О нас»: справка и пять секций — обложка, две галереи студий,
+ * Форма «О нас»: справка и шесть секций — обложка, три галереи (студии и
+ * массажный кабинет),
  * сообщество (три числа и фото), Instagram (подписчики и сетка).
  */
 export function AppAboutFormSkeleton() {
@@ -1085,7 +1086,7 @@ export function AppAboutFormSkeleton() {
           <Skeleton className="h-9 w-28 rounded-full" />
         </div>
       </div>
-      {[0, 1].map((i) => (
+      {[0, 1, 2].map((i) => (
         <div key={i} className="space-y-4 rounded-lg border bg-background p-6">
           {title}
           {label}

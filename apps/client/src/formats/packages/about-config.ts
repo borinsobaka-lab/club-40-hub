@@ -28,7 +28,7 @@ export const ABOUT_INTRO = {
 
 export type AboutChapter = {
   /** Колонка галереи в app_about_settings. */
-  photosKey: "first_studio_photos" | "second_studio_photos";
+  photosKey: "first_studio_photos" | "second_studio_photos" | "massage_photos";
   date: string;
   title: string;
   paragraphs: string[];
@@ -64,6 +64,22 @@ export const ABOUT_CHAPTERS: AboutChapter[] = [
     ],
     galleryCaption: msg("Наша вторая студия"),
   },
+  {
+    // Глава от владельца 2026-10-12; текст написан по его брифу.
+    photosKey: "massage_photos",
+    date: msg("Июнь 2026"),
+    title: msg("Забота не только в движении"),
+    paragraphs: [
+      msg("В июне 2026 года мы открыли массажный кабинет для клиенток наших студий."),
+      msg(
+        "Нам хотелось, чтобы забота о себе не заканчивалась вместе с тренировкой. Теперь после занятия можно задержаться ещё немного: расслабить мышцы, восстановиться и просто побыть в тишине.",
+      ),
+      msg(
+        "Массаж стал естественным продолжением того, с чего начинался Lady Stretch, — места, где о вас заботятся.",
+      ),
+    ],
+    galleryCaption: msg("Наш массажный кабинет"),
+  },
 ];
 
 export const ABOUT_COMMUNITY = {
@@ -78,7 +94,8 @@ export const ABOUT_COMMUNITY = {
       "Нам приятно видеть, как девушки возвращаются на тренировки, пробуют новые направления и делают движение частью своей жизни.",
     ),
   ],
-  studios: { count: ABOUT_CHAPTERS.length, label: msg("студии — в Ваке и Сабуртало") },
+  // Не по числу глав: среди них есть и массажный кабинет.
+  studios: { count: 2, label: msg("студии — в Ваке и Сабуртало") },
   /**
    * Цифры из админки (колонки app_about_settings), в приложении — «N+»;
    * нет числа — показатель скрыт.
