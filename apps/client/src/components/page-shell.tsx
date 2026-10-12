@@ -69,12 +69,20 @@ export function HeaderBackdrop() {
 /**
  * Сами огоньки — слой на весь родитель (position: relative/absolute).
  * Отдельно от подложки — для экранов со своим порядком слоёв (DarkFrame в
- * formats/packages/dark-frame.tsx: огоньки поверх иллюстрации).
+ * formats/packages/dark-frame.tsx и «Пригласи подругу»: огоньки поверх
+ * иллюстрации).
  */
-export function GlowBlobs({ className = "" }: { className?: string }) {
+export function GlowBlobs({
+  className = "",
+  positions = BLOB_STYLES,
+}: {
+  className?: string;
+  /** Свои места огоньков (левый верхний угол, %) — например, кольцом вокруг картинки. */
+  positions?: { top: string; left: string }[];
+}) {
   return (
     <div className={`gradient-blobs ${className}`}>
-      {BLOB_STYLES.map((style, i) => (
+      {positions.map((style, i) => (
         <span key={i} style={style} />
       ))}
     </div>

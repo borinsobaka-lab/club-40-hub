@@ -177,7 +177,7 @@ export function WorkoutDrawer({
           aria-describedby={undefined}
         >
           <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
-          <div className="overflow-y-auto overscroll-contain px-4 pt-3 pb-6">
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-4 pt-3 pb-5">
             {data && (
               <>
                 {isPack ? (
@@ -236,87 +236,93 @@ export function WorkoutDrawer({
                   />
                 )}
 
+                {/* Причина отмены и подсказки — в прокрутке; кнопки — ниже,
+                    закреплены (решение владельца 2026-10-12: «Записаться» не
+                    должна уезжать за край длинного описания). */}
                 {isBooked ? (
-                  <>
-                    <div className="mt-6">
-                      <div className="mb-2 text-xs font-semibold text-muted-foreground">
-                        Причина отмены (по желанию)
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {CANCEL_REASONS.map((r) => (
-                          <button
-                            key={r}
-                            type="button"
-                            onClick={() => setCancelReason(cancelReason === r ? "" : r)}
-                            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                              cancelReason === r
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-foreground"
-                            }`}
-                          >
-                            {r}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="mt-6">
+                    <div className="mb-2 text-xs font-semibold text-muted-foreground">
+                      Причина отмены (по желанию)
                     </div>
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (cancelLocked) {
-                            toast.error(
-                              `Тренировку можно отменить не позже чем за ${formatCancelDeadline(cancelMinutes!)} до начала`,
-                            );
-                            return;
-                          }
-                          onBook(cancelReason || undefined);
-                        }}
-                        disabled={isPending}
-                        className={`flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
-                      >
-                        {isPending ? "..." : "Отменить запись"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCalendarPickerOpen(true)}
-                        disabled={!calendarEvent}
-                        className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
-                      >
-                        <Calendar className="h-5 w-5" weight="BoldDuotone" />В календарь
-                      </button>
+                    <div className="flex flex-wrap gap-2">
+                      {CANCEL_REASONS.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setCancelReason(cancelReason === r ? "" : r)}
+                          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                            cancelReason === r
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground"
+                          }`}
+                        >
+                          {r}
+                        </button>
+                      ))}
                     </div>
-                  </>
+                  </div>
                 ) : isWaitlisted ? (
-                  <>
-                    <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                      Вы в листе ожидания. Если освободится место, с вами свяжется администратор.
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onBook()}
-                      disabled={isPending}
-                      className="mt-4 w-full h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
-                    >
-                      {isPending ? "..." : "Выйти из очереди"}
-                    </button>
-                  </>
+                  <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                    Вы в листе ожидания. Если освободится место, с вами свяжется администратор.
+                  </div>
                 ) : bookingNote ? (
                   <div className="mt-6 rounded-2xl bg-muted p-4 text-sm text-muted-foreground">
                     {bookingNote}
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onBook()}
-                    disabled={isPending}
-                    className="mt-6 w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
-                  >
-                    {isPending ? "..." : isFull ? "Встать в очередь" : "Записаться"}
-                  </button>
-                )}
+                ) : null}
               </>
             )}
           </div>
+          {data && (isBooked || isWaitlisted || !bookingNote) && (
+            <div className="shrink-0 border-t border-border/60 bg-background px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
+              {isBooked ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (cancelLocked) {
+                        toast.error(
+                          `Тренировку можно отменить не позже чем за ${formatCancelDeadline(cancelMinutes!)} до начала`,
+                        );
+                        return;
+                      }
+                      onBook(cancelReason || undefined);
+                    }}
+                    disabled={isPending}
+                    className={`flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
+                  >
+                    {isPending ? "..." : "Отменить запись"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarPickerOpen(true)}
+                    disabled={!calendarEvent}
+                    className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
+                  >
+                    <Calendar className="h-5 w-5" weight="BoldDuotone" />В календарь
+                  </button>
+                </div>
+              ) : isWaitlisted ? (
+                <button
+                  type="button"
+                  onClick={() => onBook()}
+                  disabled={isPending}
+                  className="w-full h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                >
+                  {isPending ? "..." : "Выйти из очереди"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onBook()}
+                  disabled={isPending}
+                  className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                >
+                  {isPending ? "..." : isFull ? "Встать в очередь" : "Записаться"}
+                </button>
+              )}
+            </div>
+          )}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
 

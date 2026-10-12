@@ -127,14 +127,18 @@ export function PackagesMembershipsPage() {
 /**
  * Карточка пакета (вёрстка по прайсу студии, решение владельца 2026-10-12):
  * название и тег справа (бледный / яркий — у яркого и рамка карточки),
- * описание — под названием до цены, «Что входит» (тренировки, рассрочка),
+ * описание — под названием до цены, «Что входит» (пункты из админки, без
+ * них — тренировки и рассрочка),
  * тёмный блок «В подарок» (текст из админки) и срок действия внизу.
  * Подарочные персональные в «Что входит» не пишутся — их пишут в «В подарок».
  */
 function PackCard({ m }: { m: Pack }) {
   const visits = m.visits_count ?? 0;
   const personal = m.personal_count ?? 0;
-  const features = [
+  // «Что входит» задают в админке по пунктам; не задано — число тренировок
+  // и рассрочка, как раньше.
+  const custom = (m.benefits ?? []).map((b) => b.trim()).filter(Boolean);
+  const auto = [
     m.kind === "personal"
       ? `${personal} ${plural(personal, "персональная тренировка", "персональные тренировки", "персональных тренировок")}`
       : m.kind === "trial"
@@ -142,6 +146,7 @@ function PackCard({ m }: { m: Pack }) {
         : `${visits} ${plural(visits, "тренировка", "тренировки", "тренировок")}`,
     (m.max_payments ?? 1) > 1 ? `Можно оплатить частями — до ${m.max_payments} платежей` : null,
   ].filter(Boolean) as string[];
+  const features = custom.length > 0 ? custom : auto;
   const tag = m.tag_text?.trim();
   const bright = !!tag && m.tag_style === "bright";
   const duration = durationLabel(m.duration_days);

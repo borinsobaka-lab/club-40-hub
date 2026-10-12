@@ -103,6 +103,8 @@ export type Pack = {
   tag_style?: "soft" | "bright" | null;
   /** Блок «В подарок» — текст с разметкой. */
   gift_text?: string | null;
+  /** «Что входит» — пункты из админки («Номенклатуры»). */
+  benefits?: string[] | null;
 };
 
 export type MyMembership = {

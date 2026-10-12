@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormattedTextarea } from "@/components/formatted-textarea";
 import { stripFormatting } from "@/lib/formatted-text";
+import { BenefitsEditor } from "@/components/benefits-editor";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -60,12 +61,14 @@ const TIPS = {
   price:
     "Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет.",
   description:
-    "Видно клиентам в карточке пакета в приложении. Можно выделять жирным, делать списки и ссылки.",
+    "Короткий текст под названием пакета в приложении, до цены. Можно выделять жирным, делать списки и ссылки.",
   order:
     "Перетащите строку за ручку, чтобы поменять порядок: в таком же порядке абонементы стоят в приложении.",
   payments:
     "Сколькими ежемесячными платежами можно оплатить пакет (внутренняя рассрочка). 1 — только сразу. При продаже можно выбрать меньше.",
   tag: "Короткая пометка справа от названия в приложении: «Популярно», «Максимум», «Старт». Пусто — без тега. Яркий — розовая плашка с белым текстом, бледный — светлая.",
+  benefits:
+    "Пункты «Что входит» в карточке пакета в приложении, по одному: «2 диагностики тела», «Продление со скидкой 35%». Пусто — приложение напишет число тренировок и рассрочку само.",
   gift: "Блок «В подарок» под составом пакета в приложении (заголовок всегда «В подарок»). Например: **Персональная тренировка** — 110 ₾. Персональные в подарок отдельной строкой в составе не показываются — напишите их здесь.",
 };
 
@@ -131,13 +134,15 @@ type Package = {
   tag_style: TagStyle | null;
   /** Блок «В подарок» в приложении (текст с разметкой). */
   gift_text: string | null;
+  /** «Что входит» в приложении — пункты по одному. */
+  benefits: string[] | null;
 };
 
 /** Поля, которыми можно предзаполнить новый пакет (дублирование). */
 type PackageDraft = Omit<Package, "id" | "studio_id" | "sort_order">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order, tag_text, tag_style, gift_text";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order, tag_text, tag_style, gift_text, benefits";
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
@@ -506,6 +511,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
   const [tagText, setTagText] = useState(init?.tag_text ?? "");
   const [tagStyle, setTagStyle] = useState<TagStyle>(init?.tag_style ?? "soft");
   const [giftText, setGiftText] = useState(init?.gift_text ?? "");
+  const [benefits, setBenefits] = useState<string[]>(init?.benefits ?? []);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -577,7 +583,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         installment_enabled: false,
         for_couple: false,
         freeze_days_allowed: 0,
-        benefits: [],
+        benefits,
       };
       const { error } = item
         ? await supabase.from("memberships").update(payload).eq("id", item.id)
@@ -735,6 +741,14 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
                 В приложении: <PackageTag text={tagText.trim()} style={tagStyle} />
               </div>
             )}
+
+            <FormField label="Что входит" tip={TIPS.benefits} optional>
+              <BenefitsEditor
+                value={benefits}
+                onChange={setBenefits}
+                placeholder="Например: 2 диагностики тела — и нажмите +"
+              />
+            </FormField>
 
             <FormField label="В подарок" tip={TIPS.gift} optional>
               <FormattedTextarea rows={3} value={giftText} onChange={setGiftText} />

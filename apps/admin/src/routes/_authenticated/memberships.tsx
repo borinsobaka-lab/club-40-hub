@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormattedTextarea } from "@/components/formatted-textarea";
 import { stripFormatting } from "@/lib/formatted-text";
+import { BenefitsEditor } from "@/components/benefits-editor";
 import { CheckboxOption, FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -583,65 +584,6 @@ function MembershipForm({ onOpenChange, studioId, item, draft, onSaved }: Dialog
           </Button>
         </DialogFooter>
       </DialogForm>
-    </>
-  );
-}
-
-/** Список «преимуществ»: поле ввода + «+» (или Enter), у каждого пункта — удаление. */
-function BenefitsEditor({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (next: string[]) => void;
-}) {
-  const [draft, setDraft] = useState("");
-
-  const add = () => {
-    const v = draft.trim();
-    if (!v) return;
-    onChange([...value, v]);
-    setDraft("");
-  };
-
-  return (
-    <>
-      <div className="flex gap-2">
-        <Input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Добавьте преимущество и нажмите +"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
-        />
-        <Button variant="outline" size="icon" onClick={add} aria-label="Добавить преимущество">
-          <Plus />
-        </Button>
-      </div>
-      {value.length > 0 && (
-        <ul className="space-y-1 pt-1">
-          {value.map((b, i) => (
-            <li
-              key={i}
-              className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1 text-sm"
-            >
-              <span className="truncate">{b}</span>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Удалить"
-                onClick={() => onChange(value.filter((_, idx) => idx !== i))}
-              >
-                <X />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
     </>
   );
 }
