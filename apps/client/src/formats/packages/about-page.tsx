@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown } from "@solar-icons/react";
 
@@ -40,8 +40,9 @@ export function AboutTab() {
   const settings: AboutSettings | null | undefined = isPending ? undefined : (data ?? null);
 
   return (
-    <div className="bg-muted pt-4">
-      <section className="rounded-b-[14px] bg-background px-4 pb-8">
+    <div className="bg-muted">
+      {/* Отступ под табами — белый, внутри секции: серая полоска над обложкой лишняя. */}
+      <section className="rounded-b-[14px] bg-background px-4 pt-4 pb-8">
         <Intro settings={settings} />
       </section>
 
@@ -82,26 +83,26 @@ function Intro({ settings }: { settings: AboutSettings | null | undefined }) {
   return (
     <>
       <Reveal>
-        <div className="relative aspect-[4/5] max-h-[70vh] w-full overflow-hidden rounded-3xl bg-muted">
+        {/* Обложка горизонтальная 16:9 (решение владельца 2026-10-12):
+            поверх — только логотип, заголовок — под фото (на низкой
+            картинке он закрывал бы кадр, по-грузински — в три строки). */}
+        <div className="relative aspect-video w-full overflow-hidden rounded-3xl bg-muted">
           <Photo
             src={photoSrc(settings, settings?.cover_photo_path)}
             className="absolute inset-0 h-full w-full"
             eager
           />
-          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
           <img
             src={packagesLogo}
             alt="Lady Stretch"
-            className="absolute left-5 top-5 h-8 w-auto"
+            className="absolute left-4 top-4 h-7 w-auto"
             decoding="async"
           />
-          <h2 className="absolute inset-x-5 bottom-5 text-[26px] font-semibold leading-tight text-white">
-            {t(ABOUT_INTRO.title)}
-          </h2>
         </div>
+        <h2 className="mt-5 text-[26px] font-semibold leading-tight">{t(ABOUT_INTRO.title)}</h2>
       </Reveal>
-      <Reveal className="mt-6">
+      <Reveal className="mt-4">
         <Paragraphs items={ABOUT_INTRO.paragraphs} />
       </Reveal>
       <Reveal className="mt-6 flex items-center gap-1.5 text-sm font-semibold text-primary">
@@ -172,12 +173,13 @@ function Community({ settings }: { settings: AboutSettings | null | undefined })
   const t = useT();
   const c = ABOUT_COMMUNITY;
   // Плитки 2 в ряд: студии и цифры из админки (без числа — плитки нет),
-  // «с 2023 года» — во всю ширину последней строкой.
+  // «с 2023 года» — во всю ширину последней строкой. Цифры «набегают» от
+  // нуля, когда плитки доезжают до экрана (CountUp).
   const tiles = [
-    { value: c.studios.value, label: t(c.studios.label) },
+    { value: c.studios.count, plus: false, label: t(c.studios.label) },
     ...c.counts.flatMap((k) => {
       const n = settings?.[k.key];
-      return n && n > 0 ? [{ value: plusCount(t, n), label: t(k.label) }] : [];
+      return n && n > 0 ? [{ value: n, plus: true, label: t(k.label) }] : [];
     }),
   ];
   // «с 2023» / «since 2023» / «2023 წლიდან»: год крупно, слова вокруг — мельче.
@@ -190,7 +192,8 @@ function Community({ settings }: { settings: AboutSettings | null | undefined })
         <h2 className="mt-1 text-2xl font-semibold">{t(c.title)}</h2>
         <Paragraphs items={c.paragraphs} className="mt-3" />
       </Reveal>
-      <Reveal className="mt-6">
+      {/* Плитки — на всю ширину секции, без отступа под хронологию. */}
+      <Reveal className="mt-6 -ml-7">
         <dl className="grid grid-cols-2 gap-2">
           {tiles.map((tile, i) => (
             <div
@@ -200,7 +203,7 @@ function Community({ settings }: { settings: AboutSettings | null | undefined })
               }`}
             >
               <dt className="text-[28px] leading-none font-bold whitespace-nowrap text-primary tabular-nums">
-                {tile.value}
+                <CountUp value={tile.value} plus={tile.plus} />
               </dt>
               <dd className="mt-2 text-[13px] leading-snug text-foreground/80">{tile.label}</dd>
             </div>
@@ -308,11 +311,11 @@ function Thanks() {
         items={ABOUT_THANKS.paragraphs}
         className="mx-auto mt-4 max-w-sm text-muted-foreground"
       />
-      {/* Подпись — логотип цветом бренда (сам файл белый, для тёмных фонов). */}
+      {/* Подпись — логотип светло-серым (сам файл белый, для тёмных фонов). */}
       <span
         role="img"
         aria-label="Lady Stretch"
-        className="mx-auto mt-10 block aspect-[1064/305] h-7 bg-primary/70"
+        className="mx-auto mt-10 block aspect-[1064/305] h-7 bg-muted-foreground/30"
         style={{
           maskImage: `url(${packagesLogo})`,
           WebkitMaskImage: `url(${packagesLogo})`,
@@ -471,27 +474,7 @@ function Paragraphs({ items, className = "" }: { items: string[]; className?: st
  */
 function Reveal({ children, className = "" }: { children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setShown(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setShown(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.05 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const shown = useInView(ref);
 
   return (
     <div
@@ -502,5 +485,68 @@ function Reveal({ children, className = "" }: { children: ReactNode; className?:
     >
       {children}
     </div>
+  );
+}
+
+/** Элемент доехал до экрана (один раз; без IntersectionObserver — сразу). */
+function useInView(ref: RefObject<HTMLElement | null>): boolean {
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.05 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ref]);
+  return inView;
+}
+
+/**
+ * Число «набегает» от нуля до значения, когда доезжает до экрана (~1,6 с,
+ * замедляясь к концу). Ширину держат tabular-nums. При «уменьшить движение»
+ * — сразу итог.
+ */
+function CountUp({ value, plus }: { value: number; plus: boolean }) {
+  const t = useT();
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref);
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setShown(value);
+      return;
+    }
+    const duration = 1600;
+    const start = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setShown(Math.round(value * eased));
+      if (p < 1) frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [inView, value]);
+
+  return (
+    <span ref={ref}>
+      {t.number(shown)}
+      {plus && "+"}
+    </span>
   );
 }

@@ -78,7 +78,7 @@ export const ABOUT_COMMUNITY = {
       "Нам приятно видеть, как девушки возвращаются на тренировки, пробуют новые направления и делают движение частью своей жизни.",
     ),
   ],
-  studios: { value: String(ABOUT_CHAPTERS.length), label: msg("студии — в Ваке и Сабуртало") },
+  studios: { count: ABOUT_CHAPTERS.length, label: msg("студии — в Ваке и Сабуртало") },
   /**
    * Цифры из админки (колонки app_about_settings), в приложении — «N+»;
    * нет числа — показатель скрыт.
