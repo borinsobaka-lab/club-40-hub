@@ -230,6 +230,7 @@ export type AboutSettings = {
   cover_photo_path: string | null;
   first_studio_photos: string[];
   second_studio_photos: string[];
+  massage_photos: string[];
   community_photo_path: string | null;
   visitors_count: number | null;
   group_trainings_count: number | null;
@@ -252,7 +253,7 @@ export function aboutQuery() {
       const { data, error } = await untypedDb
         .from("app_about_settings")
         .select(
-          "cover_photo_path, first_studio_photos, second_studio_photos, community_photo_path, visitors_count, group_trainings_count, visits_count, instagram_followers, instagram_posts",
+          "cover_photo_path, first_studio_photos, second_studio_photos, massage_photos, community_photo_path, visitors_count, group_trainings_count, visits_count, instagram_followers, instagram_posts",
         )
         .eq("format", APP_FORMAT)
         .maybeSingle();
