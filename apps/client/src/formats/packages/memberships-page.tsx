@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, Ticket } from "@solar-icons/react";
+import { AddCircle, Ticket } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
@@ -66,8 +66,10 @@ export function PackagesMembershipsPage() {
   );
 
   return (
+    // scrollKey не зависит от вкладки: иначе смена вкладки пересоздавала
+    // страницу — прокрутка прыгала наверх, подчёркивание табов не перетекало.
     <PageShell
-      scrollKey={tab}
+      scrollKey="memberships"
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-semibold">Абонементы</h1>
@@ -122,6 +124,13 @@ export function PackagesMembershipsPage() {
   );
 }
 
+/**
+ * Карточка пакета (вёрстка по прайсу студии, решение владельца 2026-10-12):
+ * название и тег справа (бледный / яркий — у яркого и рамка карточки),
+ * описание — под названием до цены, «Что входит» (тренировки, рассрочка),
+ * тёмный блок «В подарок» (текст из админки) и срок действия внизу.
+ * Подарочные персональные в «Что входит» не пишутся — их пишут в «В подарок».
+ */
 function PackCard({ m }: { m: Pack }) {
   const visits = m.visits_count ?? 0;
   const personal = m.personal_count ?? 0;
@@ -131,36 +140,61 @@ function PackCard({ m }: { m: Pack }) {
       : m.kind === "trial"
         ? "Пробное посещение"
         : `${visits} ${plural(visits, "тренировка", "тренировки", "тренировок")}`,
-    m.kind === "package" && personal > 0
-      ? `+ ${personal} ${plural(personal, "персональная", "персональные", "персональных")} в подарок`
-      : null,
-    durationLabel(m.duration_days) ? `Действует ${durationLabel(m.duration_days)}` : null,
     (m.max_payments ?? 1) > 1 ? `Можно оплатить частями — до ${m.max_payments} платежей` : null,
   ].filter(Boolean) as string[];
+  const tag = m.tag_text?.trim();
+  const bright = !!tag && m.tag_style === "bright";
+  const duration = durationLabel(m.duration_days);
 
   return (
-    <Card className="overflow-hidden rounded-2xl p-5">
-      <h3 className="text-xl font-semibold leading-tight">{m.name}</h3>
-      <div className="mt-3 text-3xl font-black tracking-tight tabular-nums">
-        {Number(m.price).toLocaleString("ru-RU")} ₾
-      </div>
-      <div className="mt-4 space-y-2">
-        {features.map((f) => (
-          <div key={f} className="flex items-start gap-2 text-sm">
-            <CheckCircle
-              className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500"
-              weight="BoldDuotone"
-            />
-            <span>{f}</span>
-          </div>
-        ))}
+    <Card
+      className={`overflow-hidden rounded-2xl p-5 ${bright ? "border-primary ring-1 ring-primary" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0 text-xl font-semibold leading-tight">{m.name}</h3>
+        {tag && (
+          <span
+            className={`mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${
+              bright ? "bg-primary text-primary-foreground" : "bg-primary/15 text-foreground"
+            }`}
+          >
+            {tag}
+          </span>
+        )}
       </div>
       {m.description?.trim() && (
         <FormattedText
           text={m.description}
-          className="mt-4 border-t border-border pt-4 text-sm leading-relaxed text-foreground/85"
+          className="mt-1.5 text-sm leading-snug text-muted-foreground"
           linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
         />
+      )}
+      <div className="mt-3 text-4xl font-black tracking-tight tabular-nums">
+        {Number(m.price).toLocaleString("ru-RU")} ₾
+      </div>
+      <div className="mt-4 border-t border-border pt-4">
+        <div className="text-sm font-semibold">Что входит:</div>
+        <ul className="mt-2 space-y-1.5">
+          {features.map((f) => (
+            <li key={f} className="flex items-start gap-2 text-sm">
+              <AddCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" weight="Bold" />
+              <span>{f}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      {m.gift_text?.trim() && (
+        <div className="mt-4 rounded-xl bg-[#2A2B2F] p-4 text-white">
+          <div className="text-xs text-white/60">В подарок</div>
+          <FormattedText
+            text={m.gift_text}
+            className="mt-1.5 text-sm leading-snug"
+            linkClass="font-medium text-white underline decoration-primary decoration-2 underline-offset-2"
+          />
+        </div>
+      )}
+      {duration && (
+        <div className="mt-4 text-sm text-muted-foreground">Срок действия — {duration}</div>
       )}
     </Card>
   );

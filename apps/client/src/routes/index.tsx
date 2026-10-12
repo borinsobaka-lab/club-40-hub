@@ -16,6 +16,7 @@ import {
   Ghost,
 } from "@solar-icons/react";
 import giftIcon from "@/assets/gift.png";
+import inviteGiftButton from "@/assets/invite-gift-button.webp";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -273,13 +274,25 @@ function HomePage() {
             </Link>
 
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                aria-label="Подарки"
-                className="h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 active:opacity-90 transition-opacity shadow-md"
-              >
-                <img src={giftIcon} alt="Подарки" className="h-5 w-5 object-contain" />
-              </button>
+              {IS_PACKAGES ? (
+                // Пакетное (решение владельца 2026-10-12): круглая кнопка —
+                // стеклянный подарок, ведёт в «Пригласи подругу».
+                <Link
+                  to="/invite"
+                  aria-label="Пригласи подругу"
+                  className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/20 shadow-lg shadow-primary/40 active:scale-95 transition-transform"
+                >
+                  <img src={inviteGiftButton} alt="" className="h-full w-full object-cover" />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  aria-label="Подарки"
+                  className="h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300 active:opacity-90 transition-opacity shadow-md"
+                >
+                  <img src={giftIcon} alt="Подарки" className="h-5 w-5 object-contain" />
+                </button>
+              )}
               <Link
                 to="/notifications"
                 aria-label={unread > 0 ? `Уведомления: непрочитанных ${unread}` : "Уведомления"}

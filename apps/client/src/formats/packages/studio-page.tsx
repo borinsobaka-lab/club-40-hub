@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Drawer as DrawerPrimitive } from "vaul";
 import { AltArrowRight, MapPoint, UsersGroupRounded } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
@@ -17,31 +16,34 @@ import { FormattedText } from "@/lib/formatted-text";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
 import { studioInfoQuery, studioTrainersQuery } from "./queries";
-import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
+import { TrainerDrawer } from "./trainer-drawer";
+import { TrainerRatingLine } from "./trainer-rating";
 
 /**
  * «Студия» пакетного приложения (до 2026-10-11 — заглушка «Клуб»): вкладки
- * «Информация» (фото, описание, карты, Instagram, WhatsApp, Messenger —
- * studio_app_settings,
- * правятся в админке: «Мобильное приложение» → «Контакты и правила») и
  * «Тренеры» (тренеры студии с биографией, рейтингом и чаевыми —
- * «Сотрудники» в админке; рейтинг и оценка — trainer-rating.tsx).
+ * «Сотрудники» в админке; карточка — trainer-drawer.tsx) и «О студии» (до
+ * 2026-10-12 — «Информация», вторая вкладка: фото, описание, карты,
+ * Instagram, WhatsApp, Messenger — studio_app_settings, правятся в админке:
+ * «Мобильное приложение» → «Контакты и правила»).
  * Студия — смотримая (переключатель на главной).
  */
 
 const TABS = [
-  { key: "info", label: "Информация" },
   { key: "trainers", label: "Тренеры" },
+  { key: "info", label: "О студии" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
 export function PackagesStudioPage() {
-  const [tab, setTab] = useState<TabKey>("info");
+  const [tab, setTab] = useState<TabKey>("trainers");
   const studioName = useViewedStudioName();
 
   return (
+    // scrollKey не зависит от вкладки: иначе смена вкладки пересоздавала
+    // страницу — прокрутка прыгала наверх, подчёркивание табов не перетекало.
     <PageShell
-      scrollKey={tab}
+      scrollKey="studio"
       header={
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-semibold">Студия</h1>
@@ -56,7 +58,7 @@ export function PackagesStudioPage() {
         className="px-4 pt-4"
         gapClass="gap-6"
       />
-      <div className="p-4">{tab === "info" ? <StudioInfoTab /> : <TrainersTab />}</div>
+      <div className="p-4">{tab === "trainers" ? <TrainersTab /> : <StudioInfoTab />}</div>
     </PageShell>
   );
 }
@@ -226,72 +228,7 @@ function TrainersTab() {
         })}
       </div>
 
-      <DrawerPrimitive.Root
-        open={open !== null}
-        onOpenChange={(o) => {
-          if (!o) setOpenId(null);
-        }}
-        shouldScaleBackground
-      >
-        <DrawerPrimitive.Portal>
-          <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
-          <DrawerPrimitive.Content
-            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-background outline-none"
-            aria-describedby={undefined}
-          >
-            <div className="mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
-            {open && (
-              <div className="overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">
-                <div className="flex items-center gap-4">
-                  <SquircleAvatar size={88} className="shrink-0">
-                    {mediaUrl(open.photo_url, "trainer-photos") && (
-                      <SquircleAvatarImage
-                        src={mediaUrl(open.photo_url, "trainer-photos")!}
-                        alt={open.full_name}
-                      />
-                    )}
-                    <SquircleAvatarFallback className="bg-muted text-2xl font-semibold text-muted-foreground">
-                      {trainerInitials(open.full_name)}
-                    </SquircleAvatarFallback>
-                  </SquircleAvatar>
-                  <div className="min-w-0">
-                    <div className="text-sm text-muted-foreground">Тренер</div>
-                    <DrawerPrimitive.Title className="text-2xl font-semibold leading-tight">
-                      {open.full_name}
-                    </DrawerPrimitive.Title>
-                    <div className="mt-1.5">
-                      <TrainerRatingLine
-                        avg={open.rating_avg}
-                        count={open.rating_count}
-                        starClass="h-4 w-4"
-                      />
-                    </div>
-                  </div>
-                </div>
-                {/^https?:\/\//i.test(open.tip_url?.trim() ?? "") && (
-                  <div className="mt-5">
-                    <TipButton url={open.tip_url!.trim()} />
-                  </div>
-                )}
-                {open.bio?.trim() ? (
-                  <FormattedText
-                    text={open.bio}
-                    className="mt-5 text-[15px] leading-relaxed text-foreground/90"
-                    linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
-                  />
-                ) : (
-                  <p className="mt-5 text-sm text-muted-foreground">
-                    Рассказ о тренере скоро появится.
-                  </p>
-                )}
-                <div className="mt-6">
-                  <RateTrainer key={open.id} trainerId={open.id} />
-                </div>
-              </div>
-            )}
-          </DrawerPrimitive.Content>
-        </DrawerPrimitive.Portal>
-      </DrawerPrimitive.Root>
+      <TrainerDrawer trainerId={openId} initial={open} onClose={() => setOpenId(null)} />
     </>
   );
 }

@@ -6,7 +6,14 @@ import { mediaUrl } from "@/lib/media";
  * главная (одна карточка в обоих местах, решение владельца 2026-10-11).
  * Цвет тренировки — workouts.color (полоска слева), без типа и иконки.
  */
-export type PackTrainer = { id: string; full_name: string | null; photo_url: string | null };
+export type PackTrainer = {
+  id: string;
+  full_name: string | null;
+  photo_url: string | null;
+  /** Средний рейтинг (numeric — приходит строкой) и число оценок. */
+  rating_avg?: number | string | null;
+  rating_count?: number | null;
+};
 
 export type PackEntry = {
   id: string;
@@ -28,10 +35,17 @@ export type PackEntry = {
 
 /** select для schedule_entries (и вложенного entry в schedule_bookings). */
 export const PACK_ENTRY_SELECT =
-  "id, studio_id, starts_at, ends_at, capacity, booked_count, workout:workouts(id, name, color, description, photo_url, capacity), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url))";
+  "id, studio_id, starts_at, ends_at, capacity, booked_count, workout:workouts(id, name, color, description, photo_url, capacity), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, rating_avg, rating_count))";
 
 export function entryTrainers(e: PackEntry): PackTrainer[] {
   return (e.trainers ?? []).map((t) => t.trainer).filter((t): t is PackTrainer => !!t);
+}
+
+/** Средний рейтинг тренера; нет оценок — null. */
+export function trainerRating(t: PackTrainer): number | null {
+  if (t.rating_avg == null || !t.rating_count) return null;
+  const n = Number(t.rating_avg);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function trainerPhoto(t: PackTrainer) {
@@ -104,6 +118,7 @@ export function packEntryToDrawerData(e: PackEntry): WorkoutDrawerData {
       id: t.id,
       name: t.full_name ?? "Тренер",
       photo: trainerPhoto(t),
+      rating: trainerRating(t),
     })),
     spotsLabel: spotsLabel(e),
     spotsLeft: spotsLeft(e),

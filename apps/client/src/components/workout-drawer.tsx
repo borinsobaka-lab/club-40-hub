@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { Calendar, CloseCircle, MapPoint, UsersGroupRounded } from "@solar-icons/react";
+import {
+  AltArrowRight,
+  Calendar,
+  CloseCircle,
+  MapPoint,
+  Star,
+  UsersGroupRounded,
+} from "@solar-icons/react";
 import { toast } from "sonner";
 // Заглушка без фото тренировки: PNG/WebP 336×336 вместо прежнего SVG на 1,4 МБ
 // (тысячи контуров карты — долго грузился и рисовался при открытии шторки).
@@ -19,6 +26,7 @@ import googleCalIcon from "@/assets/google-calendar.png.asset.json";
 import appleCalIcon from "@/assets/apple-calendar.png.asset.json";
 import outlookIcon from "@/assets/outlook.png.asset.json";
 import { FormattedText } from "@/lib/formatted-text";
+import { TrainerDrawer } from "@/formats/packages/trainer-drawer";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -33,7 +41,7 @@ export type WorkoutDrawerData = {
   // Пакетное приложение (formats/packages/entries.ts): цвет тренировки вместо
   // типа, тренеры крупно — каждый с аватаркой, свободные места.
   color?: string | null;
-  trainers?: { id: string; name: string; photo: string | null }[];
+  trainers?: { id: string; name: string; photo: string | null; rating?: number | null }[];
   spotsLabel?: string | null;
   spotsLeft?: number | null;
   /** Студия занятия — название и адрес в шторке (куда записывается клиент). */
@@ -99,9 +107,12 @@ export function WorkoutDrawer({
   const studio = isPack && data?.studioId ? studios?.find((s) => s.id === data.studioId) : null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
+  // Карточка тренера (пакетное) — вложенной шторкой поверх окна тренировки.
+  const [trainerId, setTrainerId] = useState<string | null>(null);
 
   useEffect(() => {
     setCancelReason("");
+    setTrainerId(null);
   }, [data?.id, open]);
 
   const cancelLocked =
@@ -169,116 +180,53 @@ export function WorkoutDrawer({
           <div className="overflow-y-auto overscroll-contain px-4 pt-3 pb-6">
             {data && (
               <>
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <DrawerPrimitive.Title className="text-2xl font-bold leading-tight break-words">
-                      {data.name}
-                    </DrawerPrimitive.Title>
+                {isPack ? (
+                  <PackHeader data={data} studio={studio ?? null} onOpenTrainer={setTrainerId} />
+                ) : (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <DrawerPrimitive.Title className="text-2xl font-bold leading-tight break-words">
+                        {data.name}
+                      </DrawerPrimitive.Title>
 
-                    {typeMeta && (
-                      <div
-                        className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${typeMeta.bg} ${typeMeta.color}`}
-                      >
-                        {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
-                        {typeMeta.label}
-                      </div>
-                    )}
-
-                    {isPack && data.startsAt && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                        {data.color && (
-                          <span
-                            className="h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: data.color }}
-                          />
-                        )}
-                        {whenLabel(data.startsAt, data.endsAt)}
-                      </div>
-                    )}
-
-                    {isPack && data.spotsLabel && (
-                      <div
-                        className={`mt-1.5 flex items-center gap-1.5 text-sm font-semibold ${data.spotsLeft === 0 ? "text-red-500" : "text-foreground"}`}
-                      >
-                        {data.spotsLeft === 0 ? (
-                          <CloseCircle
-                            className="h-[18px] w-[18px] shrink-0"
-                            weight="BoldDuotone"
-                          />
-                        ) : (
-                          <UsersGroupRounded
-                            className="h-[18px] w-[18px] shrink-0 text-primary"
-                            weight="BoldDuotone"
-                          />
-                        )}
-                        {data.spotsLabel}
-                      </div>
-                    )}
-
-                    {studio && (
-                      <div className="mt-1.5 flex items-start gap-1.5 text-sm">
-                        <MapPoint
-                          className="mt-px h-[18px] w-[18px] shrink-0 text-primary"
-                          weight="BoldDuotone"
-                        />
-                        <div className="min-w-0">
-                          <span className="font-semibold">{studio.name}</span>
-                          {studio.address && (
-                            <span className="block text-muted-foreground">{studio.address}</span>
-                          )}
+                      {typeMeta && (
+                        <div
+                          className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${typeMeta.bg} ${typeMeta.color}`}
+                        >
+                          {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
+                          {typeMeta.label}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {isPack && data.trainers!.length > 0 && (
-                      <div className="mt-4 flex flex-col gap-3">
-                        {data.trainers!.map((t) => (
-                          <div key={t.id} className="flex items-center gap-3">
-                            <SquircleAvatar size={48}>
-                              {t.photo && <SquircleAvatarImage src={t.photo} alt={t.name} />}
-                              <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
-                                {initialsOf(t.name)}
-                              </SquircleAvatarFallback>
-                            </SquircleAvatar>
-                            <div className="min-w-0">
-                              <div className="text-xs text-muted-foreground">Тренер</div>
-                              <div className="truncate text-base font-semibold">{t.name}</div>
-                            </div>
+                      {data.trainerName && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <SquircleAvatar size={32}>
+                            {data.trainerPhoto && (
+                              <SquircleAvatarImage src={data.trainerPhoto} alt={data.trainerName} />
+                            )}
+                            <SquircleAvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground">
+                              {data.trainerName
+                                .split(/\s+/)
+                                .map((p) => p[0])
+                                .filter(Boolean)
+                                .slice(0, 2)
+                                .join("")
+                                .toUpperCase()}
+                            </SquircleAvatarFallback>
+                          </SquircleAvatar>
+                          <div className="text-sm text-muted-foreground truncate">
+                            {data.trainerName}
                           </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {!isPack && data.trainerName && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <SquircleAvatar size={32}>
-                          {data.trainerPhoto && (
-                            <SquircleAvatarImage src={data.trainerPhoto} alt={data.trainerName} />
-                          )}
-                          <SquircleAvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground">
-                            {data.trainerName
-                              .split(/\s+/)
-                              .map((p) => p[0])
-                              .filter(Boolean)
-                              .slice(0, 2)
-                              .join("")
-                              .toUpperCase()}
-                          </SquircleAvatarFallback>
-                        </SquircleAvatar>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {data.trainerName}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                  {(!isPack || data.photo) && (
+                      )}
+                    </div>
                     <img
                       src={data.photo ?? logoSrc}
                       alt=""
                       className={`w-28 h-28 rounded-full object-cover shrink-0 bg-muted ${data.photo ? "" : "brand-art"}`}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {data.description?.trim() && (
                   <FormattedText
@@ -372,6 +320,8 @@ export function WorkoutDrawer({
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
 
+      {isPack && <TrainerDrawer nested trainerId={trainerId} onClose={() => setTrainerId(null)} />}
+
       <Dialog open={calendarPickerOpen} onOpenChange={setCalendarPickerOpen}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
@@ -399,5 +349,132 @@ export function WorkoutDrawer({
         </DialogContent>
       </Dialog>
     </DrawerPrimitive.Root>
+  );
+}
+
+const ratingFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
+
+/**
+ * Шапка окна тренировки пакетного приложения (решение владельца 2026-10-12):
+ * название (и фото тренировки справа), под ним — плашка: дата и время,
+ * свободные места, студия; иконки — в одинаковых кружках, полоска слева —
+ * цвет тренировки, как на карточке в расписании. Ниже тренеры со средним
+ * рейтингом — по нажатию открывается карточка тренера.
+ */
+function PackHeader({
+  data,
+  studio,
+  onOpenTrainer,
+}: {
+  data: WorkoutDrawerData;
+  studio: { name: string; address?: string | null } | null;
+  onOpenTrainer: (id: string) => void;
+}) {
+  const full = data.spotsLeft === 0;
+  const rows = [
+    data.startsAt
+      ? {
+          key: "when",
+          icon: <Calendar className="h-[18px] w-[18px]" weight="BoldDuotone" />,
+          content: <span className="font-medium">{whenLabel(data.startsAt, data.endsAt)}</span>,
+        }
+      : null,
+    data.spotsLabel
+      ? {
+          key: "spots",
+          icon: full ? (
+            <CloseCircle className="h-[18px] w-[18px] text-red-500" weight="BoldDuotone" />
+          ) : (
+            <UsersGroupRounded className="h-[18px] w-[18px]" weight="BoldDuotone" />
+          ),
+          content: (
+            <span className={`font-medium ${full ? "text-red-500" : ""}`}>{data.spotsLabel}</span>
+          ),
+        }
+      : null,
+    studio
+      ? {
+          key: "studio",
+          icon: <MapPoint className="h-[18px] w-[18px]" weight="BoldDuotone" />,
+          content: (
+            <span className="min-w-0">
+              <span className="block font-medium">{studio.name}</span>
+              {studio.address && (
+                <span className="block text-muted-foreground">{studio.address}</span>
+              )}
+            </span>
+          ),
+        }
+      : null,
+  ].filter((r): r is NonNullable<typeof r> => !!r);
+
+  return (
+    <>
+      <div className="flex items-start gap-3">
+        <DrawerPrimitive.Title className="min-w-0 flex-1 text-2xl font-bold leading-tight break-words">
+          {data.name}
+        </DrawerPrimitive.Title>
+        {data.photo && (
+          <img
+            src={data.photo}
+            alt=""
+            className="h-20 w-20 shrink-0 rounded-full bg-muted object-cover"
+          />
+        )}
+      </div>
+
+      {rows.length > 0 && (
+        <div className="relative mt-3 overflow-hidden rounded-2xl bg-muted/70 py-1 pl-1.5">
+          <span
+            className={`absolute bottom-0 left-0 top-0 w-1.5 ${data.color ? "" : "bg-muted-foreground/40"}`}
+            style={data.color ? { backgroundColor: data.color } : undefined}
+          />
+          {rows.map((r) => (
+            <div key={r.key} className="flex items-center gap-3 px-3 py-2 text-sm">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background text-foreground/70">
+                {r.icon}
+              </span>
+              {r.content}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {data.trainers!.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2">
+          {data.trainers!.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onOpenTrainer(t.id)}
+              className="-mx-1 flex items-center gap-3 rounded-2xl px-1 py-1 text-left transition active:bg-muted"
+            >
+              <SquircleAvatar size={48}>
+                {t.photo && <SquircleAvatarImage src={t.photo} alt={t.name} />}
+                <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
+                  {initialsOf(t.name)}
+                </SquircleAvatarFallback>
+              </SquircleAvatar>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-muted-foreground">Тренер</div>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-base font-semibold">{t.name}</span>
+                  {t.rating != null && (
+                    <span
+                      className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold tabular-nums"
+                      aria-label={`Рейтинг ${ratingFormat.format(t.rating)} из 5`}
+                    >
+                      <Star className="h-4 w-4 text-amber-400" weight="Bold" />
+                      {ratingFormat.format(t.rating)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

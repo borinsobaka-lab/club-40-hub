@@ -31,6 +31,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
+import { IS_PACKAGES } from "@/lib/terms";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -105,41 +106,81 @@ function formatBirthday(value: string) {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : value;
 }
 
-const AVATAR_EXT_BY_TYPE: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-  "image/heic": "heic",
-  "image/heif": "heif",
-};
+/** Сторона квадратной аватарки после сжатия, px. */
+const AVATAR_SIZE = 512;
 
 /**
- * Загружает аватар в storage и пишет ссылку в карточку клиента. Общая для
- * страницы профиля и шторки редактирования (раньше — две копии кода).
+ * Фото с телефона — в квадрат 512px WebP (JPEG, если браузер не умеет WebP):
+ * снимок камеры весит 3–10 МБ (раньше такие отклонялись «Файл больше 5 МБ»),
+ * HEIC с iPhone браузер сам декодирует. Ориентацию EXIF браузер учитывает при
+ * отрисовке. Не удалось открыть картинку — null.
+ */
+async function squareAvatar(file: File): Promise<Blob | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("decode"));
+      el.src = url;
+    });
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    if (!side) return null;
+    const size = Math.min(AVATAR_SIZE, side);
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(
+      img,
+      (img.naturalWidth - side) / 2,
+      (img.naturalHeight - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      size,
+      size,
+    );
+    const encode = (type: string) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.86));
+    const webp = await encode("image/webp");
+    // Старый Safari вместо WebP молча отдаёт PNG — тогда JPEG (легче).
+    return webp?.type === "image/webp" ? webp : await encode("image/jpeg");
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Загружает аватар в storage (папка {uid}/ бакета avatars — политики
+ * db/migrations/2026-10-12_zz_packages_app_fixes.sql) и пишет ссылку в
+ * карточку клиента. Общая для страницы профиля и шторки редактирования.
  * Возвращает обновлённую строку clients или undefined, если загрузка не
  * удалась (ошибку уже показали тостом).
  */
 async function uploadAvatar(userId: string, file: File): Promise<ClientRow | undefined> {
-  if (!file.type.startsWith("image/")) {
+  if (!file.type.startsWith("image/") && !/\.(heic|heif)$/i.test(file.name)) {
     toast.error("Выберите изображение");
     return undefined;
   }
-  if (file.size > 5 * 1024 * 1024) {
-    toast.error("Файл больше 5 МБ");
+  const blob = await squareAvatar(file);
+  if (!blob) {
+    toast.error("Не удалось открыть фото. Выберите снимок в формате JPG или PNG.");
     return undefined;
   }
-  const dot = file.name.lastIndexOf(".");
-  const ext =
-    AVATAR_EXT_BY_TYPE[file.type] ||
-    (dot > 0 ? file.name.slice(dot + 1).toLowerCase() : "") ||
-    "jpg";
+  const ext = blob.type === "image/webp" ? "webp" : "jpg";
+  // Новое имя на каждую загрузку: без перезаписи (upsert требовал прав на
+  // чтение и правку старого файла) и без старой картинки из кэша браузера.
   const path = `${userId}/avatar-${Date.now()}.${ext}`;
   const { error: upErr } = await supabase.storage
     .from("avatars")
-    .upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+    .upload(path, blob, { contentType: blob.type, cacheControl: "31536000" });
   if (upErr) {
-    toast.error("Не удалось загрузить: " + upErr.message);
+    toast.error("Не удалось загрузить фото: " + upErr.message);
     return undefined;
   }
   const publicUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
@@ -150,11 +191,17 @@ async function uploadAvatar(userId: string, file: File): Promise<ClientRow | und
     .select()
     .maybeSingle();
   if (dbErr) {
-    toast.error("Не удалось сохранить: " + dbErr.message);
+    toast.error("Не удалось сохранить фото: " + dbErr.message);
     return undefined;
   }
-  toast.success("Аватар обновлён");
-  return (updated as ClientRow | null) ?? { photo_url: publicUrl };
+  // Ни одной строки: карточки нет или правка своей карточки закрыта — без
+  // этого показывали «Аватар обновлён», а фото пропадало после обновления.
+  if (!updated) {
+    toast.error("Не удалось сохранить фото в профиль. Обратитесь к администратору студии.");
+    return undefined;
+  }
+  toast.success("Фото обновлено");
+  return updated as ClientRow;
 }
 
 /**
@@ -341,12 +388,16 @@ function ProfilePage() {
                 icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
                 label="Правовые документы"
               />
-              <ProfileLink
-                icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
-                label="Способы оплаты"
-                sublabel="Mastercard •••• 4242"
-                right={<MastercardBadge />}
-              />
+              {/* Оплаты в приложении пакетных студий пока нет (решение владельца
+                  2026-10-12) — блок способов оплаты не показываем. */}
+              {!IS_PACKAGES && (
+                <ProfileLink
+                  icon={<Card2 className="h-5 w-5" weight="BoldDuotone" />}
+                  label="Способы оплаты"
+                  sublabel="Mastercard •••• 4242"
+                  right={<MastercardBadge />}
+                />
+              )}
               <ProfileLink
                 icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />}
                 label="Поддержка"

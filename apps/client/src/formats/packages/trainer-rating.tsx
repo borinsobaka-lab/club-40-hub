@@ -151,7 +151,10 @@ export function RateTrainer({ trainerId }: { trainerId: string }) {
     },
     onSuccess: (_, rating) => {
       queryClient.setQueryData(["trainer-review", trainerId, user?.id], rating);
+      // Рейтинг пересчитывает база — обновляем все места, где он виден.
       queryClient.invalidateQueries({ queryKey: ["studio-trainers"] });
+      queryClient.invalidateQueries({ queryKey: ["trainer-card", trainerId] });
+      queryClient.invalidateQueries({ queryKey: ["pack-schedule"] });
       setEditing(false);
       toast.success(mine == null ? "Спасибо за оценку!" : "Оценка изменена");
     },

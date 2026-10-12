@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { AltArrowDown, CheckCircle, CloseCircle } from "@solar-icons/react";
+import { AltArrowDown, CheckCircle, CloseCircle, Star } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import {
   packEntryToDrawerData,
   trainerInitials,
   trainerPhoto,
+  trainerRating,
   type PackEntry,
 } from "./entries";
 import { PackWorkoutCard } from "./workout-card";
@@ -56,7 +57,16 @@ type TabKey = (typeof TABS)[number]["key"];
 const DAY_NAMES = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
 type FilterKind = "workout" | "trainer";
-type FilterOption = { id: string; label: string; color?: string | null; photo?: string | null };
+type FilterOption = {
+  id: string;
+  label: string;
+  color?: string | null;
+  photo?: string | null;
+  /** Средний рейтинг тренера (без числа оценок). */
+  rating?: number | null;
+};
+
+const ratingFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
 export function PackagesSchedulePage() {
   const navigate = useNavigate();
@@ -266,7 +276,12 @@ export function PackagesSchedulePage() {
     for (const e of entries) {
       for (const t of entryTrainers(e)) {
         if (!map.has(t.id)) {
-          map.set(t.id, { id: t.id, label: t.full_name ?? "Тренер", photo: trainerPhoto(t) });
+          map.set(t.id, {
+            id: t.id,
+            label: t.full_name ?? "Тренер",
+            photo: trainerPhoto(t),
+            rating: trainerRating(t),
+          });
         }
       }
     }
@@ -594,6 +609,15 @@ function FilterSheet({
                       <span className={`min-w-0 flex-1 truncate ${active ? "font-semibold" : ""}`}>
                         {o?.label ?? all}
                       </span>
+                      {o?.rating != null && (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold tabular-nums"
+                          aria-label={`Рейтинг ${ratingFormat.format(o.rating)} из 5`}
+                        >
+                          <Star className="h-4 w-4 text-amber-400" weight="Bold" />
+                          {ratingFormat.format(o.rating)}
+                        </span>
+                      )}
                       {active && (
                         <CheckCircle className="h-5 w-5 shrink-0 text-primary" weight="Bold" />
                       )}

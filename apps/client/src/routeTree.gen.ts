@@ -15,6 +15,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MembershipsRouteImport } from './routes/memberships'
 import { Route as ManifestDotwebmanifestRouteImport } from './routes/manifest[.]webmanifest'
+import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ClubRouteImport } from './routes/club'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -50,6 +51,11 @@ const ManifestDotwebmanifestRoute = ManifestDotwebmanifestRouteImport.update({
   path: '/manifest.webmanifest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteRoute = InviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClubRoute = ClubRouteImport.update({
   id: '/club',
   path: '/club',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/club': typeof ClubRoute
+  '/invite': typeof InviteRoute
   '/manifest.webmanifest': typeof ManifestDotwebmanifestRoute
   '/memberships': typeof MembershipsRoute
   '/notifications': typeof NotificationsRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/club': typeof ClubRoute
+  '/invite': typeof InviteRoute
   '/manifest.webmanifest': typeof ManifestDotwebmanifestRoute
   '/memberships': typeof MembershipsRoute
   '/notifications': typeof NotificationsRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/club': typeof ClubRoute
+  '/invite': typeof InviteRoute
   '/manifest.webmanifest': typeof ManifestDotwebmanifestRoute
   '/memberships': typeof MembershipsRoute
   '/notifications': typeof NotificationsRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/club'
+    | '/invite'
     | '/manifest.webmanifest'
     | '/memberships'
     | '/notifications'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/club'
+    | '/invite'
     | '/manifest.webmanifest'
     | '/memberships'
     | '/notifications'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/club'
+    | '/invite'
     | '/manifest.webmanifest'
     | '/memberships'
     | '/notifications'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ClubRoute: typeof ClubRoute
+  InviteRoute: typeof InviteRoute
   ManifestDotwebmanifestRoute: typeof ManifestDotwebmanifestRoute
   MembershipsRoute: typeof MembershipsRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManifestDotwebmanifestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite': {
+      id: '/invite'
+      path: '/invite'
+      fullPath: '/invite'
+      preLoaderRoute: typeof InviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/club': {
       id: '/club'
       path: '/club'
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ClubRoute: ClubRoute,
+  InviteRoute: InviteRoute,
   ManifestDotwebmanifestRoute: ManifestDotwebmanifestRoute,
   MembershipsRoute: MembershipsRoute,
   NotificationsRoute: NotificationsRoute,

@@ -98,6 +98,11 @@ export type Pack = {
   duration_days: number | null;
   price: number;
   max_payments: number | null;
+  /** Тег справа от названия и его вид (2026-10-12_zz_packages_app_fixes.sql). */
+  tag_text?: string | null;
+  tag_style?: "soft" | "bright" | null;
+  /** Блок «В подарок» — текст с разметкой. */
+  gift_text?: string | null;
 };
 
 export type MyMembership = {
@@ -127,9 +132,9 @@ export function packCatalogQuery(studioId: string | null, enabled = true) {
     queryFn: async (): Promise<Pack[]> => {
       let q = untypedDb
         .from("memberships")
-        .select(
-          "id, name, description, kind, visits_count, personal_count, duration_days, price, max_payments",
-        )
+        // «*», а не список колонок: тег и подарок (миграция 2026-10-12) приходят,
+        // когда они есть в базе, и не ломают запрос до её выкатки.
+        .select("*")
         .eq("is_active", true);
       if (studioId) q = q.eq("studio_id", studioId);
       const { data, error } = await q
@@ -193,6 +198,31 @@ export type StudioTrainer = {
   tip_url: string | null;
 };
 
+const TRAINER_CARD_COLUMNS =
+  "id, full_name, photo_url, bio, role, rating_avg, rating_count, tip_url";
+
+/** numeric приходит строкой. */
+function normalizeTrainer(t: StudioTrainer): StudioTrainer {
+  return { ...t, rating_avg: t.rating_avg == null ? null : Number(t.rating_avg) };
+}
+
+/** Карточка одного тренера (шторка тренера из окна тренировки). */
+export function trainerCardQuery(trainerId: string | null) {
+  return queryOptions({
+    queryKey: ["trainer-card", trainerId],
+    queryFn: async (): Promise<StudioTrainer | null> => {
+      const { data, error } = await untypedDb
+        .from("trainers")
+        .select(TRAINER_CARD_COLUMNS)
+        .eq("id", trainerId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? normalizeTrainer(data as StudioTrainer) : null;
+    },
+    enabled: !!trainerId,
+  });
+}
+
 export function studioInfoQuery(studioId: string | null, enabled = true) {
   return queryOptions({
     queryKey: ["studio-info", studioId],
@@ -217,19 +247,14 @@ export function studioTrainersQuery(studioId: string | null, enabled = true) {
     queryFn: async (): Promise<StudioTrainer[]> => {
       const { data, error } = await untypedDb
         .from("trainer_studios")
-        .select(
-          "trainer:trainers(id, full_name, photo_url, bio, role, rating_avg, rating_count, tip_url)",
-        )
+        .select(`trainer:trainers(${TRAINER_CARD_COLUMNS})`)
         .eq("studio_id", studioId);
       if (error) throw error;
-      return (
-        ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
-          .map((r) => r.trainer)
-          .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
-          // numeric приходит строкой.
-          .map((t) => ({ ...t, rating_avg: t.rating_avg == null ? null : Number(t.rating_avg) }))
-          .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"))
-      );
+      return ((data as unknown as { trainer: StudioTrainer | null }[] | null) ?? [])
+        .map((r) => r.trainer)
+        .filter((t): t is StudioTrainer => !!t && t.role !== "admin")
+        .map(normalizeTrainer)
+        .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"));
     },
     enabled: enabled && !!studioId,
   });
