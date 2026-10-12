@@ -169,6 +169,9 @@ function Chapter({
   );
 }
 
+/** Колонка цифры широких плиток — текст обеих («18 специалистов», «с 2023») с одной линии. */
+const WIDE_NUMBER = "min-w-[6.5rem]";
+
 function Community({ settings }: { settings: AboutSettings | null | undefined }) {
   const t = useT();
   const c = ABOUT_COMMUNITY;
@@ -199,21 +202,32 @@ function Community({ settings }: { settings: AboutSettings | null | undefined })
       {/* Плитки — на всю ширину секции, без отступа под хронологию. */}
       <Reveal className="mt-6 -ml-7">
         <dl className="grid grid-cols-2 gap-2">
-          {tiles.map((tile, i) => (
-            <div
-              key={tile.label}
-              className={`rounded-2xl bg-primary/[0.06] p-4 ${
-                tiles.length % 2 === 1 && i === tiles.length - 1 ? "col-span-2" : ""
-              }`}
-            >
-              <dt className="text-[28px] leading-none font-bold whitespace-nowrap text-primary tabular-nums">
-                <CountUp value={tile.value} plus={tile.plus} />
-              </dt>
-              <dd className="mt-2 text-[13px] leading-snug text-foreground/80">{tile.label}</dd>
-            </div>
-          ))}
+          {tiles.map((tile, i) => {
+            // Непарная последняя плитка — во всю ширину, как «с 2023»: цифра
+            // слева, текст справа (решение владельца 2026-10-12).
+            const wide = tiles.length % 2 === 1 && i === tiles.length - 1;
+            return (
+              <div
+                key={tile.label}
+                className={`rounded-2xl bg-primary/[0.06] p-4 ${
+                  wide ? "col-span-2 flex items-center gap-4" : ""
+                }`}
+              >
+                <dt
+                  className={`shrink-0 text-[28px] leading-none font-bold whitespace-nowrap text-primary tabular-nums ${
+                    wide ? WIDE_NUMBER : ""
+                  }`}
+                >
+                  <CountUp value={tile.value} plus={tile.plus} />
+                </dt>
+                <dd className={`text-[13px] leading-snug text-foreground/80 ${wide ? "" : "mt-2"}`}>
+                  {tile.label}
+                </dd>
+              </div>
+            );
+          })}
           <div className="col-span-2 flex items-center gap-4 rounded-2xl bg-primary/[0.06] p-4">
-            <dt className="shrink-0 whitespace-nowrap text-primary">
+            <dt className={`shrink-0 whitespace-nowrap text-primary ${WIDE_NUMBER}`}>
               {sinceBefore && <span className="mr-1 text-lg font-semibold">{sinceBefore}</span>}
               <span className="text-[28px] leading-none font-bold tabular-nums">
                 {c.since.year}
