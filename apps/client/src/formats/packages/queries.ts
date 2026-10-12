@@ -239,9 +239,11 @@ export type AboutSettings = {
 };
 
 /**
- * Строка приложения (формата) в app_about_settings. Ошибку (в том числе
- * «таблицы ещё нет» — миграция не выкачена) не пробрасываем: раздел
- * показывается с временными фото, без числа и без сетки Instagram.
+ * Строка приложения (формата) в app_about_settings. Ошибку пробрасываем:
+ * раньше она превращалась в «пусто» и кэшировалась как ответ — раздел без
+ * фото Instagram, пока кэш не устареет (AboutTab сам показывает временное).
+ * Время свежести — общее (30 с): правки из админки видны при следующем
+ * открытии вкладки, а не через 10 минут.
  */
 export function aboutQuery() {
   return queryOptions({
@@ -254,10 +256,9 @@ export function aboutQuery() {
         )
         .eq("format", APP_FORMAT)
         .maybeSingle();
-      if (error) return null;
+      if (error) throw error;
       return (data as AboutSettings | null) ?? null;
     },
-    staleTime: 10 * 60_000,
   });
 }
 

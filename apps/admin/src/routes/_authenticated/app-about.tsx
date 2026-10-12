@@ -314,7 +314,13 @@ function AppAboutForm({ onSavingChange }: { onSavingChange: (saving: boolean) =>
             className="max-w-48"
           />
         </FormField>
-        <FormField label="Фото и ссылки на посты" tip={TIPS.instagram} htmlFor={null} optional>
+        <FormField
+          label="Фото и ссылки на посты"
+          tip={TIPS.instagram}
+          hint="Ссылка необязательна: фото без ссылки ведёт в профиль. В приложении — все загруженные фото по порядку ячеек, лучше 3 или 6 (полные ряды)."
+          htmlFor={null}
+          optional
+        >
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {form.instagram.map((post, i) => (
               <InstagramSlot
@@ -486,7 +492,7 @@ function InstagramSlot({
         }
       />
       <Input
-        placeholder="Ссылка на пост"
+        placeholder="Ссылка на пост (необязательно)"
         aria-label={`Ссылка на пост ${index + 1}`}
         value={post.url}
         disabled={!post.path}

@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown } from "@solar-icons/react";
 
+import instagramLogo from "@/assets/instagram-logo.webp";
 import packagesLogo from "@/assets/packages-logo.svg";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,8 +34,10 @@ import { aboutQuery, type AboutSettings } from "./queries";
 export function AboutTab() {
   const { data, isPending } = useQuery(aboutQuery());
   // Пока ответа нет (и нет сохранённого кэша) — серые плашки вместо фото,
-  // чтобы временное фото не мелькало перед настоящим.
-  const settings: AboutSettings | null | undefined = isPending ? undefined : data;
+  // чтобы временное фото не мелькало перед настоящим. Ошибка (в том числе
+  // таблицы ещё нет — миграция не выкачена) — как пустые настройки:
+  // временные фото, без цифр и сетки Instagram.
+  const settings: AboutSettings | null | undefined = isPending ? undefined : (data ?? null);
 
   return (
     <div className="bg-muted pt-4">
@@ -236,8 +239,9 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
     .map((p) => ({ src: mediaUrl(p.path, "studio-photos"), url: p.url?.trim() || ig.url }))
     .filter((p): p is { src: string; url: string } => !!p.src)
     .slice(0, 6);
-  // Сетка — только полными рядами по три: 1–2 фото смотрелись бы обрывком.
-  const grid = posts.slice(0, posts.length >= 6 ? 6 : posts.length >= 3 ? 3 : 0);
+  // Все загруженные фото (до шести), даже неполным рядом: раньше сетка
+  // показывала только полные ряды, и из пяти фото два пропадали.
+  const grid = posts;
 
   return (
     <>
@@ -253,9 +257,7 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
             rel="noopener noreferrer"
             className="flex items-center gap-3"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-              <InstagramIcon className="h-6 w-6" />
-            </span>
+            <img src={instagramLogo} alt="" className="h-12 w-12 shrink-0" decoding="async" />
             <span className="min-w-0">
               <span className="block text-xs text-muted-foreground">{t(ig.label)}</span>
               <span className="block truncate font-semibold">{ig.handle}</span>
@@ -500,24 +502,5 @@ function Reveal({ children, className = "" }: { children: ReactNode; className?:
     >
       {children}
     </div>
-  );
-}
-
-function InstagramIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-    </svg>
   );
 }
