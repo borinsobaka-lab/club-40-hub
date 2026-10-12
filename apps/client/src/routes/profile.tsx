@@ -32,8 +32,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
 import { IS_PACKAGES } from "@/lib/terms";
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { currentT, getTranslator, msg, useT, type Translator } from "@/i18n";
+import { LanguageSheet } from "@/components/language-switcher";
+import { LOCALES, currentT, getTranslator, msg, useI18n, useT, type Translator } from "@/i18n";
 
 export const Route = createFileRoute("/profile")({
   head: ({ match }) => {
@@ -259,6 +259,9 @@ async function saveClient(
 function ProfilePage() {
   const { user, signOut } = useAuth();
   const t = useT();
+  const { locale } = useI18n();
+  const currentLanguage = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
+  const [languageOpen, setLanguageOpen] = useState(false);
   const queryClient = useQueryClient();
   // Карточка — из общего с главной кэша (src/lib/client-card.ts): профиль
   // открывается сразу, свежие данные подтягиваются фоном.
@@ -428,14 +431,15 @@ function ProfilePage() {
                 icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />}
                 label={t("Поддержка")}
               />
-              {/* Язык: строка без перехода — справа переключатель (список языков). */}
-              <li className="flex items-center gap-3 px-4 py-2">
-                <span className="text-muted-foreground">
-                  <Global className="h-5 w-5" weight="BoldDuotone" />
-                </span>
-                <span className="flex-1 min-w-0 text-sm font-medium">{t("Язык")}</span>
-                <LanguageSwitcher tone="light" />
-              </li>
+              {/* Язык — как остальные строки; по нажатию — шторка со списком языков. */}
+              <ProfileLink
+                icon={<Global className="h-5 w-5" weight="BoldDuotone" />}
+                label={t("Язык")}
+                right={
+                  <span className="text-sm text-muted-foreground">{currentLanguage.name}</span>
+                }
+                onClick={() => setLanguageOpen(true)}
+              />
               <ProfileLink
                 icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />}
                 label={t("О приложении")}
@@ -462,6 +466,7 @@ function ProfilePage() {
           />
         )}
       </div>
+      <LanguageSheet open={languageOpen} onOpenChange={setLanguageOpen} />
     </PageShell>
   );
 }
@@ -486,15 +491,21 @@ function ProfileLink({
   label,
   sublabel,
   right,
+  onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   sublabel?: string;
   right?: React.ReactNode;
+  onClick?: () => void;
 }) {
   return (
     <li>
-      <button type="button" className="w-full flex items-center gap-3 px-4 py-4 text-left">
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full flex items-center gap-3 px-4 py-4 text-left"
+      >
         <span className="text-muted-foreground">{icon}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-medium">{label}</span>
