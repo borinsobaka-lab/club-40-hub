@@ -83,10 +83,10 @@ Coolify на Hetzner, все приложения — из этого репоз
 **Пуш в `main` автоматически деплоится в прод.** Контекст сборки Docker —
 корень репозитория (общий `.dockerignore`), Dockerfile — в папке приложения:
 
-| Ресурс Coolify           | Адрес                    | Dockerfile                | Watch Paths              |
-| ------------------------ | ------------------------ | ------------------------- | ------------------------ |
-| `club40-admin`           | https://admin.base40.fit | `/apps/admin/Dockerfile`  | `apps/admin/**`, `db/**` |
-| `club40-client`          | https://app.base40.fit   | `/apps/client/Dockerfile` | `apps/client/**`         |
+| Ресурс Coolify           | Адрес                        | Dockerfile                | Watch Paths              |
+| ------------------------ | ---------------------------- | ------------------------- | ------------------------ |
+| `club40-admin`           | https://admin.base40.fit     | `/apps/admin/Dockerfile`  | `apps/admin/**`, `db/**` |
+| `club40-client`          | https://app.base40.fit       | `/apps/client/Dockerfile` | `apps/client/**`         |
 | `club40-client-packages` | https://app.lady-stretch.one | `/apps/client/Dockerfile` | `apps/client/**`         |
 
 Watch Paths — чтобы правка одного приложения не пересобирала другие.
