@@ -23,7 +23,7 @@ import {
   StepTitle,
 } from "@/components/onboarding";
 import { type Experience, type HealthFlag, type PrefTime, type Referral } from "@/lib/onboarding";
-import { fireConfetti } from "@/lib/confetti";
+import { queueHomeConfetti } from "@/lib/confetti";
 import { PackagesOnboardingPage } from "@/formats/packages/onboarding";
 import { Mars, Venus } from "lucide-react";
 import { CLUB, IS_PACKAGES } from "@/lib/terms";
@@ -224,9 +224,10 @@ function OnboardingPage() {
     const ok = await persist({ onboarding_completed_at: new Date().toISOString() });
     setSaving(false);
     if (ok) {
-      fireConfetti();
+      // Анкета пройдена — на главную, там салют.
+      queueHomeConfetti();
       toast.success("Анкета сохранена");
-      navigate({ to: "/schedule", replace: true });
+      navigate({ to: "/", replace: true });
     }
   }
 

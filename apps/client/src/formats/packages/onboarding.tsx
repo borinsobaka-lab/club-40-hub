@@ -34,7 +34,7 @@ import {
   type PrefTime,
   type Referral,
 } from "@/lib/onboarding";
-import { fireConfetti } from "@/lib/confetti";
+import { queueHomeConfetti } from "@/lib/confetti";
 import { CLUB } from "@/lib/terms";
 
 // Анкета приложения пакетных студий (решение владельца 2026-10-11). Тренировки
@@ -220,9 +220,10 @@ export function PackagesOnboardingPage() {
     const ok = await persist({ onboarding_completed_at: new Date().toISOString() });
     setSaving(false);
     if (ok) {
-      fireConfetti();
+      // Анкета пройдена — на главную, там салют.
+      queueHomeConfetti();
       toast.success("Анкета сохранена");
-      navigate({ to: "/schedule", replace: true });
+      navigate({ to: "/", replace: true });
     }
   }
 

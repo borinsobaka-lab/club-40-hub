@@ -39,6 +39,7 @@ import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-draw
 import { entryToDrawerData, workoutTypeMeta } from "@/lib/workout-types";
 import { toast } from "sonner";
 import { CarouselSkeleton } from "@/components/content-skeletons";
+import { fireQueuedHomeConfetti } from "@/lib/confetti";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -112,6 +113,11 @@ function HomePage() {
   // в подписочном — всегда своя).
   const { studioId, studioReady } = useViewedStudioId();
   const userId = user?.id ?? null;
+
+  // Салют после входа по коду или после анкеты (флаг ставят они).
+  useEffect(() => {
+    fireQueuedHomeConfetti();
+  }, []);
 
   // Данные главной — в кэше React Query (сохраняется и между запусками,
   // src/lib/query-persist.ts): при возврате на главную и при повторном

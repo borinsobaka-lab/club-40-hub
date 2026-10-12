@@ -8,6 +8,7 @@ import { Refresh } from "@solar-icons/react";
 import { useAuth } from "@/hooks/use-auth";
 import { CLUB, IS_PACKAGES } from "@/lib/terms";
 import { takeSignInRefused } from "@/lib/sign-in-refused";
+import { cancelHomeConfetti, queueHomeConfetti } from "@/lib/confetti";
 import { DarkFrame } from "@/formats/packages/dark-frame";
 import packagesLogo from "@/assets/packages-logo.svg";
 import loginEmailArt from "@/assets/login-email.webp";
@@ -151,8 +152,13 @@ function AuthPage() {
     setError(null);
     setBusy(true);
     // Успешная проверка создаёт сессию — редирект сработает через useEffect выше.
+    // Салют на главной ставим заранее: сессия появляется ещё до ответа verifyOtp.
+    queueHomeConfetti();
     const { error: verifyError } = await verifyOtp(email.trim(), otp.join(""));
-    if (verifyError) setError(humanizeAuthError(verifyError));
+    if (verifyError) {
+      cancelHomeConfetti();
+      setError(humanizeAuthError(verifyError));
+    }
     setBusy(false);
   };
 
