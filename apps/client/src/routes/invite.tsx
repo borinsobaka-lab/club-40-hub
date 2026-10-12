@@ -29,17 +29,21 @@ const GIFT_TRAININGS = 2;
 /** Ссылка в приглашении — страница записи студии. */
 const INVITE_URL = "https://lady-stretch.one/hello";
 
-type InviteMessage = { full: string; withoutLink: string };
-
-/** Текст приглашения: готовые абзацы, ссылка — последней строкой. */
-function inviteMessage(studio: string, firstName: string): InviteMessage {
-  const withoutLink = [
+/**
+ * Текст приглашения (шаблон владельца 2026-10-12): студия, имя и фамилия
+ * пригласившей — чтобы администратор точно понял, от кого подруга, — и
+ * ссылка последней строкой.
+ */
+function inviteMessage(studio: string, name: string): string {
+  return [
     "Привет! 💗",
-    `Я занимаюсь растяжкой ${studio} — приходи со мной!`,
     "",
-    `🎁 Скажи администратору, что ты от меня${firstName ? ` (${firstName})` : ""}. Когда оформишь абонемент, мы обе получим по ${GIFT_TRAININGS} тренировки в подарок.`,
+    `Приглашаю тебя в ${studio}!`,
+    "",
+    `Если при покупке абонемента скажешь, что ты от меня${name ? ` (${name})` : ""}, нам обеим подарят по ${GIFT_TRAININGS} тренировки 🎁`,
+    "",
+    INVITE_URL,
   ].join("\n");
-  return { withoutLink, full: `${withoutLink}\n\nЗаписаться: ${INVITE_URL}` };
 }
 
 async function copy(text: string) {
@@ -52,53 +56,48 @@ async function copy(text: string) {
 }
 
 /**
- * Сразу в мессенджер: откроется выбор чата с готовым текстом. Telegram берёт
- * ссылку отдельно (иначе показывает её дважды).
+ * Сразу в мессенджер: откроется выбор чата с готовым текстом. Telegram
+ * получает весь текст в url: с отдельными url и text он ставит ссылку перед
+ * текстом, а нужно — в конце, как в системном «Поделиться».
  */
 const MESSENGERS: {
   name: string;
   color: string;
   icon: ReactNode;
-  href: (m: InviteMessage) => string;
+  href: (message: string) => string;
 }[] = [
   {
     name: "WhatsApp",
     color: "#25D366",
     icon: <WhatsAppGlyph />,
-    href: (m) => `https://wa.me/?text=${encodeURIComponent(m.full)}`,
+    href: (m) => `https://wa.me/?text=${encodeURIComponent(m)}`,
   },
   {
     name: "Telegram",
     color: "#2AABEE",
     icon: <TelegramGlyph />,
-    href: (m) =>
-      `https://t.me/share/url?url=${encodeURIComponent(INVITE_URL)}&text=${encodeURIComponent(m.withoutLink)}`,
+    href: (m) => `https://t.me/share/url?url=${encodeURIComponent(m)}`,
   },
   {
     name: "Viber",
     color: "#7360F2",
     icon: <ViberGlyph />,
-    href: (m) => `viber://forward?text=${encodeURIComponent(m.full)}`,
+    href: (m) => `viber://forward?text=${encodeURIComponent(m)}`,
   },
 ];
 
 /**
- * Огоньки кольцом вокруг подарка (левый верхний угол огонька, % шапки):
- * сверху, справа, слева и снизу — не только там, где их кладёт общий слой.
+ * Огоньки шапки — немного и вразброс, поверх картинки (решение владельца
+ * 2026-10-12: без ореола вокруг подарка, наезжать на него можно). Левый
+ * верхний угол огонька, % шапки.
  */
-const RING_BLOBS = [
-  { top: "-6%", left: "8%" },
-  { top: "-4%", left: "62%" },
-  { top: "14%", left: "80%" },
-  { top: "22%", left: "-10%" },
-  { top: "44%", left: "74%" },
-  { top: "50%", left: "2%" },
-  { top: "66%", left: "56%" },
-  { top: "4%", left: "34%" },
+const HEADER_BLOBS = [
+  { top: "2%", left: "68%" },
+  { top: "24%", left: "-6%" },
+  { top: "40%", left: "62%" },
+  { top: "66%", left: "8%" },
+  { top: "8%", left: "26%" },
 ];
-
-/** «Дырка» в огоньках по центру подарка (кнопка «Назад» 48px + полкартинки 120px). */
-const ART_HOLE = "radial-gradient(circle at 50% 168px, transparent 62px, #000 112px)";
 
 /**
  * «Пригласи подругу» (пакетное приложение, решение владельца 2026-10-12):
@@ -113,41 +112,37 @@ function InvitePage() {
   const { user } = useAuth();
   const studioName = useHomeStudioName();
   const { data: client } = useQuery(clientCardQuery(user?.id ?? null));
-  const firstName = client?.first_name?.trim() || client?.full_name?.trim().split(/\s+/)[0] || "";
+  const fullName =
+    [client?.first_name?.trim(), client?.last_name?.trim()].filter(Boolean).join(" ") ||
+    client?.full_name?.trim() ||
+    "";
 
-  const studio = studioName ? `в студии «${studioName}»` : "в студии Lady Stretch";
-  const message = inviteMessage(studio, firstName);
+  const message = inviteMessage(studioName ?? "Lady Stretch", fullName);
 
   // Системное «Поделиться» (на телефоне — выбор мессенджера и сразу
   // человека); где его нет — копируем текст.
   const shareNative = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ text: message.full });
+        await navigator.share({ text: message });
         return;
       }
-      await copy(message.full);
+      await copy(message);
     } catch (e) {
       // Закрытое окно «Поделиться» — не ошибка.
       if (e instanceof DOMException && e.name === "AbortError") return;
-      await copy(message.full);
+      await copy(message);
     }
   };
 
   return (
     <PageShell
       header={
-        <div className="relative pb-8">
-          {/* Огоньки поверх картинки — кольцом вокруг подарка, в центре
-              «дырка», как в онбординге (DarkFrame): общий слой шапки
-              закрывался непрозрачной серединой картинки, огоньки были
-              только снизу слева. */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{ WebkitMaskImage: ART_HOLE, maskImage: ART_HOLE }}
-          >
-            <GlowBlobs positions={RING_BLOBS} />
+        <div className="relative bg-[#2A2B2F] pb-8">
+          {/* Свой слой огоньков поверх картинки (фон шапки непрозрачный —
+              общие огоньки каркаса здесь не видны, иначе их вдвое больше). */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <GlowBlobs positions={HEADER_BLOBS} />
           </div>
           <div className="relative px-4 pt-2">
             <Link
@@ -243,7 +238,7 @@ function InvitePage() {
             ))}
             <button
               type="button"
-              onClick={() => copy(message.full)}
+              onClick={() => copy(message)}
               className="flex w-16 flex-col items-center gap-1 text-[11px] text-muted-foreground"
             >
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-foreground transition active:scale-95">
