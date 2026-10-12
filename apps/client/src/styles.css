@@ -97,8 +97,7 @@
   /* Фирменный цвет приложения (кнопки, акценты, подсветки) зависит от
      формата студий, для которого собрано приложение (src/lib/app-format.ts):
      подписочное — жёлтый #FFD900 с тёмно-серым текстом на кнопках, пакетное —
-     пастельный розовый #FFBEDB с белым (решение владельца 2026-10-12; до
-     этого — ярко-розовый #F763FC, тоже с белым). Формат приходит
+     розовый #F763FC с белым (решение владельца 2026-10-11). Формат приходит
      атрибутом data-app-format на <html> (RootShell в __root.tsx). */
   --brand: #ffd900;
   --brand-foreground: #333333;
@@ -138,7 +137,7 @@
 
 /* Пакетное приложение (app.lady-stretch.one, VITE_APP_FORMAT=packages). */
 :root[data-app-format="packages"] {
-  --brand: #ffbedb;
+  --brand: #f763fc;
   --brand-foreground: #ffffff;
 }
 
@@ -981,72 +980,69 @@ html body [data-sonner-toast][data-type="warning"] {
   }
 }
 
-/* Пакетное приложение: жёлтые пятна шапки, свечение кнопки ассистента и
-   жёлтая надпись логотипа-заглушки (.brand-art, assets/brand-placeholder.webp) —
-   в пастельный розовый #FFBEDB (2026-10-12). Огоньки — тон #FFBEDB, но вдвое
-   насыщеннее (пастель на тёмном фоне при их прозрачности выглядела серой):
-   255 − s·2·(255 − канал #FFBEDB), s = (255 − G прежнего ярко-розового
-   огонька под #F763FC) / (255 − 99). Фильтр
-   hue-rotate(278deg) saturate(0.4) переводит жёлтый #FFD900 примерно в #FFBEDB. */
+/* Пакетное приложение: жёлтые пятна шапки (цвета огоньков посчитаны как
+   hue-rotate(263deg) saturate(1.3) прежнего фильтра слоя), свечение кнопки
+   ассистента и жёлтая надпись логотипа-заглушки (.brand-art, assets/brand-placeholder.webp) —
+   в розовый #F763FC (поворот тона подобран под основной жёлтый пятен). */
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(1) {
-  --blob: 255 179 213;
+  --blob: 255 164 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(2) {
-  --blob: 255 152 198;
+  --blob: 255 131 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(3) {
-  --blob: 255 164 205;
+  --blob: 255 146 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(4) {
-  --blob: 255 166 206;
+  --blob: 255 148 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(5) {
-  --blob: 255 209 230;
+  --blob: 255 200 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(6) {
-  --blob: 255 179 213;
+  --blob: 255 164 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(7) {
-  --blob: 255 147 195;
+  --blob: 255 125 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(8) {
-  --blob: 255 166 206;
+  --blob: 255 148 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(9) {
-  --blob: 255 152 198;
+  --blob: 255 131 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(10) {
-  --blob: 255 209 230;
+  --blob: 255 200 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(11) {
-  --blob: 255 161 203;
+  --blob: 255 142 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(12) {
-  --blob: 255 148 195;
+  --blob: 255 126 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(13) {
-  --blob: 255 192 220;
+  --blob: 255 179 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(14) {
-  --blob: 255 172 209;
+  --blob: 255 156 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(15) {
-  --blob: 255 164 205;
+  --blob: 255 146 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(16) {
-  --blob: 255 180 213;
+  --blob: 255 165 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(17) {
-  --blob: 255 154 199;
+  --blob: 255 134 255;
 }
 :root[data-app-format="packages"] .gradient-blobs > span:nth-child(18) {
-  --blob: 255 181 214;
+  --blob: 255 166 255;
 }
 :root[data-app-format="packages"] .brand-art {
-  filter: hue-rotate(278deg) saturate(0.4);
+  filter: hue-rotate(263deg) saturate(1.3);
 }
 :root[data-app-format="packages"] .assistant-glow > .glow-orb {
-  filter: blur(5px) hue-rotate(278deg) saturate(0.4);
+  filter: blur(5px) hue-rotate(263deg) saturate(1.3);
 }
 
 /* Иллюстрации на тёмной зоне (пакетное приложение: вход, онбординг —
