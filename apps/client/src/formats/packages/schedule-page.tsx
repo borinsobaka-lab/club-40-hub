@@ -17,7 +17,7 @@ import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { useClubSettings } from "@/hooks/use-club-settings";
-import { useHomeStudioName, useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { useViewedStudioId, useViewedStudioName } from "@/hooks/use-viewed-studio";
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
 import {
@@ -76,7 +76,7 @@ export function PackagesSchedulePage() {
   const clubSettings = useClubSettings("home");
   const { user } = useAuth();
   const { studioId, studioReady, isHome } = useViewedStudioId();
-  const homeStudioName = useHomeStudioName();
+  const viewedStudioName = useViewedStudioName();
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const gestureStartRef = useRef<{ x: number; y: number; idx: number } | null>(null);
@@ -84,12 +84,6 @@ export function PackagesSchedulePage() {
   const wheelLockedRef = useRef(false);
   const wheelReleaseRef = useRef<number | null>(null);
   const swipeAreaRef = useRef<HTMLDivElement>(null);
-
-  const bookingNote = isHome
-    ? null
-    : homeStudioName
-      ? `Записаться можно только в вашей студии — «${homeStudioName}». Сменить студию — на главной.`
-      : "Записаться можно только в вашей студии. Сменить студию — на главной.";
 
   const selectDay = useCallback(
     (idx: number) => setActiveIdx(Math.max(0, Math.min(days.length - 1, idx))),
@@ -172,10 +166,6 @@ export function PackagesSchedulePage() {
     const wasBooked = bookedIds.has(entryId);
     const wasWaitlisted = waitlistedIds.has(entryId);
     const isActive = wasBooked || wasWaitlisted;
-    if (!isActive && !isHome) {
-      toast.info(bookingNote);
-      return;
-    }
     setPendingId(entryId);
     const fn = isActive ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
     // Продление могло стать действующим — иначе запись ответила бы «нет абонемента».
@@ -233,7 +223,13 @@ export function PackagesSchedulePage() {
         setCount((e) =>
           typeof res.booked_count === "number" ? res.booked_count : e.booked_count + 1,
         );
-        toast.success("Вы записаны на тренировку");
+        // Абонемент действует во всех студиях сети — запись в другую студию
+        // спишется с него же; называем студию, чтобы не перепутать адрес.
+        toast.success(
+          !isHome && viewedStudioName
+            ? `Вы записаны на тренировку в студии «${viewedStudioName}»`
+            : "Вы записаны на тренировку",
+        );
       }
     } else if (res?.reason === "already_booked") {
       addTo("booked", entryId);
@@ -454,7 +450,6 @@ export function PackagesSchedulePage() {
                                 isBooked={bookedIds.has(c.id)}
                                 isWaitlisted={waitlistedIds.has(c.id)}
                                 isPending={pendingId === c.id}
-                                canBook={isHome}
                                 onOpen={() => setOpenEntry(packEntryToDrawerData(c))}
                                 onBook={() => toggleBooking(c.id)}
                               />
@@ -494,7 +489,6 @@ export function PackagesSchedulePage() {
         isFull={openEntryRow ? packEntryToDrawerData(openEntryRow).spotsLeft === 0 : false}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
-        bookingNote={bookingNote}
         onBook={(reason) => {
           if (openEntry) toggleBooking(openEntry.id, reason);
         }}

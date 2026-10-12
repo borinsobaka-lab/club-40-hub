@@ -29,6 +29,7 @@ export function PackWorkoutCard({
   isWaitlisted = false,
   isPending = false,
   canBook = true,
+  studioName = null,
   onOpen,
   onBook,
 }: {
@@ -36,8 +37,10 @@ export function PackWorkoutCard({
   isBooked: boolean;
   isWaitlisted?: boolean;
   isPending?: boolean;
-  /** Кнопка «+» (своя студия, занятие не прошло, ещё не записан). */
+  /** Кнопка «+» (занятие не прошло, ещё не записан). */
   canBook?: boolean;
+  /** Студия занятия — у записи в другую студию сети (главная). */
+  studioName?: string | null;
   onOpen: () => void;
   onBook?: () => void;
 }) {
@@ -79,6 +82,9 @@ export function PackWorkoutCard({
           <div className="break-words font-semibold leading-snug">
             {entry.workout?.name ?? "Тренировка"}
           </div>
+          {studioName && (
+            <div className={`mt-0.5 truncate text-xs font-medium ${muted}`}>{studioName}</div>
+          )}
           {isWaitlisted && (
             <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
               В листе ожидания

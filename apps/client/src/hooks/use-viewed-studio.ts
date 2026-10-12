@@ -11,9 +11,10 @@ import type { Studio } from "@/hooks/use-studios";
  * Студия, которую клиент сейчас смотрит (пакетное приложение, переключатель
  * на главной — решение владельца 2026-10-11). По ней — новости, услуги,
  * контакты, расписание, тренеры и абонементы. По умолчанию — студия из
- * карточки клиента («своя»); выбор помнит браузер. Записаться можно только в
- * своей студии (book_schedule_entry ищет абонемент в студии занятия).
- * Читать данные чужой студии того же формата разрешает
+ * карточки клиента («своя»); выбор помнит браузер. Записаться можно в любой
+ * студии формата — пакетные студии одна сеть, абонемент действует во всех
+ * (db/migrations/2026-10-12_zz_network_guest_visits.sql). Читать данные
+ * чужой студии того же формата разрешает
  * db/migrations/2026-10-11_zzzzzzzzzzz_packages_app_studio.sql.
  *
  * Подписочное приложение переключателя не имеет: там всегда своя студия.
@@ -73,7 +74,7 @@ export type ViewedStudio = {
   studioReady: boolean;
   /** Своя студия клиента (карточка clients). */
   homeStudioId: string | null;
-  /** Смотрит свою студию — можно записываться. */
+  /** Смотрит свою студию (запись в чужой — гостевая, с того же абонемента). */
   isHome: boolean;
 };
 
@@ -98,11 +99,4 @@ export function useViewedStudioName(): string | null {
   const { studioId } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
   return studios.find((s) => s.id === studioId)?.name ?? null;
-}
-
-/** Название своей студии клиента. */
-export function useHomeStudioName(): string | null {
-  const { homeStudioId } = useViewedStudioId();
-  const { data: studios = [] } = useFormatStudios();
-  return studios.find((s) => s.id === homeStudioId)?.name ?? null;
 }
