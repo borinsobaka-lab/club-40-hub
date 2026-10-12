@@ -87,16 +87,19 @@ const MESSENGERS: {
 ];
 
 /**
- * Огоньки шапки — немного и вразброс, поверх картинки (решение владельца
- * 2026-10-12: без ореола вокруг подарка, наезжать на него можно). Левый
- * верхний угол огонька, % шапки.
+ * Огоньки шапки — мелкие (.blobs-small), вразброс и поверх картинки, в том
+ * числе на самом подарке (решение владельца 2026-10-12: без ореола вокруг
+ * подарка — иначе видно, что он в круге). Левый верхний угол огонька, %
+ * шапки.
  */
 const HEADER_BLOBS = [
-  { top: "2%", left: "68%" },
-  { top: "24%", left: "-6%" },
-  { top: "40%", left: "62%" },
-  { top: "66%", left: "8%" },
-  { top: "8%", left: "26%" },
+  { top: "4%", left: "70%" },
+  { top: "18%", left: "6%" },
+  { top: "30%", left: "52%" },
+  { top: "46%", left: "24%" },
+  { top: "58%", left: "72%" },
+  { top: "74%", left: "40%" },
+  { top: "2%", left: "34%" },
 ];
 
 /**
@@ -141,10 +144,10 @@ function InvitePage() {
         <div className="relative bg-[#2A2B2F] pb-8">
           {/* Свой слой огоньков поверх картинки (фон шапки непрозрачный —
               общие огоньки каркаса здесь не видны, иначе их вдвое больше). */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <GlowBlobs positions={HEADER_BLOBS} />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1]">
+            <GlowBlobs positions={HEADER_BLOBS} className="blobs-small" />
           </div>
-          <div className="relative px-4 pt-2">
+          <div className="relative z-[2] px-4 pt-2">
             <Link
               to="/"
               className="-ml-2 inline-flex h-10 items-center gap-1 rounded-full px-2 text-sm font-medium text-white/80 transition-colors active:bg-white/10"
@@ -154,9 +157,9 @@ function InvitePage() {
             </Link>
           </div>
           <div className="mx-auto h-60 w-60">
-            <img src={inviteGift} alt="" className="art-fade h-full w-full object-contain" />
+            <img src={inviteGift} alt="" className="art-fade-soft h-full w-full object-contain" />
           </div>
-          <div className="relative px-4">
+          <div className="relative z-[2] px-4">
             <h1 className="text-3xl font-semibold leading-tight">Пригласи подругу</h1>
             <p className="mt-1 text-sm text-white/70">
               Вам и подруге — по {GIFT_TRAININGS} тренировки в подарок
