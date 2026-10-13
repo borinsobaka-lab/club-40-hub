@@ -7,6 +7,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { formatMoney } from "@/lib/format";
@@ -174,6 +175,9 @@ function PackagesRoute() {
 function PackagesPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
+  // Номенклатура общая для всех пакетных клубов (lib/studio-catalog.ts):
+  // при смене клуба в шапке список тот же.
+  const catalogIds = useCatalogStudioIds();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -182,7 +186,7 @@ function PackagesPage() {
   // Перетаскивание строк: какая строка тянется и над какой сейчас.
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  const queryKey = ["memberships", studioId, "packages"];
+  const queryKey = ["memberships", studioId, "packages", catalogIds?.join(",")];
 
   const { data: items = [], isLoading: loading } = useQuery({
     queryKey,
@@ -191,11 +195,11 @@ function PackagesPage() {
         supabase
           .from("memberships")
           .select(COLUMNS)
-          .eq("studio_id", studioId!)
+          .in("studio_id", catalogIds!)
           .order("sort_order")
           .order("name"),
       ),
-    enabled: !!studioId,
+    enabled: !!studioId && !!catalogIds,
     meta: { errorMessage: "Не удалось загрузить номенклатуры" },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["memberships"] });
@@ -204,7 +208,7 @@ function PackagesPage() {
     if (
       !(await confirm({
         title: "Удалить номенклатуру?",
-        description: `«${p.name}» пропадёт из каталога. Если её уже продавали, удалить не получится — тогда скройте её переключателем в колонке «Статус».`,
+        description: `«${p.name}» пропадёт из каталога всех клубов с пакетами тренировок. Если её уже продавали, удалить не получится — тогда скройте её переключателем в колонке «Статус».`,
       }))
     )
       return;
@@ -585,7 +589,6 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       // memberships не должна унаследовать подписочные условия (автопродление
       // в пакетной студии выключает ещё и триггер в БД).
       const payload = {
-        studio_id: studioId,
         name: name.trim(),
         description: description.trim() || null,
         visits_count: visits,
@@ -607,7 +610,10 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       };
       const { error } = item
         ? await supabase.from("memberships").update(payload).eq("id", item.id)
-        : await supabase.from("memberships").insert({ ...payload, sort_order: nextSortOrder });
+        : // Новая — в активном клубе (видна во всех пакетных); правка клуб строки не меняет.
+          await supabase
+            .from("memberships")
+            .insert({ ...payload, studio_id: studioId, sort_order: nextSortOrder });
       if (error) {
         toast.error("Ошибка сохранения: " + error.message);
         return;
@@ -630,7 +636,8 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         <DialogDescription>
           Пакет — несколько тренировок за фиксированную цену на ограниченный срок: групповых (пакет
           тренировок) или персональных с тренером (пакет персональных). Пробное посещение продаётся
-          типом «Оплата пробного» в «Абонементах».
+          типом «Оплата пробного» в «Абонементах». Номенклатура общая для всех клубов с пакетами
+          тренировок: изменения сразу видны во всех клубах.
         </DialogDescription>
         <ContentLangSwitch tr={tr} />
       </DialogHeader>

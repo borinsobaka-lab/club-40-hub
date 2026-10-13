@@ -517,4 +517,113 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(pk).toEqual(["entry_id", "trainer_id"]);
     });
   });
+  // ---- Общий каталог пакетных клубов (2026-10-13) ----
+
+  test("сотрудник пакетного клуба видит и правит тренировки и номенклатуру другого пакетного, но не подписочного", async () => {
+    await scenario(async (tx) => {
+      const a = await seed(tx);
+      const b = await seed(tx);
+      const c = await seed(tx, "subscription");
+      await asStaff(tx, a);
+      await tx`set local role authenticated`;
+
+      const workouts = await tx`
+        select id from workouts where id in (${b.workout}, ${c.workout})`;
+      expect(workouts.map((w: { id: string }) => w.id)).toEqual([b.workout]);
+      const renamed = await tx`
+        update workouts set name = 'Растяжка' where id in (${b.workout}, ${c.workout}) returning id`;
+      expect(renamed.map((w: { id: string }) => w.id)).toEqual([b.workout]);
+      const hidden = await tx`
+        update memberships set is_active = false where id in (${b.pack}, ${c.pack}) returning id`;
+      expect(hidden.map((m: { id: string }) => m.id)).toEqual([b.pack]);
+      // Новую тренировку можно завести в своём клубе, в чужом подписочном — нет.
+      expect(
+        await failure(tx, () => tx`insert into workouts (studio_id, name) values (${a.studio}, 'Пилатес')`),
+      ).toBeNull();
+      expect(
+        await failure(tx, () => tx`insert into workouts (studio_id, name) values (${c.studio}, 'Пилатес')`),
+      ).toContain("row-level security");
+      await tx`reset role`;
+    });
+  });
+
+  test("клиент покупает в приложении пакет любого пакетного клуба, но не подписочного", async () => {
+    await scenario(async (tx) => {
+      const a = await seed(tx);
+      const b = await seed(tx);
+      const c = await seed(tx, "subscription");
+      // Покупатель — не сотрудник: guard проверяет пакет.
+      await tx`select set_config('request.jwt.claim.sub', gen_random_uuid()::text, true)`;
+      const buy = (membership: string) => () =>
+        tx`insert into sales (studio_id, client_id, membership_id, total_amount)
+           values (${a.studio}, ${a.client}, ${membership}, 100)`;
+      expect(await failure(tx, buy(b.pack))).toBeNull();
+      expect(await failure(tx, buy(c.pack))).toContain("Абонемент недоступен для покупки");
+    });
+  });
+
+  test("слияние каталога: одинаковые тренировки и пакеты пакетных клубов — одна строка, ссылки переведены", async () => {
+    await scenario(async (tx) => {
+      const a = await seed(tx);
+      const b = await seed(tx);
+      const c = await seed(tx, "subscription");
+      await tx`update workouts set name = '  стретчинг ', color = '#ff0000' where id = ${b.workout}`;
+      const [{ id: pricier }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+        values (${b.studio}, 'Пакет 2', 'package', 2, 30, 120) returning id`;
+      const e = await entry(tx, b, 1);
+      const sale = await sell(tx, b);
+
+      await tx`select packages_merge_catalog()`;
+
+      const workouts = await tx`
+        select id, color from workouts where id in (${a.workout}, ${b.workout})`;
+      expect(workouts.length).toBe(1);
+      const kept = workouts[0] as { id: string; color: string | null };
+      expect(kept.color).toBe("#ff0000");
+      const [{ workout_id }] = await tx`select workout_id from schedule_entries where id = ${e}`;
+      expect(workout_id).toBe(kept.id);
+      // Подписочный клуб не трогается.
+      const [{ n: subs }] = await tx`select count(*)::int as n from workouts where id = ${c.workout}`;
+      expect(subs).toBe(1);
+
+      const packs = await tx`select id from memberships where id in (${a.pack}, ${b.pack})`;
+      expect(packs.length).toBe(1);
+      const keptPack = (packs[0] as { id: string }).id;
+      const [{ membership_id }] = await tx`select membership_id from sales where id = ${sale}`;
+      expect(membership_id).toBe(keptPack);
+      const [{ cm }] = await tx`
+        select membership_id as cm from client_memberships where sale_id = ${sale}`;
+      expect(cm).toBe(keptPack);
+      // Другая цена — другой пакет.
+      const [{ n: other }] = await tx`select count(*)::int as n from memberships where id = ${pricier}`;
+      expect(other).toBe(1);
+
+      // Повторный вызов ничего не меняет.
+      await tx`select packages_merge_catalog()`;
+      const [{ n: left }] = await tx`
+        select count(*)::int as n from memberships where studio_id in (${a.studio}, ${b.studio})`;
+      expect(left).toBe(3);
+    });
+  });
+
+  test("удаление пакетного клуба переносит его каталог в другой пакетный клуб", async () => {
+    await scenario(async (tx) => {
+      const a = await seed(tx);
+      const b = await seed(tx);
+      // Занятие клуба A по тренировке, заведённой в B.
+      const [{ id: e }] = await tx`
+        insert into schedule_entries (studio_id, workout_id, kind, starts_at, ends_at)
+        values (${a.studio}, ${b.workout}, 'group', now() + interval '1 day', now() + interval '1 day 1 hour')
+        returning id`;
+      await tx`delete from studios where id = ${b.studio}`;
+
+      const [{ studio_id }] = await tx`select studio_id from workouts where id = ${b.workout}`;
+      expect(studio_id).toBe(a.studio);
+      const [{ n }] = await tx`select count(*)::int as n from schedule_entries where id = ${e}`;
+      expect(n).toBe(1);
+      const [{ m }] = await tx`select studio_id as m from memberships where id = ${b.pack}`;
+      expect(m).toBe(a.studio);
+    });
+  });
 });

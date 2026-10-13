@@ -21,6 +21,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
+import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { fieldTriggerClass } from "@/components/ui/field-styles";
@@ -417,18 +418,20 @@ function SchedulePage() {
   }, []);
 
   // Справочники зависят только от студии, занятия — ещё и от недели: листание
-  // недель не перезапрашивает тренировки и тренеров.
+  // недель не перезапрашивает тренировки и тренеров. Тренировки пакетных
+  // клубов общие (lib/studio-catalog.ts).
+  const catalogIds = useCatalogStudioIds();
   const {
     data: workouts = [],
     isFetching: workoutsFetching,
     isPending: workoutsPending,
   } = useQuery({
-    queryKey: ["workouts", studioId, WORKOUT_COLS],
+    queryKey: ["workouts", studioId, WORKOUT_COLS, catalogIds?.join(",")],
     queryFn: () =>
       unwrap<Workout[]>(
-        supabase.from("workouts").select(WORKOUT_COLS).eq("studio_id", studioId!).order("name"),
+        supabase.from("workouts").select(WORKOUT_COLS).in("studio_id", catalogIds!).order("name"),
       ),
-    enabled: !!studioId,
+    enabled: !!studioId && !!catalogIds,
     meta: { errorMessage: "Ошибка загрузки тренировок" },
   });
   const { data: staff = [], isFetching: trainersFetching } = useQuery({

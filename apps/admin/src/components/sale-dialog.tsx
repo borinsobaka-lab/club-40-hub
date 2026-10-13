@@ -10,6 +10,7 @@ import { StaffOption } from "@/components/employee-photo";
 import { isAdminRole } from "@/lib/staff-directory";
 import { SELLER_TIP, useStudioStaff } from "@/lib/studio-staff";
 import { useStudios } from "@/hooks/use-studios";
+import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { unwrap } from "@/lib/query";
 import {
   PAYMENT_METHOD_LABEL,
@@ -239,8 +240,10 @@ function SaleForm({
     setForm((f) => ({ ...f, [key]: value }));
   const [saving, setSaving] = useState(false);
 
+  // У пакетных клубов номенклатура общая на все пакетные клубы.
+  const catalogIds = useCatalogStudioIds(studioId);
   const { data: memberships = [], isFetched: membershipsFetched } = useQuery({
-    queryKey: ["memberships", studioId, "options"],
+    queryKey: ["memberships", studioId, "options", catalogIds?.join(",")],
     queryFn: () =>
       unwrap<MembershipRow[]>(
         supabase
@@ -248,10 +251,10 @@ function SaleForm({
           .select(
             "id, name, price, duration_days, visits_count, installment_enabled, max_payments, kind",
           )
-          .eq("studio_id", studioId!)
+          .in("studio_id", catalogIds!)
           .order("name"),
       ),
-    enabled: !!studioId,
+    enabled: !!studioId && !!catalogIds,
     meta: { errorMessage: "Не удалось загрузить абонементы" },
   });
 

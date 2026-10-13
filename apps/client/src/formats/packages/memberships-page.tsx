@@ -46,12 +46,12 @@ export function PackagesMembershipsPage() {
   const loc = useLocalize();
   const [tab, setTab] = useState<TabKey>("packages");
   const { user, loading: authLoading } = useAuth();
-  const { studioId, studioReady } = useViewedStudioId();
+  const { studioId } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
   const studioName = loc(studios.find((s) => s.id === studioId))?.name ?? null;
   const tabs = useMemo(() => TABS.map((x) => ({ ...x, label: t(x.label) })), [t]);
 
-  const catalog = useQuery(packCatalogQuery(studioId, studioReady));
+  const catalog = useQuery(packCatalogQuery());
   const mine = useQuery(packMyMembershipsQuery(user?.id ?? null));
 
   const items = (catalog.data ?? []).filter((m) =>

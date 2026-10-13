@@ -139,25 +139,29 @@ function tbilisiDateISO() {
   }).format(new Date());
 }
 
-/** Номенклатура смотримой студии (витрина «Абонементов»). */
-export function packCatalogQuery(studioId: string | null, enabled = true) {
+/**
+ * Номенклатура (витрина «Абонементов»). С 2026-10-13 она общая для всех
+ * пакетных студий (db/migrations/2026-10-13_zzzz_packages_shared_catalog.sql):
+ * строки отбираются по формату студии, а не по смотримой студии. Фильтр по
+ * формату нужен и сотруднику-клиенту: RLS отдаёт ему ещё и номенклатуру его
+ * студий в админке.
+ */
+export function packCatalogQuery() {
   return queryOptions({
-    queryKey: ["pack-memberships", studioId],
+    queryKey: ["pack-memberships"],
     queryFn: async (): Promise<Pack[]> => {
-      let q = untypedDb
+      const { data, error } = await untypedDb
         .from("memberships")
         // «*», а не список колонок: тег и подарок (миграция 2026-10-12) приходят,
         // когда они есть в базе, и не ломают запрос до её выкатки.
-        .select("*")
-        .eq("is_active", true);
-      if (studioId) q = q.eq("studio_id", studioId);
-      const { data, error } = await q
+        .select("*, catalog_studio:studios!inner(format)")
+        .eq("catalog_studio.format", "packages")
+        .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("price", { ascending: true });
       if (error) throw error;
       return (data as Pack[] | null) ?? [];
     },
-    enabled,
   });
 }
 
