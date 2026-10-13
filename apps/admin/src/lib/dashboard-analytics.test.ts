@@ -8,6 +8,7 @@ import {
   dailySeries,
   foldSlices,
   membershipPayments,
+  notRenewedBeforeEnd,
   renewalRates,
   salesMetrics,
   type SaleRecord,
@@ -22,6 +23,7 @@ function sale(p: Partial<SaleRecord> & { clientId: string; soldAt: string }): Sa
     totalAmount: 100,
     membershipName: "Безлимит",
     trial: false,
+    personal: false,
     method: "cash",
     sellerKey: null,
     sellerName: null,
@@ -90,6 +92,27 @@ describe("classifySales", () => {
     const next = sale({ clientId: "a", soldAt: "2026-05-01", endsAt: "2026-06-01" });
     expect(classifySales([open, next]).get(next.id)).toBe("renewal");
   });
+
+  test("пакет персональных — своя история, групповой не продлевает", () => {
+    const group = sale({ clientId: "a", soldAt: "2026-01-01", endsAt: "2026-01-31" });
+    const personal = sale({
+      clientId: "a",
+      soldAt: "2026-01-10",
+      endsAt: "2026-03-10",
+      personal: true,
+    });
+    // группового нет с 31 января, а персональный действует — это возврат в группу
+    const back = sale({ clientId: "a", soldAt: "2026-03-01", endsAt: "2026-03-31" });
+    const r = classifySales([group, personal, back]);
+    expect(r.get(personal.id)).toBe("new");
+    expect(r.get(back.id)).toBe("return");
+  });
+
+  test("возврат до первого посещения (срок не начался) не продлевает", () => {
+    const refunded = sale({ clientId: "a", soldAt: "2026-01-01", endsAt: null, cancelled: true });
+    const next = sale({ clientId: "a", soldAt: "2026-05-01", endsAt: "2026-06-01" });
+    expect(classifySales([refunded, next]).get(next.id)).toBe("return");
+  });
 });
 
 describe("renewalRates", () => {
@@ -121,6 +144,37 @@ describe("renewalRates", () => {
     // На начало апреля больше 14 дней без абонемента b и c (с 1 и 5 марта),
     // у a абонемент действует до 20 апреля.
     expect(rates[1].returnBase).toBe(2);
+  });
+
+  test("пакет персональных не считается продлением группового", () => {
+    const sales = [
+      sale({ clientId: "a", soldAt: "2026-02-10", endsAt: "2026-03-10" }),
+      sale({ clientId: "a", soldAt: "2026-03-12", endsAt: "2026-05-12", personal: true }),
+    ];
+    const [march] = renewalRates(sales, new Date(2026, 2, 31), 1);
+    expect([march.renewed, march.renewalBase]).toEqual([0, 1]);
+  });
+});
+
+describe("notRenewedBeforeEnd", () => {
+  test("продлённые до окончания того же вида не считаются", () => {
+    const t = (d: string) => Date.parse(`${d}T10:00:00Z`);
+    const ending = [
+      // a: продление куплено за неделю до конца — не зовём
+      { key: "a:group", createdAt: t("2026-09-01"), endsAt: "2026-10-10" },
+      // b: купил следующий уже после окончания — закончился
+      { key: "b:group", createdAt: t("2026-09-01"), endsAt: "2026-10-10" },
+      // c: купил только пакет персональных — групповой закончился
+      { key: "c:group", createdAt: t("2026-09-01"), endsAt: "2026-10-10" },
+    ];
+    const later = [
+      { key: "a:group", createdAt: t("2026-10-03"), date: "2026-10-03" },
+      { key: "b:group", createdAt: t("2026-10-12"), date: "2026-10-12" },
+      { key: "c:personal", createdAt: t("2026-10-03"), date: "2026-10-03" },
+      // свой же абонемент (оформлен не позже) продлением не считается
+      { key: "b:group", createdAt: t("2026-09-01"), date: "2026-09-01" },
+    ];
+    expect(notRenewedBeforeEnd(ending, later).map((m) => m.key)).toEqual(["b:group", "c:group"]);
   });
 });
 

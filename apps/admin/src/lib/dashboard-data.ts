@@ -3,7 +3,14 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { SeriesKind, SeriesPoint } from "@/lib/dashboard-series";
-import type { OtherSaleRecord, RefundRecord, SaleRecord } from "@/lib/dashboard-analytics";
+import {
+  inPeriod,
+  notRenewedBeforeEnd,
+  sumBy,
+  type OtherSaleRecord,
+  type RefundRecord,
+  type SaleRecord,
+} from "@/lib/dashboard-analytics";
 
 /**
  * Загрузка данных дашборда из Supabase: показатели «Общих показателей»,
@@ -97,16 +104,21 @@ function makeLoader(errors: string[]) {
     }
     return { rows: (data ?? []) as Row[], count: count ?? 0 };
   }
-  async function loadRows(source: SeriesSource) {
+  async function guard<T>(promise: Promise<T>) {
     try {
-      return { rows: await loadAllRows(source) };
+      return await promise;
     } catch (e) {
       errors.push(e instanceof Error ? e.message : String(e));
       return undefined;
     }
   }
-  return { load, loadRows };
+  const loadRows = (source: SeriesSource) => guard(loadAllRows(source).then((rows) => ({ rows })));
+  return { load, loadRows, guard };
 }
+
+/** Встроенная связь PostgREST: объект или массив из одного. */
+const one = <T>(v: T | T[] | null | undefined): T | null =>
+  Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
 
 function sum(rows: Row[], column: string) {
   return rows.reduce<number>((s, r) => s + Number(r[column] ?? 0), 0);
@@ -121,8 +133,8 @@ export async function loadPeriodMetrics(
   to: string,
 ): Promise<Loaded<PeriodMetrics>> {
   const errors: string[] = [];
-  const { load, loadRows } = makeLoader(errors);
-  const [saleRows, signups, expiring, visits, debtRows, otherSaleRows, refundRows] =
+  const { load, loadRows, guard } = makeLoader(errors);
+  const [saleRows, signups, expiring, visits, debtRows, otherSaleRows, refundRows, written] =
     await Promise.all([
       loadRows(sales(studioIds, from, to)),
       load(
@@ -133,15 +145,7 @@ export async function loadPeriodMetrics(
           .gte("registration_date", from)
           .lte("registration_date", to),
       ),
-      load(
-        supabase
-          .from("client_memberships")
-          .select("id", { count: "exact", head: true })
-          .in("studio_id", studioIds)
-          .in("status", EXPIRING_STATUSES)
-          .gte("ends_at", from)
-          .lte("ends_at", to),
-      ),
+      guard(expiringDates(studioIds, from, to)),
       load(
         supabase
           .from("bookings_log")
@@ -157,11 +161,13 @@ export async function loadPeriodMetrics(
       loadRows(otherSales(studioIds, from, to)),
       // Возвраты уменьшают выручку за период.
       loadRows(refunds(studioIds, from, to)),
+      // И платежи рассрочки, снятые возвратом (пакетные клубы).
+      guard(writtenOffInstallments(studioIds)),
     ]);
 
   const metrics: Partial<PeriodMetrics> = {
     signups: signups?.count,
-    expiring: expiring?.count,
+    expiring: expiring?.length,
     visits: visits?.count,
     debtPeriod: debtRows && sum(debtRows.rows, "amount"),
   };
@@ -177,8 +183,15 @@ export async function loadPeriodMetrics(
     const revenue = sum(saleRows.rows, "total_amount") + sum(otherSaleRows.rows, "total_amount");
     const deals = saleRows.rows.length + otherSaleRows.rows.length;
     metrics.avgTotal = deals ? revenue / deals : 0;
-    // Выручка — абонементы плюс услуги и товары, минус возвраты.
-    if (refundRows) metrics.revenue = revenue - sum(refundRows.rows, "amount");
+    // Выручка — абонементы плюс услуги и товары, минус возвраты и снятые
+    // возвратом платежи рассрочки (их нет в сумме возврата: денег не вносили).
+    if (refundRows && written) {
+      const writtenOff = sumBy(
+        written.filter((w) => inPeriod(w.date, from, to)),
+        (w) => w.amount,
+      );
+      metrics.revenue = revenue - sum(refundRows.rows, "amount") - writtenOff;
+    }
   }
   return { metrics, errors };
 }
@@ -272,7 +285,10 @@ function salesSource(table: "sales" | "other_sales") {
 const sales = salesSource("sales");
 const otherSales = salesSource("other_sales");
 
-/** Неоплаченные взносы студии: со сроком в from–to или (без границ) все. */
+/**
+ * Неоплаченные взносы студии: со сроком в from–to или (без границ) все.
+ * Снятые возвратом (пакетные клубы, refunded) уже никто не должен.
+ */
 function unpaidInstallments(studioIds: string[], from?: string, to?: string): SeriesSource {
   return {
     date: "due_date",
@@ -280,6 +296,7 @@ function unpaidInstallments(studioIds: string[], from?: string, to?: string): Se
     page: (lo, hi) => {
       let q = select("sale_installments", "due_date, amount, sales!inner(studio_id)", lo)
         .eq("paid", false)
+        .eq("refunded", false)
         .in("sales.studio_id", studioIds);
       if (from) q = q.gte("due_date", from);
       if (to) q = q.lte("due_date", to);
@@ -304,6 +321,77 @@ function refunds(studioIds: string[], from: string, to: string): SeriesSource {
         .order("id")
         .range(lo, hi),
   };
+}
+
+/**
+ * Платежи рассрочки, снятые возвратом (пакетные клубы, триггер
+ * refunds_packages_apply): продажа считалась в выручку полной стоимостью, а
+ * эти деньги так и не поступят. Дата — день первого возврата по продаже
+ * (его и ставит триггер); у платежа своей даты снятия нет, поэтому строк —
+ * все, период отбирается здесь (таких платежей единицы).
+ */
+async function writtenOffInstallments(studioIds: string[]) {
+  const rows = await loadAllRows({
+    page: (lo, hi) =>
+      select("sale_installments", "amount, sales!inner(studio_id, refunds(refunded_at))", lo)
+        .eq("refunded", true)
+        .in("sales.studio_id", studioIds)
+        .order("id")
+        .range(lo, hi),
+  });
+  return rows.flatMap((r) => {
+    const sale = one(r.sales as { refunds: { refunded_at: string }[] | null } | null);
+    const first = (sale?.refunds ?? []).map((x) => x.refunded_at).sort()[0];
+    return first ? [{ date: localDate(first), amount: Number(r.amount ?? 0) }] : [];
+  });
+}
+
+/**
+ * «Заканчивается абонементов» — даты окончания абонементов в from–to, кроме
+ * тех, что клиент уже продлил до окончания: купил следующий абонемент того же
+ * вида (balance_kind) не позже дня окончания. В подписочном клубе такая
+ * покупка заменяет прежний (replaced — его и так нет в выборке), в пакетном
+ * продление ждёт своей очереди (pending), а прежний остаётся действующим.
+ */
+async function expiringDates(studioIds: string[], from: string, to: string) {
+  const ending = await loadAllRows({
+    page: (lo, hi) =>
+      select("client_memberships", "client_id, balance_kind, ends_at, created_at", lo)
+        .in("studio_id", studioIds)
+        .in("status", EXPIRING_STATUSES)
+        .gte("ends_at", from)
+        .lte("ends_at", to)
+        .order("id")
+        .range(lo, hi),
+  });
+  if (ending.length === 0) return [];
+  // Самый ранний момент оформления (строки timestamptz сравниваем как время:
+  // у дробной части секунд разная длина).
+  const since = ending
+    .map((m) => String(m.created_at))
+    .reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a));
+  const later = await loadAllRows({
+    page: (lo, hi) =>
+      select("client_memberships", "client_id, balance_kind, created_at", lo)
+        .in("studio_id", studioIds)
+        .not("status", "in", "(cancelled,refunded)")
+        .gt("created_at", since)
+        .order("id")
+        .range(lo, hi),
+  });
+  const key = (m: Row) => `${m.client_id}:${m.balance_kind ?? "group"}`;
+  return notRenewedBeforeEnd(
+    ending.map((m) => ({
+      key: key(m),
+      createdAt: Date.parse(String(m.created_at)),
+      endsAt: String(m.ends_at),
+    })),
+    later.map((m) => ({
+      key: key(m),
+      createdAt: Date.parse(String(m.created_at)),
+      date: localDate(String(m.created_at)),
+    })),
+  ).map((m) => m.endsAt);
 }
 
 function attendedVisits(studioIds: string[], from: string, to: string, columns = "starts_at") {
@@ -366,7 +454,21 @@ export const OVERVIEW_SERIES: Partial<Record<keyof OverviewMetrics, SeriesDef>> 
   revenue: {
     kind: "sum",
     description: "абонементы, услуги и товары за вычетом возвратов",
-    load: sourcesSeries((s, f, t) => [sales(s, f, t), otherSales(s, f, t), refunds(s, f, t)]),
+    load: async (studioIds, from, to) => {
+      const [points, written] = await Promise.all([
+        sourcesSeries((s, f, t) => [sales(s, f, t), otherSales(s, f, t), refunds(s, f, t)])(
+          studioIds,
+          from,
+          to,
+        ),
+        writtenOffInstallments(studioIds),
+      ]);
+      return points.concat(
+        written
+          .filter((w) => inPeriod(w.date, from, to))
+          .map((w) => ({ date: w.date, amount: -w.amount, n: 0 })),
+      );
+    },
   },
   signups: {
     kind: "count",
@@ -388,23 +490,12 @@ export const OVERVIEW_SERIES: Partial<Record<keyof OverviewMetrics, SeriesDef>> 
   expiring: {
     kind: "count",
     // Прошедшие абонементы уже не active (expire_memberships), поэтому здесь
-    // и истёкшие; заменённые новой покупкой и отменённые не считаем.
+    // и истёкшие; заменённые новой покупкой, продлённые до окончания,
+    // отменённые и возвращённые не считаем.
     description: "абонементы по дате окончания, кроме отменённых и продлённых досрочно",
     future: true,
-    load: sourcesSeries((studioIds, from, to) => [
-      {
-        date: "ends_at",
-        page: (lo, hi) =>
-          select("client_memberships", "ends_at", lo)
-            .in("studio_id", studioIds)
-            .in("status", EXPIRING_STATUSES)
-            .gte("ends_at", from)
-            .lte("ends_at", to)
-            .order("ends_at")
-            .order("id")
-            .range(lo, hi),
-      },
-    ]),
+    load: async (studioIds, from, to) =>
+      (await expiringDates(studioIds, from, to)).map((date) => ({ date, amount: 0, n: 1 })),
   },
   visits: {
     kind: "count",
@@ -442,9 +533,6 @@ export type SalesHistory = {
   otherSales: OtherSaleRecord[];
   refunds: RefundRecord[];
 };
-
-const one = <T>(v: T | T[] | null | undefined): T | null =>
-  Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
 
 /**
  * Все продажи студии за всё время: продления и возвраты смотрят на прошлые
@@ -505,11 +593,12 @@ export async function loadSalesHistory(studioIds: string[]): Promise<SalesHistor
         totalAmount: Number(r.total_amount ?? 0),
         membershipName: membership?.name ?? "Без названия",
         trial: membership?.kind === "trial",
+        personal: membership?.kind === "personal",
         method: (r.payment_method as string | null) ?? null,
         sellerKey: (r.seller_id as string | null) ?? sellerName,
         sellerName,
         endsAt: term?.ends_at ?? null,
-        cancelled: term?.status === "cancelled",
+        cancelled: term?.status === "cancelled" || term?.status === "refunded",
         noMembership: !term,
         installments: installments.map((i) => ({
           amount: Number(i.amount ?? 0),

@@ -348,6 +348,7 @@ function ClientMembershipsPage() {
       id: r.id,
       studio_id: r.studio_id,
       total_amount: Number(r.total_amount),
+      paidAmount: Number(r.paid_amount ?? 0),
       membershipName: r.memberships?.name ?? null,
       packages: true,
     });
