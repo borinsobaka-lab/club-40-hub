@@ -1400,6 +1400,25 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
  * Сколько новеньких — только цифра, в цветах бейджа ПЧК, справа от названия
  * (решение владельца 2026-10-13).
  */
+/**
+ * Красный «!» слева от счётчика записей: занятие закончилось, а у записанных
+ * не отмечено «Посетил» / «Не посетил» (решение владельца 2026-10-13).
+ */
+function UnmarkedBadge({ entry }: { entry: Entry }) {
+  if (entry.cancelled_at || new Date(entry.ends_at).getTime() > Date.now()) return null;
+  const n = (entry.participants ?? []).filter((p) => p.status === "booked").length;
+  if (!n) return null;
+  return (
+    <span
+      title={`Не отмечены посещения: ${n}. Откройте занятие и отметьте «Посетил» или «Не посетил».`}
+      aria-label="Не отмечены посещения"
+      className="flex size-3.5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white"
+    >
+      !
+    </span>
+  );
+}
+
 function NewcomersBadge({ entry }: { entry: Entry }) {
   const n = newcomerIds(entry).size;
   if (!n) return null;
@@ -1479,7 +1498,12 @@ function EntryCard({
               )}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
-            {!cancelled && !clean && <CapacityBadge entry={entry} light />}
+            {!cancelled && !clean && (
+              <span className="flex items-center gap-1">
+                <UnmarkedBadge entry={entry} />
+                <CapacityBadge entry={entry} light />
+              </span>
+            )}
           </span>
           <span className="flex w-full items-start gap-1">
             <span
@@ -1541,7 +1565,12 @@ function EntryCard({
           <span className="whitespace-nowrap opacity-80">
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
-          {!clean && <CapacityBadge entry={entry} />}
+          {!clean && (
+            <span className="flex items-center gap-1">
+              <UnmarkedBadge entry={entry} />
+              <CapacityBadge entry={entry} />
+            </span>
+          )}
         </span>
         <span className="flex w-full items-start gap-1">
           <span
