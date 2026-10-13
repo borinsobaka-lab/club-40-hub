@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react";
-import { AltArrowDown } from "@solar-icons/react";
 
 import { Card } from "@/components/ui/card";
 import { useT } from "@/i18n";
@@ -42,12 +41,11 @@ export function ScheduleDayList<E extends { id: string; starts_at: string }>({
         type="button"
         onClick={() => setShowPast((v) => !v)}
         aria-expanded={showPast}
-        className="mb-4 flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-card text-sm font-medium text-muted-foreground transition-colors active:bg-muted"
+        className="mb-4 flex h-10 w-full items-center justify-center rounded-lg bg-card text-sm font-medium text-muted-foreground transition-colors active:bg-muted"
       >
         {showPast
           ? t("Скрыть прошедшие тренировки")
           : t("Прошедшие тренировки · {n}", { n: past.length })}
-        <AltArrowDown className={`h-4 w-4 transition-transform ${showPast ? "rotate-180" : ""}`} />
       </button>
       {showPast && past.map(row)}
       {upcoming.length === 0 ? (
