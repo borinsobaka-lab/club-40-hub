@@ -442,8 +442,8 @@ export function DashboardMarketingPageSkeleton() {
 // ---------------------------------------------------------------------------
 // Расписание
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7..22, как в schedule.tsx
-const SLOT_FULL = 80;
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 9); // 9..22, как в schedule.tsx
+const SLOT_FULL = 72;
 const SLOT_EMPTY = 28;
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 

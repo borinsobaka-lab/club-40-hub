@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
@@ -43,6 +43,8 @@ import {
 } from "@/lib/schedule-trainers";
 import { roleGroup } from "@/lib/staff-roles";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
+import { ClubStatusBadge } from "@/components/club-status-badge";
+import type { ClubStatus } from "@/lib/client-status";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import {
   ACTIVITY_KINDS,
@@ -139,7 +141,13 @@ type Entry = {
   participants?: { status: string; client: ParticipantName | null }[];
 };
 
-type ParticipantName = { first_name: string | null; last_name: string | null; full_name: string };
+type ParticipantName = {
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string;
+  /** Абонементы клиента (любые) — нет ни одного: ПЧК, «новенький». */
+  client_memberships?: { client_id: string }[];
+};
 
 /** Клиенты персонального занятия: «Фамилия Имя» записанных (не отменённых). */
 function participantNames(e: Entry) {
@@ -147,6 +155,19 @@ function participantNames(e: Entry) {
     .filter((p) => p.client && (p.status === "booked" || p.status === "attended"))
     .map((p) => clientName(p.client!))
     .join(", ");
+}
+
+/**
+ * Новенькие на занятии — записанные клиенты со статусом ПЧК: ни разу не
+ * покупали абонемент (как club_status во вью clients_with_status).
+ */
+function newcomerCount(e: Entry) {
+  return (e.participants ?? []).filter(
+    (p) =>
+      p.client &&
+      (p.status === "booked" || p.status === "attended") &&
+      (p.client.client_memberships ?? []).length === 0,
+  ).length;
 }
 
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
@@ -161,7 +182,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name))";
+  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name, client_memberships(client_id)))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -195,15 +216,21 @@ const ADMIN_CANCEL_REASONS = [
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 // Часы сетки по умолчанию — 7..22; занятие раньше или позже расширяет сетку
 // (иначе оно было бы в базе, но не на экране).
-const FIRST_HOUR = 7;
+// С 9:00: на 7 и 8 утра занятий не бывает (решение владельца 2026-10-13);
+// занятие раньше всё равно покажется — сетка расширится до его часа.
+const FIRST_HOUR = 9;
 const LAST_HOUR = 22;
 // Высота часа с занятиями — по самой высокой карточке (две строки названия +
 // строка тренеров или «тренер + клиент» в две строки). Меняешь вёрстку
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
-const SLOT_PX_FULL = 80;
+const SLOT_PX_FULL = 72;
 const SLOT_PX_EMPTY = 28;
-// Полноэкранный просмотр: шрифт карточки крупнее — и строка выше.
-const SLOT_PX_FULLSCREEN = 104;
+// Час, где у занятия есть «новенькие»: бейдж под счётчиком записей
+// опускает название — строка выше на его высоту.
+const SLOT_PX_NEWCOMERS = 88;
+// Полноэкранный просмотр: высота строки с занятиями — по карточкам, пустой
+// час между занятиями — узкая полоска.
+const SLOT_PX_FULLSCREEN_EMPTY = 16;
 const ALL_FILTER_VALUE = "all";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -479,6 +506,7 @@ function SchedulePage() {
   const grid = useMemo(() => {
     const cells = new Map<string, Entry[]>();
     const busyHours = new Set<number>();
+    const newcomerHours = new Set<number>();
     // Занятий по дням недели — точки под днями в переключателе на телефоне.
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
@@ -498,13 +526,18 @@ function SchedulePage() {
       const key = cellKey(start, start.getHours());
       cells.set(key, [...(cells.get(key) ?? []), e]);
       busyHours.add(start.getHours());
+      if (!e.cancelled_at && newcomerCount(e) > 0) newcomerHours.add(start.getHours());
       perDay[(start.getDay() + 6) % 7]++;
     }
     const hourList = [...busyHours];
     const first = Math.min(FIRST_HOUR, ...hourList);
     const last = Math.max(LAST_HOUR, ...hourList);
     const hours = Array.from({ length: last - first + 1 }, (_, i) => i + first);
-    return { cells, busyHours, perDay, hours };
+    // Полный экран — только часы от первого до последнего занятия.
+    const compactHours = hourList.length
+      ? hours.filter((h) => h >= Math.min(...hourList) && h <= Math.max(...hourList))
+      : hours;
+    return { cells, busyHours, newcomerHours, perDay, hours, compactHours };
   }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
@@ -536,6 +569,53 @@ function SchedulePage() {
       document.removeEventListener("keydown", onKey);
     };
   }, [fullscreen]);
+
+  // Полный экран: неделя целиком помещается в экран — сетка уменьшается
+  // (transform: scale, ширина раскладки — 100 / масштаб %, чтобы по ширине
+  // заполнять экран) до наибольшего масштаба, при котором влезает по высоте.
+  // Масштаб подбирается делением пополам: в уменьшенной сетке колонки шире,
+  // названия переносятся реже, высота падает быстрее масштаба. CSS zoom не
+  // годится: размеры увеличенного элемента в Chrome меряются неверно.
+  const fitBoxRef = useRef<HTMLDivElement>(null);
+  const fitGridRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = fitBoxRef.current;
+    const el = fitGridRef.current;
+    if (!box || !el) return;
+    const apply = (scale: number) => {
+      const scaled = scale < 1;
+      el.style.transformOrigin = scaled ? "0 0" : "";
+      el.style.transform = scaled ? `scale(${scale})` : "";
+      el.style.width = scaled ? `${100 / scale}%` : "";
+      box.style.overflow = scaled ? "hidden" : "";
+    };
+    if (!fullscreen) {
+      apply(1);
+      return;
+    }
+    const fits = (scale: number) => {
+      apply(scale);
+      return el.offsetHeight * scale <= box.clientHeight;
+    };
+    const fit = () => {
+      if (fits(1)) return;
+      let lo = 0.3;
+      let hi = 1;
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo + hi) / 2;
+        if (fits(mid)) lo = mid;
+        else hi = mid;
+      }
+      apply(lo);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(box, { box: "border-box" });
+    return () => {
+      observer.disconnect();
+      apply(1);
+    };
+  }, [fullscreen, grid, dayIndex]);
 
   const openSlot = (day: Date, hour: number) => {
     const start = new Date(day);
@@ -908,13 +988,15 @@ function SchedulePage() {
             )}
 
             <div
+              ref={fitBoxRef}
               className={cn(
                 "overflow-auto rounded-lg border bg-background",
                 fullscreen ? "min-h-0 flex-1" : "md:max-h-[calc(100dvh-220px)]",
               )}
             >
               <div
-                className={cn("grid", !isMobile && "min-w-[1200px]")}
+                ref={fitGridRef}
+                className={cn("grid", !isMobile && !fullscreen && "min-w-[1200px]")}
                 style={{
                   gridTemplateColumns: `${isMobile ? 52 : 60}px repeat(${visibleDays.length}, minmax(0, 1fr))`,
                 }}
@@ -945,21 +1027,33 @@ function SchedulePage() {
                   </>
                 )}
 
-                {grid.hours.map((hour) => {
-                  const rowHeight =
+                {(fullscreen ? grid.compactHours : grid.hours).map((hour) => {
+                  const busy =
                     grid.busyHours.has(hour) ||
-                    (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour))
-                      ? fullscreen
-                        ? SLOT_PX_FULLSCREEN
+                    (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour));
+                  // Полный экран: строка с занятиями — по высоте карточек
+                  // (undefined — авто), чтобы неделя помещалась в экран.
+                  const rowHeight = fullscreen
+                    ? busy
+                      ? undefined
+                      : SLOT_PX_FULLSCREEN_EMPTY
+                    : busy
+                      ? grid.newcomerHours.has(hour)
+                        ? SLOT_PX_NEWCOMERS
                         : SLOT_PX_FULL
                       : SLOT_PX_EMPTY;
                   return (
                     <div key={`row-${hour}`} className="contents">
                       <div
                         className="border-b border-r px-2 text-right text-xs text-muted-foreground"
-                        style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
+                        style={{
+                          height: rowHeight,
+                          lineHeight: "1rem",
+                          paddingTop: fullscreen && !busy ? 0 : 4,
+                        }}
                       >
-                        {pad(hour)}:00
+                        {/* Пустой час в полном экране — полоска без подписи. */}
+                        {(!fullscreen || busy) && `${pad(hour)}:00`}
                       </div>
                       {visibleDays.map((di) => {
                         const day = weekDays[di];
@@ -996,7 +1090,14 @@ function SchedulePage() {
                             {/* Несколько занятий в одном часе — рядом, а не друг на друге.
                               Обёртка пропускает клики в промежутках к кнопке слота. */}
                             {grid.cells.has(cellKey(day, hour)) && (
-                              <div className="pointer-events-none absolute inset-1 flex gap-1">
+                              <div
+                                className={cn(
+                                  "pointer-events-none flex gap-1",
+                                  // Полный экран: карточки в потоке — высота
+                                  // ячейки по содержимому, без пустоты снизу.
+                                  fullscreen ? "h-full p-1" : "absolute inset-1",
+                                )}
+                              >
                                 {grid.cells.get(cellKey(day, hour))?.map((e) => (
                                   <EntryCard
                                     key={e.id}
@@ -1253,6 +1354,21 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
   );
 }
 
+/** «1 новенький», «3 новеньких» — под бейджем записей (решение владельца 2026-10-13). */
+function NewcomersBadge({ entry }: { entry: Entry }) {
+  const n = newcomerCount(entry);
+  if (!n) return null;
+  const one = n % 10 === 1 && n % 100 !== 11;
+  return (
+    <span
+      title="Записаны ПЧК — ни разу не покупали абонемент"
+      className="whitespace-nowrap rounded bg-sky-100 px-1 py-px text-[10px] font-semibold tabular-nums text-sky-600"
+    >
+      {n} {one ? "новенький" : "новеньких"}
+    </span>
+  );
+}
+
 function EntryCard({
   entry,
   packages,
@@ -1299,18 +1415,23 @@ function EntryCard({
         <button
           type="button"
           onClick={onOpen}
-          className="flex h-full w-full cursor-pointer flex-col px-1.5 py-0.5 text-left hover:bg-accent/40"
+          className="flex h-full w-full cursor-pointer flex-col px-1.5 pt-0.5 pb-px text-left hover:bg-accent/40"
         >
           <span className="flex w-full items-start justify-between gap-1">
             <span className="flex items-center gap-1 whitespace-nowrap text-muted-foreground">
               {cancelled && <Ban className="size-3 shrink-0 text-rose-600" aria-label="Отменено" />}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
-            {!cancelled && !clean && <CapacityBadge entry={entry} light />}
+            {!cancelled && !clean && (
+              <span className="flex flex-col items-end gap-0.5">
+                <CapacityBadge entry={entry} light />
+                <NewcomersBadge entry={entry} />
+              </span>
+            )}
           </span>
           <span
             className={cn(
-              "mt-0.5 font-semibold leading-tight",
+              "font-semibold leading-[1.15]",
               clean ? "text-base" : "text-[13px]",
               // Персональному название в одну строку — место под клиента.
               clients ? "truncate" : "line-clamp-2",
@@ -1324,7 +1445,7 @@ function EntryCard({
           {people && (
             <span
               className={cn(
-                "mt-0.5 min-w-0 pr-5 text-muted-foreground",
+                "min-w-0 pr-5 text-muted-foreground",
                 clients ? "line-clamp-2 break-words" : "truncate",
               )}
             >
@@ -1359,17 +1480,22 @@ function EntryCard({
       <button
         type="button"
         onClick={onOpen}
-        className="flex h-full w-full cursor-pointer flex-col px-2 py-0.5 text-left hover:opacity-90"
+        className="flex h-full w-full cursor-pointer flex-col px-2 pt-0.5 pb-px text-left hover:opacity-90"
       >
         <span className="flex w-full items-start justify-between gap-1">
           <span className="whitespace-nowrap opacity-80">
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
-          {!clean && <CapacityBadge entry={entry} />}
+          {!clean && (
+            <span className="flex flex-col items-end gap-0.5">
+              <CapacityBadge entry={entry} />
+              <NewcomersBadge entry={entry} />
+            </span>
+          )}
         </span>
         <span
           className={cn(
-            "mt-0.5 font-semibold leading-tight line-clamp-2",
+            "font-semibold leading-[1.15] line-clamp-2",
             clean ? "text-base" : "text-[13px]",
           )}
         >
@@ -1624,13 +1750,13 @@ function TrainerAssignments({
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {sub ? (
-                    <Button variant="outline" size="xs" onClick={() => undoSub(index)}>
+                    <Button variant="default" size="xs" onClick={() => undoSub(index)}>
                       <Undo2 />
                       Отменить замену
                     </Button>
                   ) : (
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="xs"
                       onClick={() => setEditing({ index, mode: "replace" })}
                     >
@@ -1639,7 +1765,7 @@ function TrainerAssignments({
                     </Button>
                   )}
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="xs"
                     onClick={() => setEditing({ index, mode: "edit" })}
                   >
@@ -2333,6 +2459,8 @@ type ClientRow = {
   phone: string | null;
   email: string | null;
   crm_link: string | null;
+  /** Статус клуба (ЧК / БЧК / ПЧК) — из вью clients_with_status, как в «Клиентах». */
+  club_status: ClubStatus | null;
 };
 
 type ActiveMembershipRow = {
@@ -2397,14 +2525,14 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
 
   // Карточки и абонементы — дополнение: если они не загрузились, записи всё
   // равно показываем (с «Пользователь без анкеты»), а не ошибку на всю панель.
-  const cols = "id, user_id, first_name, last_name, full_name, phone, email, crm_link";
+  const cols = "id, user_id, first_name, last_name, full_name, phone, email, crm_link, club_status";
   const [byId, byUser] = await Promise.all([
     clientIds.length
-      ? supabase.from("clients").select(cols).in("id", clientIds)
+      ? supabase.from("clients_with_status").select(cols).in("id", clientIds)
       : Promise.resolve({ data: [] as ClientRow[] }),
     userIds.length
       ? supabase
-          .from("clients")
+          .from("clients_with_status")
           .select(cols)
           .eq("studio_id", entry.studio_id)
           .in("user_id", userIds)
@@ -2532,7 +2660,7 @@ function ParticipantActions({
     <>
       <div className="flex flex-wrap gap-2">
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
           onClick={() => setPickOpen(true)}
           disabled={disabled || !studioId}
@@ -2542,7 +2670,7 @@ function ParticipantActions({
         </Button>
         {trial && (
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             onClick={() => setTrialOpen(true)}
             disabled={disabled || !studioId}
@@ -2880,6 +3008,7 @@ function BookingsPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <BookingClientName client={c} />
+                      {c?.club_status && <ClubStatusBadge status={c.club_status} />}
                       {b.status === "attended" && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                           Посетил
@@ -2916,7 +3045,9 @@ function BookingsPanel({
                   <div className="flex shrink-0 items-center gap-1">
                     {(b.status === "booked" || b.status === "no_show") && (
                       <Button
-                        variant={packages ? "success" : "default"}
+                        // Пакетные: отметки — белые, тёмные — действия окна
+                        // («Записать клиента», замена тренера; 2026-10-13).
+                        variant={packages ? "outline" : "default"}
                         size={packages ? "xs" : "sm"}
                         onClick={() => handleAttend(b)}
                         // «Не посетил» по неуважительной уже списан — его
@@ -2934,7 +3065,7 @@ function BookingsPanel({
                       </Button>
                     )}
                     {packages && b.status === "booked" && (
-                      <Button variant="destructive" size="xs" onClick={() => askNoShow(b)}>
+                      <Button variant="outline" size="xs" onClick={() => askNoShow(b)}>
                         Не посетил
                       </Button>
                     )}
@@ -2955,7 +3086,7 @@ function BookingsPanel({
                     )}
                     {b.status === "attended" && (
                       <Button
-                        variant={packages ? "attention" : "outline"}
+                        variant="outline"
                         size={packages ? "xs" : "sm"}
                         title="Отметили по ошибке? Тренировка вернётся на баланс клиента"
                         onClick={() => handleUnattend(b)}
