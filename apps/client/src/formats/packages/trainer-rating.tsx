@@ -3,9 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AltArrowRight, HandHeart, Star } from "@solar-icons/react";
 import { toast } from "sonner";
 
+import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useT, type Translator } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
+import { cn } from "@/lib/utils";
 
 /**
  * Рейтинг тренера и чаевые в пакетном приложении (решение владельца
@@ -200,7 +202,7 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
                 type="button"
                 onClick={() => setEditing(false)}
                 disabled={save.isPending}
-                className="h-12 flex-1 rounded-full border border-border font-semibold transition active:scale-[0.99] disabled:opacity-60"
+                className={cn(buttonVariants({ variant: "outline" }), "flex-1 disabled:opacity-60")}
               >
                 {t("Отмена")}
               </button>
@@ -209,7 +211,7 @@ export function RateTrainer({ trainerId, title }: { trainerId: string; title: st
               type="button"
               onClick={() => save.mutate(picked)}
               disabled={picked === 0 || save.isPending || (rated && picked === mine)}
-              className="h-12 flex-1 rounded-full bg-primary font-bold text-primary-foreground transition active:scale-[0.99] disabled:opacity-60"
+              className={cn(buttonVariants(), "flex-1 disabled:opacity-60")}
             >
               {save.isPending ? t("Отправляем…") : rated ? t("Сохранить") : t("Отправить")}
             </button>

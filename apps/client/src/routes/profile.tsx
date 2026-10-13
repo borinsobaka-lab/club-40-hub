@@ -741,14 +741,14 @@ function EditProfileSheet({
         <SheetFooter className="flex-row gap-2">
           <Button
             variant="outline"
-            className="flex-1 shadow-none font-bold"
+            className="flex-1 shadow-none"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
             {t("Отмена")}
           </Button>
-          <Button className="flex-1 font-bold" onClick={handleSave} disabled={saving}>
-            {saving && <Refresh className="h-4 w-4 mr-2 animate-spin" weight="BoldDuotone" />}
+          <Button className="flex-1" onClick={handleSave} disabled={saving}>
+            {saving && <Refresh className="animate-spin" weight="BoldDuotone" />}
             {t("Сохранить")}
           </Button>
         </SheetFooter>

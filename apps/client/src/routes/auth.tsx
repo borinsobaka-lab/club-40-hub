@@ -354,21 +354,11 @@ function AuthPage() {
         }
         footer={
           step === "form" ? (
-            <Button
-              type="submit"
-              form="auth-email-form"
-              disabled={busy}
-              className="h-12 w-full text-base font-semibold"
-            >
+            <Button type="submit" form="auth-email-form" disabled={busy} className="w-full">
               {busy ? spinner : t("Получить код")}
             </Button>
           ) : (
-            <Button
-              type="button"
-              onClick={submitOtp}
-              disabled={busy}
-              className="h-12 w-full text-base font-semibold"
-            >
+            <Button type="button" onClick={submitOtp} disabled={busy} className="w-full">
               {busy ? spinner : t("Подтвердить")}
             </Button>
           )
@@ -436,11 +426,7 @@ function AuthPage() {
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-            <Button
-              type="submit"
-              disabled={busy}
-              className="w-full h-12 rounded-full text-base font-bold mt-2"
-            >
+            <Button type="submit" disabled={busy} className="mt-2 w-full">
               {busy ? (
                 <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
               ) : (
@@ -454,12 +440,7 @@ function AuthPage() {
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-            <Button
-              type="button"
-              onClick={submitOtp}
-              disabled={busy}
-              className="w-full h-12 rounded-full text-base font-bold"
-            >
+            <Button type="button" onClick={submitOtp} disabled={busy} className="w-full">
               {busy ? (
                 <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
               ) : (

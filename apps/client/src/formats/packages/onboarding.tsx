@@ -662,7 +662,7 @@ function PrimaryButton({
   children: ReactNode;
 }) {
   return (
-    <Button className="h-12 w-full text-base font-semibold" onClick={onClick} disabled={disabled}>
+    <Button className="w-full" onClick={onClick} disabled={disabled}>
       {saving ? <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" /> : children}
     </Button>
   );

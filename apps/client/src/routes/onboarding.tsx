@@ -274,7 +274,7 @@ function OnboardingPage() {
           </p>
         </div>
         <div className="px-6 pb-8 pt-4">
-          <Button className="w-full h-12 text-base font-semibold" onClick={() => setStep(1)}>
+          <Button className="w-full" onClick={() => setStep(1)}>
             {t("Начать")}
           </Button>
         </div>
@@ -295,11 +295,7 @@ function OnboardingPage() {
           <p className="mt-3 text-base text-muted-foreground">{t("До встречи в студии.")}</p>
         </div>
         <div className="px-6 pb-8 pt-4">
-          <Button
-            className="w-full h-12 text-base font-semibold"
-            onClick={finish}
-            disabled={saving}
-          >
+          <Button className="w-full" onClick={finish} disabled={saving}>
             {saving ? (
               <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
             ) : (

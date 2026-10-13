@@ -36,6 +36,7 @@ import {
 } from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
 
@@ -337,10 +338,7 @@ function OtherAppScreen({ studio }: { studio: Studio }) {
           })}
         </p>
         <div className="mt-6 flex flex-col gap-2">
-          <a
-            href={url}
-            className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
-          >
+          <a href={url} className={buttonVariants()}>
             {t("Открыть приложение студии")}
           </a>
           <button

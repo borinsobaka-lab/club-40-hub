@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/squircle-avatar";
 import { googleCalendarUrl, outlookLiveUrl, downloadICS, type CalendarEvent } from "@/lib/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   AppleCalendarIcon,
   GoogleCalendarIcon,
@@ -260,8 +262,8 @@ export function WorkoutDrawer({
 
                 {/* Причина отмены и подсказки — в прокрутке; кнопки — ниже,
                     закреплены (решение владельца 2026-10-12: «Записаться» не
-                    должна уезжать за край длинного описания), высотой 48px —
-                    как остальные кнопки действий приложения (2026-10-13). */}
+                    должна уезжать за край длинного описания); размер — общий
+                    у кнопок действий (`buttonVariants`, 2026-10-13). */}
                 {isBooked ? (
                   <div className="mt-6">
                     <div className="mb-2 text-xs font-semibold text-muted-foreground">
@@ -316,7 +318,11 @@ export function WorkoutDrawer({
                       onBook(cancelReason || undefined);
                     }}
                     disabled={isPending}
-                    className={`flex-1 h-12 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
+                    className={cn(
+                      buttonVariants(),
+                      "flex-1 bg-red-500 text-white hover:bg-red-500/90 disabled:opacity-60",
+                      cancelLocked && "opacity-60",
+                    )}
                   >
                     {isPending ? "..." : t("Отменить запись")}
                   </button>
@@ -324,9 +330,9 @@ export function WorkoutDrawer({
                     type="button"
                     onClick={() => setCalendarPickerOpen(true)}
                     disabled={!calendarEvent}
-                    className="flex-1 h-12 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
+                    className={cn(buttonVariants(), "flex-1 disabled:opacity-60")}
                   >
-                    <Calendar className="h-5 w-5" weight="BoldDuotone" />
+                    <Calendar weight="BoldDuotone" />
                     {t("В календарь")}
                   </button>
                 </div>
@@ -335,7 +341,10 @@ export function WorkoutDrawer({
                   type="button"
                   onClick={() => onBook()}
                   disabled={isPending}
-                  className="w-full h-12 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                  className={cn(
+                    buttonVariants(),
+                    "w-full bg-red-500 text-white hover:bg-red-500/90 disabled:opacity-60",
+                  )}
                 >
                   {isPending ? "..." : t("Выйти из очереди")}
                 </button>
@@ -344,7 +353,7 @@ export function WorkoutDrawer({
                   type="button"
                   onClick={() => onBook()}
                   disabled={isPending}
-                  className="w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                  className={cn(buttonVariants(), "w-full disabled:opacity-60")}
                 >
                   {isPending ? "..." : isFull ? t("Встать в очередь") : t("Записаться")}
                 </button>
@@ -367,7 +376,10 @@ export function WorkoutDrawer({
                 key={opt.label}
                 type="button"
                 onClick={opt.onClick}
-                className="relative w-full h-12 rounded-full bg-muted text-foreground font-semibold text-sm active:scale-[0.99] transition flex items-center px-4"
+                className={cn(
+                  buttonVariants(),
+                  "relative w-full bg-muted px-4 text-foreground hover:bg-muted/80 [&_svg]:size-6",
+                )}
               >
                 <opt.Icon className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2" />
                 <span className="w-full text-center">{opt.label}</span>

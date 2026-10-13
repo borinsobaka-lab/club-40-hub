@@ -5,10 +5,12 @@ import { AltArrowLeft, Copy, Share } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import inviteGift from "@/assets/invite-gift.webp";
+import { buttonVariants } from "@/components/ui/button";
 import { GlowBlobs, PageShell } from "@/components/page-shell";
 import { useAuth } from "@/hooks/use-auth";
 import { useHomeStudioName } from "@/hooks/use-viewed-studio";
 import { clientCardQuery } from "@/lib/client-card";
+import { cn } from "@/lib/utils";
 import { getTranslator, useT, type Translator } from "@/i18n";
 
 export const Route = createFileRoute("/invite")({
@@ -232,9 +234,9 @@ function InvitePage() {
           <button
             type="button"
             onClick={shareNative}
-            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.99]"
+            className={cn(buttonVariants(), "mt-6 w-full")}
           >
-            <Share className="h-5 w-5" weight="BoldDuotone" />
+            <Share weight="BoldDuotone" />
             {t("Пригласить подругу")}
           </button>
           <div className="mt-4 text-center text-xs text-muted-foreground">

@@ -81,11 +81,7 @@ export function StepFooter({
   const t = useT();
   return (
     <div className="px-4 pb-6 pt-2 space-y-2 border-t border-border/40">
-      <Button
-        className="w-full h-12 text-base font-semibold"
-        disabled={disabled || saving}
-        onClick={onNext}
-      >
+      <Button className="w-full" disabled={disabled || saving} onClick={onNext}>
         {saving ? (
           <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
         ) : last ? (

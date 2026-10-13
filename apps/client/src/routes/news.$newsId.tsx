@@ -146,7 +146,7 @@ function NewsDetailPage() {
       </div>
       {hasCta && (
         <div className="shrink-0 border-t border-border bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button asChild className="w-full h-12 text-base font-bold">
+          <Button asChild className="w-full">
             <a href={item.button_url!} target="_blank" rel="noreferrer noopener">
               {item.button_text}
             </a>
