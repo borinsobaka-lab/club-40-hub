@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -258,6 +258,7 @@ async function saveClient(
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const t = useT();
   const { locale } = useI18n();
   const currentLanguage = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
@@ -413,9 +414,12 @@ function ProfilePage() {
           {/* Блок: ссылки */}
           <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
             <ul className="divide-y divide-border">
+              {/* Единственный юридический документ приложения (решение владельца
+                  2026-10-13) — вместо прежних «Правовых документов». */}
               <ProfileLink
                 icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
-                label={t("Правовые документы")}
+                label={t("Политика конфиденциальности")}
+                onClick={() => void navigate({ to: "/privacy" })}
               />
               {/* Оплаты в приложении пакетных студий пока нет (решение владельца
                   2026-10-12) — блок способов оплаты не показываем. */}

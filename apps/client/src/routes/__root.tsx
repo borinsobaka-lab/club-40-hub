@@ -445,6 +445,9 @@ function usePrefetchScreens(ready: boolean) {
   }, [ready, userId, studioId, studioReady, router, queryClient]);
 }
 
+/** Страницы, которые открываются без входа. */
+const PUBLIC_ROUTES = new Set(["/privacy"]);
+
 function AppShell() {
   const { session, user, loading } = useAuth();
   const studio = useClientStudio();
@@ -452,6 +455,8 @@ function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAuthRoute = pathname === "/auth";
   const onOnboardingRoute = pathname === "/onboarding";
+  // Открываются и без входа (политика конфиденциальности — ссылка у входа).
+  const onPublicRoute = PUBLIC_ROUTES.has(pathname);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
 
   useRouteScrollReset(pathname);
@@ -459,9 +464,9 @@ function AppShell() {
 
   useEffect(() => {
     if (loading) return;
-    if (!session && !onAuthRoute) navigate({ to: "/auth", replace: true });
+    if (!session && !onAuthRoute && !onPublicRoute) navigate({ to: "/auth", replace: true });
     if (session && onAuthRoute) navigate({ to: "/", replace: true });
-  }, [loading, session, onAuthRoute, navigate]);
+  }, [loading, session, onAuthRoute, onPublicRoute, navigate]);
 
   // Reset when user changes / signs out
   useEffect(() => {
@@ -473,7 +478,8 @@ function AppShell() {
   useEffect(() => {
     if (loading || !user) return;
     if (onAuthRoute) return;
-    if (onOnboardingRoute || readOnboarded(user.id)) {
+    // Публичную страницу (политику) читают и до анкеты — проверка при уходе с неё.
+    if (onOnboardingRoute || onPublicRoute || readOnboarded(user.id)) {
       setOnboardingChecked(true);
       return;
     }
@@ -511,7 +517,7 @@ function AppShell() {
       cancelled = true;
       window.clearTimeout(retry);
     };
-  }, [loading, user, onAuthRoute, onOnboardingRoute, navigate]);
+  }, [loading, user, onAuthRoute, onOnboardingRoute, onPublicRoute, navigate]);
 
   const onboardedCached = !!user && readOnboarded(user.id);
   usePrefetchScreens(
@@ -555,6 +561,20 @@ function AppShell() {
   }
 
   const showAppLoading = loading || (!!session && !onboardingChecked && !onboardedCached);
+
+  // Публичная страница без входа: шапка с огоньками, без нижнего меню.
+  if (onPublicRoute && !session) {
+    return (
+      <div className="h-[100dvh] overflow-hidden bg-muted/60 text-foreground flex justify-center">
+        <div className="w-full max-w-md flex h-full min-h-0 flex-col relative bg-muted/60 overflow-hidden">
+          <HeaderBackdrop />
+          <main key={pathname} className="flex-1 min-h-0 overflow-hidden relative">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   // Пакетное приложение: пока вход и анкета не проверены — тёмная заставка
   // во весь экран, а не каркас главной (иначе новый клиент видел главную
