@@ -265,41 +265,20 @@ function NpsPage() {
       }
     >
       <div className="space-y-3">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "surveys" | "stats")}>
-          <TabsList>
-            <TabsTrigger value="surveys">Опросы</TabsTrigger>
-            <TabsTrigger value="stats">Статистика</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Болванка своей вкладки: у «Опросов» и «Статистики» разная раскладка. */}
-        {loading ? (
-          tab === "surveys" ? (
-            <NpsSurveysSkeleton />
-          ) : (
-            <NpsStatsSkeleton />
-          )
-        ) : tab === "surveys" ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {SURVEY_TYPES.map((s) => {
-              const st = npsStats(responses.filter((r) => r.survey_type === s.type));
-              return (
-                <div key={s.type} className="rounded-lg border bg-background p-5">
-                  <h3 className="text-base font-semibold">{s.label}</h3>
-                  <p className="mb-4 text-xs text-muted-foreground">{s.hint}</p>
-                  <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                    <Stat label="NPS" value={st.nps ?? "—"} />
-                    <Stat label="Ответов" value={st.total} />
-                    <Stat label="Промо" value={st.promoters} cls="text-emerald-600" />
-                    <Stat label="Критики" value={st.detractors} cls="text-destructive" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <TableToolbar>
+        {/* Табы и фильтры «Статистики» — на одной белой плашке, не на канве. */}
+        <TableToolbar>
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab(v as "surveys" | "stats")}
+            className="toolbar-full"
+          >
+            <TabsList>
+              <TabsTrigger value="surveys">Опросы</TabsTrigger>
+              <TabsTrigger value="stats">Статистика</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {tab === "stats" && (
+            <>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Все опросы" />
@@ -331,8 +310,37 @@ function NpsPage() {
                   setClientFilter("all");
                 }}
               />
-            </TableToolbar>
+            </>
+          )}
+        </TableToolbar>
 
+        {/* Болванка своей вкладки: у «Опросов» и «Статистики» разная раскладка. */}
+        {loading ? (
+          tab === "surveys" ? (
+            <NpsSurveysSkeleton />
+          ) : (
+            <NpsStatsSkeleton />
+          )
+        ) : tab === "surveys" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {SURVEY_TYPES.map((s) => {
+              const st = npsStats(responses.filter((r) => r.survey_type === s.type));
+              return (
+                <div key={s.type} className="rounded-lg border bg-background p-5">
+                  <h3 className="text-base font-semibold">{s.label}</h3>
+                  <p className="mb-4 text-xs text-muted-foreground">{s.hint}</p>
+                  <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                    <Stat label="NPS" value={st.nps ?? "—"} />
+                    <Stat label="Ответов" value={st.total} />
+                    <Stat label="Промо" value={st.promoters} cls="text-emerald-600" />
+                    <Stat label="Критики" value={st.detractors} cls="text-destructive" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <KPI label="NPS" value={global.nps ?? "—"} />
               <KPI label="Ответов" value={global.total} />

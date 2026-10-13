@@ -9,7 +9,6 @@ import { StaffTabs } from "@/components/staff-tabs";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EmployeePhoto } from "@/components/employee-photo";
 import { TableSkeletonRows } from "@/components/skeletons";
-import { TableToolbar } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -185,8 +184,7 @@ function AdminShiftsPage() {
   return (
     <AdminShell title="График администраторов">
       <div className="space-y-3">
-        <StaffTabs />
-        <TableToolbar>
+        <StaffTabs>
           <PeriodStepper
             unit="month"
             label={monthLabel(month)}
@@ -195,7 +193,7 @@ function AdminShiftsPage() {
             onCurrent={() => setMonth(monthOf(today))}
             isCurrent={month === monthOf(today)}
           />
-        </TableToolbar>
+        </StaffTabs>
 
         {!scopeLoading && studios.length === 0 ? (
           <InfoNote variant="empty">
