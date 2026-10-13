@@ -43,6 +43,25 @@ export function AdminShell({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [kateOpen, setKateOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // «Обновить»: иконка крутится, пока перезагружаются лоадеры роута и
+  // активные запросы, но не короче MIN_SPIN_MS — иначе быстрый ответ мигал бы
+  // незаметно и казалось, что ничего не произошло.
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    const MIN_SPIN_MS = 700;
+    try {
+      await Promise.all([
+        router.invalidate(),
+        queryClient.invalidateQueries(),
+        new Promise((r) => setTimeout(r, MIN_SPIN_MS)),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <>
@@ -82,14 +101,13 @@ export function AdminShell({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Обновить"
-            className="shrink-0"
-            onClick={() => {
-              router.invalidate();
-              queryClient.invalidateQueries();
-            }}
+            aria-label={refreshing ? "Обновляется…" : "Обновить"}
+            aria-busy={refreshing}
+            className="shrink-0 disabled:opacity-100"
+            disabled={refreshing}
+            onClick={() => void refresh()}
           >
-            <RefreshCw className="h-5 w-5" />
+            <RefreshCw className={refreshing ? "h-5 w-5 animate-spin" : "h-5 w-5"} />
           </Button>
         </div>
 
