@@ -61,9 +61,11 @@ import {
   ListOrdered as ListOrderedArt,
   LoaderCircle as Loader2Art,
   LogIn as LogInArt,
+  Maximize as MaximizeArt,
   MessageCircle as MessageCircleArt,
   MessageSquare as MessageSquareArt,
   Mic as MicArt,
+  Minimize2 as Minimize2Art,
   Minus as MinusArt,
   PanelLeft as PanelLeftArt,
   Pencil as PencilArt,
@@ -148,9 +150,11 @@ export const List = icon(ListArt, "List");
 export const ListOrdered = icon(ListOrderedArt, "ListOrdered");
 export const Loader2 = icon(Loader2Art, "Loader2");
 export const LogIn = icon(LogInArt, "LogIn");
+export const Maximize = icon(MaximizeArt, "Maximize");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
 export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
 export const Mic = icon(MicArt, "Mic");
+export const Minimize2 = icon(Minimize2Art, "Minimize2");
 export const Minus = icon(MinusArt, "Minus");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Pencil = icon(PencilArt, "Pencil");
