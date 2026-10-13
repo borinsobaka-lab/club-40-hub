@@ -47,6 +47,9 @@ const dict: Dictionary = {
   "{h}ч {m}мин": "{h} h {m} min",
   "{h}ч": "{h} h",
   "{m}мин": "{m} min",
+  "Прошедшие тренировки · {n}": "Past workouts · {n}",
+  "Скрыть прошедшие тренировки": "Hide past workouts",
+  "На сегодня тренировок больше нет": "No more workouts today",
 };
 
 export default dict;
