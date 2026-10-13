@@ -43,14 +43,15 @@ export function ToolbarSearch({
 }
 
 /**
- * «Сбросить» фильтры — одна на все плашки: ghost с крестиком, видна только
+ * «Сбросить» фильтры — одна на все плашки: оранжевая с крестиком, видна только
  * когда есть что сбрасывать (раньше в одном разделе показывалась всегда, в
- * другом — только при фильтре, в третьем была маленькой).
+ * другом — только при фильтре, в третьем была маленькой). Оранжевая — чтобы
+ * применённый фильтр было видно сразу (решение владельца 2026-10-13).
  */
 export function ToolbarReset({ active, onReset }: { active: boolean; onReset: () => void }) {
   if (!active) return null;
   return (
-    <Button variant="ghost" onClick={onReset}>
+    <Button variant="attention" onClick={onReset}>
       <X />
       Сбросить
     </Button>

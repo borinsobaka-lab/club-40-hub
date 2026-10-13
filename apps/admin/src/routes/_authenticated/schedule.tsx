@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
@@ -13,6 +13,8 @@ import {
   Undo2,
   UserPlus,
   X,
+  Maximize,
+  Minimize2,
 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -21,6 +23,7 @@ import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { fieldTriggerClass } from "@/components/ui/field-styles";
 import { PeriodStepper } from "@/components/period-stepper";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,6 +135,31 @@ function participantNames(e: Entry) {
     .filter((p) => p.client && (p.status === "booked" || p.status === "attended"))
     .map((p) => clientName(p.client!))
     .join(", ");
+}
+
+/**
+ * Значение фильтра «Типы активностей»: тип занятия, а у пакетных клубов ещё
+ * «Парные» — персональное, на которое записаны двое и больше (своего типа в
+ * базе у них нет, решение владельца 2026-10-13).
+ */
+type KindFilterValue = ActivityKind | "pair";
+
+const KIND_FILTER_ALL: KindFilterValue[] = [...ACTIVITY_KIND_VALUES, "pair"];
+
+/** Пункты фильтра пакетного клуба — в порядке списка. */
+const PACKAGES_KIND_OPTIONS: { value: KindFilterValue; label: string }[] = [
+  { value: "group", label: "Групповые" },
+  { value: "personal", label: "Персональные" },
+  { value: "pair", label: "Парные" },
+  { value: "other", label: "Прочие активности" },
+];
+
+function entryFilterKind(e: Entry, packages: boolean): KindFilterValue {
+  if (!packages || e.kind !== "personal") return e.kind;
+  const clients = (e.participants ?? []).filter(
+    (p) => p.status === "booked" || p.status === "attended",
+  );
+  return clients.length >= 2 ? "pair" : "personal";
 }
 
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
@@ -352,7 +380,8 @@ function SchedulePage() {
   const studioId = useActiveStudioId();
   // Пакетные студии: у тренировок нет типа — фильтра по типу нет, карточка
   // занятия светлая с полоской цвета тренировки (2026-10-11).
-  const packages = useActiveStudio()?.format === "packages";
+  const studio = useActiveStudio();
+  const packages = studio?.format === "packages";
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -362,13 +391,16 @@ function SchedulePage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [formKind, setFormKind] = useState<ActivityKind>("group");
   // Фильтр типов занятий не запоминается: при входе в раздел видны все типы.
-  const [kindFilter, setKindFilter] = useState<ActivityKind[]>(ACTIVITY_KIND_VALUES);
+  const [kindFilter, setKindFilter] = useState<KindFilterValue[]>(KIND_FILTER_ALL);
   // Отменённые занятия по умолчанию скрыты и тоже не запоминаются.
   const [showCancelled, setShowCancelled] = useState(false);
   const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
   const [filterTrainerId, setFilterTrainerId] = useState<string>(ALL_FILTER_VALUE);
   const [filterWorkoutId, setFilterWorkoutId] = useState<string>(ALL_FILTER_VALUE);
   const [copySource, setCopySource] = useState<Entry | null>(null);
+  // Полноэкранный просмотр — для скриншота клиенту: только сетка с текущими
+  // фильтрами, без копирования, остатка мест и подсказок администратору.
+  const [fullscreen, setFullscreen] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [duplicatingWeek, setDuplicatingWeek] = useState(false);
   // На телефоне сетка показывает один день недели (семь колонок по 1200px
@@ -457,7 +489,7 @@ function SchedulePage() {
     typeFilter !== ALL_FILTER_VALUE ||
     workoutFilter !== ALL_FILTER_VALUE ||
     filterTrainerId !== ALL_FILTER_VALUE ||
-    kindFilter.length !== ACTIVITY_KIND_VALUES.length ||
+    KIND_FILTER_ALL.some((k) => !kindFilter.includes(k)) ||
     showCancelled;
 
   const weekDays = useMemo(
@@ -477,7 +509,7 @@ function SchedulePage() {
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
       if (e.cancelled_at && !showCancelled) continue;
-      if (!kindFilter.includes(e.kind)) continue;
+      if (!kindFilter.includes(entryFilterKind(e, packages))) continue;
       // Тип тренировки есть только у групповых: при выбранном типе прочие скрыты.
       if (typeFilter !== ALL_FILTER_VALUE && (e.kind !== "group" || e.workout?.type !== typeFilter))
         continue;
@@ -499,7 +531,37 @@ function SchedulePage() {
     const last = Math.max(LAST_HOUR, ...hourList);
     const hours = Array.from({ length: last - first + 1 }, (_, i) => i + first);
     return { cells, busyHours, perDay, hours };
-  }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
+  }, [entries, packages, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
+
+  // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
+  // из него (Esc, жест) закрывает и наш. Без поддержки (iPhone) — просто
+  // слой поверх страницы, закрывается крестиком или Esc.
+  const openFullscreen = () => {
+    setCopySource(null);
+    setFullscreen(true);
+    // Весь документ, а не слой: окна занятия (портал в body) остаются видны.
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  };
+  const closeFullscreen = () => {
+    setFullscreen(false);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  };
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onChange = () => {
+      if (!document.fullscreenElement) setFullscreen(false);
+    };
+    // Esc в открытом окне занятия закрывает только окно.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !document.querySelector('[role="dialog"]')) setFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [fullscreen]);
 
   const openSlot = (day: Date, hour: number) => {
     const start = new Date(day);
@@ -703,19 +765,27 @@ function SchedulePage() {
                   </SelectContent>
                 </Select>
               )}
-              <KindFilter
-                value={kindFilter}
-                onChange={setKindFilter}
-                cancelled={
-                  packages ? { value: showCancelled, onChange: setShowCancelled } : undefined
-                }
-              />
+              {packages ? (
+                <ActivityTypesFilter
+                  value={kindFilter}
+                  onChange={setKindFilter}
+                  cancelled={showCancelled}
+                  onCancelledChange={setShowCancelled}
+                />
+              ) : (
+                <KindFilter value={kindFilter} onChange={setKindFilter} />
+              )}
               <Select value={workoutFilter} onValueChange={setFilterWorkoutId}>
                 <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
-                  <SelectValue placeholder="Все тренировки" />
+                  {/* Пакетные клубы: тренировка — «Направление» (2026-10-13). */}
+                  <SelectValue>
+                    {packages && workoutFilter === ALL_FILTER_VALUE ? "Направление" : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL_FILTER_VALUE}>Все тренировки</SelectItem>
+                  <SelectItem value={ALL_FILTER_VALUE}>
+                    {packages ? "Все направления" : "Все тренировки"}
+                  </SelectItem>
                   {weekWorkouts.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
                       <span className="inline-flex items-center gap-2">
@@ -749,14 +819,23 @@ function SchedulePage() {
                   setFilterType(ALL_FILTER_VALUE);
                   setFilterWorkoutId(ALL_FILTER_VALUE);
                   setFilterTrainerId(ALL_FILTER_VALUE);
-                  setKindFilter(ACTIVITY_KIND_VALUES);
+                  setKindFilter(KIND_FILTER_ALL);
                   setShowCancelled(false);
                 }}
               />
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Во весь экран"
+                title="Во весь экран — для скриншота клиенту"
+                onClick={openFullscreen}
+              >
+                <Maximize />
+              </Button>
             </div>
           </TableToolbar>
 
-          {copySource && (
+          {copySource && !fullscreen && (
             <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
               <div className="flex items-center gap-2">
                 {pasting ? (
@@ -786,149 +865,185 @@ function SchedulePage() {
             в этот день есть занятия (с учётом фильтров); сегодня — розовым,
             как отметка «сегодня» в недельной сетке.
           */}
-          {isMobile && (
-            <div className="grid grid-cols-7 gap-1 rounded-lg border bg-background p-1">
-              {weekDays.map((d, i) => {
-                const today = d.toDateString() === new Date().toDateString();
-                const selected = i === dayIndex;
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    aria-pressed={selected}
-                    aria-label={d.toLocaleDateString("ru-RU", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                    })}
-                    onClick={() => setDayIndex(i)}
-                    className={cn(
-                      "flex flex-col items-center rounded-md py-1.5 text-xs transition-colors",
-                      selected ? "bg-primary text-primary-foreground" : "hover:bg-muted",
-                      today && !selected && "text-brand",
-                    )}
-                  >
-                    <span
-                      className={cn("uppercase", !selected && !today && "text-muted-foreground")}
-                    >
-                      {DAY_NAMES[i]}
-                    </span>
-                    <span className="text-base font-semibold tabular-nums leading-tight">
-                      {d.getDate()}
-                    </span>
-                    <span
+          <div
+            className={cn(
+              fullscreen
+                ? "fixed inset-0 z-50 flex flex-col gap-3 bg-background p-3 sm:p-4"
+                : "space-y-3",
+            )}
+          >
+            {fullscreen && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-lg font-semibold">
+                    {studio?.name ? `Расписание · ${studio.name}` : "Расписание"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">{weekLabel}</div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Выйти из полноэкранного режима"
+                  title="Выйти из полноэкранного режима (Esc)"
+                  onClick={closeFullscreen}
+                >
+                  <Minimize2 />
+                </Button>
+              </div>
+            )}
+            {isMobile && (
+              <div className="grid grid-cols-7 gap-1 rounded-lg border bg-background p-1">
+                {weekDays.map((d, i) => {
+                  const today = d.toDateString() === new Date().toDateString();
+                  const selected = i === dayIndex;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-pressed={selected}
+                      aria-label={d.toLocaleDateString("ru-RU", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
+                      onClick={() => setDayIndex(i)}
                       className={cn(
-                        "mt-0.5 size-1 rounded-full",
-                        grid.perDay[i] > 0 ? "bg-current" : "bg-transparent",
+                        "flex flex-col items-center rounded-md py-1.5 text-xs transition-colors",
+                        selected ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+                        today && !selected && "text-brand",
                       )}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="overflow-auto rounded-lg border bg-background md:max-h-[calc(100dvh-220px)]">
-            <div
-              className={cn("grid", !isMobile && "min-w-[1200px]")}
-              style={{
-                gridTemplateColumns: `${isMobile ? 52 : 60}px repeat(${visibleDays.length}, minmax(0, 1fr))`,
-              }}
-            >
-              {!isMobile && (
-                <>
-                  <div className="sticky top-0 z-20 border-b border-r bg-background" />
-                  {weekDays.map((d, i) => {
-                    const today = d.toDateString() === new Date().toDateString();
-                    return (
-                      <div
-                        key={i}
-                        className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
-                          today
-                            ? "border-b-4 border-b-brand font-semibold text-primary"
-                            : "border-b"
-                        }`}
-                      >
-                        <div className="uppercase tracking-wide text-muted-foreground">
-                          {DAY_NAMES[i]}
-                        </div>
-                        <div>
-                          {d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-
-              {grid.hours.map((hour) => {
-                const rowHeight =
-                  grid.busyHours.has(hour) || (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour))
-                    ? SLOT_PX_FULL
-                    : SLOT_PX_EMPTY;
-                return (
-                  <div key={`row-${hour}`} className="contents">
-                    <div
-                      className="border-b border-r px-2 text-right text-xs text-muted-foreground"
-                      style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
                     >
-                      {pad(hour)}:00
-                    </div>
-                    {visibleDays.map((di) => {
-                      const day = weekDays[di];
+                      <span
+                        className={cn("uppercase", !selected && !today && "text-muted-foreground")}
+                      >
+                        {DAY_NAMES[i]}
+                      </span>
+                      <span className="text-base font-semibold tabular-nums leading-tight">
+                        {d.getDate()}
+                      </span>
+                      <span
+                        className={cn(
+                          "mt-0.5 size-1 rounded-full",
+                          grid.perDay[i] > 0 ? "bg-current" : "bg-transparent",
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div
+              className={cn(
+                "overflow-auto rounded-lg border bg-background",
+                fullscreen ? "min-h-0 flex-1" : "md:max-h-[calc(100dvh-220px)]",
+              )}
+            >
+              <div
+                className={cn("grid", !isMobile && "min-w-[1200px]")}
+                style={{
+                  gridTemplateColumns: `${isMobile ? 52 : 60}px repeat(${visibleDays.length}, minmax(0, 1fr))`,
+                }}
+              >
+                {!isMobile && (
+                  <>
+                    <div className="sticky top-0 z-20 border-b border-r bg-background" />
+                    {weekDays.map((d, i) => {
+                      const today = d.toDateString() === new Date().toDateString();
                       return (
                         <div
-                          key={`${hour}-${di}`}
-                          className={cn(
-                            "relative border-b border-r max-md:border-r-0",
-                            // Пакетные студии: слоты — светлее подложки раздела (её цвет
-                            // наполовину с белым фоном сетки), линии — обычные светло-серые
-                            // (--border); шапка дней и столбец времени — белые.
-                            packages && "bg-canvas/50",
-                          )}
-                          style={{ height: rowHeight }}
+                          key={i}
+                          className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
+                            today
+                              ? "border-b-4 border-b-brand font-semibold text-primary"
+                              : "border-b"
+                          }`}
                         >
-                          {/*
-                          Кнопка слота лежит под карточками, а не оборачивает их:
-                          кнопка внутри кнопки — невалидный HTML и ломает доступность.
-                        */}
-                          <button
-                            type="button"
-                            aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
-                            onClick={() => openSlot(day, hour)}
-                            className={cn(
-                              "absolute inset-0 transition",
-                              packages ? "hover:bg-black/5" : "hover:bg-accent/40",
-                            )}
-                          />
-                          {entriesPending && isScheduleSkeletonCell(hour, di, isMobile) && (
-                            <EntryCardSkeleton />
-                          )}
-                          {/* Несколько занятий в одном часе — рядом, а не друг на друге.
-                              Обёртка пропускает клики в промежутках к кнопке слота. */}
-                          {grid.cells.has(cellKey(day, hour)) && (
-                            <div className="pointer-events-none absolute inset-1 flex gap-1">
-                              {grid.cells.get(cellKey(day, hour))?.map((e) => (
-                                <EntryCard
-                                  key={e.id}
-                                  entry={e}
-                                  packages={packages}
-                                  onOpen={() => openEdit(e)}
-                                  onCopy={() => startCopy(e)}
-                                />
-                              ))}
-                            </div>
-                          )}
+                          <div className="uppercase tracking-wide text-muted-foreground">
+                            {DAY_NAMES[i]}
+                          </div>
+                          <div>
+                            {d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
+                          </div>
                         </div>
                       );
                     })}
-                  </div>
-                );
-              })}
+                  </>
+                )}
+
+                {grid.hours.map((hour) => {
+                  const rowHeight =
+                    grid.busyHours.has(hour) ||
+                    (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour))
+                      ? SLOT_PX_FULL
+                      : SLOT_PX_EMPTY;
+                  return (
+                    <div key={`row-${hour}`} className="contents">
+                      <div
+                        className="border-b border-r px-2 text-right text-xs text-muted-foreground"
+                        style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
+                      >
+                        {pad(hour)}:00
+                      </div>
+                      {visibleDays.map((di) => {
+                        const day = weekDays[di];
+                        return (
+                          <div
+                            key={`${hour}-${di}`}
+                            className={cn(
+                              "relative border-b border-r max-md:border-r-0",
+                              // Пакетные студии: слоты — светлее подложки раздела (её цвет
+                              // наполовину с белым фоном сетки), линии — обычные светло-серые
+                              // (--border); шапка дней и столбец времени — белые.
+                              packages && "bg-canvas/50",
+                            )}
+                            style={{ height: rowHeight }}
+                          >
+                            {/*
+                          Кнопка слота лежит под карточками, а не оборачивает их:
+                          кнопка внутри кнопки — невалидный HTML и ломает доступность.
+                        */}
+                            {!fullscreen && (
+                              <button
+                                type="button"
+                                aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
+                                onClick={() => openSlot(day, hour)}
+                                className={cn(
+                                  "absolute inset-0 transition",
+                                  packages ? "hover:bg-black/5" : "hover:bg-accent/40",
+                                )}
+                              />
+                            )}
+                            {entriesPending && isScheduleSkeletonCell(hour, di, isMobile) && (
+                              <EntryCardSkeleton />
+                            )}
+                            {/* Несколько занятий в одном часе — рядом, а не друг на друге.
+                              Обёртка пропускает клики в промежутках к кнопке слота. */}
+                            {grid.cells.has(cellKey(day, hour)) && (
+                              <div className="pointer-events-none absolute inset-1 flex gap-1">
+                                {grid.cells.get(cellKey(day, hour))?.map((e) => (
+                                  <EntryCard
+                                    key={e.id}
+                                    entry={e}
+                                    packages={packages}
+                                    clean={fullscreen}
+                                    onOpen={() => openEdit(e)}
+                                    onCopy={() => startCopy(e)}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {!workoutsPending && workouts.length === 0 && (
+          {!fullscreen && !workoutsPending && workouts.length === 0 && (
             <InfoNote variant="empty">
               Чтобы добавлять групповые занятия, сначала создайте тренировки в разделе «Тренировки».
               Персональные занятия и прочие активности тренировок не требуют.
@@ -966,25 +1081,29 @@ function SchedulePage() {
   );
 }
 
+/** Отметить или снять тип в фильтре, сохраняя порядок KIND_FILTER_ALL. */
+function toggleKind(
+  value: KindFilterValue[],
+  kind: KindFilterValue,
+  checked: boolean,
+): KindFilterValue[] {
+  return KIND_FILTER_ALL.filter((k) => (k === kind ? checked : value.includes(k)));
+}
+
 /**
- * Фильтр по типам занятий — галочки прямо в панели фильтров (решение
- * владельца 2026-10-11: на клик меньше, чем выпадающий список). По умолчанию
- * отмечены все; последний отмеченный тип снять нельзя — пустая сетка только
- * путает. `cancelled` (пакетные студии) — галочка «Отменённые», по умолчанию
- * снята: отменённые занятия показываются, только если их включить.
+ * Фильтр по типам занятий подписочного клуба — галочки прямо в панели
+ * фильтров (решение владельца 2026-10-11: на клик меньше, чем выпадающий
+ * список). По умолчанию отмечены все; последний отмеченный тип снять нельзя
+ * — пустая сетка только путает.
  */
 function KindFilter({
   value,
   onChange,
-  cancelled,
 }: {
-  value: ActivityKind[];
-  onChange: (v: ActivityKind[]) => void;
-  cancelled?: { value: boolean; onChange: (v: boolean) => void };
+  value: KindFilterValue[];
+  onChange: (v: KindFilterValue[]) => void;
 }) {
-  const toggle = (kind: ActivityKind, checked: boolean) => {
-    onChange(ACTIVITY_KIND_VALUES.filter((k) => (k === kind ? checked : value.includes(k))));
-  };
+  const shown = ACTIVITY_KIND_VALUES.filter((k) => value.includes(k)).length;
   return (
     <div
       role="group"
@@ -997,24 +1116,85 @@ function KindFilter({
           <CheckboxOption
             key={k.value}
             checked={checked}
-            disabled={checked && value.length === 1}
-            onCheckedChange={(v) => toggle(k.value, v)}
+            disabled={checked && shown === 1}
+            onCheckedChange={(v) => onChange(toggleKind(value, k.value, v))}
             className="whitespace-nowrap"
           >
             {k.plural}
           </CheckboxOption>
         );
       })}
-      {cancelled && (
-        <CheckboxOption
-          checked={cancelled.value}
-          onCheckedChange={cancelled.onChange}
-          className="whitespace-nowrap border-l pl-4"
-        >
-          Отменённые
-        </CheckboxOption>
-      )}
     </div>
+  );
+}
+
+/**
+ * «Типы активностей» пакетного клуба — выпадающий список с галочками
+ * (решение владельца 2026-10-13): групповые, персональные, парные, прочие и
+ * «Отменённые». По умолчанию отмечено всё, кроме отменённых; последний
+ * отмеченный тип снять нельзя.
+ */
+function ActivityTypesFilter({
+  value,
+  onChange,
+  cancelled,
+  onCancelledChange,
+}: {
+  value: KindFilterValue[];
+  onChange: (v: KindFilterValue[]) => void;
+  cancelled: boolean;
+  onCancelledChange: (v: boolean) => void;
+}) {
+  const picked = PACKAGES_KIND_OPTIONS.filter((o) => value.includes(o.value));
+  const all = picked.length === PACKAGES_KIND_OPTIONS.length;
+  const label =
+    all && !cancelled
+      ? "Типы активностей"
+      : [
+          ...(all ? ["Все"] : picked.map((o) => o.label)),
+          ...(cancelled ? ["Отменённые"] : []),
+        ].join(", ");
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-field=""
+          aria-label={`Типы активностей: ${label}`}
+          title={label}
+          className={cn(fieldTriggerClass, "w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1")}
+        >
+          <span className="truncate">{label}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-2">
+        <div className="space-y-0.5">
+          {PACKAGES_KIND_OPTIONS.map((o) => {
+            const checked = value.includes(o.value);
+            return (
+              <CheckboxOption
+                key={o.value}
+                checked={checked}
+                disabled={checked && picked.length === 1}
+                onCheckedChange={(v) => onChange(toggleKind(value, o.value, v))}
+                className="rounded-md px-2 py-1.5 hover:bg-accent"
+              >
+                {o.label}
+              </CheckboxOption>
+            );
+          })}
+          <div className="my-1 border-t" />
+          <CheckboxOption
+            checked={cancelled}
+            onCheckedChange={onCancelledChange}
+            className="rounded-md px-2 py-1.5 hover:bg-accent"
+          >
+            Отменённые
+          </CheckboxOption>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -1104,12 +1284,15 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
 function EntryCard({
   entry,
   packages,
+  clean,
   onOpen,
   onCopy,
 }: {
   entry: Entry;
   /** Пакетная студия: светлая карточка с полоской цвета тренировки. */
   packages: boolean;
+  /** Полноэкранный просмотр для клиента: без «Копировать» и остатка мест. */
+  clean?: boolean;
   onOpen: () => void;
   onCopy: () => void;
 }) {
@@ -1150,7 +1333,7 @@ function EntryCard({
               {cancelled && <Ban className="size-3 shrink-0 text-rose-600" aria-label="Отменено" />}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
-            {!cancelled && <CapacityBadge entry={entry} light />}
+            {!cancelled && !clean && <CapacityBadge entry={entry} light />}
           </span>
           <span
             className={cn(
@@ -1175,15 +1358,17 @@ function EntryCard({
             </span>
           )}
         </button>
-        <button
-          type="button"
-          aria-label="Копировать занятие"
-          title="Копировать занятие"
-          onClick={onCopy}
-          className="absolute bottom-1 right-1.5 rounded-full bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <Copy className="h-3 w-3" />
-        </button>
+        {!clean && (
+          <button
+            type="button"
+            aria-label="Копировать занятие"
+            title="Копировать занятие"
+            onClick={onCopy}
+            className="absolute bottom-1 right-1.5 rounded-full bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Copy className="h-3 w-3" />
+          </button>
+        )}
       </div>
     );
   }
@@ -1202,7 +1387,7 @@ function EntryCard({
           <span className="whitespace-nowrap opacity-80">
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
-          <CapacityBadge entry={entry} />
+          {!clean && <CapacityBadge entry={entry} />}
         </span>
         <span className="mt-0.5 text-[13px] font-semibold leading-tight line-clamp-2">
           {entryTitle(entry)}
@@ -1211,15 +1396,17 @@ function EntryCard({
         {names && <span className="block truncate pr-5 opacity-80">{names}</span>}
       </button>
       {/* Соседняя кнопка поверх карточки, а не вложенная в неё — там же, где была. */}
-      <button
-        type="button"
-        aria-label="Копировать занятие"
-        title="Копировать занятие"
-        onClick={onCopy}
-        className="absolute bottom-1 right-2 rounded-full bg-black/25 p-0.5 text-white hover:bg-black/40"
-      >
-        <Copy className="h-3 w-3" />
-      </button>
+      {!clean && (
+        <button
+          type="button"
+          aria-label="Копировать занятие"
+          title="Копировать занятие"
+          onClick={onCopy}
+          className="absolute bottom-1 right-2 rounded-full bg-black/25 p-0.5 text-white hover:bg-black/40"
+        >
+          <Copy className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -2863,7 +3050,7 @@ function BookingsPanel({
                     )}
                     {b.status === "attended" && (
                       <Button
-                        variant={packages ? "warning" : "outline"}
+                        variant={packages ? "attention" : "outline"}
                         size={packages ? "xs" : "sm"}
                         title="Отметили по ошибке? Тренировка вернётся на баланс клиента"
                         onClick={() => handleUnattend(b)}
