@@ -7,11 +7,18 @@ import { useT } from "@/i18n";
  * (приложение пакетов — её); при входе студия клиента ещё неизвестна, поэтому
  * не из «Контактов и правил».
  */
+const WHATSAPP_URL = "https://wa.me/995591288682";
+
 const CONTACTS = [
   { label: "Instagram", href: "https://ig.me/m/ladystretch_tbilisi", Icon: InstagramIcon },
   { label: "Facebook", href: "https://m.me/61550881054749", Icon: MessengerIcon },
-  { label: "WhatsApp", href: "https://wa.me/995591288682", Icon: WhatsAppIcon },
+  { label: "WhatsApp", href: WHATSAPP_URL, Icon: WhatsAppIcon },
 ];
+
+/** Чат WhatsApp студии (тот же номер, что на экране входа) с готовым текстом. */
+export function studioWhatsAppLink(text: string) {
+  return `${WHATSAPP_URL}?text=${encodeURIComponent(text)}`;
+}
 
 export function StudioContactButtons() {
   const t = useT();
@@ -75,7 +82,7 @@ function MessengerIcon({ className }: { className?: string }) {
   );
 }
 
-function WhatsAppIcon({ className }: { className?: string }) {
+export function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <IconBase className={className}>
       <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />

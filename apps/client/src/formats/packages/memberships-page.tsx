@@ -4,13 +4,17 @@ import { AddCircle, Ticket } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
+import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MembershipCardsSkeleton } from "@/components/content-skeletons";
 import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { msg, useLocalize, useT, type Translator } from "@/i18n";
+import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { FormattedText } from "@/lib/formatted-text";
+import { cn } from "@/lib/utils";
 import { packCatalogQuery, packMyMembershipsQuery, type MyMembership, type Pack } from "./queries";
+import { studioWhatsAppLink, WhatsAppIcon } from "./studio-contacts";
 import { isOverdue, tbilisiToday } from "./upcoming-payments";
 
 /**
@@ -18,7 +22,9 @@ import { isOverdue, tbilisiToday } from "./upcoming-payments";
  * «Абонементы» (пакеты тренировок; пробное не показывается) и «Персональные занятия»
  * (номенклатура типа personal), в порядке из админки (memberships.sort_order,
  * перетаскивание в «Номенклатурах»), описание — с разметкой. Покупки в
- * приложении пока нет — только витрина и свои действующие абонементы.
+ * приложении пока нет — витрина, свои действующие абонементы и кнопка
+ * «Оформить у администратора» (решение владельца 2026-10-13): чат WhatsApp
+ * студии с готовым текстом на языке приложения — имя клиента и пакет.
  * Номенклатура — смотримой студии (переключатель на главной).
  */
 
@@ -32,6 +38,13 @@ function durationLabel(days: number | null, t: Translator) {
   if (!days) return null;
   if (days % 30 === 0) return t.plural(days / 30, "{n} месяц|{n} месяца|{n} месяцев");
   return t.plural(days, "{n} день|{n} дня|{n} дней");
+}
+
+/** Имя клиента для сообщения администратору: «Имя Фамилия». */
+function clientName(c: ClientCard | null | undefined) {
+  if (!c) return null;
+  const composed = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
+  return composed || c.full_name?.trim() || null;
 }
 
 /** «12 октября 2026»; дату YYYY-MM-DD читаем как местную. */
@@ -53,6 +66,8 @@ export function PackagesMembershipsPage() {
 
   const catalog = useQuery(packCatalogQuery());
   const mine = useQuery(packMyMembershipsQuery(user?.id ?? null));
+  const card = useQuery(clientCardQuery(user?.id ?? null));
+  const name = clientName(card.data);
 
   const items = (catalog.data ?? []).filter((m) =>
     // Пробное посещение в приложении не показываем (решение владельца 2026-10-11).
@@ -108,14 +123,7 @@ export function PackagesMembershipsPage() {
               : t("Абонементов пока нет")}
           </Card>
         ) : (
-          <>
-            {items.map((m) => (
-              <PackCard key={m.id} m={m} />
-            ))}
-            <p className="px-1 pt-1 text-center text-xs text-muted-foreground">
-              {t("Оформить абонемент можно у администратора студии")}
-            </p>
-          </>
+          items.map((m) => <PackCard key={m.id} m={m} clientName={name} />)
         )}
       </div>
     </PageShell>
@@ -130,7 +138,7 @@ export function PackagesMembershipsPage() {
  * тёмный блок «В подарок» (текст из админки) и срок действия внизу.
  * Подарочные персональные в «Что входит» не пишутся — их пишут в «В подарок».
  */
-function PackCard({ m: row }: { m: Pack }) {
+function PackCard({ m: row, clientName }: { m: Pack; clientName: string | null }) {
   const t = useT();
   const loc = useLocalize();
   const m = loc(row);
@@ -156,6 +164,12 @@ function PackCard({ m: row }: { m: Pack }) {
   const tag = m.tag_text?.trim();
   const bright = !!tag && m.tag_style === "bright";
   const duration = durationLabel(m.duration_days, t);
+  const message = clientName
+    ? t("Здравствуйте! Я {name}, клиент студии. Хочу оформить абонемент «{membership}».", {
+        name: clientName,
+        membership: m.name,
+      })
+    : t("Здравствуйте! Хочу оформить абонемент «{membership}».", { membership: m.name });
 
   return (
     <Card
@@ -209,6 +223,15 @@ function PackCard({ m: row }: { m: Pack }) {
           {t("Срок действия — {duration}", { duration })}
         </div>
       )}
+      <a
+        href={studioWhatsAppLink(message)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(buttonVariants({ variant: "outline" }), "mt-4 w-full shadow-none")}
+      >
+        <WhatsAppIcon />
+        {t("Оформить у администратора")}
+      </a>
     </Card>
   );
 }
