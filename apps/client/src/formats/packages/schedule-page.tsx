@@ -21,6 +21,7 @@ import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { msg, useLocalize, useT, type Translator } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
+import { ScheduleDayList } from "@/components/schedule-day-list";
 import {
   entryColor,
   entryTrainers,
@@ -475,24 +476,18 @@ export function PackagesSchedulePage() {
                           : t("На этот день тренировок пока нет")}
                       </Card>
                     ) : (
-                      <div className="relative">
-                        {dayList.map((c) => {
-                          const isPast = new Date(c.starts_at) < new Date();
-                          return (
-                            <div
-                              key={c.id}
-                              className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}
-                            >
-                              <PackWorkoutCard
-                                entry={c}
-                                isBooked={bookedIds.has(c.id)}
-                                isWaitlisted={waitlistedIds.has(c.id)}
-                                onOpen={() => setOpenEntry(packEntryToDrawerData(c, t))}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <ScheduleDayList
+                        entries={dayList}
+                        pastDay={days[dayIdx].getTime() < today.getTime()}
+                        renderEntry={(c) => (
+                          <PackWorkoutCard
+                            entry={c}
+                            isBooked={bookedIds.has(c.id)}
+                            isWaitlisted={waitlistedIds.has(c.id)}
+                            onOpen={() => setOpenEntry(packEntryToDrawerData(c, t))}
+                          />
+                        )}
+                      />
                     )}
                   </div>
                 ))}

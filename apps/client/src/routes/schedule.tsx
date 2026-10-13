@@ -14,6 +14,7 @@ import { useClubSettings } from "@/hooks/use-club-settings";
 import { useClientStudioId } from "@/hooks/use-client-studio";
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
+import { ScheduleDayList } from "@/components/schedule-day-list";
 import { IS_PACKAGES, SCHEDULE_TITLE } from "@/lib/terms";
 import { PackagesSchedulePage } from "@/formats/packages/schedule-page";
 import {
@@ -551,143 +552,136 @@ function SchedulePage() {
                         {t("На этот день тренировок пока нет")}
                       </Card>
                     ) : (
-                      <div className="relative">
-                        {dayList.map((c) => {
+                      <ScheduleDayList
+                        entries={dayList}
+                        pastDay={days[dayIdx].getTime() < today.getTime()}
+                        renderEntry={(c) => {
                           const meta = workoutTypeMeta(c.workout?.type);
                           const isBooked = bookedIds.has(c.id);
                           const isWaitlisted = waitlistedIds.has(c.id);
                           const isActive = isBooked || isWaitlisted;
                           const isPending = pendingId === c.id;
-                          const isPast = new Date(c.starts_at) < new Date();
                           return (
-                            <div
-                              key={c.id}
-                              className={`relative pb-4 ${isPast ? "opacity-20" : ""}`}
+                            <Card
+                              className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
+                                isBooked
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : isWaitlisted
+                                    ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40"
+                                    : ""
+                              }`}
                             >
-                              <Card
-                                className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
-                                  isBooked
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : isWaitlisted
-                                      ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40"
-                                      : ""
-                                }`}
+                              <span
+                                className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setOpenEntry(entryToDrawerData(c, t))}
+                                className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
                               >
-                                <span
-                                  className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenEntry(entryToDrawerData(c, t))}
-                                  className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
-                                >
-                                  <div className="flex flex-col items-center justify-center w-12 shrink-0">
-                                    <div className="text-base font-black tabular-nums leading-tight text-center">
-                                      {fmtTime(c.starts_at, t)}
-                                    </div>
+                                <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                                  <div className="text-base font-black tabular-nums leading-tight text-center">
+                                    {fmtTime(c.starts_at, t)}
                                   </div>
-                                  <div className="flex-1 min-w-0 ml-1">
-                                    <div className="font-medium break-words leading-snug">
-                                      {c.workout?.name ?? t("Занятие")}
+                                </div>
+                                <div className="flex-1 min-w-0 ml-1">
+                                  <div className="font-medium break-words leading-snug">
+                                    {c.workout?.name ?? t("Занятие")}
+                                  </div>
+                                  {isWaitlisted && (
+                                    <div className="text-xs mt-0.5 font-semibold text-blue-600 dark:text-blue-400">
+                                      {t("В листе ожидания")}
                                     </div>
-                                    {isWaitlisted && (
-                                      <div className="text-xs mt-0.5 font-semibold text-blue-600 dark:text-blue-400">
-                                        {t("В листе ожидания")}
+                                  )}
+                                  {(() => {
+                                    const names = (c.trainers ?? [])
+                                      .map((row) => row.trainer?.full_name)
+                                      .filter((n): n is string => !!n);
+                                    if (names.length === 0) return null;
+                                    return (
+                                      <div
+                                        className={`text-xs mt-0.5 truncate ${isBooked ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                                      >
+                                        {names.join(", ")}
                                       </div>
-                                    )}
-                                    {(() => {
-                                      const names = (c.trainers ?? [])
-                                        .map((row) => row.trainer?.full_name)
-                                        .filter((n): n is string => !!n);
-                                      if (names.length === 0) return null;
+                                    );
+                                  })()}
+                                  {(() => {
+                                    const effectiveCapacity =
+                                      c.capacity ?? c.workout?.capacity ?? null;
+                                    const left = remainingSpots(effectiveCapacity, c.booked_count);
+                                    if (left === null || left > 5) return null;
+                                    if (left === 0) {
                                       return (
-                                        <div
-                                          className={`text-xs mt-0.5 truncate ${isBooked ? "text-primary-foreground/70" : "text-muted-foreground"}`}
-                                        >
-                                          {names.join(", ")}
-                                        </div>
-                                      );
-                                    })()}
-                                    {(() => {
-                                      const effectiveCapacity =
-                                        c.capacity ?? c.workout?.capacity ?? null;
-                                      const left = remainingSpots(
-                                        effectiveCapacity,
-                                        c.booked_count,
-                                      );
-                                      if (left === null || left > 5) return null;
-                                      if (left === 0) {
-                                        return (
-                                          <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500 leading-none">
-                                            <CloseCircle
-                                              className="h-3.5 w-3.5 shrink-0"
-                                              weight="BoldDuotone"
-                                            />
-                                            <span className="leading-none mt-0.5">
-                                              {t("Мест нет")}
-                                            </span>
-                                          </div>
-                                        );
-                                      }
-                                      return (
-                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500 leading-none">
-                                          <Fire
+                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-red-500 leading-none">
+                                          <CloseCircle
                                             className="h-3.5 w-3.5 shrink-0"
                                             weight="BoldDuotone"
                                           />
                                           <span className="leading-none mt-0.5">
-                                            {t.plural(
-                                              left,
-                                              "Осталось {n} место|Осталось {n} места|Осталось {n} мест",
-                                            )}
+                                            {t("Мест нет")}
                                           </span>
                                         </div>
                                       );
-                                    })()}
-                                  </div>
-                                </button>
-                                {!isActive && (
-                                  <button
-                                    type="button"
-                                    disabled={isPending}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleBooking(c.id);
-                                    }}
-                                    className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-primary text-primary-foreground ${
-                                      isPending ? "opacity-60" : ""
-                                    }`}
-                                    aria-label={t("Записаться")}
-                                  >
-                                    {isPending ? (
-                                      <Refresh
-                                        className="h-5 w-5 animate-spin"
-                                        weight="BoldDuotone"
-                                      />
-                                    ) : (
-                                      <svg
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="text-primary-foreground"
-                                      >
-                                        <path
-                                          d="M12 5V19M5 12H19"
-                                          stroke="currentColor"
-                                          strokeWidth="2.5"
-                                          strokeLinecap="round"
+                                    }
+                                    return (
+                                      <div className="flex items-center gap-1 text-xs mt-0.5 text-orange-500 leading-none">
+                                        <Fire
+                                          className="h-3.5 w-3.5 shrink-0"
+                                          weight="BoldDuotone"
                                         />
-                                      </svg>
-                                    )}
-                                  </button>
-                                )}
-                              </Card>
-                            </div>
+                                        <span className="leading-none mt-0.5">
+                                          {t.plural(
+                                            left,
+                                            "Осталось {n} место|Осталось {n} места|Осталось {n} мест",
+                                          )}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </button>
+                              {!isActive && (
+                                <button
+                                  type="button"
+                                  disabled={isPending}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleBooking(c.id);
+                                  }}
+                                  className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-colors bg-primary text-primary-foreground ${
+                                    isPending ? "opacity-60" : ""
+                                  }`}
+                                  aria-label={t("Записаться")}
+                                >
+                                  {isPending ? (
+                                    <Refresh
+                                      className="h-5 w-5 animate-spin"
+                                      weight="BoldDuotone"
+                                    />
+                                  ) : (
+                                    <svg
+                                      width="20"
+                                      height="20"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="text-primary-foreground"
+                                    >
+                                      <path
+                                        d="M12 5V19M5 12H19"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                  )}
+                                </button>
+                              )}
+                            </Card>
                           );
-                        })}
-                      </div>
+                        }}
+                      />
                     )}
                   </div>
                 ))}
