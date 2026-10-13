@@ -98,8 +98,11 @@ const dict: Dictionary = {
     "Couldn't load memberships. Please refresh the page.",
   "Пакетов персональных занятий пока нет": "No personal training packages yet",
   "Абонементов пока нет": "No memberships yet",
-  "Оформить абонемент можно у администратора студии":
-    "You can get a membership at the studio's front desk",
+  "Оформить у администратора": "Get it via the front desk",
+  "Здравствуйте! Я {name}, клиент студии. Хочу оформить абонемент «{membership}».":
+    "Hello! I'm {name}, a studio client. I'd like to get the “{membership}” membership.",
+  "Здравствуйте! Хочу оформить абонемент «{membership}».":
+    "Hello! I'd like to get the “{membership}” membership.",
   "Пробное посещение": "Trial class",
   "Можно оплатить частями — до {n} платежей": "Pay in up to {n} installments",
   "Что входит:": "What's included:",
