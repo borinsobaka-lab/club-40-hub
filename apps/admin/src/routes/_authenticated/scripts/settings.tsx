@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TableToolbar } from "@/components/table-toolbar";
 import { CallStatsTab } from "@/components/scripts/settings/call-stats";
 import { CopyStatsTab } from "@/components/scripts/settings/copy-stats";
 import { HistoryTab } from "@/components/scripts/settings/history";
@@ -110,20 +111,24 @@ function SettingsTabs({ canEdit }: { canEdit: boolean }) {
           Только просмотр: менять настройки могут те, кому выдано «Скрипты LS: правка».
         </p>
       )}
-      <div className="max-w-full overflow-x-auto">
-        <TabsList>
-          {tabs.map((t) => (
-            <TabsTrigger key={t.key} value={t.key} className="gap-1.5">
-              {t.label}
-              {!!t.badge && (
-                <span className="rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums">
-                  {t.badge}
-                </span>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </div>
+      {/* Табы — на белой плашке фильтров, не прямо на канве; на узком экране
+          прокручиваются. */}
+      <TableToolbar>
+        <div className="toolbar-full max-w-full overflow-x-auto">
+          <TabsList>
+            {tabs.map((t) => (
+              <TabsTrigger key={t.key} value={t.key} className="gap-1.5">
+                {t.label}
+                {!!t.badge && (
+                  <span className="rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums">
+                    {t.badge}
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+      </TableToolbar>
 
       <TabsContent value="history">
         <HistoryTab />

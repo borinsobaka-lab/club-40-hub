@@ -126,21 +126,24 @@ export function CallStatsTab() {
             </SelectContent>
           </Select>
         )}
-      </TableToolbar>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+        {/* «Сводка / Звонки» — на той же плашке, не прямо на канве. */}
+        <Tabs
+          value={view}
+          onValueChange={(v) => setView(v as View)}
+          className="toolbar-full sm:ml-auto"
+        >
           <TabsList aria-label="Вид">
             <TabsTrigger value="summary">Сводка</TabsTrigger>
             <TabsTrigger value="calls">Звонки</TabsTrigger>
           </TabsList>
         </Tabs>
-        <p className="text-sm text-muted-foreground">
-          {view === "summary"
-            ? "До какого этапа доходит разговор и на каком блоке заканчивается — где сценарий теряет клиентов."
-            : "Каждый звонок: когда, кто, до какого этапа дошёл и где закончился. Нажмите — весь путь."}
-        </p>
-      </div>
+      </TableToolbar>
+
+      <p className="text-sm text-muted-foreground">
+        {view === "summary"
+          ? "До какого этапа доходит разговор и на каком блоке заканчивается — где сценарий теряет клиентов."
+          : "Каждый звонок: когда, кто, до какого этапа дошёл и где закончился. Нажмите — весь путь."}
+      </p>
 
       {isPending ? (
         view === "summary" ? (

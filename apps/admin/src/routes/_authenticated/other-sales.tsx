@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TableToolbar } from "@/components/table-toolbar";
 import {
   Select,
   SelectContent,
@@ -174,10 +175,15 @@ function OtherSalesTabs({ studioId }: { studioId: string }) {
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)} className="space-y-3">
-      <TabsList>
-        <TabsTrigger value="sales">Продажи</TabsTrigger>
-        <TabsTrigger value="catalog">Позиции</TabsTrigger>
-      </TabsList>
+      {/* Табы — на белой плашке фильтров, не прямо на канве. */}
+      <TableToolbar>
+        <div className="toolbar-full">
+          <TabsList>
+            <TabsTrigger value="sales">Продажи</TabsTrigger>
+            <TabsTrigger value="catalog">Позиции</TabsTrigger>
+          </TabsList>
+        </div>
+      </TableToolbar>
       <FloatingActions>
         {tab === "sales" ? (
           <Button onClick={() => setSaleOpen(true)} disabled={items.length === 0}>

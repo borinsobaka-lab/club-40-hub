@@ -110,13 +110,20 @@ function TabsSkeleton({
   );
 }
 
-/** Вкладки раздела «Сотрудники» (components/staff-tabs.tsx); active — url страницы. */
-function StaffTabsSkeleton({ active }: { active: string }) {
+/**
+ * Вкладки раздела «Сотрудники» на белой плашке (components/staff-tabs.tsx);
+ * active — url страницы, children — контролы после вкладок на той же плашке.
+ */
+function StaffTabsSkeleton({ active, children }: { active: string; children?: ReactNode }) {
   return (
-    <TabsSkeleton
-      labels={STAFF_ITEMS.map((i) => i.tab)}
-      active={STAFF_ITEMS.findIndex((i) => i.url === active)}
-    />
+    <ToolbarSkeleton search={false}>
+      <TabsSkeleton
+        labels={STAFF_ITEMS.map((i) => i.tab)}
+        active={STAFF_ITEMS.findIndex((i) => i.url === active)}
+        className="toolbar-full max-w-full overflow-x-auto"
+      />
+      {children}
+    </ToolbarSkeleton>
   );
 }
 
@@ -638,7 +645,9 @@ export function OtherSalesPageSkeleton() {
   return (
     <ShellSkeleton title="Прочие продажи" actions={[{ label: "Добавить продажу" }]}>
       <div className="space-y-3">
-        <TabsSkeleton labels={["Продажи", "Позиции"]} />
+        <ToolbarSkeleton search={false}>
+          <TabsSkeleton labels={["Продажи", "Позиции"]} className="toolbar-full" />
+        </ToolbarSkeleton>
         <TableCardSkeleton
           pagination
           headers={[
@@ -887,11 +896,13 @@ export function NpsSurveysSkeleton() {
   );
 }
 
-/** Вкладка «Статистика» NPS: фильтры, пять KPI, два графика, таблица. */
+/**
+ * Вкладка «Статистика» NPS: пять KPI, два графика, таблица. Фильтры — на
+ * плашке с табами, она настоящая и во время загрузки.
+ */
 export function NpsStatsSkeleton() {
   return (
     <div className="space-y-3">
-      <ToolbarSkeleton search={false} controls={["w-48", "w-40"]} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {Array.from({ length: 5 }, (_, i) => (
           <div key={i} className="rounded-lg border bg-background p-4">
@@ -927,7 +938,9 @@ export function NpsPageSkeleton() {
   return (
     <ShellSkeleton title="NPS-опросы" actions={[{ label: "Добавить ответ" }]}>
       <div className="space-y-3">
-        <TabsSkeleton labels={["Опросы", "Статистика"]} />
+        <ToolbarSkeleton search={false}>
+          <TabsSkeleton labels={["Опросы", "Статистика"]} className="toolbar-full" />
+        </ToolbarSkeleton>
         <NpsSurveysSkeleton />
       </div>
     </ShellSkeleton>
@@ -1231,10 +1244,9 @@ export function AdminShiftsPageSkeleton() {
   return (
     <ShellSkeleton title="График администраторов">
       <div className="space-y-3">
-        <StaffTabsSkeleton active="/admin-shifts" />
-        <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
+        <StaffTabsSkeleton active="/admin-shifts">
           <PeriodStepperSkeleton />
-        </div>
+        </StaffTabsSkeleton>
         <div className="overflow-x-auto rounded-lg border bg-background">
           <table className="w-max border-separate border-spacing-0 text-sm">
             <thead>
@@ -1681,11 +1693,9 @@ export function CallStatsSkeleton() {
     <div className="space-y-3">
       <ToolbarSkeleton search={false}>
         <PeriodFilterSkeleton />
+        <TabsSkeleton labels={["Сводка", "Звонки"]} className="toolbar-full sm:ml-auto" />
       </ToolbarSkeleton>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <TabsSkeleton labels={["Сводка", "Звонки"]} />
-        <Skeleton className="h-4 w-80 max-w-full" />
-      </div>
+      <Skeleton className="h-4 w-80 max-w-full" />
       <CallStatsSummarySkeleton />
     </div>
   );
@@ -1696,21 +1706,13 @@ export function ScriptsSettingsBodySkeleton({ tab = "history" }: { tab?: string 
   const known = SCRIPTS_SETTINGS_TABS.some((t) => t.key === tab) ? tab : "history";
   return (
     <div className="space-y-3">
-      <div className="max-w-full overflow-x-auto">
-        <div className="relative inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
-          {SCRIPTS_SETTINGS_TABS.map((t) => (
-            <span
-              key={t.key}
-              className={cn(
-                "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium",
-                t.key === known && "bg-primary text-primary-foreground",
-              )}
-            >
-              {t.label}
-            </span>
-          ))}
-        </div>
-      </div>
+      <ToolbarSkeleton search={false}>
+        <TabsSkeleton
+          labels={SCRIPTS_SETTINGS_TABS.map((t) => t.label)}
+          active={SCRIPTS_SETTINGS_TABS.findIndex((t) => t.key === known)}
+          className="toolbar-full max-w-full overflow-x-auto"
+        />
+      </ToolbarSkeleton>
       {known === "stats" ? (
         <CopyStatsSkeleton />
       ) : known === "calls" ? (
