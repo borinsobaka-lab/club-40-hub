@@ -291,12 +291,7 @@ function PiePanel({
         <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} />
       ) : (
         <>
-          <ChartArea
-            height={DASHBOARD_PIE_HEIGHT}
-            loading={false}
-            error={error}
-            empty={!slices || slices.length === 0}
-          >
+          <ChartArea height={DASHBOARD_PIE_HEIGHT} loading={false} error={error}>
             <PiePlot slices={slices ?? []} format={formatMoney} />
           </ChartArea>
           {slices && slices.length > 0 && <PieLegend slices={slices} format={formatMoney} />}
