@@ -955,12 +955,12 @@ function SchedulePage() {
             {fullscreen && (
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-lg font-semibold">
+                  <div className="truncate text-2xl font-bold">
                     {studio?.name
                       ? `Schedule · ${enText(studio.translations, "name", studio.name)}`
                       : "Schedule"}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-base font-medium text-muted-foreground">
                     {fmtDate(weekStart, true)} — {fmtDate(addDays(weekStart, 6), true)}
                   </div>
                 </div>
@@ -1028,7 +1028,8 @@ function SchedulePage() {
                 ref={fitGridRef}
                 className={cn("grid", !isMobile && !fullscreen && "min-w-[1200px]")}
                 style={{
-                  gridTemplateColumns: `${isMobile ? 52 : 60}px repeat(${visibleDays.length}, minmax(0, 1fr))`,
+                  // Полный экран (скриншот клиенту): время крупнее — столбец шире.
+                  gridTemplateColumns: `${fullscreen ? (isMobile ? 64 : 80) : isMobile ? 52 : 60}px repeat(${visibleDays.length}, minmax(0, 1fr))`,
                 }}
               >
                 {!isMobile && (
@@ -1039,13 +1040,24 @@ function SchedulePage() {
                       return (
                         <div
                           key={i}
-                          className={`sticky top-0 z-20 border-r bg-background p-2 text-center text-xs ${
+                          className={cn(
+                            "sticky top-0 z-20 border-r bg-background p-2 text-center",
+                            // Полный экран: день недели и дата крупно — их
+                            // должно быть видно на скриншоте.
+                            fullscreen ? "text-lg font-bold leading-tight" : "text-xs",
                             today
                               ? "border-b-4 border-b-brand font-semibold text-primary"
-                              : "border-b"
-                          }`}
+                              : "border-b",
+                          )}
                         >
-                          <div className="uppercase tracking-wide text-muted-foreground">
+                          <div
+                            className={cn(
+                              "uppercase tracking-wide",
+                              fullscreen
+                                ? "text-sm font-semibold text-foreground/70"
+                                : "text-muted-foreground",
+                            )}
+                          >
                             {(fullscreen ? DAY_NAMES_EN : DAY_NAMES)[i]}
                           </div>
                           <div>
@@ -1075,10 +1087,15 @@ function SchedulePage() {
                   return (
                     <div key={`row-${hour}`} className="contents">
                       <div
-                        className="border-b border-r px-2 text-right text-xs text-muted-foreground"
+                        className={cn(
+                          "border-b border-r px-2 text-right",
+                          fullscreen
+                            ? "text-base font-semibold tabular-nums text-foreground"
+                            : "text-xs text-muted-foreground",
+                        )}
                         style={{
                           height: rowHeight,
-                          lineHeight: "1rem",
+                          lineHeight: fullscreen ? "1.25rem" : "1rem",
                           paddingTop: fullscreen && !busy ? 0 : 4,
                         }}
                       >
@@ -1472,7 +1489,7 @@ function EntryCard({
       <div
         className={cn(
           "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background leading-tight text-foreground shadow-xs",
-          clean ? "text-[13px]" : "text-[11px]",
+          clean ? "text-[15px]" : "text-[11px]",
           cancelled && "schedule-cancelled",
         )}
         title={
@@ -1490,13 +1507,21 @@ function EntryCard({
         <button
           type="button"
           onClick={onOpen}
-          className="flex h-full w-full cursor-pointer flex-col px-1.5 pt-0.5 pb-px text-left hover:bg-accent/40"
+          className={cn(
+            "flex h-full w-full cursor-pointer flex-col px-1.5 text-left hover:bg-accent/40",
+            clean ? "py-1" : "pt-0.5 pb-px",
+          )}
         >
           <span className="flex w-full items-start justify-between gap-1">
-            <span className="flex items-center gap-1 whitespace-nowrap text-muted-foreground">
+            <span
+              className={cn(
+                "flex items-center gap-1 whitespace-nowrap",
+                clean ? "font-semibold tabular-nums text-foreground/80" : "text-muted-foreground",
+              )}
+            >
               {cancelled && (
                 <Ban
-                  className="size-3 shrink-0 text-rose-600"
+                  className={cn("shrink-0 text-rose-600", clean ? "size-4" : "size-3")}
                   aria-label={clean ? "Cancelled" : "Отменено"}
                 />
               )}
@@ -1513,7 +1538,7 @@ function EntryCard({
           <span
             className={cn(
               "font-semibold leading-[1.15]",
-              clean ? "text-base" : "text-[13px]",
+              clean ? "text-lg" : "text-[13px]",
               // Персональному название в одну строку — место под клиента.
               clients ? "truncate" : "line-clamp-2",
             )}
@@ -1526,7 +1551,9 @@ function EntryCard({
           {people && (
             <span
               className={cn(
-                "min-w-0 pr-5 text-muted-foreground",
+                "min-w-0 text-muted-foreground",
+                // Полный экран: «Копировать» нет — места под неё не держим.
+                clean ? "font-medium" : "pr-5",
                 clients ? "line-clamp-2 break-words" : "truncate",
               )}
             >
@@ -1554,17 +1581,22 @@ function EntryCard({
     <div
       className={cn(
         "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md leading-tight",
-        clean ? "text-[13px]" : "text-[11px]",
+        clean ? "text-[15px]" : "text-[11px]",
         colorClasses,
       )}
     >
       <button
         type="button"
         onClick={onOpen}
-        className="flex h-full w-full cursor-pointer flex-col px-2 pt-0.5 pb-px text-left hover:opacity-90"
+        className={cn(
+          "flex h-full w-full cursor-pointer flex-col px-2 text-left hover:opacity-90",
+          clean ? "py-1" : "pt-0.5 pb-px",
+        )}
       >
         <span className="flex w-full items-start justify-between gap-1">
-          <span className="whitespace-nowrap opacity-80">
+          <span
+            className={cn("whitespace-nowrap", clean ? "font-semibold tabular-nums" : "opacity-80")}
+          >
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
           {!clean && (
@@ -1578,13 +1610,17 @@ function EntryCard({
         <span
           className={cn(
             "font-semibold leading-[1.15] line-clamp-2",
-            clean ? "text-base" : "text-[13px]",
+            clean ? "text-lg" : "text-[13px]",
           )}
         >
           {entryTitle(entry, clean)}
         </span>
         {/* pr-5 — место под «Копировать» в углу. */}
-        {names && <span className="block truncate pr-5 opacity-80">{names}</span>}
+        {names && (
+          <span className={cn("block truncate opacity-80", clean ? "font-medium" : "pr-5")}>
+            {names}
+          </span>
+        )}
       </button>
       {/* Соседняя кнопка поверх карточки, а не вложенная в неё — там же, где была. */}
       {!clean && (
