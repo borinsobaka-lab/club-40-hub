@@ -20,26 +20,6 @@ export const CategoryPlot = lazy(() =>
   import("./plots").then((m) => ({ default: m.CategoryPlot })),
 );
 
-/**
- * Цвета категорий — палитра «Контрастная» (решение владельца 2026-10-13), по
- * порядку, без повторов. Больше — сворачивать в «Остальное» (foldSlices),
- * ему — OTHER_COLOR; пустое кольцо (нет данных) — EMPTY_RING_COLOR.
- */
-export const SERIES_COLORS = [
-  "#EE5CF0", // розовый (основной)
-  "#17B3A3", // бирюзовый
-  "#FFBE3D", // янтарный
-  "#6A5CF2", // фиолетовый
-  "#FF7466", // коралловый
-  "#3FA3EE", // голубой
-  "#93CF55", // салатовый
-  "#B07CF0", // сиреневый
-  "#F48FC0", // светло-розовый
-] as const;
-/** Серо-синий — «Остальное», «Не указан». */
-export const OTHER_COLOR = "#5C6878";
-export const EMPTY_RING_COLOR = "#F1F2F4";
-
 export function ChartPanel({
   title,
   tip,

@@ -14,7 +14,8 @@ import {
 } from "recharts";
 
 import { formatNumber } from "@/lib/format";
-import { EMPTY_RING_COLOR, type Slice } from "./chart-panel";
+import type { Slice } from "./chart-panel";
+import { EMPTY_RING_COLOR } from "./colors";
 
 /**
  * Графики разделов дашборда (recharts). Файл грузится отдельным чанком

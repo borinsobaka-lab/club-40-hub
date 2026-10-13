@@ -3,13 +3,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { min } from "date-fns";
 
-import {
-  ChartArea,
-  ChartPanel,
-  DailyPlot,
-  RatesPlot,
-  SERIES_COLORS,
-} from "@/components/dashboard/chart-panel";
+import { ChartArea, ChartPanel, DailyPlot, RatesPlot } from "@/components/dashboard/chart-panel";
+import { SALE_ORIGIN_COLOR } from "@/components/dashboard/colors";
 import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { useSalesHistory } from "@/components/dashboard/queries";
 import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
@@ -51,8 +46,8 @@ const STATS: StatDef<OverviewKey>[] = OVERVIEW_STATS.map((s) => ({
   series: OVERVIEW_SERIES[s.key],
 }));
 
-/** Цвета линий продлений и возвращений — первые два из палитры категорий. */
-const RATE_COLORS = { renewal: SERIES_COLORS[0], returnRate: SERIES_COLORS[1] };
+/** Цвета линий — как у продлений и возвратов в долях «Продаж». */
+const RATE_COLORS = { renewal: SALE_ORIGIN_COLOR.renewal, returnRate: SALE_ORIGIN_COLOR.return };
 
 function OverviewPage() {
   return (
