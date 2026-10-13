@@ -11,6 +11,7 @@ import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { msg, useLocalize, useT, type Translator } from "@/i18n";
 import { FormattedText } from "@/lib/formatted-text";
 import { packCatalogQuery, packMyMembershipsQuery, type MyMembership, type Pack } from "./queries";
+import { isOverdue, tbilisiToday } from "./upcoming-payments";
 
 /**
  * «Абонементы» пакетного приложения (решение владельца 2026-10-11): вкладки
@@ -254,18 +255,18 @@ function MyMembershipCard({ m }: { m: MyMembership }) {
 /** Следующие платежи по графику рассрочки: дата и сумма; просроченный — красным. */
 function UpcomingPayments({ payments }: { payments: MyMembership["upcomingPayments"] }) {
   const t = useT();
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tbilisi" }).format(new Date());
+  const today = tbilisiToday();
   return (
     <div className="mt-2 border-t border-border/60 pt-2">
       <div className="text-xs font-medium text-muted-foreground">
         {payments.length === 1 ? t("Следующий платёж") : t("Следующие платежи")}
       </div>
       <ul className="mt-1 space-y-0.5">
-        {payments.map((p) => {
-          const overdue = p.due_date < today;
+        {payments.map((p, i) => {
+          const overdue = isOverdue(p, today);
           return (
             <li
-              key={p.due_date + p.amount}
+              key={i}
               className={`flex items-baseline justify-between gap-3 text-sm ${
                 overdue ? "text-red-500" : "text-foreground"
               }`}

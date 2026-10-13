@@ -474,7 +474,7 @@ function PackHeader({
               {/* Замена: прежний тренер — неактивным, под ним «Замена» и новый. */}
               {tr.replaced && (
                 <>
-                  <div className="-mx-1 flex items-center gap-3 px-1 py-1 opacity-45 grayscale">
+                  <div className="-mx-1 flex items-center gap-3 px-1 py-1 opacity-45">
                     <SquircleAvatar size={48}>
                       {tr.replaced.photo && (
                         <SquircleAvatarImage src={tr.replaced.photo} alt={tr.replaced.name} />

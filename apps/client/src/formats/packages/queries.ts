@@ -1,11 +1,12 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
-import { msg, type ContentTranslations } from "@/i18n";
+import type { ContentTranslations } from "@/i18n";
 import { APP_FORMAT } from "@/lib/app-format";
 import { untypedDb } from "@/lib/untyped-db";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
 import { PACK_ENTRY_SELECT, attachSubstitutions, type PackEntry } from "./entries";
+import { paymentsBySale, type InstallmentRow, type UpcomingPayment } from "./upcoming-payments";
 
 /**
  * Запросы экранов пакетного приложения — одни и те же для самих экранов и для
@@ -125,7 +126,7 @@ export type MyMembership = {
    * (2026-10-13: «следующие платежи» у абонемента). Пусто — всё внесено или
    * продажа без рассрочки.
    */
-  upcomingPayments: { amount: number; due_date: string }[];
+  upcomingPayments: UpcomingPayment[];
 };
 
 /** Сегодня по Тбилиси (ends_at — дата, как считает база). */
@@ -208,12 +209,7 @@ async function attachUpcomingPayments(rows: MyMembership[]): Promise<MyMembershi
       .eq("paid", false)
       .order("due_date", { ascending: true });
     if (error || !data) return rows;
-    const bySale = new Map<string, MyMembership["upcomingPayments"]>();
-    for (const r of data as { sale_id: string; amount: number | string; due_date: string }[])
-      bySale.set(r.sale_id, [
-        ...(bySale.get(r.sale_id) ?? []),
-        { amount: Number(r.amount), due_date: r.due_date },
-      ]);
+    const bySale = paymentsBySale(data as InstallmentRow[]);
     return rows.map((m) =>
       m.sale_id ? { ...m, upcomingPayments: bySale.get(m.sale_id) ?? [] } : m,
     );
@@ -224,57 +220,15 @@ async function attachUpcomingPayments(rows: MyMembership[]): Promise<MyMembershi
 
 // ---- «Студия» ----
 
-/**
- * Кем работает сотрудник (trainers.role, «Сотрудники» в админке): у каждой
- * роли своя вкладка «Студии»; массажисты — с 2026-10-12
- * (db/migrations/2026-10-12_zzzzzzz_staff_masseurs.sql).
- */
-export type StaffRole = "trainer" | "admin" | "masseur";
-
-/**
- * Вкладка строки; неизвестная или пустая роль — тренер. Старший
- * администратор (`senior_admin`, 2026-10-13) — во вкладке «Админы» вместе с
- * администраторами, подпись своя (`staffRoleLabel`).
- */
-export function staffRole(row: { role: string | null }): StaffRole {
-  if (row.role === "admin" || row.role === "senior_admin") return "admin";
-  return row.role === "masseur" ? "masseur" : "trainer";
-}
-
-/** Подпись роли в карточке и списке (переводится при показе — t(…)). */
-export function staffRoleLabel(row: { role: string | null }): string {
-  return row.role === "senior_admin"
-    ? msg("Старший администратор")
-    : STAFF_ROLE_TEXT[staffRole(row)].label;
-}
-
-/** Рейтинг и оценки — у тренеров и массажистов; администраторов не оценивают. */
-export const staffHasRating = (role: StaffRole) => role !== "admin";
-
-/** Подписи карточки сотрудника по роли (переводятся при показе — t(…)). */
-export const STAFF_ROLE_TEXT: Record<
-  StaffRole,
-  { label: string; tip: string; rate: string | null; noBio: string }
-> = {
-  trainer: {
-    label: msg("Тренер"),
-    tip: msg("Поблагодарить тренера"),
-    rate: msg("Оцените тренера"),
-    noBio: msg("Рассказ о тренере скоро появится."),
-  },
-  admin: {
-    label: msg("Администратор"),
-    tip: msg("Поблагодарить администратора"),
-    rate: null,
-    noBio: msg("Рассказ об администраторе скоро появится."),
-  },
-  masseur: {
-    label: msg("Массажист"),
-    tip: msg("Поблагодарить массажиста"),
-    rate: msg("Оцените массажиста"),
-    noBio: msg("Рассказ о массажисте скоро появится."),
-  },
-};
+// Роли сотрудников и подписи вкладок «Студии» — staff-roles.ts (без
+// запросов к базе: их проверяют тесты).
+export {
+  STAFF_ROLE_TEXT,
+  staffHasRating,
+  staffRole,
+  staffRoleLabel,
+  type StaffRole,
+} from "./staff-roles";
 
 export type StudioTrainer = {
   id: string;

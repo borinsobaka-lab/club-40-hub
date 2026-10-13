@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "test": "bun test",
     "format": "prettier --write .",
     "i18n:check": "bun scripts/i18n-check.ts"
   },

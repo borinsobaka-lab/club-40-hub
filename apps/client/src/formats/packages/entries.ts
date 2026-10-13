@@ -2,6 +2,13 @@ import type { WorkoutDrawerData } from "@/components/workout-drawer";
 import { currentT, localizeRow, type ContentTranslations, type Translator } from "@/i18n";
 import { mediaUrl } from "@/lib/media";
 import { untypedDb } from "@/lib/untyped-db";
+import {
+  chunks,
+  groupSubstitutions,
+  replacedOf,
+  type EntrySubstitution,
+  type SubstitutionRow,
+} from "./substitutions";
 
 /**
  * Занятие расписания пакетного формата — как его выбирают расписание и
@@ -41,7 +48,7 @@ export type PackEntry = {
    * занятия trainer_id заменяет replaced. Догружаются отдельно —
    * attachSubstitutions.
    */
-  substitutions?: { trainer_id: string; replaced: PackTrainer | null }[];
+  substitutions?: EntrySubstitution<PackTrainer>[];
 };
 
 /** select для schedule_entries (и вложенного entry в schedule_bookings). */
@@ -57,25 +64,20 @@ export async function attachSubstitutions<T extends PackEntry>(entries: T[]): Pr
   const ids = entries.map((e) => e.id);
   if (ids.length === 0) return entries;
   try {
-    const { data, error } = await untypedDb
-      .from("schedule_entry_substitutions")
-      .select(
-        "entry_id, trainer_id, replaced:trainers(id, full_name, photo_url, rating_avg, rating_count, translations)",
-      )
-      .in("entry_id", ids);
-    if (error || !data) return entries;
-    const byEntry = new Map<string, NonNullable<PackEntry["substitutions"]>>();
-    for (const r of data as {
-      entry_id: string;
-      trainer_id: string;
-      replaced: PackTrainer | PackTrainer[] | null;
-    }[]) {
-      const replaced = Array.isArray(r.replaced) ? (r.replaced[0] ?? null) : r.replaced;
-      byEntry.set(r.entry_id, [
-        ...(byEntry.get(r.entry_id) ?? []),
-        { trainer_id: r.trainer_id, replaced },
-      ]);
-    }
+    const parts = await Promise.all(
+      chunks(ids, 100).map((part) =>
+        untypedDb
+          .from("schedule_entry_substitutions")
+          .select(
+            "entry_id, trainer_id, replaced:trainers(id, full_name, photo_url, rating_avg, rating_count, translations)",
+          )
+          .in("entry_id", part),
+      ),
+    );
+    if (parts.some((r) => r.error || !r.data)) return entries;
+    const byEntry = groupSubstitutions(
+      parts.flatMap((r) => r.data as SubstitutionRow<PackTrainer>[]),
+    );
     return entries.map((e) => (byEntry.has(e.id) ? { ...e, substitutions: byEntry.get(e.id) } : e));
   } catch {
     return entries;
@@ -84,7 +86,7 @@ export async function attachSubstitutions<T extends PackEntry>(entries: T[]): Pr
 
 /** Кого заменяет тренер занятия; не замена — null. */
 export function replacedTrainer(e: PackEntry, trainerId: string): PackTrainer | null {
-  return e.substitutions?.find((s) => s.trainer_id === trainerId)?.replaced ?? null;
+  return replacedOf(e.substitutions, trainerId);
 }
 
 export function entryTrainers(e: PackEntry): PackTrainer[] {
