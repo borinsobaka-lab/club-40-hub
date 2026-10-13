@@ -145,8 +145,9 @@ type ParticipantName = {
   first_name: string | null;
   last_name: string | null;
   full_name: string;
-  /** Абонементы клиента (любые) — нет ни одного: ПЧК, «новенький». */
-  client_memberships?: { client_id: string }[];
+  id: string;
+  /** Абонементы клиента: когда выдан и вид (пробный или нет) — для «новеньких». */
+  client_memberships?: { created_at: string; membership: { kind: string | null } | null }[];
 };
 
 /** Клиенты персонального занятия: «Фамилия Имя» записанных (не отменённых). */
@@ -158,16 +159,22 @@ function participantNames(e: Entry) {
 }
 
 /**
- * Новенькие на занятии — записанные клиенты со статусом ПЧК: ни разу не
- * покупали абонемент (как club_status во вью clients_with_status).
+ * Новенькие на занятии — записанные клиенты, у которых к началу занятия не
+ * было абонементов, кроме пробного (решение владельца 2026-10-13). Не текущий
+ * статус ПЧК: «Посетил» без абонемента не отметить, пробное — тоже абонемент,
+ * и после занятия пробник уже ЧК — счётчик прошедших занятий обнулялся бы.
  */
-function newcomerCount(e: Entry) {
-  return (e.participants ?? []).filter(
-    (p) =>
-      p.client &&
-      (p.status === "booked" || p.status === "attended") &&
-      (p.client.client_memberships ?? []).length === 0,
-  ).length;
+function newcomerIds(e: Entry): Set<string> {
+  const start = new Date(e.starts_at).getTime();
+  const ids = new Set<string>();
+  for (const p of e.participants ?? []) {
+    if (!p.client || (p.status !== "booked" && p.status !== "attended")) continue;
+    const hadPackage = (p.client.client_memberships ?? []).some(
+      (m) => m.membership?.kind !== "trial" && new Date(m.created_at).getTime() < start,
+    );
+    if (!hadPackage) ids.add(p.client.id);
+  }
+  return ids;
 }
 
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
@@ -182,7 +189,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name, client_memberships(client_id)))";
+  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(id, first_name, last_name, full_name, client_memberships(created_at, membership:memberships(kind))))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -225,9 +232,6 @@ const LAST_HOUR = 22;
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
 const SLOT_PX_FULL = 72;
 const SLOT_PX_EMPTY = 28;
-// Час, где у занятия есть «новенькие»: бейдж под счётчиком записей
-// опускает название — строка выше на его высоту.
-const SLOT_PX_NEWCOMERS = 88;
 // Полноэкранный просмотр: высота строки с занятиями — по карточкам, пустой
 // час между занятиями — узкая полоска.
 const SLOT_PX_FULLSCREEN_EMPTY = 16;
@@ -513,7 +517,6 @@ function SchedulePage() {
   const grid = useMemo(() => {
     const cells = new Map<string, Entry[]>();
     const busyHours = new Set<number>();
-    const newcomerHours = new Set<number>();
     // Занятий по дням недели — точки под днями в переключателе на телефоне.
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
@@ -533,7 +536,6 @@ function SchedulePage() {
       const key = cellKey(start, start.getHours());
       cells.set(key, [...(cells.get(key) ?? []), e]);
       busyHours.add(start.getHours());
-      if (!e.cancelled_at && newcomerCount(e) > 0) newcomerHours.add(start.getHours());
       perDay[(start.getDay() + 6) % 7]++;
     }
     const hourList = [...busyHours];
@@ -544,7 +546,7 @@ function SchedulePage() {
     const compactHours = hourList.length
       ? hours.filter((h) => h >= Math.min(...hourList) && h <= Math.max(...hourList))
       : hours;
-    return { cells, busyHours, newcomerHours, perDay, hours, compactHours };
+    return { cells, busyHours, perDay, hours, compactHours };
   }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
@@ -1045,9 +1047,7 @@ function SchedulePage() {
                       ? undefined
                       : SLOT_PX_FULLSCREEN_EMPTY
                     : busy
-                      ? grid.newcomerHours.has(hour)
-                        ? SLOT_PX_NEWCOMERS
-                        : SLOT_PX_FULL
+                      ? SLOT_PX_FULL
                       : SLOT_PX_EMPTY;
                   return (
                     <div key={`row-${hour}`} className="contents">
@@ -1376,17 +1376,19 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
   );
 }
 
-/** «1 новенький», «3 новеньких» — под бейджем записей (решение владельца 2026-10-13). */
+/**
+ * Сколько новеньких — только цифра, в цветах бейджа ПЧК, справа от названия
+ * (решение владельца 2026-10-13).
+ */
 function NewcomersBadge({ entry }: { entry: Entry }) {
-  const n = newcomerCount(entry);
+  const n = newcomerIds(entry).size;
   if (!n) return null;
-  const one = n % 10 === 1 && n % 100 !== 11;
   return (
     <span
-      title="Записаны ПЧК — ни разу не покупали абонемент"
-      className="whitespace-nowrap rounded bg-sky-100 px-1 py-px text-[10px] font-semibold tabular-nums text-sky-600"
+      title={`Новеньких: ${n} — до занятия не было абонементов, кроме пробного`}
+      className="shrink-0 rounded border border-blue-200 bg-blue-100 px-1 text-[10px] font-semibold leading-4 tabular-nums text-blue-700"
     >
-      {n} {one ? "новенький" : "новеньких"}
+      {n}
     </span>
   );
 }
@@ -1444,22 +1446,20 @@ function EntryCard({
               {cancelled && <Ban className="size-3 shrink-0 text-rose-600" aria-label="Отменено" />}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
-            {!cancelled && !clean && (
-              <span className="flex flex-col items-end gap-0.5">
-                <CapacityBadge entry={entry} light />
-                <NewcomersBadge entry={entry} />
-              </span>
-            )}
+            {!cancelled && !clean && <CapacityBadge entry={entry} light />}
           </span>
-          <span
-            className={cn(
-              "font-semibold leading-[1.15]",
-              clean ? "text-base" : "text-[13px]",
-              // Персональному название в одну строку — место под клиента.
-              clients ? "truncate" : "line-clamp-2",
-            )}
-          >
-            {entryTitle(entry)}
+          <span className="flex w-full items-start gap-1">
+            <span
+              className={cn(
+                "min-w-0 flex-1 font-semibold leading-[1.15]",
+                clean ? "text-base" : "text-[13px]",
+                // Персональному название в одну строку — место под клиента.
+                clients ? "truncate" : "line-clamp-2",
+              )}
+            >
+              {entryTitle(entry)}
+            </span>
+            {!cancelled && !clean && <NewcomersBadge entry={entry} />}
           </span>
           {/* Фото тренеров на карточке нет (решение владельца 2026-10-11) —
               только имена: карточка ниже. У персонального «тренер + клиент» —
@@ -1508,20 +1508,18 @@ function EntryCard({
           <span className="whitespace-nowrap opacity-80">
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
-          {!clean && (
-            <span className="flex flex-col items-end gap-0.5">
-              <CapacityBadge entry={entry} />
-              <NewcomersBadge entry={entry} />
-            </span>
-          )}
+          {!clean && <CapacityBadge entry={entry} />}
         </span>
-        <span
-          className={cn(
-            "font-semibold leading-[1.15] line-clamp-2",
-            clean ? "text-base" : "text-[13px]",
-          )}
-        >
-          {entryTitle(entry)}
+        <span className="flex w-full items-start gap-1">
+          <span
+            className={cn(
+              "min-w-0 flex-1 font-semibold leading-[1.15] line-clamp-2",
+              clean ? "text-base" : "text-[13px]",
+            )}
+          >
+            {entryTitle(entry)}
+          </span>
+          {!clean && <NewcomersBadge entry={entry} />}
         </span>
         {/* pr-5 — место под «Копировать» в углу. */}
         {names && <span className="block truncate pr-5 opacity-80">{names}</span>}
@@ -2972,6 +2970,8 @@ function BookingsPanel({
   // Лист ожидания держим отдельно от записанных: он не занимает мест и не
   // должен путаться со счётчиком заполненности.
   const booked = bookings.filter((b) => b.status !== "waitlist");
+  // Те же «новенькие», что в цифре на карточке занятия.
+  const newcomers = newcomerIds(entry);
   const waitlisted = bookings.filter((b) => b.status === "waitlist");
   const capacity = entryCapacity(entry);
 
@@ -3031,6 +3031,14 @@ function BookingsPanel({
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <BookingClientName client={c} />
                       {c?.club_status && <ClubStatusBadge status={c.club_status} />}
+                      {c && newcomers.has(c.id) && (
+                        <span
+                          title="До занятия не было абонементов, кроме пробного"
+                          className="rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+                        >
+                          Новенький
+                        </span>
+                      )}
                       {b.status === "attended" && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                           Посетил
