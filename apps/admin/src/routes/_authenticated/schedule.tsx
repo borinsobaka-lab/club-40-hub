@@ -45,6 +45,7 @@ import { roleGroup } from "@/lib/staff-roles";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import type { ClubStatus } from "@/lib/client-status";
+import { parseTranslations, translationText } from "@/lib/content-i18n";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import {
   ACTIVITY_KINDS,
@@ -101,6 +102,8 @@ type Trainer = {
   role?: string;
   /** Фото из справочника — аватарка в выпадающих списках. */
   photo_url?: string | null;
+  /** Переводы имени — английское в полноэкранном просмотре. */
+  translations?: unknown;
 };
 type Entry = {
   id: string;
@@ -126,6 +129,7 @@ type Entry = {
     capacity?: number | null;
     /** Пакетный формат: цвет полоски на карточке. */
     color?: string | null;
+    translations?: unknown;
   } | null;
   schedule_entry_trainers?: {
     trainer_id: string;
@@ -189,7 +193,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(id, first_name, last_name, full_name, client_memberships(created_at, membership:memberships(kind))))";
+  "*, workout:workouts(name, type, capacity, color, translations), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, translations), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(id, first_name, last_name, full_name, client_memberships(created_at, membership:memberships(kind))))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -221,6 +225,14 @@ const ADMIN_CANCEL_REASONS = [
   "Другое",
 ];
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+// Полноэкранный просмотр — на английском: скриншот уходит клиентам с разными
+// языками (решение владельца 2026-10-13).
+const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Английский перевод поля контента, нет — русский текст. */
+function enText(translations: unknown, field: string, ru: string) {
+  return translationText(parseTranslations(translations), "en", field).trim() || ru;
+}
 // Часы сетки по умолчанию — 7..22; занятие раньше или позже расширяет сетку
 // (иначе оно было бы в базе, но не на экране).
 // С 9:00: на 7 и 8 утра занятий не бывает (решение владельца 2026-10-13);
@@ -253,8 +265,8 @@ function addDays(d: Date, n: number) {
   return x;
 }
 
-function fmtDate(d: Date) {
-  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
+function fmtDate(d: Date, en = false) {
+  return d.toLocaleDateString(en ? "en-GB" : "ru-RU", { day: "2-digit", month: "short" });
 }
 
 function fmtTime(iso: string) {
@@ -306,11 +318,13 @@ function regularTrainerIdsOf(e: Pick<Entry, "schedule_entry_trainers">) {
   return regularTrainerIds(e.schedule_entry_trainers);
 }
 
-/** Подпись занятия на карточке и в баннере копирования. */
-function entryTitle(e: Entry) {
-  if (e.kind === "personal") return "Персональное занятие";
-  if (e.kind === "other") return e.title ?? "Прочая активность";
-  return e.workout?.name ?? "Занятие";
+/** Подпись занятия на карточке и в баннере копирования; `en` — полный экран. */
+function entryTitle(e: Entry, en = false) {
+  if (e.kind === "personal") return en ? "Personal training" : "Персональное занятие";
+  // Название прочей активности — свободный текст без переводов.
+  if (e.kind === "other") return e.title ?? (en ? "Activity" : "Прочая активность");
+  const name = e.workout?.name ?? (en ? "Class" : "Занятие");
+  return en ? enText(e.workout?.translations, "name", name) : name;
 }
 
 /**
@@ -939,9 +953,13 @@ function SchedulePage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-lg font-semibold">
-                    {studio?.name ? `Расписание · ${studio.name}` : "Расписание"}
+                    {studio?.name
+                      ? `Schedule · ${enText(studio.translations, "name", studio.name)}`
+                      : "Schedule"}
                   </div>
-                  <div className="text-sm text-muted-foreground">{weekLabel}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {fmtDate(weekStart, true)} — {fmtDate(addDays(weekStart, 6), true)}
+                  </div>
                 </div>
                 <Button
                   variant="outline"
@@ -964,7 +982,7 @@ function SchedulePage() {
                       key={i}
                       type="button"
                       aria-pressed={selected}
-                      aria-label={d.toLocaleDateString("ru-RU", {
+                      aria-label={d.toLocaleDateString(fullscreen ? "en-GB" : "ru-RU", {
                         weekday: "long",
                         day: "numeric",
                         month: "long",
@@ -979,7 +997,7 @@ function SchedulePage() {
                       <span
                         className={cn("uppercase", !selected && !today && "text-muted-foreground")}
                       >
-                        {DAY_NAMES[i]}
+                        {(fullscreen ? DAY_NAMES_EN : DAY_NAMES)[i]}
                       </span>
                       <span className="text-base font-semibold tabular-nums leading-tight">
                         {d.getDate()}
@@ -1025,10 +1043,12 @@ function SchedulePage() {
                           }`}
                         >
                           <div className="uppercase tracking-wide text-muted-foreground">
-                            {DAY_NAMES[i]}
+                            {(fullscreen ? DAY_NAMES_EN : DAY_NAMES)[i]}
                           </div>
                           <div>
-                            {d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
+                            {fullscreen
+                              ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+                              : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
                           </div>
                         </div>
                       );
@@ -1411,9 +1431,13 @@ function EntryCard({
   const trainers = (entry.schedule_entry_trainers ?? []).flatMap((x) =>
     x.trainer ? [x.trainer] : [],
   );
-  const names = trainers.map((t) => t.full_name).join(", ");
-  // Персональное: «тренер + клиент» — видно, с кем занятие.
-  const clients = entry.kind === "personal" ? participantNames(entry) : "";
+  // Полный экран (скриншот клиентам) — имена тренеров на английском.
+  const names = trainers
+    .map((t) => (clean ? enText(t.translations, "full_name", t.full_name) : t.full_name))
+    .join(", ");
+  // Персональное: «тренер + клиент» — видно, с кем занятие. В полном экране
+  // имён клиентов нет: скриншот уходит другим клиентам.
+  const clients = entry.kind === "personal" && !clean ? participantNames(entry) : "";
   const people = [names, clients].filter(Boolean).join(" + ");
   // Персональные и прочие в обоих форматах — светлая карточка с тёмной
   // полоской: так они не путаются с групповыми.
@@ -1428,7 +1452,11 @@ function EntryCard({
           clean ? "text-[13px]" : "text-[11px]",
           cancelled && "schedule-cancelled",
         )}
-        title={cancelled ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}` : undefined}
+        title={
+          cancelled && !clean
+            ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}`
+            : undefined
+        }
         // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
         style={{
           borderLeftColor: group
@@ -1443,7 +1471,12 @@ function EntryCard({
         >
           <span className="flex w-full items-start justify-between gap-1">
             <span className="flex items-center gap-1 whitespace-nowrap text-muted-foreground">
-              {cancelled && <Ban className="size-3 shrink-0 text-rose-600" aria-label="Отменено" />}
+              {cancelled && (
+                <Ban
+                  className="size-3 shrink-0 text-rose-600"
+                  aria-label={clean ? "Cancelled" : "Отменено"}
+                />
+              )}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
             {!cancelled && !clean && <CapacityBadge entry={entry} light />}
@@ -1457,7 +1490,7 @@ function EntryCard({
                 clients ? "truncate" : "line-clamp-2",
               )}
             >
-              {entryTitle(entry)}
+              {entryTitle(entry, clean)}
             </span>
             {!cancelled && !clean && <NewcomersBadge entry={entry} />}
           </span>
@@ -1517,7 +1550,7 @@ function EntryCard({
               clean ? "text-base" : "text-[13px]",
             )}
           >
-            {entryTitle(entry)}
+            {entryTitle(entry, clean)}
           </span>
           {!clean && <NewcomersBadge entry={entry} />}
         </span>
