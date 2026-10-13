@@ -18,7 +18,7 @@ export const APP_ICON_FILES = {
   /**
    * Манифест, purpose maskable: Android обрезает края кругом/скруглением и
    * гарантирует только центральный круг диаметром 80% — картинка ужимается
-   * до MASKABLE_SCALE, поля заливаются цветом её угла.
+   * до MASKABLE_SCALE, поля продолжают её края (градиентный фон не рвётся).
    */
   maskable512: { name: "icon-maskable-512.png", size: 512, opaque: true, maskable: true },
   /** iOS: прозрачное он заливает чёрным, поэтому — на белом. */
@@ -56,22 +56,6 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   }).finally(() => URL.revokeObjectURL(url));
 }
 
-/**
- * Цвет фона картинки — её левый верхний пиксель (на белом, если прозрачный):
- * им заливаются поля maskable-иконки, чтобы рамки не было видно.
- */
-function backgroundColor(img: HTMLImageElement): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 64;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return "#ffffff";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, 64, 64);
-  drawCenterSquare(ctx, img, 64);
-  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
 /** Квадрат из центра картинки в квадрат size×size с левым верхним углом (x, y). */
 function drawCenterSquare(
   ctx: CanvasRenderingContext2D,
@@ -93,7 +77,7 @@ function drawCenterSquare(
 
 /**
  * Квадрат size×size из центра картинки; opaque — на белом фоне; maskable —
- * картинка ужата в безопасную зону Android, поля — цветом её фона.
+ * картинка ужата в безопасную зону Android, поля — её растянутые края.
  */
 function renderSquare(
   img: HTMLImageElement,
@@ -105,18 +89,24 @@ function renderSquare(
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Браузер не умеет обрабатывать картинки");
-  if (opaque || maskable) {
-    ctx.fillStyle = maskable ? backgroundColor(img) : "#ffffff";
+  if (opaque) {
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, size, size);
   }
   ctx.imageSmoothingQuality = "high";
   if (maskable) {
     const inner = Math.round(size * MASKABLE_SCALE);
-    const offset = Math.round((size - inner) / 2);
-    // Под прозрачные места картинки — белый, как у остальных непрозрачных.
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(offset, offset, inner, inner);
-    drawCenterSquare(ctx, img, inner, offset, offset);
+    const pad = Math.round((size - inner) / 2);
+    const far = pad + inner;
+    drawCenterSquare(ctx, img, inner, pad, pad);
+    // Поля: крайний ряд и столбец картинки (на пиксель внутрь — без
+    // сглаживания границы) растягиваются наружу; столбцы берутся во всю
+    // высоту, так что заодно закрывают углы.
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(canvas, pad, pad + 1, inner, 1, pad, 0, inner, pad);
+    ctx.drawImage(canvas, pad, far - 2, inner, 1, pad, far, inner, size - far);
+    ctx.drawImage(canvas, pad + 1, 0, 1, size, 0, 0, pad, size);
+    ctx.drawImage(canvas, far - 2, 0, 1, size, far, 0, size - far, size);
   } else {
     drawCenterSquare(ctx, img, size);
   }
