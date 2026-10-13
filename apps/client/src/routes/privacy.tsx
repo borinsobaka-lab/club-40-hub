@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { AltArrowLeft } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
@@ -11,14 +11,16 @@ import { getTranslator, useT } from "@/i18n";
  * Политика конфиденциальности — единственный юридический документ приложения
  * (из профиля; позже — ссылка у галочки согласия на входе). Открывается и без
  * входа: каркас пускает /privacy без сессии (PUBLIC_ROUTES в __root.tsx).
+ * Только у приложения Lady Stretch; в подписочном — переход на главную.
  */
 export const Route = createFileRoute("/privacy")({
   head: ({ match }) => {
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: `${t("Политика конфиденциальности")} — ${PRIVACY_POLICY_INFO.brand}` },
-        { name: "description", content: `${PRIVACY_POLICY_INFO.brand} — Privacy Policy` },
+        {
+          title: `${t("Политика конфиденциальности")} — ${PRIVACY_POLICY_INFO?.brand ?? "Base40"}`,
+        },
       ],
     };
   },
@@ -28,6 +30,8 @@ export const Route = createFileRoute("/privacy")({
 function PrivacyPage() {
   const t = useT();
   const { session } = useAuth();
+  // Политика есть только у приложения Lady Stretch (lib/legal.ts).
+  if (!PRIVACY_POLICY_INFO) return <Navigate to="/" replace />;
 
   return (
     <PageShell

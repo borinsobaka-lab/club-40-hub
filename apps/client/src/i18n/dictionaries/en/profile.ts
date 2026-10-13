@@ -27,6 +27,7 @@ const dict: Dictionary = {
   Телефон: "Phone",
   Email: "Email",
   Бонусы: "Bonuses",
+  "Правовые документы": "Legal documents",
   "Политика конфиденциальности": "Privacy policy",
   "Способы оплаты": "Payment methods",
   Поддержка: "Support",

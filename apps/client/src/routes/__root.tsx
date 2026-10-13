@@ -24,6 +24,7 @@ import { APP_THEME_COLOR, DEFAULT_APP_INSTALL, fetchAppInstall } from "@/lib/app
 import { clientCardQuery } from "@/lib/client-card";
 import { homeBookingsQuery } from "@/lib/home-queries";
 import { IS_PACKAGES } from "@/lib/terms";
+import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { DarkSplash } from "@/formats/packages/dark-frame";
 import {
   aboutQuery,
@@ -445,8 +446,8 @@ function usePrefetchScreens(ready: boolean) {
   }, [ready, userId, studioId, studioReady, router, queryClient]);
 }
 
-/** Страницы, которые открываются без входа. */
-const PUBLIC_ROUTES = new Set(["/privacy"]);
+/** Страницы, которые открываются без входа (политика — только у Lady Stretch). */
+const PUBLIC_ROUTES = new Set(PRIVACY_POLICY_INFO ? ["/privacy"] : []);
 
 function AppShell() {
   const { session, user, loading } = useAuth();

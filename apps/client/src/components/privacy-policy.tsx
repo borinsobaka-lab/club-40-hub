@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { PrivacyPolicyInfo } from "@/lib/legal";
 
 /**
- * Политика конфиденциальности клиентского приложения — единственный
+ * Политика конфиденциальности приложения Lady Stretch — единственный
  * юридический документ приложения (решение владельца 2026-10-13: открывается
  * из профиля вместо «Правовых документов», позже — галочка согласия при
  * входе). Текст — только по-английски, на любом языке интерфейса (так решил
@@ -19,36 +19,25 @@ import type { PrivacyPolicyInfo } from "@/lib/legal";
  */
 export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
   const brand = info.brand;
-  const operator = <Value v={info.operatorName} hint="operator's legal name" />;
-  const email = info.privacyEmail ? (
-    <a href={`mailto:${info.privacyEmail}`}>{info.privacyEmail}</a>
-  ) : (
-    <Value v={null} hint="e-mail for privacy requests" />
-  );
-  const offer = info.offerUrl ? (
-    <a href={info.offerUrl} target="_blank" rel="noopener noreferrer">
-      {info.offerUrl.replace(/^https?:\/\//, "")}
-    </a>
-  ) : (
-    <Value v={null} hint="link to the public offer" />
-  );
+  const operator = `${info.operatorName}, registered by the National Agency of Public Registry of Georgia, identification number ${info.operatorIdCode}`;
+  const email = <a href={`mailto:${info.email}`}>{info.email}</a>;
 
   return (
     <article className="privacy-policy space-y-6 text-[15px] leading-relaxed text-foreground [&_a]:font-medium [&_a]:underline [&_a]:decoration-primary [&_a]:decoration-2 [&_a]:underline-offset-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:leading-snug [&_li]:pl-1 [&_ol]:list-[lower-alpha] [&_ol]:space-y-1.5 [&_ol]:pl-5 [&_p]:mt-2 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_ul]:mt-2 [&_ol]:mt-2">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold leading-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
-          {brand} mobile application · Effective from{" "}
-          <Value v={info.effectiveDate ? formatDate(info.effectiveDate) : null} hint="date" />
+          Personal Data Confidentiality Policy of the {brand} mobile application · Effective from{" "}
+          {formatDate(info.effectiveDate)}
         </p>
       </header>
 
       <Section n={1} title="General provisions">
         <p>
           1.1. This Privacy Policy (the “Policy”) explains how {operator} (the “Operator”, “we”,
-          “us”), which runs the {brand} fitness studios in Georgia, collects, uses, stores, protects
-          and shares the personal data of users of the {brand} mobile application available at{" "}
-          {info.appUrl.replace(/^https?:\/\//, "")} (the “App”).
+          “us”) collects, uses, stores, protects and shares the personal data of clients of the{" "}
+          {brand} studios in Tbilisi ({info.studios}) who use the {brand} mobile application (the
+          “App”).
         </p>
         <p>
           1.2. The Policy is drawn up in accordance with the Law of Georgia “On Personal Data
@@ -62,9 +51,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
         </p>
         <p>
           1.4. Studio services (memberships, classes, rules of attendance, payments and refunds) are
-          governed by the public offer published at {offer}, which you accept when you purchase a
-          membership. This Policy governs only the processing of personal data. If the public offer
-          and this Policy differ on a personal data matter, this Policy prevails.
+          governed by the Public Agreement on the Provision of Physical Fitness and Recreational
+          Services of the respective studio (the “public offer”), which you accept when you purchase
+          a membership. This Policy is the Personal Data Confidentiality Policy referred to in the
+          public offer and governs only the processing of personal data. If the public offer and
+          this Policy differ on a personal data matter, this Policy prevails.
         </p>
         <p>
           1.5. The App is available only to clients of {brand} studios: you can sign in only with
@@ -78,11 +69,8 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           you choose to answer the health questions in the App questionnaire.
         </p>
         <p>
-          1.7. This Policy is always available in the App (Profile → Privacy Policy) and at{" "}
-          <a href={`${info.appUrl}/privacy`} target="_blank" rel="noopener noreferrer">
-            {info.appUrl.replace(/^https?:\/\//, "")}/privacy
-          </a>
-          .
+          1.7. This Policy is always available in the App (Profile → Privacy Policy) and can also be
+          requested at the studio reception.
         </p>
       </Section>
 
@@ -231,11 +219,19 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>
             <b>Service messages</b> — sign-in codes, notices about bookings, cancelled or changed
-            classes and your memberships. Grounds: performance of the contract.
+            classes and your memberships, in the App, by e-mail, by phone or SMS. Grounds:
+            performance of the contract.
           </li>
           <li>
             <b>Studio news and offers</b> — news and offers in the App and, only if you have agreed
             to it, by e-mail or messengers. You can opt out at any time. Grounds: your consent.
+          </li>
+          <li>
+            <b>Photos and videos at the studio</b> — publishing photos and videos taken at the
+            studio in which you appear on our social media and website, on the basis of the consent
+            given in the public offer. You may withdraw this consent at any time by contacting us;
+            we will then stop using such materials and remove them where possible. Grounds: your
+            consent.
           </li>
           <li>
             <b>Accounting, tax and other legal obligations</b> — keeping records of sales, payments
@@ -450,10 +446,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
 
       <Section n={14} title="Minors">
         <p>
-          14.1. The App is intended for adult clients. We do not knowingly collect personal data of
-          persons under 18 without the consent of their parent or legal representative. Data of a
-          minor client is provided by and processed with the consent of their parent or legal
-          representative.
+          14.1. Clients under 18 may attend classes only in the presence of their parent or legal
+          representative. Personal data of a minor is provided by, and processed with the consent
+          of, their parent or legal representative, who also gives the consents described in this
+          Policy on the minor’s behalf. We do not knowingly collect personal data of persons under
+          18 without such consent.
         </p>
         <p>
           14.2. If you are a parent or legal representative and believe that a minor has provided us
@@ -475,15 +472,14 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
 
       <Section n={16} title="Operator details">
         <ul className="!list-none !pl-0 space-y-1">
-          <li>{operator}</li>
+          <li>{info.operatorName}</li>
+          <li>Registered by the National Agency of Public Registry of Georgia</li>
+          <li>Identification number: {info.operatorIdCode}</li>
+          <li>Address: {info.operatorAddress}</li>
           <li>
-            Identification code: <Value v={info.operatorIdCode} hint="identification code" />
-          </li>
-          <li>
-            Legal address: <Value v={info.operatorAddress} hint="legal address" />
+            Phone: <a href={`tel:${info.phone.replace(/\s/g, "")}`}>{info.phone}</a>
           </li>
           <li>E-mail: {email}</li>
-          {info.phone && <li>Phone: {info.phone}</li>}
         </ul>
       </Section>
     </article>
@@ -499,12 +495,6 @@ function Section({ n, title, children }: { n: number; title: string; children: R
       {children}
     </section>
   );
-}
-
-/** Значение реквизита; пока не передано — подсвеченная заглушка. */
-function Value({ v, hint }: { v: string | null; hint: string }) {
-  if (v) return <>{v}</>;
-  return <mark className="rounded bg-primary/25 px-1 text-foreground">[{hint}]</mark>;
 }
 
 const MONTHS = [
