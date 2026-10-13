@@ -54,6 +54,13 @@ export function MetricChartPlot({
   showDeals: boolean;
 }) {
   const gradientId = `chart-fill-${useId().replace(/:/g, "")}`;
+  // У средних корзина без продаж — null, а не 0. Линия и область рисуются
+  // только между соседними непустыми точками: при редких продажах от них
+  // оставались одинокие точки или вовсе ничего. Поэтому пропуски соединяем
+  // (connectNulls), а настоящие значения помечаем точками — так видно, где
+  // данные есть, и единственная непустая корзина тоже видна.
+  const gaps = data.some((d) => d.value === null);
+  const dot = dots || gaps ? { r: 3, fill: color } : false;
 
   const axis = {
     tick: { fontSize: 11, fill: "var(--muted-foreground)" },
@@ -62,6 +69,8 @@ export function MetricChartPlot({
   };
   const tooltip = (
     <Tooltip
+      // Иначе на корзине без продаж (null) подсказки нет вовсе, а не «нет продаж».
+      filterNull={false}
       cursor={
         chartType === "bar"
           ? { fill: "var(--muted)", opacity: 0.6 }
@@ -114,7 +123,8 @@ export function MetricChartPlot({
             dataKey="value"
             stroke={color}
             strokeWidth={2}
-            dot={dots ? { r: 3, fill: color } : false}
+            connectNulls
+            dot={dot}
             activeDot={{ r: 5 }}
           />
         </LineChart>
@@ -136,6 +146,8 @@ export function MetricChartPlot({
             stroke={color}
             strokeWidth={2}
             fill={`url(#${gradientId})`}
+            connectNulls
+            dot={gaps ? dot : false}
             activeDot={{ r: 5 }}
           />
         </AreaChart>
