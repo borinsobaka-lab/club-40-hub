@@ -1400,8 +1400,9 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
 }
 
 /**
- * Сколько новеньких — только цифра, в цветах бейджа ПЧК, справа от названия
- * (решение владельца 2026-10-13).
+ * Сколько новеньких — только цифра, в цветах бейджа ПЧК, слева от счётчика
+ * записей и в его форме (решение владельца 2026-10-13): длинному названию
+ * не мешает.
  */
 /**
  * Красный «!» слева от счётчика записей: занятие закончилось, а у записанных
@@ -1428,7 +1429,7 @@ function NewcomersBadge({ entry }: { entry: Entry }) {
   return (
     <span
       title={`Новеньких: ${n} — до занятия не было абонементов, кроме пробного`}
-      className="shrink-0 rounded border border-blue-200 bg-blue-100 px-1 text-[10px] font-semibold leading-4 tabular-nums text-blue-700"
+      className="shrink-0 rounded bg-blue-100 px-1 py-px text-[10px] font-semibold tabular-nums text-blue-700"
     >
       {n}
     </span>
@@ -1504,22 +1505,20 @@ function EntryCard({
             {!cancelled && !clean && (
               <span className="flex items-center gap-1">
                 <UnmarkedBadge entry={entry} />
+                <NewcomersBadge entry={entry} />
                 <CapacityBadge entry={entry} light />
               </span>
             )}
           </span>
-          <span className="flex w-full items-start gap-1">
-            <span
-              className={cn(
-                "min-w-0 flex-1 font-semibold leading-[1.15]",
-                clean ? "text-base" : "text-[13px]",
-                // Персональному название в одну строку — место под клиента.
-                clients ? "truncate" : "line-clamp-2",
-              )}
-            >
-              {entryTitle(entry, clean)}
-            </span>
-            {!cancelled && !clean && <NewcomersBadge entry={entry} />}
+          <span
+            className={cn(
+              "font-semibold leading-[1.15]",
+              clean ? "text-base" : "text-[13px]",
+              // Персональному название в одну строку — место под клиента.
+              clients ? "truncate" : "line-clamp-2",
+            )}
+          >
+            {entryTitle(entry, clean)}
           </span>
           {/* Фото тренеров на карточке нет (решение владельца 2026-10-11) —
               только имена: карточка ниже. У персонального «тренер + клиент» —
@@ -1571,20 +1570,18 @@ function EntryCard({
           {!clean && (
             <span className="flex items-center gap-1">
               <UnmarkedBadge entry={entry} />
+              <NewcomersBadge entry={entry} />
               <CapacityBadge entry={entry} />
             </span>
           )}
         </span>
-        <span className="flex w-full items-start gap-1">
-          <span
-            className={cn(
-              "min-w-0 flex-1 font-semibold leading-[1.15] line-clamp-2",
-              clean ? "text-base" : "text-[13px]",
-            )}
-          >
-            {entryTitle(entry, clean)}
-          </span>
-          {!clean && <NewcomersBadge entry={entry} />}
+        <span
+          className={cn(
+            "font-semibold leading-[1.15] line-clamp-2",
+            clean ? "text-base" : "text-[13px]",
+          )}
+        >
+          {entryTitle(entry, clean)}
         </span>
         {/* pr-5 — место под «Копировать» в углу. */}
         {names && <span className="block truncate pr-5 opacity-80">{names}</span>}
