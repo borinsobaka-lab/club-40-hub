@@ -33,7 +33,11 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
 - `bun run typecheck` — `tsc --noEmit` в обоих приложениях; должен быть чистым
   перед коммитом
 - `bun run lint`, `bun run test`, `bun run build` — то же по обоим
-- `bun run test:db` — тесты мигратора (без `TEST_DATABASE_URL` пропускаются)
+- `bun run test:db` — тесты базы: мигратора (`TEST_DATABASE_URL` — пустая
+  база) и логики пакетных клубов `db/packages.test.ts`
+  (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
+  `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
+  все миграции). Без переменных пропускаются; сценарии откатываются.
 - Внутри приложения работают его собственные команды
   (`cd apps/admin && bun run dev`) — см. CLAUDE.md приложения.
 
@@ -279,8 +283,12 @@ AUTH_SETUP.md.
   без абонемента с остатком — исключение в `schedule_bookings_charge_balance`
   (актуальное определение — здесь); политики клиента на свои `sales` и
   `sale_installments` (из ручного `db/sales_client_rls.sql`); вью
-  `client_packages_list` (`payment_state = 'refunded'`, актуальное
-  определение — здесь).
+  `client_packages_list` (`payment_state = 'refunded'`).
+  `db/migrations/2026-10-13_zzz_packages_refund_state.sql` — «Возврат» и у
+  строки, где абонемент уже заменён, но платежи сняты возвратом (раньше
+  попадала в «Оплачены полностью»); актуальное определение
+  `client_packages_list` — здесь. Логику правок проверяет
+  `db/packages.test.ts`.
   **Полная очистка клиентской базы 2026-10-12:**
   `db/migrations/2026-10-12_zzzz_clients_full_reset.sql` (разово, вручную не
   перезапускать) — во всех студиях стёрты клиенты, абонементы, продажи (с
@@ -419,7 +427,9 @@ AUTH_SETUP.md.
   для новых колонок нужен явный `alter table ... add column if not exists`
   (на этом уже ловили расхождение: clients.avatar_url был в файле, но не в БД).
 - Перед выкаткой миграцию можно прогнать на локальном Postgres 16 (есть в
-  системе): заглушки auth/storage + прогон db/\*.sql, см. историю сессий.
+  системе): `bash db/test/build-schema.sh <url>` (заглушки — `db/test/stubs.sql`,
+  поправки порядка старых файлов — `db/test/fixups.sql`), сценарии —
+  `db/packages.test.ts`.
 - Серверная пагинация админки опирается на вью `clients_with_status`,
   `sales_list`, `cash_totals`, `bookings_log_full` (db/performance_indexes.sql;
   `sales_list` пересоздана в `2026-10-11_packages_client_memberships.sql`), все с
