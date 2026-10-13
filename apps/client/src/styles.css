@@ -1090,3 +1090,11 @@ html body [data-sonner-toast][data-type="warning"] {
   inset: 0;
   background: linear-gradient(to bottom, transparent 80%, #2a2b2f);
 }
+
+/* Заглушка «Поверните телефон» (RotateOverlay): телефон в горизонтали —
+   сенсорный экран без наведения и высотой до 500px (у планшетов больше). */
+@media (orientation: landscape) and (max-height: 500px) and (hover: none) and (pointer: coarse) {
+  .rotate-overlay {
+    display: flex;
+  }
+}

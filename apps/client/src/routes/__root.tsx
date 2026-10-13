@@ -37,6 +37,7 @@ import {
 } from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { RotateOverlay } from "@/components/rotate-overlay";
 import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
@@ -254,6 +255,7 @@ function RootComponent() {
           <SolarProvider value={{ weight: "BoldDuotone" }}>
             <AppShell />
             <Toaster />
+            <RotateOverlay />
           </SolarProvider>
         </AuthProvider>
       </QueryClientProvider>

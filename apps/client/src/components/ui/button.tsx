@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Кнопка действия — одна на всё приложение (решение владельца 2026-10-13):
- * размер по умолчанию — высота 48px, текст 16px жирный, иконка 20px
+ * размер по умолчанию — высота 48px, текст 16px полужирный (600, с
+ * 2026-10-13 — тоньше прежнего жирного), иконка 20px
  * («Записаться», «В календарь», «Сохранить» / «Отмена» в профиле, «Далее» в
  * анкете). Свои `<button>`/`<a>` — через `buttonVariants()`, без своих
  * высоты, размера и жирности шрифта; цвет можно переопределить.
@@ -24,7 +25,7 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-12 px-5 text-base font-bold [&_svg]:size-5",
+        default: "h-12 px-5 text-base font-semibold [&_svg]:size-5",
         sm: "h-8 px-4 text-xs font-medium [&_svg]:size-4",
         icon: "h-9 w-9 [&_svg]:size-4",
       },
