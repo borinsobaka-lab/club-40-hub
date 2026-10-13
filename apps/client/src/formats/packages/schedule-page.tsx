@@ -487,10 +487,7 @@ export function PackagesSchedulePage() {
                                 entry={c}
                                 isBooked={bookedIds.has(c.id)}
                                 isWaitlisted={waitlistedIds.has(c.id)}
-                                isPending={pendingId === c.id}
-                                canBook={isHome}
                                 onOpen={() => setOpenEntry(packEntryToDrawerData(c, t))}
-                                onBook={() => toggleBooking(c.id)}
                               />
                             </div>
                           );

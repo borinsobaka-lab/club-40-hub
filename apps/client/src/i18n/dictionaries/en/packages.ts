@@ -84,6 +84,7 @@ const dict: Dictionary = {
   Администратор: "Administrator",
   "Поблагодарить администратора": "Thank your administrator",
   "Рассказ об администраторе скоро появится.": "The administrator's bio is coming soon.",
+  "Старший администратор": "Senior administrator",
   Массажист: "Massage therapist",
   "Поблагодарить массажиста": "Thank your massage therapist",
   "Оцените массажиста": "Rate your massage therapist",
@@ -117,6 +118,11 @@ const dict: Dictionary = {
   "{n} тренировка|{n} тренировки|{n} тренировок": "{n} workout|{n} workouts",
   "{n} персональная|{n} персональные|{n} персональных":
     "{n} personal session|{n} personal sessions",
+  "Вы записаны": "You're booked",
+  Замена: "Substitute",
+  "Следующий платёж": "Next payment",
+  "Следующие платежи": "Next payments",
+  просрочен: "overdue",
 };
 
 export default dict;

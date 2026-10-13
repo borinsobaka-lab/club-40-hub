@@ -16,6 +16,7 @@ import {
   STAFF_ROLE_TEXT,
   staffHasRating,
   staffRole,
+  staffRoleLabel,
   trainerCardQuery,
   type StudioTrainer,
 } from "./queries";
@@ -122,7 +123,7 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
           </SquircleAvatarFallback>
         </SquircleAvatar>
         <div className="min-w-0">
-          <div className="text-sm text-muted-foreground">{t(text.label)}</div>
+          <div className="text-sm text-muted-foreground">{t(staffRoleLabel(row))}</div>
           <DrawerPrimitive.Title className="text-2xl font-semibold leading-tight">
             {trainer.full_name}
           </DrawerPrimitive.Title>

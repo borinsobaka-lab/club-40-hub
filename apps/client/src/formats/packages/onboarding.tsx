@@ -76,6 +76,10 @@ type FormData = {
   phone: string;
 };
 
+// Вес по умолчанию на линейке — 65 кг (решение владельца 2026-10-13): раньше
+// линейка вставала на середину шкалы (115 кг).
+const DEFAULT_WEIGHT_KG = "65";
+
 const EMPTY: FormData = {
   primary_goal: null,
   goal_other: "",
@@ -83,7 +87,7 @@ const EMPTY: FormData = {
   current_weekly_activity: null,
   health_flags: [],
   health_notes: "",
-  weight_kg: "",
+  weight_kg: DEFAULT_WEIGHT_KG,
   birth_date: "",
   desired_frequency: null,
   preferred_times: [],
@@ -200,7 +204,7 @@ export function PackagesOnboardingPage() {
           current_weekly_activity: data.current_weekly_activity ?? null,
           health_flags: (data.health_flags as HealthFlag[] | null) ?? [],
           health_notes: data.health_notes ?? "",
-          weight_kg: data.weight_kg != null ? String(data.weight_kg) : "",
+          weight_kg: data.weight_kg != null ? String(data.weight_kg) : DEFAULT_WEIGHT_KG,
           birth_date: data.birth_date ?? cardBirthday,
           desired_frequency: data.desired_frequency ?? null,
           preferred_times: (data.preferred_times as PrefTime[] | null) ?? [],

@@ -22,9 +22,13 @@ import {
 } from "@/components/ui/squircle-avatar";
 import { googleCalendarUrl, outlookLiveUrl, downloadICS, type CalendarEvent } from "@/lib/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import googleCalIcon from "@/assets/google-calendar.png.asset.json";
-import appleCalIcon from "@/assets/apple-calendar.png.asset.json";
-import outlookIcon from "@/assets/outlook.png.asset.json";
+import {
+  AppleCalendarIcon,
+  GoogleCalendarIcon,
+  IcsFileIcon,
+  OutlookIcon,
+} from "@/components/calendar-icons";
+import { SubstitutionChip } from "@/formats/packages/workout-card";
 import { FormattedText } from "@/lib/formatted-text";
 import { TrainerDrawer } from "@/formats/packages/trainer-drawer";
 import { formatRating } from "@/formats/packages/trainer-rating";
@@ -43,7 +47,14 @@ export type WorkoutDrawerData = {
   // Пакетное приложение (formats/packages/entries.ts): цвет тренировки вместо
   // типа, тренеры крупно — каждый с аватаркой, свободные места.
   color?: string | null;
-  trainers?: { id: string; name: string; photo: string | null; rating?: number | null }[];
+  trainers?: {
+    id: string;
+    name: string;
+    photo: string | null;
+    rating?: number | null;
+    /** Замена (2026-10-13): кого заменяет этот тренер — показывается неактивным. */
+    replaced?: { id: string; name: string; photo: string | null } | null;
+  }[];
   spotsLabel?: string | null;
   spotsLeft?: number | null;
   /** Студия занятия — название и адрес в шторке (куда записывается клиент). */
@@ -152,12 +163,12 @@ export function WorkoutDrawer({
     ? [
         {
           label: t("Google Календарь"),
-          icon: googleCalIcon.url,
+          Icon: GoogleCalendarIcon,
           onClick: () => openExternal(googleCalendarUrl(calendarEvent)),
         },
         {
           label: t("Apple Календарь"),
-          icon: appleCalIcon.url,
+          Icon: AppleCalendarIcon,
           onClick: () => {
             downloadICS(calendarEvent);
             setCalendarPickerOpen(false);
@@ -165,12 +176,12 @@ export function WorkoutDrawer({
         },
         {
           label: "Outlook",
-          icon: outlookIcon.url,
+          Icon: OutlookIcon,
           onClick: () => openExternal(outlookLiveUrl(calendarEvent)),
         },
         {
           label: t("Другой (.ics файл)"),
-          icon: null,
+          Icon: IcsFileIcon,
           onClick: () => {
             downloadICS(calendarEvent);
             setCalendarPickerOpen(false);
@@ -249,7 +260,8 @@ export function WorkoutDrawer({
 
                 {/* Причина отмены и подсказки — в прокрутке; кнопки — ниже,
                     закреплены (решение владельца 2026-10-12: «Записаться» не
-                    должна уезжать за край длинного описания). */}
+                    должна уезжать за край длинного описания), высотой 48px —
+                    как остальные кнопки действий приложения (2026-10-13). */}
                 {isBooked ? (
                   <div className="mt-6">
                     <div className="mb-2 text-xs font-semibold text-muted-foreground">
@@ -304,7 +316,7 @@ export function WorkoutDrawer({
                       onBook(cancelReason || undefined);
                     }}
                     disabled={isPending}
-                    className={`flex-1 h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
+                    className={`flex-1 h-12 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60 ${cancelLocked ? "opacity-60" : ""}`}
                   >
                     {isPending ? "..." : t("Отменить запись")}
                   </button>
@@ -312,7 +324,7 @@ export function WorkoutDrawer({
                     type="button"
                     onClick={() => setCalendarPickerOpen(true)}
                     disabled={!calendarEvent}
-                    className="flex-1 h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
+                    className="flex-1 h-12 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
                   >
                     <Calendar className="h-5 w-5" weight="BoldDuotone" />
                     {t("В календарь")}
@@ -323,7 +335,7 @@ export function WorkoutDrawer({
                   type="button"
                   onClick={() => onBook()}
                   disabled={isPending}
-                  className="w-full h-14 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                  className="w-full h-12 rounded-full bg-red-500 text-white font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
                 >
                   {isPending ? "..." : t("Выйти из очереди")}
                 </button>
@@ -332,7 +344,7 @@ export function WorkoutDrawer({
                   type="button"
                   onClick={() => onBook()}
                   disabled={isPending}
-                  className="w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
+                  className="w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-base active:scale-[0.99] transition disabled:opacity-60"
                 >
                   {isPending ? "..." : isFull ? t("Встать в очередь") : t("Записаться")}
                 </button>
@@ -357,13 +369,7 @@ export function WorkoutDrawer({
                 onClick={opt.onClick}
                 className="relative w-full h-12 rounded-full bg-muted text-foreground font-semibold text-sm active:scale-[0.99] transition flex items-center px-4"
               >
-                {opt.icon && (
-                  <img
-                    src={opt.icon}
-                    alt=""
-                    className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2"
-                  />
-                )}
+                <opt.Icon className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2" />
                 <span className="w-full text-center">{opt.label}</span>
               </button>
             ))}
@@ -464,35 +470,62 @@ function PackHeader({
       {data.trainers!.length > 0 && (
         <div className="mt-4 flex flex-col gap-2">
           {data.trainers!.map((tr) => (
-            <button
-              key={tr.id}
-              type="button"
-              onClick={() => onOpenTrainer(tr.id)}
-              className="-mx-1 flex items-center gap-3 rounded-2xl px-1 py-1 text-left transition active:bg-muted"
-            >
-              <SquircleAvatar size={48}>
-                {tr.photo && <SquircleAvatarImage src={tr.photo} alt={tr.name} />}
-                <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
-                  {initialsOf(tr.name)}
-                </SquircleAvatarFallback>
-              </SquircleAvatar>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs text-muted-foreground">{t("Тренер")}</div>
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-base font-semibold">{tr.name}</span>
-                  {tr.rating != null && (
-                    <span
-                      className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold tabular-nums"
-                      aria-label={t("Рейтинг {value} из 5", { value: formatRating(tr.rating, t) })}
-                    >
-                      <Star className="h-4 w-4 text-amber-400" weight="Bold" />
-                      {formatRating(tr.rating, t)}
-                    </span>
-                  )}
+            <div key={tr.id} className="flex flex-col gap-1">
+              {/* Замена: прежний тренер — неактивным, под ним «Замена» и новый. */}
+              {tr.replaced && (
+                <>
+                  <div className="-mx-1 flex items-center gap-3 px-1 py-1 opacity-45 grayscale">
+                    <SquircleAvatar size={48}>
+                      {tr.replaced.photo && (
+                        <SquircleAvatarImage src={tr.replaced.photo} alt={tr.replaced.name} />
+                      )}
+                      <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
+                        {initialsOf(tr.replaced.name)}
+                      </SquircleAvatarFallback>
+                    </SquircleAvatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-muted-foreground">{t("Тренер")}</div>
+                      <div className="truncate text-base font-semibold line-through decoration-1">
+                        {tr.replaced.name}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="ml-[3.75rem]">
+                    <SubstitutionChip />
+                  </div>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => onOpenTrainer(tr.id)}
+                className="-mx-1 flex items-center gap-3 rounded-2xl px-1 py-1 text-left transition active:bg-muted"
+              >
+                <SquircleAvatar size={48}>
+                  {tr.photo && <SquircleAvatarImage src={tr.photo} alt={tr.name} />}
+                  <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
+                    {initialsOf(tr.name)}
+                  </SquircleAvatarFallback>
+                </SquircleAvatar>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-muted-foreground">{t("Тренер")}</div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-base font-semibold">{tr.name}</span>
+                    {tr.rating != null && (
+                      <span
+                        className="inline-flex shrink-0 items-center gap-0.5 text-sm font-semibold tabular-nums"
+                        aria-label={t("Рейтинг {value} из 5", {
+                          value: formatRating(tr.rating, t),
+                        })}
+                      >
+                        <Star className="h-4 w-4 text-amber-400" weight="Bold" />
+                        {formatRating(tr.rating, t)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-            </button>
+                <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+              </button>
+            </div>
           ))}
         </div>
       )}

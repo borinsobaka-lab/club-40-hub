@@ -456,7 +456,6 @@ function HomePage() {
                               key={b.entry_id}
                               entry={pe}
                               isBooked
-                              canBook={false}
                               onOpen={() => setOpenEntry(packEntryToDrawerData(pe, t))}
                             />
                           );

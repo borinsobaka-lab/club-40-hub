@@ -1015,7 +1015,7 @@ function CheckoutSheet({
             <Button
               onClick={() => onPurchase(total)}
               disabled={!canPay}
-              className="mt-3 w-full h-14 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-60"
+              className="mt-3 w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-60"
             >
               {purchasing
                 ? t("Оплачиваем…")

@@ -20,6 +20,7 @@ import {
   STAFF_ROLE_TEXT,
   staffHasRating,
   staffRole,
+  staffRoleLabel,
   studioStaffQuery,
   type StaffRole,
 } from "./queries";
@@ -184,9 +185,7 @@ function StaffTab({ role }: { role: StaffRole }) {
                         textClass="text-xs"
                       />
                     ) : (
-                      <div className="text-xs text-muted-foreground">
-                        {t(STAFF_ROLE_TEXT[role].label)}
-                      </div>
+                      <div className="text-xs text-muted-foreground">{t(staffRoleLabel(tr))}</div>
                     )}
                   </div>
                 </div>

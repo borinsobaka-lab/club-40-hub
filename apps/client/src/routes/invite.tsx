@@ -232,7 +232,7 @@ function InvitePage() {
           <button
             type="button"
             onClick={shareNative}
-            className="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.99]"
+            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-bold text-primary-foreground transition active:scale-[0.99]"
           >
             <Share className="h-5 w-5" weight="BoldDuotone" />
             {t("Пригласить подругу")}

@@ -5,7 +5,7 @@ import { msg, type ContentTranslations } from "@/i18n";
 import { APP_FORMAT } from "@/lib/app-format";
 import { untypedDb } from "@/lib/untyped-db";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
-import { PACK_ENTRY_SELECT, type PackEntry } from "./entries";
+import { PACK_ENTRY_SELECT, attachSubstitutions, type PackEntry } from "./entries";
 
 /**
  * Запросы экранов пакетного приложения — одни и те же для самих экранов и для
@@ -54,7 +54,7 @@ export function packScheduleQuery(studioId: string | null, today: Date, enabled 
       if (studioId) query = query.eq("studio_id", studioId);
       const { data, error } = await query.order("starts_at");
       if (error) throw error;
-      return (data as unknown as PackEntry[]) ?? [];
+      return attachSubstitutions((data as unknown as PackEntry[]) ?? []);
     },
     enabled,
   });
@@ -119,6 +119,13 @@ export type MyMembership = {
   personal_left: number | null;
   balance_kind: "group" | "personal" | null;
   memberships: { name: string; translations?: ContentTranslations | null } | null;
+  sale_id: string | null;
+  /**
+   * Невнесённые платежи рассрочки по продаже — дата и сумма, по порядку
+   * (2026-10-13: «следующие платежи» у абонемента). Пусто — всё внесено или
+   * продажа без рассрочки.
+   */
+  upcomingPayments: { amount: number; due_date: string }[];
 };
 
 /** Сегодня по Тбилиси (ends_at — дата, как считает база). */
@@ -169,7 +176,7 @@ export function packMyMembershipsQuery(userId: string | null) {
       const { data, error } = await untypedDb
         .from("client_memberships")
         .select(
-          "id, status, ends_at, visits_left, personal_left, balance_kind, memberships(name, translations)",
+          "id, status, ends_at, visits_left, personal_left, balance_kind, sale_id, memberships(name, translations)",
         )
         .eq("client_id", (client as { id: string }).id)
         .in("status", ["active", "frozen", "pending"])
@@ -177,10 +184,42 @@ export function packMyMembershipsQuery(userId: string | null) {
         .order("balance_kind", { ascending: true })
         .order("status", { ascending: true });
       if (error) throw error;
-      return (data as unknown as MyMembership[] | null) ?? [];
+      const rows = ((data as unknown as Omit<MyMembership, "upcomingPayments">[] | null) ?? []).map(
+        (m) => ({ ...m, upcomingPayments: [] as MyMembership["upcomingPayments"] }),
+      );
+      return attachUpcomingPayments(rows);
     },
     enabled: !!userId,
   });
+}
+
+/**
+ * Невнесённые платежи по продажам абонементов — отдельным запросом: не
+ * прошёл (нет прав на график, сеть) — абонементы показываются без них.
+ */
+async function attachUpcomingPayments(rows: MyMembership[]): Promise<MyMembership[]> {
+  const saleIds = rows.flatMap((m) => (m.sale_id ? [m.sale_id] : []));
+  if (saleIds.length === 0) return rows;
+  try {
+    const { data, error } = await untypedDb
+      .from("sale_installments")
+      .select("sale_id, amount, due_date")
+      .in("sale_id", saleIds)
+      .eq("paid", false)
+      .order("due_date", { ascending: true });
+    if (error || !data) return rows;
+    const bySale = new Map<string, MyMembership["upcomingPayments"]>();
+    for (const r of data as { sale_id: string; amount: number | string; due_date: string }[])
+      bySale.set(r.sale_id, [
+        ...(bySale.get(r.sale_id) ?? []),
+        { amount: Number(r.amount), due_date: r.due_date },
+      ]);
+    return rows.map((m) =>
+      m.sale_id ? { ...m, upcomingPayments: bySale.get(m.sale_id) ?? [] } : m,
+    );
+  } catch {
+    return rows;
+  }
 }
 
 // ---- «Студия» ----
@@ -192,9 +231,21 @@ export function packMyMembershipsQuery(userId: string | null) {
  */
 export type StaffRole = "trainer" | "admin" | "masseur";
 
-/** Роль строки; неизвестная или пустая — тренер. */
+/**
+ * Вкладка строки; неизвестная или пустая роль — тренер. Старший
+ * администратор (`senior_admin`, 2026-10-13) — во вкладке «Админы» вместе с
+ * администраторами, подпись своя (`staffRoleLabel`).
+ */
 export function staffRole(row: { role: string | null }): StaffRole {
-  return row.role === "admin" || row.role === "masseur" ? row.role : "trainer";
+  if (row.role === "admin" || row.role === "senior_admin") return "admin";
+  return row.role === "masseur" ? "masseur" : "trainer";
+}
+
+/** Подпись роли в карточке и списке (переводится при показе — t(…)). */
+export function staffRoleLabel(row: { role: string | null }): string {
+  return row.role === "senior_admin"
+    ? msg("Старший администратор")
+    : STAFF_ROLE_TEXT[staffRole(row)].label;
 }
 
 /** Рейтинг и оценки — у тренеров и массажистов; администраторов не оценивают. */

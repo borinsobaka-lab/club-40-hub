@@ -245,7 +245,40 @@ function MyMembershipCard({ m }: { m: MyMembership }) {
           {t("Осталось: {balance}", { balance: balance + gift })}
         </div>
         <div className="text-xs text-muted-foreground">{status}</div>
+        {m.upcomingPayments.length > 0 && <UpcomingPayments payments={m.upcomingPayments} />}
       </div>
     </Card>
+  );
+}
+
+/** Следующие платежи по графику рассрочки: дата и сумма; просроченный — красным. */
+function UpcomingPayments({ payments }: { payments: MyMembership["upcomingPayments"] }) {
+  const t = useT();
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tbilisi" }).format(new Date());
+  return (
+    <div className="mt-2 border-t border-border/60 pt-2">
+      <div className="text-xs font-medium text-muted-foreground">
+        {payments.length === 1 ? t("Следующий платёж") : t("Следующие платежи")}
+      </div>
+      <ul className="mt-1 space-y-0.5">
+        {payments.map((p) => {
+          const overdue = p.due_date < today;
+          return (
+            <li
+              key={p.due_date + p.amount}
+              className={`flex items-baseline justify-between gap-3 text-sm ${
+                overdue ? "text-red-500" : "text-foreground"
+              }`}
+            >
+              <span>
+                {formatLongDate(p.due_date, t)}
+                {overdue && <span className="text-xs"> · {t("просрочен")}</span>}
+              </span>
+              <span className="font-semibold tabular-nums">{t.number(p.amount)} ₾</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

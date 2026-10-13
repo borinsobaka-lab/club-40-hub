@@ -439,7 +439,7 @@ function AuthPage() {
             <Button
               type="submit"
               disabled={busy}
-              className="w-full h-14 rounded-full text-base font-bold mt-2"
+              className="w-full h-12 rounded-full text-base font-bold mt-2"
             >
               {busy ? (
                 <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
@@ -458,7 +458,7 @@ function AuthPage() {
               type="button"
               onClick={submitOtp}
               disabled={busy}
-              className="w-full h-14 rounded-full text-base font-bold"
+              className="w-full h-12 rounded-full text-base font-bold"
             >
               {busy ? (
                 <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />

@@ -169,8 +169,12 @@ function Chapter({
   );
 }
 
-/** Колонка цифры широких плиток — текст обеих («18 специалистов», «с 2023») с одной линии. */
-const WIDE_NUMBER = "min-w-[6.5rem]";
+/**
+ * Широкие плитки («18 специалистов», «с 2023»): текст сразу за цифрой, без
+ * общей колонки цифр — с ней текст «специалистов» стоял далеко от «18»
+ * (решение владельца 2026-10-13).
+ */
+const WIDE_TILE = "col-span-2 flex items-center gap-3";
 
 function Community({ settings }: { settings: AboutSettings | null | undefined }) {
   const t = useT();
@@ -209,15 +213,9 @@ function Community({ settings }: { settings: AboutSettings | null | undefined })
             return (
               <div
                 key={tile.label}
-                className={`rounded-2xl bg-primary/[0.06] p-4 ${
-                  wide ? "col-span-2 flex items-center gap-4" : ""
-                }`}
+                className={`rounded-2xl bg-primary/[0.06] p-4 ${wide ? WIDE_TILE : ""}`}
               >
-                <dt
-                  className={`shrink-0 text-[28px] leading-none font-bold whitespace-nowrap text-primary tabular-nums ${
-                    wide ? WIDE_NUMBER : ""
-                  }`}
-                >
+                <dt className="shrink-0 text-[28px] leading-none font-bold whitespace-nowrap text-primary tabular-nums">
                   <CountUp value={tile.value} plus={tile.plus} />
                 </dt>
                 <dd className={`text-[13px] leading-snug text-foreground/80 ${wide ? "" : "mt-2"}`}>
@@ -226,8 +224,8 @@ function Community({ settings }: { settings: AboutSettings | null | undefined })
               </div>
             );
           })}
-          <div className="col-span-2 flex items-center gap-4 rounded-2xl bg-primary/[0.06] p-4">
-            <dt className={`shrink-0 whitespace-nowrap text-primary ${WIDE_NUMBER}`}>
+          <div className={`${WIDE_TILE} rounded-2xl bg-primary/[0.06] p-4`}>
+            <dt className="shrink-0 whitespace-nowrap text-primary">
               {sinceBefore && <span className="mr-1 text-lg font-semibold">{sinceBefore}</span>}
               <span className="text-[28px] leading-none font-bold tabular-nums">
                 {c.since.year}
@@ -533,8 +531,9 @@ function useInView(ref: RefObject<HTMLElement | null>): boolean {
 
 /**
  * Число «набегает» от нуля до значения, когда доезжает до экрана (~1,6 с,
- * замедляясь к концу). Ширину держат tabular-nums. При «уменьшить движение»
- * — сразу итог.
+ * замедляясь к концу). Ширину держит невидимое итоговое число под
+ * набегающим: текст рядом с цифрой не ездит. При «уменьшить движение» —
+ * сразу итог.
  */
 function CountUp({ value, plus }: { value: number; plus: boolean }) {
   const t = useT();
@@ -562,9 +561,15 @@ function CountUp({ value, plus }: { value: number; plus: boolean }) {
   }, [inView, value]);
 
   return (
-    <span ref={ref}>
-      {t.number(shown)}
-      {plus && "+"}
+    <span ref={ref} className="inline-grid">
+      <span aria-hidden="true" className="invisible col-start-1 row-start-1">
+        {t.number(value)}
+        {plus && "+"}
+      </span>
+      <span className="col-start-1 row-start-1">
+        {t.number(shown)}
+        {plus && "+"}
+      </span>
     </span>
   );
 }

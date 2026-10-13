@@ -1,4 +1,10 @@
-import { CloseCircle, Refresh, UsersGroupRounded } from "@solar-icons/react";
+import {
+  AltArrowRight,
+  CheckCircle,
+  CloseCircle,
+  TransferHorizontal,
+  UsersGroupRounded,
+} from "@solar-icons/react";
 
 import { Card } from "@/components/ui/card";
 import { useLocalize, useT } from "@/i18n";
@@ -12,6 +18,7 @@ import {
   entryColor,
   entryTrainers,
   fmtTime,
+  replacedTrainer,
   spotsLabel,
   spotsLeft,
   trainerInitials,
@@ -23,24 +30,21 @@ import {
  * Карточка тренировки пакетного приложения — одна в расписании и на главной
  * (решение владельца 2026-10-11): полоска слева — цвет тренировки, слева
  * время и продолжительность, тренеры с аватарками, свободные места.
+ * Справа — стрелка: записываются только из окна тренировки, прочитав
+ * описание (решение владельца 2026-10-13, кнопки «+» больше нет). Своя
+ * запись — зелёная подпись «Вы записаны» с галочкой, а не розовая заливка;
+ * тренер на замене — жёлтая пометка «Замена».
  */
 export function PackWorkoutCard({
   entry,
   isBooked,
   isWaitlisted = false,
-  isPending = false,
-  canBook = true,
   onOpen,
-  onBook,
 }: {
   entry: PackEntry;
   isBooked: boolean;
   isWaitlisted?: boolean;
-  isPending?: boolean;
-  /** Кнопка «+» (своя студия, занятие не прошло, ещё не записан). */
-  canBook?: boolean;
   onOpen: () => void;
-  onBook?: () => void;
 }) {
   const t = useT();
   const loc = useLocalize();
@@ -49,16 +53,11 @@ export function PackWorkoutCard({
   const minutes = durationMinutes(entry);
   const left = spotsLeft(entry);
   const spots = spotsLabel(entry, t);
-  const muted = isBooked ? "text-primary-foreground/75" : "text-muted-foreground";
 
   return (
     <Card
-      className={`relative flex w-full items-center gap-3 overflow-hidden rounded-lg p-3 pl-4 transition-colors ${
-        isBooked
-          ? "border-primary bg-primary text-primary-foreground"
-          : isWaitlisted
-            ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40"
-            : ""
+      className={`relative w-full overflow-hidden rounded-lg transition-colors ${
+        isWaitlisted ? "border-blue-400 bg-blue-50 dark:bg-blue-950/40" : ""
       }`}
     >
       <span
@@ -68,14 +67,14 @@ export function PackWorkoutCard({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left transition-opacity active:opacity-80"
+        className="flex w-full items-center gap-3 p-3 pl-4 text-left transition-opacity active:opacity-80"
       >
         <div className="flex w-12 shrink-0 flex-col items-center justify-center">
           <div className="text-center text-base font-black leading-tight tabular-nums">
             {fmtTime(entry.starts_at, t)}
           </div>
           {minutes != null && (
-            <div className={`mt-0.5 text-xs font-medium tabular-nums ${muted}`}>
+            <div className="mt-0.5 text-xs font-medium tabular-nums text-muted-foreground">
               {t("{n} мин", { n: minutes })}
             </div>
           )}
@@ -84,6 +83,12 @@ export function PackWorkoutCard({
           <div className="break-words font-semibold leading-snug">
             {loc(entry.workout)?.name ?? t("Тренировка")}
           </div>
+          {isBooked && (
+            <div className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
+              {t("Вы записаны")}
+            </div>
+          )}
           {isWaitlisted && (
             <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
               {t("В листе ожидания")}
@@ -101,7 +106,10 @@ export function PackWorkoutCard({
                       {trainerInitials(tr.full_name)}
                     </SquircleAvatarFallback>
                   </SquircleAvatar>
-                  <span className={`truncate text-sm font-medium ${muted}`}>{tr.full_name}</span>
+                  <span className="truncate text-sm font-medium text-muted-foreground">
+                    {tr.full_name}
+                  </span>
+                  {replacedTrainer(entry, tr.id) && <SubstitutionChip />}
                 </div>
               ))}
             </div>
@@ -109,7 +117,7 @@ export function PackWorkoutCard({
           {spots && (
             <div
               className={`mt-1.5 flex items-center gap-1 text-xs font-medium leading-none ${
-                left === 0 ? (isBooked ? muted : "text-red-500") : muted
+                left === 0 ? "text-red-500" : "text-muted-foreground"
               }`}
             >
               {left === 0 ? (
@@ -121,34 +129,19 @@ export function PackWorkoutCard({
             </div>
           )}
         </div>
+        <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
       </button>
-      {canBook && onBook && !isBooked && !isWaitlisted && (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBook();
-          }}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors ${
-            isPending ? "opacity-60" : ""
-          }`}
-          aria-label={t("Записаться")}
-        >
-          {isPending ? (
-            <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M12 5V19M5 12H19"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          )}
-        </button>
-      )}
     </Card>
+  );
+}
+
+/** Жёлтая пометка «Замена» у тренера (карточка и окно тренировки). */
+export function SubstitutionChip() {
+  const t = useT();
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold leading-none text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
+      <TransferHorizontal className="h-3 w-3" weight="Bold" />
+      {t("Замена")}
+    </span>
   );
 }

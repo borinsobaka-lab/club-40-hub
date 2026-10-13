@@ -1,6 +1,7 @@
 import type { WorkoutDrawerData } from "@/components/workout-drawer";
 import { currentT, localizeRow, type ContentTranslations, type Translator } from "@/i18n";
 import { mediaUrl } from "@/lib/media";
+import { untypedDb } from "@/lib/untyped-db";
 
 /**
  * Занятие расписания пакетного формата — как его выбирают расписание и
@@ -35,11 +36,56 @@ export type PackEntry = {
     translations?: ContentTranslations | null;
   } | null;
   trainers: { trainer: PackTrainer | null }[] | null;
+  /**
+   * Замены тренера (schedule_entry_substitutions, 2026-10-13): тренер
+   * занятия trainer_id заменяет replaced. Догружаются отдельно —
+   * attachSubstitutions.
+   */
+  substitutions?: { trainer_id: string; replaced: PackTrainer | null }[];
 };
 
 /** select для schedule_entries (и вложенного entry в schedule_bookings). */
 export const PACK_ENTRY_SELECT =
   "id, studio_id, starts_at, ends_at, capacity, booked_count, workout:workouts(id, name, color, description, photo_url, capacity, translations), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, rating_avg, rating_count, translations))";
+
+/**
+ * Замены тренеров к занятиям — отдельным запросом, а не в PACK_ENTRY_SELECT:
+ * если таблицы замен в базе ещё нет (клиент выкатился раньше миграции) или
+ * запрос не прошёл, расписание показывается как раньше, без пометок.
+ */
+export async function attachSubstitutions<T extends PackEntry>(entries: T[]): Promise<T[]> {
+  const ids = entries.map((e) => e.id);
+  if (ids.length === 0) return entries;
+  try {
+    const { data, error } = await untypedDb
+      .from("schedule_entry_substitutions")
+      .select(
+        "entry_id, trainer_id, replaced:trainers(id, full_name, photo_url, rating_avg, rating_count, translations)",
+      )
+      .in("entry_id", ids);
+    if (error || !data) return entries;
+    const byEntry = new Map<string, NonNullable<PackEntry["substitutions"]>>();
+    for (const r of data as {
+      entry_id: string;
+      trainer_id: string;
+      replaced: PackTrainer | PackTrainer[] | null;
+    }[]) {
+      const replaced = Array.isArray(r.replaced) ? (r.replaced[0] ?? null) : r.replaced;
+      byEntry.set(r.entry_id, [
+        ...(byEntry.get(r.entry_id) ?? []),
+        { trainer_id: r.trainer_id, replaced },
+      ]);
+    }
+    return entries.map((e) => (byEntry.has(e.id) ? { ...e, substitutions: byEntry.get(e.id) } : e));
+  } catch {
+    return entries;
+  }
+}
+
+/** Кого заменяет тренер занятия; не замена — null. */
+export function replacedTrainer(e: PackEntry, trainerId: string): PackTrainer | null {
+  return e.substitutions?.find((s) => s.trainer_id === trainerId)?.replaced ?? null;
+}
 
 export function entryTrainers(e: PackEntry): PackTrainer[] {
   return (e.trainers ?? []).map((t) => t.trainer).filter((t): t is PackTrainer => !!t);
@@ -115,12 +161,19 @@ export function packEntryToDrawerData(e: PackEntry, t: Translator = currentT()):
     startsAt: e.starts_at,
     endsAt: e.ends_at,
     color: entryColor(e),
-    trainers: trainers.map((tr) => ({
-      id: tr.id,
-      name: tr.full_name ?? t("Тренер"),
-      photo: trainerPhoto(tr),
-      rating: trainerRating(tr),
-    })),
+    trainers: trainers.map((tr) => {
+      const was = replacedTrainer(e, tr.id);
+      const old = was ? localizeRow(was, t.locale) : null;
+      return {
+        id: tr.id,
+        name: tr.full_name ?? t("Тренер"),
+        photo: trainerPhoto(tr),
+        rating: trainerRating(tr),
+        replaced: old
+          ? { id: old.id, name: old.full_name ?? t("Тренер"), photo: trainerPhoto(old) }
+          : null,
+      };
+    }),
     spotsLabel: spotsLabel(e, t),
     spotsLeft: spotsLeft(e),
     studioId: e.studio_id,

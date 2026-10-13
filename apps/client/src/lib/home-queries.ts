@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { PACK_ENTRY_SELECT } from "@/formats/packages/entries";
+import { PACK_ENTRY_SELECT, attachSubstitutions, type PackEntry } from "@/formats/packages/entries";
 import type { ContentTranslations } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
 import { IS_PACKAGES } from "@/lib/terms";
@@ -58,7 +58,16 @@ export function homeBookingsQuery(userId: string | null) {
         .is("entry.cancelled_at", null)
         .limit(50);
       if (error) throw error;
-      return (data as unknown as MyBooking[] | null) ?? [];
+      const rows = (data as unknown as MyBooking[] | null) ?? [];
+      if (!IS_PACKAGES) return rows;
+      // Пакетное: пометка «Замена» у тренера — как в расписании.
+      const entries = await attachSubstitutions(
+        rows.flatMap((r) => (r.entry ? [r.entry as unknown as PackEntry] : [])),
+      );
+      const byId = new Map(entries.map((e) => [e.id, e]));
+      return rows.map((r) =>
+        r.entry ? { ...r, entry: (byId.get(r.entry.id) ?? r.entry) as MyBooking["entry"] } : r,
+      );
     },
     enabled: !!userId,
   });
