@@ -411,6 +411,13 @@ function SchedulePage() {
   // не помещались): выбранный день — индекс 0..6 от понедельника.
   const isMobile = useIsMobile();
   const [dayIndex, setDayIndex] = useState(() => todayIndex());
+  // Текущее время — красная линия в колонке сегодняшнего дня; сдвигается
+  // раз в 30 секунд.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Справочники зависят только от студии, занятия — ещё и от недели: листание
   // недель не перезапрашивает тренировки и тренеров.
@@ -1113,6 +1120,21 @@ function SchedulePage() {
                                 ))}
                               </div>
                             )}
+                            {/* Линия текущего времени — поверх карточек, но
+                                клики пропускает (pointer-events-none). Под
+                                липкой шапкой дней (z-20), в полном экране —
+                                нет: это вид для клиента. */}
+                            {!fullscreen &&
+                              hour === now.getHours() &&
+                              day.toDateString() === now.toDateString() && (
+                                <div
+                                  aria-hidden
+                                  className="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-red-500"
+                                  style={{ top: `${(now.getMinutes() / 60) * 100}%` }}
+                                >
+                                  <span className="absolute -left-1 top-1/2 size-2.5 -translate-y-1/2 rounded-full bg-red-500" />
+                                </div>
+                              )}
                           </div>
                         );
                       })}
