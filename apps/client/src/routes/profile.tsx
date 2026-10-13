@@ -33,6 +33,8 @@ import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
 import { IS_PACKAGES } from "@/lib/terms";
 import { PRIVACY_POLICY_INFO } from "@/lib/legal";
+import { isValidPhone } from "@/lib/phone";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { LanguageSheet } from "@/components/language-switcher";
 import { LOCALES, currentT, getTranslator, msg, useI18n, useT, type Translator } from "@/i18n";
 
@@ -74,7 +76,13 @@ const profileSchema = z.object({
     .trim()
     .min(1, msg("Укажите фамилию"))
     .max(60, msg("Слишком длинная фамилия")),
-  phone: z.string().trim().max(32, msg("Слишком длинный номер")).optional().or(z.literal("")),
+  phone: z
+    .string()
+    .trim()
+    .max(32, msg("Слишком длинный номер"))
+    .refine((v) => !v || isValidPhone(v), msg("Проверьте номер телефона"))
+    .optional()
+    .or(z.literal("")),
   email: z.string().trim().email(msg("Некорректный email")).max(255).optional().or(z.literal("")),
   birthday: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
@@ -700,18 +708,12 @@ function EditProfileSheet({
             autoComplete="given-name"
           />
 
-          <FloatingLabelInput
+          {/* Флаг и код страны (по умолчанию +995) и маска номера — PhoneInput. */}
+          <PhoneInput
             label={t("Телефон")}
             id="phone"
-            type="tel"
-            inputMode="tel"
             value={form.phone}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setForm((f) => ({ ...f, phone: e.target.value }))
-            }
-            maxLength={32}
-            autoComplete="tel"
-            placeholder="+7 ___ ___ __ __"
+            onChange={(phone) => setForm((f) => ({ ...f, phone }))}
           />
 
           <FloatingLabelInput

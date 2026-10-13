@@ -39,6 +39,8 @@ import { queueHomeConfetti } from "@/lib/confetti";
 import { IS_PACKAGES } from "@/lib/terms";
 import { currentT, msg, useT } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { isValidPhone } from "@/lib/phone";
 
 // Анкета приложения пакетных студий (решение владельца 2026-10-11). Тренировки
 // в этих студиях одни для всех, поэтому анкета — про прогресс и рекомендации
@@ -113,10 +115,6 @@ function validBirthDate(s: string) {
 }
 
 /** Телефон заполнен, если в нём хотя бы 7 цифр. */
-function validPhone(s: string) {
-  return s.replace(/\D/g, "").length >= 7;
-}
-
 /** Имя и фамилия из full_name, если в карточке нет раздельных («Фамилия Имя»). */
 function splitFullName(full: string | null | undefined) {
   const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
@@ -324,7 +322,7 @@ export function PackagesOnboardingPage() {
         return form.weight_kg.trim() !== "" && validBirthDate(form.birth_date);
       case CONTACTS_STEP:
         return (
-          form.last_name.trim() !== "" && form.first_name.trim() !== "" && validPhone(form.phone)
+          form.last_name.trim() !== "" && form.first_name.trim() !== "" && isValidPhone(form.phone)
         );
       default:
         return true;
@@ -538,15 +536,15 @@ export function PackagesOnboardingPage() {
                 onChange={(v) => update("first_name", v)}
                 autoComplete="given-name"
               />
-              <ContactField
-                id="phone"
-                label={t("Номер телефона")}
-                value={form.phone}
-                onChange={(v) => update("phone", v)}
-                autoComplete="tel"
-                type="tel"
-                inputMode="tel"
-              />
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">{t("Номер телефона")}</Label>
+                <PhoneInput
+                  id="phone"
+                  value={form.phone}
+                  onChange={(v) => update("phone", v)}
+                  className="h-12"
+                />
+              </div>
             </div>
           </Block>
         </Blocks>

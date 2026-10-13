@@ -29,6 +29,12 @@ const dict: Dictionary = {
   "Получить код": "Get code",
   Подтвердить: "Confirm",
   "Введите ваш email": "Enter your email",
+  Принимаю: "I accept the",
+  "политику конфиденциальности": "privacy policy",
+  "и даю согласие на обработку персональных данных":
+    "and consent to the processing of my personal data",
+  "Чтобы продолжить, примите политику конфиденциальности":
+    "To continue, please accept the privacy policy",
 };
 
 export default dict;

@@ -13,6 +13,9 @@ import { DarkFrame } from "@/formats/packages/dark-frame";
 import { StudioContactButtons } from "@/formats/packages/studio-contacts";
 import packagesLogo from "@/assets/packages-logo.svg";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { PrivacyConsent } from "@/components/privacy-consent";
+import { recordPrivacyConsent } from "@/lib/privacy-consent";
+import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { getTranslator, useT, type Translator } from "@/i18n";
 import loginEmailArt from "@/assets/login-email.webp";
 import loginCodeArt from "@/assets/login-code.webp";
@@ -92,6 +95,9 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   // Почта не найдена — под сообщением кнопки связи со студией (пакетное).
   const [notMember, setNotMember] = useState(false);
+  // Согласие с политикой (Lady Stretch): без галочки код не запрашивается.
+  const [consent, setConsent] = useState(false);
+  const [consentMissing, setConsentMissing] = useState(false);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [cooldown, setCooldown] = useState(0);
   // На какой адрес ушёл последний код: «Изменить данные» → «Получить код» с
@@ -121,6 +127,11 @@ function AuthPage() {
     setNotMember(false);
     if (!email.trim()) {
       setError(t("Укажите email"));
+      return;
+    }
+    if (PRIVACY_POLICY_INFO && !consent) {
+      setConsentMissing(true);
+      setError(t("Чтобы продолжить, примите политику конфиденциальности"));
       return;
     }
     if (cooldown > 0 && sentTo === email.trim()) {
@@ -174,6 +185,8 @@ function AuthPage() {
     if (verifyError) {
       cancelHomeConfetti();
       setError(humanizeAuthError(verifyError, t));
+    } else if (PRIVACY_POLICY_INFO && consent) {
+      recordPrivacyConsent();
     }
     setBusy(false);
   };
@@ -217,10 +230,16 @@ function AuthPage() {
   const emailInput = (
     <FloatingLabelInput
       label={t("Email")}
+      id="email"
+      name="email"
       type="email"
       value={email}
       onChange={(e) => setEmail(e.target.value)}
       autoComplete="email"
+      inputMode="email"
+      autoCapitalize="none"
+      autoCorrect="off"
+      spellCheck={false}
       required
     />
   );
@@ -367,7 +386,11 @@ function AuthPage() {
         {step === "form" ? (
           // pb — запас снизу: прокрутка панели срезала нижний край поля.
           <form id="auth-email-form" onSubmit={requestCode} className="space-y-3 px-4 pt-6 pb-2">
+            {/* name/id и autocomplete=email — телефон предлагает свою почту;
+                без автозаглавной и автозамены — iOS иначе портит адрес. */}
             <Input
+              id="email"
+              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -375,7 +398,22 @@ function AuthPage() {
               aria-label={t("Email")}
               autoComplete="email"
               inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="go"
               required
+            />
+            <PrivacyConsent
+              checked={consent}
+              onCheckedChange={(v) => {
+                setConsent(v);
+                if (v && consentMissing) {
+                  setConsentMissing(false);
+                  setError(null);
+                }
+              }}
+              invalid={consentMissing}
             />
             {errorText}
             {/* Почта не найдена — сразу способы связаться со студией. */}
