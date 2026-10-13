@@ -204,16 +204,18 @@ const ADMIN_CANCEL_REASONS = [
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 // Часы сетки по умолчанию — 7..22; занятие раньше или позже расширяет сетку
 // (иначе оно было бы в базе, но не на экране).
-const FIRST_HOUR = 7;
+// С 9:00: на 7 и 8 утра занятий не бывает (решение владельца 2026-10-13);
+// занятие раньше всё равно покажется — сетка расширится до его часа.
+const FIRST_HOUR = 9;
 const LAST_HOUR = 22;
 // Высота часа с занятиями — по самой высокой карточке (две строки названия +
 // строка тренеров или «тренер + клиент» в две строки). Меняешь вёрстку
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
-const SLOT_PX_FULL = 80;
+const SLOT_PX_FULL = 72;
 const SLOT_PX_EMPTY = 28;
 // Час, где у занятия есть «новенькие»: бейдж под счётчиком записей
 // опускает название — строка выше на его высоту.
-const SLOT_PX_NEWCOMERS = 96;
+const SLOT_PX_NEWCOMERS = 88;
 // Полноэкранный просмотр: высота строки с занятиями — по карточкам, пустой
 // час между занятиями — узкая полоска.
 const SLOT_PX_FULLSCREEN_EMPTY = 16;
@@ -1416,7 +1418,7 @@ function EntryCard({
         <button
           type="button"
           onClick={onOpen}
-          className="flex h-full w-full cursor-pointer flex-col px-1.5 py-0.5 text-left hover:bg-accent/40"
+          className="flex h-full w-full cursor-pointer flex-col px-1.5 pt-0.5 pb-px text-left hover:bg-accent/40"
         >
           <span className="flex w-full items-start justify-between gap-1">
             <span className="flex items-center gap-1 whitespace-nowrap text-muted-foreground">
@@ -1432,7 +1434,7 @@ function EntryCard({
           </span>
           <span
             className={cn(
-              "mt-0.5 font-semibold leading-tight",
+              "font-semibold leading-[1.15]",
               clean ? "text-base" : "text-[13px]",
               // Персональному название в одну строку — место под клиента.
               clients ? "truncate" : "line-clamp-2",
@@ -1446,7 +1448,7 @@ function EntryCard({
           {people && (
             <span
               className={cn(
-                "mt-0.5 min-w-0 pr-5 text-muted-foreground",
+                "min-w-0 pr-5 text-muted-foreground",
                 clients ? "line-clamp-2 break-words" : "truncate",
               )}
             >
@@ -1481,7 +1483,7 @@ function EntryCard({
       <button
         type="button"
         onClick={onOpen}
-        className="flex h-full w-full cursor-pointer flex-col px-2 py-0.5 text-left hover:opacity-90"
+        className="flex h-full w-full cursor-pointer flex-col px-2 pt-0.5 pb-px text-left hover:opacity-90"
       >
         <span className="flex w-full items-start justify-between gap-1">
           <span className="whitespace-nowrap opacity-80">
@@ -1496,7 +1498,7 @@ function EntryCard({
         </span>
         <span
           className={cn(
-            "mt-0.5 font-semibold leading-tight line-clamp-2",
+            "font-semibold leading-[1.15] line-clamp-2",
             clean ? "text-base" : "text-[13px]",
           )}
         >
