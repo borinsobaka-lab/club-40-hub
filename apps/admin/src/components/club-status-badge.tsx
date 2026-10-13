@@ -11,16 +11,20 @@ export function ClubStatusBadge({
   status,
   className,
   withFull,
+  size = "default",
 }: {
   status: ClubStatus;
   className?: string;
   withFull?: boolean;
+  /** sm — компактная плашка в строке клиента окна занятия (2026-10-13). */
+  size?: "default" | "sm";
 }) {
   return (
     <span
       title={CLUB_STATUS_FULL[status]}
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full border font-medium",
+        size === "sm" ? "px-1.5 text-[10px] leading-4" : "px-2 py-0.5 text-xs",
         STYLES[status],
         className,
       )}

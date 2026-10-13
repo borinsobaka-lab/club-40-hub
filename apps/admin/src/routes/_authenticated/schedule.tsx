@@ -3265,7 +3265,7 @@ function BookingsPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <BookingClientName client={c} />
-                      {c?.club_status && <ClubStatusBadge status={c.club_status} />}
+                      {c?.club_status && <ClubStatusBadge status={c.club_status} size="sm" />}
                       {c && newcomers.has(c.id) && (
                         <span
                           title="До занятия не было абонементов, кроме пробного"
