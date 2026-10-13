@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 import { formatNumber } from "@/lib/format";
-import type { Slice } from "./chart-panel";
+import { EMPTY_RING_COLOR, type Slice } from "./chart-panel";
 
 /**
  * Графики разделов дашборда (recharts). Файл грузится отдельным чанком
@@ -160,9 +160,37 @@ export function RatesPlot({
   );
 }
 
-/** Кольцевая диаграмма долей; подписи и значения — в легенде под ней (PieLegend). */
+const RING = { innerRadius: "58%", outerRadius: "95%" } as const;
+
+/**
+ * Кольцевая диаграмма долей; подписи и значения — в легенде под ней
+ * (PieLegend). Без долей — пустое серое кольцо с подписью внутри.
+ */
 export function PiePlot({ slices, format }: { slices: Slice[]; format: (n: number) => string }) {
   const total = slices.reduce((s, x) => s + x.value, 0) || 1;
+  if (slices.length === 0) {
+    return (
+      <div className="relative h-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={[{ value: 1 }]}
+              dataKey="value"
+              {...RING}
+              fill={EMPTY_RING_COLOR}
+              stroke="none"
+              isAnimationActive={false}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="max-w-20 text-center text-xs leading-tight text-muted-foreground">
+            Нет данных за период
+          </span>
+        </div>
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
@@ -186,8 +214,7 @@ export function PiePlot({ slices, format }: { slices: Slice[]; format: (n: numbe
           data={slices}
           dataKey="value"
           nameKey="label"
-          innerRadius="58%"
-          outerRadius="95%"
+          {...RING}
           paddingAngle={slices.length > 1 ? 1.5 : 0}
           stroke="var(--background)"
           strokeWidth={2}
