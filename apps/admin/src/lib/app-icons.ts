@@ -18,7 +18,8 @@ export const APP_ICON_FILES = {
   /**
    * Манифест, purpose maskable: Android обрезает края кругом/скруглением и
    * гарантирует только центральный круг диаметром 80% — картинка ужимается
-   * до MASKABLE_SCALE, поля продолжают её края (градиентный фон не рвётся).
+   * ровно настолько, чтобы рисунок на ней (не фон) влез в этот круг
+   * (maskableScale), поля продолжают её края (градиентный фон не рвётся).
    */
   maskable512: { name: "icon-maskable-512.png", size: 512, opaque: true, maskable: true },
   /** iOS: прозрачное он заливает чёрным, поэтому — на белом. */
@@ -26,8 +27,8 @@ export const APP_ICON_FILES = {
   favicon32: { name: "favicon-32.png", size: 32 },
 } as const;
 
-/** Доля стороны maskable-иконки под картинку: квадрат 66% почти целиком в круге 80%. */
-const MASKABLE_SCALE = 0.66;
+/** Радиус безопасного круга maskable-иконки (40% стороны) с запасом на сглаживание. */
+const MASKABLE_SAFE_RADIUS = 0.39;
 
 /** Меньше — значок на рабочем столе будет мыльным. */
 export const APP_ICON_MIN_SIZE = 512;
@@ -76,6 +77,42 @@ function drawCenterSquare(
 }
 
 /**
+ * Во сколько ужать картинку для maskable-иконки: рисунок (всё, что
+ * отличается от фона) должен влезть в безопасный круг. Фон — цвет края
+ * в той же строке или в том же столбце, так градиент фона рисунком не
+ * считается. Рисунок, который и так в круге, не уменьшается.
+ */
+function maskableScale(img: HTMLImageElement): number {
+  const n = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = n;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return 0.66;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, n, n);
+  drawCenterSquare(ctx, img, n);
+  const px = ctx.getImageData(0, 0, n, n).data;
+  const at = (x: number, y: number) => (y * n + x) * 4;
+  const differs = (a: number, b: number) =>
+    Math.abs(px[a] - px[b]) + Math.abs(px[a + 1] - px[b + 1]) + Math.abs(px[a + 2] - px[b + 2]) >
+    60;
+  let maxDist = 0;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const i = at(x, y);
+      const rowEdge = x < n / 2 ? at(0, y) : at(n - 1, y);
+      const colEdge = y < n / 2 ? at(x, 0) : at(x, n - 1);
+      if (!differs(i, rowEdge) || !differs(i, colEdge)) continue;
+      // Дальний угол пикселя от центра, в долях стороны.
+      const dx = Math.max(Math.abs(x - n / 2), Math.abs(x + 1 - n / 2)) / n;
+      const dy = Math.max(Math.abs(y - n / 2), Math.abs(y + 1 - n / 2)) / n;
+      maxDist = Math.max(maxDist, Math.hypot(dx, dy));
+    }
+  }
+  return maxDist ? Math.min(1, MASKABLE_SAFE_RADIUS / maxDist) : 1;
+}
+
+/**
  * Квадрат size×size из центра картинки; opaque — на белом фоне; maskable —
  * картинка ужата в безопасную зону Android, поля — её растянутые края.
  */
@@ -95,7 +132,7 @@ function renderSquare(
   }
   ctx.imageSmoothingQuality = "high";
   if (maskable) {
-    const inner = Math.round(size * MASKABLE_SCALE);
+    const inner = Math.round(size * maskableScale(img));
     const pad = Math.round((size - inner) / 2);
     const far = pad + inner;
     drawCenterSquare(ctx, img, inner, pad, pad);
