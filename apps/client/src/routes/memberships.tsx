@@ -707,7 +707,6 @@ function MembershipsPage() {
             <Button
               variant="outline"
               disabled={cancellingRenew}
-              className="font-bold"
               onClick={() => setConfirmManageOpen(false)}
             >
               {t("Закрыть")}
@@ -715,7 +714,6 @@ function MembershipsPage() {
             <Button
               disabled={cancellingRenew}
               variant="destructive"
-              className="font-bold"
               onClick={() => {
                 // Закрываем только при успехе: при ошибке клиент остаётся в
                 // диалоге и может повторить.
@@ -797,10 +795,7 @@ function MembershipCard({
             />
           )}
         </div>
-        <Button
-          onClick={onSelect}
-          className="mt-5 w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition"
-        >
+        <Button onClick={onSelect} className="mt-5 w-full">
           {t("Выбрать")}
         </Button>
       </div>
@@ -964,12 +959,7 @@ function CheckoutSheet({
                 onChange={(e) => setPromo(e.target.value)}
                 className="flex-1"
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={applyPromo}
-                className="px-4 font-bold"
-              >
+              <Button type="button" variant="outline" onClick={applyPromo} className="px-4">
                 {t("Применить")}
               </Button>
             </div>
@@ -1015,7 +1005,7 @@ function CheckoutSheet({
             <Button
               onClick={() => onPurchase(total)}
               disabled={!canPay}
-              className="mt-3 w-full h-12 rounded-full bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-60"
+              className="mt-3 w-full disabled:opacity-60"
             >
               {purchasing
                 ? t("Оплачиваем…")

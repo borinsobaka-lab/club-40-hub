@@ -32,8 +32,10 @@ import {
  * время и продолжительность, тренеры с аватарками, свободные места.
  * Справа — стрелка: записываются только из окна тренировки, прочитав
  * описание (решение владельца 2026-10-13, кнопки «+» больше нет). Своя
- * запись — зелёная подпись «Вы записаны» с галочкой, а не розовая заливка;
- * тренер на замене — жёлтая пометка «Замена».
+ * запись — зелёная подпись «Вы записаны» с галочкой на месте строки
+ * «Свободно N мест» (решение владельца 2026-10-13: места видны в окне
+ * тренировки), а не розовая заливка; тренер на замене — жёлтая пометка
+ * «Замена».
  */
 export function PackWorkoutCard({
   entry,
@@ -83,12 +85,6 @@ export function PackWorkoutCard({
           <div className="break-words font-semibold leading-snug">
             {loc(entry.workout)?.name ?? t("Тренировка")}
           </div>
-          {isBooked && (
-            <div className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
-              {t("Вы записаны")}
-            </div>
-          )}
           {isWaitlisted && (
             <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
               {t("В листе ожидания")}
@@ -114,19 +110,26 @@ export function PackWorkoutCard({
               ))}
             </div>
           )}
-          {spots && (
-            <div
-              className={`mt-1.5 flex items-center gap-1 text-xs font-medium leading-none ${
-                left === 0 ? "text-red-500" : "text-muted-foreground"
-              }`}
-            >
-              {left === 0 ? (
-                <CloseCircle className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-              ) : (
-                <UsersGroupRounded className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
-              )}
-              <span>{spots}</span>
+          {isBooked ? (
+            <div className="mt-1.5 flex items-center gap-1 text-xs font-semibold leading-none text-emerald-600 dark:text-emerald-400">
+              <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
+              <span>{t("Вы записаны")}</span>
             </div>
+          ) : (
+            spots && (
+              <div
+                className={`mt-1.5 flex items-center gap-1 text-xs font-medium leading-none ${
+                  left === 0 ? "text-red-500" : "text-muted-foreground"
+                }`}
+              >
+                {left === 0 ? (
+                  <CloseCircle className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+                ) : (
+                  <UsersGroupRounded className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+                )}
+                <span>{spots}</span>
+              </div>
+            )
           )}
         </div>
         <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />

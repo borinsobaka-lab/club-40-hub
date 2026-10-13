@@ -436,7 +436,7 @@ function HomePage() {
                 <div className="text-sm text-muted-foreground">
                   {t("У вас нет запланированных тренировок")}
                 </div>
-                <Button asChild className="text-sm font-bold">
+                <Button asChild>
                   <Link to="/schedule">{IS_PACKAGES ? t("Записаться") : t("Забронировать")}</Link>
                 </Button>
               </div>

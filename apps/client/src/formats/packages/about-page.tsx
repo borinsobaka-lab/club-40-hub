@@ -307,7 +307,7 @@ function Instagram({ settings }: { settings: AboutSettings | null | undefined })
           ) : (
             <p className="mt-3 text-sm leading-relaxed text-foreground/80">{t(ig.fallbackText)}</p>
           )}
-          <Button asChild className="mt-4 h-12 w-full rounded-2xl text-[15px] font-semibold">
+          <Button asChild className="mt-4 w-full">
             <a href={ig.url} target="_blank" rel="noopener noreferrer">
               {t(ig.button)}
             </a>
