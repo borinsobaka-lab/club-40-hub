@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
 import { IS_PACKAGES } from "@/lib/terms";
+import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { LanguageSheet } from "@/components/language-switcher";
 import { LOCALES, currentT, getTranslator, msg, useI18n, useT, type Translator } from "@/i18n";
 
@@ -258,6 +259,7 @@ async function saveClient(
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const t = useT();
   const { locale } = useI18n();
   const currentLanguage = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
@@ -413,10 +415,20 @@ function ProfilePage() {
           {/* Блок: ссылки */}
           <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
             <ul className="divide-y divide-border">
-              <ProfileLink
-                icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
-                label={t("Правовые документы")}
-              />
+              {/* Lady Stretch: единственный юридический документ приложения —
+                  политика конфиденциальности (решение владельца 2026-10-13). */}
+              {PRIVACY_POLICY_INFO ? (
+                <ProfileLink
+                  icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
+                  label={t("Политика конфиденциальности")}
+                  onClick={() => void navigate({ to: "/privacy" })}
+                />
+              ) : (
+                <ProfileLink
+                  icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
+                  label={t("Правовые документы")}
+                />
+              )}
               {/* Оплаты в приложении пакетных студий пока нет (решение владельца
                   2026-10-12) — блок способов оплаты не показываем. */}
               {!IS_PACKAGES && (
