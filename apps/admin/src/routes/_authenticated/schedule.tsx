@@ -29,6 +29,8 @@ import { ChoiceCard } from "@/components/ui/choice-card";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
+import { ClubStatusBadge } from "@/components/club-status-badge";
+import type { ClubStatus } from "@/lib/client-status";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import {
   ACTIVITY_KINDS,
@@ -127,7 +129,13 @@ type Entry = {
 
 type Substitution = { replaced_trainer_id: string; replaced: { full_name: string } | null };
 
-type ParticipantName = { first_name: string | null; last_name: string | null; full_name: string };
+type ParticipantName = {
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string;
+  /** Абонементы клиента (любые) — нет ни одного: ПЧК, «новенький». */
+  client_memberships?: { client_id: string }[];
+};
 
 /** Клиенты персонального занятия: «Фамилия Имя» записанных (не отменённых). */
 function participantNames(e: Entry) {
@@ -135,6 +143,19 @@ function participantNames(e: Entry) {
     .filter((p) => p.client && (p.status === "booked" || p.status === "attended"))
     .map((p) => clientName(p.client!))
     .join(", ");
+}
+
+/**
+ * Новенькие на занятии — записанные клиенты со статусом ПЧК: ни разу не
+ * покупали абонемент (как club_status во вью clients_with_status).
+ */
+function newcomerCount(e: Entry) {
+  return (e.participants ?? []).filter(
+    (p) =>
+      p.client &&
+      (p.status === "booked" || p.status === "attended") &&
+      (p.client.client_memberships ?? []).length === 0,
+  ).length;
 }
 
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
@@ -149,7 +170,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name))";
+  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name, client_memberships(client_id)))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -190,6 +211,9 @@ const LAST_HOUR = 22;
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
 const SLOT_PX_FULL = 80;
 const SLOT_PX_EMPTY = 28;
+// Час, где у занятия есть «новенькие»: бейдж под счётчиком записей
+// опускает название — строка выше на его высоту.
+const SLOT_PX_NEWCOMERS = 96;
 // Полноэкранный просмотр: высота строки с занятиями — по карточкам, пустой
 // час между занятиями — узкая полоска.
 const SLOT_PX_FULLSCREEN_EMPTY = 16;
@@ -483,6 +507,7 @@ function SchedulePage() {
   const grid = useMemo(() => {
     const cells = new Map<string, Entry[]>();
     const busyHours = new Set<number>();
+    const newcomerHours = new Set<number>();
     // Занятий по дням недели — точки под днями в переключателе на телефоне.
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
@@ -502,6 +527,7 @@ function SchedulePage() {
       const key = cellKey(start, start.getHours());
       cells.set(key, [...(cells.get(key) ?? []), e]);
       busyHours.add(start.getHours());
+      if (!e.cancelled_at && newcomerCount(e) > 0) newcomerHours.add(start.getHours());
       perDay[(start.getDay() + 6) % 7]++;
     }
     const hourList = [...busyHours];
@@ -512,7 +538,7 @@ function SchedulePage() {
     const compactHours = hourList.length
       ? hours.filter((h) => h >= Math.min(...hourList) && h <= Math.max(...hourList))
       : hours;
-    return { cells, busyHours, perDay, hours, compactHours };
+    return { cells, busyHours, newcomerHours, perDay, hours, compactHours };
   }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
@@ -1013,7 +1039,9 @@ function SchedulePage() {
                       ? undefined
                       : SLOT_PX_FULLSCREEN_EMPTY
                     : busy
-                      ? SLOT_PX_FULL
+                      ? grid.newcomerHours.has(hour)
+                        ? SLOT_PX_NEWCOMERS
+                        : SLOT_PX_FULL
                       : SLOT_PX_EMPTY;
                   return (
                     <div key={`row-${hour}`} className="contents">
@@ -1327,6 +1355,21 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
   );
 }
 
+/** «1 новенький», «3 новеньких» — под бейджем записей (решение владельца 2026-10-13). */
+function NewcomersBadge({ entry }: { entry: Entry }) {
+  const n = newcomerCount(entry);
+  if (!n) return null;
+  const one = n % 10 === 1 && n % 100 !== 11;
+  return (
+    <span
+      title="Записаны ПЧК — ни разу не покупали абонемент"
+      className="whitespace-nowrap rounded bg-sky-100 px-1 py-px text-[10px] font-semibold tabular-nums text-sky-600"
+    >
+      {n} {one ? "новенький" : "новеньких"}
+    </span>
+  );
+}
+
 function EntryCard({
   entry,
   packages,
@@ -1380,7 +1423,12 @@ function EntryCard({
               {cancelled && <Ban className="size-3 shrink-0 text-rose-600" aria-label="Отменено" />}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
-            {!cancelled && !clean && <CapacityBadge entry={entry} light />}
+            {!cancelled && !clean && (
+              <span className="flex flex-col items-end gap-0.5">
+                <CapacityBadge entry={entry} light />
+                <NewcomersBadge entry={entry} />
+              </span>
+            )}
           </span>
           <span
             className={cn(
@@ -1439,7 +1487,12 @@ function EntryCard({
           <span className="whitespace-nowrap opacity-80">
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
-          {!clean && <CapacityBadge entry={entry} />}
+          {!clean && (
+            <span className="flex flex-col items-end gap-0.5">
+              <CapacityBadge entry={entry} />
+              <NewcomersBadge entry={entry} />
+            </span>
+          )}
         </span>
         <span
           className={cn(
@@ -1745,13 +1798,13 @@ function TrainerAssignments({
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {sub ? (
-                    <Button variant="outline" size="xs" onClick={() => undoSub(index)}>
+                    <Button variant="default" size="xs" onClick={() => undoSub(index)}>
                       <Undo2 />
                       Отменить замену
                     </Button>
                   ) : (
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="xs"
                       onClick={() => setEditing({ index, mode: "replace" })}
                     >
@@ -1760,7 +1813,7 @@ function TrainerAssignments({
                     </Button>
                   )}
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="xs"
                     onClick={() => setEditing({ index, mode: "edit" })}
                   >
@@ -2458,6 +2511,8 @@ type ClientRow = {
   phone: string | null;
   email: string | null;
   crm_link: string | null;
+  /** Статус клуба (ЧК / БЧК / ПЧК) — из вью clients_with_status, как в «Клиентах». */
+  club_status: ClubStatus | null;
 };
 
 type ActiveMembershipRow = {
@@ -2545,14 +2600,14 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
 
   // Карточки и абонементы — дополнение: если они не загрузились, записи всё
   // равно показываем (с «Пользователь без анкеты»), а не ошибку на всю панель.
-  const cols = "id, user_id, first_name, last_name, full_name, phone, email, crm_link";
+  const cols = "id, user_id, first_name, last_name, full_name, phone, email, crm_link, club_status";
   const [byId, byUser] = await Promise.all([
     clientIds.length
-      ? supabase.from("clients").select(cols).in("id", clientIds)
+      ? supabase.from("clients_with_status").select(cols).in("id", clientIds)
       : Promise.resolve({ data: [] as ClientRow[] }),
     userIds.length
       ? supabase
-          .from("clients")
+          .from("clients_with_status")
           .select(cols)
           .eq("studio_id", entry.studio_id)
           .in("user_id", userIds)
@@ -2680,7 +2735,7 @@ function ParticipantActions({
     <>
       <div className="flex flex-wrap gap-2">
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
           onClick={() => setPickOpen(true)}
           disabled={disabled || !studioId}
@@ -2690,7 +2745,7 @@ function ParticipantActions({
         </Button>
         {trial && (
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             onClick={() => setTrialOpen(true)}
             disabled={disabled || !studioId}
@@ -3030,6 +3085,7 @@ function BookingsPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <BookingClientName client={c} />
+                      {c?.club_status && <ClubStatusBadge status={c.club_status} />}
                       {b.status === "attended" && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                           Посетил
@@ -3066,7 +3122,9 @@ function BookingsPanel({
                   <div className="flex shrink-0 items-center gap-1">
                     {(b.status === "booked" || b.status === "no_show") && (
                       <Button
-                        variant={packages ? "success" : "default"}
+                        // Пакетные: отметки — белые, тёмные — действия окна
+                        // («Записать клиента», замена тренера; 2026-10-13).
+                        variant={packages ? "outline" : "default"}
                         size={packages ? "xs" : "sm"}
                         onClick={() => handleAttend(b)}
                         // «Не посетил» по неуважительной уже списан — его
@@ -3086,7 +3144,7 @@ function BookingsPanel({
                       </Button>
                     )}
                     {packages && b.status === "booked" && (
-                      <Button variant="destructive" size="xs" onClick={() => askNoShow(b)}>
+                      <Button variant="outline" size="xs" onClick={() => askNoShow(b)}>
                         Не посетил
                       </Button>
                     )}
@@ -3107,7 +3165,7 @@ function BookingsPanel({
                     )}
                     {b.status === "attended" && (
                       <Button
-                        variant={packages ? "attention" : "outline"}
+                        variant="outline"
                         size={packages ? "xs" : "sm"}
                         title="Отметили по ошибке? Тренировка вернётся на баланс клиента"
                         onClick={() => handleUnattend(b)}
