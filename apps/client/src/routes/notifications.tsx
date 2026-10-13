@@ -104,7 +104,7 @@ function NotificationsPage() {
                                 markRead(n.id);
                               }
                             }}
-                            className="shrink-0 text-xs font-bold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/80 rounded-full px-3 py-1.5 transition-colors"
+                            className="shrink-0 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/80 rounded-full px-3 py-1.5 transition-colors"
                           >
                             {t("Открыть")}
                           </a>

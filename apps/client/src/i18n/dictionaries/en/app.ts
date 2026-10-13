@@ -2,6 +2,8 @@ import type { Dictionary } from "../types";
 
 /** Раздел: Каркас приложения: нижнее меню, 404 и ошибка, «студия в другом приложении», новость, шторка новости/услуги, манифест. */
 const dict: Dictionary = {
+  "Поверните телефон вертикально": "Turn your phone upright",
+  "Приложение работает только в вертикальном положении": "The app only works in portrait mode",
   "Страница не найдена": "Page not found",
   "Запрошенная страница не существует или была перемещена.":
     "The page you're looking for doesn't exist or has been moved.",
