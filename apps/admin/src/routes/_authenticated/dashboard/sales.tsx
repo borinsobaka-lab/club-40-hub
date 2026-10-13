@@ -4,13 +4,12 @@ import { useMemo } from "react";
 import {
   ChartArea,
   ChartPanel,
-  OTHER_COLOR,
   PieLegend,
   PiePlot,
   RankList,
-  SERIES_COLORS,
   type Slice,
 } from "@/components/dashboard/chart-panel";
+import { OTHER_COLOR, SALE_ORIGIN_COLOR, SERIES_COLORS } from "@/components/dashboard/colors";
 import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { useSalesHistory } from "@/components/dashboard/queries";
 import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
@@ -118,14 +117,14 @@ function SalesBody(view: DashboardView) {
     // Новые / продления / возвраты — по выручке проданных за период абонементов.
     const origins = classifySales(h.sales);
     const sold = h.sales.filter((s) => inPeriod(s.soldAt, from, to));
-    const originSlices: Slice[] = ORIGINS.map((origin, i) => ({
+    const originSlices: Slice[] = ORIGINS.map((origin) => ({
       key: origin,
       label: SALE_ORIGIN_LABEL[origin],
       value: sumBy(
         sold.filter((s) => origins.get(s.id) === origin),
         (s) => s.totalAmount,
       ),
-      color: SERIES_COLORS[i],
+      color: SALE_ORIGIN_COLOR[origin],
     })).filter((s) => s.value > 0);
 
     // Способы оплаты — цвет закреплён за способом, а не за местом по сумме.
