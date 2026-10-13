@@ -10,17 +10,19 @@ import {
   MOBILE_APP_ITEMS,
   SCRIPTS_SETTINGS_URL,
   SCRIPTS_URL,
-  STAFF_ITEMS,
+  STAFF_CLUB_GROUP,
+  STAFF_NAV_ITEM,
   STUDIOS_ITEMS,
   railSectionKey,
   type NavGroup,
+  type NavItem,
   type RailSectionKey,
 } from "@/lib/nav-sections";
 import { usePlaybook, useScriptAccess, useUnreadSuggestions } from "@/lib/scripts/data";
 import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { canOpenClubSection, type AdminAccess } from "@/lib/admin-access";
+import { canOpenClubSection, canOpenRail, type AdminAccess } from "@/lib/admin-access";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
 import { MenuSkeleton } from "@/components/skeletons";
@@ -53,10 +55,6 @@ const SECTION_MENUS: Partial<Record<RailSectionKey, { title: string; groups: Nav
     title: "Дашборд",
     groups: [{ key: "dashboard", label: "Разделы", items: DASHBOARD_ITEMS }],
   },
-  staff: {
-    title: "Сотрудники",
-    groups: [{ key: "staff", label: "Разделы", items: STAFF_ITEMS }],
-  },
   app: {
     title: "Мобильное приложение",
     groups: [{ key: "mobile", label: "Разделы", items: MOBILE_APP_ITEMS }],
@@ -84,11 +82,16 @@ function visibleGroups(
   if (!access) return [];
   return CLUB_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter(
-      (i) =>
-        (!i.formats || (!!format && i.formats.includes(format))) &&
-        canOpenClubSection(access, studioId, i.section),
-    ),
+    items: [
+      ...g.items.filter(
+        (i) =>
+          (!i.formats || (!!format && i.formats.includes(format))) &&
+          canOpenClubSection(access, studioId, i.section),
+      ),
+      // «Сотрудники» — в блоке «Клуб», но право у них — раздел рейки:
+      // справочник общий для всех клубов.
+      ...(g.key === STAFF_CLUB_GROUP && canOpenRail(access, "staff") ? [STAFF_NAV_ITEM] : []),
+    ],
   })).filter((g) => g.items.length > 0);
 }
 
@@ -202,6 +205,8 @@ export function AppSidebar() {
   // «Пуш-уведомления» (/push) ещё и на /push-triggers.
   const isActive = (path: string, exact = false) =>
     currentPath === path || (!exact && currentPath.startsWith(`${path}/`));
+  const itemActive = (item: NavItem) =>
+    isActive(item.url, item.exact) || !!item.paths?.some((path) => isActive(path));
 
   return (
     /*
@@ -211,9 +216,9 @@ export function AppSidebar() {
     */
     <Sidebar className="border-r-0 group-data-[side=left]:border-r-0">
       {/*
-        Слева — рейка разделов (AppRail; там же «Сотрудники», «Мобильное
-        приложение», «Доступы» и «Клубы»), справа — меню клуба или меню
-        раздела («Сотрудники», «Мобильное приложение», «Доступы», «Клубы»).
+        Слева — рейка разделов (AppRail; там же «Мобильное приложение»,
+        «Доступы» и «Клубы»), справа — меню клуба или меню раздела
+        («Мобильное приложение», «Доступы», «Клубы»).
         Ширина панели (--sidebar-width) уже включает рейку; в шторке на
         телефоне рейка тоже есть, переход по ней шторку не закрывает.
       */}
@@ -265,7 +270,7 @@ export function AppSidebar() {
                           <SidebarMenuItem key={item.url}>
                             <SidebarMenuButton
                               asChild
-                              isActive={isActive(item.url, item.exact)}
+                              isActive={itemActive(item)}
                               /*
                             active: перекрывать обязательно — в базовых стилях shadcn нажатая
                             кнопка красится в `sidebar-accent`, а это почти белый: на тёмной
@@ -287,15 +292,12 @@ export function AppSidebar() {
                                 <span
                                   className={cn(
                                     "relative isolate inline-flex shrink-0 before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-current before:opacity-0 before:blur-[6px] before:transition-opacity before:duration-200",
-                                    isActive(item.url, item.exact)
+                                    itemActive(item)
                                       ? "text-brand before:opacity-45 group-hover/nav:before:opacity-70"
                                       : "text-white group-hover/nav:before:opacity-45",
                                   )}
                                 >
-                                  <item.icon
-                                    active={isActive(item.url, item.exact)}
-                                    className="size-[18px]"
-                                  />
+                                  <item.icon active={itemActive(item)} className="size-[18px]" />
                                 </span>
                                 <span className="min-w-0 flex-1 truncate">{item.title}</span>
                                 {!!item.badge && (

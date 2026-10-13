@@ -3,6 +3,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { sanitizeSearch } from "@/lib/format";
+import { catalogStudioIds, type CatalogStudio } from "@/lib/studio-catalog";
 
 import { addDays, studioDayStart, studioToday } from "./dates";
 
@@ -62,6 +63,11 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
   // feedback и nps_responses: старые строки могут быть без студии (до
   // feedback_nps_studio.sql) — так же, как в разделах админки.
   const ownOrUnassigned = `studio_id.eq.${studioId},studio_id.is.null`;
+  // Тренировки и номенклатура пакетных клубов общие (lib/studio-catalog.ts).
+  const catalogIds = async () => {
+    const { data } = await supabase.from("studios").select("id, format");
+    return catalogStudioIds((data ?? []) as CatalogStudio[], studioId);
+  };
 
   return {
     // ====== КЛИЕНТЫ ======
@@ -125,7 +131,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
           supabase
             .from("workouts")
             .select("id, name, description, type, photo_url, created_at")
-            .eq("studio_id", studioId)
+            .in("studio_id", await catalogIds())
             .limit(limit),
         ),
     }),
@@ -171,7 +177,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
           .select(
             "id, name, description, benefits, visits_count, duration_days, auto_renew, installment_enabled, price, is_active, cover_url, for_couple, created_at",
           )
-          .eq("studio_id", studioId)
+          .in("studio_id", await catalogIds())
           .limit(limit);
         if (ids?.length) q = q.in("id", ids);
         if (only_active) q = q.eq("is_active", true);

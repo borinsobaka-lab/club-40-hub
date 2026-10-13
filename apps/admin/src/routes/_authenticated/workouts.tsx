@@ -8,6 +8,7 @@ import { RequireStudio } from "@/components/require-studio";
 import { ImageUploadField, StorageImage } from "@/components/image-upload-field";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
+import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,8 @@ function WorkoutsPage() {
   // В пакетных студиях у тренировки нет типа и иконки, зато есть цвет, а
   // MET ставится вручную всегда (STUDIO_FORMATS.md, 2026-10-11).
   const packages = useActiveStudio()?.format === "packages";
+  // У пакетных клубов список общий на все пакетные клубы (lib/studio-catalog.ts).
+  const catalogIds = useCatalogStudioIds();
   const columns = packages ? 5 : 6;
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -130,16 +133,16 @@ function WorkoutsPage() {
   const [search, setSearch] = useState("");
 
   const { data: workouts = [], isLoading: loading } = useQuery({
-    queryKey: ["workouts", studioId],
+    queryKey: ["workouts", studioId, catalogIds?.join(",")],
     queryFn: () =>
       unwrap<Workout[]>(
         supabase
           .from("workouts")
           .select("*")
-          .eq("studio_id", studioId!)
+          .in("studio_id", catalogIds!)
           .order("created_at", { ascending: false }),
       ),
-    enabled: !!studioId,
+    enabled: !!studioId && !!catalogIds,
     meta: { errorMessage: "Не удалось загрузить тренировки" },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["workouts"] });
@@ -160,7 +163,9 @@ function WorkoutsPage() {
     if (
       !(await confirm({
         title: "Удалить тренировку?",
-        description: `«${w.name}» будет удалена. Занятия в расписании, использующие её, тоже пропадут.`,
+        description: packages
+          ? `«${w.name}» будет удалена во всех клубах с пакетами тренировок. Занятия в расписании этих клубов, использующие её, тоже пропадут.`
+          : `«${w.name}» будет удалена. Занятия в расписании, использующие её, тоже пропадут.`,
       }))
     )
       return;
@@ -385,7 +390,6 @@ function WorkoutForm({
     setSaving(true);
     try {
       const common = {
-        studio_id: studioId,
         name: name.trim(),
         description: description.trim() || null,
         translations: tr.cleaned(),
@@ -399,7 +403,9 @@ function WorkoutForm({
         : { ...common, photo_url: photoUrl, type: type === NONE_TYPE ? null : type };
       const { error } = workout
         ? await supabase.from("workouts").update(payload).eq("id", workout.id)
-        : await supabase.from("workouts").insert(payload);
+        : // Новая — в активном клубе; у пакетных она сразу видна во всех пакетных
+          // клубах. Правка клуб строки не меняет.
+          await supabase.from("workouts").insert({ ...payload, studio_id: studioId });
       if (error) {
         toast.error("Ошибка сохранения: " + error.message);
         return;
@@ -416,7 +422,11 @@ function WorkoutForm({
     <>
       <DialogHeader>
         <DialogTitle>{workout ? "Редактировать тренировку" : "Новая тренировка"}</DialogTitle>
-        <DialogDescription>Заполните данные тренировки клуба.</DialogDescription>
+        <DialogDescription>
+          {packages
+            ? "Тренировка общая для всех клубов с пакетами тренировок: изменения сразу видны во всех клубах."
+            : "Заполните данные тренировки клуба."}
+        </DialogDescription>
         <ContentLangSwitch tr={tr} />
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>

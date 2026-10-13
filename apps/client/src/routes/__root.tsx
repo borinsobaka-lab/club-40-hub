@@ -417,7 +417,7 @@ function usePrefetchScreens(ready: boolean) {
       const today = startOfDay(new Date());
       queryClient.prefetchQuery(packScheduleQuery(studioId, today));
       queryClient.prefetchQuery(packMyBookingsQuery(userId, today));
-      queryClient.prefetchQuery(packCatalogQuery(studioId));
+      queryClient.prefetchQuery(packCatalogQuery());
       queryClient.prefetchQuery(packMyMembershipsQuery(userId));
       queryClient.prefetchQuery(aboutQuery());
       if (studioId) queryClient.prefetchQuery(studioStaffQuery(studioId));

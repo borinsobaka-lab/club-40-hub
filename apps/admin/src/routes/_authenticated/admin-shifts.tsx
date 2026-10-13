@@ -5,6 +5,7 @@ import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { StaffTabs } from "@/components/staff-tabs";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EmployeePhoto } from "@/components/employee-photo";
 import { TableSkeletonRows } from "@/components/skeletons";
@@ -184,6 +185,7 @@ function AdminShiftsPage() {
   return (
     <AdminShell title="График администраторов">
       <div className="space-y-3">
+        <StaffTabs />
         <TableToolbar>
           <PeriodStepper
             unit="month"

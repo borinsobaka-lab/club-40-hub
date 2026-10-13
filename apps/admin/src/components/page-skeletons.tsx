@@ -16,6 +16,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/format";
 import { defaultPeriod, periodLabel, type PeriodKey } from "@/lib/payroll";
+import { STAFF_ITEMS } from "@/lib/nav-sections";
 import type { StudioFormat } from "@/lib/studio-formats";
 import {
   SCHEDULE_SKELETON_HOURS,
@@ -109,6 +110,16 @@ function TabsSkeleton({
   );
 }
 
+/** Вкладки раздела «Сотрудники» (components/staff-tabs.tsx); active — url страницы. */
+function StaffTabsSkeleton({ active }: { active: string }) {
+  return (
+    <TabsSkeleton
+      labels={STAFF_ITEMS.map((i) => i.tab)}
+      active={STAFF_ITEMS.findIndex((i) => i.url === active)}
+    />
+  );
+}
+
 /** Кнопка-иконка (стрелки периода): круг 40×40 с рамкой, как outline icon. */
 function IconButtonSkeleton({ children }: { children: ReactNode }) {
   return (
@@ -150,9 +161,12 @@ function TablePage({
   pagination = true,
   rows,
   wrap = true,
+  tabs,
 }: {
   title: string;
   actions?: ControlSkeleton[];
+  /** Вкладки над плашкой фильтров (раздел «Сотрудники»). */
+  tabs?: ReactNode;
   /** Плашка фильтров: null — у страницы её нет. */
   toolbar: { search?: boolean; controls?: ControlSkeleton[] } | null;
   headers: HeaderSkeleton[];
@@ -166,6 +180,7 @@ function TablePage({
     <ShellSkeleton title={title} actions={actions}>
       {wrap ? (
         <div className="space-y-3">
+          {tabs}
           {toolbar && <ToolbarSkeleton {...toolbar} />}
           {table}
         </div>
@@ -1159,7 +1174,7 @@ export function TrainersPageSkeleton() {
       title="Сотрудники"
       actions={[{ label: "Добавить сотрудника" }]}
       toolbar={null}
-      wrap={false}
+      tabs={<StaffTabsSkeleton active="/trainers" />}
       headers={[
         { label: "Фото", className: "w-[80px]" },
         "Имя",
@@ -1178,6 +1193,7 @@ export function PayRatesPageSkeleton() {
   return (
     <ShellSkeleton title="Зарплатные ставки">
       <div className="space-y-3">
+        <StaffTabsSkeleton active="/pay-rates" />
         <div className="rounded-md border bg-muted/40 p-3">
           <Skeleton className="h-4 w-full max-w-3xl" />
         </div>
@@ -1215,6 +1231,7 @@ export function AdminShiftsPageSkeleton() {
   return (
     <ShellSkeleton title="График администраторов">
       <div className="space-y-3">
+        <StaffTabsSkeleton active="/admin-shifts" />
         <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
           <PeriodStepperSkeleton />
         </div>
@@ -1321,6 +1338,7 @@ export function PayrollPageSkeleton() {
   return (
     <ShellSkeleton title="Зарплаты">
       <div className="space-y-3">
+        <StaffTabsSkeleton active="/payroll" />
         <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
           <PeriodStepperSkeleton />
           <TabsSkeleton

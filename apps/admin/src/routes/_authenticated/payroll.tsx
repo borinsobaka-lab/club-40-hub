@@ -5,6 +5,7 @@ import { Check, Copy, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { StaffTabs } from "@/components/staff-tabs";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EmployeePhoto, TrainerRoleBadge } from "@/components/employee-photo";
 import { TableSkeletonRows } from "@/components/skeletons";
@@ -257,6 +258,7 @@ function PayrollPage() {
   return (
     <AdminShell title="Зарплаты">
       <div className="space-y-3">
+        <StaffTabs />
         <TableToolbar>
           <PeriodStepper
             unit="month"
