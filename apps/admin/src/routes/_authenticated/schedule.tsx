@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
@@ -177,8 +177,9 @@ const LAST_HOUR = 22;
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
 const SLOT_PX_FULL = 80;
 const SLOT_PX_EMPTY = 28;
-// Полноэкранный просмотр: шрифт карточки крупнее — и строка выше.
-const SLOT_PX_FULLSCREEN = 104;
+// Полноэкранный просмотр: высота строки с занятиями — по карточкам, пустой
+// час между занятиями — узкая полоска.
+const SLOT_PX_FULLSCREEN_EMPTY = 16;
 const ALL_FILTER_VALUE = "all";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -474,7 +475,11 @@ function SchedulePage() {
     const first = Math.min(FIRST_HOUR, ...hourList);
     const last = Math.max(LAST_HOUR, ...hourList);
     const hours = Array.from({ length: last - first + 1 }, (_, i) => i + first);
-    return { cells, busyHours, perDay, hours };
+    // Полный экран — только часы от первого до последнего занятия.
+    const compactHours = hourList.length
+      ? hours.filter((h) => h >= Math.min(...hourList) && h <= Math.max(...hourList))
+      : hours;
+    return { cells, busyHours, perDay, hours, compactHours };
   }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
@@ -506,6 +511,53 @@ function SchedulePage() {
       document.removeEventListener("keydown", onKey);
     };
   }, [fullscreen]);
+
+  // Полный экран: неделя целиком помещается в экран — сетка уменьшается
+  // (transform: scale, ширина раскладки — 100 / масштаб %, чтобы по ширине
+  // заполнять экран) до наибольшего масштаба, при котором влезает по высоте.
+  // Масштаб подбирается делением пополам: в уменьшенной сетке колонки шире,
+  // названия переносятся реже, высота падает быстрее масштаба. CSS zoom не
+  // годится: размеры увеличенного элемента в Chrome меряются неверно.
+  const fitBoxRef = useRef<HTMLDivElement>(null);
+  const fitGridRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = fitBoxRef.current;
+    const el = fitGridRef.current;
+    if (!box || !el) return;
+    const apply = (scale: number) => {
+      const scaled = scale < 1;
+      el.style.transformOrigin = scaled ? "0 0" : "";
+      el.style.transform = scaled ? `scale(${scale})` : "";
+      el.style.width = scaled ? `${100 / scale}%` : "";
+      box.style.overflow = scaled ? "hidden" : "";
+    };
+    if (!fullscreen) {
+      apply(1);
+      return;
+    }
+    const fits = (scale: number) => {
+      apply(scale);
+      return el.offsetHeight * scale <= box.clientHeight;
+    };
+    const fit = () => {
+      if (fits(1)) return;
+      let lo = 0.3;
+      let hi = 1;
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo + hi) / 2;
+        if (fits(mid)) lo = mid;
+        else hi = mid;
+      }
+      apply(lo);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(box, { box: "border-box" });
+    return () => {
+      observer.disconnect();
+      apply(1);
+    };
+  }, [fullscreen, grid, dayIndex]);
 
   const openSlot = (day: Date, hour: number) => {
     const start = new Date(day);
@@ -876,13 +928,15 @@ function SchedulePage() {
             )}
 
             <div
+              ref={fitBoxRef}
               className={cn(
                 "overflow-auto rounded-lg border bg-background",
                 fullscreen ? "min-h-0 flex-1" : "md:max-h-[calc(100dvh-220px)]",
               )}
             >
               <div
-                className={cn("grid", !isMobile && "min-w-[1200px]")}
+                ref={fitGridRef}
+                className={cn("grid", !isMobile && !fullscreen && "min-w-[1200px]")}
                 style={{
                   gridTemplateColumns: `${isMobile ? 52 : 60}px repeat(${visibleDays.length}, minmax(0, 1fr))`,
                 }}
@@ -913,21 +967,31 @@ function SchedulePage() {
                   </>
                 )}
 
-                {grid.hours.map((hour) => {
-                  const rowHeight =
+                {(fullscreen ? grid.compactHours : grid.hours).map((hour) => {
+                  const busy =
                     grid.busyHours.has(hour) ||
-                    (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour))
-                      ? fullscreen
-                        ? SLOT_PX_FULLSCREEN
-                        : SLOT_PX_FULL
+                    (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour));
+                  // Полный экран: строка с занятиями — по высоте карточек
+                  // (undefined — авто), чтобы неделя помещалась в экран.
+                  const rowHeight = fullscreen
+                    ? busy
+                      ? undefined
+                      : SLOT_PX_FULLSCREEN_EMPTY
+                    : busy
+                      ? SLOT_PX_FULL
                       : SLOT_PX_EMPTY;
                   return (
                     <div key={`row-${hour}`} className="contents">
                       <div
                         className="border-b border-r px-2 text-right text-xs text-muted-foreground"
-                        style={{ height: rowHeight, lineHeight: "1rem", paddingTop: 4 }}
+                        style={{
+                          height: rowHeight,
+                          lineHeight: "1rem",
+                          paddingTop: fullscreen && !busy ? 0 : 4,
+                        }}
                       >
-                        {pad(hour)}:00
+                        {/* Пустой час в полном экране — полоска без подписи. */}
+                        {(!fullscreen || busy) && `${pad(hour)}:00`}
                       </div>
                       {visibleDays.map((di) => {
                         const day = weekDays[di];
@@ -964,7 +1028,14 @@ function SchedulePage() {
                             {/* Несколько занятий в одном часе — рядом, а не друг на друге.
                               Обёртка пропускает клики в промежутках к кнопке слота. */}
                             {grid.cells.has(cellKey(day, hour)) && (
-                              <div className="pointer-events-none absolute inset-1 flex gap-1">
+                              <div
+                                className={cn(
+                                  "pointer-events-none flex gap-1",
+                                  // Полный экран: карточки в потоке — высота
+                                  // ячейки по содержимому, без пустоты снизу.
+                                  fullscreen ? "h-full p-1" : "absolute inset-1",
+                                )}
+                              >
                                 {grid.cells.get(cellKey(day, hour))?.map((e) => (
                                   <EntryCard
                                     key={e.id}
