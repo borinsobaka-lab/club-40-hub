@@ -31,6 +31,17 @@ const dict: Dictionary = {
   "Не удалось загрузить услуги. Обновите страницу.":
     "Couldn't load services. Please refresh the page.",
   "Пока нет услуг": "No services yet",
+  // История посещений (components/visit-history-drawer.tsx)
+  "История посещений": "Visit history",
+  "Прошедшие тренировки": "Past workouts",
+  Посещено: "Attended",
+  Отменено: "Cancelled",
+  Пропущено: "Missed",
+  "Ожидает отметки": "Not marked yet",
+  "{n} ккал": "{n} kcal",
+  "Не удалось загрузить историю посещений. Попробуйте ещё раз.":
+    "Couldn't load your visit history. Please try again.",
+  "Здесь появятся тренировки, на которых вы были": "Workouts you've attended will appear here",
 };
 
 export default dict;
