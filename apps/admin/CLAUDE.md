@@ -14,7 +14,9 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
 - `bun run build` — прод-сборка (Nitro node-server → `.output/server/index.mjs`)
 - `bunx tsc --noEmit` — типы; должен быть чистым перед коммитом
 - `bun test` — тесты (логика auth-писем, отправка почты, инструменты Kate,
-  проверка телефона/email клиента).
+  проверка телефона/email клиента; пакетные клубы — замены тренеров
+  `lib/schedule-trainers.ts`, остаток на занятие `lib/booking-coverage.ts`,
+  статус абонемента `lib/membership-status.ts`, роли `lib/staff-roles.ts`).
   Файлы `*.test.ts` исключены из tsc: глобальные типы Bun конфликтуют с
   DOM-типами приложения.
 - `bun run lint` — 0 ошибок (остаются 5 предупреждений react-refresh в

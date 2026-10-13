@@ -20,35 +20,15 @@ import { unwrap } from "@/lib/query";
  * lib/payroll.ts).
  */
 
-export type TrainerRole = "trainer" | "admin" | "senior_admin" | "masseur";
-
-/**
- * plural — подпись группы (фильтр «Роль» в «Зарплатах»). Старший
- * администратор (2026-10-13) — тот же администратор (смены, продажи,
- * вкладка «Админы» в приложении), только подпись своя.
- */
-export const TRAINER_ROLES: Record<TrainerRole, { label: string; plural: string; badge: string }> =
-  {
-    trainer: { label: "Тренер", plural: "Тренеры", badge: "bg-sky-100 text-sky-700" },
-    admin: {
-      label: "Администратор",
-      plural: "Администраторы",
-      badge: "bg-violet-100 text-violet-700",
-    },
-    senior_admin: {
-      label: "Старший администратор",
-      plural: "Старшие администраторы",
-      badge: "bg-indigo-100 text-indigo-700",
-    },
-    masseur: { label: "Массажист", plural: "Массажисты", badge: "bg-emerald-100 text-emerald-700" },
-  };
-
-/** Администратор или старший администратор: продают, выходят на смены. */
-export const isAdminRole = (role: string | null | undefined) =>
-  role === "admin" || role === "senior_admin";
-
-/** Рейтинг в приложении (оценки клиентов) — у тренеров и массажистов, не у администраторов. */
-export const hasRating = (role: string) => role === "trainer" || role === "masseur";
+// Роли сотрудников — в lib/staff-roles.ts (без запросов к базе: их проверяют тесты).
+export {
+  TRAINER_ROLES,
+  hasRating,
+  isAdminRole,
+  roleGroup,
+  type TrainerRole,
+} from "@/lib/staff-roles";
+import type { TrainerRole } from "@/lib/staff-roles";
 
 export type BankCode = "bog" | "tbc" | "credo";
 

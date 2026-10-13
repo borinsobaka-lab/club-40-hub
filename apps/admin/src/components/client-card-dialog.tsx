@@ -33,11 +33,8 @@ import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
-import {
-  MembershipStatusBadge,
-  AutoRenewBadge,
-  effectiveStatus,
-} from "@/components/membership-status-badge";
+import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-status-badge";
+import { effectiveStatus, isLiveStatus } from "@/lib/membership-status";
 import { computeClubStatus } from "@/lib/client-status";
 import type { BookingStatus } from "@/lib/bookings";
 import {
@@ -169,6 +166,9 @@ type SaleRow = {
         auto_renew: boolean | null;
         ends_at: string | null;
         cancelled_at: string | null;
+        /** Пакетный клуб: без посещений — «Ожидает посещения», как в блоке абонемента. */
+        started_at: string | null;
+        starts_on_first_visit: boolean | null;
       }[]
     | null;
 };
@@ -206,7 +206,7 @@ function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
 }
 
 const SALE_COLUMNS =
-  "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)";
+  "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit)";
 
 const MEMBERSHIP_COLUMNS =
   "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed)";
@@ -466,7 +466,7 @@ function ClientCard<C extends ClientLike>({
                               {membershipName(s.memberships)}
                             </div>
                             {cm && <MembershipStatusBadge m={cm} />}
-                            {cm && effectiveStatus(cm) === "active" && (
+                            {cm && isLiveStatus(effectiveStatus(cm)) && (
                               <AutoRenewBadge on={cm.auto_renew} />
                             )}
                           </div>

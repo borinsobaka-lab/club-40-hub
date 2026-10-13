@@ -1,40 +1,8 @@
 import { useActiveStudio } from "@/hooks/use-studios";
-import { todayISO } from "@/lib/format";
+import { effectiveStatus, type MembershipStatusInput } from "@/lib/membership-status";
 import { cn } from "@/lib/utils";
 
-/**
- * pending — продление пакетной студии ждёт, пока закончится текущий абонемент;
- * refunded — по продаже оформлен возврат (пакетные клубы, 2026-10-13);
- * awaiting — не статус базы: действующий абонемент пакетного клуба, по
- * которому ещё не было посещений (срок — с первого посещения).
- */
-export type CMStatus =
-  | "active"
-  | "frozen"
-  | "pending"
-  | "replaced"
-  | "expired"
-  | "cancelled"
-  | "refunded"
-  | "awaiting"
-  | string;
-
-export type MembershipStatusInput = {
-  status: CMStatus | null | undefined;
-  ends_at?: string | null;
-  auto_renew?: boolean | null;
-  cancelled_at?: string | null;
-  /** Пакетный клуб: срок от первого посещения и его начало (null — ещё не ходил). */
-  starts_on_first_visit?: boolean | null;
-  started_at?: string | null;
-};
-
-export function effectiveStatus(m: MembershipStatusInput): CMStatus {
-  if (!m.status) return "expired";
-  if (m.status === "active" && m.starts_on_first_visit && !m.started_at) return "awaiting";
-  if (m.status === "active" && m.ends_at && m.ends_at < todayISO()) return "expired";
-  return m.status;
-}
+// Статусы и effectiveStatus — lib/membership-status.ts (их проверяют тесты).
 
 const LABELS: Record<string, string> = {
   active: "Активен",

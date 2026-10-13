@@ -40,11 +40,8 @@ import { TableSkeletonRows } from "@/components/skeletons";
 import { clientName, formatMoney, formatDate } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
-import {
-  MembershipStatusBadge,
-  AutoRenewBadge,
-  effectiveStatus,
-} from "@/components/membership-status-badge";
+import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-status-badge";
+import { effectiveStatus, isLiveStatus } from "@/lib/membership-status";
 import { SalesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?» колонок — те же, что у полей формы продажи. */
@@ -298,7 +295,7 @@ function SalesPage() {
                             {cm ? (
                               <div className="flex flex-col gap-1">
                                 <MembershipStatusBadge m={cm} />
-                                {effectiveStatus(cm) === "active" && (
+                                {isLiveStatus(effectiveStatus(cm)) && (
                                   <AutoRenewBadge on={cm.auto_renew} />
                                 )}
                               </div>

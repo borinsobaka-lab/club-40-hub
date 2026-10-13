@@ -28,6 +28,20 @@ import { PeriodStepper } from "@/components/period-stepper";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
+import { attendanceBlock, balanceFor, tbilisiDate, type Coverage } from "@/lib/booking-coverage";
+import {
+  pickTrainer,
+  regularTrainerIds,
+  removeTrainer,
+  substitutionsOf,
+  trainerChanges,
+  undoSubstitution,
+  type PickMode,
+  type SubstitutionRow,
+  type SubsMap,
+  type TrainerAssignment,
+} from "@/lib/schedule-trainers";
+import { roleGroup } from "@/lib/staff-roles";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import {
@@ -119,13 +133,11 @@ type Entry = {
      * schedule_entry_substitutions. Связь «один к одному»; без схемы базы
      * разбор select может отдать и массив.
      */
-    substitution?: Substitution | Substitution[] | null;
+    substitution?: SubstitutionRow | SubstitutionRow[] | null;
   }[];
   /** Записи с карточками клиентов — для подписи персонального на карточке. */
   participants?: { status: string; client: ParticipantName | null }[];
 };
-
-type Substitution = { replaced_trainer_id: string; replaced: { full_name: string } | null };
 
 type ParticipantName = { first_name: string | null; last_name: string | null; full_name: string };
 
@@ -258,24 +270,9 @@ function trainerIdsOf(e: Pick<Entry, "schedule_entry_trainers">) {
   return e.schedule_entry_trainers?.map((x) => x.trainer_id) ?? [];
 }
 
-/** Замены занятия: тренер занятия → кого он заменяет (id и имя). */
-function substitutionsOf(e: Pick<Entry, "schedule_entry_trainers">) {
-  const subs: Record<string, { id: string; name: string | null }> = {};
-  for (const x of e.schedule_entry_trainers ?? []) {
-    const sub = Array.isArray(x.substitution) ? x.substitution[0] : x.substitution;
-    if (sub)
-      subs[x.trainer_id] = { id: sub.replaced_trainer_id, name: sub.replaced?.full_name ?? null };
-  }
-  return subs;
-}
-
-/**
- * Тренеры для копии занятия: замена разовая — в копию идёт тот, кого
- * заменили, а не заменяющий.
- */
+/** Тренеры для копии занятия: вместо заменяющего — тот, кого заменили. */
 function regularTrainerIdsOf(e: Pick<Entry, "schedule_entry_trainers">) {
-  const subs = substitutionsOf(e);
-  return Array.from(new Set(trainerIdsOf(e).map((id) => subs[id]?.id ?? id)));
+  return regularTrainerIds(e.schedule_entry_trainers);
 }
 
 /** Подпись занятия на карточке и в баннере копирования. */
@@ -1511,17 +1508,10 @@ function TrainerChecks({
       ))}
     </div>
   );
-  // Неизвестная роль — к тренерам.
+  // Неизвестная роль — к тренерам, старший администратор — к администраторам.
   const groups = ROLE_GROUPS.map((g) => ({
     ...g,
-    list: options.filter(
-      (t) =>
-        (t.role === "senior_admin"
-          ? "admin"
-          : t.role && ROLE_GROUP_KEYS.has(t.role)
-            ? t.role
-            : "trainer") === g.role,
-    ),
+    list: options.filter((t) => roleGroup(t.role) === g.role),
   })).filter((g) => g.list.length > 0);
   if (!byRole || groups.length < 2) {
     return <div className="rounded-md border p-3">{checks(options)}</div>;
@@ -1539,7 +1529,6 @@ function TrainerChecks({
 }
 
 type TrainerOption = { id: string; full_name: string; photo_url?: string | null };
-type SubsMap = Record<string, { id: string; name: string | null }>;
 
 /**
  * Тренеры заведённой групповой тренировки (пакетные клубы): у каждого —
@@ -1559,60 +1548,21 @@ function TrainerAssignments({
   onChange: (ids: string[], subs: SubsMap) => void;
 }) {
   // Строка в правке: индекс в value (value.length — новый тренер) и режим.
-  const [editing, setEditing] = useState<{
-    index: number;
-    mode: "replace" | "edit" | "add";
-  } | null>(null);
+  const [editing, setEditing] = useState<{ index: number; mode: PickMode } | null>(null);
   const byId = new Map(options.map((t) => [t.id, t]));
   const nameOf = (id: string) => byId.get(id)?.full_name ?? "Тренер";
 
+  const apply = (next: TrainerAssignment) => onChange(next.ids, next.subs);
+  const state = { ids: value, subs };
   const pick = (id: string) => {
     if (!editing) return;
-    const { index, mode } = editing;
     setEditing(null);
-    if (mode === "add") {
-      onChange([...value, id], subs);
-      return;
-    }
-    const old = value[index];
-    if (id === old) return;
-    const next = { ...subs };
-    // Кого заменяем на самом деле: замена замены — всё ещё вместо первого.
-    const original = subs[old] ?? { id: old, name: nameOf(old) };
-    delete next[old];
-    if (mode === "replace" && original.id !== id) next[id] = original;
-    if (mode === "edit" && subs[old] && subs[old].id !== id) next[id] = subs[old];
-    onChange(
-      value.map((t, i) => (i === index ? id : t)),
-      next,
-    );
+    apply(pickTrainer(state, editing.index, id, editing.mode, nameOf));
   };
+  const undoSub = (index: number) => apply(undoSubstitution(state, index));
+  const remove = (index: number) => apply(removeTrainer(state, index));
 
-  const undoSub = (index: number) => {
-    const id = value[index];
-    const original = subs[id];
-    if (!original) return;
-    const next = { ...subs };
-    delete next[id];
-    onChange(
-      value.includes(original.id)
-        ? value.filter((_, i) => i !== index)
-        : value.map((t, i) => (i === index ? original.id : t)),
-      next,
-    );
-  };
-
-  const remove = (index: number) => {
-    const id = value[index];
-    const next = { ...subs };
-    delete next[id];
-    onChange(
-      value.filter((_, i) => i !== index),
-      next,
-    );
-  };
-
-  const picker = (index: number, mode: "replace" | "edit" | "add") => {
+  const picker = (index: number, mode: PickMode) => {
     const current = mode === "add" ? undefined : value[index];
     const free = options.filter((t) => t.id === current || !value.includes(t.id));
     return (
@@ -1735,7 +1685,6 @@ const ROLE_GROUPS = [
   { role: "masseur", label: "Массажисты" },
   { role: "admin", label: "Администраторы" },
 ] as const;
-const ROLE_GROUP_KEYS = new Set<string>(ROLE_GROUPS.map((g) => g.role));
 
 function NoTrainersNote({ staff }: { staff?: boolean }) {
   return (
@@ -1776,7 +1725,7 @@ function EntryForm({
   });
   const [trainerIds, setTrainerIds] = useState<string[]>(() => (entry ? trainerIdsOf(entry) : []));
   // Замены: тренер занятия → кого он заменяет (пакетные клубы, групповое).
-  const [subs, setSubs] = useState(() => (entry ? substitutionsOf(entry) : {}));
+  const [subs, setSubs] = useState<SubsMap>(() => substitutionsOf(entry?.schedule_entry_trainers));
   // У заведённой групповой тренировки с тренерами — не галочки, а список
   // тренеров с «Замена» / «Редактировать» (решение владельца 2026-10-13).
   const assignMode = packages && !!entry && kind === "group" && trainerIdsOf(entry).length > 0;
@@ -1811,9 +1760,13 @@ function EntryForm({
   const updateEntry = async (id: string, row: Record<string, string | number | null>) => {
     const { error } = await supabase.from("schedule_entries").update(row).eq("id", id);
     if (error) return "Ошибка сохранения: " + error.message;
-    const before = entry ? trainerIdsOf(entry) : [];
-    const removed = before.filter((t) => !trainerIds.includes(t));
-    const added = trainerIds.filter((t) => !before.includes(t));
+    const { removed, added, dropSubs, putSubs } = trainerChanges(
+      {
+        ids: entry ? trainerIdsOf(entry) : [],
+        subs: substitutionsOf(entry?.schedule_entry_trainers),
+      },
+      { ids: trainerIds, subs },
+    );
     if (removed.length > 0) {
       const { error: delErr } = await supabase
         .from("schedule_entry_trainers")
@@ -1825,9 +1778,6 @@ function EntryForm({
     const linkErr = await linkTrainers(added.map((trainer_id) => ({ entry_id: id, trainer_id })));
     if (linkErr) return "Ошибка добавления тренеров: " + linkErr;
 
-    const was = entry ? substitutionsOf(entry) : {};
-    const dropSubs = trainerIds.filter((t) => was[t] && !subs[t]);
-    const putSubs = trainerIds.filter((t) => subs[t] && subs[t].id !== was[t]?.id);
     if (dropSubs.length > 0) {
       const { error: subErr } = await supabase
         .from("schedule_entry_substitutions")
@@ -1837,13 +1787,9 @@ function EntryForm({
       if (subErr) return "Ошибка обновления замены: " + subErr.message;
     }
     if (putSubs.length > 0) {
-      const { error: subErr } = await supabase.from("schedule_entry_substitutions").upsert(
-        putSubs.map((trainer_id) => ({
-          entry_id: id,
-          trainer_id,
-          replaced_trainer_id: subs[trainer_id].id,
-        })),
-      );
+      const { error: subErr } = await supabase
+        .from("schedule_entry_substitutions")
+        .upsert(putSubs.map((row) => ({ entry_id: id, ...row })));
       if (subErr) return "Ошибка сохранения замены: " + subErr.message;
     }
     return null;
@@ -2415,7 +2361,7 @@ type BookingsData = {
    * отмечены. Записаться можно и сверх остатка (решение владельца
    * 2026-10-13), а «Посетил» без остатка база не даст — сначала продажа.
    */
-  coverage: Map<string, { balance: number; ahead: number }>;
+  coverage: Map<string, Coverage>;
 };
 
 function bookingClient(data: BookingsData | undefined, b: BookingRow) {
@@ -2423,29 +2369,6 @@ function bookingClient(data: BookingsData | undefined, b: BookingRow) {
     (b.client_id ? data?.clientsById.get(b.client_id) : undefined) ??
     (b.user_id ? data?.clientsByUser.get(b.user_id) : undefined)
   );
-}
-
-/** Дата занятия по Тбилиси (YYYY-MM-DD) — с ней база сверяет срок абонемента. */
-function tbilisiDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Tbilisi" });
-}
-
-/**
- * Сколько тренировок нужного вида у клиента на балансе к дате занятия:
- * персональные — со всех абонементов (в пакет тренировок их дарят),
- * групповые — с абонементов пакета тренировок; без счётчика — безлимит.
- */
-function balanceFor(rows: ActiveMembershipRow[], personal: boolean, date: string) {
-  let total = 0;
-  for (const r of rows) {
-    if (r.ends_at && r.ends_at < date) continue;
-    if (personal) total += Math.max(0, r.personal_left ?? 0);
-    else if (r.balance_kind !== "personal") {
-      if (r.visits_left == null) return Infinity;
-      total += Math.max(0, r.visits_left);
-    }
-  }
-  return total;
 }
 
 /** Записи на занятие + карточки клиентов + их активные абонементы. */
@@ -2463,7 +2386,7 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
   const clientsById = new Map<string, ClientRow>();
   const clientsByUser = new Map<string, ClientRow>();
   const membershipsByClient = new Map<string, ActiveMembershipRow[]>();
-  const coverage = new Map<string, { balance: number; ahead: number }>();
+  const coverage = new Map<string, Coverage>();
   const empty = { bookings, clientsById, clientsByUser, membershipsByClient, coverage };
   const clientIds = Array.from(new Set(bookings.map((r) => r.client_id).filter(Boolean)));
   // Старые записи из приложения без карточки — по учётной записи.
@@ -2951,9 +2874,7 @@ function BookingsPanel({
               // Пакетная студия: посещение без остатка база не отметит —
               // сначала продажа; если остаток уйдёт на более ранние записи —
               // предупреждаем заранее.
-              const cov = b.status !== "attended" ? data?.coverage.get(b.id) : undefined;
-              const noBalance = !!cov && cov.balance <= 0;
-              const uncovered = !!cov && cov.balance <= cov.ahead;
+              const { noBalance, uncovered } = attendanceBlock(b, data?.coverage.get(b.id));
               return (
                 <li key={b.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
                   <div className="min-w-0 flex-1">
@@ -2999,11 +2920,9 @@ function BookingsPanel({
                         size={packages ? "xs" : "sm"}
                         onClick={() => handleAttend(b)}
                         // «Не посетил» по неуважительной уже списан — его
-                        // можно перевести в «Посетил» и без остатка.
-                        disabled={
-                          busy ||
-                          (noBalance && !(b.status === "no_show" && b.no_show_excused === false))
-                        }
+                        // можно перевести в «Посетил» и без остатка
+                        // (attendanceBlock такую запись не блокирует).
+                        disabled={busy || noBalance}
                         title={
                           noBalance
                             ? "Нет абонемента с остатком — сначала оформите продажу"
