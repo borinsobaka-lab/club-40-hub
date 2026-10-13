@@ -337,7 +337,8 @@ GoTrue и видит только хук писем — в браузер он �
 - `src/lib/storage.ts` + `components/image-upload-field.tsx` — картинки
   Storage (`StorageImage`, `ImageUploadField`); бакеты — `STORAGE_BUCKETS`.
 - `components/sale-dialog.tsx` — диалог «Новая продажа» абонемента: из
-  «Продаж» и из карточки клиента («Добавить продажу», `initialClient` —
+  «Продаж» (подписочный клуб), «Абонементов» (пакетный; тип — плитки
+  `components/sale-kind-picker.tsx`) и из карточки клиента («Добавить продажу», `initialClient` —
   клиент подставлен). В пакетной студии — проп `kind` (тип продажи:
   новая / пробное / допродажа / продление, `SALE_KIND_*` в `lib/payments.ts`)
   и поле «Тренер» (`sales.trainer_id` + снимок `trainer_name`).
@@ -348,7 +349,10 @@ GoTrue и видит только хук писем — в браузер он �
   2026-10-11: не привязываться к учётным записям, вносить продажу за коллегу).
 - «Абонементы» пакетных студий — `routes/_authenticated/client-memberships.tsx`
   (вью `client_packages_list`): проданные абонементы и сбор денег по
-  рассрочкам, подробно — STUDIO_FORMATS.md.
+  рассрочкам; с 2026-10-13 и раздел продаж пакетного клуба — продажа,
+  возврат (`components/refund-dialog.tsx`, общий с «Продажами»), удаление;
+  «Продажи» (`sales.tsx`) — только подписочные клубы. Подробно —
+  STUDIO_FORMATS.md.
   Карточка клиента — `components/client-card-dialog.tsx`.
 - `components/client-combobox.tsx` — выбор клиента (серверный поиск;
   `creatable` — «Новый клиент» под полем, в «Продажах» и «Прочих продажах»);

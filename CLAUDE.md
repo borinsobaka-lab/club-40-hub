@@ -181,6 +181,10 @@ AUTH_SETUP.md.
   (дата внесения, ставит триггер), вью `client_packages_list` (строки раздела,
   платежи json и `payment_state` paid/overdue/pending по дате Тбилиси); там же
   снова пересоздана `sales_list` (актуальное определение — в этой миграции).
+  С 2026-10-13 «Абонементы» — единственный раздел продаж пакетного клуба
+  («Продаж» нет): `db/migrations/2026-10-13_packages_memberships_sales_merge.sql`
+  — `client_packages_list` + почта, `source`, `promo_code` (актуальное
+  определение вью — здесь), право «Продажи» пакетного клуба → «Абонементы».
   Баланс и списание пакетных студий:
   `db/migrations/2026-10-11_zz_packages_personal_balance.sql` — третий тип
   номенклатуры `personal`, `memberships.personal_count`,

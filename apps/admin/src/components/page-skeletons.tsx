@@ -573,12 +573,11 @@ export function ClientsPageSkeleton() {
 }
 
 export function SalesPageSkeleton() {
-  const packages = useSkeletonFormat() === "packages";
   return (
     <TablePage
       title="Продажи"
-      actions={[{ label: packages ? "Продажа" : "Новая продажа" }]}
-      toolbar={{ controls: packages ? ["w-48"] : [] }}
+      actions={[{ label: "Новая продажа" }]}
+      toolbar={{}}
       headers={[
         { label: "Клиент", className: "min-w-[220px]" },
         "Контакты",
@@ -586,13 +585,12 @@ export function SalesPageSkeleton() {
         "Источник",
         "Абонемент",
         "Статус",
-        packages ? "Тип продажи" : "Тип оплаты",
+        "Тип оплаты",
         "Промо-код",
         "Сумма",
         "Первый взнос",
         "Рассрочка",
         "Администратор",
-        ...(packages ? ["Тренер"] : []),
         "Комментарий",
       ]}
     />
@@ -603,11 +601,14 @@ export function ClientMembershipsPageSkeleton() {
   return (
     <TablePage
       title="Абонементы"
-      toolbar={{ controls: ["w-48", "w-48"] }}
+      actions={[{ label: "Продажа" }]}
+      toolbar={{ controls: ["w-48", "w-48", "w-48"] }}
       headers={[
         { label: "Клиент", className: "min-w-[170px]" },
         "Абонемент",
+        "Статус",
         "Баланс",
+        "Сумма",
         "Продал / тренер",
         "Комментарии",
         "Платёж 1",

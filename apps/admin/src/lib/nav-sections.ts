@@ -105,7 +105,8 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     items: [
       { title: "Расписание", url: "/schedule", icon: CalendarMinimalistic, section: "schedule" },
       { title: "Клиенты", url: "/clients", icon: UsersGroupRounded, section: "clients" },
-      // Пакетные студии: проданные клиентам абонементы и сбор денег по рассрочкам.
+      // Пакетные студии: продажи абонементов, возвраты и сбор денег по
+      // рассрочкам — «Продаж» у них нет (решение владельца 2026-10-13).
       {
         title: "Абонементы",
         url: "/client-memberships",
@@ -119,7 +120,14 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     key: "stats",
     label: "Статистика",
     items: [
-      { title: "Продажи", url: "/sales", icon: BillList, section: "sales" },
+      {
+        title: "Продажи",
+        url: "/sales",
+        icon: BillList,
+        section: "sales",
+        // В пакетных клубах продажи — в «Абонементах».
+        formats: ["subscription"],
+      },
       { title: "Прочие продажи", url: "/other-sales", icon: Bag3, section: "other-sales" },
       { title: "История записей", url: "/bookings-log", icon: History, section: "bookings-log" },
       {

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, Loader2, Plus, Receipt, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -16,14 +16,18 @@ import { unwrap } from "@/lib/query";
 import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_METHODS,
+  SALE_KIND_LABEL,
+  SALE_KINDS,
   SALE_TIPS,
   saleDeleteDescription,
   type MembershipKind,
   type PaymentMethod,
+  type SaleKind,
 } from "@/lib/payments";
 import {
   clientName,
   formatDate,
+  formatMoney,
   formatMoneyPrecise,
   phoneSearchTerm,
   sanitizeSearch,
@@ -59,34 +63,42 @@ import { CommentCell, noteChipClass } from "@/components/comment-cell";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
+import { MembershipStatusBadge } from "@/components/membership-status-badge";
+import { SaleDialog } from "@/components/sale-dialog";
+import { SaleKindDot, SaleKindPickerDialog } from "@/components/sale-kind-picker";
+import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
 
 // «Абонементы» пакетной студии (STUDIO_FORMATS.md): проданные клиентам
-// абонементы, одна строка — одна продажа. Здесь администраторы собирают деньги
-// по рассрочкам: отмечают внесённые платежи, правят суммы и даты, пишут свой
-// комментарий. Строки — вью client_packages_list
-// (db/migrations/2026-10-11_packages_client_memberships.sql, последняя версия —
-// 2026-10-11_zz_packages_personal_balance.sql): платежи и состояние оплаты
-// (полоска слева) считает база, фильтр по нему — на сервере.
+// абонементы, одна строка — одна продажа. С 2026-10-13 это и раздел продаж
+// пакетного клуба («Продаж» у него нет): кнопка «Продажа», возврат и удаление
+// — здесь. Администраторы собирают деньги по рассрочкам: отмечают внесённые
+// платежи, правят суммы и даты, пишут свой комментарий. Строки — вью
+// client_packages_list (последняя версия —
+// db/migrations/2026-10-13_packages_memberships_sales_merge.sql): платежи и
+// состояние оплаты (полоска слева) считает база, фильтр по нему — на сервере.
 
 /** Подсказки «?» колонок и полей. */
 const TIPS = {
-  client: "Кому продан абонемент. Нажмите на имя — откроется карточка клиента.",
-  membership:
-    "Что продано (из «Номенклатур»): «С» — дата продажи, «До» — последний день срока абонемента. У продления срок появится после первого посещения по нему.",
+  client: "Кому продан абонемент: телефон и почта. Нажмите на имя — откроется карточка клиента.",
+  membership: `Что продано (из «Номенклатур») и тип продажи: «С» — дата продажи, «До» — последний день срока абонемента. У продления срок появится после первого посещения по нему. ${SALE_TIPS.saleKind}`,
+  status:
+    "Действует, ждёт начала (продление), истёк, заменён новым и т. п. Ниже — сколько дней осталось до конца срока. «Приложение» — клиент купил абонемент сам в приложении.",
   balance:
-    "Тренировок на балансе (из скольких в пакете), ниже — персональных, если они входят, и сколько дней осталось до конца срока. Групповые списываются, когда отмечено посещение группового занятия, персональные — персонального. Срок задан в «Номенклатурах» и считается от даты продажи.",
+    "Тренировок на балансе (из скольких в пакете), ниже — персональных, если они входят. Групповые списываются, когда отмечено посещение группового занятия, персональные — персонального. Срок задан в «Номенклатурах» и считается от даты продажи.",
+  amount:
+    "Стоимость продажи (со скидкой). Ниже — сколько из неё уже внесено, промокод и возвраты. Возврат — правый клик (касание) по строке.",
   soldBy: `Кто продал — администратор, оформивший продажу. Ниже — тренер при продаже. ${SALE_TIPS.trainer}`,
   comments:
-    "«При продаже» — комментарий из «Продаж», здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
+    "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
   payment:
     "Сумма и дата платежа. Галочка — внесён (дата, когда заплатили), без неё — сколько и до какого числа клиент должен внести. Нажмите, чтобы отметить оплату или поправить сумму и дату.",
-  amount: "Сколько клиент внёс или должен внести этим платежом.",
+  paymentAmount: "Сколько клиент внёс или должен внести этим платежом.",
   dueDate:
     "До какого числа клиент должен внести платёж. За два дня до даты и в сам день невнесённый платёж помечает строку синим, дата прошла — красным.",
   paid: "Отметьте, когда клиент заплатил. Внесены все платежи — строка станет зелёной.",
   paidAt: "Когда клиент фактически заплатил.",
-  paymentMethod: "Как заплатил клиент — для отчётов, как способ оплаты в «Продажах».",
+  paymentMethod: "Как заплатил клиент — для отчётов, как способ оплаты в форме продажи.",
   renewal:
     "Продление: тренировки списываются после текущего абонемента, срок идёт с первого посещения по нему.",
   nextPayment:
@@ -152,7 +164,16 @@ type Row = {
   client_id: string;
   admin_name: string | null;
   trainer_name: string | null;
+  studio_id: string;
   sold_at: string;
+  total_amount: number;
+  /** Сколько из стоимости внесено (без графика — вся сумма). */
+  paid_amount: number;
+  /** Тип продажи; null — без типа (покупка в приложении, старые продажи). */
+  sale_kind: SaleKind | null;
+  /** Откуда продажа: админка или клиентское приложение. */
+  source: "admin" | "mobile" | null;
+  promo_code: string | null;
   comment: string | null;
   membership_note: string | null;
   clients: {
@@ -161,6 +182,7 @@ type Row = {
     first_name: string | null;
     last_name: string | null;
     phone: string | null;
+    email: string | null;
   } | null;
   memberships: {
     id: string;
@@ -184,14 +206,18 @@ type Row = {
 };
 
 const COLUMNS =
-  "id, client_id, admin_name, trainer_name, sold_at, comment, membership_note, clients, " +
-  "memberships, membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
+  "id, studio_id, client_id, admin_name, trainer_name, sold_at, total_amount, paid_amount, " +
+  "sale_kind, source, promo_code, comment, membership_note, clients, memberships, " +
+  "membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
   "membership_started_at, starts_on_first_visit";
 
 /** Платёжных колонок не меньше трёх: обычная рассрочка — до трёх платежей. */
 const MIN_PAYMENT_COLUMNS = 3;
-/** Колонки до платежей: клиент, абонемент, баланс, продал / тренер, комментарии. */
-const BASE_COLUMNS = 5;
+/**
+ * Колонки до платежей: клиент, абонемент, статус, баланс, сумма,
+ * продал / тренер, комментарии.
+ */
+const BASE_COLUMNS = 7;
 
 export const Route = createFileRoute("/_authenticated/client-memberships")({
   head: () => ({ meta: [{ title: "Абонементы — Base40 Admin" }] }),
@@ -227,6 +253,13 @@ function ClientMembershipsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [state, setState] = useState<PaymentState | typeof ALL>(ALL);
+  const [kind, setKind] = useState<SaleKind | typeof ALL>(ALL);
+  // Продажа: сначала тип (плитки), потом форма; возврат — из меню строки.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [saleOpen, setSaleOpen] = useState(false);
+  const [saleKind, setSaleKind] = useState<SaleKind>("new");
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundSale, setRefundSale] = useState<RefundSale | null>(null);
   // Ближайший платёж: одна дата (выбран только день) — платежи за этот день.
   const [nextPayment, setNextPayment] = useState<DateRange | undefined>();
   const payFrom = nextPayment?.from ? isoDay(nextPayment.from) : "";
@@ -252,7 +285,7 @@ function ClientMembershipsPage() {
 
   const term = sanitizeSearch(useDebouncedValue(search));
   const table = useServerTable<Row>({
-    queryKey: ["client_packages_list", studioId, term, state, payFrom, payTo],
+    queryKey: ["client_packages_list", studioId, term, state, kind, payFrom, payTo],
     queryFn: ({ from, to }) => {
       let q = supabase
         .from("client_packages_list")
@@ -260,6 +293,7 @@ function ClientMembershipsPage() {
         .eq("studio_id", studioId!);
       if (term) q = q.ilike("search_text", `%${phoneSearchTerm(term)}%`);
       if (state !== ALL) q = q.eq("payment_state", state);
+      if (kind !== ALL) q = q.eq("sale_kind", kind);
       // next_due_date во вью — ближайший невнесённый платёж (у оплаченных — null).
       if (payFrom) q = q.gte("next_due_date", payFrom).lte("next_due_date", payTo);
       // Ждут платежа и просроченные — по ближайшему платежу: сверху те, с кем
@@ -276,6 +310,43 @@ function ClientMembershipsPage() {
     errorMessage: "Не удалось загрузить абонементы",
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
+
+  // Возвраты по продажам страницы — одним запросом (таблица refunds не во вью:
+  // она из db/sales_payment.sql, выполнявшегося вручную).
+  const saleIds = table.rows.map((r) => r.id);
+  const { data: refundedBySale } = useQuery({
+    queryKey: ["refunds", "by-sales", studioId, saleIds.join(",")],
+    queryFn: async () => {
+      const rows = await unwrap<{ sale_id: string; amount: number | string | null }[]>(
+        supabase.from("refunds").select("sale_id, amount").in("sale_id", saleIds),
+      );
+      const sums: Record<string, number> = {};
+      for (const r of rows) sums[r.sale_id] = (sums[r.sale_id] ?? 0) + Number(r.amount ?? 0);
+      return sums;
+    },
+    enabled: saleIds.length > 0,
+    meta: { errorMessage: "Не удалось загрузить возвраты" },
+  });
+
+  const openSale = (k: SaleKind) => {
+    setPickerOpen(false);
+    setSaleKind(k);
+    setSaleOpen(true);
+  };
+  // Новая продажа видна и в карточке клиента, и в статусе клиента.
+  const onSold = () => {
+    for (const key of ["client_packages_list", "client_memberships", "clients_with_status"])
+      queryClient.invalidateQueries({ queryKey: [key] });
+  };
+  const openRefund = (r: Row) => {
+    setRefundSale({
+      id: r.id,
+      studio_id: r.studio_id,
+      total_amount: Number(r.total_amount),
+      membershipName: r.memberships?.name ?? null,
+    });
+    setRefundOpen(true);
+  };
 
   // Строка — продажа: удаляем её, абонемент клиента база удаляет вместе с ней
   // (db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql).
@@ -315,17 +386,26 @@ function ClientMembershipsPage() {
     ...table.rows.map((r) => r.payments?.length ?? 0),
   );
   const columns = BASE_COLUMNS + paymentColumns;
-  const filtered = !!term || state !== ALL || !!payFrom;
+  const filtered = !!term || state !== ALL || kind !== ALL || !!payFrom;
 
   return (
-    <AdminShell title="Абонементы">
+    <AdminShell
+      title="Абонементы"
+      actions={
+        // Одна кнопка — тип продажи выбирается в окне, как тип занятия в «Расписании».
+        <Button onClick={() => setPickerOpen(true)} disabled={!studioId}>
+          <Plus />
+          Продажа
+        </Button>
+      }
+    >
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
           <TableToolbar>
             <ToolbarSearch
               value={search}
               onChange={setSearch}
-              placeholder="Поиск по клиенту, абонементу, тренеру"
+              placeholder="Поиск по клиенту, абонементу, сотруднику"
             />
             <Select value={state} onValueChange={(v) => setState(v as PaymentState | typeof ALL)}>
               <SelectTrigger className="w-48">
@@ -336,6 +416,22 @@ function ClientMembershipsPage() {
                 {PAYMENT_STATE_ORDER.map((s) => (
                   <SelectItem key={s} value={s}>
                     {PAYMENT_STATES[s].filter}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={kind} onValueChange={(v) => setKind(v as SaleKind | typeof ALL)}>
+              <SelectTrigger className="w-48" aria-label="Тип продажи">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Все типы продаж</SelectItem>
+                {SALE_KINDS.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    <span className="flex items-center gap-2">
+                      <SaleKindDot kind={k} />
+                      {SALE_KIND_LABEL[k]}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -351,6 +447,7 @@ function ClientMembershipsPage() {
               onReset={() => {
                 setSearch("");
                 setState(ALL);
+                setKind(ALL);
                 setNextPayment(undefined);
               }}
             />
@@ -365,7 +462,9 @@ function ClientMembershipsPage() {
                     Клиент
                   </TableHead>
                   <TableHead tip={TIPS.membership}>Абонемент</TableHead>
+                  <TableHead tip={TIPS.status}>Статус</TableHead>
                   <TableHead tip={TIPS.balance}>Баланс</TableHead>
+                  <TableHead tip={TIPS.amount}>Сумма</TableHead>
                   <TableHead tip={TIPS.soldBy}>Продал / тренер</TableHead>
                   <TableHead tip={TIPS.comments}>Комментарии</TableHead>
                   {Array.from({ length: paymentColumns }, (_, i) => (
@@ -386,7 +485,7 @@ function ClientMembershipsPage() {
                     >
                       {filtered
                         ? "Ничего не найдено."
-                        : "Проданных абонементов пока нет. Они появятся здесь после продажи в «Продажах»."}
+                        : "Проданных абонементов пока нет. Нажмите «Продажа»."}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -394,6 +493,11 @@ function ClientMembershipsPage() {
                     <RowContextMenu
                       key={r.id}
                       actions={[
+                        {
+                          label: "Оформить возврат",
+                          icon: Receipt,
+                          onSelect: () => openRefund(r),
+                        },
                         {
                           label: "Удалить",
                           icon: Trash2,
@@ -426,12 +530,23 @@ function ClientMembershipsPage() {
                               {r.clients.phone}
                             </div>
                           )}
+                          {r.clients?.email && (
+                            <div className="text-xs font-normal text-muted-foreground">
+                              {r.clients.email}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="min-w-[130px]">
                           <div>{r.memberships?.name ?? "—"}</div>
                           {r.memberships?.kind !== "package" && r.memberships?.kind && (
                             <div className="text-xs text-muted-foreground">
                               {r.memberships.kind === "trial" ? "Пробное" : "Персональные"}
+                            </div>
+                          )}
+                          {r.sale_kind && (
+                            <div className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                              <SaleKindDot kind={r.sale_kind} />
+                              {SALE_KIND_LABEL[r.sale_kind]}
                             </div>
                           )}
                           <div className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
@@ -446,15 +561,34 @@ function ClientMembershipsPage() {
                                 : "—"}
                           </div>
                         </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex flex-col items-start gap-1">
+                            {r.membership_status ? (
+                              <MembershipStatusBadge
+                                m={{ status: r.membership_status, ends_at: r.ends_at }}
+                              />
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                            <div className="text-xs tabular-nums">
+                              <DaysLeft
+                                status={r.membership_status}
+                                endsAt={r.ends_at}
+                                notStarted={r.starts_on_first_visit && !r.membership_started_at}
+                              />
+                            </div>
+                            {r.source === "mobile" && (
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                Приложение
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="whitespace-nowrap tabular-nums">
                           <Balance row={r} />
-                          <div className="text-xs">
-                            <DaysLeft
-                              status={r.membership_status}
-                              endsAt={r.ends_at}
-                              notStarted={r.starts_on_first_visit && !r.membership_started_at}
-                            />
-                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Amount row={r} refunded={refundedBySale?.[r.id] ?? 0} />
                         </TableCell>
                         <TableCell>
                           <div>{r.admin_name ?? "—"}</div>
@@ -489,6 +623,20 @@ function ClientMembershipsPage() {
           </div>
         </RequireStudio>
       </div>
+      <SaleKindPickerDialog open={pickerOpen} onOpenChange={setPickerOpen} onPick={openSale} />
+      <SaleDialog
+        open={saleOpen}
+        onOpenChange={setSaleOpen}
+        studioId={studioId}
+        onSaved={onSold}
+        kind={saleKind}
+      />
+      <RefundDialog
+        open={refundOpen}
+        onOpenChange={setRefundOpen}
+        sale={refundSale}
+        onSaved={reload}
+      />
       {confirmDialog}
     </AdminShell>
   );
@@ -534,12 +682,30 @@ function Balance({ row }: { row: Row }) {
   );
 }
 
-const ENDED_STATUS: Record<string, string> = {
-  replaced: "Заменён новым",
-  cancelled: "Отменён",
-  expired: "Истёк",
-  frozen: "Заморожен",
-};
+/** Стоимость продажи, сколько внесено, промокод и возвраты. */
+function Amount({ row, refunded }: { row: Row; refunded: number }) {
+  const total = Number(row.total_amount);
+  const paid = Number(row.paid_amount);
+  return (
+    <>
+      <div className="font-medium tabular-nums">{formatMoney(total)}</div>
+      {paid < total && (
+        <div className="text-xs text-muted-foreground tabular-nums">
+          внесено {formatMoney(paid)}
+        </div>
+      )}
+      {row.promo_code && (
+        <div className="text-xs text-muted-foreground">Промокод: {row.promo_code}</div>
+      )}
+      {refunded > 0 && (
+        <div className="text-xs text-rose-600 tabular-nums">возврат {formatMoney(refunded)}</div>
+      )}
+    </>
+  );
+}
+
+/** Абонемент закончился: дни не считаем (статус — бейджем рядом). */
+const ENDED_STATUSES = new Set(["replaced", "cancelled", "expired", "frozen"]);
 
 function DaysLeft({
   status,
@@ -551,8 +717,7 @@ function DaysLeft({
   /** Продление, по которому ещё не было посещений: срок пока не идёт. */
   notStarted: boolean;
 }) {
-  if (status && ENDED_STATUS[status])
-    return <span className="text-muted-foreground">{ENDED_STATUS[status]}</span>;
+  if (status && ENDED_STATUSES.has(status)) return null;
   if (notStarted)
     return (
       <span className="text-muted-foreground" title={TIPS.renewal}>
@@ -561,7 +726,7 @@ function DaysLeft({
     );
   if (!endsAt) return <span className="text-muted-foreground">Без срока</span>;
   const days = daysUntil(endsAt);
-  if (days < 0) return <span className="text-rose-600">Истёк {formatDate(endsAt)}</span>;
+  if (days < 0) return <span className="text-rose-600">закончился {formatDate(endsAt)}</span>;
   return (
     <span title={`До ${formatDate(endsAt)} включительно`}>
       {days === 0 ? "Последний день" : `ещё ${days} дн.`}
@@ -791,7 +956,7 @@ function PaymentForm({
   return (
     <form onSubmit={handleSave} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <FormField label="Сумма, ₾" tip={TIPS.amount} required>
+        <FormField label="Сумма, ₾" tip={TIPS.paymentAmount} required>
           <Input
             type="number"
             min={0}
