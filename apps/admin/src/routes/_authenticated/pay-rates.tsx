@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { StaffTabs } from "@/components/staff-tabs";
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { EmployeePhoto } from "@/components/employee-photo";
 import { TableSkeletonRows } from "@/components/skeletons";
@@ -89,6 +90,7 @@ function PayRatesPage() {
   return (
     <AdminShell title="Зарплатные ставки">
       <div className="space-y-3">
+        <StaffTabs />
         <InfoNote>
           Ставки — в лари за смену или тренировку. Переключатель — получает ли сотрудник эту ставку
           сейчас; сумма сохраняется, когда поле теряет фокус.

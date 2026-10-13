@@ -48,14 +48,7 @@ import {
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
-export type RailSectionKey =
-  | "dashboard"
-  | "club"
-  | "staff"
-  | "app"
-  | "scripts"
-  | "access"
-  | "studios";
+export type RailSectionKey = "dashboard" | "club" | "app" | "scripts" | "access" | "studios";
 
 export type RailSection = {
   key: RailSectionKey;
@@ -83,6 +76,8 @@ export type NavItem = {
   formats?: StudioFormat[];
   /** Подсвечивать только на самом url, не на вложенных страницах. */
   exact?: boolean;
+  /** Другие страницы пункта: на них он тоже подсвечен («Сотрудники» → вкладки). */
+  paths?: string[];
   /** Счётчик справа (новые предложения в «Скриптах LS»). */
   badge?: number;
 };
@@ -230,15 +225,35 @@ export const MOBILE_APP_ITEMS: NavItem[] = [
 ];
 
 /**
- * Меню раздела «Сотрудники»: справочник общий для всех студий, поэтому, как
- * и у «Мобильного приложения», своё меню вместо меню клуба.
+ * «Сотрудники» (решение владельца 2026-10-13: раньше — свой раздел рейки) —
+ * пункт блока «Клуб» в меню клуба; страницы раздела переключаются вкладками
+ * над содержимым (components/staff-tabs.tsx), `tab` — подпись вкладки.
+ * Справочник общий для всех клубов: при смене клуба в шапке он тот же. Право —
+ * по-прежнему раздел рейки «Сотрудники» в «Доступах» (staff, RLS
+ * has_admin_section), а не раздел клуба по студиям.
  */
-export const STAFF_ITEMS: NavItem[] = [
-  { title: "Сотрудники", url: "/trainers", icon: UserId },
-  { title: "Зарплатные ставки", url: "/pay-rates", icon: MoneyBag },
-  { title: "График администраторов", url: "/admin-shifts", icon: CalendarMinimalistic },
-  { title: "Зарплаты", url: "/payroll", icon: WalletMoney },
+export const STAFF_ITEMS: (NavItem & { tab: string })[] = [
+  { title: "Сотрудники", tab: "Сотрудники", url: "/trainers", icon: UserId },
+  { title: "Зарплаты", tab: "Зарплаты", url: "/payroll", icon: WalletMoney },
+  {
+    title: "График администраторов",
+    tab: "График",
+    url: "/admin-shifts",
+    icon: CalendarMinimalistic,
+  },
+  { title: "Зарплатные ставки", tab: "Ставки", url: "/pay-rates", icon: MoneyBag },
 ];
+
+/** Блок меню клуба, где стоит «Сотрудники». */
+export const STAFF_CLUB_GROUP = "studio";
+
+/** Пункт «Сотрудники» в меню клуба: подсвечен на всех страницах раздела. */
+export const STAFF_NAV_ITEM: NavItem = {
+  title: "Сотрудники",
+  url: STAFF_ITEMS[0].url,
+  icon: UserId,
+  paths: STAFF_ITEMS.slice(1).map((i) => i.url),
+};
 
 /** «Скрипты LS»: все скрипты; разделы — /scripts/<id>, настройки — /scripts/settings. */
 export const SCRIPTS_URL = "/scripts";
@@ -255,18 +270,8 @@ export const SECTIONS: RailSection[] = [
     paths: DASHBOARD_ITEMS.map((i) => i.url),
   },
   // Вход в клуб — первая страница его меню; закрытую в активной студии
-  // AccessGate сменит на первую доступную.
+  // AccessGate сменит на первую доступную. «Сотрудники» — тоже в меню клуба.
   { key: "club", title: "Клуб", url: CLUB_GROUPS[0].items[0].url, icon: HomeSmile },
-  // Сотрудники (тренеры и администраторы) общие для студий: у сотрудника
-  // отмечены студии, где он работает.
-  {
-    key: "staff",
-    title: "Сотруд\u00ADники",
-    fullTitle: "Сотрудники",
-    url: STAFF_ITEMS[0].url,
-    icon: UserId,
-    paths: STAFF_ITEMS.map((i) => i.url),
-  },
   {
     key: "app",
     title: "Прило\u00ADжение",
@@ -314,6 +319,11 @@ export function railSectionKey(pathname: string): RailSectionKey {
   return own?.key ?? "club";
 }
 
+/** Страница раздела «Сотрудники» (пункт меню клуба с правом раздела рейки). */
+export function isStaffPath(pathname: string): boolean {
+  return STAFF_ITEMS.some((i) => matches(pathname, i.url));
+}
+
 /** Пункт меню клуба, которому принадлежит страница (null — не пункт меню). */
 export function clubNavItemOf(pathname: string): ClubNavItem | null {
   for (const group of CLUB_GROUPS) {
@@ -337,9 +347,10 @@ export function canOpenPath(
   if (section === "access") return access.isOwner;
   // Дашборд над студиями: открыт, если открыт хоть в одной студии.
   if (section === "dashboard") return dashboardStudioIds(access).length > 0;
-  if (section === "staff" || section === "app" || section === "scripts")
-    return canOpenRail(access, section);
+  if (section === "app" || section === "scripts") return canOpenRail(access, section);
   if (section === "club") {
+    // «Сотрудники» общие для клубов: право — раздел рейки, не раздел клуба.
+    if (isStaffPath(pathname)) return canOpenRail(access, "staff");
     const item = clubNavItemOf(pathname);
     return item ? canOpenClubSection(access, studioId, item.section) : canOpenRail(access, "club");
   }
@@ -352,6 +363,7 @@ export function firstAllowedUrl(access: AdminAccess, studioId: string | null): s
   // закрытой должен попасть на другую страницу клуба, а не на дашборд.
   const urls = [
     ...CLUB_GROUPS.flatMap((g) => g.items.map((i) => i.url)),
+    STAFF_NAV_ITEM.url,
     ...[...SECTIONS, ...ADMIN_SECTIONS].flatMap((s) => (s.url && s.key !== "club" ? [s.url] : [])),
   ];
   return urls.find((url) => canOpenPath(access, studioId, url)) ?? null;

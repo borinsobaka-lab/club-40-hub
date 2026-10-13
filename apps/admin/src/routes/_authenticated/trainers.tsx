@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Pencil, Trash2, MessageCircle } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
+import { StaffTabs } from "@/components/staff-tabs";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { FormattedTextarea } from "@/components/formatted-textarea";
 import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
@@ -161,12 +162,15 @@ function StaffPage() {
         </Button>
       }
     >
-      <EmployeesTable
-        employees={employees}
-        loading={isLoading}
-        onEdit={openEdit}
-        onChanged={reload}
-      />
+      <div className="space-y-3">
+        <StaffTabs />
+        <EmployeesTable
+          employees={employees}
+          loading={isLoading}
+          onEdit={openEdit}
+          onChanged={reload}
+        />
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">

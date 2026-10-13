@@ -6,7 +6,7 @@ import {
   dashboardStudioIds,
   type AdminAccess,
 } from "./admin-access";
-import { canOpenPath, firstAllowedUrl } from "./nav-sections";
+import { canOpenPath, firstAllowedUrl, railSectionKey } from "./nav-sections";
 
 const A = "studio-a";
 const B = "studio-b";
@@ -68,6 +68,17 @@ describe("права в админке", () => {
     expect(firstAllowedUrl(limited, A)).toBe("/schedule");
     expect(firstAllowedUrl(limited, B)).toBe("/cash");
     expect(firstAllowedUrl({ ...limited, rail: ["app"] }, A)).toBe("/news");
+  });
+
+  test("«Сотрудники» — в меню клуба, право — раздел рейки, от клуба не зависит", () => {
+    for (const path of ["/trainers", "/payroll", "/admin-shifts", "/pay-rates"])
+      expect(railSectionKey(path)).toBe("club");
+    const staff: AdminAccess = { ...limited, rail: ["staff"] };
+    expect(canOpenPath(staff, A, "/payroll")).toBe(true);
+    expect(canOpenPath(staff, B, "/admin-shifts")).toBe(true);
+    expect(canOpenPath(staff, A, "/schedule")).toBe(false);
+    expect(firstAllowedUrl(staff, A)).toBe("/trainers");
+    expect(canOpenPath(limited, A, "/payroll")).toBe(false);
   });
 
   test("«Скрипты LS» — по отметке раздела рейки, со всеми страницами", () => {

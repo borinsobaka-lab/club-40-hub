@@ -8,6 +8,7 @@ import {
   railSectionKey,
   type RailSection,
 } from "@/lib/nav-sections";
+import { canOpenRail } from "@/lib/admin-access";
 import { cn } from "@/lib/utils";
 import { RailSkeleton } from "@/components/skeletons";
 import { RailAccount } from "@/components/rail-account";
@@ -79,8 +80,9 @@ function RailItem({
 /**
  * Рейка разделов — узкая колонка слева от бокового меню: иконка и подпись
  * под ней. Меню справа — пункты клуба («Клуб» — всё, что относится к
- * студии) или своё меню раздела («Сотрудники», «Мобильное приложение»). Они,
- * как и «Доступы» и «Студии», — общие для всех студий.
+ * студии, и общие для студий «Сотрудники») или своё меню раздела
+ * («Мобильное приложение»). Оно, как и «Доступы» и «Студии», — общее для
+ * всех студий.
  */
 export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (router) => router.location.pathname });
@@ -90,12 +92,13 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
 
   // Разделы, закрытые сотруднику в «Доступах», не показываем; заготовки без
   // url — как есть. «Клуб» виден, если открыт раздел рейки, — даже когда
-  // в активной студии ему не открыт ни один пункт (студию можно сменить).
+  // в активной студии ему не открыт ни один пункт (студию можно сменить), —
+  // или «Сотрудники»: они в меню клуба.
   const visible = (section: RailSection) =>
     !section.url ||
     (!!access &&
       (section.key === "club"
-        ? canOpenPath(access, null, section.url)
+        ? canOpenPath(access, null, section.url) || canOpenRail(access, "staff")
         : canOpenPath(access, studioId, section.url)));
 
   // Пока права грузятся — скелетоны на месте разделов: иначе рейка сначала
