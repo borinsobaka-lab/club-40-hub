@@ -46,6 +46,7 @@ import { roleGroup } from "@/lib/staff-roles";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import type { ClubStatus } from "@/lib/client-status";
+import { parseTranslations, translationText } from "@/lib/content-i18n";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import {
   ACTIVITY_KINDS,
@@ -102,6 +103,8 @@ type Trainer = {
   role?: string;
   /** Фото из справочника — аватарка в выпадающих списках. */
   photo_url?: string | null;
+  /** Переводы имени — английское в полноэкранном просмотре. */
+  translations?: unknown;
 };
 type Entry = {
   id: string;
@@ -127,6 +130,7 @@ type Entry = {
     capacity?: number | null;
     /** Пакетный формат: цвет полоски на карточке. */
     color?: string | null;
+    translations?: unknown;
   } | null;
   schedule_entry_trainers?: {
     trainer_id: string;
@@ -146,8 +150,9 @@ type ParticipantName = {
   first_name: string | null;
   last_name: string | null;
   full_name: string;
-  /** Абонементы клиента (любые) — нет ни одного: ПЧК, «новенький». */
-  client_memberships?: { client_id: string }[];
+  id: string;
+  /** Абонементы клиента: когда выдан и вид (пробный или нет) — для «новеньких». */
+  client_memberships?: { created_at: string; membership: { kind: string | null } | null }[];
 };
 
 /** Клиенты персонального занятия: «Фамилия Имя» записанных (не отменённых). */
@@ -159,16 +164,22 @@ function participantNames(e: Entry) {
 }
 
 /**
- * Новенькие на занятии — записанные клиенты со статусом ПЧК: ни разу не
- * покупали абонемент (как club_status во вью clients_with_status).
+ * Новенькие на занятии — записанные клиенты, у которых к началу занятия не
+ * было абонементов, кроме пробного (решение владельца 2026-10-13). Не текущий
+ * статус ПЧК: «Посетил» без абонемента не отметить, пробное — тоже абонемент,
+ * и после занятия пробник уже ЧК — счётчик прошедших занятий обнулялся бы.
  */
-function newcomerCount(e: Entry) {
-  return (e.participants ?? []).filter(
-    (p) =>
-      p.client &&
-      (p.status === "booked" || p.status === "attended") &&
-      (p.client.client_memberships ?? []).length === 0,
-  ).length;
+function newcomerIds(e: Entry): Set<string> {
+  const start = new Date(e.starts_at).getTime();
+  const ids = new Set<string>();
+  for (const p of e.participants ?? []) {
+    if (!p.client || (p.status !== "booked" && p.status !== "attended")) continue;
+    const hadPackage = (p.client.client_memberships ?? []).some(
+      (m) => m.membership?.kind !== "trial" && new Date(m.created_at).getTime() < start,
+    );
+    if (!hadPackage) ids.add(p.client.id);
+  }
+  return ids;
 }
 
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
@@ -183,7 +194,7 @@ type EntryDraft = {
 };
 
 const ENTRY_SELECT =
-  "*, workout:workouts(name, type, capacity, color), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(first_name, last_name, full_name, client_memberships(client_id)))";
+  "*, workout:workouts(name, type, capacity, color, translations), schedule_entry_trainers(trainer_id, trainer:trainers(id, full_name, translations), substitution:schedule_entry_substitutions(replaced_trainer_id, replaced:trainers(full_name))), participants:schedule_bookings(status, client:clients(id, first_name, last_name, full_name, client_memberships(created_at, membership:memberships(kind))))";
 // Колонки справочников входят в ключ запроса: разделы «Тренировки» и «Сотрудники»
 // грузят те же таблицы целиком, и общий ключ подсовывал бы им наш урезанный кэш.
 const WORKOUT_COLS = "id, name, type, capacity";
@@ -215,6 +226,14 @@ const ADMIN_CANCEL_REASONS = [
   "Другое",
 ];
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+// Полноэкранный просмотр — на английском: скриншот уходит клиентам с разными
+// языками (решение владельца 2026-10-13).
+const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Английский перевод поля контента, нет — русский текст. */
+function enText(translations: unknown, field: string, ru: string) {
+  return translationText(parseTranslations(translations), "en", field).trim() || ru;
+}
 // Часы сетки по умолчанию — 7..22; занятие раньше или позже расширяет сетку
 // (иначе оно было бы в базе, но не на экране).
 // С 9:00: на 7 и 8 утра занятий не бывает (решение владельца 2026-10-13);
@@ -226,9 +245,6 @@ const LAST_HOUR = 22;
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
 const SLOT_PX_FULL = 72;
 const SLOT_PX_EMPTY = 28;
-// Час, где у занятия есть «новенькие»: бейдж под счётчиком записей
-// опускает название — строка выше на его высоту.
-const SLOT_PX_NEWCOMERS = 88;
 // Полноэкранный просмотр: высота строки с занятиями — по карточкам, пустой
 // час между занятиями — узкая полоска.
 const SLOT_PX_FULLSCREEN_EMPTY = 16;
@@ -250,8 +266,8 @@ function addDays(d: Date, n: number) {
   return x;
 }
 
-function fmtDate(d: Date) {
-  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
+function fmtDate(d: Date, en = false) {
+  return d.toLocaleDateString(en ? "en-GB" : "ru-RU", { day: "2-digit", month: "short" });
 }
 
 function fmtTime(iso: string) {
@@ -303,11 +319,13 @@ function regularTrainerIdsOf(e: Pick<Entry, "schedule_entry_trainers">) {
   return regularTrainerIds(e.schedule_entry_trainers);
 }
 
-/** Подпись занятия на карточке и в баннере копирования. */
-function entryTitle(e: Entry) {
-  if (e.kind === "personal") return "Персональное занятие";
-  if (e.kind === "other") return e.title ?? "Прочая активность";
-  return e.workout?.name ?? "Занятие";
+/** Подпись занятия на карточке и в баннере копирования; `en` — полный экран. */
+function entryTitle(e: Entry, en = false) {
+  if (e.kind === "personal") return en ? "Personal training" : "Персональное занятие";
+  // Название прочей активности — свободный текст без переводов.
+  if (e.kind === "other") return e.title ?? (en ? "Activity" : "Прочая активность");
+  const name = e.workout?.name ?? (en ? "Class" : "Занятие");
+  return en ? enText(e.workout?.translations, "name", name) : name;
 }
 
 /**
@@ -516,7 +534,6 @@ function SchedulePage() {
   const grid = useMemo(() => {
     const cells = new Map<string, Entry[]>();
     const busyHours = new Set<number>();
-    const newcomerHours = new Set<number>();
     // Занятий по дням недели — точки под днями в переключателе на телефоне.
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
@@ -536,7 +553,6 @@ function SchedulePage() {
       const key = cellKey(start, start.getHours());
       cells.set(key, [...(cells.get(key) ?? []), e]);
       busyHours.add(start.getHours());
-      if (!e.cancelled_at && newcomerCount(e) > 0) newcomerHours.add(start.getHours());
       perDay[(start.getDay() + 6) % 7]++;
     }
     const hourList = [...busyHours];
@@ -547,7 +563,7 @@ function SchedulePage() {
     const compactHours = hourList.length
       ? hours.filter((h) => h >= Math.min(...hourList) && h <= Math.max(...hourList))
       : hours;
-    return { cells, busyHours, newcomerHours, perDay, hours, compactHours };
+    return { cells, busyHours, perDay, hours, compactHours };
   }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
@@ -940,9 +956,13 @@ function SchedulePage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-lg font-semibold">
-                    {studio?.name ? `Расписание · ${studio.name}` : "Расписание"}
+                    {studio?.name
+                      ? `Schedule · ${enText(studio.translations, "name", studio.name)}`
+                      : "Schedule"}
                   </div>
-                  <div className="text-sm text-muted-foreground">{weekLabel}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {fmtDate(weekStart, true)} — {fmtDate(addDays(weekStart, 6), true)}
+                  </div>
                 </div>
                 <Button
                   variant="outline"
@@ -965,7 +985,7 @@ function SchedulePage() {
                       key={i}
                       type="button"
                       aria-pressed={selected}
-                      aria-label={d.toLocaleDateString("ru-RU", {
+                      aria-label={d.toLocaleDateString(fullscreen ? "en-GB" : "ru-RU", {
                         weekday: "long",
                         day: "numeric",
                         month: "long",
@@ -980,7 +1000,7 @@ function SchedulePage() {
                       <span
                         className={cn("uppercase", !selected && !today && "text-muted-foreground")}
                       >
-                        {DAY_NAMES[i]}
+                        {(fullscreen ? DAY_NAMES_EN : DAY_NAMES)[i]}
                       </span>
                       <span className="text-base font-semibold tabular-nums leading-tight">
                         {d.getDate()}
@@ -1026,10 +1046,12 @@ function SchedulePage() {
                           }`}
                         >
                           <div className="uppercase tracking-wide text-muted-foreground">
-                            {DAY_NAMES[i]}
+                            {(fullscreen ? DAY_NAMES_EN : DAY_NAMES)[i]}
                           </div>
                           <div>
-                            {d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
+                            {fullscreen
+                              ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+                              : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
                           </div>
                         </div>
                       );
@@ -1048,9 +1070,7 @@ function SchedulePage() {
                       ? undefined
                       : SLOT_PX_FULLSCREEN_EMPTY
                     : busy
-                      ? grid.newcomerHours.has(hour)
-                        ? SLOT_PX_NEWCOMERS
-                        : SLOT_PX_FULL
+                      ? SLOT_PX_FULL
                       : SLOT_PX_EMPTY;
                   return (
                     <div key={`row-${hour}`} className="contents">
@@ -1379,17 +1399,38 @@ function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
   );
 }
 
-/** «1 новенький», «3 новеньких» — под бейджем записей (решение владельца 2026-10-13). */
-function NewcomersBadge({ entry }: { entry: Entry }) {
-  const n = newcomerCount(entry);
+/**
+ * Сколько новеньких — только цифра, в цветах бейджа ПЧК, справа от названия
+ * (решение владельца 2026-10-13).
+ */
+/**
+ * Красный «!» слева от счётчика записей: занятие закончилось, а у записанных
+ * не отмечено «Посетил» / «Не посетил» (решение владельца 2026-10-13).
+ */
+function UnmarkedBadge({ entry }: { entry: Entry }) {
+  if (entry.cancelled_at || new Date(entry.ends_at).getTime() > Date.now()) return null;
+  const n = (entry.participants ?? []).filter((p) => p.status === "booked").length;
   if (!n) return null;
-  const one = n % 10 === 1 && n % 100 !== 11;
   return (
     <span
-      title="Записаны ПЧК — ни разу не покупали абонемент"
-      className="whitespace-nowrap rounded bg-sky-100 px-1 py-px text-[10px] font-semibold tabular-nums text-sky-600"
+      title={`Не отмечены посещения: ${n}. Откройте занятие и отметьте «Посетил» или «Не посетил».`}
+      aria-label="Не отмечены посещения"
+      className="flex size-3.5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white"
     >
-      {n} {one ? "новенький" : "новеньких"}
+      !
+    </span>
+  );
+}
+
+function NewcomersBadge({ entry }: { entry: Entry }) {
+  const n = newcomerIds(entry).size;
+  if (!n) return null;
+  return (
+    <span
+      title={`Новеньких: ${n} — до занятия не было абонементов, кроме пробного`}
+      className="shrink-0 rounded border border-blue-200 bg-blue-100 px-1 text-[10px] font-semibold leading-4 tabular-nums text-blue-700"
+    >
+      {n}
     </span>
   );
 }
@@ -1412,9 +1453,13 @@ function EntryCard({
   const trainers = (entry.schedule_entry_trainers ?? []).flatMap((x) =>
     x.trainer ? [x.trainer] : [],
   );
-  const names = trainers.map((t) => t.full_name).join(", ");
-  // Персональное: «тренер + клиент» — видно, с кем занятие.
-  const clients = entry.kind === "personal" ? participantNames(entry) : "";
+  // Полный экран (скриншот клиентам) — имена тренеров на английском.
+  const names = trainers
+    .map((t) => (clean ? enText(t.translations, "full_name", t.full_name) : t.full_name))
+    .join(", ");
+  // Персональное: «тренер + клиент» — видно, с кем занятие. В полном экране
+  // имён клиентов нет: скриншот уходит другим клиентам.
+  const clients = entry.kind === "personal" && !clean ? participantNames(entry) : "";
   const people = [names, clients].filter(Boolean).join(" + ");
   // Персональные и прочие в обоих форматах — светлая карточка с тёмной
   // полоской: так они не путаются с групповыми.
@@ -1429,7 +1474,11 @@ function EntryCard({
           clean ? "text-[13px]" : "text-[11px]",
           cancelled && "schedule-cancelled",
         )}
-        title={cancelled ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}` : undefined}
+        title={
+          cancelled && !clean
+            ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}`
+            : undefined
+        }
         // Без цвета (тренировка заведена до 2026-10-11) — серая полоска.
         style={{
           borderLeftColor: group
@@ -1444,25 +1493,33 @@ function EntryCard({
         >
           <span className="flex w-full items-start justify-between gap-1">
             <span className="flex items-center gap-1 whitespace-nowrap text-muted-foreground">
-              {cancelled && <Ban className="size-3 shrink-0 text-rose-600" aria-label="Отменено" />}
+              {cancelled && (
+                <Ban
+                  className="size-3 shrink-0 text-rose-600"
+                  aria-label={clean ? "Cancelled" : "Отменено"}
+                />
+              )}
               {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
             </span>
             {!cancelled && !clean && (
-              <span className="flex flex-col items-end gap-0.5">
+              <span className="flex items-center gap-1">
+                <UnmarkedBadge entry={entry} />
                 <CapacityBadge entry={entry} light />
-                <NewcomersBadge entry={entry} />
               </span>
             )}
           </span>
-          <span
-            className={cn(
-              "font-semibold leading-[1.15]",
-              clean ? "text-base" : "text-[13px]",
-              // Персональному название в одну строку — место под клиента.
-              clients ? "truncate" : "line-clamp-2",
-            )}
-          >
-            {entryTitle(entry)}
+          <span className="flex w-full items-start gap-1">
+            <span
+              className={cn(
+                "min-w-0 flex-1 font-semibold leading-[1.15]",
+                clean ? "text-base" : "text-[13px]",
+                // Персональному название в одну строку — место под клиента.
+                clients ? "truncate" : "line-clamp-2",
+              )}
+            >
+              {entryTitle(entry, clean)}
+            </span>
+            {!cancelled && !clean && <NewcomersBadge entry={entry} />}
           </span>
           {/* Фото тренеров на карточке нет (решение владельца 2026-10-11) —
               только имена: карточка ниже. У персонального «тренер + клиент» —
@@ -1512,19 +1569,22 @@ function EntryCard({
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
           {!clean && (
-            <span className="flex flex-col items-end gap-0.5">
+            <span className="flex items-center gap-1">
+              <UnmarkedBadge entry={entry} />
               <CapacityBadge entry={entry} />
-              <NewcomersBadge entry={entry} />
             </span>
           )}
         </span>
-        <span
-          className={cn(
-            "font-semibold leading-[1.15] line-clamp-2",
-            clean ? "text-base" : "text-[13px]",
-          )}
-        >
-          {entryTitle(entry)}
+        <span className="flex w-full items-start gap-1">
+          <span
+            className={cn(
+              "min-w-0 flex-1 font-semibold leading-[1.15] line-clamp-2",
+              clean ? "text-base" : "text-[13px]",
+            )}
+          >
+            {entryTitle(entry, clean)}
+          </span>
+          {!clean && <NewcomersBadge entry={entry} />}
         </span>
         {/* pr-5 — место под «Копировать» в углу. */}
         {names && <span className="block truncate pr-5 opacity-80">{names}</span>}
@@ -2975,6 +3035,8 @@ function BookingsPanel({
   // Лист ожидания держим отдельно от записанных: он не занимает мест и не
   // должен путаться со счётчиком заполненности.
   const booked = bookings.filter((b) => b.status !== "waitlist");
+  // Те же «новенькие», что в цифре на карточке занятия.
+  const newcomers = newcomerIds(entry);
   const waitlisted = bookings.filter((b) => b.status === "waitlist");
   const capacity = entryCapacity(entry);
 
@@ -3034,6 +3096,14 @@ function BookingsPanel({
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <BookingClientName client={c} />
                       {c?.club_status && <ClubStatusBadge status={c.club_status} />}
+                      {c && newcomers.has(c.id) && (
+                        <span
+                          title="До занятия не было абонементов, кроме пробного"
+                          className="rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+                        >
+                          Новенький
+                        </span>
+                      )}
                       {b.status === "attended" && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                           Посетил
