@@ -40,3 +40,23 @@ export function effectiveStatus(m: MembershipStatusInput, today = todayISO()): C
 export function isLiveStatus(s: CMStatus) {
   return s === "active" || s === "awaiting";
 }
+
+/**
+ * Подсказка администратору «пора продлевать» в окне занятия (решение
+ * владельца 2026-10-13): остаток посещений и дата окончания красным, когда
+ * посещений меньше 5 или до конца срока меньше 14 дней.
+ */
+export const RENEWAL_HINT_VISITS = 5;
+export const RENEWAL_HINT_DAYS = 14;
+
+/** Посещений осталось меньше порога; безлимит (null) — нет. */
+export function fewVisitsLeft(left: number | null | undefined) {
+  return left != null && left < RENEWAL_HINT_VISITS;
+}
+
+/** До окончания срока меньше порога дней (и уже истёкший); без даты — нет. */
+export function endsSoon(endsAt: string | null | undefined, today = todayISO()) {
+  if (!endsAt) return false;
+  const days = (Date.parse(endsAt.slice(0, 10)) - Date.parse(today)) / 86_400_000;
+  return days < RENEWAL_HINT_DAYS;
+}

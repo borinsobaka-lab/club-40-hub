@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { effectiveStatus, isLiveStatus } from "./membership-status";
+import { effectiveStatus, endsSoon, fewVisitsLeft, isLiveStatus } from "./membership-status";
 import { TRAINER_ROLES, hasRating, isAdminRole, roleGroup } from "./staff-roles";
 
 describe("статус абонемента клиента", () => {
@@ -46,5 +46,23 @@ describe("роли сотрудников", () => {
     expect(roleGroup("trainer")).toBe("trainer");
     expect(roleGroup("boss")).toBe("trainer");
     expect(roleGroup(undefined)).toBe("trainer");
+  });
+});
+
+describe("подсказка о продлении в окне занятия", () => {
+  test("меньше 5 посещений — красным, безлимит — нет", () => {
+    expect(fewVisitsLeft(4)).toBe(true);
+    expect(fewVisitsLeft(0)).toBe(true);
+    expect(fewVisitsLeft(5)).toBe(false);
+    expect(fewVisitsLeft(null)).toBe(false);
+  });
+
+  test("до окончания меньше 14 дней — красным, без даты — нет", () => {
+    const today = "2026-10-13";
+    expect(endsSoon("2026-10-26", today)).toBe(true);
+    expect(endsSoon("2026-10-27", today)).toBe(false);
+    expect(endsSoon("2026-10-10", today)).toBe(true);
+    expect(endsSoon("2026-10-26T00:00:00+00:00", today)).toBe(true);
+    expect(endsSoon(null, today)).toBe(false);
   });
 });
