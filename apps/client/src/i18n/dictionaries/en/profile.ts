@@ -42,6 +42,8 @@ const dict: Dictionary = {
   "Не указано": "Not specified",
   Отмена: "Cancel",
   Сохранить: "Save",
+  "Код страны": "Country code",
+  "Проверьте номер телефона": "Check the phone number",
 };
 
 export default dict;
