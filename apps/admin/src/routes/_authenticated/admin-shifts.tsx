@@ -54,6 +54,7 @@ import {
 } from "@/lib/payroll";
 import { unwrap } from "@/lib/query";
 import {
+  isAdminRole,
   usePayRates,
   usePayrollAdjustments,
   usePayrollScope,
@@ -130,7 +131,7 @@ function AdminShiftsPage() {
     employees.filter(
       (e) =>
         e.trainer_studios.some((s) => s.studio_id === studioId) &&
-        (e.role === "admin" || shiftRate.has(e.id)),
+        (isAdminRole(e.role) || shiftRate.has(e.id)),
     );
 
   const setShifts = (update: (prev: Shift[]) => Shift[]) => {
@@ -615,7 +616,7 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
   // Администраторы — первыми: корректировки чаще всего про смены.
   const sortedEmployees = [...employees].sort(
     (a, b) =>
-      Number(b.role === "admin") - Number(a.role === "admin") ||
+      Number(isAdminRole(b.role)) - Number(isAdminRole(a.role)) ||
       a.full_name.localeCompare(b.full_name, "ru"),
   );
 

@@ -21,6 +21,9 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         // Подтверждение денег/успеха («Отметить как выплачено»).
         success: "bg-emerald-600 text-white hover:bg-emerald-700",
+        // Предупреждающее действие, которое откатывает сделанное («Отменить
+        // посещение»): оранжевая, не красная — ничего не удаляется.
+        warning: "bg-orange-500 text-white hover:bg-orange-600",
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
@@ -30,6 +33,9 @@ const buttonVariants = cva(
         default: "h-10 px-4 py-2",
         // Мелкие действия внутри карточек и списков, не фильтры и не формы.
         sm: "h-9 px-3",
+        // Отметки в строке списка (посещение в окне занятия): ниже sm, чтобы
+        // строка клиента оставалась в одну высоту текста.
+        xs: "h-7 px-2.5 text-xs [&_svg]:size-3.5",
         // Главное действие во всю ширину карточки; плавающие действия
         // страницы (FloatingActions) — этого же размера.
         lg: "h-12 px-6 text-[0.9375rem] [&_svg]:size-5",

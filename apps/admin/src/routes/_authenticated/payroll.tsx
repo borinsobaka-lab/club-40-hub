@@ -67,6 +67,7 @@ import {
   TRAINER_ROLES,
   bankOf,
   formatIban,
+  isAdminRole,
   usePayrollAdjustments,
   usePayrollScope,
   type Employee,
@@ -186,7 +187,7 @@ function PayrollPage() {
   // Сверху администраторы, затем тренеры — как в «Графике администраторов».
   const sorted = [...employees].sort(
     (a, b) =>
-      Number(b.role === "admin") - Number(a.role === "admin") ||
+      Number(isAdminRole(b.role)) - Number(isAdminRole(a.role)) ||
       a.full_name.localeCompare(b.full_name, "ru"),
   );
   const term = search.trim().toLowerCase();
@@ -325,7 +326,7 @@ function PayrollPage() {
                   <SelectItem value={ALL}>Все роли</SelectItem>
                   {(Object.keys(TRAINER_ROLES) as TrainerRole[]).map((r) => (
                     <SelectItem key={r} value={r}>
-                      {r === "admin" ? "Администраторы" : "Тренеры"}
+                      {TRAINER_ROLES[r].plural}
                     </SelectItem>
                   ))}
                 </SelectContent>

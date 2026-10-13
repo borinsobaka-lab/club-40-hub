@@ -188,6 +188,8 @@ type MembershipRow = {
   cancel_reason: string | null;
   freeze_days_used: number | null;
   frozen_until: string | null;
+  /** Пакетный клуб: срок с первого посещения (без посещений — «Ожидает посещения»). */
+  starts_on_first_visit: boolean | null;
   memberships: MembershipRef | MembershipRef[] | null;
 };
 
@@ -207,7 +209,7 @@ const SALE_COLUMNS =
   "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at)";
 
 const MEMBERSHIP_COLUMNS =
-  "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, memberships(name, freeze_days_allowed)";
+  "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed)";
 
 /**
  * Generic по типу клиента: раздел «Клиенты» передаёт свою строку (с

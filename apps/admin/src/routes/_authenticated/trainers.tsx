@@ -105,6 +105,7 @@ function isValidGeIban(iban: string) {
 const BIO_LABEL: Record<TrainerRole, string> = {
   trainer: "О тренере",
   admin: "Об администраторе",
+  senior_admin: "Об администраторе",
   masseur: "О массажисте",
 };
 

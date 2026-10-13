@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { SellerSelect } from "@/components/seller-select";
 import { StaffOption } from "@/components/employee-photo";
+import { isAdminRole } from "@/lib/staff-directory";
 import { SELLER_TIP, useStudioStaff } from "@/lib/studio-staff";
 import { useStudios } from "@/hooks/use-studios";
 import { unwrap } from "@/lib/query";
@@ -259,7 +260,7 @@ function SaleForm({
   const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(studioId);
   const trainers = staffRows.filter((r) => r.role === "trainer");
   const trainer = trainers.find((r) => r.id === form.trainerId) ?? null;
-  const admins = staffRows.filter((r) => r.role === "admin");
+  const admins = staffRows.filter((r) => isAdminRole(r.role));
   const seller = admins.find((r) => r.id === form.sellerId) ?? null;
 
   // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты.
@@ -737,6 +738,13 @@ function SaleForm({
             {form.clientId && membership && (
               <InfoNote>
                 Продажа абонемента «{membership.name}» клиенту {form.clientLabel}.
+                {isPackages && !isRenewal && (
+                  <>
+                    {" "}
+                    Абонемент будет ожидать посещения: срок действия начнётся с первой тренировки
+                    клиента, а не с даты продажи.
+                  </>
+                )}
               </InfoNote>
             )}
           </div>

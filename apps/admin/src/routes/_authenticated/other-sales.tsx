@@ -9,6 +9,7 @@ import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { SellerSelect } from "@/components/seller-select";
+import { isAdminRole } from "@/lib/staff-directory";
 import { SELLER_TIP, useStudioStaff } from "@/lib/studio-staff";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -402,7 +403,7 @@ function AddSaleForm({ onOpenChange, studioId, items, onSaved }: AddSaleDialogPr
 
   const selectedItem = items.find((i) => i.id === form.itemId) ?? null;
   const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(studioId);
-  const admins = staffRows.filter((r) => r.role === "admin");
+  const admins = staffRows.filter((r) => isAdminRole(r.role));
   const seller = admins.find((r) => r.id === form.sellerId) ?? null;
 
   // Цену позиции подставляем при выборе, а не эффектом по itemId.

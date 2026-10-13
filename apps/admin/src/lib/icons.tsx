@@ -71,6 +71,7 @@ import {
   Plus as PlusArt,
   Receipt as ReceiptArt,
   RefreshCw as RefreshCwArt,
+  Repeat as RepeatArt,
   RotateCcw as RotateCcwArt,
   Save as SaveArt,
   Search as SearchArt,
@@ -158,6 +159,7 @@ export const Play = icon(PlayArt, "Play");
 export const Plus = icon(PlusArt, "Plus");
 export const Receipt = icon(ReceiptArt, "Receipt");
 export const RefreshCw = icon(RefreshCwArt, "RefreshCw");
+export const Repeat = icon(RepeatArt, "Repeat");
 export const RotateCcw = icon(RotateCcwArt, "RotateCcw");
 export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");

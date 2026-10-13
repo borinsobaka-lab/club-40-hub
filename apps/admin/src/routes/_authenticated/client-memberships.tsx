@@ -100,7 +100,7 @@ const TIPS = {
   paidAt: "Когда клиент фактически заплатил.",
   paymentMethod: "Как заплатил клиент — для отчётов, как способ оплаты в форме продажи.",
   renewal:
-    "Продление: тренировки списываются после текущего абонемента, срок идёт с первого посещения по нему.",
+    "Срок абонемента идёт с первого посещения: пока клиент не пришёл, абонемент ожидает посещения. Продление — тренировки списываются после текущего абонемента.",
   nextPayment:
     "Абонементы, у которых ближайший невнесённый платёж приходится на выбранные даты. Одна дата — платежи за этот день, две — за период.",
 };
@@ -110,7 +110,7 @@ const TIPS = {
  * всё внесено, просрочка, невнесённый платёж сегодня или в ближайшие 2 дня.
  * Платёж позже (pending) не подсвечивается (решение владельца 2026-10-11).
  */
-type PaymentState = "paid" | "overdue" | "soon" | "pending";
+type PaymentState = "paid" | "overdue" | "soon" | "pending" | "refunded";
 
 const PAYMENT_STATES: Record<
   PaymentState,
@@ -142,8 +142,11 @@ const PAYMENT_STATES: Record<
     mobile: "max-md:border-l-4 max-md:border-l-blue-500",
   },
   pending: { label: "Следующий платёж позже", filter: "Платёж позже", stripe: null, mobile: null },
+  // Оформлен возврат: платежей больше не ждём — ни в один фильтр по платежам
+  // не попадает (решение владельца 2026-10-13).
+  refunded: { label: "Возврат", filter: "Возврат", stripe: null, mobile: null },
 };
-const PAYMENT_STATE_ORDER: PaymentState[] = ["overdue", "soon", "pending", "paid"];
+const PAYMENT_STATE_ORDER: PaymentState[] = ["overdue", "soon", "pending", "paid", "refunded"];
 /** Цвета расшифровки на плашке фильтров. */
 const STRIPED_STATES: PaymentState[] = ["paid", "overdue", "soon"];
 const ALL = "all";
@@ -157,6 +160,8 @@ type Payment = {
   paid_at: string | null;
   /** Способ оплаты внесённого платежа; null — не указан (старые платежи). */
   payment_method: PaymentMethod | null;
+  /** Снят возвратом: не вносится (вместо суммы и даты — «Возврат»). */
+  refunded?: boolean;
 };
 
 type Row = {
@@ -344,6 +349,7 @@ function ClientMembershipsPage() {
       studio_id: r.studio_id,
       total_amount: Number(r.total_amount),
       membershipName: r.memberships?.name ?? null,
+      packages: true,
     });
     setRefundOpen(true);
   };
@@ -565,7 +571,12 @@ function ClientMembershipsPage() {
                           <div className="flex flex-col items-start gap-1">
                             {r.membership_status ? (
                               <MembershipStatusBadge
-                                m={{ status: r.membership_status, ends_at: r.ends_at }}
+                                m={{
+                                  status: r.membership_status,
+                                  ends_at: r.ends_at,
+                                  starts_on_first_visit: r.starts_on_first_visit,
+                                  started_at: r.membership_started_at,
+                                }}
                               />
                             ) : (
                               <span className="text-muted-foreground">—</span>
@@ -705,7 +716,7 @@ function Amount({ row, refunded }: { row: Row; refunded: number }) {
 }
 
 /** Абонемент закончился: дни не считаем (статус — бейджем рядом). */
-const ENDED_STATUSES = new Set(["replaced", "cancelled", "expired", "frozen"]);
+const ENDED_STATUSES = new Set(["replaced", "cancelled", "expired", "frozen", "refunded"]);
 
 function DaysLeft({
   status,
@@ -837,6 +848,16 @@ function NoteForm({
 function PaymentCell({ payment, onSaved }: { payment?: Payment; onSaved: () => void }) {
   const [open, setOpen] = useState(false);
   if (!payment) return <span className="text-muted-foreground">—</span>;
+  // Снят возвратом: ни суммы, ни даты — только отметка (решение владельца 2026-10-13).
+  if (payment.refunded)
+    return (
+      <span
+        title="По продаже оформлен возврат — платёж больше не ждём"
+        className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
+      >
+        Возврат
+      </span>
+    );
 
   const overdue = !payment.paid && payment.due_date < todayISO();
   const summary = (
