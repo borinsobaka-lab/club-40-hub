@@ -33,13 +33,22 @@ export type SaleRecord = {
   membershipName: string;
   /** memberships.kind: пробное не делает следующую покупку продлением. */
   trial: boolean;
+  /**
+   * Пакет персональных тренировок (memberships.kind = personal, пакетные
+   * клубы) — свой вид баланса: продлевается и считается отдельно от
+   * групповых абонементов, как в базе (client_memberships.balance_kind).
+   */
+  personal: boolean;
   method: string | null;
   /** Ответственный (администратор-продавец): id справочника или снимок имени. */
   sellerKey: string | null;
   sellerName: string | null;
   /** Окончание выданного по продаже абонемента: null — бессрочный или срок ещё не начался. */
   endsAt: string | null;
-  /** Абонемент по продаже отменён — продлевать было нечего. */
+  /**
+   * Абонемент по продаже отменён или по нему оформлен возврат (пакетные
+   * клубы, статус refunded) — продлевать было нечего.
+   */
   cancelled: boolean;
   /** Нет выданного абонемента (удалён) — в истории клиента продажи нет. */
   noMembership: boolean;
@@ -132,13 +141,17 @@ export const SALE_ORIGIN_LABEL: Record<SaleOrigin, string> = {
   return: "Возвраты",
 };
 
-/** Продажи клиента по порядку внесения. */
+/**
+ * Продажи клиента по порядку внесения — отдельно по виду баланса: пакет
+ * персональных не продлевает групповой абонемент и наоборот.
+ */
 function byClient(sales: SaleRecord[]) {
   const map = new Map<string, SaleRecord[]>();
   for (const s of sales) {
-    const list = map.get(s.clientId) ?? [];
+    const key = `${s.clientId}:${s.personal ? "personal" : "group"}`;
+    const list = map.get(key) ?? [];
     list.push(s);
-    map.set(s.clientId, list);
+    map.set(key, list);
   }
   for (const list of map.values()) list.sort(compareSales);
   return map;
@@ -153,10 +166,15 @@ function compareSales(a: SaleRecord, b: SaleRecord) {
 /** Продажа считается в истории клиента: не пробное и абонемент по ней был. */
 const counts = (s: SaleRecord) => !s.trial && !s.noMembership;
 
-/** Самое позднее окончание абонементов из списка (null — какой-то из них без срока). */
+/**
+ * Самое позднее окончание абонементов из списка (null — какой-то из них без
+ * срока или срок ещё не начался). Отменённый или возвращённый без срока
+ * (возврат до первого посещения) уже не начнётся — не продлевает ничего.
+ */
 function latestEnd(list: SaleRecord[]): string | null {
   let latest = "";
   for (const s of list) {
+    if (s.endsAt === null && s.cancelled) continue;
     if (s.endsAt === null) return null;
     if (s.endsAt > latest) latest = s.endsAt;
   }
@@ -167,7 +185,8 @@ function latestEnd(list: SaleRecord[]): string | null {
  * Новый абонемент, продление или возврат: до этой продажи абонементов у
  * клиента не было — новый; прежний ещё действовал или закончился не раньше
  * чем за RENEWAL_GRACE_DAYS дней — продление; перерыв дольше — возврат.
- * Пробные посещения историей не считаются.
+ * Пробные посещения историей не считаются; групповые абонементы и пакеты
+ * персональных — две отдельные истории.
  */
 export function classifySales(all: SaleRecord[]): Map<string, SaleOrigin> {
   const result = new Map<string, SaleOrigin>();
@@ -187,6 +206,23 @@ export function classifySales(all: SaleRecord[]): Map<string, SaleOrigin> {
   return result;
 }
 
+/**
+ * Абонементы из `ending`, которые клиент не продлил до окончания: среди
+ * `later` нет абонемента того же клиента и вида (`key`), оформленного после
+ * этого и не позже дня окончания. createdAt — момент оформления (мс), date —
+ * его локальная дата.
+ */
+export function notRenewedBeforeEnd<T extends { key: string; createdAt: number; endsAt: string }>(
+  ending: T[],
+  later: { key: string; createdAt: number; date: string }[],
+): T[] {
+  const byKey = new Map<string, { createdAt: number; date: string }[]>();
+  for (const m of later) byKey.set(m.key, [...(byKey.get(m.key) ?? []), m]);
+  return ending.filter(
+    (m) => !(byKey.get(m.key) ?? []).some((n) => n.createdAt > m.createdAt && n.date <= m.endsAt),
+  );
+}
+
 export type MonthRate = {
   key: string;
   tick: string;
@@ -203,11 +239,12 @@ export type MonthRate = {
 /**
  * Процент продлений и возвращений за `months` месяцев до `anchor` включительно.
  *
- * Продления: абонементы, закончившиеся в месяце (кроме отменённых), — какая
- * доля клиентов купила следующий не позже RENEWAL_GRACE_DAYS дней после
- * окончания. Возвращения: клиенты, у которых на начало месяца все абонементы
- * закончились больше RENEWAL_GRACE_DAYS дней назад, — какая доля купила
- * абонемент в этом месяце.
+ * Продления: абонементы, закончившиеся в месяце (кроме отменённых и
+ * возвращённых), — какая доля клиентов купила следующий того же вида не позже
+ * RENEWAL_GRACE_DAYS дней после окончания. Возвращения: клиенты, у которых
+ * на начало месяца все абонементы этого вида закончились больше
+ * RENEWAL_GRACE_DAYS дней назад, — какая доля купила такой абонемент в этом
+ * месяце.
  */
 export function renewalRates(all: SaleRecord[], anchor: Date, months = 5): MonthRate[] {
   const history = all.filter(counts);
