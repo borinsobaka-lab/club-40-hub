@@ -14,7 +14,7 @@ import {
   UserPlus,
   X,
   Maximize,
-  Minimize2,
+  Minimize,
 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -137,31 +137,6 @@ function participantNames(e: Entry) {
     .join(", ");
 }
 
-/**
- * Значение фильтра «Типы активностей»: тип занятия, а у пакетных клубов ещё
- * «Парные» — персональное, на которое записаны двое и больше (своего типа в
- * базе у них нет, решение владельца 2026-10-13).
- */
-type KindFilterValue = ActivityKind | "pair";
-
-const KIND_FILTER_ALL: KindFilterValue[] = [...ACTIVITY_KIND_VALUES, "pair"];
-
-/** Пункты фильтра пакетного клуба — в порядке списка. */
-const PACKAGES_KIND_OPTIONS: { value: KindFilterValue; label: string }[] = [
-  { value: "group", label: "Групповые" },
-  { value: "personal", label: "Персональные" },
-  { value: "pair", label: "Парные" },
-  { value: "other", label: "Прочие активности" },
-];
-
-function entryFilterKind(e: Entry, packages: boolean): KindFilterValue {
-  if (!packages || e.kind !== "personal") return e.kind;
-  const clients = (e.participants ?? []).filter(
-    (p) => p.status === "booked" || p.status === "attended",
-  );
-  return clients.length >= 2 ? "pair" : "personal";
-}
-
 /** Занятие к созданию: строка schedule_entries и тренеры, которых к ней привязать. */
 type EntryDraft = {
   kind: ActivityKind;
@@ -215,6 +190,8 @@ const LAST_HOUR = 22;
 // EntryCard — перемерь и поправь здесь и в SLOT_FULL (page-skeletons.tsx).
 const SLOT_PX_FULL = 80;
 const SLOT_PX_EMPTY = 28;
+// Полноэкранный просмотр: шрифт карточки крупнее — и строка выше.
+const SLOT_PX_FULLSCREEN = 104;
 const ALL_FILTER_VALUE = "all";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -391,7 +368,7 @@ function SchedulePage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [formKind, setFormKind] = useState<ActivityKind>("group");
   // Фильтр типов занятий не запоминается: при входе в раздел видны все типы.
-  const [kindFilter, setKindFilter] = useState<KindFilterValue[]>(KIND_FILTER_ALL);
+  const [kindFilter, setKindFilter] = useState<ActivityKind[]>(ACTIVITY_KIND_VALUES);
   // Отменённые занятия по умолчанию скрыты и тоже не запоминаются.
   const [showCancelled, setShowCancelled] = useState(false);
   const [filterType, setFilterType] = useState<string>(ALL_FILTER_VALUE);
@@ -489,7 +466,7 @@ function SchedulePage() {
     typeFilter !== ALL_FILTER_VALUE ||
     workoutFilter !== ALL_FILTER_VALUE ||
     filterTrainerId !== ALL_FILTER_VALUE ||
-    KIND_FILTER_ALL.some((k) => !kindFilter.includes(k)) ||
+    kindFilter.length !== ACTIVITY_KIND_VALUES.length ||
     showCancelled;
 
   const weekDays = useMemo(
@@ -509,7 +486,7 @@ function SchedulePage() {
     const perDay = Array.from({ length: 7 }, () => 0);
     for (const e of entries) {
       if (e.cancelled_at && !showCancelled) continue;
-      if (!kindFilter.includes(entryFilterKind(e, packages))) continue;
+      if (!kindFilter.includes(e.kind)) continue;
       // Тип тренировки есть только у групповых: при выбранном типе прочие скрыты.
       if (typeFilter !== ALL_FILTER_VALUE && (e.kind !== "group" || e.workout?.type !== typeFilter))
         continue;
@@ -531,7 +508,7 @@ function SchedulePage() {
     const last = Math.max(LAST_HOUR, ...hourList);
     const hours = Array.from({ length: last - first + 1 }, (_, i) => i + first);
     return { cells, busyHours, perDay, hours };
-  }, [entries, packages, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
+  }, [entries, kindFilter, typeFilter, workoutFilter, filterTrainerId, showCancelled]);
 
   // Браузерный полноэкранный режим прячет вкладки и адресную строку; выход
   // из него (Esc, жест) закрывает и наш. Без поддержки (iPhone) — просто
@@ -750,6 +727,15 @@ function SchedulePage() {
             </PeriodStepper>
 
             <div className="toolbar-full flex flex-wrap items-center gap-2 sm:ml-auto">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Во весь экран"
+                title="Во весь экран — для скриншота клиенту"
+                onClick={openFullscreen}
+              >
+                <Maximize />
+              </Button>
               {!packages && (
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
@@ -819,19 +805,10 @@ function SchedulePage() {
                   setFilterType(ALL_FILTER_VALUE);
                   setFilterWorkoutId(ALL_FILTER_VALUE);
                   setFilterTrainerId(ALL_FILTER_VALUE);
-                  setKindFilter(KIND_FILTER_ALL);
+                  setKindFilter(ACTIVITY_KIND_VALUES);
                   setShowCancelled(false);
                 }}
               />
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Во весь экран"
-                title="Во весь экран — для скриншота клиенту"
-                onClick={openFullscreen}
-              >
-                <Maximize />
-              </Button>
             </div>
           </TableToolbar>
 
@@ -887,7 +864,7 @@ function SchedulePage() {
                   title="Выйти из полноэкранного режима (Esc)"
                   onClick={closeFullscreen}
                 >
-                  <Minimize2 />
+                  <Minimize />
                 </Button>
               </div>
             )}
@@ -975,7 +952,9 @@ function SchedulePage() {
                   const rowHeight =
                     grid.busyHours.has(hour) ||
                     (entriesPending && SCHEDULE_SKELETON_HOURS.has(hour))
-                      ? SLOT_PX_FULL
+                      ? fullscreen
+                        ? SLOT_PX_FULLSCREEN
+                        : SLOT_PX_FULL
                       : SLOT_PX_EMPTY;
                   return (
                     <div key={`row-${hour}`} className="contents">
@@ -1081,13 +1060,9 @@ function SchedulePage() {
   );
 }
 
-/** Отметить или снять тип в фильтре, сохраняя порядок KIND_FILTER_ALL. */
-function toggleKind(
-  value: KindFilterValue[],
-  kind: KindFilterValue,
-  checked: boolean,
-): KindFilterValue[] {
-  return KIND_FILTER_ALL.filter((k) => (k === kind ? checked : value.includes(k)));
+/** Отметить или снять тип в фильтре, сохраняя порядок ACTIVITY_KIND_VALUES. */
+function toggleKind(value: ActivityKind[], kind: ActivityKind, checked: boolean): ActivityKind[] {
+  return ACTIVITY_KIND_VALUES.filter((k) => (k === kind ? checked : value.includes(k)));
 }
 
 /**
@@ -1100,8 +1075,8 @@ function KindFilter({
   value,
   onChange,
 }: {
-  value: KindFilterValue[];
-  onChange: (v: KindFilterValue[]) => void;
+  value: ActivityKind[];
+  onChange: (v: ActivityKind[]) => void;
 }) {
   const shown = ACTIVITY_KIND_VALUES.filter((k) => value.includes(k)).length;
   return (
@@ -1130,7 +1105,7 @@ function KindFilter({
 
 /**
  * «Типы активностей» пакетного клуба — выпадающий список с галочками
- * (решение владельца 2026-10-13): групповые, персональные, парные, прочие и
+ * (решение владельца 2026-10-13): групповые, персональные, прочие и
  * «Отменённые». По умолчанию отмечено всё, кроме отменённых; последний
  * отмеченный тип снять нельзя.
  */
@@ -1140,18 +1115,18 @@ function ActivityTypesFilter({
   cancelled,
   onCancelledChange,
 }: {
-  value: KindFilterValue[];
-  onChange: (v: KindFilterValue[]) => void;
+  value: ActivityKind[];
+  onChange: (v: ActivityKind[]) => void;
   cancelled: boolean;
   onCancelledChange: (v: boolean) => void;
 }) {
-  const picked = PACKAGES_KIND_OPTIONS.filter((o) => value.includes(o.value));
-  const all = picked.length === PACKAGES_KIND_OPTIONS.length;
+  const picked = ACTIVITY_KINDS.filter((k) => value.includes(k.value));
+  const all = picked.length === ACTIVITY_KINDS.length;
   const label =
     all && !cancelled
       ? "Типы активностей"
       : [
-          ...(all ? ["Все"] : picked.map((o) => o.label)),
+          ...(all ? ["Все"] : picked.map((k) => k.plural)),
           ...(cancelled ? ["Отменённые"] : []),
         ].join(", ");
   return (
@@ -1170,17 +1145,17 @@ function ActivityTypesFilter({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-2">
         <div className="space-y-0.5">
-          {PACKAGES_KIND_OPTIONS.map((o) => {
-            const checked = value.includes(o.value);
+          {ACTIVITY_KINDS.map((k) => {
+            const checked = value.includes(k.value);
             return (
               <CheckboxOption
-                key={o.value}
+                key={k.value}
                 checked={checked}
                 disabled={checked && picked.length === 1}
-                onCheckedChange={(v) => onChange(toggleKind(value, o.value, v))}
+                onCheckedChange={(v) => onChange(toggleKind(value, k.value, v))}
                 className="rounded-md px-2 py-1.5 hover:bg-accent"
               >
-                {o.label}
+                {k.plural}
               </CheckboxOption>
             );
           })}
@@ -1312,7 +1287,8 @@ function EntryCard({
     return (
       <div
         className={cn(
-          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background text-[11px] leading-tight text-foreground shadow-xs",
+          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background leading-tight text-foreground shadow-xs",
+          clean ? "text-[13px]" : "text-[11px]",
           cancelled && "schedule-cancelled",
         )}
         title={cancelled ? `Отменено: ${entry.cancel_reason ?? "причина не указана"}` : undefined}
@@ -1337,7 +1313,8 @@ function EntryCard({
           </span>
           <span
             className={cn(
-              "mt-0.5 text-[13px] font-semibold leading-tight",
+              "mt-0.5 font-semibold leading-tight",
+              clean ? "text-base" : "text-[13px]",
               // Персональному название в одну строку — место под клиента.
               clients ? "truncate" : "line-clamp-2",
             )}
@@ -1376,7 +1353,11 @@ function EntryCard({
   const colorClasses = color ? `${color.bg} ${color.text}` : "bg-primary text-primary-foreground";
   return (
     <div
-      className={`pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md text-[11px] leading-tight ${colorClasses}`}
+      className={cn(
+        "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md leading-tight",
+        clean ? "text-[13px]" : "text-[11px]",
+        colorClasses,
+      )}
     >
       <button
         type="button"
@@ -1389,7 +1370,12 @@ function EntryCard({
           </span>
           {!clean && <CapacityBadge entry={entry} />}
         </span>
-        <span className="mt-0.5 text-[13px] font-semibold leading-tight line-clamp-2">
+        <span
+          className={cn(
+            "mt-0.5 font-semibold leading-tight line-clamp-2",
+            clean ? "text-base" : "text-[13px]",
+          )}
+        >
           {entryTitle(entry)}
         </span>
         {/* pr-5 — место под «Копировать» в углу. */}
