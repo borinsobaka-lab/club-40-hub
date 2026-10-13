@@ -19,7 +19,6 @@ import type { PrivacyPolicyInfo } from "@/lib/legal";
  */
 export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
   const brand = info.brand;
-  const operator = `${info.operatorName}, registered by the National Agency of Public Registry of Georgia, identification number ${info.operatorIdCode}`;
   const email = <a href={`mailto:${info.email}`}>{info.email}</a>;
 
   return (
@@ -34,23 +33,44 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
 
       <Section n={1} title="General provisions">
         <p>
-          1.1. This Privacy Policy (the “Policy”) explains how {operator} (the “Operator”, “we”,
-          “us”) collects, uses, stores, protects and shares the personal data of clients of the{" "}
-          {brand} studios in Tbilisi ({info.studios}) who use the {brand} mobile application (the
-          “App”).
+          1.1. This Privacy Policy (the “Policy”) explains how the personal data of clients of the{" "}
+          {brand} studios in Tbilisi who use the {brand} mobile application (the “App”) is
+          collected, used, stored, protected and shared by:
+        </p>
+        <ul>
+          {info.operators.map((o) => (
+            <li key={o.idCode}>
+              {o.name}, registered by the National Agency of Public Registry of Georgia,
+              identification number {o.idCode} — in respect of clients of the {brand} {o.studio}{" "}
+              studio;
+            </li>
+          ))}
+        </ul>
+        <p>
+          (each — the “Operator” in respect of the clients of their studio; together — the
+          “Operators”, “we”, “us”).
         </p>
         <p>
-          1.2. The Policy is drawn up in accordance with the Law of Georgia “On Personal Data
+          1.2. The Operator for your personal data is the entrepreneur with whom you have concluded
+          the public offer, that is, the operator of the studio where you buy your memberships. The
+          Operators use a common App, database and studio management system and act as joint
+          controllers in respect of them: each Operator is responsible for the data of the clients
+          of their studio, and both are jointly responsible for the security of the common systems.
+          You may exercise your rights under this Policy against either Operator using the contact
+          details in Section 16.
+        </p>
+        <p>
+          1.3. The Policy is drawn up in accordance with the Law of Georgia “On Personal Data
           Protection” (the “Law”) and other applicable legislation of Georgia, and aims to protect
           the rights and freedoms of individuals, including the right to privacy.
         </p>
         <p>
-          1.3. The Policy applies to all personal data that we process through the App and in
+          1.4. The Policy applies to all personal data that we process through the App and in
           connection with it, including the data that studio staff enter into our studio management
           system when you buy a membership or attend a class.
         </p>
         <p>
-          1.4. Studio services (memberships, classes, rules of attendance, payments and refunds) are
+          1.5. Studio services (memberships, classes, rules of attendance, payments and refunds) are
           governed by the Public Agreement on the Provision of Physical Fitness and Recreational
           Services of the respective studio (the “public offer”), which you accept when you purchase
           a membership. This Policy is the Personal Data Confidentiality Policy referred to in the
@@ -58,18 +78,18 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           this Policy differ on a personal data matter, this Policy prevails.
         </p>
         <p>
-          1.5. The App is available only to clients of {brand} studios: you can sign in only with
+          1.6. The App is available only to clients of {brand} studios: you can sign in only with
           the e-mail address that the studio has recorded in your client card. There is no public
           registration in the App.
         </p>
         <p>
-          1.6. By ticking the checkbox when signing in to the App, you confirm that you have read
+          1.7. By ticking the checkbox when signing in to the App, you confirm that you have read
           this Policy and give your consent to the processing of your personal data as described in
           it. Your consent to the processing of health data (Section 6) is given separately, when
           you choose to answer the health questions in the App questionnaire.
         </p>
         <p>
-          1.7. This Policy is always available in the App (Profile → Privacy Policy) and can also be
+          1.8. This Policy is always available in the App (Profile → Privacy Policy) and can also be
           requested at the studio reception.
         </p>
       </Section>
@@ -264,7 +284,7 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
         <p>
           6.3. If you do not give this consent, you can still use the App and attend classes; in
           that case, please inform your trainer in person about any conditions that may affect your
-          training. You may withdraw your consent at any time by contacting us (Section 14); we will
+          training. You may withdraw your consent at any time by contacting us (Section 11); we will
           then delete your health answers.
         </p>
         <p>
@@ -280,7 +300,7 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           granted through personal staff accounts with role-based permissions.
         </p>
         <p>
-          7.2. If you train in another {brand} studio operated by the Operator, the staff of that
+          7.2. If you also train in the other {brand} studio, the staff and the Operator of that
           studio may access the data needed to serve you there.
         </p>
         <p>
@@ -470,17 +490,24 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
         </p>
       </Section>
 
-      <Section n={16} title="Operator details">
-        <ul className="!list-none !pl-0 space-y-1">
-          <li>{info.operatorName}</li>
-          <li>Registered by the National Agency of Public Registry of Georgia</li>
-          <li>Identification number: {info.operatorIdCode}</li>
-          <li>Address: {info.operatorAddress}</li>
-          <li>
-            Phone: <a href={`tel:${info.phone.replace(/\s/g, "")}`}>{info.phone}</a>
-          </li>
-          <li>E-mail: {email}</li>
-        </ul>
+      <Section n={16} title="Operators’ details">
+        {info.operators.map((o) => (
+          <div key={o.idCode} className="mt-3">
+            <p className="font-semibold">
+              {brand} {o.studio}
+            </p>
+            <ul className="!mt-1 !list-none !pl-0 space-y-1">
+              <li>{o.name}</li>
+              <li>Registered by the National Agency of Public Registry of Georgia</li>
+              <li>Identification number: {o.idCode}</li>
+              <li>Address: {o.address}</li>
+              <li>
+                Phone: <a href={`tel:${o.phone.replace(/\s/g, "")}`}>{o.phone}</a>
+              </li>
+              <li>E-mail: {email}</li>
+            </ul>
+          </div>
+        ))}
       </Section>
     </article>
   );
