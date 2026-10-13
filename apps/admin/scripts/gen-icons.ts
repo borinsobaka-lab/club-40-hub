@@ -37,6 +37,10 @@ const MANUAL: Record<string, string> = {
   GripVertical: "DragDropVerticalIcon", // псевдоним — рука, нужны точки-ручка
   HelpCircle: "HelpCircleIcon", // псевдонима под именем lucide нет
   Loader2: "LoaderCircle",
+  // Полный экран расписания: псевдонимы Maximize/Minimize — не те фигуры,
+  // нужны стрелки наружу и внутрь.
+  Maximize: "ArrowExpandIcon",
+  Minimize: "ArrowShrinkIcon",
   RefreshCwOff: "RefreshCwOffIcon", // псевдоним не перечёркнут, не отличить от RefreshCw
   Send: "SentIcon", // псевдоним — конверт, для кнопки отправки нужен самолётик
 };
