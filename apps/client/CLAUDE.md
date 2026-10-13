@@ -257,7 +257,10 @@ Service worker — `public/sw.js`, пока только у пакетного �
 - Запросы, которые нужны и экрану, и фоновой подгрузке, — фабрики
   `queryOptions`: `src/formats/packages/queries.ts` (расписание, абонементы,
   «Студия»), `src/lib/client-card.ts` (карточка клиента — общая у главной и
-  «Профиля»), `src/lib/home-queries.ts` (записи на главной). После действий
+  «Профиля»), `src/lib/home-queries.ts` (записи на главной и история
+  посещений — плашка под ними, шторка `components/visit-history-drawer.tsx`:
+  журнал `bookings_log`, а не записи с занятием — отменённое студией и
+  персональное клиенту по RLS не видны). После действий
   (запись, отмена) — `setQueryData` своего кэша и `invalidateQueries`
   соседних экранов, а не перезагрузка.
 - `usePrefetchScreens` (`__root.tsx`): карточка и записи главной — сразу

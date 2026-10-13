@@ -37,6 +37,7 @@ import { StudioSwitcher } from "@/formats/packages/studio-switcher";
 import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
+import { VisitHistoryButton, VisitHistoryDrawer } from "@/components/visit-history-drawer";
 import { entryToDrawerData, workoutTypeMeta } from "@/lib/workout-types";
 import { toast } from "sonner";
 import { CarouselSkeleton } from "@/components/content-skeletons";
@@ -116,6 +117,7 @@ function HomePage() {
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   // Кнопки «Написать/Позвонить/Фидбэк» — смотримой студии; срок отмены записи
   // — своей (записи клиента всегда в своей студии).
   const clubSettings = useClubSettings();
@@ -501,6 +503,8 @@ function HomePage() {
                 })}
               </div>
             )}
+            {/* История посещений — под запланированными, шторка по нажатию. */}
+            {userId && <VisitHistoryButton onOpen={() => setHistoryOpen(true)} />}
           </section>
 
           <div className="h-3 bg-muted" />
@@ -589,6 +593,8 @@ function HomePage() {
           if (!o) setOpenServiceId(null);
         }}
       />
+
+      <VisitHistoryDrawer open={historyOpen} onOpenChange={setHistoryOpen} />
 
       <WorkoutDrawer
         data={openEntry}

@@ -1,9 +1,16 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { PACK_ENTRY_SELECT, attachSubstitutions, type PackEntry } from "@/formats/packages/entries";
+import { chunks } from "@/formats/packages/substitutions";
 import type { ContentTranslations } from "@/i18n";
 import { untypedDb } from "@/lib/untyped-db";
 import { IS_PACKAGES } from "@/lib/terms";
+import {
+  HISTORY_LOG_STATUSES,
+  type VisitRow,
+  type VisitTrainer,
+  type VisitWorkout,
+} from "@/lib/visit-history";
 
 type Trainer = {
   id: string;
@@ -71,4 +78,77 @@ export function homeBookingsQuery(userId: string | null) {
     },
     enabled: !!userId,
   });
+}
+
+type VisitLogRow = Omit<VisitRow, "workout" | "trainers"> & { workout_id: string | null };
+
+/**
+ * История посещений (главная → «История посещений», src/lib/visit-history.ts):
+ * прошедшие занятия клиента из журнала bookings_log, новые сверху. Название
+ * тренировки с переводами и тренеры — отдельными запросами: если они не
+ * прошли (или занятие клиенту не видно — отменено студией, персональное),
+ * остаются снимок названия из журнала и пустой тренер.
+ */
+export function visitHistoryQuery(userId: string | null) {
+  return queryOptions({
+    queryKey: ["visit-history", userId],
+    queryFn: async (): Promise<VisitRow[]> => {
+      // Явный фильтр по user_id: тренеру RLS отдаёт весь журнал студии.
+      const { data, error } = await untypedDb
+        .from("bookings_log")
+        .select(
+          "id, entry_id, workout_id, workout_name, workout_type, starts_at, ends_at, status, duration_min, calories",
+        )
+        .eq("user_id", userId)
+        .lt("starts_at", new Date().toISOString())
+        .in("status", HISTORY_LOG_STATUSES)
+        .order("starts_at", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      const rows = (data as VisitLogRow[] | null) ?? [];
+
+      const workoutIds = [...new Set(rows.flatMap((r) => (r.workout_id ? [r.workout_id] : [])))];
+      const entryIds = [...new Set(rows.flatMap((r) => (r.entry_id ? [r.entry_id] : [])))];
+      const [workouts, trainers] = await Promise.all([
+        fetchByIds(workoutIds, async (part) => {
+          const res = await untypedDb
+            .from("workouts")
+            .select("id, name, type, color, translations")
+            .in("id", part);
+          return (res.data as VisitWorkout[] | null) ?? [];
+        }),
+        fetchByIds(entryIds, async (part) => {
+          const res = await untypedDb
+            .from("schedule_entry_trainers")
+            .select("entry_id, trainer:trainers(id, full_name, translations)")
+            .in("entry_id", part);
+          return (res.data as { entry_id: string; trainer: VisitTrainer | null }[] | null) ?? [];
+        }),
+      ]);
+      const workoutById = new Map(workouts.map((w) => [w.id, w]));
+      const trainersByEntry = new Map<string, VisitTrainer[]>();
+      for (const row of trainers) {
+        if (!row.trainer) continue;
+        const arr = trainersByEntry.get(row.entry_id) ?? [];
+        arr.push(row.trainer);
+        trainersByEntry.set(row.entry_id, arr);
+      }
+      return rows.map(({ workout_id, ...r }) => ({
+        ...r,
+        workout: (workout_id && workoutById.get(workout_id)) || null,
+        trainers: (r.entry_id && trainersByEntry.get(r.entry_id)) || [],
+      }));
+    },
+    enabled: !!userId,
+  });
+}
+
+/** Догрузка по id частями; сбой — пустой список (история показывается и без этого). */
+async function fetchByIds<T>(ids: string[], load: (part: string[]) => Promise<T[]>): Promise<T[]> {
+  if (ids.length === 0) return [];
+  try {
+    return (await Promise.all(chunks(ids, 100).map(load))).flat();
+  } catch {
+    return [];
+  }
 }
