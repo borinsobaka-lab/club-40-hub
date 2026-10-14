@@ -1,5 +1,6 @@
 import { createFileRoute, useLoaderData, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { FloatingLabelInput } from "@/components/ui/floating-input";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import packagesLogo from "@/assets/packages-logo.svg";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PrivacyConsent } from "@/components/privacy-consent";
 import { recordPrivacyConsent } from "@/lib/privacy-consent";
+import { fetchSignInClosed } from "@/lib/app-install";
 import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { getTranslator, useT, type Translator } from "@/i18n";
 import loginEmailArt from "@/assets/login-email.webp";
@@ -107,8 +109,22 @@ function AuthPage() {
   // владельца 2026-10-14): приложение ставят до переноса базы клиентов —
   // вместо почты и согласия текст, когда откроем вход. Код, уже введённый
   // до закрытия (шаг otp), доводим до конца.
-  const signInClosed =
-    useLoaderData({ from: "__root__" })?.signInClosed === true && step === "form";
+  // Значение со страницы — только первое: страница могла прийти устаревшей
+  // (кэш сервера, копия service worker'а в установленном приложении), поэтому
+  // флаг сразу перепроверяется в базе, при возвращении в приложение и, пока
+  // вход закрыт, раз в 30 секунд — открыли вход, и форма появится сама.
+  const ssrSignInClosed = useLoaderData({ from: "__root__" })?.signInClosed === true;
+  const { data: signInClosedLive } = useQuery({
+    queryKey: ["sign-in-closed"],
+    queryFn: fetchSignInClosed,
+    initialData: ssrSignInClosed,
+    initialDataUpdatedAt: 0,
+    staleTime: 0,
+    refetchOnWindowFocus: "always",
+    refetchInterval: (q) => (q.state.data ? 30_000 : false),
+    meta: { persist: false },
+  });
+  const signInClosed = signInClosedLive === true && step === "form";
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
