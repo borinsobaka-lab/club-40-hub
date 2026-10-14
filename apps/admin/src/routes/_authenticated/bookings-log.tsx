@@ -198,15 +198,16 @@ function BookingsLogPage() {
                   <TableHead className="w-[80px] text-right">Длит., мин</TableHead>
                   <TableHead className="w-[90px] text-right">Ккал</TableHead>
                   <TableHead className="w-[160px]">Отменена</TableHead>
+                  <TableHead className="min-w-[180px]">Причина отмены</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {table.loading ? (
-                  <TableSkeletonRows columns={10} />
+                  <TableSkeletonRows columns={11} />
                 ) : table.rows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={10}
+                      colSpan={11}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Записей не найдено.
@@ -266,15 +267,21 @@ function BookingsLogPage() {
                           {r.cancelled_at ? (
                             <div className="space-y-0.5">
                               <div>{formatDateTime(r.cancelled_at)}</div>
-                              {r.cancel_reason && (
-                                <div className="text-foreground">{r.cancel_reason}</div>
-                              )}
                               {r.cancelled_lead_minutes != null && (
                                 <div>{formatLead(r.cancelled_lead_minutes)}</div>
                               )}
                             </div>
                           ) : (
                             "—"
+                          )}
+                        </TableCell>
+                        {/* Готовая причина из приложения или текст клиента («Другое»),
+                            решение владельца 2026-10-14. */}
+                        <TableCell className="max-w-[260px] whitespace-pre-wrap break-words text-sm">
+                          {r.cancelled_at && r.cancel_reason ? (
+                            r.cancel_reason
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
                       </TableRow>

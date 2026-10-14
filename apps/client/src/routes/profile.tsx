@@ -132,8 +132,15 @@ function formatBirthday(value: string, t: Translator) {
   });
 }
 
-/** Сторона квадратной аватарки после сжатия, px. */
-const AVATAR_SIZE = 512;
+/**
+ * Сторона квадратной аватарки после сжатия, px, и качество WebP/JPEG
+ * (решение владельца 2026-10-14: аватарок будет много — геймификация, —
+ * грузиться должны быстро). Самая крупная аватарка на экране — 120px в
+ * профиле: 320px хватает и на экранах 2–3x, файл — порядка 15–25 КБ
+ * (512px и 0.86 давали в 3–4 раза больше).
+ */
+const AVATAR_SIZE = 320;
+const AVATAR_QUALITY = 0.8;
 
 // Выбор файла аватарки. Константой, а не литералом в JSX: проверка словарей
 // (scripts/i18n-check.ts) принимала слэш со звёздочкой в этой строке за начало
@@ -141,7 +148,7 @@ const AVATAR_SIZE = 512;
 const AVATAR_ACCEPT = "image/*";
 
 /**
- * Фото с телефона — в квадрат 512px WebP (JPEG, если браузер не умеет WebP):
+ * Фото с телефона — в квадрат AVATAR_SIZE WebP (JPEG, если браузер не умеет WebP):
  * снимок камеры весит 3–10 МБ (раньше такие отклонялись «Файл больше 5 МБ»),
  * HEIC с iPhone браузер сам декодирует. Ориентацию EXIF браузер учитывает при
  * отрисовке. Не удалось открыть картинку — null.
@@ -163,6 +170,9 @@ async function squareAvatar(file: File): Promise<Blob | null> {
     canvas.height = size;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
+    // Сильное уменьшение (снимок 4000px → 320px) без сглаживания даёт «лесенку».
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.drawImage(
       img,
       (img.naturalWidth - side) / 2,
@@ -175,7 +185,7 @@ async function squareAvatar(file: File): Promise<Blob | null> {
       size,
     );
     const encode = (type: string) =>
-      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.86));
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, AVATAR_QUALITY));
     const webp = await encode("image/webp");
     // Старый Safari вместо WebP молча отдаёт PNG — тогда JPEG (легче).
     return webp?.type === "image/webp" ? webp : await encode("image/jpeg");
@@ -409,20 +419,6 @@ function ProfilePage() {
           {/* Блок: ссылки */}
           <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
             <ul className="divide-y divide-border">
-              {/* Lady Stretch: единственный юридический документ приложения —
-                  политика конфиденциальности (решение владельца 2026-10-13). */}
-              {PRIVACY_POLICY_INFO ? (
-                <ProfileLink
-                  icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
-                  label={t("Политика конфиденциальности")}
-                  onClick={() => void navigate({ to: "/privacy" })}
-                />
-              ) : (
-                <ProfileLink
-                  icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
-                  label={t("Правовые документы")}
-                />
-              )}
               {/* Оплаты в приложении пакетных студий пока нет (решение владельца
                   2026-10-12) — блок способов оплаты не показываем. */}
               {!IS_PACKAGES && (
@@ -457,6 +453,21 @@ function ProfilePage() {
                 icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />}
                 label={t("О приложении")}
               />
+              {/* Lady Stretch: единственный юридический документ приложения —
+                  политика конфиденциальности (решение владельца 2026-10-13); последней
+                  строкой, после «О приложении» (2026-10-14). */}
+              {PRIVACY_POLICY_INFO ? (
+                <ProfileLink
+                  icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
+                  label={t("Политика конфиденциальности")}
+                  onClick={() => void navigate({ to: "/privacy" })}
+                />
+              ) : (
+                <ProfileLink
+                  icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
+                  label={t("Правовые документы")}
+                />
+              )}
             </ul>
           </section>
 

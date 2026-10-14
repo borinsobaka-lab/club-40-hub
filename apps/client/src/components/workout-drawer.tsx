@@ -21,7 +21,14 @@ import {
   SquircleAvatarImage,
 } from "@/components/ui/squircle-avatar";
 import { googleCalendarUrl, outlookLiveUrl, downloadICS, type CalendarEvent } from "@/lib/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -89,13 +96,20 @@ function whenLabel(startsAt: string, endsAt: string | null | undefined, t: Trans
   return `${day} · ${time(start)}–${time(end)}${minutes > 0 ? ` · ${t("{n} мин", { n: minutes })}` : ""}`;
 }
 
-// Причина уходит в базу по-русски (её читают в админке) — показывается перевод.
+// Причины отмены (решение владельца 2026-10-14): выбираются в окне после
+// «Отменить запись», без причины не отменить. Готовая причина уходит в базу
+// по-русски (её читают в «Истории записей» админки) — показывается перевод;
+// «Другое» — текст клиента как есть.
 const CANCEL_REASONS = [
-  msg("Заболел(а)"),
-  msg("Не получается прийти"),
-  msg("Изменились планы"),
-  msg("Другое"),
+  msg("Плохое самочувствие или болезнь"),
+  msg("Работа или учёба"),
+  msg("Семейные обстоятельства"),
+  msg("Не успеваю к началу"),
+  msg("Хочу перенести на другое время"),
+  msg("Записался(-ась) по ошибке"),
 ];
+const OTHER_REASON = "other";
+const OTHER_REASON_MAX = 300;
 
 export function WorkoutDrawer({
   data,
@@ -130,12 +144,17 @@ export function WorkoutDrawer({
   const studio =
     isPack && data?.studioId ? loc(studios?.find((s) => s.id === data.studioId)) : null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
+  // Окно «Почему отменяете?»: выбранная причина (или OTHER_REASON) и свой текст.
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
+  const [otherReason, setOtherReason] = useState("");
   // Карточка тренера (пакетное) — вложенной шторкой поверх окна тренировки.
   const [trainerId, setTrainerId] = useState<string | null>(null);
 
   useEffect(() => {
+    setCancelOpen(false);
     setCancelReason("");
+    setOtherReason("");
     setTrainerId(null);
   }, [data?.id, open]);
 
@@ -260,33 +279,12 @@ export function WorkoutDrawer({
                   />
                 )}
 
-                {/* Причина отмены и подсказки — в прокрутке; кнопки — ниже,
-                    закреплены (решение владельца 2026-10-12: «Записаться» не
-                    должна уезжать за край длинного описания); размер — общий
-                    у кнопок действий (`buttonVariants`, 2026-10-13). */}
-                {isBooked ? (
-                  <div className="mt-6">
-                    <div className="mb-2 text-xs font-semibold text-muted-foreground">
-                      {t("Причина отмены (по желанию)")}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {CANCEL_REASONS.map((r) => (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setCancelReason(cancelReason === r ? "" : r)}
-                          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                            cancelReason === r
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground"
-                          }`}
-                        >
-                          {t(r)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : isWaitlisted ? (
+                {/* Подсказки — в прокрутке; кнопки — ниже, закреплены (решение
+                    владельца 2026-10-12: «Записаться» не должна уезжать за край
+                    длинного описания); размер — общий у кнопок действий
+                    (`buttonVariants`, 2026-10-13). Причина отмены — в окне
+                    после «Отменить запись» (2026-10-14). */}
+                {isBooked ? null : isWaitlisted ? (
                   <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                     {t(
                       "Вы в листе ожидания. Если освободится место, с вами свяжется администратор.",
@@ -315,7 +313,7 @@ export function WorkoutDrawer({
                         );
                         return;
                       }
-                      onBook(cancelReason || undefined);
+                      setCancelOpen(true);
                     }}
                     disabled={isPending}
                     className={cn(
@@ -364,6 +362,70 @@ export function WorkoutDrawer({
       </DrawerPrimitive.Portal>
 
       {isPack && <TrainerDrawer nested trainerId={trainerId} onClose={() => setTrainerId(null)} />}
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("Почему отменяете запись?")}</DialogTitle>
+            <DialogDescription>{t("Выберите причину — так мы станем удобнее.")}</DialogDescription>
+          </DialogHeader>
+          <div className="mt-1 flex flex-col gap-2">
+            {[...CANCEL_REASONS, OTHER_REASON].map((r) => {
+              const selected = cancelReason === r;
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setCancelReason(r)}
+                  className={cn(
+                    "w-full rounded-2xl px-4 py-3 text-left text-[15px] font-medium transition",
+                    selected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+                  )}
+                >
+                  {r === OTHER_REASON ? t("Другое") : t(r)}
+                </button>
+              );
+            })}
+            {cancelReason === OTHER_REASON && (
+              <Textarea
+                autoFocus
+                rows={3}
+                maxLength={OTHER_REASON_MAX}
+                value={otherReason}
+                onChange={(e) => setOtherReason(e.target.value)}
+                placeholder={t("Напишите причину")}
+              />
+            )}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setCancelOpen(false)}
+              className={cn(buttonVariants(), "flex-1 bg-muted text-foreground hover:bg-muted/80")}
+            >
+              {t("Не отменять")}
+            </button>
+            <button
+              type="button"
+              disabled={
+                isPending || !cancelReason || (cancelReason === OTHER_REASON && !otherReason.trim())
+              }
+              onClick={() => {
+                const reason = cancelReason === OTHER_REASON ? otherReason.trim() : cancelReason;
+                if (!reason) return;
+                setCancelOpen(false);
+                onBook(reason);
+              }}
+              className={cn(
+                buttonVariants(),
+                "flex-1 bg-red-500 text-white hover:bg-red-500/90 disabled:opacity-60",
+              )}
+            >
+              {t("Отменить запись")}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={calendarPickerOpen} onOpenChange={setCalendarPickerOpen}>
         <DialogContent className="max-w-sm rounded-2xl">
