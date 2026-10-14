@@ -7,7 +7,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { ImageUploadField, StorageImage } from "@/components/image-upload-field";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useActiveStudio } from "@/hooks/use-studios";
+import { useActiveStudio, useStudios, type Studio } from "@/hooks/use-studios";
 import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -67,7 +67,8 @@ const TIPS = {
   description:
     "Клиенты видят его в карточке занятия в расписании приложения. Можно выделять жирным, делать списки и ссылки.",
   type: "Задаёт цвет метки и MET по умолчанию, если поле MET пустое.",
-  capacity: "Когда места заняты, новые записи встают в лист ожидания.",
+  capacity:
+    "Сколько человек вмещает зал клуба на этой тренировке — своя цифра в каждом клубе. Её подставит «Расписание» новому занятию (там её можно поменять на один день). Когда места заняты, новые записи встают в лист ожидания.",
   color:
     "Полоска этого цвета слева на карточке занятия в расписании — видно, какие тренировки когда стоят.",
   met: "Интенсивность: по ней клиенту оцениваются сожжённые калории (ккал ≈ MET × 3.5 × вес / 200 × мин).",
@@ -85,7 +86,10 @@ type Workout = {
   name: string;
   description: string | null;
   photo_url: string | null;
+  /** По умолчанию — для клуба без своей строки в capacities. */
   capacity: number | null;
+  /** Вместимость в каждом клубе (workout_capacities): null — без лимита. */
+  capacities: WorkoutCapacity[];
   type: DayType | null;
   met_value: number | null;
   /** Пакетный формат: цвет полоски в расписании (#rrggbb). */
@@ -93,6 +97,14 @@ type Workout = {
   /** Переводы для приложения: {en|ka: {name, description}}. */
   translations: ContentTranslations;
 };
+
+type WorkoutCapacity = { studio_id: string; capacity: number | null };
+
+/** Вместимость тренировки в клубе: своя строка, иначе по умолчанию. */
+function capacityIn(w: Pick<Workout, "capacity" | "capacities">, studioId: string) {
+  const own = w.capacities?.find((c) => c.studio_id === studioId);
+  return own ? own.capacity : w.capacity;
+}
 
 const NONE_TYPE = "__none__" as const;
 
@@ -118,6 +130,23 @@ function ColorSwatch({ value }: { value: string | null }) {
   );
 }
 
+/** Вместимость в таблице: одна цифра или по клубам, если их несколько. */
+function CapacityCell({ workout, studios }: { workout: Workout; studios: Studio[] }) {
+  if (studios.length <= 1) {
+    const c = studios[0] ? capacityIn(workout, studios[0].id) : workout.capacity;
+    return <>{c || "—"}</>;
+  }
+  return (
+    <div className="space-y-0.5">
+      {studios.map((st) => (
+        <div key={st.id} className="whitespace-nowrap">
+          {st.name}: <span className="tabular-nums">{capacityIn(workout, st.id) || "—"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function WorkoutsPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
@@ -126,6 +155,10 @@ function WorkoutsPage() {
   const packages = useActiveStudio()?.format === "packages";
   // У пакетных клубов список общий на все пакетные клубы (lib/studio-catalog.ts).
   const catalogIds = useCatalogStudioIds();
+  // Вместимость — по клубам каталога, где сотрудник работает (решение
+  // владельца 2026-10-14): столько полей, сколько у него таких клубов.
+  const { data: myStudios = [] } = useStudios();
+  const capacityStudios = catalogIds ? myStudios.filter((st) => catalogIds.includes(st.id)) : [];
   const columns = packages ? 5 : 6;
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -138,7 +171,7 @@ function WorkoutsPage() {
       unwrap<Workout[]>(
         supabase
           .from("workouts")
-          .select("*")
+          .select("*, capacities:workout_capacities(studio_id, capacity)")
           .in("studio_id", catalogIds!)
           .order("created_at", { ascending: false }),
       ),
@@ -225,7 +258,7 @@ function WorkoutsPage() {
                     </TableHead>
                   )}
                   <TableHead tip={TIPS.description}>Описание</TableHead>
-                  <TableHead className="w-[120px]" tip={TIPS.capacity}>
+                  <TableHead className="w-[160px]" tip={TIPS.capacity}>
                     Вместимость
                   </TableHead>
                   <TableHead className="w-[90px]" tip={packages ? TIPS.met : undefined}>
@@ -279,7 +312,7 @@ function WorkoutsPage() {
                           {w.description ? stripFormatting(w.description) : "—"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {w.capacity ?? "—"}
+                          <CapacityCell workout={w} studios={capacityStudios} />
                         </TableCell>
                         <TableCell className="text-sm tabular-nums text-muted-foreground">
                           {w.met_value != null ? Number(w.met_value).toFixed(1) : "—"}
@@ -301,6 +334,7 @@ function WorkoutsPage() {
         studioId={studioId}
         workout={editing}
         packages={packages}
+        capacityStudios={capacityStudios}
         usedColors={workouts.map((w) => w.color)}
         onSaved={reload}
       />
@@ -316,6 +350,8 @@ type DialogProps = {
   workout: Workout | null;
   /** Пакетная студия: цвет вместо типа и иконки, MET обязателен. */
   packages: boolean;
+  /** Клубы каталога, где работает сотрудник, — поле вместимости на каждый. */
+  capacityStudios: Studio[];
   /** Цвета других тренировок — новой предлагается ещё не занятый. */
   usedColors: (string | null)[];
   onSaved: () => void;
@@ -337,14 +373,21 @@ function WorkoutForm({
   studioId,
   workout,
   packages,
+  capacityStudios,
   usedColors,
   onSaved,
 }: DialogProps) {
   const [name, setName] = useState(workout?.name ?? "");
   const [description, setDescription] = useState(workout?.description ?? "");
   const [photoUrl, setPhotoUrl] = useState(workout?.photo_url ?? null);
-  const [capacity, setCapacity] = useState(
-    workout?.capacity != null ? String(workout.capacity) : "",
+  // Клуб → вместимость строкой («» — без лимита).
+  const [capacities, setCapacities] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      capacityStudios.map((st) => {
+        const c = workout ? capacityIn(workout, st.id) : null;
+        return [st.id, c != null ? String(c) : ""];
+      }),
+    ),
   );
   const [metValue, setMetValue] = useState(
     workout?.met_value != null ? String(workout.met_value) : "",
@@ -368,11 +411,22 @@ function WorkoutForm({
       toast.error("Укажите название");
       return;
     }
-    const capacityNum = capacity.trim() === "" ? null : Number(capacity);
-    if (capacityNum != null && (!Number.isInteger(capacityNum) || capacityNum < 0)) {
+    const capacityRows: WorkoutCapacity[] = capacityStudios.map((st) => {
+      const raw = (capacities[st.id] ?? "").trim();
+      return { studio_id: st.id, capacity: raw === "" ? null : Number(raw) };
+    });
+    if (
+      capacityRows.some(
+        (r) => r.capacity != null && (!Number.isInteger(r.capacity) || r.capacity < 0),
+      )
+    ) {
       toast.error("Вместимость должна быть целым неотрицательным числом");
       return;
     }
+    // По умолчанию (клуб без своей строки, старый код) — вместимость активного
+    // клуба, иначе первого из полей.
+    const defaultCapacity = (capacityRows.find((r) => r.studio_id === studioId) ?? capacityRows[0])
+      ?.capacity;
     const metNum = metValue.trim() === "" ? null : Number(metValue);
     if (packages && metNum == null) {
       toast.error("Укажите интенсивность (MET)");
@@ -393,7 +447,7 @@ function WorkoutForm({
         name: name.trim(),
         description: description.trim() || null,
         translations: tr.cleaned(),
-        capacity: capacityNum,
+        ...(defaultCapacity !== undefined ? { capacity: defaultCapacity } : {}),
         met_value: metNum,
       };
       // Пакетной тренировке тип и иконку не пишем вовсе: у неё их нет.
@@ -401,14 +455,33 @@ function WorkoutForm({
       const payload: Record<string, unknown> = packages
         ? { ...common, type: null, color: color.toLowerCase() }
         : { ...common, photo_url: photoUrl, type: type === NONE_TYPE ? null : type };
-      const { error } = workout
-        ? await supabase.from("workouts").update(payload).eq("id", workout.id)
+      const { data: saved, error } = workout
+        ? await supabase.from("workouts").update(payload).eq("id", workout.id).select("id").single()
         : // Новая — в активном клубе; у пакетных она сразу видна во всех пакетных
           // клубах. Правка клуб строки не меняет.
-          await supabase.from("workouts").insert({ ...payload, studio_id: studioId });
+          await supabase
+            .from("workouts")
+            .insert({ ...payload, studio_id: studioId })
+            .select("id")
+            .single();
       if (error) {
         toast.error("Ошибка сохранения: " + error.message);
         return;
+      }
+      if (capacityRows.length > 0) {
+        const { error: capError } = await supabase.from("workout_capacities").upsert(
+          capacityRows.map((r) => ({
+            ...r,
+            workout_id: saved.id as string,
+            updated_at: new Date().toISOString(),
+          })),
+        );
+        if (capError) {
+          toast.error("Тренировка сохранена, но вместимость — нет: " + capError.message);
+          onOpenChange(false);
+          onSaved();
+          return;
+        }
       }
       toast.success(workout ? "Тренировка обновлена" : "Тренировка добавлена");
       onOpenChange(false);
@@ -513,22 +586,34 @@ function WorkoutForm({
               </FormField>
             )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
-                label="Вместимость, чел."
-                tip={TIPS.capacity}
-                optional
-                hint="По умолчанию для всех занятий этой тренировки в расписании."
-              >
-                <Input
-                  type="number"
-                  min={0}
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                  placeholder="Например: 12"
-                />
-              </FormField>
+            {capacityStudios.length > 0 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {capacityStudios.map((st) => (
+                  <FormField
+                    key={st.id}
+                    label={
+                      capacityStudios.length > 1
+                        ? `Вместимость — ${st.name}, чел.`
+                        : "Вместимость, чел."
+                    }
+                    tip={TIPS.capacity}
+                    optional
+                  >
+                    <Input
+                      type="number"
+                      min={0}
+                      value={capacities[st.id] ?? ""}
+                      onChange={(e) =>
+                        setCapacities((prev) => ({ ...prev, [st.id]: e.target.value }))
+                      }
+                      placeholder="Без лимита"
+                    />
+                  </FormField>
+                ))}
+              </div>
+            )}
 
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField
                 label="MET — интенсивность"
                 optional={!packages}

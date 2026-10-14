@@ -626,4 +626,128 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(m).toBe(a.studio);
     });
   });
+  // ---- 2026-10-14: гостевые посещения, вместимость по клубам, статус без пробных ----
+
+  /** Учётная запись клиента приложения, привязанная к карточке s.client; действовать от неё. */
+  async function asClient(tx: Tx, s: Seed) {
+    await tx`set local session_replication_role = replica`;
+    const [{ id }] = await tx`
+      insert into auth.users (email) values (${`client-${s.studio}@example.com`}) returning id`;
+    await tx`set local session_replication_role = origin`;
+    await tx`update clients set user_id = ${id} where id = ${s.client}`;
+    await tx`select set_config('request.jwt.claim.sub', ${id}::text, true)`;
+    return id as string;
+  }
+
+  test("клиент пакетного клуба записывается в другой пакетный клуб, посещение — с его абонемента", async () => {
+    await scenario(async (tx) => {
+      const home = await seed(tx);
+      const other = await seed(tx);
+      const sale = await sell(tx, home);
+      const e = await entry(tx, other, 1);
+
+      const user = await asClient(tx, home);
+      const [{ r }] = await tx`select book_schedule_entry(${e}) as r`;
+      expect(r).toMatchObject({ ok: true, waitlisted: false });
+      const [b] = await tx`
+        select id, studio_id, client_id, user_id from schedule_bookings where entry_id = ${e}`;
+      expect(b).toMatchObject({ studio_id: other.studio, client_id: home.client, user_id: user });
+
+      // Администратор клуба занятия видит гостя: имя, клуб, остаток.
+      await asStaff(tx, other);
+      const [{ g }] = await tx`select entry_guest_clients(${e}) as g`;
+      expect(g).toHaveLength(1);
+      expect(g[0]).toMatchObject({ id: home.client, home_studio_name: "Тест", ahead: 0 });
+      expect(g[0].memberships[0]).toMatchObject({ status: "active", visits_left: 2 });
+
+      await tx`update schedule_bookings set status = 'attended' where id = ${b.id}`;
+      const m = await membershipOf(tx, sale);
+      expect(m.visits_left).toBe(1);
+      expect(m.started_at).not.toBeNull();
+    });
+  });
+
+  test("гостевая запись: администратор записывает клиента сети, подписочный клуб — не сеть", async () => {
+    await scenario(async (tx) => {
+      const home = await seed(tx);
+      const other = await seed(tx);
+      const sub = await seed(tx, "subscription");
+      await sell(tx, home);
+      await sell(tx, sub);
+      const e = await entry(tx, other, 1);
+
+      await asStaff(tx, other);
+      const [{ r }] = await tx`select admin_book_client(${e}, ${home.client}) as r`;
+      expect(r).toMatchObject({ ok: true });
+      const [{ r: denied }] = await tx`select admin_book_client(${e}, ${sub.client}) as r`;
+      expect(denied).toMatchObject({ ok: false, reason: "client_not_found" });
+
+      // Клиент подписочного клуба в пакетный не записывается.
+      await asClient(tx, sub);
+      const [{ r: own }] = await tx`select book_schedule_entry(${e}) as r`;
+      expect(own).toMatchObject({ ok: false, reason: "no_membership" });
+    });
+  });
+
+  test("вместимость тренировки — своя в каждом клубе, занятие берёт её при создании", async () => {
+    await scenario(async (tx) => {
+      const a = await seed(tx);
+      const b = await seed(tx);
+      await tx`update workouts set capacity = 12 where id = ${a.workout}`;
+      await tx`
+        insert into workout_capacities (workout_id, studio_id, capacity)
+        values (${a.workout}, ${a.studio}, 10), (${a.workout}, ${b.studio}, 6)
+        on conflict (workout_id, studio_id) do update set capacity = excluded.capacity`;
+      const add = async (studio: string, capacity: number | null) => {
+        const [{ id, cap }] = await tx`
+          insert into schedule_entries (studio_id, workout_id, kind, starts_at, ends_at, capacity)
+          values (${studio}, ${a.workout}, 'group', now() + interval '1 day',
+                  now() + interval '1 day 1 hour', ${capacity})
+          returning id, capacity as cap`;
+        return { id: id as string, cap: cap as number | null };
+      };
+      expect((await add(a.studio, null)).cap).toBe(10);
+      expect((await add(b.studio, null)).cap).toBe(6);
+      // Вручную на один день — как указали.
+      expect((await add(b.studio, 8)).cap).toBe(8);
+      // Клуб без своей строки — вместимость по умолчанию.
+      const c = await seed(tx);
+      expect((await add(c.studio, null)).cap).toBe(12);
+
+      // Запись видит вместимость занятия: 1 место — второй в лист ожидания.
+      const one = await add(b.studio, 1);
+      await sell(tx, a);
+      await asStaff(tx, b);
+      expect(
+        (await tx`select admin_book_client(${one.id}, ${a.client}) as r`)[0].r,
+      ).toMatchObject({ ok: true });
+      expect(
+        (await tx`select admin_book_client(${one.id}, ${b.client}) as r`)[0].r,
+      ).toMatchObject({ ok: false, reason: "full" });
+    });
+  });
+
+  test("статус клуба: только пробный — ПЧК, после пакета — ЧК, без действующих — БЧК", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const [{ id: trial }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+        values (${s.studio}, 'Пробное', 'trial', 1, 7, 0) returning id`;
+      const status = async () =>
+        (await tx`select club_status from clients_with_status where id = ${s.client}`)[0]
+          .club_status as string;
+
+      expect(await status()).toBe("pchk");
+      await sell(tx, s, { membership: trial, kind: "trial" });
+      expect(await status()).toBe("pchk");
+      // Пробный закончился — по-прежнему ПЧК, а не БЧК.
+      await tx`update client_memberships set status = 'expired' where client_id = ${s.client}`;
+      expect(await status()).toBe("pchk");
+
+      await sell(tx, s);
+      expect(await status()).toBe("chk");
+      await tx`update client_memberships set status = 'expired' where client_id = ${s.client}`;
+      expect(await status()).toBe("bchk");
+    });
+  });
 });

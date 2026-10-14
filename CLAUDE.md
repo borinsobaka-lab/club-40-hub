@@ -374,7 +374,26 @@ AUTH_SETUP.md.
   `memberships.sort_order` (порядок в админке и приложении), политики
   `… client browse` + `client_can_browse_studio`: клиент читает расписание,
   тренировки, тренеров и показываемые абонементы другой студии того же
-  формата (переключатель студий; записаться — только в своей).
+  формата (переключатель студий; запись в чужую — гостевая, см. ниже).
+  Сеть пакетных студий (гостевые посещения):
+  `db/migrations/2026-10-14_network_guest_visits.sql` — все пакетные
+  студии одна сеть (`studios_same_network`), абонемент действует во всех:
+  запись — студии занятия, `client_id` — карточка домашней студии, списание
+  с её абонемента; `book_schedule_entry`, `admin_book_client`,
+  `schedule_bookings_link_person`, `schedule_bookings_same_studio`
+  переопределены (актуальные определения — здесь); гость для студии
+  занятия — RPC `entry_guest_clients` / `network_client_search` (имя,
+  телефон, клуб, абонементы; карточку RLS не открывает); журнал гостевых
+  посещений читает и домашняя студия (`bookings_log home studio read`).
+  Вместимость тренировки по клубам:
+  `db/migrations/2026-10-14_workout_studio_capacity.sql` —
+  `workout_capacities` (тренировка × клуб, null — без лимита; нет строки —
+  `workouts.capacity`), `workout_capacity_in`; занятие хранит свою
+  вместимость (`schedule_entries.capacity`, групповому без неё ставит
+  триггер `schedule_entries_fill_capacity_bi`).
+  Статус клуба без пробных: `db/migrations/2026-10-14_club_status_no_trial.sql`
+  — `clients_with_status` не считает абонементы `memberships.kind = 'trial'`
+  (актуальное определение вью — здесь).
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
