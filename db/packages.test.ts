@@ -821,4 +821,65 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect((await membershipOf(tx, renewal)).status).toBe("active");
     });
   });
+
+  // ---- 2026-10-14. «Редактировать платежи» ----
+
+  test("правка графика: внесённые не трогаются, сумма не меньше стоимости, после возврата — нельзя", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const sale = await sell(tx, s, {
+        installments: [
+          { amount: 50, days: 0, paid: true },
+          { amount: 25, days: 30, paid: false },
+          { amount: 25, days: 60, paid: false },
+        ],
+      });
+      const rows = async () =>
+        (await tx`
+          select id, amount::float as amount, paid from sale_installments
+           where sale_id = ${sale} order by due_date, created_at`) as {
+          id: string;
+          amount: number;
+          paid: boolean;
+        }[];
+      const [paid, second, third] = await rows();
+      const replace = (r: unknown) =>
+        tx`select replace_sale_installments(${sale}, ${JSON.stringify(r)}::text::jsonb)`;
+
+      // Клиент внёс 10 из 25 — остаток 15 новым платежом.
+      await replace([
+        { id: second.id, amount: 10, due_date: "2030-01-10" },
+        { amount: 15, due_date: "2030-02-10" },
+        { id: third.id, amount: 25, due_date: "2030-03-10" },
+      ]);
+      let now = await rows();
+      expect(now.map((r) => r.amount)).toEqual([50, 10, 15, 25]);
+      const [{ ri }] = await tx`select remaining_installments as ri from sales where id = ${sale}`;
+      expect(ri).toBe(3);
+
+      // Меньше стоимости — не сохраняется.
+      expect(
+        await failure(tx, () => replace([{ id: second.id, amount: 10, due_date: "2030-01-10" }])),
+      ).toContain("меньше стоимости");
+      expect((await rows()).length).toBe(4);
+
+      // Внесённый платёж правкой графика не меняется.
+      expect(
+        await failure(tx, () => replace([{ id: paid.id, amount: 100, due_date: "2030-01-10" }])),
+      ).toContain("уже внесён");
+
+      // Убрали платёж и добавили сумму в другой — всего снова 100.
+      now = await rows();
+      await replace([
+        { id: now[1].id, amount: 10, due_date: "2030-01-10" },
+        { id: now[2].id, amount: 40, due_date: "2030-02-10" },
+      ]);
+      expect((await rows()).map((r) => r.amount)).toEqual([50, 10, 40]);
+
+      await tx`insert into refunds (studio_id, sale_id, amount) values (${s.studio}, ${sale}, 10)`;
+      expect(
+        await failure(tx, () => replace([{ amount: 50, due_date: "2030-01-10" }])),
+      ).toContain("возврат");
+    });
+  });
 });

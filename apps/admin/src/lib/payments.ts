@@ -119,3 +119,26 @@ export const SALE_TIPS = {
   saleKind:
     "Новая продажа — в клубе, пробное — пробное посещение, допродажа — продали позже (например, в чате), продление — клиенту, у которого уже были абонементы.",
 };
+
+// Календарная арифметика по Y-M-D: без Date-парсинга (он читает дату как UTC)
+// и с прижатием к концу месяца — 31 января + 1 мес. = 28/29 февраля, а не 3 марта.
+export function addMonthsISO(iso: string, months: number) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const total = y * 12 + (m - 1) + months;
+  const ny = Math.floor(total / 12);
+  const nm = total % 12;
+  const lastDay = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate();
+  const nd = Math.min(d, lastDay);
+  return `${ny}-${String(nm + 1).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
+}
+
+/**
+ * Сколько не хватает графику платежей до стоимости продажи («Редактировать
+ * платежи» в «Абонементах»): 0 — график покрывает стоимость. Считается в
+ * тетри (копейках), чтобы 33,33 + 33,33 + 33,34 давали ровно 100.
+ */
+export function scheduleShortfall(total: number, amounts: number[]): number {
+  const cents = (v: number) => Math.round((Number.isFinite(v) ? v : 0) * 100);
+  const missing = cents(total) - amounts.reduce((sum, a) => sum + cents(a), 0);
+  return Math.max(0, missing) / 100;
+}

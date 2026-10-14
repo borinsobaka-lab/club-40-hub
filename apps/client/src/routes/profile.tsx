@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
 import { IS_PACKAGES } from "@/lib/terms";
+import { STUDIO_WHATSAPP_URL } from "@/formats/packages/studio-contacts";
 import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { isValidPhone } from "@/lib/phone";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -435,6 +436,13 @@ function ProfilePage() {
               <ProfileLink
                 icon={<ChatRound className="h-5 w-5" weight="BoldDuotone" />}
                 label={t("Поддержка")}
+                // Пакетное приложение — чат WhatsApp студии (тот же номер, что
+                // на экране входа); у подписочного своего номера пока нет.
+                onClick={
+                  IS_PACKAGES
+                    ? () => window.open(STUDIO_WHATSAPP_URL, "_blank", "noopener,noreferrer")
+                    : undefined
+                }
               />
               {/* Язык — как остальные строки; по нажатию — шторка со списком языков. */}
               <ProfileLink
