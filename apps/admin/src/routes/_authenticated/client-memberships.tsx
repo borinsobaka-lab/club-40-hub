@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
+import { FormField, InfoNote } from "@/components/ui/form-field";
 import {
   Dialog,
   DialogBody,
@@ -115,13 +115,12 @@ const TIPS = {
     "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
   payment:
-    "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, красный — просрочен. Нажмите на платёж, чтобы отметить оплату. «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
+    "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, красный — просрочен. Нажмите на платёж, чтобы отметить оплату (когда и как внесён). «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
   editPayments:
     "Клиент не может внести платёж целиком — поставьте в платёж сумму, которую он внёс, и добавьте платежи на остаток. Внесённые платежи не меняются. Сохранить можно, только если платежи в сумме покрывают стоимость абонемента.",
   paymentAmount: "Сколько клиент внёс или должен внести этим платежом.",
   dueDate:
     "До какого числа клиент должен внести платёж. За два дня до даты и в сам день невнесённый платёж помечает строку синим, дата прошла — красным.",
-  paid: "Отметьте, когда клиент заплатил. Внесены все платежи — строка станет зелёной.",
   paidAt: "Когда клиент фактически заплатил.",
   paymentMethod: "Как заплатил клиент — для отчётов, как способ оплаты в форме продажи.",
   renewal:
@@ -171,7 +170,8 @@ const PAYMENT_STATES: Record<
   // не попадает (решение владельца 2026-10-13).
   refunded: { label: "Возврат", filter: "Возврат", stripe: null, mobile: null },
 };
-const PAYMENT_STATE_ORDER: PaymentState[] = ["overdue", "soon", "pending", "paid", "refunded"];
+// Цветные (с точкой в фильтре) — первыми (решение владельца 2026-10-14).
+const PAYMENT_STATE_ORDER: PaymentState[] = ["overdue", "soon", "paid", "pending", "refunded"];
 /** Цвета расшифровки на плашке фильтров. */
 const STRIPED_STATES: PaymentState[] = ["paid", "overdue", "soon"];
 const ALL = "all";
@@ -442,7 +442,15 @@ function ClientMembershipsPage() {
                 <SelectItem value={ALL}>Все абонементы</SelectItem>
                 {PAYMENT_STATE_ORDER.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {PAYMENT_STATES[s].filter}
+                    <span className="flex items-center gap-2">
+                      {PAYMENT_STATES[s].stripe && (
+                        <span
+                          aria-hidden="true"
+                          className={cn("size-2.5 shrink-0 rounded-full", PAYMENT_STATES[s].stripe)}
+                        />
+                      )}
+                      {PAYMENT_STATES[s].filter}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -974,7 +982,6 @@ function PaymentCell({
           <>до {formatDate(payment.due_date)}</>
         )}
       </div>
-      {overdue && <div className="text-xs text-rose-600">просрочен</div>}
     </>
   );
 
@@ -1205,6 +1212,11 @@ function PaymentsEditForm({
   );
 }
 
+/**
+ * Отметка оплаты по клику на платёж (решение владельца 2026-10-14): сумма и
+ * «внести до» здесь не меняются — только когда внесён и способ оплаты; график
+ * правят в «Редактировать платежи». Внесённый по ошибке — «Снять отметку».
+ */
 function PaymentForm({
   payment,
   onDone,
@@ -1214,26 +1226,13 @@ function PaymentForm({
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [amount, setAmount] = useState(String(payment.amount ?? ""));
-  const [dueDate, setDueDate] = useState(payment.due_date);
-  const [paid, setPaid] = useState(payment.paid);
   // Отмечают оплату обычно в день, когда клиент заплатил, — сегодня.
   const [paidAt, setPaidAt] = useState(payment.paid_at ?? todayISO());
   const [method, setMethod] = useState<PaymentMethod>(payment.payment_method ?? "cash");
   const [saving, setSaving] = useState(false);
 
-  const handleSave = async (e: FormEvent) => {
-    e.preventDefault();
+  const save = async (paid: boolean) => {
     if (saving) return;
-    const value = Number(amount.replace(",", "."));
-    if (!amount.trim() || !Number.isFinite(value) || value < 0) {
-      toast.error("Укажите сумму платежа");
-      return;
-    }
-    if (!dueDate) {
-      toast.error("Укажите дату платежа");
-      return;
-    }
     if (paid && !paidAt) {
       toast.error("Укажите, когда платёж внесён");
       return;
@@ -1243,8 +1242,6 @@ function PaymentForm({
       const { error } = await supabase
         .from("sale_installments")
         .update({
-          amount: value,
-          due_date: dueDate,
           paid,
           paid_at: paid ? paidAt : null,
           payment_method: paid ? method : null,
@@ -1254,7 +1251,7 @@ function PaymentForm({
         toast.error("Не удалось сохранить платёж: " + error.message);
         return;
       }
-      toast.success(paid ? "Платёж отмечен внесённым" : "Платёж сохранён");
+      toast.success(paid ? "Платёж отмечен внесённым" : "Отметка об оплате снята");
       onDone();
     } finally {
       setSaving(false);
@@ -1262,42 +1259,48 @@ function PaymentForm({
   };
 
   return (
-    <form onSubmit={handleSave} className="space-y-3">
+    <form
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        save(true);
+      }}
+      className="space-y-3"
+    >
+      <div className="text-sm">
+        <span className="font-medium tabular-nums">
+          {formatMoneyPrecise(Number(payment.amount))}
+        </span>
+        <span className="text-muted-foreground"> · до {formatDate(payment.due_date)}</span>
+      </div>
       <div className="grid grid-cols-2 gap-3">
-        <FormField label="Сумма, ₾" tip={TIPS.paymentAmount} required>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
+        <FormField label="Когда внесён" tip={TIPS.paidAt} required>
+          <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
         </FormField>
-        <FormField label="Внести до" tip={TIPS.dueDate} required>
-          <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        <FormField label="Способ оплаты" tip={TIPS.paymentMethod} required>
+          <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_METHODS.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {PAYMENT_METHOD_LABEL[m]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </FormField>
       </div>
-      <SwitchRow title="Платёж внесён" tip={TIPS.paid} checked={paid} onCheckedChange={setPaid} />
-      {paid && (
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="Когда внесён" tip={TIPS.paidAt} required>
-            <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
-          </FormField>
-          <FormField label="Способ оплаты" tip={TIPS.paymentMethod} required>
-            <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {PAYMENT_METHOD_LABEL[m]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        </div>
+      {payment.paid && (
+        <Button
+          variant="link"
+          size="inline"
+          className="text-xs text-muted-foreground underline hover:text-destructive"
+          disabled={saving}
+          onClick={() => save(false)}
+        >
+          Снять отметку об оплате
+        </Button>
       )}
       <PopoverButtons saving={saving} onCancel={onCancel} />
     </form>
