@@ -3,13 +3,16 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { AltArrowDown, CheckCircle } from "@solar-icons/react";
 
 import { useLocalize, useT } from "@/i18n";
+import { mediaUrl } from "@/lib/media";
 import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 
 /**
  * Плашка «какая студия выбрана» под быстрыми кнопками главной (пакетное
  * приложение, решение владельца 2026-10-11). По нажатию — список студий
  * формата; выбор меняет новости, услуги, контакты, расписание, тренеров и
- * абонементы (useViewedStudioId).
+ * абонементы (useViewedStudioId). В списке слева от названия — картинка
+ * клуба из админки («Клубы», studios.photo_url; решение владельца 2026-10-14),
+ * маленькая, чтобы строки не росли.
  */
 export function StudioSwitcher() {
   const t = useT();
@@ -60,6 +63,7 @@ export function StudioSwitcher() {
               <ul className="mt-4 space-y-2">
                 {studios.map(loc).map((s) => {
                   const active = s.id === studioId;
+                  const photo = mediaUrl(s.photo_url, "studio-logos");
                   return (
                     <li key={s.id}>
                       <button
@@ -73,6 +77,15 @@ export function StudioSwitcher() {
                           active ? "border-primary bg-primary/5" : "border-border bg-card"
                         }`}
                       >
+                        {photo && (
+                          <img
+                            src={photo}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="h-11 w-11 shrink-0 rounded-xl bg-muted object-cover"
+                          />
+                        )}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-semibold">{s.name}</span>
                           {s.address && (

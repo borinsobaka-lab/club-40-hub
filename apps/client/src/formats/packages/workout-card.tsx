@@ -5,6 +5,7 @@ import {
   TransferHorizontal,
   UsersGroupRounded,
 } from "@solar-icons/react";
+import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { useLocalize, useT } from "@/i18n";
@@ -25,6 +26,38 @@ import {
   trainerPhoto,
   type PackEntry,
 } from "./entries";
+import { startsIn, startsInParts } from "./starts-in";
+
+/**
+ * Текущее время с шагом в полминуты — для «начинается через». На сервере и
+ * при гидратации — null (без времени), иначе разметка разошлась бы.
+ */
+function useNow(stepMs = 30_000) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), stepMs);
+    return () => clearInterval(id);
+  }, [stepMs]);
+  return now;
+}
+
+/**
+ * «Вы записаны, начинается через 2 ч 15 мин» (решение владельца
+ * 2026-10-14); началось — просто «Вы записаны».
+ */
+function BookedLabel({ startsAt }: { startsAt: string }) {
+  const t = useT();
+  const now = useNow();
+  const left = now == null ? null : startsIn(startsAt, now);
+  if (!left) return <span>{t("Вы записаны")}</span>;
+  const time = startsInParts(left)
+    .map(({ n, unit }) =>
+      unit === "d" ? t("{n} д", { n }) : unit === "h" ? t("{n} ч", { n }) : t("{n} мин", { n }),
+    )
+    .join(" ");
+  return <span>{t("Вы записаны, начинается через {time}", { time })}</span>;
+}
 
 /**
  * Карточка тренировки пакетного приложения — одна в расписании и на главной
@@ -119,9 +152,9 @@ export function PackWorkoutCard({
             </div>
           )}
           {isBooked ? (
-            <div className="mt-1.5 flex items-center gap-1 text-xs font-semibold leading-none text-emerald-600 dark:text-emerald-400">
+            <div className="mt-1.5 flex items-center gap-1 text-xs font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
               <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
-              <span>{t("Вы записаны")}</span>
+              <BookedLabel startsAt={entry.starts_at} />
             </div>
           ) : (
             spots && (

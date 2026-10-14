@@ -119,6 +119,9 @@ const dict: Dictionary = {
   "{n} персональная|{n} персональные|{n} персональных":
     "{n} personal session|{n} personal sessions",
   "Вы записаны": "You're booked",
+  "Вы записаны, начинается через {time}": "You're booked, starts in {time}",
+  "{n} д": "{n} d",
+  "{n} ч": "{n} h",
   Замена: "Substitute",
   "Следующий платёж": "Next payment",
   "Следующие платежи": "Next payments",

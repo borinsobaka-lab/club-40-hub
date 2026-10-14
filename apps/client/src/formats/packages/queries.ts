@@ -189,13 +189,29 @@ export function packMyMembershipsQuery(userId: string | null) {
         .order("balance_kind", { ascending: true })
         .order("status", { ascending: true });
       if (error) throw error;
-      const rows = ((data as unknown as Omit<MyMembership, "upcomingPayments">[] | null) ?? []).map(
-        (m) => ({ ...m, upcomingPayments: [] as MyMembership["upcomingPayments"] }),
-      );
+      const rows = ((data as unknown as Omit<MyMembership, "upcomingPayments">[] | null) ?? [])
+        .filter(hasTrainingsLeft)
+        .map((m) => ({ ...m, upcomingPayments: [] as MyMembership["upcomingPayments"] }));
       return attachUpcomingPayments(rows);
     },
     enabled: !!userId,
   });
+}
+
+/**
+ * Отхоженный абонемент (и пробное) клиенту не показываем (решение владельца
+ * 2026-10-14): база переводит его в expired
+ * (db/migrations/2026-10-14_zz_packages_exhausted_expire.sql), фильтр — на
+ * случай, если строка ещё active. Безлимит (visits_left null) не кончается,
+ * подарочные персональные у пакета тренировок — тоже остаток.
+ */
+function hasTrainingsLeft(
+  m: Pick<MyMembership, "status" | "visits_left" | "personal_left" | "balance_kind">,
+) {
+  if (m.status !== "active") return true;
+  const personal = m.personal_left ?? 0;
+  if (m.balance_kind === "personal") return personal > 0;
+  return m.visits_left == null || m.visits_left > 0 || personal > 0;
 }
 
 /**
