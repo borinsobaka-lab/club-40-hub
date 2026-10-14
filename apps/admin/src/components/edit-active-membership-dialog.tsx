@@ -21,6 +21,8 @@ export type ActiveMembership = {
   id: string;
   ends_at: string | null;
   visits_left: number | null;
+  /** Пакетный клуб: остаток персональных тренировок. */
+  personal_left?: number | null;
   status?: string;
   freeze_days_used?: number | null;
   frozen_until?: string | null;
@@ -31,6 +33,11 @@ type FormProps = {
   onOpenChange: (v: boolean) => void;
   membership: ActiveMembership;
   onSaved: () => void;
+  /**
+   * Пакетный клуб: два баланса — групповые (visits_left) и персональные
+   * (personal_left), правятся отдельно (решение владельца 2026-10-14).
+   */
+  isPackages?: boolean;
 };
 
 export function EditActiveMembershipDialog({
@@ -38,6 +45,7 @@ export function EditActiveMembershipDialog({
   onOpenChange,
   membership,
   onSaved,
+  isPackages = false,
 }: Omit<FormProps, "membership"> & {
   open: boolean;
   membership: ActiveMembership | null;
@@ -47,7 +55,11 @@ export function EditActiveMembershipDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Редактировать активный абонемент</DialogTitle>
-          <DialogDescription>Срок действия, остаток посещений и заморозка.</DialogDescription>
+          <DialogDescription>
+            {isPackages
+              ? "Срок действия, остаток групповых и персональных тренировок, заморозка."
+              : "Срок действия, остаток посещений и заморозка."}
+          </DialogDescription>
         </DialogHeader>
         {/*
           Форма монтируется заново при каждом открытии — сбрасывать её не нужно,
@@ -59,6 +71,7 @@ export function EditActiveMembershipDialog({
             membership={membership}
             onOpenChange={onOpenChange}
             onSaved={onSaved}
+            isPackages={isPackages}
           />
         )}
       </DialogContent>
@@ -66,12 +79,13 @@ export function EditActiveMembershipDialog({
   );
 }
 
-function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
+function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormProps) {
   const [endsAt, setEndsAt] = useState(membership.ends_at ?? "");
   const [unlimitedVisits, setUnlimitedVisits] = useState(membership.visits_left == null);
   const [visitsLeft, setVisitsLeft] = useState(
     membership.visits_left != null ? String(membership.visits_left) : "",
   );
+  const [personalLeft, setPersonalLeft] = useState(String(membership.personal_left ?? 0));
   const [saving, setSaving] = useState(false);
   const [freezeDaysInput, setFreezeDaysInput] = useState("");
   const [freezing, setFreezing] = useState(false);
@@ -145,6 +159,15 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
       }
       visits = n;
     }
+    let personal: number | undefined;
+    if (isPackages) {
+      const n = Number(personalLeft.trim());
+      if (personalLeft.trim() === "" || !Number.isInteger(n) || n < 0) {
+        toast.error("Укажите количество персональных тренировок (целое число от 0)");
+        return;
+      }
+      personal = n;
+    }
     setSaving(true);
     try {
       const { error } = await supabase
@@ -152,6 +175,7 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
         .update({
           ends_at: endsAt || null,
           visits_left: visits,
+          ...(personal !== undefined ? { personal_left: personal } : {}),
         })
         .eq("id", membership.id);
       if (error) {
@@ -175,9 +199,13 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
             <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
           </FormField>
           <FormField
-            label="Осталось посещений"
+            label={isPackages ? "Групповые тренировки" : "Осталось посещений"}
             required={!unlimitedVisits}
-            tip="Ручная правка остатка — например, вернуть занятие, отменённое по вине клуба."
+            tip={
+              isPackages
+                ? "Сколько групповых тренировок осталось. Списываются, когда отмечено посещение группового занятия."
+                : "Ручная правка остатка — например, вернуть занятие, отменённое по вине клуба."
+            }
           >
             <Input
               type="number"
@@ -191,6 +219,21 @@ function MembershipForm({ onOpenChange, membership, onSaved }: FormProps) {
               Безлимит
             </CheckboxOption>
           </FormField>
+          {isPackages && (
+            <FormField
+              label="Персональные тренировки"
+              required
+              tip="Сколько персональных тренировок осталось (у пакета тренировок — подарочные). Списываются, когда отмечено посещение персонального занятия."
+            >
+              <Input
+                type="number"
+                min={0}
+                value={personalLeft}
+                onChange={(e) => setPersonalLeft(e.target.value)}
+                placeholder="Например, 1"
+              />
+            </FormField>
+          )}
 
           {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
             иначе после обнуления «дней заморозки» в тарифе разморозить его
