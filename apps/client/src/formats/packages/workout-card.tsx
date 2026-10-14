@@ -43,8 +43,8 @@ function useNow(stepMs = 30_000) {
 }
 
 /**
- * «Вы записаны, начинается через 2 ч 15 мин» (решение владельца
- * 2026-10-14); началось — просто «Вы записаны».
+ * «Вы записаны» и строкой ниже «Начинается через 2 ч 15 мин» (решения
+ * владельца 2026-10-14); началось — только «Вы записаны».
  */
 function BookedLabel({ startsAt }: { startsAt: string }) {
   const t = useT();
@@ -56,7 +56,12 @@ function BookedLabel({ startsAt }: { startsAt: string }) {
       unit === "d" ? t("{n} д", { n }) : unit === "h" ? t("{n} ч", { n }) : t("{n} мин", { n }),
     )
     .join(" ");
-  return <span>{t("Вы записаны, начинается через {time}", { time })}</span>;
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span>{t("Вы записаны")}</span>
+      <span className="font-medium">{t("Начинается через {time}", { time })}</span>
+    </span>
+  );
 }
 
 /**
@@ -152,7 +157,8 @@ export function PackWorkoutCard({
             </div>
           )}
           {isBooked ? (
-            <div className="mt-1.5 flex items-center gap-1 text-xs font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
+            // Галочка — у первой строки («Вы записаны»), а не посередине двух.
+            <div className="mt-1.5 flex items-start gap-1 text-xs font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
               <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
               <BookedLabel startsAt={entry.starts_at} />
             </div>

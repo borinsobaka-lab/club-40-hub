@@ -7,7 +7,9 @@ import { useT } from "@/i18n";
  * (приложение пакетов — её); при входе студия клиента ещё неизвестна, поэтому
  * не из «Контактов и правил».
  */
-const WHATSAPP_URL = "https://wa.me/995591288682";
+/** WhatsApp студии — и «Поддержка» в профиле (решение владельца 2026-10-14). */
+export const STUDIO_WHATSAPP_URL = "https://wa.me/995591288682";
+const WHATSAPP_URL = STUDIO_WHATSAPP_URL;
 
 const CONTACTS = [
   { label: "Instagram", href: "https://ig.me/m/ladystretch_tbilisi", Icon: InstagramIcon },
