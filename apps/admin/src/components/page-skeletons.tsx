@@ -685,6 +685,7 @@ export function BookingsLogPageSkeleton() {
         { label: "Длит., мин", className: "w-[80px] text-right" },
         { label: "Ккал", className: "w-[90px] text-right" },
         { label: "Отменена", className: "w-[160px]" },
+        { label: "Причина отмены", className: "min-w-[180px]" },
       ]}
     />
   );
