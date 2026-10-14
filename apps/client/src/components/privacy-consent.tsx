@@ -59,7 +59,7 @@ export function PrivacyConsent({
               e.preventDefault();
               setOpen(true);
             }}
-            className="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
+            className="text-foreground/80"
           >
             {t("политику конфиденциальности")}
           </button>{" "}

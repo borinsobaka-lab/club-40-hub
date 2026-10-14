@@ -19,10 +19,11 @@ import type { PrivacyPolicyInfo } from "@/lib/legal";
  */
 export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
   const brand = info.brand;
-  const email = <a href={`mailto:${info.email}`}>{info.email}</a>;
+  // Почта и телефоны — простым текстом, не ссылками (решение владельца 2026-10-14).
+  const email = info.email;
 
   return (
-    <article className="privacy-policy space-y-6 text-[15px] leading-relaxed text-foreground [&_a]:font-medium [&_a]:underline [&_a]:decoration-primary [&_a]:decoration-2 [&_a]:underline-offset-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:leading-snug [&_li]:pl-1 [&_ol]:list-[lower-alpha] [&_ol]:space-y-1.5 [&_ol]:pl-5 [&_p]:mt-2 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_ul]:mt-2 [&_ol]:mt-2">
+    <article className="privacy-policy space-y-6 text-[15px] leading-relaxed text-foreground [&_a[x-apple-data-detectors]]:pointer-events-none [&_a[x-apple-data-detectors]]:text-[inherit] [&_a[x-apple-data-detectors]]:no-underline [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:leading-snug [&_li]:pl-1 [&_ol]:list-[lower-alpha] [&_ol]:space-y-1.5 [&_ol]:pl-5 [&_p]:mt-2 [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_ul]:mt-2 [&_ol]:mt-2">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold leading-tight">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">
@@ -501,9 +502,7 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
               <li>Registered by the National Agency of Public Registry of Georgia</li>
               <li>Identification number: {o.idCode}</li>
               <li>Address: {o.address}</li>
-              <li>
-                Phone: <a href={`tel:${o.phone.replace(/\s/g, "")}`}>{o.phone}</a>
-              </li>
+              <li>Phone: {o.phone}</li>
               <li>E-mail: {email}</li>
             </ul>
           </div>
