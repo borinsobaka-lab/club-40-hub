@@ -118,8 +118,8 @@ GoTrue и видит только хук писем — в браузер он �
     `lib/dashboard-series.ts` + тест), панели графиков и «Топ 10» —
     `chart-panel.tsx` (цвета категорий — `colors.ts`: палитра «Контрастная»,
     `SERIES_COLORS` / `OTHER_COLOR` / `EMPTY_RING_COLOR`, цвет вида продажи
-    `SALE_ORIGIN_COLOR` на всех страницах, решение владельца
-    2026-10-13), сами графики (recharts) — `plots.tsx` отдельным чанком.
+    `SALE_ORIGIN_COLOR` на всех страницах, решения владельца
+    2026-10-13/14: фирменного розового в категориях нет), сами графики (recharts) — `plots.tsx` отдельным чанком.
     Подписи и подсказки плиток и графиков — `lib/dashboard-stats.ts` (их же
     берут скелетоны), загрузка — `lib/dashboard-data.ts` (постранично: лимит
     PostgREST — 1000 строк на ответ), расчёты — `lib/dashboard-analytics.ts`
