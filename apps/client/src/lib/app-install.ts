@@ -111,6 +111,22 @@ async function loadAppInstall(): Promise<AppInstall> {
 }
 
 /**
+ * «Вход закрыт» прямо из базы — для экрана входа в браузере. Страница с
+ * сервера может прийти с устаревшим флагом (минутный кэш выше, сохранённая
+ * service worker'ом копия страницы), поэтому экран входа перепроверяет его
+ * сам. Ошибка — исключение (React Query оставит прежнее значение).
+ */
+export async function fetchSignInClosed(): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("app_install_settings")
+    .select("*")
+    .eq("format", APP_FORMAT)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as { sign_in_closed?: boolean } | null)?.sign_in_closed === true;
+}
+
+/**
  * Настройки установки. Никогда не бросает: при ошибке или медленной базе —
  * Base40 по умолчанию (иконка не должна ронять или задерживать страницу).
  */
