@@ -27,7 +27,7 @@ import { clientCardQuery } from "@/lib/client-card";
 import { homeBookingsQuery, type MyBooking } from "@/lib/home-queries";
 import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
-import { useViewedStudioId } from "@/hooks/use-viewed-studio";
+import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { useNotifications } from "@/lib/notifications";
 import { IS_PACKAGES } from "@/lib/terms";
 import { packEntryToDrawerData, type PackEntry } from "@/formats/packages/entries";
@@ -119,13 +119,20 @@ function HomePage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   // Кнопки «Написать/Позвонить/Фидбэк» — смотримой студии; срок отмены записи
-  // — своей (записи клиента всегда в своей студии).
+  // — своей.
   const clubSettings = useClubSettings();
   const homeSettings = useClubSettings("home");
   const { unread } = useNotifications();
   // Новости и услуги — смотримой студии (переключатель пакетного приложения;
   // в подписочном — всегда своя).
-  const { studioId, studioReady } = useViewedStudioId();
+  const { studioId, studioReady, homeStudioId } = useViewedStudioId();
+  // Пакетное: абонемент действует во всех студиях сети — у записи в другую
+  // студию на карточке её название.
+  const { data: formatStudios = [] } = useFormatStudios();
+  const guestStudioName = (id: string) =>
+    homeStudioId && id !== homeStudioId
+      ? (loc(formatStudios.find((s) => s.id === id))?.name ?? null)
+      : null;
   const userId = user?.id ?? null;
 
   // Салют после входа по коду или после анкеты (флаг ставят они).
@@ -458,6 +465,7 @@ function HomePage() {
                               key={b.entry_id}
                               entry={pe}
                               isBooked
+                              studioName={guestStudioName(pe.studio_id)}
                               onOpen={() => setOpenEntry(packEntryToDrawerData(pe, t))}
                             />
                           );

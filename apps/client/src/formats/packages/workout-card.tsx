@@ -41,11 +41,14 @@ export function PackWorkoutCard({
   entry,
   isBooked,
   isWaitlisted = false,
+  studioName = null,
   onOpen,
 }: {
   entry: PackEntry;
   isBooked: boolean;
   isWaitlisted?: boolean;
+  /** Студия занятия — у записи в другую студию сети (главная). */
+  studioName?: string | null;
   onOpen: () => void;
 }) {
   const t = useT();
@@ -85,6 +88,11 @@ export function PackWorkoutCard({
           <div className="break-words font-semibold leading-snug">
             {loc(entry.workout)?.name ?? t("Тренировка")}
           </div>
+          {studioName && (
+            <div className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
+              {studioName}
+            </div>
+          )}
           {isWaitlisted && (
             <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
               {t("В листе ожидания")}

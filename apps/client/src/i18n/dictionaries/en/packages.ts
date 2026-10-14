@@ -11,10 +11,6 @@ const dict: Dictionary = {
   Тренировки: "Workouts",
   Персональные: "Personal",
   Диагностика: "Assessment",
-  "Записаться можно только в вашей студии — «{name}». Сменить студию — на главной.":
-    "You can only book at your own studio, “{name}”. Switch studios on the home screen.",
-  "Записаться можно только в вашей студии. Сменить студию — на главной.":
-    "You can only book at your own studio. Switch studios on the home screen.",
   "Не удалось загрузить ваши записи: {error}": "Couldn't load your bookings: {error}",
   "Не удалось отменить запись: {error}": "Couldn't cancel the booking: {error}",
   "Не удалось записаться: {error}": "Couldn't book: {error}",
@@ -32,6 +28,7 @@ const dict: Dictionary = {
   "Запись отменена": "Booking cancelled",
   "Мест нет — вы в листе ожидания": "The workout is full — you're on the waitlist",
   "Вы записаны на тренировку": "You're booked for the workout",
+  "Вы записаны на тренировку в студии «{name}»": "You're booked for the workout at «{name}»",
   "Не удалось выполнить действие: {reason}": "Something went wrong: {reason}",
   "Выберите день и запишитесь на тренировку": "Pick a day and book a workout",
   "Совсем скоро мы начнем принимать заявки на персональные тренировки":
