@@ -645,9 +645,15 @@ export type VisitRow = { clientId: string | null; userId: string | null; name: s
 
 export type ClientsData = {
   clients: ClientRow[];
-  /** Члены клуба (ЧК): есть действующий абонемент, в том числе замороженный. */
+  /** Члены клуба (ЧК): есть действующий абонемент, в том числе замороженный (пробный не в счёт). */
   memberIds: Set<string>;
 };
+
+/** Пробный абонемент (memberships.kind = trial) — клиента ЧК не делает. */
+function isTrialRow(m: Record<string, unknown>) {
+  const ref = m.membership as { kind?: string | null } | { kind?: string | null }[] | null;
+  return (Array.isArray(ref) ? ref[0] : ref)?.kind === "trial";
+}
 
 export async function loadClientsData(studioIds: string[]): Promise<ClientsData> {
   const [clientRows, termRows] = await Promise.all([
@@ -660,7 +666,7 @@ export async function loadClientsData(studioIds: string[]): Promise<ClientsData>
     }),
     loadAllRows({
       page: (lo, hi) =>
-        select("client_memberships", "client_id, status, ends_at", lo)
+        select("client_memberships", "client_id, status, ends_at, membership:memberships(kind)", lo)
           .in("studio_id", studioIds)
           .in("status", ["active", "frozen"])
           .order("id")
@@ -671,6 +677,7 @@ export async function loadClientsData(studioIds: string[]): Promise<ClientsData>
   const today = toISO(new Date());
   const memberIds = new Set(
     termRows
+      .filter((m) => !isTrialRow(m))
       .filter((m) => m.status === "frozen" || !m.ends_at || String(m.ends_at) >= today)
       .map((m) => String(m.client_id)),
   );

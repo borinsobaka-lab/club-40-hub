@@ -86,9 +86,9 @@ export function PackagesSchedulePage() {
   const [filterSheet, setFilterSheet] = useState<FilterKind | null>(null);
   const clubSettings = useClubSettings("home");
   const { user } = useAuth();
-  const { studioId, studioReady, isHome, homeStudioId } = useViewedStudioId();
+  const { studioId, studioReady, isHome } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
-  const homeStudioName = loc(studios.find((s) => s.id === homeStudioId))?.name ?? null;
+  const viewedStudioName = loc(studios.find((s) => s.id === studioId))?.name ?? null;
   const tabs = useMemo(() => TABS.map((x) => ({ ...x, label: t(x.label) })), [t]);
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -97,14 +97,6 @@ export function PackagesSchedulePage() {
   const wheelLockedRef = useRef(false);
   const wheelReleaseRef = useRef<number | null>(null);
   const swipeAreaRef = useRef<HTMLDivElement>(null);
-
-  const bookingNote = isHome
-    ? null
-    : homeStudioName
-      ? t("Записаться можно только в вашей студии — «{name}». Сменить студию — на главной.", {
-          name: homeStudioName,
-        })
-      : t("Записаться можно только в вашей студии. Сменить студию — на главной.");
 
   const selectDay = useCallback(
     (idx: number) => setActiveIdx(Math.max(0, Math.min(days.length - 1, idx))),
@@ -188,10 +180,6 @@ export function PackagesSchedulePage() {
     const wasBooked = bookedIds.has(entryId);
     const wasWaitlisted = waitlistedIds.has(entryId);
     const isActive = wasBooked || wasWaitlisted;
-    if (!isActive && !isHome) {
-      toast.info(bookingNote);
-      return;
-    }
     setPendingId(entryId);
     const fn = isActive ? ("cancel_schedule_booking" as const) : ("book_schedule_entry" as const);
     // Продление могло стать действующим — иначе запись ответила бы «нет абонемента».
@@ -253,7 +241,13 @@ export function PackagesSchedulePage() {
         setCount((e) =>
           typeof res.booked_count === "number" ? res.booked_count : e.booked_count + 1,
         );
-        toast.success(t("Вы записаны на тренировку"));
+        // Абонемент действует во всех пакетных студиях — запись в другую
+        // студию спишется с него же; называем студию, чтобы не перепутать адрес.
+        toast.success(
+          !isHome && viewedStudioName
+            ? t("Вы записаны на тренировку в студии «{name}»", { name: viewedStudioName })
+            : t("Вы записаны на тренировку"),
+        );
       }
     } else if (res?.reason === "already_booked") {
       addTo("booked", entryId);
@@ -520,7 +514,6 @@ export function PackagesSchedulePage() {
         isFull={openEntryRow ? packEntryToDrawerData(openEntryRow, t).spotsLeft === 0 : false}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
-        bookingNote={bookingNote}
         onBook={(reason) => {
           if (openEntry) toggleBooking(openEntry.id, reason);
         }}
