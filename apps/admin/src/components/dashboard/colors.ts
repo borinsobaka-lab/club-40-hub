@@ -1,12 +1,14 @@
 import type { SaleOrigin } from "@/lib/dashboard-analytics";
 
 /**
- * Цвета категорий — палитра «Контрастная» (решение владельца 2026-10-13), по
- * порядку, без повторов. Больше — сворачивать в «Остальное» (foldSlices),
- * ему — OTHER_COLOR; пустое кольцо (нет данных) — EMPTY_RING_COLOR.
+ * Цвета категорий (сегменты круговых диаграмм, линии по видам) — палитра
+ * «Контрастная» (решение владельца 2026-10-13), по порядку, без повторов.
+ * Больше — сворачивать в «Остальное» (foldSlices), ему — OTHER_COLOR; пустое
+ * кольцо (нет данных) — EMPTY_RING_COLOR. Фирменный розовый палитры
+ * (#EE5CF0) в категории не входит (решение владельца 2026-10-14: раздел
+ * становился весь розовым) — он у графиков одного показателя, цвет клуба.
  */
 export const SERIES_COLORS = [
-  "#EE5CF0", // розовый (основной)
   "#17B3A3", // бирюзовый
   "#FFBE3D", // янтарный
   "#6A5CF2", // фиолетовый
@@ -25,7 +27,7 @@ export const EMPTY_RING_COLOR = "#F1F2F4";
  * «Продажах» и линии «Продления и возвращения» на «Общих показателях».
  */
 export const SALE_ORIGIN_COLOR: Record<SaleOrigin, string> = {
-  new: SERIES_COLORS[0],
-  renewal: SERIES_COLORS[1],
-  return: SERIES_COLORS[2],
+  renewal: SERIES_COLORS[0],
+  return: SERIES_COLORS[1],
+  new: SERIES_COLORS[2],
 };
