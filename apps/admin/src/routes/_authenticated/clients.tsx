@@ -371,16 +371,7 @@ function ClientsPage() {
         onSaved={reload}
       />
 
-      <ClientCardDialog
-        open={cardOpen}
-        onOpenChange={setCardOpen}
-        client={cardClient}
-        onEdit={(c) => {
-          setCardOpen(false);
-          setEditing(c);
-          setOpen(true);
-        }}
-      />
+      <ClientCardDialog open={cardOpen} onOpenChange={setCardOpen} client={cardClient} />
       {confirmDialog}
     </AdminShell>
   );

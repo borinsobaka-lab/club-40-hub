@@ -1072,6 +1072,10 @@ export function AppSettingsFormSkeleton({ apps = 2 }: { apps?: number }) {
           </div>
           <div className="space-y-2">
             <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-9 w-72" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-1/3" />
             <div className="flex items-center gap-3">
               <Skeleton className="h-16 w-16 rounded-[22%]" />
               <Skeleton className="h-8 w-24 rounded-full" />

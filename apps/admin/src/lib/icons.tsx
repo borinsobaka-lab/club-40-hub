@@ -63,6 +63,7 @@ import {
   LogIn as LogInArt,
   ArrowExpandIcon as MaximizeArt,
   MessageCircle as MessageCircleArt,
+  MessageCirclePlus as MessageCirclePlusArt,
   MessageSquare as MessageSquareArt,
   Mic as MicArt,
   ArrowShrinkIcon as MinimizeArt,
@@ -79,7 +80,9 @@ import {
   Search as SearchArt,
   SentIcon as SendArt,
   Shapes as ShapesArt,
+  ShoppingBag as ShoppingBagArt,
   Square as SquareArt,
+  Ticket as TicketArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
   TrendingUp as TrendingUpArt,
@@ -154,6 +157,7 @@ export const Loader2 = icon(Loader2Art, "Loader2");
 export const LogIn = icon(LogInArt, "LogIn");
 export const Maximize = icon(MaximizeArt, "Maximize");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
+export const MessageCirclePlus = icon(MessageCirclePlusArt, "MessageCirclePlus");
 export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
 export const Mic = icon(MicArt, "Mic");
 export const Minimize = icon(MinimizeArt, "Minimize");
@@ -170,7 +174,9 @@ export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
 export const Shapes = icon(ShapesArt, "Shapes");
+export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
 export const Square = icon(SquareArt, "Square");
+export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");

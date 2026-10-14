@@ -52,11 +52,11 @@ export type EditableClient = {
   photo_url: string | null;
 };
 
-/** Сохранённый клиент — для тех, кто сразу его использует (пробное посещение). */
-export type SavedClient = Pick<
-  EditableClient,
-  "id" | "full_name" | "first_name" | "last_name" | "phone" | "email"
-> & { user_id: string | null };
+/**
+ * Сохранённый клиент — для тех, кто сразу его использует: пробное посещение
+ * записывает нового, карточка клиента показывает правку без перезапроса.
+ */
+export type SavedClient = Omit<EditableClient, "id"> & { id: string; user_id: string | null };
 
 type ClientDialogProps = {
   open: boolean;
@@ -157,7 +157,6 @@ function ClientForm({
     try {
       const fullName = [ln, fn].filter(Boolean).join(" ");
       const payload = {
-        studio_id: studioId,
         first_name: fn || null,
         last_name: ln || null,
         full_name: fullName,
@@ -174,10 +173,17 @@ function ClientForm({
         last_visit_date: lastVisitDate || null,
         crm_link: crmLink.trim() || null,
       };
-      const saved = "id, user_id, full_name, first_name, last_name, phone, email";
+      const saved =
+        "id, user_id, full_name, first_name, last_name, phone, phone2, email, birthday, gender, notes, registration_date, last_visit_date, crm_link, photo_url";
+      // Правка клуб карточки не меняет: карточку клиента другого клуба (поиск
+      // в шапке) открывают и из активного клуба.
       const { data, error } = client
         ? await supabase.from("clients").update(payload).eq("id", client.id).select(saved).single()
-        : await supabase.from("clients").insert(payload).select(saved).single();
+        : await supabase
+            .from("clients")
+            .insert({ ...payload, studio_id: studioId })
+            .select(saved)
+            .single();
       if (error || !data) {
         toast.error("Ошибка сохранения: " + (error?.message ?? "база не вернула клиента"));
         return;
