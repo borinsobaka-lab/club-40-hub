@@ -38,8 +38,9 @@ const SALE_KIND_ICON: Record<SaleKind, typeof ShoppingBag> = {
 
 /**
  * Выбор типа продажи (пакетный клуб, «Абонементы») — плитки с иконкой типа
- * на плашке основного цвета клуба (--brand, решение владельца 2026-10-14);
- * дальше форма продажи. Цветные кружки типов — в колонке «Тип продажи».
+ * на плашке цвета типа (как кружок в колонке «Тип продажи»: новая и пробное —
+ * зелёный, допродажа — синий, продление — фиолетовый; решение владельца
+ * 2026-10-14); дальше форма продажи.
  */
 export function SaleKindPickerDialog({
   open,
@@ -66,7 +67,12 @@ export function SaleKindPickerDialog({
                   key={k}
                   onClick={() => onPick(k)}
                   media={
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand text-white">
+                    <span
+                      className={cn(
+                        "flex size-11 shrink-0 items-center justify-center rounded-xl text-white",
+                        SALE_KIND_DOT[k],
+                      )}
+                    >
                       <Icon className="size-6" />
                     </span>
                   }

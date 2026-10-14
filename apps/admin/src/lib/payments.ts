@@ -58,7 +58,7 @@ export const SALE_KIND_LABEL: Record<SaleKind, string> = {
 };
 export const SALE_KINDS: SaleKind[] = ["new", "trial", "upsell", "renewal"];
 
-/** Цветной кружок типа продажи — в колонке «Тип продажи». */
+/** Цвет типа продажи — кружок в колонке «Тип продажи» и плашка иконки в выборе типа. */
 export const SALE_KIND_DOT: Record<SaleKind, string> = {
   new: "bg-emerald-500",
   trial: "bg-emerald-500",
