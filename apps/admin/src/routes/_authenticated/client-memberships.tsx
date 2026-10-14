@@ -115,7 +115,7 @@ const TIPS = {
     "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
   payment:
-    "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, красный — просрочен. Нажмите на платёж, чтобы отметить оплату (когда и как внесён). «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
+    "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, синий — внести сегодня или в ближайшие 2 дня, красный — просрочен. Нажмите на платёж, чтобы отметить оплату (когда и как внесён). «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
   editPayments:
     "Клиент не может внести платёж целиком — поставьте в платёж сумму, которую он внёс, и добавьте платежи на остаток. Внесённые платежи не меняются. Сохранить можно, только если платежи в сумме покрывают стоимость абонемента.",
   paymentAmount: "Сколько клиент внёс или должен внести этим платежом.",
@@ -940,6 +940,9 @@ function PaymentCell({
 }) {
   const [open, setOpen] = useState(false);
   const overdue = !payment.paid && !payment.refunded && payment.due_date < todayISO();
+  // Сегодня или в ближайшие 2 дня — синяя, как полоска строки «Платёж в
+  // ближайшие 3 дня» (payment_state = 'soon', решение владельца 2026-10-14).
+  const soon = !payment.paid && !payment.refunded && !overdue && daysUntil(payment.due_date) <= 2;
   const box = cn(
     "block w-full rounded-md border px-2 py-1.5 text-left",
     payment.refunded
@@ -948,7 +951,9 @@ function PaymentCell({
         ? "border-emerald-200 bg-emerald-50"
         : overdue
           ? "border-rose-200 bg-rose-50"
-          : "bg-muted/40",
+          : soon
+            ? "border-blue-200 bg-blue-50"
+            : "bg-muted/40",
   );
   const number = <span className="font-normal text-muted-foreground">{index + 1}. </span>;
 
@@ -972,7 +977,13 @@ function PaymentCell({
       <div
         className={cn(
           "flex items-center gap-1 whitespace-nowrap text-xs",
-          payment.paid ? "text-emerald-700" : overdue ? "text-rose-600" : "text-muted-foreground",
+          payment.paid
+            ? "text-emerald-700"
+            : soon
+              ? "text-blue-700"
+              : overdue
+                ? "text-rose-600"
+                : "text-muted-foreground",
         )}
       >
         {payment.paid ? (
