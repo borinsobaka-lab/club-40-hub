@@ -29,8 +29,9 @@ import { CardSkeleton, TableSkeletonRows } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { SaleDialog } from "@/components/sale-dialog";
+import { ClientDialog, type SavedClient } from "@/components/client-form-dialog";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useActiveStudio } from "@/hooks/use-studios";
+import { useStudios } from "@/hooks/use-studios";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-status-badge";
@@ -133,6 +134,8 @@ const PROFILE_GENDER: Record<string, string> = {
 /** Поля клиента, которые нужны карточке (строка clients или clients_with_status). */
 export type ClientLike = {
   id: string;
+  /** Клуб карточки; нет — активный клуб (карточку открыли из его списков). */
+  studio_id?: string | null;
   user_id?: string | null;
   full_name: string;
   first_name: string | null;
@@ -158,7 +161,7 @@ type SaleRow = {
   source: "admin" | "mobile" | null;
   admin_name: string | null;
   comment: string | null;
-  memberships: { name: string } | { name: string }[] | null;
+  memberships: MembershipRef | MembershipRef[] | null;
   client_memberships:
     | {
         id: string;
@@ -204,6 +207,10 @@ function membershipName(m: MembershipRow["memberships"] | SaleRow["memberships"]
   return m.name;
 }
 
+function membershipKind(m: MembershipRow["memberships"] | SaleRow["memberships"]) {
+  return (Array.isArray(m) ? m[0] : m)?.kind ?? null;
+}
+
 function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
   if (!m) return 0;
   const ref = Array.isArray(m) ? m[0] : m;
@@ -211,25 +218,25 @@ function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
 }
 
 const SALE_COLUMNS =
-  "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit)";
+  "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit)";
 
 const MEMBERSHIP_COLUMNS =
   "id, status, source, started_at, ends_at, visits_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind)";
 
 /**
- * Generic по типу клиента: раздел «Клиенты» передаёт свою строку (с
- * club_status и прочим) и в onEdit получает её же, а не урезанный ClientLike.
+ * Карточка клиента — одна и та же, откуда бы её ни открыли (раздел
+ * «Клиенты», имя клиента в любой таблице, поиск в шапке; решение владельца
+ * 2026-10-14): с правкой клиента, продажей и абонементом. Правка открывается
+ * поверх карточки, после сохранения карточка показывает новые данные.
  */
-export function ClientCardDialog<C extends ClientLike>({
+export function ClientCardDialog({
   open,
   onOpenChange,
   client,
-  onEdit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  client: C | null;
-  onEdit?: (c: C) => void;
+  client: ClientLike | null;
 }) {
   if (!client) return null;
   return (
@@ -240,31 +247,28 @@ export function ClientCardDialog<C extends ClientLike>({
           клиенту ключом: запоздавший ответ по прошлому клиенту в карточку
           нового не попадёт.
         */}
-        <ClientCard
-          key={client.id}
-          client={client}
-          onClose={() => onOpenChange(false)}
-          onEdit={onEdit}
-        />
+        <ClientCard key={client.id} client={client} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function ClientCard<C extends ClientLike>({
-  client,
-  onClose,
-  onEdit,
-}: {
-  client: C;
-  onClose: () => void;
-  onEdit?: (c: C) => void;
-}) {
+function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
-  // Карточки открываются из списков активной студии — продажа идёт в неё.
-  const studioId = useActiveStudioId();
+  const [clientEditOpen, setClientEditOpen] = useState(false);
+  // Сохранённая правка клиента — поверх переданной строки, без перезапроса.
+  const [saved, setSaved] = useState<SavedClient | null>(null);
+  const client: ClientLike = saved ? { ...initial, ...saved } : initial;
+  // Клуб карточки: продажа, правка и анкета — в нём. Обычно это активный
+  // клуб; клиент другого клуба приходит из поиска в шапке.
+  const activeStudioId = useActiveStudioId();
+  const studioId = client.studio_id ?? activeStudioId;
+  const { data: studios } = useStudios();
+  const studio = studios?.find((s) => s.id === studioId) ?? null;
+  const isPackages = studio?.format === "packages";
+  const otherStudio = !!studio && studio.id !== activeStudioId;
   const userId = client.user_id ?? null;
 
   const salesKey = ["sales", "by-client", client.id];
@@ -321,6 +325,30 @@ function ClientCard<C extends ClientLike>({
     }
   };
 
+  // Имя и контакты клиента видны в списках всех разделов.
+  const onClientSaved = (row: SavedClient) => {
+    setSaved(row);
+    for (const key of [
+      "clients",
+      "clients_with_status",
+      "sales_list",
+      "client_packages_list",
+      "bookings_log_full",
+      "client-crm-link",
+    ]) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  };
+
+  // Пакетный клуб: у клиента уже были абонементы (не только пробное) —
+  // кнопка оформляет продление, оно встанет в очередь после текущего
+  // абонемента; иначе — новая продажа (решение владельца 2026-10-14).
+  const hadPackages = sales.some((s) => {
+    const kind = membershipKind(s.memberships);
+    return kind != null && kind !== "trial";
+  });
+  const saleKind = isPackages && hadPackages ? "renewal" : "new";
+
   // Локальная дата, как в computeClubStatus/effectiveStatus: UTC-дата
   // первые часы суток (Тбилиси, UTC+4) — ещё вчерашняя, и истёкший
   // вчера абонемент показывался бы активным.
@@ -335,7 +363,7 @@ function ClientCard<C extends ClientLike>({
       client_id: client.id,
       status: r.status,
       ends_at: r.ends_at,
-      kind: (Array.isArray(r.memberships) ? r.memberships[0] : r.memberships)?.kind ?? null,
+      kind: membershipKind(r.memberships),
     })),
   );
 
@@ -358,7 +386,10 @@ function ClientCard<C extends ClientLike>({
               <ClubStatusBadge status={clubStatus} withFull />
               {client.crm_link && <AmoCrmLinkIcon href={client.crm_link} />}
             </div>
-            <DialogDescription>{contacts || "Контактов нет"}</DialogDescription>
+            <DialogDescription>
+              {contacts || "Контактов нет"}
+              {otherStudio && ` · клиент клуба «${studio.name}»`}
+            </DialogDescription>
           </div>
         </div>
       </DialogHeader>
@@ -451,10 +482,10 @@ function ClientCard<C extends ClientLike>({
                   variant="outline"
                   size="sm"
                   onClick={() => setSaleOpen(true)}
-                  disabled={!studioId}
+                  disabled={!studioId || loadingSales}
                 >
                   <Plus />
-                  Добавить продажу
+                  {saleKind === "renewal" ? "Добавить продление" : "Добавить продажу"}
                 </Button>
               </div>
               {loadingSales ? (
@@ -502,11 +533,16 @@ function ClientCard<C extends ClientLike>({
           </TabsContent>
 
           <TabsContent value="visits" className="mt-4">
-            <VisitsTab clientId={client.id} userId={userId} />
+            <VisitsTab clientId={client.id} userId={userId} studioId={studioId} />
           </TabsContent>
 
           <TabsContent value="profile" className="mt-4">
-            <ProfileTab profile={profile} loading={loadingProfile} hasUser={!!userId} />
+            <ProfileTab
+              profile={profile}
+              loading={loadingProfile}
+              hasUser={!!userId}
+              isPackages={isPackages}
+            />
           </TabsContent>
         </Tabs>
       </DialogBody>
@@ -514,12 +550,10 @@ function ClientCard<C extends ClientLike>({
         <Button variant="outline" onClick={onClose}>
           Закрыть
         </Button>
-        {onEdit && (
-          <Button onClick={() => onEdit(client)}>
-            <Pencil />
-            Редактировать
-          </Button>
-        )}
+        <Button onClick={() => setClientEditOpen(true)} disabled={!studioId}>
+          <Pencil />
+          Редактировать
+        </Button>
       </DialogFooter>
 
       <EditActiveMembershipDialog
@@ -545,7 +579,15 @@ function ClientCard<C extends ClientLike>({
         onOpenChange={setSaleOpen}
         studioId={studioId}
         initialClient={client}
+        kind={saleKind}
         onSaved={onSaleSaved}
+      />
+      <ClientDialog
+        open={clientEditOpen}
+        onOpenChange={setClientEditOpen}
+        studioId={studioId}
+        client={client}
+        onSaved={onClientSaved}
       />
     </>
   );
@@ -579,18 +621,19 @@ function ProfileRow({ label, value }: { label: string; value: React.ReactNode })
   );
 }
 
+// В пакетных студиях своя анкета: без мотивации, срока, группового формата,
+// роста и пола, с датой рождения вместо года (apps/client, formats/packages).
 function ProfileTab({
   profile,
   loading,
   hasUser,
+  isPackages,
 }: {
   profile: MemberProfile | null;
   loading: boolean;
   hasUser: boolean;
+  isPackages: boolean;
 }) {
-  // В пакетных студиях своя анкета: без мотивации, срока, группового формата,
-  // роста и пола, с датой рождения вместо года (apps/client, formats/packages).
-  const isPackages = useActiveStudio()?.format === "packages";
   if (!hasUser) {
     return (
       <InfoNote variant="empty">
@@ -715,8 +758,15 @@ type VisitRow = {
  * Пакетные студии: гостевые посещения в других клубах сети тоже здесь —
  * с колонкой «Клуб», если они есть.
  */
-function VisitsTab({ clientId, userId }: { clientId: string; userId: string | null }) {
-  const studioId = useActiveStudioId();
+function VisitsTab({
+  clientId,
+  userId,
+  studioId,
+}: {
+  clientId: string;
+  userId: string | null;
+  studioId: string | null;
+}) {
   const { data: rows = [], isLoading: loading } = useQuery({
     queryKey: ["bookings_log", "by-client", clientId, userId],
     queryFn: () =>

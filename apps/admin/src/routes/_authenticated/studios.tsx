@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
-import { ImageUploadField } from "@/components/image-upload-field";
+import { ImageUploadField, StorageImage } from "@/components/image-upload-field";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +44,7 @@ import { useContentTranslations } from "@/hooks/use-content-translations";
 import { useStudios, type Studio } from "@/hooks/use-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrapPage } from "@/lib/query";
-import { useStorageUrl } from "@/lib/storage";
+import { squareImage, useStorageUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_BRAND_COLOR,
@@ -63,6 +63,8 @@ const TIPS = {
   color: "Цвет иконки активного пункта меню и акцентов админки, пока открыт этот клуб.",
   logo: "Показывается в шапке бокового меню. Без логотипа там будет название клуба.",
   address: "Клиенты видят его в приложении под названием клуба — на главной и в выборе клуба.",
+  photo:
+    "Маленькая картинка слева от названия клуба в приложении клиентов, когда они выбирают студию («Сменить студию» на главной).",
 };
 
 export const Route = createFileRoute("/_authenticated/studios")({
@@ -387,6 +389,7 @@ function StudioForm({
   const [color, setColor] = useState(item?.brand_color ?? DEFAULT_BRAND_COLOR);
   const [logo, setLogo] = useState<string | null>(item?.logo_url ?? null);
   const [address, setAddress] = useState(item?.address ?? "");
+  const [photo, setPhoto] = useState<string | null>(item?.photo_url ?? null);
   const tr = useContentTranslations(item?.translations);
   const [saving, setSaving] = useState(false);
 
@@ -416,6 +419,7 @@ function StudioForm({
             brand_color: brandColor,
             logo_url: logo,
             address: addressValue,
+            photo_url: photo,
             translations,
           })
           .eq("id", item.id));
@@ -427,12 +431,16 @@ function StudioForm({
           _logo_url: logo,
         });
         error = created.error;
-        // create_studio адрес и переводы не принимает — дописываем:
+        // create_studio адрес, картинку и переводы не принимает — дописываем:
         // создатель уже владелец новой студии и может её править.
-        if (!error && (addressValue || Object.keys(translations).length > 0) && created.data) {
+        if (
+          !error &&
+          (addressValue || photo || Object.keys(translations).length > 0) &&
+          created.data
+        ) {
           ({ error } = await supabase
             .from("studios")
-            .update({ address: addressValue, translations })
+            .update({ address: addressValue, photo_url: photo, translations })
             .eq("id", created.data as string));
         }
       }
@@ -532,6 +540,31 @@ function StudioForm({
                 onChange={setLogo}
                 preview={<LogoPreview value={logo} name={name || "Название"} />}
                 accept="image/svg+xml,image/png,image/webp"
+              />
+            </FormField>
+
+            <FormField
+              label="Картинка в приложении"
+              htmlFor={null}
+              optional
+              tip={TIPS.photo}
+              hint="Квадратная: обрежется по центру и уменьшится до 256×256 px."
+            >
+              <ImageUploadField
+                bucket="studios"
+                folder={`${item?.id ?? "new"}/photo`}
+                value={photo}
+                onChange={setPhoto}
+                prepare={(f) => squareImage(f, 256)}
+                accept="image/png,image/jpeg,image/webp"
+                preview={
+                  <StorageImage
+                    bucket="studios"
+                    value={photo}
+                    alt={name || "Клуб"}
+                    className="h-16 w-16 rounded-xl"
+                  />
+                }
               />
             </FormField>
           </div>

@@ -70,7 +70,8 @@ import { useConfirm } from "@/components/confirm-dialog";
 //
 // Ещё в пакетной студии — «Тренер» (sales.trainer_id + снимок имени
 // trainer_name): кто был тренером при продаже, ему начисляется бонус. Продажи
-// с тренером и рассрочкой видны в разделе «Абонементы».
+// с тренером и рассрочкой видны в разделе «Абонементы». У «Оплаты пробного»
+// тренера нет (решение владельца 2026-10-14): клиент ещё не был на тренировке.
 //
 // «Администратор» (оба формата) — выбирается из администраторов студии
 // (lib/studio-staff.ts, components/seller-select.tsx): sales.seller_id + снимок admin_name;
@@ -262,7 +263,8 @@ function SaleForm({
   // формат) — кто был с клиентом при продаже.
   const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(studioId);
   const trainers = staffRows.filter((r) => r.role === "trainer");
-  const trainer = trainers.find((r) => r.id === form.trainerId) ?? null;
+  // У пробного тренера нет — клиент ещё не был на тренировке.
+  const trainer = isTrial ? null : (trainers.find((r) => r.id === form.trainerId) ?? null);
   const admins = staffRows.filter((r) => isAdminRole(r.role));
   const seller = admins.find((r) => r.id === form.sellerId) ?? null;
 
@@ -680,7 +682,7 @@ function SaleForm({
             ) : null}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {isPackages && (
+              {isPackages && !isTrial && (
                 <FormField label="Тренер" tip={SALE_TIPS.trainer} optional>
                   <Select value={form.trainerId} onValueChange={(v) => set("trainerId", v)}>
                     <SelectTrigger>

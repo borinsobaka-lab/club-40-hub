@@ -750,4 +750,75 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(await status()).toBe("bchk");
     });
   });
+
+  // ---- 2026-10-14. Отхоженный абонемент — «Закончился» ----
+
+  test("отхоженный пакет и пробное — expired, снятая отметка возвращает абонемент", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const [{ id: trial }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+        values (${s.studio}, 'Пробное', 'trial', 1, 7, 0) returning id`;
+      const trialSale = await sell(tx, s, { membership: trial, kind: "trial" });
+      const b1 = await book(tx, s, await entry(tx, s, 1));
+      await tx`update schedule_bookings set status = 'attended' where id = ${b1}`;
+      expect(await membershipOf(tx, trialSale)).toMatchObject({
+        status: "expired",
+        visits_left: 0,
+      });
+
+      const sale = await sell(tx, s);
+      const b2 = await book(tx, s, await entry(tx, s, 2));
+      const b3 = await book(tx, s, await entry(tx, s, 3));
+      await tx`update schedule_bookings set status = 'attended' where id in (${b2}, ${b3})`;
+      expect(await membershipOf(tx, sale)).toMatchObject({ status: "expired", visits_left: 0 });
+
+      // Ошиблись с отметкой — тренировка вернулась, абонемент снова действует.
+      await tx`update schedule_bookings set status = 'booked' where id = ${b3}`;
+      expect(await membershipOf(tx, sale)).toMatchObject({ status: "active", visits_left: 1 });
+      // Пробное так и осталось закончившимся.
+      expect((await membershipOf(tx, trialSale)).status).toBe("expired");
+    });
+  });
+
+  test("пакет с подарочной персональной не кончается, пока её не отходили", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await asStaff(tx, s);
+      const [{ id: gift }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, personal_count, duration_days, price)
+        values (${s.studio}, 'Пакет 1 + персональная', 'package', 1, 1, 30, 100) returning id`;
+      const sale = await sell(tx, s, { membership: gift });
+      const group = await book(tx, s, await entry(tx, s, 1));
+      await tx`update schedule_bookings set status = 'attended' where id = ${group}`;
+      expect(await membershipOf(tx, sale)).toMatchObject({
+        status: "active",
+        visits_left: 0,
+        personal_left: 1,
+      });
+      const personal = await book(tx, s, await entry(tx, s, 2, "personal"));
+      await tx`update schedule_bookings set status = 'attended' where id = ${personal}`;
+      expect(await membershipOf(tx, sale)).toMatchObject({ status: "expired", personal_left: 0 });
+    });
+  });
+
+  test("отхоженный абонемент уступает место продлению, разовая правка не трогает безлимит", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const sale = await sell(tx, s);
+      const renewal = await sell(tx, s, { kind: "renewal" });
+      expect((await membershipOf(tx, renewal)).status).toBe("pending");
+      for (const d of [1, 2]) {
+        const b = await book(tx, s, await entry(tx, s, d));
+        await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      }
+      expect((await membershipOf(tx, sale)).status).toBe("expired");
+      expect((await membershipOf(tx, renewal)).status).toBe("active");
+
+      // Безлимит (visits_left null) не кончается.
+      await tx`update client_memberships set visits_left = null where sale_id = ${renewal}`;
+      await tx`select packages_settle(${s.client})`;
+      expect((await membershipOf(tx, renewal)).status).toBe("active");
+    });
+  });
 });

@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { AppSettingsFormSkeleton, AppSettingsPageSkeleton } from "@/components/page-skeletons";
 import { cn } from "@/lib/utils";
 import { useStudios } from "@/hooks/use-studios";
@@ -37,22 +38,38 @@ export const Route = createFileRoute("/_authenticated/app-settings")({
 const TIPS = {
   icon: "Иконка вкладки браузера и значок на рабочем столе, когда клиент сохраняет приложение на телефон или компьютер.",
   name: "Название под значком приложения на рабочем столе телефона или компьютера.",
+  signIn:
+    "«Вход закрыт» — приложение можно установить, но на экране входа вместо почты клиенты видят текст ниже. Включите, пока переносите базу клиентов.",
 };
+
+/**
+ * Текст экрана входа при «Вход закрыт» — как в клиентском приложении
+ * (apps/client/src/routes/auth.tsx, там же переводы).
+ */
+const SIGN_IN_CLOSED_TEXT =
+  "Спасибо за скачивание нового мобильного приложения. Вход в приложение мы откроем утром, 18 октября.";
 
 type Settings = {
   format: StudioFormat;
   app_name: string | null;
   app_icon_path: string | null;
+  /** «Вход закрыт» (db/migrations/2026-10-14_zz_app_sign_in_closed_studio_photo.sql). */
+  sign_in_closed: boolean;
 };
 
 type FormValues = {
   name: string;
   /** Папка с иконками в бакете app-icons; null — иконка Base40 по умолчанию. */
   iconPath: string | null;
+  signInClosed: boolean;
 };
 
 function toFormValues(s: Settings | null | undefined): FormValues {
-  return { name: s?.app_name ?? "", iconPath: s?.app_icon_path ?? null };
+  return {
+    name: s?.app_name ?? "",
+    iconPath: s?.app_icon_path ?? null,
+    signInClosed: s?.sign_in_closed === true,
+  };
 }
 
 // У каждого клиентского приложения (формата клубов) своя строка —
@@ -98,6 +115,7 @@ function AppSettingsPage() {
         format: f,
         app_name: formOf(f).name.trim() || null,
         app_icon_path: formOf(f).iconPath,
+        sign_in_closed: formOf(f).signInClosed,
       }));
       const { error } = await supabase.from(TABLE).upsert(
         saved.map((r) => ({ ...r, updated_at: new Date().toISOString() })),
@@ -152,6 +170,7 @@ function AppSettingsPage() {
               form={formOf(f)}
               onName={(v) => setField(f, "name", v)}
               onIcon={(v) => setField(f, "iconPath", v)}
+              onSignInClosed={(v) => setField(f, "signInClosed", v)}
             />
           ))}
           <InfoNote>
@@ -165,19 +184,21 @@ function AppSettingsPage() {
   );
 }
 
-/** Карточка одного клиентского приложения: иконка, подпись, предпросмотр. */
+/** Карточка одного клиентского приложения: вход, иконка, подпись, предпросмотр. */
 function AppInstallSection({
   format,
   clubs,
   form,
   onName,
   onIcon,
+  onSignInClosed,
 }: {
   format: StudioFormat;
   clubs: string[];
   form: FormValues;
   onName: (v: string) => void;
   onIcon: (v: string | null) => void;
+  onSignInClosed: (v: boolean) => void;
 }) {
   const host = STUDIO_FORMAT_APP_URL[format].replace(/^https?:\/\//, "");
   const shownName = form.name.trim() || APP_NAME_DEFAULT;
@@ -190,6 +211,23 @@ function AppInstallSection({
           браузера и на рабочем столе, когда клиент сохраняет его на телефон или компьютер.
         </p>
       </div>
+
+      <FormField label="Вход в приложение" tip={TIPS.signIn} htmlFor={null}>
+        <div className="space-y-3">
+          <SegmentedControl
+            aria-label="Вход в приложение"
+            value={form.signInClosed ? "closed" : "open"}
+            onChange={(v) => onSignInClosed(v === "closed")}
+            options={[
+              { value: "open", label: "Приложение активно" },
+              { value: "closed", label: "Вход закрыт" },
+            ]}
+          />
+          {form.signInClosed && (
+            <InfoNote>Клиенты видят на экране входа вместо почты: «{SIGN_IN_CLOSED_TEXT}»</InfoNote>
+          )}
+        </div>
+      </FormField>
 
       <FormField
         label="Иконка приложения"

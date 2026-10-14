@@ -235,8 +235,9 @@ AUTH_SETUP.md.
   пусто/0 мест = без лимита; покупка в приложении не пишет продавца, тренера,
   тип и дату (`sales_client_insert_guard`); ждущее продление не списывается
   при живом абонементе того же вида, перенос начала срока сохраняет заморозку
-  (актуальные `schedule_bookings_charge_balance`, `packages_restart_term`,
-  `packages_settle` — здесь). Порядок файлов = порядок имён: новый файл,
+  (актуальный `packages_restart_term` — здесь; `packages_settle` —
+  `2026-10-14_zz_packages_exhausted_expire.sql`,
+  `schedule_bookings_charge_balance` — `2026-10-13_zz_packages_test_fixes.sql`). Порядок файлов = порядок имён: новый файл,
   читающий колонки другого, должен идти по имени ПОСЛЕ него.
   Вход в клиентское приложение без регистрации:
   `db/migrations/2026-10-11_zzzzzzzzz_client_signin_only.sql` —
@@ -394,6 +395,16 @@ AUTH_SETUP.md.
   Статус клуба без пробных: `db/migrations/2026-10-14_club_status_no_trial.sql`
   — `clients_with_status` не считает абонементы `memberships.kind = 'trial'`
   (актуальное определение вью — здесь).
+  Отхоженный абонемент пакетного клуба:
+  `db/migrations/2026-10-14_zz_packages_exhausted_expire.sql` — без
+  остатка тренировок (и пробное) → `expired` и без ждущего продления;
+  вернули тренировку — снова `active` (актуальное определение
+  `packages_settle` — здесь).
+  «Вход закрыт» и картинка клуба:
+  `db/migrations/2026-10-14_zz_app_sign_in_closed_studio_photo.sql` —
+  `app_install_settings.sign_in_closed` (экран входа клиента без почты),
+  `studios.photo_url` (публичная колонка; картинка в выборе студии
+  приложения, бакет `studio-logos`, папка `{id}/photo`).
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

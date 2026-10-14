@@ -16,6 +16,11 @@ export type Studio = {
   logo_url: string | null;
   /** Адрес одной строкой — для клиентского приложения. */
   address: string | null;
+  /**
+   * Картинка клуба в клиентском приложении (выбор студии): путь в бакете
+   * studio-logos или полный URL.
+   */
+  photo_url: string | null;
   /** Переводы для приложения: {en|ka: {name, address}} (lib/content-i18n.ts). */
   translations: ContentTranslations;
   created_at: string;
@@ -49,7 +54,9 @@ export const studiosQuery = queryOptions({
     const studios = await unwrap<Omit<Studio, "roles">[]>(
       supabase
         .from("studios")
-        .select("id, name, format, brand_color, logo_url, address, translations, created_at")
+        .select(
+          "id, name, format, brand_color, logo_url, address, photo_url, translations, created_at",
+        )
         .in("id", ids)
         .order("created_at"),
     );
