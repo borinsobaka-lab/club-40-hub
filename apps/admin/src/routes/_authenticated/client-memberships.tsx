@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus, Receipt, Trash2 } from "lucide-react";
+import { Check, Loader2, Plus, Receipt, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -19,7 +19,9 @@ import {
   SALE_KIND_LABEL,
   SALE_KINDS,
   SALE_TIPS,
+  addMonthsISO,
   saleDeleteDescription,
+  scheduleShortfall,
   type MembershipKind,
   type PaymentMethod,
   type SaleKind,
@@ -37,7 +39,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FormField, SwitchRow } from "@/components/ui/form-field";
+import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogForm,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -92,7 +104,9 @@ const TIPS = {
     "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
   payment:
-    "Сумма и дата платежа. Галочка — внесён (дата, когда заплатили), без неё — сколько и до какого числа клиент должен внести. Нажмите, чтобы отметить оплату или поправить сумму и дату.",
+    "Платежи по порядку: сумма и дата. Галочка — внесён (дата, когда заплатили), без неё — сколько и до какого числа клиент должен внести. Нажмите на платёж, чтобы отметить оплату. «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
+  editPayments:
+    "Клиент не может внести платёж целиком — поставьте в платёж сумму, которую он внёс, и добавьте платежи на остаток. Внесённые платежи не меняются. Сохранить можно, только если платежи в сумме покрывают стоимость абонемента.",
   paymentAmount: "Сколько клиент внёс или должен внести этим платежом.",
   dueDate:
     "До какого числа клиент должен внести платёж. За два дня до даты и в сам день невнесённый платёж помечает строку синим, дата прошла — красным.",
@@ -216,13 +230,12 @@ const COLUMNS =
   "membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
   "membership_started_at, starts_on_first_visit";
 
-/** Платёжных колонок не меньше трёх: обычная рассрочка — до трёх платежей. */
-const MIN_PAYMENT_COLUMNS = 3;
 /**
- * Колонки до платежей: клиент, абонемент, статус, баланс, сумма,
- * продал / тренер, комментарии.
+ * Колонки: клиент, абонемент, статус, баланс, сумма, продал / тренер,
+ * комментарии и платежи — с 2026-10-14 одной колонкой (решение владельца):
+ * плашки по два в ряд, сколько бы платежей ни было.
  */
-const BASE_COLUMNS = 7;
+const COLUMN_COUNT = 8;
 
 export const Route = createFileRoute("/_authenticated/client-memberships")({
   head: () => ({ meta: [{ title: "Абонементы — Base40 Admin" }] }),
@@ -388,11 +401,7 @@ function ClientMembershipsPage() {
     table.rows.map((r) => r.client_id),
   );
 
-  const paymentColumns = Math.max(
-    MIN_PAYMENT_COLUMNS,
-    ...table.rows.map((r) => r.payments?.length ?? 0),
-  );
-  const columns = BASE_COLUMNS + paymentColumns;
+  const columns = COLUMN_COUNT;
   const filtered = !!term || state !== ALL || kind !== ALL || !!payFrom;
 
   return (
@@ -474,11 +483,7 @@ function ClientMembershipsPage() {
                   <TableHead tip={TIPS.amount}>Сумма</TableHead>
                   <TableHead tip={TIPS.soldBy}>Продал / тренер</TableHead>
                   <TableHead tip={TIPS.comments}>Комментарии</TableHead>
-                  {Array.from({ length: paymentColumns }, (_, i) => (
-                    <TableHead key={i} tip={TIPS.payment}>
-                      Платёж {i + 1}
-                    </TableHead>
-                  ))}
+                  <TableHead tip={TIPS.payment}>Платежи</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -619,11 +624,9 @@ function ClientMembershipsPage() {
                             <NoteCell saleId={r.id} note={r.membership_note} onSaved={reload} />
                           </div>
                         </TableCell>
-                        {Array.from({ length: paymentColumns }, (_, i) => (
-                          <TableCell key={i}>
-                            <PaymentCell payment={r.payments?.[i]} onSaved={reload} />
-                          </TableCell>
-                        ))}
+                        <TableCell>
+                          <PaymentsCell row={r} onSaved={reload} />
+                        </TableCell>
                       </TableRow>
                     </RowContextMenu>
                   ))
@@ -846,24 +849,93 @@ function NoteForm({
 // Платёж рассрочки (sale_installments)
 // ---------------------------------------------------------------------------
 
-function PaymentCell({ payment, onSaved }: { payment?: Payment; onSaved: () => void }) {
+/**
+ * Платежи продажи одной колонкой: плашки по два в ряд (внесённый — зелёная,
+ * просроченный — красная), под ними — «Редактировать платежи».
+ */
+function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const payments = row.payments ?? [];
+  if (payments.length === 0) return <span className="text-muted-foreground">—</span>;
+  // График есть (не «оплачено сразу») и по продаже не было возврата.
+  const editable =
+    payments.some((p) => p.id) &&
+    !payments.some((p) => p.refunded) &&
+    row.membership_status !== "refunded";
+  return (
+    <div className="w-[17rem] space-y-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
+        {payments.map((p, i) => (
+          <PaymentCell key={p.id ?? i} index={i} payment={p} onSaved={onSaved} />
+        ))}
+      </div>
+      {editable && (
+        <Button
+          variant="link"
+          size="inline"
+          className="text-xs underline"
+          onClick={() => setEditOpen(true)}
+        >
+          Редактировать платежи
+        </Button>
+      )}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg">
+          {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+          <PaymentsEditForm
+            row={row}
+            onClose={() => setEditOpen(false)}
+            onSaved={() => {
+              setEditOpen(false);
+              onSaved();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function PaymentCell({
+  index,
+  payment,
+  onSaved,
+}: {
+  index: number;
+  payment: Payment;
+  onSaved: () => void;
+}) {
   const [open, setOpen] = useState(false);
-  if (!payment) return <span className="text-muted-foreground">—</span>;
+  const overdue = !payment.paid && !payment.refunded && payment.due_date < todayISO();
+  const box = cn(
+    "block w-full rounded-md border px-2 py-1.5 text-left",
+    payment.refunded
+      ? "border-orange-200 bg-orange-50"
+      : payment.paid
+        ? "border-emerald-200 bg-emerald-50"
+        : overdue
+          ? "border-rose-200 bg-rose-50"
+          : "bg-muted/40",
+  );
+  const number = <span className="font-normal text-muted-foreground">{index + 1}. </span>;
+
   // Снят возвратом: ни суммы, ни даты — только отметка (решение владельца 2026-10-13).
   if (payment.refunded)
     return (
-      <span
-        title="По продаже оформлен возврат — платёж больше не ждём"
-        className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
-      >
-        Возврат
-      </span>
+      <div title="По продаже оформлен возврат — платёж больше не ждём" className={box}>
+        <div className="text-xs font-medium text-orange-700">
+          {number}
+          Возврат
+        </div>
+      </div>
     );
 
-  const overdue = !payment.paid && payment.due_date < todayISO();
   const summary = (
     <>
-      <div className="font-medium tabular-nums">{formatMoneyPrecise(Number(payment.amount))}</div>
+      <div className="whitespace-nowrap text-sm font-medium tabular-nums">
+        {number}
+        {formatMoneyPrecise(Number(payment.amount))}
+      </div>
       <div
         className={cn(
           "flex items-center gap-1 whitespace-nowrap text-xs",
@@ -874,22 +946,24 @@ function PaymentCell({ payment, onSaved }: { payment?: Payment; onSaved: () => v
           <>
             <Check className="h-3.5 w-3.5" />
             {formatDate(payment.paid_at ?? payment.due_date)}
-            {payment.payment_method && ` · ${PAYMENT_METHOD_LABEL[payment.payment_method]}`}
           </>
         ) : (
-          <>
-            до {formatDate(payment.due_date)}
-            {overdue && " · просрочен"}
-          </>
+          <>до {formatDate(payment.due_date)}</>
         )}
       </div>
+      {payment.paid && payment.payment_method && (
+        <div className="truncate text-xs text-emerald-700">
+          {PAYMENT_METHOD_LABEL[payment.payment_method]}
+        </div>
+      )}
+      {overdue && <div className="text-xs text-rose-600">просрочен</div>}
     </>
   );
 
   // Оплата сразу при продаже — графика нет, отмечать нечего.
   if (!payment.id)
     return (
-      <div title="Оплачено полностью при продаже" className="text-left">
+      <div title="Оплачено полностью при продаже" className={box}>
         {summary}
       </div>
     );
@@ -900,7 +974,7 @@ function PaymentCell({ payment, onSaved }: { payment?: Payment; onSaved: () => v
         <button
           type="button"
           title={payment.paid ? "Изменить платёж" : "Отметить оплату"}
-          className="cursor-pointer rounded-md text-left hover:opacity-80"
+          className={cn(box, "cursor-pointer transition-opacity hover:opacity-80")}
         >
           {summary}
         </button>
@@ -916,6 +990,189 @@ function PaymentCell({ payment, onSaved }: { payment?: Payment; onSaved: () => v
         />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** Невнесённый платёж в окне правки графика; id null — новый. */
+type DraftPayment = { key: string; id: string | null; amount: string; dueDate: string };
+
+/**
+ * «Редактировать платежи» (решение владельца 2026-10-14): внесённые платежи —
+ * как есть, невнесённые можно менять, удалять и добавлять. Сохраняет RPC
+ * replace_sale_installments (db/migrations/2026-10-14_zzz_sale_installments_edit.sql)
+ * — одним действием, и сама база не даст сохранить график меньше стоимости.
+ */
+function PaymentsEditForm({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: Row;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const paid = row.payments.filter((p) => p.paid);
+  const [drafts, setDrafts] = useState<DraftPayment[]>(() =>
+    row.payments
+      .filter((p) => !p.paid && p.id)
+      .map((p) => ({ key: p.id!, id: p.id, amount: String(p.amount), dueDate: p.due_date })),
+  );
+  const [saving, setSaving] = useState(false);
+
+  const total = Number(row.total_amount) || 0;
+  const amounts = [
+    ...paid.map((p) => Number(p.amount)),
+    ...drafts.map((d) => Number(d.amount.replace(",", "."))),
+  ];
+  const shortfall = scheduleShortfall(total, amounts);
+  const sum = amounts.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0);
+
+  const update = (key: string, patch: Partial<DraftPayment>) =>
+    setDrafts((list) => list.map((d) => (d.key === key ? { ...d, ...patch } : d)));
+  const remove = (key: string) => setDrafts((list) => list.filter((d) => d.key !== key));
+  const add = () =>
+    setDrafts((list) => {
+      const dates = [...paid.map((p) => p.due_date), ...list.map((d) => d.dueDate)].filter(Boolean);
+      const last = dates.sort().at(-1) ?? todayISO();
+      return [
+        ...list,
+        {
+          key: crypto.randomUUID(),
+          id: null,
+          // Новый платёж сразу предлагает недостающую сумму.
+          amount: shortfall > 0 ? String(shortfall) : "",
+          dueDate: addMonthsISO(last < todayISO() ? todayISO() : last, 1),
+        },
+      ];
+    });
+
+  const handleSave = async () => {
+    if (saving) return;
+    for (const d of drafts) {
+      const v = Number(d.amount.replace(",", "."));
+      if (!d.amount.trim() || !Number.isFinite(v) || v <= 0) {
+        toast.error("Укажите сумму каждого платежа");
+        return;
+      }
+      if (!d.dueDate) {
+        toast.error("Укажите дату каждого платежа");
+        return;
+      }
+    }
+    if (shortfall > 0) {
+      toast.error(
+        `Платежи в сумме меньше стоимости абонемента: не хватает ${formatMoneyPrecise(shortfall)}`,
+      );
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("replace_sale_installments", {
+        p_sale_id: row.id,
+        p_rows: drafts.map((d) => ({
+          id: d.id,
+          amount: Number(d.amount.replace(",", ".")),
+          due_date: d.dueDate,
+        })),
+      });
+      if (error) {
+        toast.error("Не удалось сохранить платежи: " + error.message);
+        return;
+      }
+      toast.success("Платежи сохранены");
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Редактировать платежи</DialogTitle>
+        <DialogDescription>
+          {row.clients ? clientName(row.clients) : "Клиент"} ·{" "}
+          {row.memberships?.name ?? "Абонемент"}
+          {" · "}стоимость {formatMoneyPrecise(total)}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-3">
+            <InfoNote>{TIPS.editPayments}</InfoNote>
+            <ol className="space-y-2">
+              {paid.map((p, i) => (
+                <li
+                  key={p.id ?? i}
+                  className="flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm"
+                >
+                  <span className="w-5 shrink-0 text-muted-foreground">{i + 1}.</span>
+                  <span className="font-medium tabular-nums">
+                    {formatMoneyPrecise(Number(p.amount))}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-emerald-700">
+                    <Check className="h-3.5 w-3.5" />
+                    внесён {formatDate(p.paid_at ?? p.due_date)}
+                    {p.payment_method && ` · ${PAYMENT_METHOD_LABEL[p.payment_method]}`}
+                  </span>
+                </li>
+              ))}
+              {drafts.map((d, i) => (
+                <li key={d.key} className="flex items-end gap-2 rounded-md border px-3 py-2">
+                  <span className="w-5 shrink-0 pb-2.5 text-sm text-muted-foreground">
+                    {paid.length + i + 1}.
+                  </span>
+                  <FormField label="Сумма, ₾" tip={TIPS.paymentAmount} required className="flex-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={d.amount}
+                      onChange={(e) => update(d.key, { amount: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Внести до" tip={TIPS.dueDate} required className="flex-1">
+                    <Input
+                      type="date"
+                      value={d.dueDate}
+                      onChange={(e) => update(d.key, { dueDate: e.target.value })}
+                    />
+                  </FormField>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="mb-1 shrink-0 text-muted-foreground hover:text-destructive"
+                    aria-label={`Убрать платёж ${paid.length + i + 1}`}
+                    onClick={() => remove(d.key)}
+                  >
+                    <X />
+                  </Button>
+                </li>
+              ))}
+            </ol>
+            <Button variant="outline" size="sm" onClick={add}>
+              <Plus />
+              Добавить платёж
+            </Button>
+            <InfoNote variant={shortfall > 0 ? "warning" : undefined}>
+              Платежи в сумме: {formatMoneyPrecise(sum)} из {formatMoneyPrecise(total)}.
+              {shortfall > 0
+                ? ` Не хватает ${formatMoneyPrecise(shortfall)} — добавьте платёж или увеличьте сумму.`
+                : " Стоимость абонемента покрыта."}
+            </InfoNote>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
   );
 }
 

@@ -20,6 +20,7 @@ import {
   SALE_KIND_HINT,
   SALE_KIND_LABEL,
   SALE_TIPS,
+  addMonthsISO,
   type MembershipKind,
   type PaymentMethod,
   type PaymentType,
@@ -91,18 +92,6 @@ type MembershipRow = {
   /** Пакетный формат: пакет тренировок или пробное посещение. */
   kind: MembershipKind;
 };
-
-// Календарная арифметика по Y-M-D: без Date-парсинга (он читает дату как UTC)
-// и с прижатием к концу месяца — 31 января + 1 мес. = 28/29 февраля, а не 3 марта.
-function addMonthsISO(iso: string, months: number) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const total = y * 12 + (m - 1) + months;
-  const ny = Math.floor(total / 12);
-  const nm = total % 12;
-  const lastDay = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate();
-  const nd = Math.min(d, lastDay);
-  return `${ny}-${String(nm + 1).padStart(2, "0")}-${String(nd).padStart(2, "0")}`;
-}
 
 // Делим в тетри: доли — с округлением вниз, остаток — последнему платежу.
 // Округление доли вверх при маленьком остатке давало последнему платежу минус

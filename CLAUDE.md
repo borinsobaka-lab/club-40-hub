@@ -405,6 +405,10 @@ AUTH_SETUP.md.
   `app_install_settings.sign_in_closed` (экран входа клиента без почты),
   `studios.photo_url` (публичная колонка; картинка в выборе студии
   приложения, бакет `studio-logos`, папка `{id}/photo`).
+  Правка графика платежей: `db/migrations/2026-10-14_zzz_sale_installments_edit.sql`
+  — RPC `replace_sale_installments` (security invoker: невнесённые платежи
+  заменяются, внесённые не трогаются, сумма графика не меньше
+  `sales.total_amount`), `sales_remaining_installments_check` — `>= 0`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
