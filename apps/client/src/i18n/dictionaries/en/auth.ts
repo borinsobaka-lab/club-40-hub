@@ -35,6 +35,8 @@ const dict: Dictionary = {
     "and consent to the processing of my personal data",
   "Чтобы продолжить, примите политику конфиденциальности":
     "To continue, please accept the privacy policy",
+  "Спасибо за скачивание нового мобильного приложения. Вход в приложение мы откроем утром, 18 октября.":
+    "Thank you for downloading our new mobile app. Sign-in will open on the morning of October 18.",
 };
 
 export default dict;

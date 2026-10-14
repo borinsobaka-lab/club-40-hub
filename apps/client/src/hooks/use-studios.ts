@@ -15,6 +15,12 @@ export type Studio = {
   logo_url: string | null;
   /** Адрес одной строкой (db/migrations/…_studio_address.sql) — только в useFormatStudios. */
   address?: string | null;
+  /**
+   * Картинка клуба в выборе студии (studios.photo_url — путь в бакете
+   * studio-logos или полный URL; db/migrations/2026-10-14_zz_app_sign_in_closed_studio_photo.sql)
+   * — только в useFormatStudios.
+   */
+  photo_url?: string | null;
   /** Переводы названия и адреса (src/i18n/content.ts). */
   translations?: ContentTranslations | null;
 };

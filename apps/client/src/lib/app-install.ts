@@ -23,6 +23,12 @@ export type AppInstall = {
   };
   /** Своя иконка из админки (иначе — Base40 по умолчанию). */
   custom: boolean;
+  /**
+   * «Вход закрыт» (app_install_settings.sign_in_closed, решение владельца
+   * 2026-10-14): приложение раздают до переноса базы клиентов — на экране
+   * входа вместо почты текст, когда откроем вход (routes/auth.tsx).
+   */
+  signInClosed: boolean;
 };
 
 const DEFAULT_NAME = "Base40";
@@ -54,6 +60,7 @@ export const DEFAULT_APP_INSTALL: AppInstall = {
   name: DEFAULT_NAME,
   icons: DEFAULT_ICONS,
   custom: false,
+  signInClosed: false,
 };
 
 function iconUrls(folder: string): AppInstall["icons"] {
@@ -78,10 +85,12 @@ let refreshing: Promise<AppInstall> | null = null;
 
 async function loadAppInstall(): Promise<AppInstall> {
   try {
-    // У каждого приложения (формата клубов) своя строка.
+    // У каждого приложения (формата клубов) своя строка. «*», а не список
+    // колонок: до миграции sign_in_closed запрос не падает (иначе пропала бы
+    // и иконка).
     const { data, error } = await supabase
       .from("app_install_settings")
-      .select("app_name, app_icon_path")
+      .select("*")
       .eq("format", APP_FORMAT)
       .abortSignal(AbortSignal.timeout(2000))
       .maybeSingle();
@@ -90,6 +99,8 @@ async function loadAppInstall(): Promise<AppInstall> {
       name: data?.app_name?.trim() || DEFAULT_NAME,
       icons: data?.app_icon_path ? iconUrls(data.app_icon_path) : DEFAULT_ICONS,
       custom: !!data?.app_icon_path,
+      // Колонки нет в сгенерированных типах (db/migrations/2026-10-14_zz_…).
+      signInClosed: (data as { sign_in_closed?: boolean } | null)?.sign_in_closed === true,
     };
     cached = { value, at: Date.now() };
     return value;

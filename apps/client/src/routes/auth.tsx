@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useLoaderData, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FloatingLabelInput } from "@/components/ui/floating-input";
@@ -103,6 +103,12 @@ function AuthPage() {
   // На какой адрес ушёл последний код: «Изменить данные» → «Получить код» с
   // тем же адресом не должен обходить паузу между отправками.
   const [sentTo, setSentTo] = useState<string | null>(null);
+  // «Вход закрыт» из админки (app_install_settings.sign_in_closed, решение
+  // владельца 2026-10-14): приложение ставят до переноса базы клиентов —
+  // вместо почты и согласия текст, когда откроем вход. Код, уже введённый
+  // до закрытия (шаг otp), доводим до конца.
+  const signInClosed =
+    useLoaderData({ from: "__root__" })?.signInClosed === true && step === "form";
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", replace: true });
@@ -220,8 +226,9 @@ function AuthPage() {
     otpRefs.current[last]?.focus();
   };
 
-  const subtitle =
-    step === "otp"
+  const subtitle = signInClosed
+    ? null
+    : step === "otp"
       ? t("Введите код, отправленный на {email}", { email })
       : IS_PACKAGES
         ? t("Войдите по почте, которую вы указали в студии")
@@ -349,6 +356,10 @@ function AuthPage() {
 
   const errorText = error && <p className="text-sm text-destructive text-center">{error}</p>;
 
+  const closedText = t(
+    "Спасибо за скачивание нового мобильного приложения. Вход в приложение мы откроем утром, 18 октября.",
+  );
+
   const spinner = <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />;
 
   // Пакетное приложение — в оформлении разделов (тёмная шапка с огоньками и
@@ -368,11 +379,11 @@ function AuthPage() {
         header={
           <div className="px-6 pt-2 pb-10">
             <h1 className="text-3xl font-semibold leading-tight">{t("Добро пожаловать")}</h1>
-            <p className="mt-2 text-sm text-white/70">{subtitle}</p>
+            {subtitle && <p className="mt-2 text-sm text-white/70">{subtitle}</p>}
           </div>
         }
         footer={
-          step === "form" ? (
+          signInClosed ? null : step === "form" ? (
             <Button type="submit" form="auth-email-form" disabled={busy} className="w-full">
               {busy ? spinner : t("Получить код")}
             </Button>
@@ -383,7 +394,11 @@ function AuthPage() {
           )
         }
       >
-        {step === "form" ? (
+        {signInClosed ? (
+          <p className="px-4 pt-6 pb-2 text-center text-base font-medium leading-relaxed">
+            {closedText}
+          </p>
+        ) : step === "form" ? (
           // pb — запас снизу: прокрутка панели срезала нижний край поля.
           <form id="auth-email-form" onSubmit={requestCode} className="space-y-3 px-4 pt-6 pb-2">
             {/* name/id и autocomplete=email — телефон предлагает свою почту;
@@ -455,10 +470,14 @@ function AuthPage() {
         {/* Heading */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-semibold leading-tight">{t("Добро пожаловать")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+          {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
         </div>
 
-        {step === "form" ? (
+        {signInClosed ? (
+          <p className="max-w-sm w-full mx-auto text-center text-base font-medium leading-relaxed">
+            {closedText}
+          </p>
+        ) : step === "form" ? (
           <form onSubmit={requestCode} className="space-y-3 max-w-sm w-full mx-auto">
             {emailInput}
 

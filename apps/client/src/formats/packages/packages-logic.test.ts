@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { staffHasRating, staffRole, staffRoleLabel } from "./staff-roles";
 import { chunks, groupSubstitutions, replacedOf } from "./substitutions";
 import { isOverdue, paymentsBySale, tbilisiToday } from "./upcoming-payments";
+import { startsIn, startsInParts } from "./starts-in";
 
 describe("вкладки «Студии»: роли сотрудников", () => {
   test("старший администратор — во вкладке «Админы», с подписью «Старший администратор»", () => {
@@ -67,5 +68,35 @@ describe("следующие платежи у абонемента", () => {
     expect(isOverdue({ amount: 1, due_date: "2026-10-13" }, "2026-10-13")).toBe(false);
     // 21:00 UTC — в Тбилиси (UTC+4) уже следующий день.
     expect(tbilisiToday(new Date("2026-10-13T21:00:00Z"))).toBe("2026-10-14");
+  });
+});
+
+describe("«начинается через» на своей записи", () => {
+  const at = Date.parse("2026-10-18T10:00:00Z");
+  const parts = (ms: number) => {
+    const s = startsIn("2026-10-18T10:00:00Z", at - ms);
+    return (
+      s &&
+      startsInParts(s)
+        .map((p) => `${p.n} ${p.unit}`)
+        .join(" ")
+    );
+  };
+
+  test("часы и минуты; минуты округляются вверх", () => {
+    expect(parts((2 * 60 + 15) * 60_000)).toBe("2 h 15 min");
+    expect(parts(3 * 60 * 60_000)).toBe("3 h");
+    expect(parts(40 * 60_000)).toBe("40 min");
+    expect(parts(30_000)).toBe("1 min");
+  });
+
+  test("больше суток — дни и часы", () => {
+    expect(parts((26 * 60 + 30) * 60_000)).toBe("1 d 2 h");
+    expect(parts(48 * 60 * 60_000)).toBe("2 d");
+  });
+
+  test("началось — ничего", () => {
+    expect(parts(0)).toBeNull();
+    expect(parts(-60_000)).toBeNull();
   });
 });

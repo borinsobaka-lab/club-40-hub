@@ -22,7 +22,6 @@ import {
   ChatRound,
   AltArrowRight,
   Global,
-  MedalStar,
 } from "@solar-icons/react";
 import { FloatingLabelInput, FloatingLabelSelect } from "@/components/ui/floating-input";
 import { toast } from "sonner";
@@ -402,20 +401,6 @@ function ProfilePage() {
                 value={gender === "male" ? t("Мужской") : gender === "female" ? t("Женский") : ""}
               />
             </dl>
-
-            <button
-              type="button"
-              className="w-full mt-5 rounded-[14px] bg-muted px-4 py-3 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <div className="flex flex-col">
-                <span className="font-semibold text-sm">{t("Бонусы")}</span>
-                <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <MedalStar className="h-6 w-6 text-yellow-500" weight="BoldDuotone" />
-                  <span className="font-semibold text-foreground text-base">1 250</span>
-                </span>
-              </div>
-              <AltArrowRight className="h-5 w-5 text-muted-foreground" weight="LineDuotone" />
-            </button>
           </section>
 
           <div className="h-3 bg-muted" />
