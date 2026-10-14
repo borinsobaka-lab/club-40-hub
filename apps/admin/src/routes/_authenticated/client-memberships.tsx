@@ -1268,11 +1268,14 @@ function PaymentForm({
       }}
       className="space-y-3"
     >
-      <div className="text-sm">
-        <span className="font-medium tabular-nums">
-          {formatMoneyPrecise(Number(payment.amount))}
-        </span>
-        <span className="text-muted-foreground"> · до {formatDate(payment.due_date)}</span>
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold leading-tight">Фиксация оплаты</h3>
+        <div className="text-sm">
+          <span className="font-medium tabular-nums">
+            {formatMoneyPrecise(Number(payment.amount))}
+          </span>
+          <span className="text-muted-foreground"> · до {formatDate(payment.due_date)}</span>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <FormField label="Когда внесён" tip={TIPS.paidAt} required>
