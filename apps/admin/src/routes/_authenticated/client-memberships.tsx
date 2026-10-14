@@ -893,8 +893,10 @@ function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
     !payments.some((p) => p.refunded) &&
     row.membership_status !== "refunded";
   return (
-    <div className="w-[17rem] space-y-1.5">
-      <div className="grid grid-cols-2 gap-1.5">
+    // Плашки по ширине содержимого (суммы — до трёх знаков, решение владельца
+    // 2026-10-14): колонки по самой широкой плашке, без пустоты справа.
+    <div className="w-max space-y-1.5">
+      <div className="grid grid-cols-[repeat(2,max-content)] gap-1.5">
         {payments.map((p, i) => (
           <PaymentCell key={p.id ?? i} index={i} payment={p} onSaved={onSaved} />
         ))}
