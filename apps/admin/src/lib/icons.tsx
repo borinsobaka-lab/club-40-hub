@@ -22,9 +22,11 @@ import {
   Alert02Icon as AlertTriangleArt,
   ArrowDown as ArrowDownArt,
   ArrowLeft as ArrowLeftArt,
+  ArrowLeftRight as ArrowLeftRightArt,
   ArrowUp as ArrowUpArt,
   ArrowUpRight as ArrowUpRightArt,
   BanIcon as BanArt,
+  Banknote as BanknoteArt,
   Bold as BoldArt,
   Building2 as Building2Art,
   CalendarIcon as CalendarIconArt,
@@ -45,6 +47,7 @@ import {
   ChevronsRight as ChevronsRightArt,
   Circle as CircleArt,
   Copy as CopyArt,
+  CreditCard as CreditCardArt,
   Ellipsis as EllipsisArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
@@ -81,6 +84,7 @@ import {
   SentIcon as SendArt,
   Shapes as ShapesArt,
   ShoppingBag as ShoppingBagArt,
+  Smartphone as SmartphoneArt,
   Square as SquareArt,
   Ticket as TicketArt,
   Trash2 as Trash2Art,
@@ -116,9 +120,11 @@ function icon(art: IconSvgElement, displayName: string) {
 export const AlertTriangle = icon(AlertTriangleArt, "AlertTriangle");
 export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
 export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
+export const ArrowLeftRight = icon(ArrowLeftRightArt, "ArrowLeftRight");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
 export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
 export const Ban = icon(BanArt, "Ban");
+export const Banknote = icon(BanknoteArt, "Banknote");
 export const Bold = icon(BoldArt, "Bold");
 export const Building2 = icon(Building2Art, "Building2");
 export const CalendarIcon = icon(CalendarIconArt, "CalendarIcon");
@@ -139,6 +145,7 @@ export const ChevronsLeft = icon(ChevronsLeftArt, "ChevronsLeft");
 export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
 export const Circle = icon(CircleArt, "Circle");
 export const Copy = icon(CopyArt, "Copy");
+export const CreditCard = icon(CreditCardArt, "CreditCard");
 export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
@@ -175,6 +182,7 @@ export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
 export const Shapes = icon(ShapesArt, "Shapes");
 export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
+export const Smartphone = icon(SmartphoneArt, "Smartphone");
 export const Square = icon(SquareArt, "Square");
 export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
