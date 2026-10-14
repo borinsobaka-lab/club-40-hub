@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Plus, Receipt, Trash2, X } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Banknote,
+  Check,
+  CreditCard,
+  Loader2,
+  Plus,
+  Receipt,
+  Smartphone,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -104,7 +115,7 @@ const TIPS = {
     "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
   payment:
-    "Платежи по порядку: сумма и дата. Галочка — внесён (дата, когда заплатили), без неё — сколько и до какого числа клиент должен внести. Нажмите на платёж, чтобы отметить оплату. «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
+    "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, красный — просрочен. Нажмите на платёж, чтобы отметить оплату. «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
   editPayments:
     "Клиент не может внести платёж целиком — поставьте в платёж сумму, которую он внёс, и добавьте платежи на остаток. Внесённые платежи не меняются. Сохранить можно, только если платежи в сумме покрывают стоимость абонемента.",
   paymentAmount: "Сколько клиент внёс или должен внести этим платежом.",
@@ -850,6 +861,17 @@ function NoteForm({
 // ---------------------------------------------------------------------------
 
 /**
+ * Способ оплаты внесённого платежа — иконкой справа от даты (решение
+ * владельца 2026-10-14: плашки ниже, подпись — во всплывающей подсказке).
+ */
+const PAYMENT_METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
+  cash: Banknote,
+  card: CreditCard,
+  transfer: ArrowLeftRight,
+  app: Smartphone,
+};
+
+/**
  * Платежи продажи одной колонкой: плашки по два в ряд (внесённый — зелёная,
  * просроченный — красная), под ними — «Редактировать платежи».
  */
@@ -873,7 +895,8 @@ function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
         <Button
           variant="link"
           size="inline"
-          className="text-xs underline"
+          // Серым, как «Комментарий» в соседней колонке, — не спорит с платежами.
+          className="text-xs text-muted-foreground underline hover:text-foreground"
           onClick={() => setEditOpen(true)}
         >
           Редактировать платежи
@@ -944,18 +967,13 @@ function PaymentCell({
       >
         {payment.paid ? (
           <>
-            <Check className="h-3.5 w-3.5" />
             {formatDate(payment.paid_at ?? payment.due_date)}
+            {payment.payment_method && <PaymentMethodIcon method={payment.payment_method} />}
           </>
         ) : (
           <>до {formatDate(payment.due_date)}</>
         )}
       </div>
-      {payment.paid && payment.payment_method && (
-        <div className="truncate text-xs text-emerald-700">
-          {PAYMENT_METHOD_LABEL[payment.payment_method]}
-        </div>
-      )}
       {overdue && <div className="text-xs text-rose-600">просрочен</div>}
     </>
   );
@@ -990,6 +1008,17 @@ function PaymentCell({
         />
       </PopoverContent>
     </Popover>
+  );
+}
+
+function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
+  const Icon = PAYMENT_METHOD_ICON[method];
+  const label = PAYMENT_METHOD_LABEL[method];
+  return (
+    <span title={label} className="inline-flex">
+      <Icon aria-hidden className="h-3.5 w-3.5" />
+      <span className="sr-only">{label}</span>
+    </span>
   );
 }
 
