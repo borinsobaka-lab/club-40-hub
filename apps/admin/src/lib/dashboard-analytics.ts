@@ -40,6 +40,12 @@ export type SaleRecord = {
    */
   personal: boolean;
   method: string | null;
+  /** Где оформлена: admin — в админке, mobile — клиентом в приложении. */
+  source: string;
+  /** Промокод — свободный текст из формы продажи (null — без промокода). */
+  promoCode: string | null;
+  /** Скидка от цены номенклатуры (sales.discount_amount). */
+  discount: number;
   /** Ответственный (администратор-продавец): id справочника или снимок имени. */
   sellerKey: string | null;
   sellerName: string | null;

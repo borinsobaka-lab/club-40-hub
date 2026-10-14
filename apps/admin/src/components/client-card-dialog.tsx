@@ -37,6 +37,7 @@ import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-status-badge";
 import { effectiveStatus, isLiveStatus } from "@/lib/membership-status";
 import { computeClubStatus } from "@/lib/client-status";
+import { GOAL_LABELS, REFERRAL_LABELS } from "@/lib/client-profile";
 import type { BookingStatus } from "@/lib/bookings";
 import {
   clientName,
@@ -75,19 +76,6 @@ type MemberProfile = {
   updated_at: string | null;
 };
 
-const GOAL_LABELS: Record<string, string> = {
-  weight_loss: "Снизить вес",
-  muscle_strength: "Сила / мышцы",
-  endurance: "Выносливость и форма",
-  energy_wellbeing: "Энергия и самочувствие",
-  stress_habit: "Снять стресс, привычка",
-  event_prep: "Подготовка к событию",
-  // Анкета пакетных студий (db/migrations/2026-10-11_packages_onboarding.sql).
-  flexibility: "Стать гибче",
-  stress_relief: "Снять напряжение и стресс",
-  body_shape: "Подтянуть фигуру",
-  other: "Другое",
-};
 const EXPERIENCE_LABELS: Record<string, string> = {
   beginner: "Новичок / большой перерыв",
   occasional: "Время от времени",
@@ -117,13 +105,6 @@ const TIME_LABELS: Record<string, string> = {
   morning: "Утро",
   day: "День",
   evening: "Вечер",
-};
-const REFERRAL_LABELS: Record<string, string> = {
-  instagram: "Instagram / соцсети",
-  referral: "Рекомендация друга",
-  walk_by: "Проходил(а) мимо",
-  search: "Поиск / карты",
-  other: "Другое",
 };
 const PROFILE_GENDER: Record<string, string> = {
   female: "Женский",

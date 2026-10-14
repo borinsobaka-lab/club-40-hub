@@ -24,20 +24,31 @@ import {
   readSkeletonFormat,
 } from "@/lib/page-skeleton-layout";
 import {
+  CLASSES_CHARTS,
+  CLASSES_COLUMNS,
+  CLASSES_GRID,
+  CLASSES_STATS,
   CLIENTS_CHARTS,
   CLIENTS_GRID,
   CLIENTS_STATS,
   DASHBOARD_CHART_HEIGHT,
   DASHBOARD_FILTERS,
+  DASHBOARD_HEATMAP_HEIGHT,
   DASHBOARD_PIE_HEIGHT,
   DASHBOARD_RANK_HEIGHT,
   DASHBOARD_TITLES,
+  MARKETING_CHARTS,
+  MARKETING_GRID,
+  MARKETING_STATS,
   OVERVIEW_CHARTS,
   OVERVIEW_GRID,
   OVERVIEW_STATS,
   SALES_CHARTS,
   SALES_GRID,
   SALES_STATS,
+  SOURCE_COLUMNS,
+  TRAINER_COLUMNS,
+  WORKOUT_COLUMNS,
 } from "@/lib/dashboard-stats";
 
 /*
@@ -434,29 +445,153 @@ export function DashboardClientsPageSkeleton() {
 }
 
 /**
- * Подраздел дашборда в разработке («Занятия», «Маркетинг»): данных у него
- * нет, поэтому страница и её скелетон рисуют одно и то же.
+ * Таблица показателей дашборда (components/dashboard/metric-table.tsx):
+ * настоящая шапка — название и колонки, болванки строк.
  */
-export function DashboardSoon() {
+export function DashboardTableSkeleton({
+  name,
+  columns,
+  rows = 5,
+}: {
+  name: string;
+  columns: string[];
+  rows?: number;
+}) {
   return (
-    <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-      Раздел в разработке — показатели появятся здесь позже.
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{name}</TableHead>
+          {columns.map((c) => (
+            <TableHead key={c} className="text-right">
+              {c}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableSkeletonRows columns={columns.length + 1} rows={rows} />
+      </TableBody>
+    </Table>
+  );
+}
+
+/** «Путь новых клиентов»: подпись шага, полоса, число и доля (components/dashboard/funnel.tsx). */
+export function DashboardFunnelSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3">
+          <div>
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="mt-1 h-6 w-full" />
+          </div>
+          <div className="space-y-1">
+            <Skeleton className="ml-auto h-4 w-10" />
+            <Skeleton className="ml-auto h-3 w-8" />
+          </div>
+        </div>
+      ))}
     </div>
+  );
+}
+
+/** «Занятия»: плитки, загрузка расписания и причины отмен, тренеры, тренировки, слоты. */
+export function DashboardClassesSkeleton() {
+  return (
+    <>
+      <DashboardStatsSkeleton labels={CLASSES_STATS.map((s) => s.label)} className={CLASSES_GRID} />
+      <div className="grid gap-3 lg:grid-cols-3">
+        <DashboardChartSkeleton
+          title={CLASSES_CHARTS.heatmap.title}
+          height={DASHBOARD_HEATMAP_HEIGHT}
+          className="lg:col-span-2"
+        />
+        <DashboardChartSkeleton title={CLASSES_CHARTS.reasons.title}>
+          <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} rows={4} />
+        </DashboardChartSkeleton>
+      </div>
+      <DashboardChartSkeleton title={CLASSES_CHARTS.trainers.title}>
+        <DashboardTableSkeleton
+          name="Тренер"
+          columns={TRAINER_COLUMNS.map((k) => CLASSES_COLUMNS[k].label)}
+        />
+      </DashboardChartSkeleton>
+      <DashboardChartSkeleton title={CLASSES_CHARTS.workouts.title}>
+        <DashboardTableSkeleton
+          name="Тренировка"
+          columns={WORKOUT_COLUMNS.map((k) => CLASSES_COLUMNS[k].label)}
+        />
+      </DashboardChartSkeleton>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {[CLASSES_CHARTS.topSlots, CLASSES_CHARTS.weakSlots].map((c) => (
+          <DashboardChartSkeleton key={c.title} title={c.title}>
+            <DashboardRankSkeleton />
+          </DashboardChartSkeleton>
+        ))}
+      </div>
+    </>
   );
 }
 
 export function DashboardClassesPageSkeleton() {
   return (
     <ShellSkeleton title={DASHBOARD_TITLES.classes}>
-      <DashboardSoon />
+      <DashboardBodySkeleton>
+        <DashboardClassesSkeleton />
+      </DashboardBodySkeleton>
     </ShellSkeleton>
+  );
+}
+
+/** «Маркетинг»: плитки, путь новых клиентов, источники, цели, промокоды, каналы. */
+export function DashboardMarketingSkeleton() {
+  return (
+    <>
+      <DashboardStatsSkeleton
+        labels={MARKETING_STATS.map((s) => s.label)}
+        className={MARKETING_GRID}
+      />
+      <div className="grid gap-3 lg:grid-cols-3">
+        <DashboardChartSkeleton title={MARKETING_CHARTS.funnel.title} className="lg:col-span-2">
+          <DashboardFunnelSkeleton />
+        </DashboardChartSkeleton>
+        <DashboardChartSkeleton title={MARKETING_CHARTS.sources.title}>
+          <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} rows={4} />
+        </DashboardChartSkeleton>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <DashboardChartSkeleton
+          title={MARKETING_CHARTS.sourcesTable.title}
+          className="lg:col-span-2"
+        >
+          <DashboardTableSkeleton
+            name="Источник"
+            columns={Object.values(SOURCE_COLUMNS).map((c) => c.label)}
+          />
+        </DashboardChartSkeleton>
+        <DashboardChartSkeleton title={MARKETING_CHARTS.goals.title}>
+          <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} rows={4} />
+        </DashboardChartSkeleton>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <DashboardChartSkeleton title={MARKETING_CHARTS.promoCodes.title}>
+          <DashboardRankSkeleton rows={5} />
+        </DashboardChartSkeleton>
+        <DashboardChartSkeleton title={MARKETING_CHARTS.channels.title}>
+          <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} rows={2} />
+        </DashboardChartSkeleton>
+      </div>
+    </>
   );
 }
 
 export function DashboardMarketingPageSkeleton() {
   return (
     <ShellSkeleton title={DASHBOARD_TITLES.marketing}>
-      <DashboardSoon />
+      <DashboardBodySkeleton>
+        <DashboardMarketingSkeleton />
+      </DashboardBodySkeleton>
     </ShellSkeleton>
   );
 }

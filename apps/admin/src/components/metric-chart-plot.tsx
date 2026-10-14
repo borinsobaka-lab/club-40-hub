@@ -27,7 +27,7 @@ export type ChartPoint = {
   tick: string;
   label: string;
   value: number | null;
-  /** Число продаж в корзине (для среднего чека). */
+  /** Знаменатель среднего в корзине: продаж (средний чек), занятий, мест… */
   n: number;
 };
 
@@ -43,6 +43,7 @@ export function MetricChartPlot({
   dots,
   format,
   showDeals,
+  base = { label: "Продаж", empty: "нет продаж" },
 }: {
   data: ChartPoint[];
   chartType: ChartType;
@@ -50,8 +51,10 @@ export function MetricChartPlot({
   /** Точки на линии (по дням их слишком много). */
   dots: boolean;
   format: (n: number) => string;
-  /** Показывать в подсказке число продаж (средние показатели). */
+  /** Показывать в подсказке знаменатель (средние показатели). */
   showDeals: boolean;
+  /** Чем считается знаменатель: подпись и текст пустой корзины. */
+  base?: { label: string; empty: string };
 }) {
   const gradientId = `chart-fill-${useId().replace(/:/g, "")}`;
   // У средних корзина без продаж — null, а не 0. Линия и область рисуются
@@ -83,10 +86,12 @@ export function MetricChartPlot({
           <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
             <div className="font-medium first-letter:uppercase">{row.label}</div>
             <div className="mt-1 text-sm font-semibold tabular-nums">
-              {row.value === null ? "нет продаж" : format(row.value)}
+              {row.value === null ? base.empty : format(row.value)}
             </div>
             {showDeals && row.n > 0 && (
-              <div className="text-muted-foreground">продаж: {formatNumber(row.n)}</div>
+              <div className="text-muted-foreground">
+                {base.label.toLowerCase()}: {formatNumber(row.n)}
+              </div>
             )}
           </div>
         );

@@ -47,6 +47,10 @@ export type StatDef<K extends string = string> = StatInfo<K> & {
   series?: SeriesDef;
 };
 
+/** Единица разницы в пунктах — у долей и индексов. */
+const POINTS: Partial<Record<StatFormat, string>> = { percent: " п. п.", score: " п." };
+const pointsFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+
 function Delta({
   current,
   previous,
@@ -72,13 +76,19 @@ function Delta({
   const good = flat ? null : up === goodWhenUp;
   const color = flat ? "text-muted-foreground" : good ? "text-emerald-600" : "text-rose-600";
   const Icon = flat ? Minus : up ? ArrowUp : ArrowDown;
+  const sign = flat ? "" : up ? "+" : "−";
+  // Доли и индексы сравниваем разницей в пунктах: «+50% · 5%» у
+  // заполняемости 10% → 15% не читается.
+  const points = POINTS[format];
   const diffText = formatStat(format, Math.abs(diff));
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-x-1 text-xs", color)}>
       <Icon className="h-3 w-3" />
-      {pct === null
-        ? diffText
-        : `${flat ? "" : up ? "+" : "−"}${Math.abs(pct).toFixed(0)}% · ${diffText}`}
+      {points !== undefined
+        ? `${sign}${pointsFormat.format(Math.abs(diff))}${points}`
+        : pct === null
+          ? diffText
+          : `${sign}${Math.abs(pct).toFixed(0)}% · ${diffText}`}
       <span className="text-muted-foreground max-sm:hidden">vs пред. период</span>
     </span>
   );
@@ -222,6 +232,9 @@ function StatCard({
   );
 }
 
+/** Знаменатель среднего по умолчанию — продажи (средний чек). */
+const SALES_BASE = { label: "Продаж", empty: "нет продаж" };
+
 const GRANULARITIES: { value: Granularity; label: string; span: string; unit: string }[] = [
   { value: "month", label: "По месяцам", span: "12 месяцев", unit: "месяц" },
   { value: "week", label: "По неделям", span: "12 недель", unit: "неделю" },
@@ -283,6 +296,7 @@ function MetricChart({
   const g = GRANULARITIES.find((x) => x.value === granularity)!;
   const fmt = (n: number) => formatStat(stat.format, n);
   const color = target.color;
+  const base = def.base ?? SALES_BASE;
 
   const data = (values ?? []).map((v) => ({
     tick: v.bucket.tick,
@@ -304,7 +318,7 @@ function MetricChart({
     },
     def.kind === "avg"
       ? {
-          label: `Продаж за ${g.span}`,
+          label: `${base.label} за ${g.span}`,
           value: formatNumber((values ?? []).reduce((s, v) => s + v.n, 0)),
         }
       : {
@@ -401,6 +415,7 @@ function MetricChart({
                 dots={granularity !== "day"}
                 format={fmt}
                 showDeals={def.kind === "avg"}
+                base={base}
               />
             </Suspense>
           )}

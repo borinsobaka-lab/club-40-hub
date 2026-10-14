@@ -6,9 +6,15 @@
  */
 
 import { RENEWAL_GRACE_DAYS } from "@/lib/dashboard-analytics";
+import type { ClassesKey } from "@/lib/dashboard-classes";
 import { formatMoney, formatNumber } from "@/lib/format";
 
-export type StatFormat = "money" | "number" | "decimal" | "years";
+/**
+ * Вид значения: percent — доля в процентах (сравнение — в процентных
+ * пунктах), score — индекс без единиц (NPS; сравнение — в пунктах), days —
+ * дни целым числом.
+ */
+export type StatFormat = "money" | "number" | "decimal" | "years" | "percent" | "score" | "days";
 
 const decimal = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
 
@@ -16,7 +22,23 @@ export function formatStat(format: StatFormat, n: number) {
   if (format === "money") return formatMoney(n);
   if (format === "decimal") return decimal.format(n);
   if (format === "years") return `${decimal.format(n)} ${yearsWord(n)}`;
+  if (format === "percent") return formatPercent(n);
+  if (format === "score") return formatNumber(Math.round(n));
+  if (format === "days") return `${formatNumber(Math.round(n))} ${daysWord(Math.round(n))}`;
   return formatNumber(n);
+}
+
+/** Доля в процентах: до 10% — с десятыми, дальше целыми. */
+export function formatPercent(n: number) {
+  return `${Math.abs(n) < 10 ? decimal.format(n) : formatNumber(Math.round(n))}%`;
+}
+
+function daysWord(n: number) {
+  const mod10 = Math.abs(n) % 10;
+  const mod100 = Math.abs(n) % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "дня";
+  return "дней";
 }
 
 function yearsWord(n: number) {
@@ -66,6 +88,8 @@ export const DASHBOARD_CHART_HEIGHT = 260;
 export const DASHBOARD_PIE_HEIGHT = 180;
 /** График рядом с «Топ 10» — высотой с сам рейтинг. */
 export const DASHBOARD_RANK_HEIGHT = 360;
+/** «Загрузка расписания», пока данных нет (сама сетка — по числу часов). */
+export const DASHBOARD_HEATMAP_HEIGHT = 340;
 
 // ---------------------------------------------------------------------------
 // Общие показатели
@@ -337,5 +361,326 @@ export const CLIENTS_CHARTS = {
   topLtv: {
     title: "Топ 10 клиентов по LTV",
     tip: "Клиенты, принёсшие клубу больше всего денег за всё время: все платежи за вычетом возвратов. От периода не зависит.",
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Занятия
+
+const HELD = "групповых занятиях, которые уже прошли и не отменены клубом";
+
+export const CLASSES_STATS: StatInfo<ClassesKey>[] = [
+  {
+    key: "fillRate",
+    label: "Заполняемость",
+    tip: `Какая доля мест была занята на ${HELD}: отмеченные посещения / вместимость занятий. Занятия без лимита мест не считаются. Главный показатель расписания — его и растим.`,
+    hint: "за период",
+    format: "percent",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "showRate",
+    label: "Доходимость",
+    tip: "Какая доля записавшихся пришла: «Посетил» / («Посетил» + «Не пришёл»). Записи, отменённые до начала, и записи без отметки не считаются.",
+    hint: "за период",
+    format: "percent",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "avgPerClass",
+    label: "Среднее на занятии",
+    tip: "Сколько человек в среднем приходит на одно групповое занятие: посещения / проведённые занятия.",
+    hint: "человек",
+    format: "decimal",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "visits",
+    label: "Посещений",
+    tip: `Отмеченные посещения на ${HELD}.`,
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "uniqueClients",
+    label: "Клиентов на занятиях",
+    tip: "Сколько разных клиентов хотя бы раз пришли на групповое занятие за период.",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "classes",
+    label: "Проведено занятий",
+    tip: "Групповые занятия периода, которые уже прошли и не отменены клубом.",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "personal",
+    label: "Персональных тренировок",
+    tip: "Отмеченные посещения персональных тренировок за период.",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "cancelRate",
+    label: "Отмены записей",
+    tip: `Какая доля записей на ${HELD} была отменена до начала — клиентом в приложении или администратором. Лист ожидания не считается.`,
+    hint: "за период",
+    format: "percent",
+    compare: true,
+    goodWhenUp: false,
+  },
+  {
+    key: "noShows",
+    label: "Не пришли",
+    tip: "Записи с отметкой «Не пришёл» на групповые занятия периода — места, которые могли занять другие клиенты.",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: false,
+  },
+  {
+    key: "cancelledClasses",
+    label: "Отменено занятий",
+    tip: "Групповые занятия периода, которые клуб отменил в «Расписании».",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: false,
+  },
+];
+
+/** Сетка плиток: 10 штук — по 5 в ряд на широком экране. */
+export const CLASSES_GRID = "lg:grid-cols-3 xl:grid-cols-5";
+
+export const CLASSES_CHARTS = {
+  heatmap: {
+    title: "Загрузка расписания",
+    tip: "Сколько человек в среднем приходит на групповое занятие по дню недели и часу начала: чем насыщеннее цвет, тем больше. Наведите на ячейку — число занятий и заполняемость. Пустые часы — свободное время в расписании.",
+  },
+  reasons: {
+    title: "Причины отмен записей",
+    tip: "Почему отменяли записи на проведённые групповые занятия — причина, выбранная клиентом в приложении. «Другое» — свой текст клиента, «Без причины» — отменил администратор или запись отменена до появления причин.",
+  },
+  trainers: {
+    title: "Тренеры",
+    tip: "Групповые занятия, которые тренер провёл за период. На замене занятие — у заменяющего тренера, занятие с двумя тренерами — у обоих.",
+  },
+  workouts: {
+    title: "Тренировки",
+    tip: "Групповые занятия за период по тренировкам из «Тренировок».",
+  },
+  topSlots: {
+    title: "Топ 10 занятий расписания",
+    tip: "Занятия расписания — тренировка, день недели и время — с наибольшим средним числом посещений за период.",
+  },
+  weakSlots: {
+    title: "Наименее посещаемые занятия",
+    tip: "Занятия расписания с наименьшим средним числом посещений за период — кандидаты на перенос, замену тренировки или продвижение.",
+  },
+} as const;
+
+/** Колонки таблиц «Тренеры» и «Тренировки» (без первой — имени). */
+export const CLASSES_COLUMNS = {
+  classes: { label: "Занятий", tip: "Проведённые групповые занятия за период." },
+  visits: { label: "Посещений", tip: "Отмеченные посещения этих занятий." },
+  avg: { label: "Среднее", tip: "Посещений на одно занятие." },
+  fill: {
+    label: "Заполняемость",
+    tip: "Посещения / вместимость занятий; занятия без лимита мест не считаются.",
+  },
+  show: {
+    label: "Доходимость",
+    tip: "«Посетил» / («Посетил» + «Не пришёл»); записи без отметки не считаются.",
+  },
+  clients: { label: "Клиентов", tip: "Разные клиенты, посетившие эти занятия." },
+  repeat: {
+    label: "Повторно",
+    tip: "Какая доля клиентов пришла на эти занятия ещё раз за период (два посещения и больше) — лояльность к тренеру или направлению.",
+  },
+  rating: {
+    label: "Рейтинг",
+    tip: "Оценка тренера клиентами в приложении — за всё время, от периода не зависит.",
+  },
+} as const;
+
+/** Колонки таблицы «Тренеры» — порядок для страницы и скелетона. */
+export const TRAINER_COLUMNS = [
+  "classes",
+  "visits",
+  "avg",
+  "fill",
+  "show",
+  "clients",
+  "repeat",
+  "rating",
+] as const satisfies (keyof typeof CLASSES_COLUMNS)[];
+export const WORKOUT_COLUMNS = [
+  "classes",
+  "visits",
+  "avg",
+  "fill",
+  "show",
+  "clients",
+  "repeat",
+] as const satisfies (keyof typeof CLASSES_COLUMNS)[];
+
+// ---------------------------------------------------------------------------
+// Маркетинг
+
+export type MarketingKey =
+  | "newClients"
+  | "newBuyers"
+  | "purchaseConversion"
+  | "trialConversion"
+  | "firstRevenue"
+  | "daysToPurchase"
+  | "appSales"
+  | "appMembers"
+  | "nps"
+  | "discounts";
+
+export const MARKETING_STATS: StatInfo<MarketingKey>[] = [
+  {
+    key: "newClients",
+    label: "Новые клиенты",
+    tip: "Клиенты, появившиеся за период: заведены в админке или пришли из приложения (по дате регистрации в карточке).",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "newBuyers",
+    label: "Новые покупатели",
+    tip: "Клиенты, купившие за период свой первый абонемент; пробное посещение не в счёт. Итог привлечения: сколько пришедших стали платящими.",
+    hint: "за период",
+    format: "number",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "purchaseConversion",
+    label: "Конверсия в покупку",
+    tip: "Какая доля новых клиентов периода уже купила абонемент (пробное не в счёт). Считается на сегодня: у клиентов из конца периода ещё есть время купить.",
+    hint: "новых клиентов",
+    format: "percent",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "trialConversion",
+    label: "Конверсия пробных",
+    tip: "Какая доля клиентов, купивших пробное посещение за период, потом купила абонемент. Пробные с возвратом не считаются. В подписочных клубах пробных нет.",
+    hint: "за период",
+    format: "percent",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "firstRevenue",
+    label: "Выручка с первых покупок",
+    tip: "Стоимость первых абонементов новых покупателей периода — сколько денег принёс приток новых клиентов.",
+    hint: "за период",
+    format: "money",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "daysToPurchase",
+    label: "Дней до покупки",
+    tip: "Сколько дней в среднем проходит от регистрации клиента до первой покупки абонемента — у новых покупателей периода. Чем быстрее, тем лучше работает воронка.",
+    hint: "в среднем",
+    format: "days",
+    compare: true,
+    goodWhenUp: false,
+  },
+  {
+    key: "appSales",
+    label: "Покупки в приложении",
+    tip: "Доля абонементов за период, которые клиенты купили сами в клиентском приложении; остальные оформлены в админке.",
+    hint: "за период",
+    format: "percent",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "appMembers",
+    label: "Члены клуба в приложении",
+    tip: "Какая доля членов клуба (действующий абонемент, в том числе замороженный; пробный не в счёт) вошла в клиентское приложение — до них доходят новости и пуши. От периода не зависит.",
+    hint: "сейчас",
+    format: "percent",
+    compare: false,
+    goodWhenUp: true,
+  },
+  {
+    key: "nps",
+    label: "NPS",
+    tip: "Индекс лояльности по ответам опросов NPS за период: доля промоутеров (9–10 баллов) минус доля критиков (0–6), от −100 до 100. Ответы вносятся в разделе «NPS».",
+    hint: "за период",
+    format: "score",
+    compare: true,
+    goodWhenUp: true,
+  },
+  {
+    key: "discounts",
+    label: "Скидки",
+    tip: "На сколько абонементы за период проданы дешевле цены из «Номенклатур»: ручные скидки и скидки по промокодам.",
+    hint: "за период",
+    format: "money",
+    compare: true,
+    goodWhenUp: false,
+  },
+];
+
+export const MARKETING_GRID = "lg:grid-cols-3 xl:grid-cols-5";
+
+export const MARKETING_CHARTS = {
+  funnel: {
+    title: "Путь новых клиентов",
+    tip: "Что успели сделать клиенты, появившиеся за период, — на сегодня. Доля каждого шага — от всех новых клиентов периода, а не от предыдущего шага: абонемент можно купить и без пробного.",
+  },
+  sources: {
+    title: "Откуда узнали о клубе",
+    tip: "Ответ на вопрос анкеты приложения «Откуда вы о нас узнали?» у новых клиентов периода. Клиенты без приложения или без ответа в доли не входят.",
+  },
+  sourcesTable: {
+    title: "Источники клиентов",
+    tip: "Новые клиенты периода по ответу в анкете приложения: сколько из них уже купили абонемент и на какую сумму (все их покупки, кроме пробного).",
+  },
+  goals: {
+    title: "Цели новых клиентов",
+    tip: "Главная цель тренировок из анкеты приложения у новых клиентов периода — о чём говорить в рекламе и постах.",
+  },
+  promoCodes: {
+    title: "Топ промокодов",
+    tip: "Промокоды, указанные в продажах абонементов за период, по сумме продаж. Промокод в продаже — пометка для учёта: скидку он сам не считает.",
+  },
+  channels: {
+    title: "Где покупают абонементы",
+    tip: "Абонементы, проданные за период: оформлены администратором в админке или куплены клиентом в приложении.",
+  },
+} as const;
+
+/** Колонки таблицы «Источники клиентов» (без первой — источника). */
+export const SOURCE_COLUMNS = {
+  clients: { label: "Новых", tip: "Новые клиенты периода с этим ответом." },
+  buyers: { label: "Купили", tip: "Сколько из них уже купили абонемент (пробное не в счёт)." },
+  conversion: { label: "Конверсия", tip: "Купили / новые клиенты." },
+  revenue: {
+    label: "Выручка",
+    tip: "Стоимость всех их абонементов, кроме пробного, — по сегодня.",
   },
 } as const;
