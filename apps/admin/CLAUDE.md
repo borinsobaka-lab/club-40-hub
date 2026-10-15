@@ -63,11 +63,14 @@ Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
 **Письма Lady Stretch** (решение владельца 2026-10-15): клиенты пакетных
 клубов (redirect_to — `app.lady-stretch.one` или `pack.base40.fit`, список —
 `PACKAGES_APP_URLS`, `isPackagesApp`) получают письма в брендинге студий
-растяжки — `emailBrand` → `"ladyStretch"`: тёмный фон рейки `#12161b`,
-карточка цвета меню `#1a2027`, розовый `#f763fc` (полоса, рамка и цифры
-кода), логотип — `public/email/lady-stretch-logo.png` (PNG: почтовики не
-показывают SVG; грузится с `ADMIN_APP_URL`). Вёрстка таблицами с `bgcolor` —
-иначе почтовик, срезавший фон у div, показал бы белый текст на белом.
+растяжки — `emailBrand` → `"ladyStretch"`: светлое (решение владельца
+2026-10-15, тёмное — «мрачно»): светло-серая подложка, белая карточка с
+розовой шапкой `#f763fc` и белым логотипом
+(`public/email/lady-stretch-logo-pink.png` — PNG: почтовики не показывают
+SVG; грузится с `ADMIN_APP_URL`), текст и цифры кода — серый меню
+`#1a2027`, код — на бледно-розовой плашке с розовой рамкой. Вёрстка
+таблицами с `bgcolor` — иначе почтовик, срезавший фон у div, потерял бы
+розовую шапку.
 Отправитель — `emailSender`: `LADY_STRETCH_MAIL_FROM`
 (`noreply@lady-stretch.one`, задаётся только после Verified домена в Resend —
 AGENT_TASKS.md, Задача 13), без неё — `noreply@base40.fit` под именем
