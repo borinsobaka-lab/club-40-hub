@@ -96,12 +96,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      // Фирменная «40». SVG — для современных браузеров, png/ico — фолбэк
-      // (часть браузеров дёргает /favicon.ico напрямую, минуя разметку).
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
-      { rel: "icon", href: "/favicon.ico", sizes: "any" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      // Фирменная «A». png 32/180 — вкладка и HiDPI, ico — фолбэк (часть
+      // браузеров дёргает /favicon.ico напрямую, минуя разметку). ?v= —
+      // сбросить закэшированную браузерами прежнюю иконку.
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=2" },
+      { rel: "icon", type: "image/png", sizes: "180x180", href: "/apple-touch-icon.png?v=2" },
+      { rel: "icon", href: "/favicon.ico?v=2", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=2" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
