@@ -1,6 +1,7 @@
 /*
- * Service worker клиентского приложения (регистрируется в __root.tsx, пока
- * только у пакетного). Задача — быстрый повторный запуск:
+ * Service worker клиентского приложения (регистрируется в __root.tsx, у обоих
+ * приложений). Две задачи — пуш-уведомления (внизу файла) и быстрый
+ * повторный запуск:
  *
  * - /assets/* (JS, CSS, шрифты, картинки сборки; имена с хэшем, не меняются)
  *   — из кэша, без сети. Новая сборка — новые имена, старые со временем
@@ -129,4 +130,99 @@ async function staleWhileRevalidate(request) {
     .catch(() => null);
   if (hit) return hit;
   return (await update) || fetch(request);
+}
+
+/*
+ * Пуш-уведомления (решение владельца 2026-10-15). Пуш шлёт сервер админки
+ * (apps/admin/src/lib/push/payload.ts — поля ниже), служба доставки браузера
+ * будит этот service worker. Пуш всегда показывается: iOS отписывает
+ * приложение, которое получает пуши молча.
+ *
+ *   t — заголовок, b — текст (уже на языке приложения на этом телефоне),
+ *   u — куда ведёт нажатие (раздел /schedule или https://…),
+ *   n — id уведомления (tag: повтор не дублирует), d — id доставки,
+ *   i — иконка приложения (Android).
+ *
+ * Показ и нажатие подтверждаются (/api/push-ack → счётчики «Доставлено» и
+ * «Прочитано» в админке); открытое приложение обновляет ленту уведомлений.
+ */
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { b: event.data ? event.data.text() : "" };
+  }
+  const title = data.t || "";
+  const options = {
+    body: data.b || "",
+    tag: data.n || undefined,
+    icon: data.i || "/icon-192.png",
+    data: { u: data.u || null, n: data.n || null, d: data.d || null },
+  };
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      ackPush(data.d, "delivered"),
+      postToClients({ type: "push-received" }),
+    ]),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const target = pushTarget(data.u, data.n);
+  event.waitUntil(Promise.all([ackPush(data.d, "clicked"), openTarget(target)]));
+});
+
+// Браузер сменил подписку сам — оформляем новую тем же ключом сервера; в базу
+// её запишет приложение при следующем запуске (usePushSync).
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const options = event.oldSubscription && event.oldSubscription.options;
+  if (!options || !options.applicationServerKey) return;
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe({ userVisibleOnly: true, applicationServerKey: options.applicationServerKey })
+      .catch(() => {}),
+  );
+});
+
+function ackPush(deliveryId, kind) {
+  if (!deliveryId) return Promise.resolve();
+  return fetch("/api/push-ack", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ d: deliveryId, e: kind }),
+  }).catch(() => {});
+}
+
+async function postToClients(message) {
+  const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of windows) client.postMessage(message);
+}
+
+/** Куда ведёт пуш: раздел приложения, внешняя ссылка или лента уведомлений. */
+function pushTarget(url, notificationId) {
+  const value = (url || "").trim();
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value) return new URL("/" + value.replace(/^\/+/, ""), self.location.origin).href;
+  const inbox = new URL("/notifications", self.location.origin);
+  if (notificationId) inbox.searchParams.set("n", notificationId);
+  return inbox.href;
+}
+
+async function openTarget(href) {
+  const url = new URL(href);
+  const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  if (url.origin === self.location.origin) {
+    // Приложение открыто — переходим внутри него, без перезагрузки.
+    const client = windows.find((c) => new URL(c.url).origin === self.location.origin);
+    if (client) {
+      await client.focus().catch(() => {});
+      client.postMessage({ type: "push-open", url: url.pathname + url.search });
+      return;
+    }
+  }
+  await self.clients.openWindow(href);
 }

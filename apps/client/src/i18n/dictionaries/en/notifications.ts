@@ -1,6 +1,6 @@
 import type { Dictionary } from "../types";
 
-/** Раздел: Уведомления (страница и демо-уведомления). */
+/** Раздел: Уведомления (лента и включение пушей). */
 const dict: Dictionary = {
   "Уведомления — Base40": "Notifications — Base40",
   "Уведомления Base40.": "Base40 notifications.",
@@ -12,30 +12,41 @@ const dict: Dictionary = {
   "Все уведомления прочитаны": "All notifications read",
   "Прочитать все": "Mark all as read",
   "Уведомлений пока нет": "No notifications yet",
-  Открыть: "Open",
-  "🎉 Добро пожаловать в Base40!": "🎉 Welcome to Base40!",
-  "Привет! Мы рады видеть тебя в студии.\nЗагляни в раздел «Расписание» — там уже доступно расписание на ближайшие дни.":
-    "Hi! We're glad to see you at the studio.\nCheck out the “Schedule” section — the schedule for the next few days is already there.",
-  "Привет! Мы рады видеть тебя в клубе.\nЗагляни в раздел «Бронь» — там уже доступно расписание на ближайшие дни.":
-    "Hi! We're glad to see you at the club.\nCheck out the “Booking” section — the schedule for the next few days is already there.",
-  "🔥 Новая тренировка в расписании": "🔥 New workout in the schedule",
-  "В среду в 19:00 — функциональная тренировка с Анной.\nОсталось 4 места, успей записаться!":
-    "Wednesday at 19:00 — functional training with Anna.\nOnly 4 spots left, book now!",
-  "🎁 Партнёрская акция": "🎁 Partner offer",
-  "Скидка 20% на спортивное питание для участников Base40.\nПодробности и промокод — на сайте партнёра.":
-    "20% off sports nutrition for Base40 members.\nDetails and promo code on the partner's website.",
-  "💳 Абонемент скоро закончится": "💳 Your membership ends soon",
-  "Осталось 3 занятия по текущему абонементу.\nПродли его в разделе «Абонементы», чтобы не прерывать тренировки.":
-    "3 classes left on your current membership.\nRenew it in the “Memberships” section to keep training without a break.",
-  "📺 Новое видео на YouTube": "📺 New video on YouTube",
-  "Разбор техники приседаний от тренера студии.\nСмотрите по ссылке ниже.":
-    "Squat technique breakdown from a studio trainer.\nWatch it via the link below.",
-  "Разбор техники приседаний от тренера клуба.\nСмотрите по ссылке ниже.":
-    "Squat technique breakdown from a club trainer.\nWatch it via the link below.",
-  "📣 Новость студии": "📣 Studio news",
-  "📣 Новость клуба": "📣 Club news",
-  "В эти выходные — открытая тренировка на свежем воздухе.\nПодробности в разделе новостей на главной.":
-    "This weekend — an open outdoor workout.\nDetails in the news section on the home screen.",
+  "Не удалось загрузить уведомления. Обновите страницу.":
+    "Couldn't load notifications. Please refresh the page.",
+  "Уведомления включены": "Notifications are on",
+  "Не удалось включить уведомления. Попробуйте ещё раз":
+    "Couldn't turn on notifications. Please try again",
+  "Уведомления выключены. Включить их можно в профиле":
+    "Notifications are off. You can turn them on in your profile",
+  "Включите уведомления": "Turn on notifications",
+  "Чтобы получать новости студии": "To get studio news",
+  "Чтобы получать новости клуба": "To get club news",
+  "Push-уведомления": "Push notifications",
+  Включены: "On",
+  Выключены: "Off",
+  "Недоступны на этом телефоне": "Not available on this phone",
+  Включить: "Turn on",
+  "Уведомления недоступны": "Notifications unavailable",
+  "Как включить уведомления": "How to turn on notifications",
+  "Откройте «Настройки» телефона": "Open your phone's “Settings”",
+  "Выберите «Уведомления»": "Tap “Notifications”",
+  "Найдите в списке {app}": "Find {app} in the list",
+  "Включите «Допуск уведомлений»": "Turn on “Allow Notifications”",
+  "Нажмите и удерживайте значок {app} на экране телефона":
+    "Touch and hold the {app} icon on your phone's screen",
+  "Выберите «О приложении» (значок ⓘ)": "Tap “App info” (the ⓘ icon)",
+  "Откройте «Уведомления» и включите их": "Open “Notifications” and turn them on",
+  "Разрешите уведомления для этого приложения в настройках браузера":
+    "Allow notifications for this app in your browser settings",
+  "На iPhone уведомления работают с iOS 16.4 в приложении, установленном на экран «Домой». Обновите систему телефона.":
+    "On iPhone, notifications work from iOS 16.4 in the app added to the Home Screen. Please update your phone's software.",
+  "Этот браузер не поддерживает уведомления.": "This browser doesn't support notifications.",
+  "Уведомления запрещены на этом телефоне. Повторно запросить разрешение приложение не может — включите их в настройках:":
+    "Notifications are blocked on this phone. The app can't ask again — turn them on in settings:",
+  "Вернитесь в приложение — уведомления включатся сами.":
+    "Then come back to the app — notifications will turn on by themselves.",
+  Понятно: "Got it",
 };
 
 export default dict;
