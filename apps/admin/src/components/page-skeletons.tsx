@@ -1090,6 +1090,7 @@ export function NpsStatsSkeleton() {
           "Категория",
           "Комментарий",
           "Опрос",
+          "Прочитано",
         ]}
       />
     </div>
