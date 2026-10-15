@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { APP_FORMAT } from "@/lib/app-format";
+import { unregisterPushDevice } from "@/lib/push";
 import {
   clearPersistedQueryCache,
   persistQueryCache,
@@ -141,6 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: error?.message ?? null };
     },
     signOut: async () => {
+      // Пока сессия жива — телефон больше не получает пуши этого человека.
+      await unregisterPushDevice();
       // scope local: учётная запись у сотрудника-клиента общая с админкой, а
       // глобальный выход (по умолчанию) отозвал бы и его сессии в админке.
       await supabase.auth.signOut({ scope: "local" });

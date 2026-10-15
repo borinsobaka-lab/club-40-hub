@@ -36,6 +36,7 @@ import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { isValidPhone } from "@/lib/phone";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { LanguageSheet } from "@/components/language-switcher";
+import { PushSettingsRow } from "@/components/push-prompt";
 import { LOCALES, currentT, getTranslator, msg, useI18n, useT, type Translator } from "@/i18n";
 
 export const Route = createFileRoute("/profile")({
@@ -419,6 +420,9 @@ function ProfilePage() {
           {/* Блок: ссылки */}
           <section className="bg-background rounded-t-[14px] rounded-b-[14px] py-1">
             <ul className="divide-y divide-border">
+              {/* Пуши: «Включены» или красным «Выключены» с «Включить»
+                  (решение владельца 2026-10-15). */}
+              <PushSettingsRow />
               {/* Оплаты в приложении пакетных студий пока нет (решение владельца
                   2026-10-12) — блок способов оплаты не показываем. */}
               {!IS_PACKAGES && (

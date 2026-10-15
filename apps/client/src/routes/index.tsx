@@ -29,6 +29,7 @@ import { PageShell } from "@/components/page-shell";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { useNotifications } from "@/lib/notifications";
+import { PushBanner } from "@/components/push-prompt";
 import { IS_PACKAGES } from "@/lib/terms";
 import { packEntryToDrawerData, type PackEntry } from "@/formats/packages/entries";
 import { PackWorkoutCard } from "@/formats/packages/workout-card";
@@ -430,6 +431,9 @@ function HomePage() {
         <div className="bg-muted">
           {/* Тренировки */}
           <section className="bg-background rounded-b-[14px] pb-5">
+            {/* Пока клиент не ответил на запрос уведомлений — плашка «Включите
+                уведомления» (решение владельца 2026-10-15). */}
+            <PushBanner className="px-4 mb-4" />
             <h2 className="px-4 text-2xl font-semibold mb-3">{t("Тренировки")}</h2>
             {bookingsError ? (
               <Card className="mx-4 p-4 text-sm text-destructive">
