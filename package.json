@@ -11,6 +11,7 @@
     "lint": "bun run --cwd apps/admin lint && bun run --cwd apps/client lint",
     "test": "cd apps/admin && bun test && cd ../client && bun test && cd ../.. && bun test db",
     "test:db": "bun test db",
-    "migrate": "bun db/migrate.ts"
+    "migrate": "bun db/migrate.ts",
+    "version:client": "bun run --cwd apps/client version:bump"
   }
 }

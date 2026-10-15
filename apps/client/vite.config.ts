@@ -11,11 +11,13 @@ import { nitro } from "nitro/vite";
 
 // Номер сборки: сохранённый в браузере кэш данных (src/lib/query-persist.ts)
 // после деплоя не используется — новый код может ждать другие поля.
-const BUILD_ID = Date.now().toString(36);
+const BUILD_TIME = Date.now();
+const BUILD_ID = BUILD_TIME.toString(36);
 
 export default defineConfig(({ command }) => ({
   server: { host: "::", port: 8080 },
-  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
+  // __BUILD_TIME__ — время сборки (мс), в технической информации профиля.
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID), __BUILD_TIME__: JSON.stringify(BUILD_TIME) },
   // Vite uses PostCSS in dev and Lightning CSS only at build; running Lightning
   // CSS in both keeps the dev preview identical to the built output.
   css: { transformer: "lightningcss" },
