@@ -127,37 +127,40 @@ const codeBase40 = (title: string, lead: string, token: string) =>
     </div>
     <p style="color:#52525b;font-size:13px">Код действует 1 час.</p>`);
 
-// Lady Stretch: тёмное письмо в цветах админки — фон #12161b (рейка
-// разделов), карточка #1a2027 (боковое меню), акцент — розовый бренда
-// #f763fc. Вёрстка таблицами с bgcolor: почтовики, которые срезают фон у
-// div (Outlook), иначе показали бы белый текст на белом. Логотип — картинка
-// с админки (public/email/), без неё — подпись alt тем же белым.
+// Lady Stretch: светлое письмо (решение владельца 2026-10-15: тёмное —
+// «мрачно»). Подложка — светло-серая, карточка белая, шапка карточки —
+// розовый бренда #f763fc с белым логотипом, текст и цифры кода — серый
+// бокового меню админки #1a2027, код — на бледно-розовой плашке с розовой
+// рамкой. Вёрстка таблицами с bgcolor: почтовик, срезавший фон у div
+// (Outlook), иначе потерял бы розовую шапку. Логотип — картинка с админки
+// (public/email/, белый на розовом), без неё — подпись alt белым на розовом.
 const LS_PINK = "#f763fc";
-const LS_RAIL = "#12161b";
-const LS_SIDEBAR = "#1a2027";
-const LS_LINE = "#2a323c";
-const LS_MUTED = "#9aa3ae";
-const LS_LOGO_URL = `${process.env.ADMIN_APP_URL ?? "https://admin.base40.fit"}/email/lady-stretch-logo.png`;
+const LS_PINK_SOFT = "#fef0fe";
+const LS_INK = "#1a2027";
+const LS_PAGE = "#f4f4f6";
+const LS_MUTED = "#5f6873";
+const LS_FAINT = "#8a929c";
+const LS_LOGO_URL = `${process.env.ADMIN_APP_URL ?? "https://admin.base40.fit"}/email/lady-stretch-logo-pink.png`;
 
 const codeLadyStretch = (title: string, lead: string, token: string) => `
-<div style="margin:0;padding:0;background:${LS_RAIL}">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${LS_RAIL}" style="background:${LS_RAIL};font-family:Roboto,Arial,Helvetica,sans-serif">
+<div style="margin:0;padding:0;background:${LS_PAGE}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${LS_PAGE}" style="background:${LS_PAGE};font-family:Roboto,Arial,Helvetica,sans-serif">
   <tr><td align="center" style="padding:32px 16px">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:440px">
-      <tr><td align="center" style="padding:0 0 24px">
+      <tr><td align="center" bgcolor="${LS_PINK}" style="background:${LS_PINK};border-radius:20px 20px 0 0;padding:22px 16px">
         <img src="${LS_LOGO_URL}" width="140" height="40" alt="Lady Stretch" style="display:block;width:140px;height:40px;border:0;color:#ffffff;font-size:22px;font-weight:600">
       </td></tr>
-      <tr><td bgcolor="${LS_SIDEBAR}" style="background:${LS_SIDEBAR};border-radius:20px;border-top:4px solid ${LS_PINK};padding:32px 28px">
-        <h2 style="margin:0;font-size:20px;font-weight:600;line-height:1.3;color:#ffffff">${title}</h2>
+      <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:0 0 20px 20px;padding:32px 28px">
+        <h2 style="margin:0;font-size:20px;font-weight:600;line-height:1.3;color:${LS_INK}">${title}</h2>
         <p style="margin:12px 0 0;color:${LS_MUTED};font-size:15px;line-height:1.5">${lead}</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0">
-          <tr><td align="center" bgcolor="${LS_RAIL}" style="background:${LS_RAIL};border:1px solid ${LS_PINK};border-radius:16px;padding:18px 8px">
-            <span style="font-size:36px;font-weight:700;letter-spacing:10px;padding-left:10px;color:${LS_PINK}">${token}</span>
+          <tr><td align="center" bgcolor="${LS_PINK_SOFT}" style="background:${LS_PINK_SOFT};border:1px solid ${LS_PINK};border-radius:16px;padding:18px 8px">
+            <span style="font-size:36px;font-weight:700;letter-spacing:10px;padding-left:10px;color:${LS_INK}">${token}</span>
           </td></tr>
         </table>
         <p style="margin:0;color:${LS_MUTED};font-size:13px;line-height:1.5">Код действует 1 час. Никому его не сообщайте.</p>
       </td></tr>
-      <tr><td align="center" style="padding:24px 8px 0;color:#6b7480;font-size:12px;line-height:1.5">
+      <tr><td align="center" style="padding:24px 8px 0;color:${LS_FAINT};font-size:12px;line-height:1.5">
         Если вы не запрашивали это письмо — просто проигнорируйте его.<br>
         <span style="color:${LS_PINK}">&#9679;</span>&nbsp; Lady Stretch Tbilisi
       </td></tr>

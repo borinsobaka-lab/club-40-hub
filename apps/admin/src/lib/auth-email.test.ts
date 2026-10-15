@@ -175,6 +175,7 @@ describe("Lady Stretch — письма клиентам пакетных клу
     expect(hasLoginLink(html)).toBe(false);
     expect(html).toContain("#f763fc");
     expect(html).toContain("#1a2027");
+    expect(html).toContain("#ffffff");
     expect(html).not.toContain("Base40");
   });
 

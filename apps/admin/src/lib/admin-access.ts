@@ -46,6 +46,7 @@ export const CLUB_SECTION_KEYS = [
   "autorenew-cancellations",
   "cash",
   "feedback",
+  "requests",
   "nps",
 ] as const;
 export type ClubSectionKey = (typeof CLUB_SECTION_KEYS)[number];

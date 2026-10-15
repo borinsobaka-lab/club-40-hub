@@ -416,6 +416,43 @@ describe.skipIf(!url)("триггерные уведомления (база)", 
     });
   });
 
+  test("диагностика — в напоминании; разовое посещение — без «Тренировки закончились»", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const staff = await user(tx, `staff-${s.studio}@example.com`);
+      await tx`insert into user_roles (user_id, studio_id, role) values (${staff}, ${s.studio}, 'admin')`;
+      await tx`select set_config('request.jwt.claim.sub', ${staff}::text, true)`;
+      const [{ id: diag }] = await tx.unsafe(
+        `insert into schedule_entries (studio_id, kind, starts_at, ends_at)
+         values ($1, 'diagnostic', ${NOON} + interval '2 hours', ${NOON} + interval '3 hours')
+         returning id`,
+        [s.studio],
+      );
+      await tx`
+        insert into schedule_bookings (studio_id, entry_id, client_id, status, created_at)
+        values (${s.studio}, ${diag}, ${s.client}, 'booked', now() - interval '1 day')`;
+
+      const [{ id: single }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, personal_count, duration_days, price, max_payments)
+        values (${s.studio}, 'Разовое', 'single', 1, 0, 30, 30, 1) returning id`;
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at)
+        values (${s.studio}, ${s.client}, ${single}, 30, current_date)`;
+      const e = await entry(tx, s, -3);
+      const b = await book(tx, s, e);
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      await asServer(tx);
+
+      await run(tx);
+      const reminders = await sent(tx, "class_reminder");
+      expect(reminders.map((n) => n.message)).toContainEqual(
+        "Анна, ждём вас на «Диагностика тела» сегодня в 14:00. Если планы изменились — отмените запись в приложении.",
+      );
+      expect(reminders[0].translations.en.message).toContain("Body diagnostics");
+      expect(await sent(tx, "visits_exhausted")).toHaveLength(0);
+    });
+  });
+
   test("админка: правка своего формата, параметры в пределах, клиенту закрыто, статистика", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);

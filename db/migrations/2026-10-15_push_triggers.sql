@@ -464,6 +464,10 @@ begin
                    when v_entry.kind = 'personal' then
                      case l when 'en' then 'Personal training' when 'ka' then 'პერსონალური ვარჯიში'
                             else 'Персональная тренировка' end
+                   -- 2026-10-15_zz_diagnostics_client_requests.sql (идёт по имени позже).
+                   when v_entry.kind = 'diagnostic' then
+                     case l when 'en' then 'Body diagnostics' when 'ka' then 'სხეულის დიაგნოსტიკა'
+                            else 'Диагностика тела' end
                    else public.push_tr(v_entry.workout_tr, 'name', l,
                                        coalesce(v_entry.workout_name, v_entry.title, ''))
                  end,
@@ -676,7 +680,7 @@ begin
           ) u
          where b.status = 'booked'
            and e.cancelled_at is null
-           and coalesce(e.kind, 'group') in ('group', 'personal')
+           and coalesce(e.kind, 'group') in ('group', 'personal', 'diagnostic')
            and e.starts_at > p_now
            and e.starts_at <= p_now + make_interval(hours => v_n + 13)
            and public.push_trigger_reminder_at(e.starts_at, v_n) <= p_now
@@ -859,6 +863,8 @@ begin
           join public.memberships m on m.id = cm.membership_id
          where cm.status in ('active', 'expired')
            and cm.ends_at between v_today - 3 and v_today - 1
+           -- Закончился по сроку: отхоженный (остаток 0) — не «срок вышел».
+           and coalesce(case when cm.balance_kind = 'personal' then cm.personal_left else cm.visits_left end, 1) > 0
            and cm.ends_at >= (t.active_since at time zone 'Asia/Tbilisi')::date - 1
            and coalesce(m.kind, 'package') <> 'trial'
            and c.user_id is not null
@@ -896,7 +902,8 @@ begin
           join public.clients c on c.id = cm.client_id
           join public.studios s on s.id = cm.studio_id and s.format = t.format
           join public.memberships m on m.id = cm.membership_id
-         where coalesce(m.kind, 'package') <> 'trial'
+         -- Пробное и разовое посещение (2026-10-15_zz_packages_single_visit.sql) — не в счёт.
+         where coalesce(m.kind, 'package') not in ('trial', 'single')
            and c.user_id is not null
            and case when t.key = 'visits_low'
                     then cm.status = 'active'
@@ -913,6 +920,7 @@ begin
                join public.schedule_entries e on e.id = b.entry_id
               where b.charged_membership_id = cm.id
                 and b.status in ('attended', 'no_show')
+                and coalesce(b.charged_balance, '') <> 'diagnostic'
                 and e.starts_at >= v_since
                 and e.starts_at <= p_now
            )

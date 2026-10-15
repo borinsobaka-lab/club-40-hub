@@ -8,6 +8,7 @@ import {
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
   MOBILE_APP_ITEMS,
+  REQUESTS_URL,
   SCRIPTS_SETTINGS_URL,
   SCRIPTS_URL,
   STAFF_CLUB_GROUP,
@@ -22,6 +23,7 @@ import { usePlaybook, useScriptAccess, useUnreadSuggestions } from "@/lib/script
 import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useClubRequestsBadge } from "@/hooks/use-client-requests";
 import { canOpenClubSection, canOpenRail, type AdminAccess } from "@/lib/admin-access";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
@@ -174,7 +176,14 @@ export function AppSidebar() {
     railKey === "scripts"
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
       : SECTION_MENUS[railKey];
-  const groups = sectionMenu?.groups ?? visibleGroups(studioFormat, access, studioId);
+  const openRequests = useClubRequestsBadge();
+  const groups =
+    sectionMenu?.groups ??
+    // Неотработанные заявки клиентов — счётчик на «Заявках».
+    visibleGroups(studioFormat, access, studioId).map((g) => ({
+      ...g,
+      items: g.items.map((i) => (i.url === REQUESTS_URL ? { ...i, badge: openRequests } : i)),
+    }));
   // Меню клуба собирается по правам сотрудника: пока их нет, оно пустое.
   const menuLoading = railKey === "scripts" ? scriptsMenu.loading : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);

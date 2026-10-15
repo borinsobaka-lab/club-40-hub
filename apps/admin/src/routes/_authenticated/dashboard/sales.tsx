@@ -57,7 +57,7 @@ function SalesPage() {
   );
 }
 
-const ORIGINS: SaleOrigin[] = ["new", "renewal", "return"];
+const ORIGINS: SaleOrigin[] = ["new", "renewal", "return", "single"];
 
 /**
  * Графики плиток «Продаж» — из уже загруженной истории продаж: окно графика
@@ -79,6 +79,9 @@ function salesSeries(history: SalesHistory): Record<SalesKey, SeriesDef> {
     amount: s.totalAmount,
     n: 1,
   }));
+  const singles: SeriesPoint[] = history.sales
+    .filter((s) => s.single && !s.noMembership)
+    .map((s) => ({ date: s.soldAt, amount: s.totalAmount, n: 1 }));
   const def = (kind: SeriesDef["kind"], description: string, points: SeriesPoint[]) => ({
     kind,
     description,
@@ -88,6 +91,8 @@ function salesSeries(history: SalesHistory): Record<SalesKey, SeriesDef> {
     membershipRevenue: def("sum", "стоимость проданных абонементов по дате продажи", sold),
     membershipPayments: def("sum", "поступившие платежи по абонементам", paid),
     otherRevenue: def("sum", "прочие продажи: услуги и товары", others),
+    singleRevenue: def("sum", "стоимость проданных разовых посещений", singles),
+    singleVisits: def("count", "проданные разовые посещения", singles),
     avgMembershipCheck: def("avg", "стоимость проданных абонементов / число продаж", sold),
     avgMembershipPayment: def("avg", "платежи по абонементам / число платежей", paid),
     avgOtherCheck: def("avg", "прочие продажи / их число", others),
