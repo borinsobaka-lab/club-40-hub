@@ -12,7 +12,7 @@ const dict: Dictionary = {
   "Ранние версии": "Earlier versions",
   "Откройте эту ссылку в браузере Safari": "Open this link in Safari",
   "Нажмите на три точки справа внизу — «Поделиться» — «Показать больше»":
-    "Tap the three dots at the bottom right — “Share” — “View More”",
+    "Tap the three dots at the bottom right — “Share” — “Show More”",
   "Выберите «На экран „Домой“», включите опцию «Открыть как веб-приложение» и нажмите «Добавить»":
     "Choose “Add to Home Screen”, turn on “Open as Web App” and tap “Add”",
   "Перейдите на сайт и нажмите на иконку «Поделиться»": "Go to the site and tap the “Share” icon",
