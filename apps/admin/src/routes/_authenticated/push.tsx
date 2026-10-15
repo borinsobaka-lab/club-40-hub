@@ -182,6 +182,8 @@ function PushPage() {
         supabase
           .from("push_notifications")
           .select("*")
+          // Триггерные (по событиям) — в разделе «Триггеры».
+          .is("trigger_key", null)
           .overlaps("studio_ids", myStudioIds ?? [])
           .order("created_at", { ascending: false }),
       ),

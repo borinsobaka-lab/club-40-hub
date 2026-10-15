@@ -98,7 +98,6 @@ import {
   Users as UsersArt,
   Wallet as WalletArt,
   X as XArt,
-  Zap as ZapArt,
 } from "@hugeicons/core-free-icons";
 
 type LucideProps = SVGProps<SVGSVGElement> & {
@@ -196,4 +195,3 @@ export const UserRound = icon(UserRoundArt, "UserRound");
 export const Users = icon(UsersArt, "Users");
 export const Wallet = icon(WalletArt, "Wallet");
 export const X = icon(XArt, "X");
-export const Zap = icon(ZapArt, "Zap");

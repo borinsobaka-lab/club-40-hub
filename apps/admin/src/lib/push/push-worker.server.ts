@@ -3,6 +3,9 @@
  * 2026-10-15). Запускается при старте сервера (src/server.ts), раз в
  * TICK_MS и сразу по «Отправить» в админке (kickPushQueue):
  *
+ * 0) push_triggers_run — раз в TRIGGERS_EVERY_MS: триггерные уведомления
+ *    (напоминание о занятии, абонемент заканчивается…) — сразу в очередь
+ *    доставки (db/migrations/2026-10-15_push_triggers.sql);
  * 1) push_start_due — наступившие запланированные: выборка получателей и
  *    очередь доставки (уведомление × устройство);
  * 2) push_claim_deliveries — пачка доставок, параллельно CONCURRENCY
@@ -30,6 +33,8 @@ import {
 } from "./web-push.server";
 
 const TICK_MS = 15_000;
+/** Проверка триггерных уведомлений — не чаще раза в минуту. */
+const TRIGGERS_EVERY_MS = 60_000;
 const BATCH = 200;
 const CONCURRENCY = 25;
 /** Пачек за один проход (дальше — следующий проход). */
@@ -57,6 +62,9 @@ type WorkerState = {
   rerun: boolean;
   signer: Promise<VapidSigner> | null;
   lastError: string | null;
+  /** Когда последний раз проверяли триггеры (Date.now()). */
+  triggersAt: number;
+  lastTriggersError: string | null;
 };
 const g = globalThis as typeof globalThis & { __base40PushWorker?: WorkerState };
 const state: WorkerState = (g.__base40PushWorker ??= {
@@ -65,6 +73,8 @@ const state: WorkerState = (g.__base40PushWorker ??= {
   rerun: false,
   signer: null,
   lastError: null,
+  triggersAt: 0,
+  lastTriggersError: null,
 });
 
 /** Готова ли рассылка на этом сервере (нужен сервис-ключ Supabase). */
@@ -202,9 +212,24 @@ async function finish(admin: SupabaseClient, results: DeliveryResult[]) {
   }
 }
 
+/**
+ * Триггерные уведомления: ошибка (например, база без миграции) не мешает
+ * рассылкам из админки — в лог один раз.
+ */
+async function runTriggers(admin: SupabaseClient) {
+  if (Date.now() - state.triggersAt < TRIGGERS_EVERY_MS) return;
+  state.triggersAt = Date.now();
+  const { error } = await admin.rpc("push_triggers_run");
+  if (error && error.message !== state.lastTriggersError) {
+    console.error("[push] триггерные уведомления:", error.message);
+  }
+  state.lastTriggersError = error?.message ?? null;
+}
+
 async function tick() {
   const admin = getSupabaseAdmin();
   const signer = await getSigner(admin);
+  await runTriggers(admin);
   check(await admin.rpc("push_start_due"));
 
   const content = new Map<string, PushContent | null>();
