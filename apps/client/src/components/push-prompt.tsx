@@ -56,8 +56,10 @@ function useEnablePush() {
 
 /**
  * Плашка «Включите уведомления» — пока клиент не разрешил и не запретил.
- * Светло-красная, текст и иконка красные — тот же красный, что «Выключены» в
- * профиле (решение владельца 2026-10-15: фирменный цвет был слишком ярким).
+ * Светло-красная, текст красный — тот же красный, что «Выключены» в профиле
+ * (решения владельца 2026-10-15: фирменный цвет был слишком ярким, потом —
+ * спокойнее: заголовок 15px средней жирности, подпись 13px, колокольчик
+ * бледнее).
  */
 export function PushBanner({ className = "" }: { className?: string }) {
   const t = useT();
@@ -75,21 +77,23 @@ export function PushBanner({ className = "" }: { className?: string }) {
             disabled={busy}
             className="flex w-full items-center gap-3 rounded-2xl bg-destructive/10 p-3 text-left text-destructive transition active:scale-[0.99] disabled:opacity-80"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-              <Bell className="h-5 w-5" weight="BoldDuotone" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/[0.07] text-destructive/55">
+              <Bell className="h-[18px] w-[18px]" weight="BoldDuotone" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold leading-snug">{t("Включите уведомления")}</span>
-              <span className="block text-sm leading-snug opacity-80">
+              <span className="block text-[15px] font-medium leading-snug">
+                {t("Включите уведомления")}
+              </span>
+              <span className="block text-[13px] leading-snug opacity-75">
                 {IS_PACKAGES
                   ? t("Чтобы получать новости студии")
                   : t("Чтобы получать новости клуба")}
               </span>
             </span>
             {busy ? (
-              <Refresh className="h-5 w-5 shrink-0 animate-spin" weight="BoldDuotone" />
+              <Refresh className="h-4 w-4 shrink-0 animate-spin opacity-60" weight="BoldDuotone" />
             ) : (
-              <AltArrowRight className="h-5 w-5 shrink-0 opacity-80" weight="BoldDuotone" />
+              <AltArrowRight className="h-4 w-4 shrink-0 opacity-50" weight="BoldDuotone" />
             )}
           </button>
         </div>
