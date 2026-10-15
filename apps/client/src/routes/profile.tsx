@@ -29,7 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { PageShell } from "@/components/page-shell";
-import { IS_PACKAGES } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 import { STUDIO_WHATSAPP_URL } from "@/formats/packages/studio-contacts";
 import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { isValidPhone } from "@/lib/phone";
@@ -45,8 +45,8 @@ export const Route = createFileRoute("/profile")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: t("Профиль — Base40") },
-        { name: "description", content: t("Профиль участника Base40.") },
+        { title: t("Профиль — {brand}", { brand: APP_BRAND }) },
+        { name: "description", content: t("Профиль участника {brand}.", { brand: APP_BRAND }) },
       ],
     };
   },

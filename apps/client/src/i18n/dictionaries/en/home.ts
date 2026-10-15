@@ -2,9 +2,9 @@ import type { Dictionary } from "../types";
 
 /** Раздел: главная (routes/index.tsx — новости, услуги, ближайшие записи, быстрые кнопки). */
 const dict: Dictionary = {
-  "Главное — Base40": "Home — Base40",
-  "Главная страница Base40: новости, акции и быстрый доступ к профилю.":
-    "Base40 home: news, offers and quick access to your profile.",
+  "Главное — {brand}": "Home — {brand}",
+  "Главная страница {brand}: новости, акции и быстрый доступ к профилю.":
+    "{brand} home: news, offers and quick access to your profile.",
   Участник: "Member",
   "Пригласи подругу": "Invite a friend",
   Подарки: "Gifts",

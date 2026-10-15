@@ -28,8 +28,8 @@ const dict: Dictionary = {
   "Не удалось открыть": "Couldn't open",
   "Запись не найдена или временно недоступна.":
     "This item wasn't found or is temporarily unavailable.",
-  "Новость — Base40": "News — Base40",
-  "Новость Base40.": "Base40 news.",
+  "Новость — {brand}": "News — {brand}",
+  "Новость {brand}.": "{brand} news.",
   "Новость не найдена": "News item not found",
   "Вернуться на главную": "Back to home",
   Назад: "Back",

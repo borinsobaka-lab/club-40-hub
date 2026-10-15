@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
-import { IS_PACKAGES } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 import { takeSignInRefused } from "@/lib/sign-in-refused";
 import { cancelHomeConfetti, queueHomeConfetti } from "@/lib/confetti";
 import { DarkFrame } from "@/formats/packages/dark-frame";
@@ -80,7 +80,7 @@ const emptyOtp = () => Array<string>(OTP_LENGTH).fill("");
 export const Route = createFileRoute("/auth")({
   head: ({ match }) => {
     const t = getTranslator(match.context.locale);
-    return { meta: [{ title: t("Вход — Base40") }] };
+    return { meta: [{ title: t("Вход — {brand}", { brand: APP_BRAND }) }] };
   },
   component: AuthPage,
 });

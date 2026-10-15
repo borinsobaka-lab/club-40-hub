@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
+import { APP_BRAND } from "@/lib/terms";
 import { APP_FORMAT } from "@/lib/app-format";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/ui/card";
@@ -51,8 +52,11 @@ export const Route = createFileRoute("/memberships")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: `${t("Абонементы")} — Base40` },
-        { name: "description", content: t("Абонементы и пакеты занятий Base40.") },
+        { title: `${t("Абонементы")} — ${APP_BRAND}` },
+        {
+          name: "description",
+          content: t("Абонементы и пакеты занятий {brand}.", { brand: APP_BRAND }),
+        },
       ],
     };
   },

@@ -22,3 +22,5 @@ export const CLUB = IS_PACKAGES
  * Показывать переведённым: t(SCHEDULE_TITLE).
  */
 export const SCHEDULE_TITLE = IS_PACKAGES ? msg("Расписание") : msg("Бронь");
+
+export { APP_BRAND } from "@/lib/app-format";

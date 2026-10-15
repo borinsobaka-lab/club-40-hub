@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { AltArrowLeft } from "@solar-icons/react";
+import { APP_BRAND } from "@/lib/terms";
 
 import { PageShell } from "@/components/page-shell";
 import { PrivacyPolicy } from "@/components/privacy-policy";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/privacy")({
     return {
       meta: [
         {
-          title: `${t("Политика конфиденциальности")} — ${PRIVACY_POLICY_INFO?.brand ?? "Base40"}`,
+          title: `${t("Политика конфиденциальности")} — ${PRIVACY_POLICY_INFO?.brand ?? APP_BRAND}`,
         },
       ],
     };

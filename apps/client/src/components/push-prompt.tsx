@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n, useT } from "@/i18n";
 import { detectPlatform } from "@/lib/pwa-install";
 import { enablePush, prefetchPushKey, readPushPermission, usePushPermission } from "@/lib/push";
-import { IS_PACKAGES } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 
 /**
  * Включение пуш-уведомлений (решение владельца 2026-10-15): плашка на
@@ -156,7 +156,7 @@ function PushHelpSheet({
   const t = useT();
   const permission = usePushPermission();
   const app = useLoaderData({ from: "__root__" });
-  const appName = app?.name ?? "Base40";
+  const appName = app?.name ?? APP_BRAND;
   const platform =
     typeof navigator === "undefined"
       ? "other"

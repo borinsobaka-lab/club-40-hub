@@ -8,7 +8,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { parseFeedbackSearch } from "@/lib/feedback";
-import { IS_PACKAGES } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 import { getTranslator, useLocalize, useT } from "@/i18n";
 
 /**
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/feedback")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: t("Обратная связь — Base40") },
+        { title: t("Обратная связь — {brand}", { brand: APP_BRAND }) },
         {
           name: "description",
           content: t("Расскажите, что понравилось и что можно улучшить."),

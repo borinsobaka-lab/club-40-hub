@@ -56,7 +56,7 @@ const dict: Dictionary = {
   кг: "kg",
 
   // Подписочная анкета (routes/onboarding.tsx)
-  "Знакомство — Base40": "Getting to know you — Base40",
+  "Знакомство — {brand}": "Getting to know you — {brand}",
   "Пара вопросов, чтобы следить за вашим прогрессом.":
     "A few questions so you can track your progress.",
   "Пара вопросов, чтобы настроить тренировки под вас.":

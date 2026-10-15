@@ -17,3 +17,10 @@ export const FORMAT_APP_URL: Record<StudioFormat, string> = {
   subscription: "https://app.base40.fit",
   packages: "https://app.lady-stretch.one",
 };
+
+/**
+ * Бренд приложения в заголовках страниц, описаниях и текстах: в пакетном —
+ * Lady Stretch, в подписочном — Base40. Клиент Lady Stretch не должен видеть
+ * Base40 нигде (решение владельца 2026-10-15). В t() — подстановкой {brand}.
+ */
+export const APP_BRAND = APP_FORMAT === "packages" ? "Lady Stretch" : "Base40";

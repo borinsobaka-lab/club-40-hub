@@ -2,8 +2,8 @@ import type { Dictionary } from "../types";
 
 /** Раздел: Уведомления (лента и включение пушей). */
 const dict: Dictionary = {
-  "Уведомления — Base40": "Notifications — Base40",
-  "Уведомления Base40.": "Base40 notifications.",
+  "Уведомления — {brand}": "Notifications — {brand}",
+  "Уведомления {brand}.": "{brand} notifications.",
   "только что": "just now",
   "{n} мин назад": "{n} min ago",
   "{n} ч назад": "{n} h ago",

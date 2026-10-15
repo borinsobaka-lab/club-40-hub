@@ -26,7 +26,7 @@ import { type Experience, type HealthFlag, type PrefTime, type Referral } from "
 import { queueHomeConfetti } from "@/lib/confetti";
 import { PackagesOnboardingPage } from "@/formats/packages/onboarding";
 import { Mars, Venus } from "lucide-react";
-import { IS_PACKAGES } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 import { currentT, getTranslator, msg, useT } from "@/i18n";
 
 export const Route = createFileRoute("/onboarding")({
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/onboarding")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: t("Знакомство — Base40") },
+        { title: t("Знакомство — {brand}", { brand: APP_BRAND }) },
         {
           name: "description",
           content: IS_PACKAGES

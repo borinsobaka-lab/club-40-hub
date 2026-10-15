@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Children, type ReactNode } from "react";
+import { APP_BRAND } from "@/lib/terms";
 import { useQuery } from "@tanstack/react-query";
 import { AltArrowLeft, Copy, Share } from "@solar-icons/react";
 import { toast } from "sonner";
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/invite")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: t("Пригласи подругу — Base40") },
+        { title: t("Пригласи подругу — {brand}", { brand: APP_BRAND }) },
         {
           name: "description",
           content: t("Приведите подругу в студию — и вы обе получите по 2 тренировки в подарок."),
