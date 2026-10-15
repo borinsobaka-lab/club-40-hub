@@ -129,25 +129,25 @@ const codeBase40 = (title: string, lead: string, token: string) =>
 
 // Lady Stretch: светлое письмо (решение владельца 2026-10-15: тёмное —
 // «мрачно»). Подложка — светло-серая, карточка белая, шапка карточки —
-// розовый бренда #f763fc с белым логотипом, текст и цифры кода — серый
-// бокового меню админки #1a2027, код — на бледно-розовой плашке с розовой
-// рамкой. Вёрстка таблицами с bgcolor: почтовик, срезавший фон у div
-// (Outlook), иначе потерял бы розовую шапку. Логотип — картинка с админки
-// (public/email/, белый на розовом), без неё — подпись alt белым на розовом.
+// тёмно-серая, как боковое меню админки #1a2027, с белым логотипом; текст и
+// цифры кода — тот же серый, код — на бледно-розовой плашке с розовой
+// рамкой бренда #f763fc. Вёрстка таблицами с bgcolor: почтовик, срезавший
+// фон у div (Outlook), иначе потерял бы тёмную шапку. Логотип — картинка с
+// админки (public/email/, белый на тёмном), без неё — подпись alt белым.
 const LS_PINK = "#f763fc";
 const LS_PINK_SOFT = "#fef0fe";
 const LS_INK = "#1a2027";
 const LS_PAGE = "#f4f4f6";
 const LS_MUTED = "#5f6873";
 const LS_FAINT = "#8a929c";
-const LS_LOGO_URL = `${process.env.ADMIN_APP_URL ?? "https://admin.base40.fit"}/email/lady-stretch-logo-pink.png`;
+const LS_LOGO_URL = `${process.env.ADMIN_APP_URL ?? "https://admin.base40.fit"}/email/lady-stretch-logo-dark.png`;
 
 const codeLadyStretch = (title: string, lead: string, token: string) => `
 <div style="margin:0;padding:0;background:${LS_PAGE}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${LS_PAGE}" style="background:${LS_PAGE};font-family:Roboto,Arial,Helvetica,sans-serif">
   <tr><td align="center" style="padding:32px 16px">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:440px">
-      <tr><td align="center" bgcolor="${LS_PINK}" style="background:${LS_PINK};border-radius:20px 20px 0 0;padding:22px 16px">
+      <tr><td align="center" bgcolor="${LS_INK}" style="background:${LS_INK};border-radius:20px 20px 0 0;padding:22px 16px">
         <img src="${LS_LOGO_URL}" width="140" height="40" alt="Lady Stretch" style="display:block;width:140px;height:40px;border:0;color:#ffffff;font-size:22px;font-weight:600">
       </td></tr>
       <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:0 0 20px 20px;padding:32px 28px">
