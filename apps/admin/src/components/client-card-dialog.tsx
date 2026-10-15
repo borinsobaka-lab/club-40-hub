@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { SaleDialog } from "@/components/sale-dialog";
 import { ClientDialog, type SavedClient } from "@/components/client-form-dialog";
+import { ClientAppTab } from "@/components/client-app-tab";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStudios } from "@/hooks/use-studios";
 import { ClubStatusBadge } from "@/components/club-status-badge";
@@ -380,10 +381,12 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
       </DialogHeader>
       <DialogBody>
         <Tabs defaultValue="card" className="w-full">
-          <TabsList>
+          {/* На телефоне четыре вкладки не помещаются в строку — прокручиваются. */}
+          <TabsList className="max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="card">Карточка</TabsTrigger>
             <TabsTrigger value="visits">Посещения</TabsTrigger>
             <TabsTrigger value="profile">Анкета</TabsTrigger>
+            <TabsTrigger value="app">Приложение</TabsTrigger>
           </TabsList>
 
           <TabsContent value="card" className="mt-4 space-y-5">
@@ -532,6 +535,11 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
               hasUser={!!userId}
               isPackages={isPackages}
             />
+          </TabsContent>
+
+          {/* Устройства, уведомления и активность в мобильном приложении. */}
+          <TabsContent value="app" className="mt-4">
+            <ClientAppTab clientId={client.id} hasUser={!!userId} />
           </TabsContent>
         </Tabs>
       </DialogBody>
