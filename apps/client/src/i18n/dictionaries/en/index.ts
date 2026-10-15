@@ -19,6 +19,7 @@ import about from "./about";
 import onboarding from "./onboarding";
 import invite from "./invite";
 import notifications from "./notifications";
+import install from "./install";
 
 const dict: Dictionary = {
   ...common,
@@ -35,6 +36,7 @@ const dict: Dictionary = {
   ...onboarding,
   ...invite,
   ...notifications,
+  ...install,
 };
 
 export default dict;

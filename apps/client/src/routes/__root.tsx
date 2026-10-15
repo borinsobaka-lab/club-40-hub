@@ -38,6 +38,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { RotateOverlay } from "@/components/rotate-overlay";
+import { InstallScreen } from "@/components/install-screen";
+import { useInstalledDisplay } from "@/hooks/use-pwa-install";
 import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
@@ -253,7 +255,9 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SolarProvider value={{ weight: "BoldDuotone" }}>
-            <AppShell />
+            <InstallGate>
+              <AppShell />
+            </InstallGate>
             <Toaster />
             <RotateOverlay />
           </SolarProvider>
@@ -448,6 +452,31 @@ function usePrefetchScreens(ready: boolean) {
 
 /** Страницы, которые открываются без входа (политика — только у Lady Stretch). */
 const PUBLIC_ROUTES = new Set(PRIVACY_POLICY_INFO ? ["/privacy"] : []);
+
+/**
+ * Заслон установки: в дев-сервере — только с ?install в адресе (проверить
+ * экран инструкции), иначе разработка шла бы через установку.
+ */
+const INSTALL_GATE =
+  import.meta.env.PROD ||
+  (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("install"));
+
+/**
+ * Без установки на телефон приложение не открывается (решение владельца
+ * 2026-10-15): во вкладке браузера вместо него — инструкция по установке
+ * (components/install-screen.tsx). Открыто ли установленным — известно
+ * только в браузере: сервер и гидратация рисуют приложение как раньше
+ * (у пакетного это заставка), затем во вкладке — инструкция. Публичные
+ * страницы (политика) открываются и в браузере.
+ */
+function InstallGate({ children }: { children: ReactNode }) {
+  const installed = useInstalledDisplay();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (INSTALL_GATE && installed === false && !PUBLIC_ROUTES.has(pathname)) {
+    return <InstallScreen />;
+  }
+  return children;
+}
 
 function AppShell() {
   const { session, user, loading } = useAuth();
