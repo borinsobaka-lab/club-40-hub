@@ -5,8 +5,10 @@ import { Check } from "lucide-react";
 import packagesLogo from "@/assets/packages-logo.svg";
 import androidChromeMenuRu from "@/assets/install/android-chrome-menu-ru.webp";
 import chromeIcon from "@/assets/install/chrome-icon.webp";
+import iosHomeScreenEn from "@/assets/install/ios-home-screen-en.webp";
 import iosHomeScreenRu from "@/assets/install/ios-home-screen-ru.webp";
 import iosShareButton from "@/assets/install/ios-share-button.webp";
+import iosShareMoreEn from "@/assets/install/ios-share-more-en.webp";
 import iosShareMoreRu from "@/assets/install/ios-share-more-ru.webp";
 import safariIcon from "@/assets/install/safari-icon.webp";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -39,8 +41,8 @@ import { IS_PACKAGES } from "@/lib/terms";
  *
  * Тексты шагов — от владельца; названия кнопок телефона — в кавычках, на
  * экране они жирные, названия браузеров — жирные со значком. Скриншоты —
- * src/assets/install/ (720×364 от владельца): у русского свои, у английского
- * и грузинского — английские (пока их нет — русские).
+ * src/assets/install/ (≈720×364 от владельца): у русского свои, у
+ * английского и грузинского — английские (грузинского интерфейса у iOS нет).
  */
 type Screenshot = { ru: string; en?: string };
 
@@ -56,9 +58,10 @@ type Step = {
 const SCREENSHOT_SIZE = { width: 720, height: 364 };
 
 const IOS_SHARE_BUTTON: Screenshot = { ru: iosShareButton, en: iosShareButton };
-const IOS_SHARE_MORE: Screenshot = { ru: iosShareMoreRu };
-const IOS_HOME_SCREEN: Screenshot = { ru: iosHomeScreenRu };
-const ANDROID_CHROME_MENU: Screenshot = { ru: androidChromeMenuRu };
+const IOS_SHARE_MORE: Screenshot = { ru: iosShareMoreRu, en: iosShareMoreEn };
+const IOS_HOME_SCREEN: Screenshot = { ru: iosHomeScreenRu, en: iosHomeScreenEn };
+// Без надписей — один на все языки.
+const ANDROID_CHROME_MENU: Screenshot = { ru: androidChromeMenuRu, en: androidChromeMenuRu };
 
 const BROWSER_ICONS: Record<string, string> = { Safari: safariIcon, Chrome: chromeIcon };
 
