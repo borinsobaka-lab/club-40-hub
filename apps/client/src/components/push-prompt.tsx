@@ -54,7 +54,11 @@ function useEnablePush() {
   return { busy, enable, helpOpen, setHelpOpen };
 }
 
-/** Плашка «Включите уведомления» — пока клиент не разрешил и не запретил. */
+/**
+ * Плашка «Включите уведомления» — пока клиент не разрешил и не запретил.
+ * Светло-красная, текст и иконка красные — тот же красный, что «Выключены» в
+ * профиле (решение владельца 2026-10-15: фирменный цвет был слишком ярким).
+ */
 export function PushBanner({ className = "" }: { className?: string }) {
   const t = useT();
   const permission = usePushPermission();
@@ -69,9 +73,9 @@ export function PushBanner({ className = "" }: { className?: string }) {
             type="button"
             onClick={() => void enable()}
             disabled={busy}
-            className="flex w-full items-center gap-3 rounded-2xl bg-primary p-3 text-left text-primary-foreground transition active:scale-[0.99] disabled:opacity-80"
+            className="flex w-full items-center gap-3 rounded-2xl bg-destructive/10 p-3 text-left text-destructive transition active:scale-[0.99] disabled:opacity-80"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
               <Bell className="h-5 w-5" weight="BoldDuotone" />
             </span>
             <span className="min-w-0 flex-1">
