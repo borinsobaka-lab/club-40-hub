@@ -102,10 +102,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
 export function OptionButton({
   active,
+  soft = false,
   onClick,
   children,
 }: {
   active: boolean;
+  /**
+   * Выбранный — розовая обводка и светло-розовый фон вместо заливки цветом
+   * бренда (обратная связь, решение владельца 2026-10-15).
+   */
+  soft?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -115,7 +121,9 @@ export function OptionButton({
       onClick={onClick}
       className={`w-full text-left px-4 py-4 rounded-xl border transition-colors ${
         active
-          ? "bg-primary text-primary-foreground border-primary font-semibold"
+          ? soft
+            ? "bg-primary/10 text-foreground border-primary ring-1 ring-primary"
+            : "bg-primary text-primary-foreground border-primary font-semibold"
           : "bg-card text-card-foreground border-border hover:border-foreground/30"
       }`}
     >
