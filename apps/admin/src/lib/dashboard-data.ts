@@ -11,10 +11,12 @@ import {
   type RefundRecord,
   type SaleRecord,
 } from "@/lib/dashboard-analytics";
+import type { CancelledBooking, ClassEntry } from "@/lib/dashboard-classes";
 
 /**
  * Загрузка данных дашборда из Supabase: показатели «Общих показателей»,
- * история продаж («Продажи», «Клиенты», графики), посещения, клиенты.
+ * история продаж («Продажи», «Клиенты», «Маркетинг», графики), посещения,
+ * клиенты, занятия расписания («Занятия»), анкеты и NPS («Маркетинг»).
  * Расчёты над строками — lib/dashboard-analytics.ts и lib/dashboard-series.ts.
  */
 
@@ -258,6 +260,11 @@ export type SeriesDef = {
    * будущие корзины выручки и посещений всегда пустые.
    */
   future?: boolean;
+  /**
+   * У среднего — чем считается знаменатель (подпись в окне и текст пустой
+   * корзины); по умолчанию продажи: «Продаж за 12 месяцев», «нет продаж».
+   */
+  base?: { label: string; empty: string };
   load: (studioIds: string[], from: string, to: string) => Promise<SeriesPoint[]>;
 };
 
@@ -546,6 +553,7 @@ export async function loadSalesHistory(studioIds: string[]): Promise<SalesHistor
         select(
           "sales",
           "client_id, sold_at, created_at, total_amount, payment_method, seller_id, admin_name, " +
+            "source, promo_code, discount_amount, " +
             "memberships(name, kind), client_memberships(ends_at, status), " +
             "sale_installments(amount, paid, paid_at, due_date, payment_method)",
           lo,
@@ -595,6 +603,9 @@ export async function loadSalesHistory(studioIds: string[]): Promise<SalesHistor
         trial: membership?.kind === "trial",
         personal: membership?.kind === "personal",
         method: (r.payment_method as string | null) ?? null,
+        source: String(r.source ?? "admin"),
+        promoCode: (r.promo_code as string | null) || null,
+        discount: Number(r.discount_amount ?? 0),
         sellerKey: (r.seller_id as string | null) ?? sellerName,
         sellerName,
         endsAt: term?.ends_at ?? null,
@@ -639,6 +650,7 @@ export type ClientRow = {
   userId: string | null;
   name: string;
   birthday: string | null;
+  registrationDate: string | null;
 };
 
 export type VisitRow = { clientId: string | null; userId: string | null; name: string };
@@ -659,7 +671,11 @@ export async function loadClientsData(studioIds: string[]): Promise<ClientsData>
   const [clientRows, termRows] = await Promise.all([
     loadAllRows({
       page: (lo, hi) =>
-        select("clients", "user_id, first_name, last_name, full_name, birthday", lo)
+        select(
+          "clients",
+          "user_id, first_name, last_name, full_name, birthday, registration_date",
+          lo,
+        )
           .in("studio_id", studioIds)
           .order("id")
           .range(lo, hi),
@@ -688,6 +704,7 @@ export async function loadClientsData(studioIds: string[]): Promise<ClientsData>
       name:
         [r.last_name, r.first_name].filter(Boolean).join(" ").trim() || String(r.full_name ?? "—"),
       birthday: (r.birthday as string | null) ?? null,
+      registrationDate: (r.registration_date as string | null) ?? null,
     })),
     memberIds,
   };
@@ -714,4 +731,200 @@ export async function loadVisits(
       [r.client_last_name, r.client_first_name].filter(Boolean).join(" ").trim() ||
       String(r.client_full_name ?? "—"),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// «Занятия»
+
+type EntryRow = {
+  id: string;
+  studio_id: string;
+  kind: string | null;
+  starts_at: string;
+  capacity: number | null;
+  cancelled_at: string | null;
+  workout_id: string | null;
+  workout: { name: string | null; color: string | null; capacity: number | null } | null;
+  schedule_entry_trainers:
+    | {
+        trainer: {
+          id: string;
+          full_name: string | null;
+          rating_avg: number | null;
+          rating_count: number | null;
+        } | null;
+      }[]
+    | null;
+  bookings: { status: string; client_id?: string | null; user_id?: string | null }[];
+};
+
+/**
+ * Групповые и персональные занятия клубов, начавшиеся в from–to, с тренерами
+ * и записями (прочая активность дашборду не нужна). Записи — живые
+ * schedule_bookings: статус каждой записи занятия; причины отмен — из
+ * журнала (loadCancelledBookings).
+ * `light` — только статусы записей (графики плиток за 12 месяцев).
+ */
+export async function loadClassEntries(
+  studioIds: string[],
+  from: string,
+  to: string,
+  light = false,
+): Promise<ClassEntry[]> {
+  const bookings = light ? "status" : "status, client_id, user_id";
+  const rows = (await loadAllRows({
+    page: (lo, hi) =>
+      select(
+        "schedule_entries",
+        "studio_id, kind, starts_at, capacity, cancelled_at, workout_id, " +
+          "workout:workouts(name, color, capacity), " +
+          "schedule_entry_trainers(trainer:trainers(id, full_name, rating_avg, rating_count)), " +
+          `bookings:schedule_bookings(${bookings})`,
+        lo,
+      )
+        .in("studio_id", studioIds)
+        .in("kind", ["group", "personal"])
+        .gte("starts_at", dayStartISO(from))
+        .lt("starts_at", nextDayStartISO(to))
+        .order("starts_at")
+        .order("id")
+        .range(lo, hi),
+  })) as unknown as EntryRow[];
+  return rows.map((r) => {
+    const start = new Date(r.starts_at);
+    const workout = one(r.workout);
+    return {
+      id: r.id,
+      studioId: r.studio_id,
+      kind: r.kind === "personal" ? "personal" : "group",
+      startsAt: start.getTime(),
+      date: toISO(start),
+      weekday: (start.getDay() + 6) % 7,
+      time: format(start, "HH:mm"),
+      cancelled: !!r.cancelled_at,
+      workoutId: r.workout_id,
+      workoutName: workout?.name || "Без тренировки",
+      workoutColor: workout?.color ?? null,
+      // Как в «Расписании»: своя вместимость занятия, иначе тренировки; 0 — без лимита.
+      capacity: (r.capacity ?? workout?.capacity) || null,
+      trainers: (r.schedule_entry_trainers ?? []).flatMap((x) => {
+        const t = one(x.trainer);
+        if (!t) return [];
+        const rated = t.rating_avg != null && !!t.rating_count;
+        return [
+          {
+            id: t.id,
+            name: t.full_name || "Без имени",
+            rating: rated ? Number(t.rating_avg) : null,
+            ratingCount: t.rating_count ?? 0,
+          },
+        ];
+      }),
+      bookings: (r.bookings ?? []).map((b) => ({
+        status: b.status,
+        client: b.client_id ?? b.user_id ?? null,
+      })),
+    };
+  });
+}
+
+/**
+ * Отменённые записи на занятия клубов в from–to с причиной — из журнала:
+ * колонку cancel_reason у журнала гарантирует миграция
+ * (2026-10-10_schedule_entry_delete.sql), а запрос причин отдельно, чтобы
+ * без них работала остальная страница.
+ */
+export async function loadCancelledBookings(
+  studioIds: string[],
+  from: string,
+  to: string,
+): Promise<CancelledBooking[]> {
+  const rows = await loadAllRows({
+    page: (lo, hi) =>
+      select("bookings_log", "entry_id, cancel_reason", lo)
+        .in("studio_id", studioIds)
+        .eq("status", "cancelled")
+        .gte("starts_at", dayStartISO(from))
+        .lt("starts_at", nextDayStartISO(to))
+        .order("id")
+        .range(lo, hi),
+  });
+  return rows.map((r) => ({
+    entryId: (r.entry_id as string | null) ?? null,
+    reason: (r.cancel_reason as string | null) ?? null,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// «Маркетинг»
+
+/** Список id кусками: длинный `in.(…)` не влезает в адрес запроса. */
+function chunks<T>(items: T[], size = 100) {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * Ответы анкеты приложения (member_profiles) по учётным записям: откуда
+ * узнали о клубе и главная цель.
+ */
+export async function loadProfileAnswers(userIds: string[]) {
+  const pages = await Promise.all(
+    chunks(userIds).map((ids) =>
+      loadAllRows({
+        page: (lo, hi) =>
+          supabase
+            .from("member_profiles")
+            .select("user_id, referral_source, primary_goal", lo === 0 ? { count: "exact" } : {})
+            .in("user_id", ids)
+            .order("user_id")
+            .range(lo, hi),
+      }),
+    ),
+  );
+  return new Map(
+    pages.flat().map((r) => [
+      String(r.user_id),
+      {
+        referralSource: (r.referral_source as string | null) ?? null,
+        goal: (r.primary_goal as string | null) ?? null,
+      },
+    ]),
+  );
+}
+
+/**
+ * Карточки клиентов из `clientIds`, у которых есть отмеченное посещение — в
+ * любом клубе сети (гостевое посещение пишется картой домашнего клуба).
+ */
+export async function loadVisitedClientIds(clientIds: string[]) {
+  const pages = await Promise.all(
+    chunks(clientIds).map((ids) =>
+      loadAllRows({
+        page: (lo, hi) =>
+          select("bookings_log", "client_id", lo)
+            .in("client_id", ids)
+            .eq("status", "attended")
+            .order("id")
+            .range(lo, hi),
+      }),
+    ),
+  );
+  return new Set(pages.flat().map((r) => String(r.client_id)));
+}
+
+/** Оценки NPS клубов с from по to (дата ответа — локальная). */
+export async function loadNpsScores(studioIds: string[], from: string, to: string) {
+  const rows = await loadAllRows({
+    page: (lo, hi) =>
+      select("nps_responses", "score, created_at", lo)
+        .in("studio_id", studioIds)
+        .gte("created_at", dayStartISO(from))
+        .lt("created_at", nextDayStartISO(to))
+        .order("created_at")
+        .order("id")
+        .range(lo, hi),
+  });
+  return rows.map((r) => ({ date: localDate(String(r.created_at)), score: Number(r.score) }));
 }
