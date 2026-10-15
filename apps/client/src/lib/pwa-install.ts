@@ -62,20 +62,85 @@ export const INSTALLED_DISPLAY_MODES = [
 ] as const;
 
 /**
- * Текст шага инструкции по частям: обычный текст и названия кнопок в
- * кавычках («Поделиться», “Share”, „Share“) — их выделяем жирным. Вложенные
- * кавычки («На экран „Домой“») остаются внутри одной части.
+ * Настоящий Chrome на Android — только в нём показываем кнопку установки в
+ * одно нажатие (решение владельца 2026-10-15: кнопка, которая не работает,
+ * хуже, чем её отсутствие). Остальные браузеры на Chromium тоже шлют
+ * beforeinstallprompt, но ведут себя по-разному: у Samsung Internet 27.x
+ * событие то не приходит, то окно установки возвращает пустой ответ. Их
+ * user agent содержит Chrome/ — отсекаем по своим меткам; встроенные
+ * браузеры приложений (WebView: «; wv)», Version/4.0) — тоже.
  */
-export function splitQuoted(text: string): { text: string; quoted: boolean }[] {
-  const parts: { text: string; quoted: boolean }[] = [];
-  const re = /«[^»]+»|“[^”]+”|„[^“”]+[“”]/g;
+export function isAndroidChrome(userAgent: string): boolean {
+  if (!/Android/.test(userAgent) || !/Chrome\/\d+/.test(userAgent)) return false;
+  return !OTHER_ANDROID_BROWSERS.test(userAgent);
+}
+
+const OTHER_ANDROID_BROWSERS = new RegExp(
+  [
+    "; wv\\)",
+    "Version\\/\\d",
+    "SamsungBrowser",
+    "EdgA",
+    "OPR\\/",
+    "Opera",
+    "OPT\\/",
+    "YaBrowser",
+    "YaApp",
+    "YaSearch",
+    "MiuiBrowser",
+    "XiaoMi",
+    "HuaweiBrowser",
+    "HONORBrowser",
+    "HeyTapBrowser",
+    "OppoBrowser",
+    "VivoBrowser",
+    "UCBrowser",
+    "QQBrowser",
+    "baiduboxapp",
+    "DuckDuckGo",
+    "Puffin",
+    "Silk",
+    "GSA\\/",
+    "Instagram",
+    "FBAN",
+    "FBAV",
+    "FB_IAB",
+    "Telegram",
+    "Line\\/",
+    "Snapchat",
+    "musical_ly",
+    "Bytedance",
+    "Pinterest",
+    "Twitter",
+    "LinkedInApp",
+    "Viber",
+    "WhatsApp",
+    "VKAndroidApp",
+    "vkclient",
+    "OKApp",
+  ].join("|"),
+);
+
+/** Часть текста шага: обычный текст, название кнопки в кавычках или браузер. */
+export type StepTextPart = { text: string; kind: "plain" | "quoted" | "browser" };
+
+/**
+ * Текст шага инструкции по частям: названия кнопок в кавычках («Поделиться»,
+ * “Share”, „Share“; вложенные — «На экран „Домой“» — остаются одной частью)
+ * и названия браузеров (Safari, Chrome) — на экране жирные, у браузера ещё
+ * и его значок.
+ */
+export function splitStepText(text: string): StepTextPart[] {
+  const parts: StepTextPart[] = [];
+  const re = /«[^»]+»|“[^”]+”|„[^“”]+[“”]|\b(?:Safari|Chrome)\b/g;
   let last = 0;
   for (const m of text.matchAll(re)) {
     const at = m.index ?? 0;
-    if (at > last) parts.push({ text: text.slice(last, at), quoted: false });
-    parts.push({ text: m[0], quoted: true });
+    if (at > last) parts.push({ text: text.slice(last, at), kind: "plain" });
+    const quoted = /^[«“„]/.test(m[0]);
+    parts.push({ text: m[0], kind: quoted ? "quoted" : "browser" });
     last = at + m[0].length;
   }
-  if (last < text.length) parts.push({ text: text.slice(last), quoted: false });
+  if (last < text.length) parts.push({ text: text.slice(last), kind: "plain" });
   return parts;
 }

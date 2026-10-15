@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { detectIosGuide, detectPlatform, splitQuoted } from "./pwa-install";
+import { detectIosGuide, detectPlatform, isAndroidChrome, splitStepText } from "./pwa-install";
 
 const UA = {
   // iOS 26: версия системы заморожена на 18_6, Safari — Version/26.
@@ -67,31 +67,100 @@ describe("detectIosGuide", () => {
   });
 });
 
-describe("splitQuoted", () => {
+describe("isAndroidChrome", () => {
+  const chromeLike = (token: string) =>
+    `Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) ${token} Chrome/141.0.0.0 Mobile Safari/537.36`;
+
+  test("настоящий Chrome на Android", () => {
+    expect(isAndroidChrome(UA.android)).toBe(true);
+    expect(
+      isAndroidChrome(
+        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.7390.122 Mobile Safari/537.36",
+      ),
+    ).toBe(true);
+  });
+
+  test("Samsung Internet, Edge, Opera, Яндекс, Xiaomi — не Chrome", () => {
+    expect(isAndroidChrome(chromeLike("SamsungBrowser/27.0"))).toBe(false);
+    expect(
+      isAndroidChrome(
+        "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36 EdgA/141.0.0.0",
+      ),
+    ).toBe(false);
+    expect(
+      isAndroidChrome(
+        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36 OPR/91.0.0.0",
+      ),
+    ).toBe(false);
+    expect(
+      isAndroidChrome(
+        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 YaBrowser/25.8.1.100.00 SA/3 Mobile Safari/537.36",
+      ),
+    ).toBe(false);
+    expect(isAndroidChrome(chromeLike("XiaoMi/MiuiBrowser/14.0"))).toBe(false);
+  });
+
+  test("встроенные браузеры приложений (WebView, Instagram, Telegram) — не Chrome", () => {
+    expect(
+      isAndroidChrome(
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36",
+      ),
+    ).toBe(false);
+    expect(
+      isAndroidChrome(
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 Instagram 400.0.0.0 Android",
+      ),
+    ).toBe(false);
+    expect(
+      isAndroidChrome(
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 Telegram-Android/12.0.1",
+      ),
+    ).toBe(false);
+  });
+
+  test("iPhone и компьютер — не Chrome на Android", () => {
+    expect(isAndroidChrome(UA.chromeIos26)).toBe(false);
+    expect(isAndroidChrome(UA.windows)).toBe(false);
+  });
+});
+
+describe("splitStepText", () => {
   test("русские кавычки, в том числе вложенные", () => {
-    expect(splitQuoted("Выберите «На экран „Домой“» и нажмите «Добавить»")).toEqual([
-      { text: "Выберите ", quoted: false },
-      { text: "«На экран „Домой“»", quoted: true },
-      { text: " и нажмите ", quoted: false },
-      { text: "«Добавить»", quoted: true },
+    expect(splitStepText("Выберите «На экран „Домой“» и нажмите «Добавить»")).toEqual([
+      { text: "Выберите ", kind: "plain" },
+      { text: "«На экран „Домой“»", kind: "quoted" },
+      { text: " и нажмите ", kind: "plain" },
+      { text: "«Добавить»", kind: "quoted" },
     ]);
   });
 
   test("английские и грузинские кавычки", () => {
-    expect(splitQuoted("Tap “Share”")).toEqual([
-      { text: "Tap ", quoted: false },
-      { text: "“Share”", quoted: true },
+    expect(splitStepText("Tap “Share”")).toEqual([
+      { text: "Tap ", kind: "plain" },
+      { text: "“Share”", kind: "quoted" },
     ]);
-    expect(splitQuoted("დააჭირეთ „Add“-ს")).toEqual([
-      { text: "დააჭირეთ ", quoted: false },
-      { text: "„Add“", quoted: true },
-      { text: "-ს", quoted: false },
+    expect(splitStepText("დააჭირეთ „Add“-ს")).toEqual([
+      { text: "დააჭირეთ ", kind: "plain" },
+      { text: "„Add“", kind: "quoted" },
+      { text: "-ს", kind: "plain" },
     ]);
   });
 
-  test("без кавычек — одна часть", () => {
-    expect(splitQuoted("Откройте эту ссылку в браузере Safari")).toEqual([
-      { text: "Откройте эту ссылку в браузере Safari", quoted: false },
+  test("название браузера — отдельной частью, на любом языке", () => {
+    expect(splitStepText("Откройте эту ссылку в браузере Safari")).toEqual([
+      { text: "Откройте эту ссылку в браузере ", kind: "plain" },
+      { text: "Safari", kind: "browser" },
+    ]);
+    expect(splitStepText("გადადით საიტზე და დააჭირეთ Chrome-ის კუთხეში")).toEqual([
+      { text: "გადადით საიტზე და დააჭირეთ ", kind: "plain" },
+      { text: "Chrome", kind: "browser" },
+      { text: "-ის კუთხეში", kind: "plain" },
+    ]);
+  });
+
+  test("без кавычек и браузера — одна часть", () => {
+    expect(splitStepText("Перейдите на сайт")).toEqual([
+      { text: "Перейдите на сайт", kind: "plain" },
     ]);
   });
 });
