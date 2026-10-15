@@ -446,16 +446,16 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== ПУШ-УВЕДОМЛЕНИЯ ======
     list_push_notifications: tool({
       description:
-        "Пуш-уведомления клиентам текущего клуба: заголовок, текст, action_url, сегменты, статус (draft/scheduled/sent), запланировано/отправлено, метрики доставки/прочтения.",
+        "Пуш-уведомления клиентам текущего клуба: заголовок, текст, action_url, сегменты, статус (draft/scheduled/sending — идёт рассылка/sent), запланировано/отправлено, метрики: recipients_count — клиентов с приложением, devices_count — их телефонов с уведомлениями, sent_count — принято службой доставки, failed_count — не дошло, delivered_count — показано на телефоне, read_count — клиентов открыли.",
       inputSchema: z.object({
-        status: z.enum(["draft", "scheduled", "sent"]).optional(),
+        status: z.enum(["draft", "scheduled", "sending", "sent"]).optional(),
         limit: limit(500, 200),
       }),
       execute: async ({ status, limit }) => {
         let q = supabase
           .from("push_notifications")
           .select(
-            "id, title, message, action_url, segments, studio_ids, status, scheduled_at, sent_at, sent_count, delivered_count, read_count, created_at, updated_at",
+            "id, title, message, action_url, segments, studio_ids, status, scheduled_at, sent_at, recipients_count, devices_count, sent_count, failed_count, delivered_count, read_count, created_at, updated_at",
           )
           .contains("studio_ids", [studioId])
           .order("created_at", { ascending: false })
