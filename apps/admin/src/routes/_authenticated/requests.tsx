@@ -117,7 +117,8 @@ function RequestsPage() {
   const studioId = useActiveStudioId();
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
-  const [status, setStatus] = useState<StatusFilter>("open");
+  // По умолчанию — все заявки, новые сверху (решение владельца 2026-10-15).
+  const [status, setStatus] = useState<StatusFilter>("all");
   const [kind, setKind] = useState<"all" | ClientRequestKind>("all");
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -228,7 +229,7 @@ function RequestsPage() {
     reload();
   };
 
-  const hasFilters = status !== "open" || kind !== "all";
+  const hasFilters = status !== "all" || kind !== "all";
 
   return (
     <AdminShell title="Заявки">
@@ -266,9 +267,9 @@ function RequestsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Все заявки</SelectItem>
                 <SelectItem value="open">Не отработанные</SelectItem>
                 <SelectItem value="done">Отработанные</SelectItem>
-                <SelectItem value="all">Все заявки</SelectItem>
               </SelectContent>
             </Select>
             <Select value={kind} onValueChange={(v) => setKind(v as "all" | ClientRequestKind)}>
@@ -287,7 +288,7 @@ function RequestsPage() {
             <ToolbarReset
               active={hasFilters}
               onReset={() => {
-                setStatus("open");
+                setStatus("all");
                 setKind("all");
               }}
             />
