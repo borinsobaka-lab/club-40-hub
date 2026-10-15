@@ -15,7 +15,7 @@ import { useClientStudioId } from "@/hooks/use-client-studio";
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
 import { ScheduleDayList } from "@/components/schedule-day-list";
-import { IS_PACKAGES, SCHEDULE_TITLE } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES, SCHEDULE_TITLE } from "@/lib/terms";
 import { PackagesSchedulePage } from "@/formats/packages/schedule-page";
 import {
   type ContentTranslations,
@@ -32,8 +32,11 @@ export const Route = createFileRoute("/schedule")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: `${t(SCHEDULE_TITLE)} — Base40` },
-        { name: "description", content: t("Расписание и запись на занятия Base40.") },
+        { title: `${t(SCHEDULE_TITLE)} — ${APP_BRAND}` },
+        {
+          name: "description",
+          content: t("Расписание и запись на занятия {brand}.", { brand: APP_BRAND }),
+        },
       ],
     };
   },

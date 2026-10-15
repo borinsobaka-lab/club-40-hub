@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
+import { APP_BRAND } from "@/lib/terms";
 
 import { PageShell } from "@/components/page-shell";
 import { PushBanner } from "@/components/push-prompt";
@@ -19,8 +20,8 @@ export const Route = createFileRoute("/notifications")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: t("Уведомления — Base40") },
-        { name: "description", content: t("Уведомления Base40.") },
+        { title: t("Уведомления — {brand}", { brand: APP_BRAND }) },
+        { name: "description", content: t("Уведомления {brand}.", { brand: APP_BRAND }) },
       ],
     };
   },

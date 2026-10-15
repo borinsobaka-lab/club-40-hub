@@ -30,7 +30,7 @@ import { useClubSettings } from "@/hooks/use-club-settings";
 import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { useNotifications } from "@/lib/notifications";
 import { PushBanner } from "@/components/push-prompt";
-import { IS_PACKAGES } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 import { packEntryToDrawerData, type PackEntry } from "@/formats/packages/entries";
 import { PackWorkoutCard } from "@/formats/packages/workout-card";
 import { StudioSwitcher } from "@/formats/packages/studio-switcher";
@@ -57,10 +57,12 @@ export const Route = createFileRoute("/")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: t("Главное — Base40") },
+        { title: t("Главное — {brand}", { brand: APP_BRAND }) },
         {
           name: "description",
-          content: t("Главная страница Base40: новости, акции и быстрый доступ к профилю."),
+          content: t("Главная страница {brand}: новости, акции и быстрый доступ к профилю.", {
+            brand: APP_BRAND,
+          }),
         },
       ],
     };

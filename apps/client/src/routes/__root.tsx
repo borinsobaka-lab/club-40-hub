@@ -23,7 +23,7 @@ import { APP_FORMAT, FORMAT_APP_URL } from "@/lib/app-format";
 import { APP_THEME_COLOR, DEFAULT_APP_INSTALL, fetchAppInstall } from "@/lib/app-install";
 import { clientCardQuery } from "@/lib/client-card";
 import { homeBookingsQuery } from "@/lib/home-queries";
-import { IS_PACKAGES } from "@/lib/terms";
+import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { DarkSplash } from "@/formats/packages/dark-frame";
 import {
@@ -161,13 +161,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     const app = loaderData ?? DEFAULT_APP_INSTALL;
     const t = getTranslator(match.context.locale);
     const description = t(
-      "Клиентское приложение Base40 — расписание, бронирование и результаты тренировок.",
+      "Клиентское приложение {brand} — расписание, бронирование и результаты тренировок.",
+      { brand: APP_BRAND },
     );
     return {
       meta: [
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
-        { title: "Base40" },
+        { title: APP_BRAND },
         { name: "description", content: description },
         { name: "theme-color", content: APP_THEME_COLOR },
         // Подпись под значком: Android берёт её из манифеста, iOS — отсюда.
@@ -176,11 +177,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "apple-mobile-web-app-capable", content: "yes" },
         { name: "mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-        { property: "og:title", content: "Base40" },
+        { property: "og:title", content: APP_BRAND },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary" },
-        { name: "twitter:title", content: "Base40" },
+        { name: "twitter:title", content: APP_BRAND },
         { name: "twitter:description", content: description },
       ],
       links: [

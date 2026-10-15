@@ -2,7 +2,7 @@ import type { Dictionary } from "../types";
 
 /** Раздел: обратная связь (routes/feedback.tsx, lib/feedback.ts). */
 const dict: Dictionary = {
-  "Обратная связь — Base40": "Feedback — Base40",
+  "Обратная связь — {brand}": "Feedback — {brand}",
   "Обратная связь": "Feedback",
   "Расскажите, что понравилось и что можно улучшить.":
     "Tell us what you liked and what we could do better.",

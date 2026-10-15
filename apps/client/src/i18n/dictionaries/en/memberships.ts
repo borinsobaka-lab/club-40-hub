@@ -3,7 +3,7 @@ import type { Dictionary } from "../types";
 /** Раздел: абонементы подписочного приложения (routes/memberships.tsx: тарифы, оформление, автопродление). */
 const dict: Dictionary = {
   Абонементы: "Memberships",
-  "Абонементы и пакеты занятий Base40.": "Base40 memberships and class packages.",
+  "Абонементы и пакеты занятий {brand}.": "{brand} memberships and class packages.",
   "раз в месяц": "per month",
   "раз в год": "per year",
   "раз в {n} месяц|раз в {n} месяца|раз в {n} месяцев": "every {n} month|every {n} months",

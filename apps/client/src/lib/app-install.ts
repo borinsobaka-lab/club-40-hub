@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { APP_FORMAT } from "@/lib/app-format";
+import { APP_BRAND, APP_FORMAT } from "@/lib/app-format";
 import type { Translator } from "@/i18n";
 
 /**
@@ -31,7 +31,7 @@ export type AppInstall = {
   signInClosed: boolean;
 };
 
-const DEFAULT_NAME = "Base40";
+const DEFAULT_NAME = APP_BRAND;
 
 /**
  * Цвет строки состояния телефона (время, заряд) в установленном приложении —

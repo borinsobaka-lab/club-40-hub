@@ -2,7 +2,7 @@ import type { Dictionary } from "../types";
 
 /** Раздел: «Пригласи подругу» (пакетное приложение). */
 const dict: Dictionary = {
-  "Пригласи подругу — Base40": "Invite a friend — Base40",
+  "Пригласи подругу — {brand}": "Invite a friend — {brand}",
   "Приведите подругу в студию — и вы обе получите по 2 тренировки в подарок.":
     "Bring a friend to the studio and you'll both get 2 free workouts.",
   "Привет! 💗": "Hi! 💗",

@@ -1,3 +1,7 @@
+import { APP_BRAND, APP_FORMAT, FORMAT_APP_URL } from "@/lib/app-format";
+
+const UID_HOST = new URL(FORMAT_APP_URL[APP_FORMAT]).host;
+
 function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
@@ -89,11 +93,11 @@ export function buildICS(e: CalendarEvent) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Base40//RU",
+    `PRODID:-//${APP_BRAND}//RU`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:${e.id}@base40.fit`,
+    `UID:${e.id}@${UID_HOST}`,
     `DTSTAMP:${now}`,
     `DTSTART:${toICSDate(e.startsAt)}`,
     `DTEND:${toICSDate(e.endsAt)}`,

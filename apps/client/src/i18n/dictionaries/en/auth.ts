@@ -2,7 +2,7 @@ import type { Dictionary } from "../types";
 
 /** Раздел: Вход по коду из письма (экран входа). */
 const dict: Dictionary = {
-  "Вход — Base40": "Sign in — Base40",
+  "Вход — {brand}": "Sign in — {brand}",
   "{s} сек": "{s} s",
   "Эта почта не найдена среди клиентов студии. Обратитесь к администратору студии.":
     "We couldn't find this email among the studio's clients. Please contact the studio administrator.",

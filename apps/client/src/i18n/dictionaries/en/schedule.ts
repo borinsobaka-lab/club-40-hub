@@ -2,7 +2,7 @@ import type { Dictionary } from "../types";
 
 /** Раздел: бронь подписочного приложения (routes/schedule.tsx), «Клуб» (routes/club.tsx), срок отмены записи (hooks/use-club-settings.ts). */
 const dict: Dictionary = {
-  "Расписание и запись на занятия Base40.": "Base40 class schedule and booking.",
+  "Расписание и запись на занятия {brand}.": "{brand} class schedule and booking.",
   Классы: "Classes",
   Персональные: "Personal",
   Диагностика: "Diagnostics",

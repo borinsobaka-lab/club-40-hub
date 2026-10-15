@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { APP_BRAND } from "@/lib/terms";
 import { AltArrowLeft } from "@solar-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { mediaUrl } from "@/lib/media";
@@ -13,8 +14,8 @@ export const Route = createFileRoute("/news/$newsId")({
     const t = getTranslator(match.context.locale);
     return {
       meta: [
-        { title: t("Новость — Base40") },
-        { name: "description", content: t("Новость Base40.") },
+        { title: t("Новость — {brand}", { brand: APP_BRAND }) },
+        { name: "description", content: t("Новость {brand}.", { brand: APP_BRAND }) },
       ],
     };
   },

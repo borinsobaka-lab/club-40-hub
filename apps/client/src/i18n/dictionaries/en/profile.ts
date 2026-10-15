@@ -2,8 +2,8 @@ import type { Dictionary } from "../types";
 
 /** Раздел: профиль (routes/profile.tsx — данные, аватар, редактирование, язык, выход). */
 const dict: Dictionary = {
-  "Профиль — Base40": "Profile — Base40",
-  "Профиль участника Base40.": "Your Base40 member profile.",
+  "Профиль — {brand}": "Profile — {brand}",
+  "Профиль участника {brand}.": "Your {brand} member profile.",
   "Укажите имя": "Enter your first name",
   "Слишком длинное имя": "First name is too long",
   "Укажите фамилию": "Enter your last name",
