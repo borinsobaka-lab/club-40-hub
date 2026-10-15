@@ -23,6 +23,7 @@ function sale(p: Partial<SaleRecord> & { clientId: string; soldAt: string }): Sa
     totalAmount: 100,
     membershipName: "Безлимит",
     trial: false,
+    single: false,
     personal: false,
     method: "cash",
     source: "admin",
@@ -88,6 +89,21 @@ describe("classifySales", () => {
     const r = classifySales([trial, pack]);
     expect(r.get(trial.id)).toBe("new");
     expect(r.get(pack.id)).toBe("new");
+  });
+
+  test("разовое посещение — своя категория, историей не считается", () => {
+    const single = sale({
+      clientId: "a",
+      soldAt: "2026-01-01",
+      endsAt: "2026-01-31",
+      single: true,
+    });
+    const pack = sale({ clientId: "a", soldAt: "2026-01-10", endsAt: "2026-02-10" });
+    const again = sale({ clientId: "a", soldAt: "2026-02-05", single: true });
+    const r = classifySales([single, pack, again]);
+    expect(r.get(single.id)).toBe("single");
+    expect(r.get(pack.id)).toBe("new");
+    expect(r.get(again.id)).toBe("single");
   });
 
   test("прежний абонемент без срока — продление", () => {
@@ -264,6 +280,26 @@ describe("salesMetrics и clientLtv", () => {
     expect(m.avgMembershipPayment).toBe(350);
     expect(m.otherRevenue).toBe(40);
     expect(m.avgOtherCheck).toBe(40);
+    expect(m.singleVisits).toBe(0);
+  });
+
+  test("разовые посещения: число и выручка за период, удалённые не в счёт", () => {
+    const withSingles = [
+      ...sales,
+      sale({ clientId: "c", soldAt: "2026-10-04", totalAmount: 30, single: true }),
+      sale({ clientId: "d", soldAt: "2026-10-06", totalAmount: 30, single: true }),
+      sale({
+        clientId: "e",
+        soldAt: "2026-10-07",
+        totalAmount: 30,
+        single: true,
+        noMembership: true,
+      }),
+      sale({ clientId: "f", soldAt: "2026-09-30", totalAmount: 30, single: true }),
+    ];
+    const m = salesMetrics({ sales: withSingles, otherSales }, "2026-10-01", "2026-10-31");
+    expect(m.singleVisits).toBe(2);
+    expect(m.singleRevenue).toBe(60);
   });
 
   test("LTV — все платежи клиента минус возвраты", () => {

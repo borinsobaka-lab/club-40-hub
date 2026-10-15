@@ -8,8 +8,8 @@ import type { MarketingKey } from "@/lib/dashboard-stats";
  * Расчёты подраздела дашборда «Маркетинг» без React и Supabase (тест —
  * dashboard-marketing.test.ts): привлечение новых клиентов, их первые
  * покупки, пробные, анкета приложения, промокоды, NPS. Покупка — абонемент,
- * кроме пробного, по которому выдан абонемент клиенту (удалённые не в
- * счёт), как в истории клиента на «Продажах».
+ * кроме пробного и разового посещения, по которому выдан абонемент клиенту
+ * (удалённые не в счёт), как в истории клиента на «Продажах».
  */
 
 export type MarketingClient = {
@@ -22,7 +22,7 @@ export type MarketingClient = {
 /** Ответы анкеты приложения (member_profiles) по учётной записи. */
 export type ProfileAnswers = { referralSource: string | null; goal: string | null };
 
-const isPurchase = (s: SaleRecord) => !s.trial && !s.noMembership;
+const isPurchase = (s: SaleRecord) => !s.trial && !s.single && !s.noMembership;
 
 function compareSales(a: SaleRecord, b: SaleRecord) {
   return a.soldAt === b.soldAt
@@ -30,7 +30,7 @@ function compareSales(a: SaleRecord, b: SaleRecord) {
     : a.soldAt.localeCompare(b.soldAt);
 }
 
-/** Первая покупка каждого клиента (абонемент, не пробное). */
+/** Первая покупка каждого клиента (абонемент, не пробное и не разовое). */
 export function firstPurchases(sales: SaleRecord[]): Map<string, SaleRecord> {
   const first = new Map<string, SaleRecord>();
   for (const s of [...sales].sort(compareSales)) {
@@ -176,7 +176,8 @@ export type FunnelStep = { key: string; label: string; value: number };
 /**
  * Что успели сделать новые клиенты периода — на сегодня. Каждый шаг — от
  * всех новых клиентов, а не от предыдущего: абонемент покупают и без
- * пробного. Пробные — только у клубов с пакетами тренировок.
+ * пробного. Пробные и разовые посещения — только у клубов с пакетами
+ * тренировок (`withTrials`).
  */
 export function newClientsFunnel(
   cohort: MarketingClient[],
@@ -185,15 +186,22 @@ export function newClientsFunnel(
   withTrials: boolean,
 ): FunnelStep[] {
   const ids = new Set(cohort.map((c) => c.id));
-  const trialIds = new Set(
-    sales.filter((s) => s.trial && !s.noMembership && ids.has(s.clientId)).map((s) => s.clientId),
-  );
+  const buyers = (kind: (s: SaleRecord) => boolean) =>
+    new Set(
+      sales.filter((s) => kind(s) && !s.noMembership && ids.has(s.clientId)).map((s) => s.clientId),
+    );
+  const trialIds = buyers((s) => s.trial);
+  const singleIds = buyers((s) => s.single);
   const first = firstPurchases(sales);
   const steps: FunnelStep[] = [
     { key: "new", label: "Новые клиенты", value: cohort.length },
     { key: "app", label: "Вошли в приложение", value: cohort.filter((c) => c.userId).length },
   ];
-  if (withTrials) steps.push({ key: "trial", label: "Купили пробное", value: trialIds.size });
+  if (withTrials)
+    steps.push(
+      { key: "trial", label: "Купили пробное", value: trialIds.size },
+      { key: "single", label: "Купили разовое посещение", value: singleIds.size },
+    );
   steps.push(
     {
       key: "visit",
@@ -213,7 +221,8 @@ export const NO_ANSWER = "__none";
 
 /**
  * Новые клиенты по ответу анкеты (`answer` — источник или цель): сколько
- * пришло, сколько купили и на сколько (все покупки, кроме пробного). Без
+ * пришло, сколько купили и на сколько (все покупки, кроме пробного и
+ * разового). Без
  * приложения или без ответа — NO_ANSWER.
  */
 export function cohortByAnswer(

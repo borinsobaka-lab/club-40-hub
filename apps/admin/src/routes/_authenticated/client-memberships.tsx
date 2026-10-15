@@ -575,7 +575,11 @@ function ClientMembershipsPage() {
                           <div>{r.memberships?.name ?? "—"}</div>
                           {r.memberships?.kind !== "package" && r.memberships?.kind && (
                             <div className="text-xs text-muted-foreground">
-                              {r.memberships.kind === "trial" ? "Пробное" : "Персональные"}
+                              {r.memberships.kind === "trial"
+                                ? "Пробное"
+                                : r.memberships.kind === "single"
+                                  ? "Разовое"
+                                  : "Персональные"}
                             </div>
                           )}
                           {r.sale_kind && (

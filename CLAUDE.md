@@ -212,6 +212,12 @@ AUTH_SETUP.md.
   `schedule_bookings_charge_balance` (из `zz_packages_personal_balance`),
   `sale_installments.payment_method`; вью `client_packages_list` пересоздана
   (актуальное определение — здесь).
+  Разовое посещение пакетных клубов (2026-10-15):
+  `db/migrations/2026-10-15_zz_packages_single_visit.sql` — `memberships.kind
+  = 'single'` (1 групповая, 30 дней, 1 платёж — `memberships_single_terms_check`),
+  в приложении не покупается (`sales_client_insert_guard` — актуальное
+  определение здесь), строка «Разовое посещение» в общем каталоге (цена 0 —
+  ставят в «Номенклатурах»).
   Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
   — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
   триггер списания), `payroll_lines` — пакет персональных не идёт в продажи
@@ -305,7 +311,8 @@ AUTH_SETUP.md.
   любого пакетного клуба видит и правит каталог всех пакетных
   (`can_manage_catalog` в политиках «… trainer write»), покупка в приложении
   принимает пакет любого пакетного клуба (`catalog_shared` в
-  `sales_client_insert_guard` — актуальное определение здесь), удаление
+  `sales_client_insert_guard`; актуальное определение —
+  `2026-10-15_zz_packages_single_visit.sql`), удаление
   пакетного клуба переносит его каталог в другой пакетный
   (`studios_packages_catalog_rehome`). Разово слиты одинаковые строки
   (`packages_merge_catalog`: тренировки — по названию, номенклатура — по

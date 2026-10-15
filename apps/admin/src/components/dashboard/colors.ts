@@ -30,4 +30,5 @@ export const SALE_ORIGIN_COLOR: Record<SaleOrigin, string> = {
   renewal: SERIES_COLORS[0],
   return: SERIES_COLORS[1],
   new: SERIES_COLORS[2],
+  single: SERIES_COLORS[3],
 };
