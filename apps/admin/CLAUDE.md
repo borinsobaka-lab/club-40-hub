@@ -60,6 +60,20 @@ Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
 опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
 в корне репозитория.
 
+**Письма Lady Stretch** (решение владельца 2026-10-15): клиенты пакетных
+клубов (redirect_to — `app.lady-stretch.one` или `pack.base40.fit`, список —
+`PACKAGES_APP_URLS`, `isPackagesApp`) получают письма в брендинге студий
+растяжки — `emailBrand` → `"ladyStretch"`: тёмный фон рейки `#12161b`,
+карточка цвета меню `#1a2027`, розовый `#f763fc` (полоса, рамка и цифры
+кода), логотип — `public/email/lady-stretch-logo.png` (PNG: почтовики не
+показывают SVG; грузится с `ADMIN_APP_URL`). Вёрстка таблицами с `bgcolor` —
+иначе почтовик, срезавший фон у div, показал бы белый текст на белом.
+Отправитель — `emailSender`: `LADY_STRETCH_MAIL_FROM`
+(`noreply@lady-stretch.one`, задаётся только после Verified домена в Resend —
+AGENT_TASKS.md, Задача 13), без неё — `noreply@base40.fit` под именем
+«Lady Stretch». Админка и app.base40.fit — Base40, как прежде; письмо входа в
+админку — всегда Base40. Тексты пока только русские.
+
 **Вход в админку — только по 6-значному коду из письма, паролей у
 сотрудников нет** (решения владельца 2026-10-09, 2026-10-10). Форма /auth шлёт
 почту в серверную функцию `requestStaffLoginCode` (src/lib/auth.functions.ts):

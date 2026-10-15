@@ -1,6 +1,7 @@
 // Отправка писем с сервера через Resend (RESEND_API_KEY). С 2026-10-11 —
 // единственный провайдер: Unisender Go отключён (решение владельца), домен
-// base40.fit верифицирован в Resend. Ключ — только runtime-переменная Coolify
+// base40.fit верифицирован в Resend; письма Lady Stretch — со своего домена
+// (LADY_STRETCH_MAIL_FROM, src/lib/auth-email.ts). Ключ — только runtime-переменная Coolify
 // у club40-admin, в бандл не попадает.
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -13,12 +14,17 @@ export const MAIL_FROM_NAME = "Base40";
 // позже, человек получит два кода. Обрываем раньше и отвечаем ошибкой.
 const MAIL_TIMEOUT_MS = 4000;
 
+export type MailSender = { email: string; name: string };
+
 export type MailMessage = {
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
   replyTo?: string;
+  /** Отправитель; по умолчанию — Base40 <noreply@base40.fit>. Домен адреса
+   * должен быть подтверждён в Resend, иначе 403. */
+  from?: MailSender;
 };
 
 export type MailResult = { ok: true } | { ok: false; error: string };
@@ -65,7 +71,7 @@ export async function sendMail(msg: MailMessage, env: Env = process.env): Promis
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: `${MAIL_FROM_NAME} <${MAIL_FROM_EMAIL}>`,
+          from: `${msg.from?.name ?? MAIL_FROM_NAME} <${msg.from?.email ?? MAIL_FROM_EMAIL}>`,
           to: recipients,
           subject: msg.subject,
           html: msg.html,

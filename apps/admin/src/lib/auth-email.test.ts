@@ -3,7 +3,10 @@ import { describe, expect, test } from "bun:test";
 import {
   buildEmail,
   buildEmails,
+  emailBrand,
+  emailSender,
   isAdminApp,
+  isPackagesApp,
   needsClubMembership,
   type HookPayload,
 } from "./auth-email";
@@ -142,4 +145,89 @@ describe("код входа в клиентское приложение — т�
     expect(needsClubMembership(payload(ADMIN), true)).toBe(false));
   test("смена почты вошедшим клиентом — без проверки", () =>
     expect(needsClubMembership(payload(CLIENT, "email_change"), false)).toBe(false));
+});
+
+describe("Lady Stretch — письма клиентам пакетных клубов", () => {
+  const LS = "https://app.lady-stretch.one";
+  const PACK = "https://pack.base40.fit/";
+
+  test("приложение пакетов — по хосту, оба адреса", () => {
+    expect(isPackagesApp(LS)).toBe(true);
+    expect(isPackagesApp(PACK)).toBe(true);
+    expect(isPackagesApp(CLIENT)).toBe(false);
+    expect(isPackagesApp(ADMIN)).toBe(false);
+    expect(isPackagesApp("https://app.lady-stretch.one.evil.com/")).toBe(false);
+    expect(isPackagesApp("")).toBe(false);
+  });
+
+  test("бренд: пакеты — Lady Stretch, остальное — Base40", () => {
+    expect(emailBrand(LS)).toBe("ladyStretch");
+    expect(emailBrand(PACK)).toBe("ladyStretch");
+    expect(emailBrand(CLIENT)).toBe("base40");
+    expect(emailBrand(ADMIN)).toBe("base40");
+    expect(emailBrand("")).toBe("base40");
+  });
+
+  test("вход — код Lady Stretch в розовом, без ссылки и без Base40", () => {
+    const { html, subject } = buildEmail(payload(LS), false, "ladyStretch");
+    expect(subject).toBe("Код для входа — Lady Stretch");
+    expect(hasCode(html)).toBe(true);
+    expect(hasLoginLink(html)).toBe(false);
+    expect(html).toContain("#f763fc");
+    expect(html).toContain("#1a2027");
+    expect(html).not.toContain("Base40");
+  });
+
+  test("все типы писем Lady Stretch — без Base40 в теме", () => {
+    for (const type of ["signup", "recovery", "invite", "email_change", "reauthentication"]) {
+      const { subject, html } = buildEmail(payload(LS, type), false, "ladyStretch");
+      expect(subject).toContain("Lady Stretch");
+      expect(hasCode(html)).toBe(true);
+    }
+  });
+
+  test("смена почты с двумя кодами — оба письма Lady Stretch", () => {
+    const p: HookPayload = {
+      user: { id: "u1", email: "old@example.com", new_email: "new@example.com" },
+      email_data: {
+        token: "111111",
+        token_hash: "h1",
+        token_new: "222222",
+        redirect_to: LS,
+        email_action_type: "email_change",
+        site_url: LS,
+      },
+    };
+    const emails = buildEmails(p, false, "ladyStretch");
+    expect(emails).toHaveLength(2);
+    for (const e of emails) expect(e.subject).toContain("Lady Stretch");
+  });
+
+  test("админка — всегда Base40, даже если передали Lady Stretch", () => {
+    const { html, subject } = buildEmail(payload(ADMIN), true, "ladyStretch");
+    expect(subject).toContain("Base40");
+    expect(html).not.toContain("#f763fc");
+  });
+
+  test("отправитель Lady Stretch — адрес из LADY_STRETCH_MAIL_FROM", () =>
+    expect(
+      emailSender("ladyStretch", { LADY_STRETCH_MAIL_FROM: "noreply@lady-stretch.one" }),
+    ).toEqual({ email: "noreply@lady-stretch.one", name: "Lady Stretch" }));
+
+  test("без переменной (домен не подтверждён) — прежний адрес, имя Lady Stretch", () =>
+    expect(emailSender("ladyStretch", {})).toEqual({
+      email: "noreply@base40.fit",
+      name: "Lady Stretch",
+    }));
+
+  test("мусор в переменной — прежний адрес", () =>
+    expect(emailSender("ladyStretch", { LADY_STRETCH_MAIL_FROM: "Lady <x@y.z>" }).email).toBe(
+      "noreply@base40.fit",
+    ));
+
+  test("Base40 — прежний отправитель, переменная Lady Stretch не влияет", () =>
+    expect(emailSender("base40", { LADY_STRETCH_MAIL_FROM: "noreply@lady-stretch.one" })).toEqual({
+      email: "noreply@base40.fit",
+      name: "Base40",
+    }));
 });
