@@ -38,6 +38,7 @@ const dict: Dictionary = {
   Отменено: "Cancelled",
   Пропущено: "Missed",
   "Ожидает отметки": "Not marked yet",
+  "Диагностика тела": "Body diagnostics",
   "{n} ккал": "{n} kcal",
   "Не удалось загрузить историю посещений. Попробуйте ещё раз.":
     "Couldn't load your visit history. Please try again.",

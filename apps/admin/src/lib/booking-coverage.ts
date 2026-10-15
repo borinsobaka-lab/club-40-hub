@@ -18,7 +18,10 @@ export function entryBalance(kind: string): BalanceKind {
 }
 
 export type BalanceRow = {
-  /** active — текущий; pending — продление ждёт (спишется после текущего). */
+  /**
+   * active — текущий; pending — продление ждёт (спишется после текущего);
+   * frozen — заморожен (в остаток не идёт).
+   */
   status: string;
   ends_at: string | null;
   visits_left: number | null;
@@ -33,15 +36,27 @@ export function tbilisiDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Tbilisi" });
 }
 
-/** Тренировок нужного вида на балансе к дате занятия; без счётчика — безлимит. */
+/**
+ * Тренировок нужного вида на балансе к дате занятия; без счётчика — безлимит.
+ * Замороженный (frozen) в остаток не идёт, но, как и действующий, держит
+ * ждущие диагностики: их база не спишет, пока жив абонемент того же вида, а
+ * его кончают тренировки, а не диагностики.
+ */
 export function balanceFor(rows: BalanceRow[], balance: BalanceKind, date: string) {
+  const live = new Set(
+    rows
+      .filter((r) => r.status === "active" || r.status === "frozen")
+      .map((r) => r.balance_kind ?? "group"),
+  );
   let total = 0;
   for (const r of rows) {
     if (r.status !== "active" && r.status !== "pending") continue;
     if (r.ends_at && r.ends_at < date) continue;
     if (balance === "personal") total += Math.max(0, r.personal_left ?? 0);
-    else if (balance === "diagnostic") total += Math.max(0, r.diagnostics_left ?? 0);
-    else if (r.balance_kind !== "personal") {
+    else if (balance === "diagnostic") {
+      if (r.status === "pending" && live.has(r.balance_kind ?? "group")) continue;
+      total += Math.max(0, r.diagnostics_left ?? 0);
+    } else if (r.balance_kind !== "personal") {
       if (r.visits_left == null) return Infinity;
       total += Math.max(0, r.visits_left);
     }

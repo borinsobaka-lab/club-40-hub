@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { diagnosticsBalance } from "./balance";
 import { staffHasRating, staffOrder, staffRole, staffRoleLabel } from "./staff-roles";
 import { chunks, groupSubstitutions, replacedOf } from "./substitutions";
 import { isOverdue, paymentsBySale, tbilisiToday } from "./upcoming-payments";
@@ -99,5 +100,36 @@ describe("«начинается через» на своей записи", () 
   test("началось — ничего", () => {
     expect(parts(0)).toBeNull();
     expect(parts(-60_000)).toBeNull();
+  });
+});
+
+describe("диагностики тела: остаток как у списания в базе", () => {
+  const row = (r: Partial<Parameters<typeof diagnosticsBalance>[0][number]>) => ({
+    status: "active",
+    diagnostics_left: 0,
+    balance_kind: "group" as const,
+    ...r,
+  });
+
+  test("ждущее продление не в счёт, пока жив текущий того же вида", () => {
+    expect(diagnosticsBalance([row({}), row({ status: "pending", diagnostics_left: 2 })])).toBe(0);
+    expect(
+      diagnosticsBalance([
+        row({ status: "frozen" }),
+        row({ status: "pending", diagnostics_left: 2 }),
+      ]),
+    ).toBe(0);
+    expect(diagnosticsBalance([row({ status: "pending", diagnostics_left: 2 })])).toBe(2);
+  });
+
+  test("текущий и пакет персональных — оба в остатке", () => {
+    expect(
+      diagnosticsBalance([
+        row({ diagnostics_left: 1 }),
+        row({ balance_kind: "personal", diagnostics_left: 2 }),
+        row({ status: "pending", balance_kind: "personal", diagnostics_left: 5 }),
+        row({ status: "frozen", diagnostics_left: 3 }),
+      ]),
+    ).toBe(3);
   });
 });
