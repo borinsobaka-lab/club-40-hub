@@ -31,6 +31,9 @@ describe.skipIf(!url)("NPS-опросы (база)", () => {
   async function scenario(fn: (tx: Tx) => Promise<void>) {
     try {
       await db.begin(async (tx) => {
+        // «Сегодня» базы (current_date) — по Тбилиси, как в nps_pending_survey:
+        // иначе поздним вечером по UTC даты сценариев сдвигались на день.
+        await tx`set local timezone = 'Asia/Tbilisi'`;
         await fn(tx as unknown as Tx);
         throw new Rollback();
       });
@@ -302,6 +305,63 @@ describe.skipIf(!url)("NPS-опросы (база)", () => {
     });
   });
 
+  test("прочитано: ответ из приложения — новый, сотрудник отмечает, кто и когда — база", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      for (const h of [days(9), days(6), days(3), 3]) await visit(tx, s, h);
+      const sv = (await survey(tx, s))!;
+      await shown(tx, s, sv);
+      await as(tx, s.user);
+      const [{ id }] = await tx`
+        select submit_nps_response(${sv.survey_type}, ${sv.occasion}, 4, 'Душно в зале', 'ru') as id`;
+      await asServer(tx);
+
+      const unread = async () =>
+        Number(
+          (
+            await tx`select count(*) as n from nps_responses
+                      where studio_id = ${s.studio} and read_at is null`
+          )[0].n,
+        );
+      expect(await unread()).toBe(1);
+
+      await tx`set local session_replication_role = replica`;
+      const [{ id: staff }] = await tx`
+        insert into auth.users (email) values (${`staff-${s.studio}@example.com`}) returning id`;
+      await tx`set local session_replication_role = origin`;
+      await tx`insert into user_roles (user_id, studio_id, role) values (${staff}, ${s.studio}, 'admin')`;
+      await tx`
+        insert into profiles (id, full_name, studio_id) values (${staff}, 'Админ Тестовый', ${s.studio})
+        on conflict (id) do update set full_name = excluded.full_name`;
+      await as(tx, staff);
+      // «Обработан» у критика не трогает «прочитано».
+      await tx`update nps_responses set handled = true where id = ${id}`;
+      await asServer(tx);
+      expect(await unread()).toBe(1);
+
+      // Прочитано: время и имя ставит база, а не браузер.
+      await as(tx, staff);
+      await tx`update nps_responses set read_at = '2000-01-01', read_by_name = 'Кто-то' where id = ${id}`;
+      await asServer(tx);
+      const [row] = await tx`select read_at, read_by, read_by_name from nps_responses where id = ${id}`;
+      expect(row.read_at.getFullYear()).toBeGreaterThan(2000);
+      expect(row.read_by).toBe(staff);
+      expect(row.read_by_name).toBe("Админ Тестовый");
+      expect(await unread()).toBe(0);
+
+      // Внесённый сотрудником вручную — сразу прочитан.
+      await as(tx, staff);
+      const [{ id: manual }] = await tx`
+        insert into nps_responses (studio_id, score, survey_type, client_name)
+        values (${s.studio}, 10, 'general', 'Клиентка') returning id`;
+      await asServer(tx);
+      const [m] = await tx`select read_at, read_by from nps_responses where id = ${manual}`;
+      expect(m.read_at).not.toBeNull();
+      expect(m.read_by).toBe(staff);
+      expect(await unread()).toBe(0);
+    });
+  });
+
   test("ответить можно только на положенный опрос; напрямую в ответы клиент не пишет", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);
@@ -364,6 +424,19 @@ describe.skipIf(!url)("NPS-опросы (база)", () => {
       const cm = await membership(tx, s, { startedDaysAgo: 5, endsInDays: 25, visitsLeft: 3 });
       expect(await survey(tx, s)).toBeNull();
       await tx`update client_memberships set visits_left = 2 where id = ${cm}`;
+      expect(await survey(tx, s)).toEqual({ survey_type: "before_renewal", occasion: cm });
+      // Показали и закрыли приложение, а потом клиент купил продление — опрос
+      // больше не показывается: возражения отрабатывать не нужно.
+      await shown(tx, s, { survey_type: "before_renewal", occasion: cm });
+      await membership(tx, s, { status: "pending", startedDaysAgo: null, createdDaysAgo: 0 });
+      expect(await survey(tx, s)).toBeNull();
+    });
+    await scenario(async (tx) => {
+      // Продление пакета персональных не отменяет опрос по групповому.
+      const s = await seed(tx, { registeredDaysAgo: 400 });
+      const cm = await membership(tx, s, { startedDaysAgo: 20, endsInDays: 5 });
+      const next = await membership(tx, s, { status: "pending", startedDaysAgo: null, createdDaysAgo: 0 });
+      await tx`update client_memberships set balance_kind = 'personal' where id = ${next}`;
       expect(await survey(tx, s)).toEqual({ survey_type: "before_renewal", occasion: cm });
     });
     await scenario(async (tx) => {
