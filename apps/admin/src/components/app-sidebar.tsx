@@ -160,6 +160,33 @@ function usePendingFeedback(studioId: string | null, enabled: boolean): number {
   return enabled ? data : 0;
 }
 
+/**
+ * Сколько ответов NPS клуба не прочитано — счётчик у «NPS-опросов», как у
+ * «Заявок». Новые ответы приходят из приложения
+ * (db/migrations/2026-10-15_zzz_nps_read_renewal.sql); сотрудник отмечает
+ * каждый прочитанным во вкладке «Статистика». Ключ начинается с
+ * ["nps_responses", studioId]: страница сбрасывает его вместе со списком.
+ */
+function useUnreadNps(studioId: string | null, enabled: boolean): number {
+  const { data = 0 } = useQuery({
+    queryKey: ["nps_responses", studioId, "unread-count"],
+    queryFn: async () => {
+      let q = supabase
+        .from("nps_responses")
+        .select("id", { count: "exact", head: true })
+        .is("read_at", null);
+      // Как на странице: свой клуб и старые ответы без клуба.
+      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled,
+    refetchInterval: 60_000,
+  });
+  return enabled ? data : 0;
+}
+
 const STORAGE_KEY = "sidebar_groups";
 
 /** Свёрнутые блоки переживают перезагрузку — иначе меню каждый раз раскрывается заново. */
@@ -210,11 +237,17 @@ export function AppSidebar() {
     !sectionMenu && !!access && canOpenClubSection(access, studioId, "feedback"),
   );
   const openRequests = useClubRequestsBadge();
+  const unreadNps = useUnreadNps(
+    studioId,
+    !sectionMenu && !!access && canOpenClubSection(access, studioId, "nps"),
+  );
   // Счётчики меню клуба: неотработанные заявки клиентов — на «Заявках»,
-  // неотработанная обратная связь — на «Обратной связи».
+  // неотработанная обратная связь — на «Обратной связи», непрочитанные
+  // ответы NPS — на «NPS-опросах».
   const badges: Record<string, number> = {
     [REQUESTS_URL]: openRequests,
     "/feedback": pendingFeedback,
+    "/nps": unreadNps,
   };
   const groups =
     sectionMenu?.groups ??

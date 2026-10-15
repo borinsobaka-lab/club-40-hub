@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, CheckCircle2, AlertTriangle, Plus, Loader2 } from "lucide-react";
+import { Trash2, CheckCircle2, AlertTriangle, Plus, Loader2, Check, Undo2 } from "lucide-react";
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -60,12 +60,14 @@ import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { NpsPageSkeleton, NpsStatsSkeleton, NpsSurveysSkeleton } from "@/components/page-skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
+import { CommentCell } from "@/components/comment-cell";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
   surveyType: "Момент, когда задан вопрос: NPS считается по каждому типу отдельно.",
   score: "9–10 — промоутер, 7–8 — нейтрал, 0–6 — критик. NPS = % промоутеров − % критиков.",
+  read: "Новый ответ из приложения — в счётчике у «NPS-опросов» в меню, пока его не отметят прочитанным. Внесённые вручную — сразу прочитаны.",
 };
 
 export const Route = createFileRoute("/_authenticated/nps")({
@@ -87,6 +89,9 @@ type NpsResponse = {
   created_at: string;
   /** Карточка клиента, ответившего в приложении; внесённые вручную — null. */
   client_id: string | null;
+  /** Прочитан сотрудником (кто и когда — ставит база); null — новый. */
+  read_at: string | null;
+  read_by_name: string | null;
 };
 
 /** Показы опроса в приложении (RPC nps_prompt_stats). */
@@ -112,7 +117,7 @@ const SURVEY_TYPES: { type: SurveyType; label: string; hint: string; inApp: bool
   {
     type: "before_renewal",
     label: "Перед продлением",
-    hint: "За 10 дней до окончания абонемента, в пакетных клубах — и когда осталось 2 тренировки",
+    hint: "За 10 дней до окончания абонемента, в пакетных клубах — и когда осталось 2 тренировки; кто уже купил продление — не получает",
     inApp: true,
   },
   {
@@ -180,6 +185,7 @@ function NpsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const queryKey = ["nps_responses", studioId];
   const { data: responses = [], isLoading: loading } = useQuery({
@@ -215,6 +221,31 @@ function NpsPage() {
     );
   };
 
+  // «Прочитано» / «Отметить непрочитанным»: кто и когда — ставит база
+  // (db/migrations/2026-10-15_zzz_nps_read_renewal.sql). Счётчик в меню —
+  // тот же ключ ["nps_responses", studioId, …].
+  const setRead = async (r: NpsResponse, read: boolean) => {
+    setBusyId(r.id);
+    try {
+      const { data, error } = await supabase
+        .from("nps_responses")
+        .update({ read_at: read ? new Date().toISOString() : null })
+        .eq("id", r.id)
+        .select("read_at, read_by_name")
+        .single();
+      if (error) {
+        toast.error("Не удалось сохранить: " + error.message);
+        return;
+      }
+      queryClient.setQueryData<NpsResponse[]>(queryKey, (prev) =>
+        prev?.map((x) => (x.id === r.id ? { ...x, ...data } : x)),
+      );
+      queryClient.invalidateQueries({ queryKey: ["nps_responses", studioId, "unread-count"] });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (
       !(await confirm({
@@ -229,6 +260,7 @@ function NpsPage() {
       return;
     }
     queryClient.setQueryData<NpsResponse[]>(queryKey, (prev) => prev?.filter((r) => r.id !== id));
+    queryClient.invalidateQueries({ queryKey: ["nps_responses", studioId, "unread-count"] });
     toast.success("Ответ удалён");
   };
 
@@ -266,7 +298,9 @@ function NpsPage() {
   const tableData = useMemo(() => {
     const d =
       clientFilter === "all" ? byType : byType.filter((r) => npsBucket(r.score) === clientFilter);
+    // Сначала непрочитанные — их нужно отметить, потом критики.
     return [...d].sort((a, b) => {
+      if (!a.read_at !== !b.read_at) return a.read_at ? 1 : -1;
       const ac = BUCKET[npsBucket(a.score)].order;
       const bc = BUCKET[npsBucket(b.score)].order;
       if (ac !== bc) return ac - bc;
@@ -280,6 +314,7 @@ function NpsPage() {
   );
 
   const pg = usePagination(tableData);
+  const unreadCount = useMemo(() => responses.filter((r) => !r.read_at).length, [responses]);
   const crmLinkOf = useCrmLinks(studioId, "id", [
     ...pg.paged.map((r) => r.client_id),
     ...unhandled.map((r) => r.client_id),
@@ -324,7 +359,17 @@ function NpsPage() {
           >
             <TabsList>
               <TabsTrigger value="surveys">Опросы</TabsTrigger>
-              <TabsTrigger value="stats">Статистика</TabsTrigger>
+              <TabsTrigger value="stats">
+                Статистика
+                {unreadCount > 0 && (
+                  <span
+                    aria-label={`Непрочитанных: ${unreadCount}`}
+                    className="ml-1.5 rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums"
+                  >
+                    {unreadCount}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           {tab === "stats" && (
@@ -370,7 +415,8 @@ function NpsPage() {
             показываются клиенту окном на главной мобильного приложения, когда наступает момент;
             клиент может закрыть окно крестиком и не отвечать — тогда этот опрос больше не
             показывается. Не чаще одного опроса в 14 дней, «Перед продлением» — не чаще раза в 90
-            дней и не раньше чем через 30 дней после другого опроса.
+            дней и не раньше чем через 30 дней после другого опроса. Новые ответы — в счётчике у
+            «NPS-опросов» в меню: отметьте каждый прочитанным во вкладке «Статистика».
           </InfoNote>
         )}
 
@@ -511,13 +557,14 @@ function NpsPage() {
                     <TableHead>Категория</TableHead>
                     <TableHead>Комментарий</TableHead>
                     <TableHead tip={TIPS.surveyType}>Опрос</TableHead>
+                    <TableHead tip={TIPS.read}>Прочитано</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pg.total === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         Нет ответов.
@@ -526,10 +573,22 @@ function NpsPage() {
                   ) : (
                     pg.paged.map((r) => {
                       const c = BUCKET[npsBucket(r.score)];
+                      const busy = busyId === r.id;
                       return (
                         <RowContextMenu
                           key={r.id}
                           actions={[
+                            r.read_at
+                              ? {
+                                  label: "Отметить непрочитанным",
+                                  icon: Undo2,
+                                  onSelect: () => setRead(r, false),
+                                }
+                              : {
+                                  label: "Прочитано",
+                                  icon: Check,
+                                  onSelect: () => setRead(r, true),
+                                },
                             {
                               label: "Удалить",
                               icon: Trash2,
@@ -538,8 +597,19 @@ function NpsPage() {
                             },
                           ]}
                         >
-                          <TableRow>
-                            <TableCell className="whitespace-nowrap text-muted-foreground">
+                          <TableRow
+                            className={cn(
+                              !r.read_at && "max-md:border-l-4 max-md:border-l-rose-500",
+                            )}
+                          >
+                            <TableCell className="relative whitespace-nowrap text-muted-foreground">
+                              {/* Непрочитанный — красная полоска слева, как у «Заявок». */}
+                              {!r.read_at && (
+                                <span
+                                  aria-hidden
+                                  className="absolute inset-y-0 left-0 w-1 bg-rose-500 max-md:hidden"
+                                />
+                              )}
                               {format(parseISO(r.created_at), "d MMM, HH:mm", { locale: ru })}
                             </TableCell>
                             <TableCell className="font-medium">{clientCell(r)}</TableCell>
@@ -551,11 +621,29 @@ function NpsPage() {
                                 {c.label}
                               </span>
                             </TableCell>
-                            <TableCell className="max-w-[320px] truncate text-muted-foreground">
-                              {r.comment || "—"}
+                            <TableCell>
+                              <CommentCell text={r.comment} />
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                               {TYPE_LABEL[r.survey_type]}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {r.read_at ? (
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                    Прочитано
+                                  </span>
+                                  <div className="mt-1">
+                                    {r.read_by_name ? `${r.read_by_name} · ` : ""}
+                                    {format(parseISO(r.read_at), "dd.MM.yy", { locale: ru })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button size="sm" onClick={() => setRead(r, true)} disabled={busy}>
+                                  {busy ? <Loader2 className="animate-spin" /> : <Check />}
+                                  Прочитано
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         </RowContextMenu>
