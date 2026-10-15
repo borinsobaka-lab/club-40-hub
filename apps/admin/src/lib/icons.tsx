@@ -82,6 +82,7 @@ import {
   RefreshCw as RefreshCwArt,
   Repeat as RepeatArt,
   RotateCcw as RotateCcwArt,
+  Ruler as RulerArt,
   Save as SaveArt,
   Search as SearchArt,
   SentIcon as SendArt,
@@ -89,7 +90,6 @@ import {
   ShoppingBag as ShoppingBagArt,
   Smartphone as SmartphoneArt,
   Square as SquareArt,
-  Stethoscope as StethoscopeArt,
   Ticket as TicketArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
@@ -183,6 +183,7 @@ export const Receipt = icon(ReceiptArt, "Receipt");
 export const RefreshCw = icon(RefreshCwArt, "RefreshCw");
 export const Repeat = icon(RepeatArt, "Repeat");
 export const RotateCcw = icon(RotateCcwArt, "RotateCcw");
+export const Ruler = icon(RulerArt, "Ruler");
 export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
@@ -190,7 +191,6 @@ export const Shapes = icon(ShapesArt, "Shapes");
 export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
 export const Smartphone = icon(SmartphoneArt, "Smartphone");
 export const Square = icon(SquareArt, "Square");
-export const Stethoscope = icon(StethoscopeArt, "Stethoscope");
 export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");

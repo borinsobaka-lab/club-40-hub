@@ -139,6 +139,7 @@ const dict: Dictionary = {
     "The administrator will agree on a time with the trainer and add the diagnostics to your schedule.",
   "Не удалось отправить заявку: {error}": "Couldn't send the request: {error}",
   "Заявка отправлена администратору": "Request sent to the administrator",
+  "На балансе: {balance}": "Balance: {balance}",
   "Персональные тренировки": "Personal training",
   "Оставьте заявку — она придёт администратору студии. Администратор свяжется с вами, чтобы подобрать тренера и согласовать расписание персональных занятий.":
     "Leave a request — it goes to the studio administrator, who will contact you to pick a trainer and agree on your personal training schedule.",
