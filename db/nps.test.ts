@@ -367,6 +367,15 @@ describe.skipIf(!url)("NPS-опросы (база)", () => {
       expect(await survey(tx, s)).toEqual({ survey_type: "before_renewal", occasion: cm });
     });
     await scenario(async (tx) => {
+      // Разовое посещение (1 тренировка) — не абонемент, как пробное.
+      const s = await seed(tx, { registeredDaysAgo: 400 });
+      const [{ id: single }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, personal_count, duration_days, max_payments, price)
+        values (${s.studio}, 'Разовое', 'single', 1, 0, 30, 1, 20) returning id`;
+      await membership(tx, s, { membership: single, startedDaysAgo: 1, endsInDays: 29, visitsLeft: 1 });
+      expect(await survey(tx, s)).toBeNull();
+    });
+    await scenario(async (tx) => {
       // В подписочном остаток не списывается — по нему не смотрим.
       const s = await seed(tx, { format: "subscription", registeredDaysAgo: 400 });
       await membership(tx, s, { startedDaysAgo: 5, endsInDays: 25, visitsLeft: 1 });

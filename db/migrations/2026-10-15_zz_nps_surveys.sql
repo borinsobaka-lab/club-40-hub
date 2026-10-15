@@ -11,8 +11,9 @@
 --                  («Посетил», групповое или персональное, в любой студии
 --                  сети). Актуален 14 дней.
 --   first_month    «Первый месяц» — через 30 дней после начала первого
---                  абонемента (пробный — не абонемент; в пакетном клубе
---                  начало — первое посещение). Следующие абонементы его не
+--                  абонемента (пробное и разовое посещение — не абонемент,
+--                  здесь и ниже, как на дашборде и в триггерах; в пакетном
+--                  клубе начало — первое посещение). Следующие абонементы его не
 --                  вызывают. Актуален 21 день; только если клиент ещё с нами
 --                  (есть действующий абонемент или закончился не больше 14
 --                  дней назад).
@@ -224,7 +225,7 @@ begin
       join public.memberships m on m.id = cm.membership_id
       left join public.sales s on s.id = cm.sale_id
      where cm.client_id = any(v_cards)
-       and m.kind is distinct from 'trial'
+       and coalesce(m.kind, 'package') not in ('trial', 'single')
        and cm.status <> 'refunded'
        and cm.created_at > v_now - interval '120 days'
      order by cm.created_at desc
@@ -254,7 +255,7 @@ begin
      where p.client_id = any(v_cards)
        and p.id <> r.id
        and p.created_at < r.created_at
-       and pm.kind is distinct from 'trial'
+       and coalesce(pm.kind, 'package') not in ('trial', 'single')
        and not (p.status in ('refunded', 'cancelled') and p.started_at is null);
 
     if v_prev_count > 0 and v_prev_end < r.bought_on - 14 then
@@ -297,7 +298,7 @@ begin
       from public.client_memberships cm
       join public.memberships m on m.id = cm.membership_id
      where cm.client_id = any(v_cards)
-       and m.kind is distinct from 'trial'
+       and coalesce(m.kind, 'package') not in ('trial', 'single')
        and cm.started_at is not null
      order by cm.started_at, cm.created_at
      limit 1;
@@ -308,7 +309,7 @@ begin
            from public.client_memberships cm
            join public.memberships m on m.id = cm.membership_id
           where cm.client_id = any(v_cards)
-            and m.kind is distinct from 'trial'
+            and coalesce(m.kind, 'package') not in ('trial', 'single')
             and cm.status not in ('refunded', 'cancelled')
             and ((cm.status in ('active', 'frozen', 'pending')
                   and (cm.ends_at is null or cm.ends_at >= v_today))
@@ -327,7 +328,7 @@ begin
     join public.memberships m on m.id = cm.membership_id
     join public.studios st on st.id = cm.studio_id
    where cm.client_id = any(v_cards)
-     and m.kind is distinct from 'trial'
+     and coalesce(m.kind, 'package') not in ('trial', 'single')
      and cm.status = 'active'
      and cm.started_at is not null
      and (cm.ends_at is null or cm.ends_at >= v_today)
