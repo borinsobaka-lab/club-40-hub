@@ -3,6 +3,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import {
   buildEmails,
+  emailBrand,
+  emailSender,
   isAdminApp,
   NOT_A_CLUB_MEMBER,
   needsClubMembership,
@@ -13,7 +15,8 @@ import { mailProvider, sendMail } from "@/lib/mail";
 
 // Send Email Hook для Supabase Auth: GoTrue не шлёт письма сам, а дёргает
 // этот эндпоинт, и мы отправляем письмо с noreply@base40.fit через Resend
-// (RESEND_API_KEY) — см. src/lib/mail.ts.
+// (RESEND_API_KEY) — см. src/lib/mail.ts. Клиентам пакетных клубов —
+// письмо Lady Stretch со своего адреса (LADY_STRETCH_MAIL_FROM).
 //
 // Во всех письмах авторизации — 6-значный код, ссылок авто-входа нет: код
 // GoTrue передаёт только сюда, на сервер, и он уходит лишь в письмо (в ответ
@@ -131,8 +134,12 @@ export const Route = createFileRoute("/api/auth-email")({
           return Response.json({ error: { http_code: 403, message: NOT_A_CLUB_MEMBER } });
         }
 
-        for (const email of buildEmails(payload, fromAdminApp)) {
-          const sent = await sendMail(email);
+        // Бренд и отправитель — тоже по приложению: клиентам пакетных клубов
+        // (app.lady-stretch.one, pack.base40.fit) — Lady Stretch.
+        const brand = emailBrand(payload.email_data.redirect_to);
+        const from = emailSender(brand);
+        for (const email of buildEmails(payload, fromAdminApp, brand)) {
+          const sent = await sendMail({ ...email, from });
           if (!sent.ok) {
             console.error("[auth-email] письмо не отправлено:", sent.error);
             // Не-200 заставит Supabase показать ошибку отправки и повторить.

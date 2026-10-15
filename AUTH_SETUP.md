@@ -29,7 +29,13 @@ club40-admin). Unisender Go отключён (решение владельца 
    DKIM `resend._domainkey`, SPF и MX на `send.base40.fit` в Cloudflare DNS.
    Иначе письма не уйдут (Resend ответит 403) или упадут в спам.
 2. API-ключ Resend (API Keys → Create API Key, Permission: Sending access,
-   Domain: base40.fit).
+   Domain: **All domains** — ключ шлёт и с `base40.fit`, и с
+   `lady-stretch.one`).
+3. Домен `lady-stretch.one` (письма клиентам пакетных клубов, с 2026-10-15) —
+   тоже **Verified**, записи — у регистратора `lady-stretch.one`; после этого
+   у club40-admin `LADY_STRETCH_MAIL_FROM=noreply@lady-stretch.one`
+   (AGENT_TASKS.md, Задача 13). Без переменной письма Lady Stretch уходят с
+   `noreply@base40.fit` под именем «Lady Stretch».
 
 Бесплатного тарифа Resend (3000 писем в месяц, 100 в день) хватает на коды
 входа на время тестов; при большем числе клиентов — тариф Pro.
@@ -103,7 +109,9 @@ not verified`); resend.com → Emails — ушло ли письмо и что �
 Роут `apps/admin/src/routes/api/auth-email.ts` проверяет подпись вебхука
 (HMAC, standardized-webhooks); логика писем — `apps/admin/src/lib/auth-email.ts`,
 покрыта тестами (`bun test`): решение принимается по хосту адреса возврата,
-роли пользователя на письмо не влияют. Типы писем: signup (код), magiclink
+роли пользователя на письмо не влияют. Приложение пакетных клубов
+(app.lady-stretch.one, pack.base40.fit) получает письма Lady Stretch: тёмные,
+розовый #f763fc, отправитель — `LADY_STRETCH_MAIL_FROM`. Типы писем: signup (код), magiclink
 (код клиенту / ссылка сотруднику), recovery (ссылка), invite (ссылка),
 email_change (код). Секреты живут только в Coolify у админки — у клиентского
 приложения секретов нет по-прежнему.
