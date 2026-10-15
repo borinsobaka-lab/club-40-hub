@@ -17,7 +17,6 @@ import {
   Logout,
   Camera,
   DocumentText,
-  Smartphone,
   Card2,
   ChatRound,
   AltArrowRight,
@@ -37,6 +36,7 @@ import { isValidPhone } from "@/lib/phone";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { LanguageSheet } from "@/components/language-switcher";
 import { PushSettingsRow } from "@/components/push-prompt";
+import { AboutAppRow } from "@/components/about-app";
 import { LOCALES, currentT, getTranslator, msg, useI18n, useT, type Translator } from "@/i18n";
 
 export const Route = createFileRoute("/profile")({
@@ -453,10 +453,9 @@ function ProfilePage() {
                 }
                 onClick={() => setLanguageOpen(true)}
               />
-              <ProfileLink
-                icon={<Smartphone className="h-5 w-5" weight="BoldDuotone" />}
-                label={t("О приложении")}
-              />
+              {/* По нажатию раскрывается вниз: о приложении, версия и
+                  техническая информация для администратора (2026-10-15). */}
+              <AboutAppRow />
               {/* Lady Stretch: единственный юридический документ приложения —
                   политика конфиденциальности (решение владельца 2026-10-13); последней
                   строкой, после «О приложении» (2026-10-14). */}
