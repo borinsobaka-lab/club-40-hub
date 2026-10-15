@@ -49,7 +49,8 @@ export function homeBookingsQuery(userId: string | null) {
       // и без него у сотрудника в клиентском приложении чужие записи выглядели
       // бы как его собственные.
       // Только предстоящие (через !inner-связь с занятием) — без всей истории
-      // броней; групповые неотменённые — как в расписании.
+      // броней; групповые неотменённые — как в расписании. Пакетное — и свои
+      // диагностики (2026-10-15): отдельная карточка «Диагностика».
       const { data, error } = await untypedDb
         .from("schedule_bookings")
         .select(
@@ -61,7 +62,7 @@ export function homeBookingsQuery(userId: string | null) {
         .eq("user_id", userId)
         .eq("status", "booked")
         .gte("entry.starts_at", new Date().toISOString())
-        .eq("entry.kind", "group")
+        .in("entry.kind", IS_PACKAGES ? ["group", "diagnostic"] : ["group"])
         .is("entry.cancelled_at", null)
         .limit(50);
       if (error) throw error;

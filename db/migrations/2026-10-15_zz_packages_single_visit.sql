@@ -7,8 +7,10 @@
 -- приложении не показывается и не покупается.
 --
 -- 1. Тип в проверке memberships_kind_check и условия разового посещения
---    (memberships_single_terms_check) — форма админки пишет их сама, база
---    не даёт сохранить другие.
+--    (memberships_single_terms_check; без персональных и диагностик —
+--    diagnostics_count из 2026-10-15_zz_diagnostics_client_requests.sql,
+--    файл идёт по имени раньше) — форма админки пишет их сама, база не даёт
+--    сохранить другие.
 -- 2. Покупка в приложении (sales_client_insert_guard): разовое посещение
 --    клиент себе не оформляет. Остальное — как в
 --    2026-10-13_zzzz_packages_shared_catalog.sql.
@@ -33,7 +35,10 @@ alter table public.memberships drop constraint if exists memberships_single_term
 alter table public.memberships add constraint memberships_single_terms_check
   check (
     kind <> 'single'
-    or (visits_count = 1 and personal_count = 0 and duration_days = 30 and max_payments = 1)
+    or (
+      visits_count = 1 and personal_count = 0 and diagnostics_count = 0
+      and duration_days = 30 and max_payments = 1
+    )
   );
 
 -- 2. Покупка в приложении ----------------------------------------------------

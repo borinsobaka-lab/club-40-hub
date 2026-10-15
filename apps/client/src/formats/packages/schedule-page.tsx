@@ -33,6 +33,7 @@ import {
 } from "./entries";
 import { formatRating } from "./trainer-rating";
 import { PackWorkoutCard } from "./workout-card";
+import { DiagnosticsTab, PersonalRequestTab } from "./schedule-requests";
 import {
   SCHEDULE_DAYS,
   SCHEDULE_DAYS_BEFORE,
@@ -46,7 +47,8 @@ import {
 /**
  * «Расписание» пакетного приложения (до 2026-10-11 — «Бронь», общий экран с
  * подписочным). Студия — смотримая (переключатель на главной); записаться
- * можно только в своей. Фильтры — по тренировкам и по тренерам (у пакетных
+ * можно только в своей. Вкладки «Персональные» и «Диагностика» — заявки
+ * администратору и свои диагностики (schedule-requests.tsx). Фильтры — по тренировкам и по тренерам (у пакетных
  * тренировок нет типа, прежний фильтр по типу был пустым).
  */
 
@@ -337,18 +339,11 @@ export function PackagesSchedulePage() {
         gapClass="gap-3"
       />
 
+      {/* Персональные и диагностика — заявки администратору (2026-10-15). */}
       {activeTab === "personal" ? (
-        <div className="p-4">
-          <Card className="p-8 text-center text-sm text-muted-foreground">
-            {t("Совсем скоро мы начнем принимать заявки на персональные тренировки")}
-          </Card>
-        </div>
-      ) : activeTab !== "class" ? (
-        <div className="p-4">
-          <Card className="p-8 text-center text-sm text-muted-foreground">
-            {t("Функционал скоро будет доступен")}
-          </Card>
-        </div>
+        <PersonalRequestTab />
+      ) : activeTab === "diagnostics" ? (
+        <DiagnosticsTab />
       ) : (
         <div className="p-4 space-y-4">
           <div

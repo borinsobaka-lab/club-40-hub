@@ -68,6 +68,8 @@ const TIPS = {
     "Сколько персональных тренировок входит в пакет в подарок. Это отдельный баланс: списывается, когда отмечено посещение персонального занятия. 0 — нет.",
   personal:
     "Сколько персональных тренировок в пакете. С баланса списывается одна, когда администратор отмечает посещение персонального занятия.",
+  diagnostics:
+    "Сколько диагностик тела входит в абонемент. Это отдельный баланс: списывается, когда отмечено посещение диагностики в расписании. В «В подарок» не показывается — для клиента напишите в «Что входит». 0 — нет.",
   duration: "Считается от даты продажи.",
   price:
     "Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет.",
@@ -137,6 +139,8 @@ type Package = {
   kind: MembershipKind;
   /** Персональных: у пакета тренировок — подарочные, у пакета персональных — количество. */
   personal_count: number;
+  /** Диагностик тела в абонементе (0 — нет), отдельный баланс. */
+  diagnostics_count: number;
   is_active: boolean;
   /** Порядок в таблице и в приложении (по возрастанию, перетаскивание строк). */
   sort_order: number;
@@ -155,13 +159,16 @@ type Package = {
 type PackageDraft = Omit<Package, "id" | "studio_id" | "sort_order">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order, tag_text, tag_style, gift_text, benefits, translations";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, diagnostics_count, is_active, sort_order, tag_text, tag_style, gift_text, benefits, translations";
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
-  if (p.kind === "personal") return `${p.personal_count} перс.`;
+  const diagnostics = p.diagnostics_count > 0 ? ` + ${p.diagnostics_count} диагн.` : "";
+  if (p.kind === "personal") return `${p.personal_count} перс.${diagnostics}`;
   const visits = p.visits_count ?? "—";
-  return p.personal_count > 0 ? `${visits} + ${p.personal_count} перс.` : String(visits);
+  return (
+    (p.personal_count > 0 ? `${visits} + ${p.personal_count} перс.` : String(visits)) + diagnostics
+  );
 }
 
 function formatDuration(days: number | null) {
@@ -522,6 +529,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
   const [personalCount, setPersonalCount] = useState(
     init?.kind === "personal" ? String(init.personal_count) : "",
   );
+  const [diagnosticsCount, setDiagnosticsCount] = useState(
+    init?.kind !== "trial" && init?.diagnostics_count ? String(init.diagnostics_count) : "",
+  );
   const [durationDays, setDurationDays] = useState(
     init?.duration_days != null ? String(init.duration_days) : "",
   );
@@ -573,6 +583,15 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       );
       return;
     }
+    // Диагностики — у пакетов тренировок и персональных, у пробного и разового нет.
+    const diagnostics =
+      kind === "trial" || isSingle || diagnosticsCount.trim() === ""
+        ? 0
+        : Number(diagnosticsCount.trim());
+    if (!Number.isInteger(diagnostics) || diagnostics < 0) {
+      toast.error("Диагностик — целое число (0 — нет)");
+      return;
+    }
     const days = isSingle ? SINGLE_VISIT.durationDays : positiveInt(durationDays);
     if (days == null) {
       toast.error("Укажите срок действия в днях (целое число больше 0)");
@@ -607,6 +626,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         description: description.trim() || null,
         visits_count: visits,
         personal_count: personal,
+        diagnostics_count: diagnostics,
         duration_days: days,
         price: priceNum,
         max_payments: payments,
@@ -744,17 +764,29 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </FormField>
             </div>
 
-            {kind === "package" && (
-              <FormField label="Персональных в подарок" tip={TIPS.giftPersonal} optional>
-                <Input
-                  type="number"
-                  min={0}
-                  value={giftPersonal}
-                  onChange={(e) => setGiftPersonal(e.target.value)}
-                  placeholder="0"
-                  className="sm:w-32"
-                />
-              </FormField>
+            {kind !== "trial" && !isSingle && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {kind === "package" && (
+                  <FormField label="Персональных в подарок" tip={TIPS.giftPersonal} optional>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={giftPersonal}
+                      onChange={(e) => setGiftPersonal(e.target.value)}
+                      placeholder="0"
+                    />
+                  </FormField>
+                )}
+                <FormField label="Диагностик" tip={TIPS.diagnostics} optional>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={diagnosticsCount}
+                    onChange={(e) => setDiagnosticsCount(e.target.value)}
+                    placeholder="0"
+                  />
+                </FormField>
+              </div>
             )}
 
             {kind !== "trial" && !isSingle && (
