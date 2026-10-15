@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import { INSTALLED_DISPLAY_MODES, isAndroidChrome, isInstalledDisplay } from "@/lib/pwa-install";
+import { STANDALONE_DISPLAY_QUERY, isAndroidChrome, isInstalledDisplay } from "@/lib/pwa-install";
 
 /**
  * Открыто ли приложение установленным. null — пока неизвестно: на сервере и
@@ -12,13 +12,9 @@ export function useInstalledDisplay(): boolean | null {
 }
 
 function subscribeDisplayMode(onChange: () => void) {
-  const queries = INSTALLED_DISPLAY_MODES.map((mode) =>
-    window.matchMedia?.(`(display-mode: ${mode})`),
-  ).filter((q): q is MediaQueryList => !!q);
-  for (const q of queries) q.addEventListener?.("change", onChange);
-  return () => {
-    for (const q of queries) q.removeEventListener?.("change", onChange);
-  };
+  const query = window.matchMedia?.(STANDALONE_DISPLAY_QUERY);
+  query?.addEventListener?.("change", onChange);
+  return () => query?.removeEventListener?.("change", onChange);
 }
 
 /**

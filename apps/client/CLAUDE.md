@@ -297,8 +297,12 @@ memberships, sales, bookings_log, client_stats_30d_mv...); в новом код�
 оба приложения): во вкладке браузера вместо приложения — инструкция по
 установке (`components/install-screen.tsx`), заслон — `InstallGate` в
 `__root.tsx`. Установленным считается запуск с экрана «Домой»
-(`navigator.standalone` у iOS, `display-mode: standalone` и др. —
-`isInstalledDisplay`, `src/lib/pwa-install.ts`, тесты рядом). Сервер этого не
+(`navigator.standalone` у iOS, `display-mode: standalone` —
+`detectInstalledDisplay`, `src/lib/pwa-install.ts`, тесты рядом); встроенный
+браузер мессенджера или соцсети (WebView «; wv)», метки Telegram, WhatsApp,
+Instagram…) — никогда. Адрес источника `android-app://…` не учитывается:
+его Chrome ставит любой ссылке из Telegram/WhatsApp/Gmail, и по нему заслон
+пропускал клиентов на вход (найдено владельцем 2026-10-15). Сервер этого не
 знает: серверный рендер и гидратация — как раньше (у пакетного — заставка),
 затем во вкладке — инструкция. Без заслона — публичные страницы
 (`PUBLIC_ROUTES`, политика). В дев-сервере заслон выключен, проверить —
