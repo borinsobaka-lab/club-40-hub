@@ -21,3 +21,5 @@ alter table storage.objects enable row level security;
 create or replace function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name, '/') $$;
 create schema if not exists extensions;
 grant usage on schema public to anon, authenticated, service_role;
+-- Как в Supabase: auth.uid() вызывают и роли запросов (триггеры без security definer).
+grant usage on schema auth to anon, authenticated, service_role;
