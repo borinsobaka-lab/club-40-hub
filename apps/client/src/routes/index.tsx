@@ -39,6 +39,7 @@ import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { VisitHistoryButton, VisitHistoryDrawer } from "@/components/visit-history-drawer";
+import { FeedbackDrawer } from "@/components/feedback-form";
 import { entryToDrawerData, workoutTypeMeta } from "@/lib/workout-types";
 import { toast } from "sonner";
 import { CarouselSkeleton } from "@/components/content-skeletons";
@@ -123,6 +124,7 @@ function HomePage() {
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // Кнопки «Написать/Позвонить/Фидбэк» — смотримой студии; срок отмены записи
   // — своей.
   const clubSettings = useClubSettings();
@@ -392,8 +394,9 @@ function HomePage() {
             )}
           </section>
 
-          {/* Быстрые действия. «Фидбэк» — своя форма обратной связи
-              (routes/feedback.tsx, решение владельца 2026-10-15), есть всегда;
+          {/* Быстрые действия. «Фидбэк» — своя форма обратной связи в шторке
+              снизу (components/feedback-form.tsx, решение владельца
+              2026-10-15), есть всегда;
               «Написать» и «Позвонить» — ссылки студии, без ссылки кнопки нет. */}
           {/* Пакетное: под кнопками — выбранная студия с переключателем. */}
           <section className="px-4 my-3">
@@ -416,10 +419,14 @@ function HomePage() {
                       <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
                     </a>
                   ))}
-                <Link to="/feedback" className={QUICK_ACTION_CLASS}>
+                <button
+                  type="button"
+                  onClick={() => setFeedbackOpen(true)}
+                  className={QUICK_ACTION_CLASS}
+                >
                   <Star className="h-5 w-5 text-white" />
                   <span className="text-[11px] font-semibold text-white/80">{t("Фидбэк")}</span>
-                </Link>
+                </button>
               </div>
             </div>
           </section>
@@ -612,6 +619,8 @@ function HomePage() {
       />
 
       <VisitHistoryDrawer open={historyOpen} onOpenChange={setHistoryOpen} />
+
+      <FeedbackDrawer open={feedbackOpen} onOpenChange={setFeedbackOpen} />
 
       <WorkoutDrawer
         data={openEntry}

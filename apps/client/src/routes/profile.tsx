@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -37,6 +37,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { LanguageSheet } from "@/components/language-switcher";
 import { PushSettingsRow } from "@/components/push-prompt";
 import { AboutAppRow } from "@/components/about-app";
+import { PrivacyPolicyDrawer } from "@/components/privacy-policy-drawer";
 import { LOCALES, currentT, getTranslator, msg, useI18n, useT, type Translator } from "@/i18n";
 
 export const Route = createFileRoute("/profile")({
@@ -278,11 +279,11 @@ async function saveClient(
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   const t = useT();
   const { locale } = useI18n();
   const currentLanguage = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const queryClient = useQueryClient();
   // Карточка — из общего с главной кэша (src/lib/client-card.ts): профиль
   // открывается сразу, свежие данные подтягиваются фоном.
@@ -453,17 +454,18 @@ function ProfilePage() {
                 }
                 onClick={() => setLanguageOpen(true)}
               />
-              {/* По нажатию раскрывается вниз: о приложении, версия и
+              {/* По нажатию — шторка снизу: о приложении, версия и
                   техническая информация для администратора (2026-10-15). */}
               <AboutAppRow />
               {/* Lady Stretch: единственный юридический документ приложения —
                   политика конфиденциальности (решение владельца 2026-10-13); последней
-                  строкой, после «О приложении» (2026-10-14). */}
+                  строкой, после «О приложении» (2026-10-14); открывается шторкой
+                  снизу (2026-10-15). */}
               {PRIVACY_POLICY_INFO ? (
                 <ProfileLink
                   icon={<DocumentText className="h-5 w-5" weight="BoldDuotone" />}
                   label={t("Политика конфиденциальности")}
-                  onClick={() => void navigate({ to: "/privacy" })}
+                  onClick={() => setPrivacyOpen(true)}
                 />
               ) : (
                 <ProfileLink
@@ -494,6 +496,7 @@ function ProfilePage() {
         )}
       </div>
       <LanguageSheet open={languageOpen} onOpenChange={setLanguageOpen} />
+      <PrivacyPolicyDrawer open={privacyOpen} onOpenChange={setPrivacyOpen} />
     </PageShell>
   );
 }

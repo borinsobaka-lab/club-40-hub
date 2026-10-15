@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Drawer as DrawerPrimitive } from "vaul";
 import { Check } from "lucide-react";
 
-import { PrivacyPolicy } from "@/components/privacy-policy";
+import { PrivacyPolicyDrawer } from "@/components/privacy-policy-drawer";
 import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
@@ -26,7 +25,6 @@ export function PrivacyConsent({
   const t = useT();
   const [open, setOpen] = useState(false);
   if (!PRIVACY_POLICY_INFO) return null;
-  const info = PRIVACY_POLICY_INFO;
 
   return (
     <>
@@ -67,23 +65,7 @@ export function PrivacyConsent({
         </span>
       </label>
 
-      <DrawerPrimitive.Root open={open} onOpenChange={setOpen}>
-        <DrawerPrimitive.Portal>
-          <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
-          <DrawerPrimitive.Content
-            className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[90dvh] max-w-md flex-col rounded-t-2xl bg-background outline-none"
-            aria-describedby={undefined}
-          >
-            <div className="mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
-            <DrawerPrimitive.Title className="sr-only">
-              {t("Политика конфиденциальности")}
-            </DrawerPrimitive.Title>
-            <div className="overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">
-              <PrivacyPolicy info={info} />
-            </div>
-          </DrawerPrimitive.Content>
-        </DrawerPrimitive.Portal>
-      </DrawerPrimitive.Root>
+      <PrivacyPolicyDrawer open={open} onOpenChange={setOpen} />
     </>
   );
 }
