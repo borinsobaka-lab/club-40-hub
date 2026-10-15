@@ -1179,7 +1179,7 @@ export function PushTriggersPageSkeleton() {
 export function ClubSettingsFormSkeleton() {
   return (
     <div className="max-w-2xl space-y-8">
-      {[3, 1].map((fields, i) => (
+      {[2, 1].map((fields, i) => (
         <div key={i} className="space-y-4 rounded-lg border bg-background p-6">
           <div className="space-y-2">
             <Skeleton className="h-5 w-1/2" />

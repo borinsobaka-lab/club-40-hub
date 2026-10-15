@@ -67,6 +67,10 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+/** Кнопка быстрого действия в шапке главной («Написать», «Позвонить», «Фидбэк»). */
+const QUICK_ACTION_CLASS =
+  "flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1 active:scale-[0.97] transition";
+
 /** «Понедельник, 12 октября» — день недели с заглавной, на языке клиента. */
 function dayHeading(d: Date, t: Translator) {
   const weekday = t.date(d, { weekday: "long" });
@@ -388,36 +392,37 @@ function HomePage() {
             )}
           </section>
 
-          {/* Быстрые действия */}
+          {/* Быстрые действия. «Фидбэк» — своя форма обратной связи
+              (routes/feedback.tsx, решение владельца 2026-10-15), есть всегда;
+              «Написать» и «Позвонить» — ссылки студии, без ссылки кнопки нет. */}
           {/* Пакетное: под кнопками — выбранная студия с переключателем. */}
-          {(clubSettings.write_url || clubSettings.call_url || clubSettings.feedback_url) && (
-            <section className="px-4 my-3">
-              <div className="rounded-2xl bg-white/10 p-1.5">
-                <div className="flex items-stretch justify-between gap-2">
-                  {[
-                    { icon: ChatSquare, label: t("Написать"), href: clubSettings.write_url },
-                    { icon: Phone, label: t("Позвонить"), href: clubSettings.call_url },
-                    { icon: Star, label: t("Фидбэк"), href: clubSettings.feedback_url },
-                  ]
-                    .filter((item) => !!item.href)
-                    .map((item) => (
-                      <a
-                        key={item.label}
-                        href={item.href!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1 active:scale-[0.97] transition"
-                      >
-                        <item.icon className="h-5 w-5 text-white" />
-                        <span className="text-[11px] font-semibold text-white/80">
-                          {item.label}
-                        </span>
-                      </a>
-                    ))}
-                </div>
+          <section className="px-4 my-3">
+            <div className="rounded-2xl bg-white/10 p-1.5">
+              <div className="flex items-stretch justify-between gap-2">
+                {[
+                  { icon: ChatSquare, label: t("Написать"), href: clubSettings.write_url },
+                  { icon: Phone, label: t("Позвонить"), href: clubSettings.call_url },
+                ]
+                  .filter((item) => !!item.href)
+                  .map((item) => (
+                    <a
+                      key={item.label}
+                      href={item.href!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={QUICK_ACTION_CLASS}
+                    >
+                      <item.icon className="h-5 w-5 text-white" />
+                      <span className="text-[11px] font-semibold text-white/80">{item.label}</span>
+                    </a>
+                  ))}
+                <Link to="/feedback" className={QUICK_ACTION_CLASS}>
+                  <Star className="h-5 w-5 text-white" />
+                  <span className="text-[11px] font-semibold text-white/80">{t("Фидбэк")}</span>
+                </Link>
               </div>
-            </section>
-          )}
+            </div>
+          </section>
 
           {IS_PACKAGES && (
             <section className="px-4 my-3">

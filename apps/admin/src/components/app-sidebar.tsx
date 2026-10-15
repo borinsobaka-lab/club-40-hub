@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronUp } from "lucide-react";
 import { Notebook, Settings } from "@/components/nav-icons";
@@ -28,6 +29,7 @@ import { canOpenClubSection, canOpenRail, type AdminAccess } from "@/lib/admin-a
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
 import { MenuSkeleton } from "@/components/skeletons";
+import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStorageUrl } from "@/lib/storage";
 import type { StudioFormat } from "@/lib/studio-formats";
@@ -131,6 +133,33 @@ function useScriptsMenu(enabled: boolean): { groups: NavGroup[]; loading: boolea
   return { groups, loading: false };
 }
 
+/**
+ * Сколько обращений «Обратной связи» клуба не отработано — счётчик у пункта
+ * меню. Новые обращения приходят из приложения и по QR-коду
+ * (db/migrations/2026-10-15_zz_feedback_in_app.sql); счётчик обновляется раз в
+ * минуту и при возвращении на вкладку. Ключ начинается с "feedback": страница
+ * раздела сбрасывает его вместе со своим списком.
+ */
+function usePendingFeedback(studioId: string | null, enabled: boolean): number {
+  const { data = 0 } = useQuery({
+    queryKey: ["feedback", studioId, "pending-count"],
+    queryFn: async () => {
+      let q = supabase
+        .from("feedback")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      // Как на странице: свой клуб и старые обращения без клуба.
+      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled,
+    refetchInterval: 60_000,
+  });
+  return enabled ? data : 0;
+}
+
 const STORAGE_KEY = "sidebar_groups";
 
 /** Свёрнутые блоки переживают перезагрузку — иначе меню каждый раз раскрывается заново. */
@@ -176,13 +205,22 @@ export function AppSidebar() {
     railKey === "scripts"
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
       : SECTION_MENUS[railKey];
+  const pendingFeedback = usePendingFeedback(
+    studioId,
+    !sectionMenu && !!access && canOpenClubSection(access, studioId, "feedback"),
+  );
   const openRequests = useClubRequestsBadge();
+  // Счётчики меню клуба: неотработанные заявки клиентов — на «Заявках»,
+  // неотработанная обратная связь — на «Обратной связи».
+  const badges: Record<string, number> = {
+    [REQUESTS_URL]: openRequests,
+    "/feedback": pendingFeedback,
+  };
   const groups =
     sectionMenu?.groups ??
-    // Неотработанные заявки клиентов — счётчик на «Заявках».
     visibleGroups(studioFormat, access, studioId).map((g) => ({
       ...g,
-      items: g.items.map((i) => (i.url === REQUESTS_URL ? { ...i, badge: openRequests } : i)),
+      items: g.items.map((i) => (i.url in badges ? { ...i, badge: badges[i.url] } : i)),
     }));
   // Меню клуба собирается по правам сотрудника: пока их нет, оно пустое.
   const menuLoading = railKey === "scripts" ? scriptsMenu.loading : !sectionMenu && !access;
