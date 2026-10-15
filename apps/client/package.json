@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "bun test",
     "format": "prettier --write .",
-    "i18n:check": "bun scripts/i18n-check.ts"
+    "i18n:check": "bun scripts/i18n-check.ts",
+    "version:bump": "bun scripts/bump-version.ts"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.3.0",

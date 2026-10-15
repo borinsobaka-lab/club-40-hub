@@ -84,6 +84,7 @@ const dict: Dictionary = {
   "Руководитель студии": "Studio manager",
   Массажист: "Massage therapist",
   "Поблагодарить массажиста": "Thank your massage therapist",
+  "Записаться на массаж": "Book a massage",
   "Оцените массажиста": "Rate your massage therapist",
   "Рассказ о массажисте скоро появится.": "The massage therapist's bio is coming soon.",
   Абонементы: "Memberships",

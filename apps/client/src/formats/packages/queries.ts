@@ -275,6 +275,7 @@ async function attachUpcomingPayments(rows: MyMembership[]): Promise<MyMembershi
 // Роли сотрудников и подписи вкладок «Студии» — staff-roles.ts (без
 // запросов к базе: их проверяют тесты).
 export {
+  MASSAGE_BOOKING_URL,
   STAFF_ROLE_TEXT,
   staffHasRating,
   staffOrder,
