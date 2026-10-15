@@ -261,6 +261,14 @@ Borin, Ваке — Milana Shirshikova), совместные операторы
   2026-10-13 — общая для всех пакетных студий: отбор по формату студии
   строки (`studios!inner(format)`), не по смотримой студии
   (`db/migrations/2026-10-13_zzzz_packages_shared_catalog.sql`).
+- Заявки администратору и диагностика (пакетное, 2026-10-15): вкладки
+  «Персональные» и «Диагностика» расписания —
+  `formats/packages/schedule-requests.tsx` (RPC `create_client_request`,
+  свои заявки — `client_requests`, `requests.ts`); свои диагностики
+  приходят в `homeBookingsQuery` (`entry.kind` group + diagnostic) —
+  карточка «Диагностика» с чёрной полоской (`isDiagnostic`,
+  `DIAGNOSTIC_COLOR` в `entries.ts`). Остаток — `diagnostics_left`
+  (`client_memberships` читается `select("*")`: до миграции не падает).
 - «Мои записи» всегда фильтровать `.eq("user_id", user.id)` явно — RLS
   разрешает тренеру видеть все брони студии.
 - Запись на тренировку — только через RPC `book_schedule_entry` /

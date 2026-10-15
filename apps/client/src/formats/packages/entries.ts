@@ -29,6 +29,11 @@ export type PackTrainer = {
 export type PackEntry = {
   id: string;
   studio_id: string;
+  /**
+   * group — тренировка; diagnostic — диагностика тела (2026-10-15): клиент
+   * видит только свои, на карточке — «Диагностика» и чёрная полоска.
+   */
+  kind?: string | null;
   starts_at: string;
   ends_at: string;
   capacity: number | null;
@@ -53,7 +58,7 @@ export type PackEntry = {
 
 /** select для schedule_entries (и вложенного entry в schedule_bookings). */
 export const PACK_ENTRY_SELECT =
-  "id, studio_id, starts_at, ends_at, capacity, booked_count, workout:workouts(id, name, color, description, photo_url, capacity, translations), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, rating_avg, rating_count, translations))";
+  "id, studio_id, kind, starts_at, ends_at, capacity, booked_count, workout:workouts(id, name, color, description, photo_url, capacity, translations), trainers:schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, rating_avg, rating_count, translations))";
 
 /**
  * Замены тренеров к занятиям — отдельным запросом, а не в PACK_ENTRY_SELECT:
@@ -109,8 +114,16 @@ export function trainerInitials(name: string | null) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-/** Цвет полоски: цвет тренировки (#rrggbb), без него — серый. */
+/** Полоска диагностики — чёрная (решение владельца 2026-10-15). */
+export const DIAGNOSTIC_COLOR = "#000000";
+
+export function isDiagnostic(e: Pick<PackEntry, "kind">) {
+  return e.kind === "diagnostic";
+}
+
+/** Цвет полоски: цвет тренировки (#rrggbb), без него — серый; диагностика — чёрный. */
 export function entryColor(e: PackEntry): string | null {
+  if (isDiagnostic(e)) return DIAGNOSTIC_COLOR;
   const c = e.workout?.color?.trim();
   return c && /^#[0-9a-f]{6}$/i.test(c) ? c : null;
 }
@@ -148,11 +161,12 @@ export function fmtTime(iso: string, t: Translator = currentT()) {
 export function packEntryToDrawerData(e: PackEntry, t: Translator = currentT()): WorkoutDrawerData {
   const workout = localizeRow(e.workout, t.locale);
   const trainers = entryTrainers(e).map((tr) => localizeRow(tr, t.locale));
+  const diagnostic = isDiagnostic(e);
   return {
     id: e.id,
-    name: workout?.name ?? t("Тренировка"),
+    name: diagnostic ? t("Диагностика") : (workout?.name ?? t("Тренировка")),
     type: null,
-    description: workout?.description ?? null,
+    description: diagnostic ? diagnosticDescription(t) : (workout?.description ?? null),
     photo: mediaUrl(workout?.photo_url, "workout-photos"),
     trainerName:
       trainers
@@ -180,4 +194,25 @@ export function packEntryToDrawerData(e: PackEntry, t: Translator = currentT()):
     spotsLeft: spotsLeft(e),
     studioId: e.studio_id,
   };
+}
+
+/**
+ * Что такое диагностика тела — описание в окне диагностики и во вкладке
+ * «Диагностика» расписания (текст владельца 2026-10-15, с разметкой).
+ */
+export function diagnosticDescription(t: Translator = currentT()) {
+  return [
+    t("Индивидуальная встреча с тренером, чтобы тренировки давали лучший результат."),
+    "",
+    "- " + t("Заполняем анкету: цели, здоровье, ограничения."),
+    "- " + t("Делаем замеры и тест на баланс."),
+    "- " +
+      t(
+        "Тренер составляет персональные рекомендации: с какой интенсивностью заниматься, на что обращать внимание и как восстанавливаться.",
+      ),
+    "",
+    t(
+      "По результатам вы получаете свою персональную диагностическую карту — страничку с целями, замерами и планом тренировок.",
+    ),
+  ].join("\n");
 }

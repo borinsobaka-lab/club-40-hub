@@ -285,6 +285,11 @@ function MyMembershipCard({ m }: { m: MyMembership }) {
     !isPersonal && (m.personal_left ?? 0) > 0
       ? " + " + t.plural(m.personal_left!, "{n} персональная|{n} персональные|{n} персональных")
       : "";
+  // Диагностики тела (2026-10-15) — тоже остаток абонемента.
+  const diagnostics =
+    (m.diagnostics_left ?? 0) > 0
+      ? " + " + t.plural(m.diagnostics_left!, "{n} диагностика|{n} диагностики|{n} диагностик")
+      : "";
   const status =
     m.status === "pending"
       ? t("Продление — начнётся, когда закончится текущий")
@@ -303,7 +308,7 @@ function MyMembershipCard({ m }: { m: MyMembership }) {
           {loc(m.memberships)?.name ?? t("Абонемент")}
         </div>
         <div className="text-sm font-medium text-foreground">
-          {t("Осталось: {balance}", { balance: balance + gift })}
+          {t("Осталось: {balance}", { balance: balance + gift + diagnostics })}
         </div>
         <div className="text-xs text-muted-foreground">{status}</div>
         {m.upcomingPayments.length > 0 && <UpcomingPayments payments={m.upcomingPayments} />}

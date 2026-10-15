@@ -30,7 +30,14 @@ import { PeriodStepper } from "@/components/period-stepper";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
-import { attendanceBlock, balanceFor, tbilisiDate, type Coverage } from "@/lib/booking-coverage";
+import {
+  attendanceBlock,
+  balanceFor,
+  entryBalance,
+  tbilisiDate,
+  type BalanceKind,
+  type Coverage,
+} from "@/lib/booking-coverage";
 import {
   pickTrainer,
   regularTrainerIds,
@@ -51,9 +58,10 @@ import type { ClubStatus } from "@/lib/client-status";
 import { parseTranslations, translationText } from "@/lib/content-i18n";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
 import {
-  ACTIVITY_KINDS,
   ACTIVITY_KIND_VALUES,
   activityKind,
+  activityKindsFor,
+  isOneOnOne,
   type ActivityKind,
 } from "@/lib/schedule-activities";
 import { Button } from "@/components/ui/button";
@@ -333,7 +341,7 @@ function entryKey(
   const subject =
     e.kind === "group"
       ? e.workout_id
-      : e.kind === "personal"
+      : isOneOnOne(e.kind)
         ? [...e.trainerIds].sort().join(",")
         : e.title?.trim().toLowerCase();
   return `${e.kind}|${subject}|${new Date(e.starts_at).toISOString()}`;
@@ -351,6 +359,7 @@ function regularTrainerIdsOf(e: Pick<Entry, "schedule_entry_trainers">) {
 /** Подпись занятия на карточке и в баннере копирования; `en` — полный экран. */
 function entryTitle(e: Entry, en = false) {
   if (e.kind === "personal") return en ? "Personal training" : "Персональное занятие";
+  if (e.kind === "diagnostic") return en ? "Body diagnostics" : "Диагностика";
   // Название прочей активности — свободный текст без переводов.
   if (e.kind === "other") return e.title ?? (en ? "Activity" : "Прочая активность");
   const name = e.workout?.name ?? (en ? "Class" : "Занятие");
@@ -1219,6 +1228,7 @@ function SchedulePage() {
       <KindPickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
+        packages={packages}
         hasWorkouts={workouts.length > 0}
         onPick={pickKind}
       />
@@ -1263,14 +1273,15 @@ function KindFilter({
   value: ActivityKind[];
   onChange: (v: ActivityKind[]) => void;
 }) {
-  const shown = ACTIVITY_KIND_VALUES.filter((k) => value.includes(k)).length;
+  const kinds = activityKindsFor("subscription");
+  const shown = kinds.filter((k) => value.includes(k.value)).length;
   return (
     <div
       role="group"
       aria-label="Какие занятия показывать"
       className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-input px-3 py-1.5 max-sm:w-full"
     >
-      {ACTIVITY_KINDS.map((k) => {
+      {kinds.map((k) => {
         const checked = value.includes(k.value);
         return (
           <CheckboxOption
@@ -1305,8 +1316,9 @@ function ActivityTypesFilter({
   cancelled: boolean;
   onCancelledChange: (v: boolean) => void;
 }) {
-  const picked = ACTIVITY_KINDS.filter((k) => value.includes(k.value));
-  const all = picked.length === ACTIVITY_KINDS.length;
+  const kinds = activityKindsFor("packages");
+  const picked = kinds.filter((k) => value.includes(k.value));
+  const all = picked.length === kinds.length;
   const label =
     all && !cancelled
       ? "Типы активностей"
@@ -1330,7 +1342,7 @@ function ActivityTypesFilter({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-2">
         <div className="space-y-0.5">
-          {ACTIVITY_KINDS.map((k) => {
+          {kinds.map((k) => {
             const checked = value.includes(k.value);
             return (
               <CheckboxOption
@@ -1383,11 +1395,14 @@ function WorkoutOption({ name, color }: { name: string; color: string | null }) 
 function KindPickerDialog({
   open,
   onOpenChange,
+  packages,
   hasWorkouts,
   onPick,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Пакетный клуб: есть диагностика. */
+  packages: boolean;
   /** Групповое занятие ставится по тренировке — без тренировок плитка выключена. */
   hasWorkouts: boolean;
   onPick: (kind: ActivityKind) => void;
@@ -1400,8 +1415,10 @@ function KindPickerDialog({
           <DialogDescription>Выберите тип занятия.</DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {ACTIVITY_KINDS.map((k) => {
+          <div
+            className={cn("grid grid-cols-1 gap-3", packages ? "sm:grid-cols-2" : "sm:grid-cols-3")}
+          >
+            {activityKindsFor(packages ? "packages" : "subscription").map((k) => {
               const disabled = k.value === "group" && !hasWorkouts;
               return (
                 <ChoiceCard
@@ -1523,7 +1540,7 @@ function EntryCard({
     .join(", ");
   // Персональное: «тренер + клиент» — видно, с кем занятие. В полном экране
   // имён клиентов нет: скриншот уходит другим клиентам.
-  const clients = entry.kind === "personal" && !clean ? participantNames(entry) : "";
+  const clients = isOneOnOne(entry.kind) && !clean ? participantNames(entry) : "";
   const people = [names, clients].filter(Boolean).join(" + ");
   // Персональные и прочие в обоих форматах — светлая карточка с тёмной
   // полоской: так они не путаются с групповыми.
@@ -1723,6 +1740,13 @@ const FORM_TEXT: Record<
     added: "Персональное занятие добавлено",
     updated: "Персональное занятие обновлено",
   },
+  diagnostic: {
+    create: "Новая диагностика",
+    edit: "Диагностика",
+    hint: "Выберите тренера, клиента и время. Клиент увидит диагностику в приложении, «Посетил» спишет диагностику с его абонемента.",
+    added: "Диагностика добавлена",
+    updated: "Диагностика обновлена",
+  },
   other: {
     create: "Новая прочая активность",
     edit: "Прочая активность",
@@ -1744,6 +1768,10 @@ const TIPS = {
     "Тренер, который проводит занятие. В зарплату ему пойдёт ставка за персональную тренировку из «Зарплатных ставок».",
   title: "Как активность будет подписана в расписании, например «Мастер-класс» или «Съёмка».",
   personalClients: "С кем занятие. Позже с абонемента на персональные будет списываться посещение.",
+  diagnosticTrainer:
+    "Тренер, который проводит диагностику. Время согласуйте с ним заранее — по заявке клиента («Обратная связь» → «Заявки»).",
+  diagnosticClients:
+    "Кому диагностика. «Посетил» спишет одну диагностику с абонемента клиента; клиент увидит её в приложении и сможет отменить.",
   groupClients:
     "Обычно клиенты записываются сами в приложении. Здесь — записать без приложения или на пробное.",
   otherStaff:
@@ -2110,7 +2138,7 @@ function EntryForm({
       // 0 — без лимита (как пустая вместимость в «Тренировках»).
       return { workout_id: workoutId, capacity: cap, title: null, pay_rate: null };
     }
-    if (kind === "personal") {
+    if (isOneOnOne(kind)) {
       if (trainerIds.length !== 1) return "Выберите тренера";
       if (!entry && pending.length === 0) return "Добавьте клиента";
       return { workout_id: null, title: null, pay_rate: null };
@@ -2144,7 +2172,7 @@ function EntryForm({
     };
     setSaving(true);
     try {
-      if (entry && kind === "personal" && !cancelled) {
+      if (entry && isOneOnOne(kind) && !cancelled) {
         // Персональное без клиента не сохраняем: клиент записан в панели ниже.
         // У отменённого записей уже нет — его можно править и так.
         const { count, error: countError } = await supabase
@@ -2299,10 +2327,10 @@ function EntryForm({
               </div>
             )}
 
-            {kind === "personal" && (
+            {isOneOnOne(kind) && (
               <FormField
                 label="Тренер"
-                tip={TIPS.personalTrainer}
+                tip={kind === "diagnostic" ? TIPS.diagnosticTrainer : TIPS.personalTrainer}
                 required
                 htmlFor={trainerOptions.length === 0 ? null : undefined}
               >
@@ -2397,7 +2425,7 @@ function EntryForm({
               </FormField>
             )}
 
-            {kind !== "personal" && !assignMode && !singleGroupTrainer && (
+            {!isOneOnOne(kind) && !assignMode && !singleGroupTrainer && (
               <FormField
                 label={kind === "group" ? "Тренеры" : "Сотрудники"}
                 tip={kind === "group" ? TIPS.groupTrainers : TIPS.otherStaff}
@@ -2440,8 +2468,14 @@ function EntryForm({
             {!entry && kind !== "other" && (
               <FormField
                 label="Клиенты"
-                tip={kind === "personal" ? TIPS.personalClients : TIPS.groupClients}
-                required={kind === "personal"}
+                tip={
+                  kind === "diagnostic"
+                    ? TIPS.diagnosticClients
+                    : kind === "personal"
+                      ? TIPS.personalClients
+                      : TIPS.groupClients
+                }
+                required={isOneOnOne(kind)}
                 optional={kind === "group"}
                 htmlFor={null}
               >
@@ -2470,7 +2504,7 @@ function EntryForm({
                     studioId={studioId}
                     trial={kind === "group"}
                     packages={packages}
-                    personal={packages && kind === "personal"}
+                    balance={packages ? entryBalance(kind) : "visits"}
                     onPick={(c) =>
                       setPending((prev) => (prev.some((x) => x.id === c.id) ? prev : [...prev, c]))
                     }
@@ -2768,6 +2802,8 @@ type ActiveMembershipRow = {
   visits_left: number | null;
   /** Пакетный формат: остаток персональных и вид баланса абонемента. */
   personal_left: number;
+  /** Остаток диагностик тела. */
+  diagnostics_left?: number | null;
   balance_kind: "group" | "personal";
   membership: { name: string | null } | null;
 };
@@ -2894,12 +2930,12 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
   if (clients.length === 0 && guests.length === 0) return empty;
 
   const ids = clients.map((c) => c.id);
-  const balanceCheck = packages && (entry.kind === "group" || entry.kind === "personal");
+  const balanceCheck = packages && entry.kind !== "other";
   const [{ data: mData }, { data: aheadData }] = await Promise.all([
     supabase
       .from("client_memberships")
       .select(
-        "client_id, status, started_at, ends_at, visits_left, personal_left, balance_kind, membership:memberships(name)",
+        "client_id, status, started_at, ends_at, visits_left, personal_left, diagnostics_left, balance_kind, membership:memberships(name)",
       )
       // Ждущее продление — только в остаток: с него спишется, когда кончится текущий.
       .in("status", balanceCheck ? ["active", "pending"] : ["active"])
@@ -2937,14 +2973,14 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
       aheadByClient.set(r.client_id, (aheadByClient.get(r.client_id) ?? 0) + 1);
     for (const g of guests) aheadByClient.set(g.id, g.ahead);
     const date = tbilisiDate(entry.starts_at);
-    const personal = entry.kind === "personal";
+    const balance = entryBalance(entry.kind);
     for (const b of bookings) {
       const c =
         (b.client_id ? clientsById.get(b.client_id) : undefined) ??
         (b.user_id ? clientsByUser.get(b.user_id) : undefined);
       if (!c) continue;
       coverage.set(b.id, {
-        balance: balanceFor(allByClient.get(c.id) ?? [], personal, date),
+        balance: balanceFor(allByClient.get(c.id) ?? [], balance, date),
         ahead: aheadByClient.get(c.id) ?? 0,
       });
     }
@@ -2954,12 +2990,19 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
 
 /**
  * Абонемент, с которого спишется посещение: на персональном (пакетная
- * студия) — с остатком персональных, иначе пакет персональных; на остальных —
- * абонемент обычных тренировок.
+ * студия) — с остатком персональных, иначе пакет персональных; на
+ * диагностике — с остатком диагностик; на остальных — абонемент обычных
+ * тренировок.
  */
-function pickMembership(rows: ActiveMembershipRow[] | undefined, personal: boolean) {
+function pickMembership(rows: ActiveMembershipRow[] | undefined, balance: BalanceKind) {
   if (!rows?.length) return undefined;
-  if (personal)
+  if (balance === "diagnostic")
+    return (
+      rows.find((r) => (r.diagnostics_left ?? 0) > 0) ??
+      rows.find((r) => r.balance_kind !== "personal") ??
+      rows[0]
+    );
+  if (balance === "personal")
     return (
       rows.find((r) => r.personal_left > 0) ??
       rows.find((r) => r.balance_kind === "personal") ??
@@ -3001,7 +3044,7 @@ function ParticipantActions({
   studioId,
   trial,
   packages,
-  personal,
+  balance,
   onPick,
   disabled,
 }: {
@@ -3009,8 +3052,8 @@ function ParticipantActions({
   trial: boolean;
   /** Пакетная студия: можно записать гостя — клиента другого клуба сети. */
   packages: boolean;
-  /** Персональное: у гостя показываем остаток персональных. */
-  personal: boolean;
+  /** Персональное / диагностика: у гостя показываем остаток этого вида. */
+  balance: BalanceKind;
   onPick: (c: PickedClient) => void;
   disabled?: boolean;
 }) {
@@ -3047,7 +3090,7 @@ function ParticipantActions({
           <PickClientForm
             studioId={studioId}
             packages={packages}
-            personal={personal}
+            balance={balance}
             onCancel={() => setPickOpen(false)}
             onPick={(c) => {
               setPickOpen(false);
@@ -3074,13 +3117,13 @@ type ClientScope = "own" | "network";
 function PickClientForm({
   studioId,
   packages,
-  personal,
+  balance,
   onPick,
   onCancel,
 }: {
   studioId: string | null;
   packages: boolean;
-  personal: boolean;
+  balance: BalanceKind;
   onPick: (c: PickedClient) => void;
   onCancel: () => void;
 }) {
@@ -3124,7 +3167,7 @@ function PickClientForm({
             {scope === "network" ? (
               <NetworkClientCombobox
                 studioId={studioId}
-                personal={personal}
+                balance={balance}
                 value={picked}
                 onChange={setPicked}
               />
@@ -3154,12 +3197,12 @@ function PickClientForm({
  */
 function NetworkClientCombobox({
   studioId,
-  personal,
+  balance,
   value,
   onChange,
 }: {
   studioId: string | null;
-  personal: boolean;
+  balance: BalanceKind;
   value: PickedClient | null;
   onChange: (c: PickedClient | null) => void;
 }) {
@@ -3183,7 +3226,7 @@ function NetworkClientCombobox({
   const options = (enabled ? found : []).map((g) => {
     const m = pickMembership(
       g.memberships.filter((x) => x.status === "active"),
-      personal,
+      balance,
     );
     return {
       value: g.id,
@@ -3191,7 +3234,7 @@ function NetworkClientCombobox({
       hint: [
         g.home_studio_name,
         g.phone,
-        m ? membershipSummary(m, personal) : "нет активного абонемента",
+        m ? membershipSummary(m, balance) : "нет активного абонемента",
       ]
         .filter(Boolean)
         .join(" · "),
@@ -3314,12 +3357,8 @@ function NoShowBadge({ booking }: { booking: BookingRow }) {
  * продление уже куплено и ждёт, подсказывать нечего.
  */
 /** Абонемент одной строкой — подсказка в поиске гостя (без подсветки). */
-function membershipSummary(m: ActiveMembershipRow, personal: boolean) {
-  const left = personal
-    ? `персональных ${m.personal_left}`
-    : m.visits_left != null
-      ? `осталось ${m.visits_left}`
-      : "безлимит";
+function membershipSummary(m: ActiveMembershipRow, balance: BalanceKind) {
+  const left = balanceLeftLabel(m, balance);
   const term = m.ends_at
     ? `до ${formatDate(m.ends_at)}`
     : !m.started_at
@@ -3328,21 +3367,26 @@ function membershipSummary(m: ActiveMembershipRow, personal: boolean) {
   return [m.membership?.name ?? "Абонемент", left, term].filter(Boolean).join(" · ");
 }
 
+/** Остаток нужного вида: «осталось 3», «персональных 1», «диагностик 2». */
+function balanceLeftLabel(m: ActiveMembershipRow, balance: BalanceKind) {
+  if (balance === "personal") return `персональных ${m.personal_left}`;
+  if (balance === "diagnostic") return `диагностик ${m.diagnostics_left ?? 0}`;
+  return m.visits_left != null ? `осталось ${m.visits_left}` : "безлимит";
+}
+
 function MembershipSummary({
   m,
-  personal,
+  balance,
   renewed,
 }: {
   m: ActiveMembershipRow;
-  personal: boolean;
+  balance: BalanceKind;
   renewed: boolean;
 }) {
-  const count = personal ? m.personal_left : m.visits_left;
-  const left = personal
-    ? `персональных ${m.personal_left}`
-    : m.visits_left != null
-      ? `осталось ${m.visits_left}`
-      : "безлимит";
+  // Диагностик всего 1–2 — красным не подсвечиваем.
+  const count =
+    balance === "personal" ? m.personal_left : balance === "diagnostic" ? null : m.visits_left;
+  const left = balanceLeftLabel(m, balance);
   // Пакетная продажа ждёт первого посещения — срок ещё не идёт.
   const term = m.ends_at
     ? `до ${formatDate(m.ends_at)}`
@@ -3379,8 +3423,8 @@ function BookingsPanel({
 }) {
   const queryClient = useQueryClient();
   // Пакетная студия: на персональном занятии посещение списывается с баланса
-  // персональных — его и показываем у клиента.
-  const personalBalance = packages && entry.kind === "personal";
+  // персональных, на диагностике — диагностик; его и показываем у клиента.
+  const balance: BalanceKind = packages ? entryBalance(entry.kind) : "visits";
   const [booking, setBooking] = useState(false);
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -3499,7 +3543,7 @@ function BookingsPanel({
             studioId={entry.studio_id}
             trial={trial}
             packages={packages}
-            personal={personalBalance}
+            balance={balance}
             onPick={addParticipant}
             disabled={booking}
           />
@@ -3516,7 +3560,7 @@ function BookingsPanel({
           </div>
         ) : booked.length === 0 ? (
           <InfoNote variant="empty">
-            {entry.kind === "personal"
+            {isOneOnOne(entry.kind)
               ? "Клиент не выбран — нажмите «+ клиент»."
               : "Пока никто не записан."}
           </InfoNote>
@@ -3528,7 +3572,7 @@ function BookingsPanel({
             {booked.map((b) => {
               const c = bookingClient(data, b);
               const m = c
-                ? pickMembership(data?.membershipsByClient.get(c.id), personalBalance)
+                ? pickMembership(data?.membershipsByClient.get(c.id), balance)
                 : undefined;
               const busy = attendingId === b.id;
               // Пакетная студия: посещение без остатка база не отметит —
@@ -3558,7 +3602,7 @@ function BookingsPanel({
                       {m ? (
                         <MembershipSummary
                           m={m}
-                          personal={personalBalance}
+                          balance={balance}
                           renewed={!!c && !!data?.renewals.has(`${c.id}:${m.balance_kind}`)}
                         />
                       ) : (

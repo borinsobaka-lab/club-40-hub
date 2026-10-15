@@ -5,8 +5,17 @@
  * остатка база не даст (schedule_bookings_charge_balance) — сначала продажа.
  * Расчёт повторяет списание в базе: групповые — visits_left абонемента пакета
  * тренировок, персональные — personal_left любого абонемента (в пакет
- * тренировок их дарят); срок — на дату занятия по Тбилиси.
+ * тренировок их дарят), диагностики — diagnostics_left любого абонемента;
+ * срок — на дату занятия по Тбилиси.
  */
+
+/** С какого баланса спишется занятие: групповые, персональные или диагностики. */
+export type BalanceKind = "visits" | "personal" | "diagnostic";
+
+/** Баланс по типу занятия (schedule_entries.kind). */
+export function entryBalance(kind: string): BalanceKind {
+  return kind === "personal" ? "personal" : kind === "diagnostic" ? "diagnostic" : "visits";
+}
 
 export type BalanceRow = {
   /** active — текущий; pending — продление ждёт (спишется после текущего). */
@@ -14,6 +23,8 @@ export type BalanceRow = {
   ends_at: string | null;
   visits_left: number | null;
   personal_left: number | null;
+  /** Остаток диагностик тела (2026-10-15); нет поля — 0. */
+  diagnostics_left?: number | null;
   balance_kind: "group" | "personal" | null;
 };
 
@@ -23,12 +34,13 @@ export function tbilisiDate(iso: string) {
 }
 
 /** Тренировок нужного вида на балансе к дате занятия; без счётчика — безлимит. */
-export function balanceFor(rows: BalanceRow[], personal: boolean, date: string) {
+export function balanceFor(rows: BalanceRow[], balance: BalanceKind, date: string) {
   let total = 0;
   for (const r of rows) {
     if (r.status !== "active" && r.status !== "pending") continue;
     if (r.ends_at && r.ends_at < date) continue;
-    if (personal) total += Math.max(0, r.personal_left ?? 0);
+    if (balance === "personal") total += Math.max(0, r.personal_left ?? 0);
+    else if (balance === "diagnostic") total += Math.max(0, r.diagnostics_left ?? 0);
     else if (r.balance_kind !== "personal") {
       if (r.visits_left == null) return Infinity;
       total += Math.max(0, r.visits_left);

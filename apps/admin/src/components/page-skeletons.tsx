@@ -1008,6 +1008,32 @@ export function FeedbackPageSkeleton() {
   );
 }
 
+/** Плитки «Заявок»: не отработано, пришло и отработано за месяц. */
+export function RequestsStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {["Не отработано", "Пришло в этом месяце", "Отработано в этом месяце"].map((label) => (
+        <StatTileSkeleton key={label} label={label} />
+      ))}
+    </div>
+  );
+}
+
+export function RequestsPageSkeleton() {
+  return (
+    <ShellSkeleton title="Заявки">
+      <div className="space-y-3">
+        <RequestsStatsSkeleton />
+        <ToolbarSkeleton search={false} controls={["w-44", "w-52"]} />
+        <TableCardSkeleton
+          pagination
+          headers={["Дата", "Клиент", "Заявка", "Цели", "Комментарий", "Абонемент", "Статус"]}
+        />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
 /** Вкладка «Опросы» NPS: пять карточек опросов по четыре показателя. */
 export function NpsSurveysSkeleton() {
   return (

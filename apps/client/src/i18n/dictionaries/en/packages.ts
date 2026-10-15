@@ -129,6 +129,49 @@ const dict: Dictionary = {
   "Следующий платёж": "Next payment",
   "Следующие платежи": "Next payments",
   просрочен: "overdue",
+  // Заявки администратору и диагностика тела (schedule-requests.tsx, entries.ts, 2026-10-15).
+  сегодня: "today",
+  "Заявка отправлена {date}": "Request sent {date}",
+  "Администратор свяжется с вами, чтобы подобрать тренера и согласовать расписание персональных занятий.":
+    "The administrator will contact you to pick a trainer and agree on your personal training schedule.",
+  "Администратор согласует время с тренером и добавит диагностику в ваше расписание.":
+    "The administrator will agree on a time with the trainer and add the diagnostics to your schedule.",
+  "Не удалось отправить заявку: {error}": "Couldn't send the request: {error}",
+  "Заявка отправлена администратору": "Request sent to the administrator",
+  "Персональные тренировки": "Personal training",
+  "Оставьте заявку — она придёт администратору студии. Администратор свяжется с вами, чтобы подобрать тренера и согласовать расписание персональных занятий.":
+    "Leave a request — it goes to the studio administrator, who will contact you to pick a trainer and agree on your personal training schedule.",
+  "Напишите вашу цель": "Write your goal",
+  "Ваша цель": "Your goal",
+  "Цель из вашей анкеты уже отмечена — можно добавить другие.":
+    "The goal from your questionnaire is already selected — you can add others.",
+  "Отметьте, чего хотите добиться, — можно несколько.":
+    "Select what you want to achieve — you can choose several.",
+  Комментарий: "Comment",
+  "Удобные дни и время, пожелания к тренеру": "Convenient days and times, wishes for the trainer",
+  "Отправить заявку": "Send request",
+  "Диагностика отменена": "Diagnostics cancelled",
+  "На вашем абонементе": "On your membership",
+  "Диагностик нет": "No diagnostics",
+  "Что такое диагностика тела": "What is body diagnostics",
+  "Диагностики входят в абонементы на 24, 36 и 50 занятий.":
+    "Diagnostics are included in 24, 36 and 50-session memberships.",
+  "Записаться на диагностику": "Book diagnostics",
+  "Заявка поступит администратору — он согласует время с тренером и добавит диагностику в ваше расписание.":
+    "Your request goes to the administrator, who will agree on a time with the trainer and add the diagnostics to your schedule.",
+  "На ваших абонементах нет диагностик. Узнать, как их получить, можно у администратора студии.":
+    "Your memberships don't include diagnostics. Ask the studio administrator how to get them.",
+  "{n} диагностика|{n} диагностики|{n} диагностик":
+    "{n} diagnostic session|{n} diagnostic sessions",
+  "Индивидуальная встреча с тренером, чтобы тренировки давали лучший результат.":
+    "A one-on-one session with a trainer so your workouts bring the best results.",
+  "Заполняем анкету: цели, здоровье, ограничения.":
+    "We fill in a questionnaire: goals, health, limitations.",
+  "Делаем замеры и тест на баланс.": "We take measurements and do a balance test.",
+  "Тренер составляет персональные рекомендации: с какой интенсивностью заниматься, на что обращать внимание и как восстанавливаться.":
+    "The trainer prepares personal recommendations: what intensity to train at, what to pay attention to and how to recover.",
+  "По результатам вы получаете свою персональную диагностическую карту — страничку с целями, замерами и планом тренировок.":
+    "Afterwards you get your personal diagnostic card — a page with your goals, measurements and training plan.",
 };
 
 export default dict;

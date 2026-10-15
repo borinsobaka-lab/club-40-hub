@@ -118,6 +118,11 @@ export type MyMembership = {
   ends_at: string | null;
   visits_left: number | null;
   personal_left: number | null;
+  /**
+   * Остаток диагностик тела (2026-10-15_zz_diagnostics_client_requests.sql);
+   * до миграции поля нет.
+   */
+  diagnostics_left?: number | null;
   balance_kind: "group" | "personal" | null;
   /** kind — тип номенклатуры: «пакет тренировок» отличает от пробного (у обоих balance_kind group). */
   memberships: {
@@ -185,9 +190,9 @@ export function packMyMembershipsQuery(userId: string | null) {
       if (!client) return [];
       const { data, error } = await untypedDb
         .from("client_memberships")
-        .select(
-          "id, status, ends_at, visits_left, personal_left, balance_kind, sale_id, memberships(name, kind, translations)",
-        )
+        // «*», а не список колонок: diagnostics_left (миграция 2026-10-15)
+        // приходит, когда она есть в базе, и не ломает запрос до её выкатки.
+        .select("*, memberships(name, kind, translations)")
         .eq("client_id", (client as { id: string }).id)
         .in("status", ["active", "frozen", "pending"])
         .or(`ends_at.is.null,ends_at.gte.${tbilisiDateISO()},status.eq.frozen`)
@@ -221,12 +226,24 @@ export function hasActivePackage(rows: Pick<MyMembership, "memberships">[]) {
  * подарочные персональные у пакета тренировок — тоже остаток.
  */
 function hasTrainingsLeft(
-  m: Pick<MyMembership, "status" | "visits_left" | "personal_left" | "balance_kind">,
+  m: Pick<
+    MyMembership,
+    "status" | "visits_left" | "personal_left" | "diagnostics_left" | "balance_kind"
+  >,
 ) {
   if (m.status !== "active") return true;
   const personal = m.personal_left ?? 0;
+  // Диагностики держат абонемент, пока их не пройдут (как и база).
+  if ((m.diagnostics_left ?? 0) > 0) return true;
   if (m.balance_kind === "personal") return personal > 0;
   return m.visits_left == null || m.visits_left > 0 || personal > 0;
+}
+
+/** Диагностик на своих абонементах (вкладка «Диагностика» расписания). */
+export function diagnosticsBalance(rows: Pick<MyMembership, "status" | "diagnostics_left">[]) {
+  return rows
+    .filter((m) => m.status === "active" || m.status === "pending")
+    .reduce((sum, m) => sum + Math.max(0, m.diagnostics_left ?? 0), 0);
 }
 
 /**
