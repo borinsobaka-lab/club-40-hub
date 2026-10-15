@@ -59,7 +59,10 @@ export function usePushSync() {
         event.ports[0]?.postMessage("ok");
         void clearPendingPushPath();
         void queryClient.invalidateQueries({ queryKey: ["push-inbox"] });
-        router.history.push(data.url);
+        // Отложенный переход мог успеть раньше — второй раз в историю не кладём.
+        if (data.url !== window.location.pathname + window.location.search) {
+          router.history.push(data.url);
+        }
       }
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
