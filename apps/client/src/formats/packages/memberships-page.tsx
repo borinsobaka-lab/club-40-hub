@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AddCircle, Ticket } from "@solar-icons/react";
+import { AddCircle, SaleSquare, Ticket } from "@solar-icons/react";
 
 import { PageShell } from "@/components/page-shell";
 import { UnderlineTabs } from "@/components/underline-tabs";
@@ -13,7 +13,13 @@ import { msg, useLocalize, useT, type Translator } from "@/i18n";
 import { clientCardQuery, type ClientCard } from "@/lib/client-card";
 import { FormattedText } from "@/lib/formatted-text";
 import { cn } from "@/lib/utils";
-import { packCatalogQuery, packMyMembershipsQuery, type MyMembership, type Pack } from "./queries";
+import {
+  hasActivePackage,
+  packCatalogQuery,
+  packMyMembershipsQuery,
+  type MyMembership,
+  type Pack,
+} from "./queries";
 import { studioWhatsAppLink, WhatsAppIcon } from "./studio-contacts";
 import { isOverdue, tbilisiToday } from "./upcoming-payments";
 
@@ -26,6 +32,9 @@ import { isOverdue, tbilisiToday } from "./upcoming-payments";
  * «Оформить у администратора» (решение владельца 2026-10-13): чат WhatsApp
  * студии с готовым текстом на языке приложения — имя клиента и пакет.
  * Номенклатура — смотримой студии (переключатель на главной).
+ * Клиенту с действующим пакетом тренировок под ценой пакета — зелёная
+ * плашка: цена полная, продление для него дешевле (решение владельца
+ * 2026-10-15; только вкладка пакетов, пробное и персональные не в счёт).
  */
 
 const TABS = [
@@ -68,6 +77,7 @@ export function PackagesMembershipsPage() {
   const mine = useQuery(packMyMembershipsQuery(user?.id ?? null));
   const card = useQuery(clientCardQuery(user?.id ?? null));
   const name = clientName(card.data);
+  const renewalPrice = tab === "packages" && hasActivePackage(mine.data ?? []);
 
   const items = (catalog.data ?? []).filter((m) =>
     // Пробное посещение в приложении не показываем (решение владельца 2026-10-11).
@@ -123,7 +133,9 @@ export function PackagesMembershipsPage() {
               : t("Абонементов пока нет")}
           </Card>
         ) : (
-          items.map((m) => <PackCard key={m.id} m={m} clientName={name} />)
+          items.map((m) => (
+            <PackCard key={m.id} m={m} clientName={name} renewalPrice={renewalPrice} />
+          ))
         )}
       </div>
     </PageShell>
@@ -137,8 +149,17 @@ export function PackagesMembershipsPage() {
  * них — тренировки и рассрочка),
  * тёмный блок «В подарок» (текст из админки) и срок действия внизу.
  * Подарочные персональные в «Что входит» не пишутся — их пишут в «В подарок».
+ * renewalPrice — под ценой плашка «для вас продление дешевле».
  */
-function PackCard({ m: row, clientName }: { m: Pack; clientName: string | null }) {
+function PackCard({
+  m: row,
+  clientName,
+  renewalPrice,
+}: {
+  m: Pack;
+  clientName: string | null;
+  renewalPrice: boolean;
+}) {
   const t = useT();
   const loc = useLocalize();
   const m = loc(row);
@@ -197,6 +218,22 @@ function PackCard({ m: row, clientName }: { m: Pack; clientName: string | null }
       <div className="mt-3 text-4xl font-black tracking-tight tabular-nums">
         {t.number(Number(m.price))} ₾
       </div>
+      {renewalPrice && (
+        <div className="mt-3 flex items-start gap-3 rounded-xl bg-emerald-50 p-3 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100">
+          <SaleSquare
+            className="h-6 w-6 shrink-0 text-emerald-600 dark:text-emerald-400"
+            weight="Bold"
+          />
+          <div className="min-w-0 text-sm leading-snug">
+            <div className="font-semibold">{t("Для вас — выгоднее")}</div>
+            <div className="mt-0.5 text-emerald-800 dark:text-emerald-200">
+              {t(
+                "Здесь указана полная стоимость. Вы уже наш клиент, поэтому продление обойдётся дешевле — подробности у администратора.",
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mt-4 border-t border-border pt-4">
         <div className="text-sm font-semibold">{t("Что входит:")}</div>
         <ul className="mt-2 space-y-1.5">

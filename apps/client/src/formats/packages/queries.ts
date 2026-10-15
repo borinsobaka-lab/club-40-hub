@@ -119,7 +119,12 @@ export type MyMembership = {
   visits_left: number | null;
   personal_left: number | null;
   balance_kind: "group" | "personal" | null;
-  memberships: { name: string; translations?: ContentTranslations | null } | null;
+  /** kind — тип номенклатуры: «пакет тренировок» отличает от пробного (у обоих balance_kind group). */
+  memberships: {
+    name: string;
+    kind: MembershipKind | null;
+    translations?: ContentTranslations | null;
+  } | null;
   sale_id: string | null;
   /**
    * Невнесённые платежи рассрочки по продаже — дата и сумма, по порядку
@@ -181,7 +186,7 @@ export function packMyMembershipsQuery(userId: string | null) {
       const { data, error } = await untypedDb
         .from("client_memberships")
         .select(
-          "id, status, ends_at, visits_left, personal_left, balance_kind, sale_id, memberships(name, translations)",
+          "id, status, ends_at, visits_left, personal_left, balance_kind, sale_id, memberships(name, kind, translations)",
         )
         .eq("client_id", (client as { id: string }).id)
         .in("status", ["active", "frozen", "pending"])
@@ -196,6 +201,16 @@ export function packMyMembershipsQuery(userId: string | null) {
     },
     enabled: !!userId,
   });
+}
+
+/**
+ * Клиент с действующим пакетом тренировок (решение владельца 2026-10-15):
+ * ему в витрине пакетов — плашка «указана полная стоимость, продление
+ * дешевле». Пробное и персональные не в счёт; kind null — давняя
+ * номенклатура до типов, это пакет (как в витрине).
+ */
+export function hasActivePackage(rows: Pick<MyMembership, "memberships">[]) {
+  return rows.some((m) => m.memberships && (m.memberships.kind ?? "package") === "package");
 }
 
 /**
