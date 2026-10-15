@@ -198,7 +198,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>
             the ratings you give to trainers (only the average rating of a trainer is shown to other
-            users, without your name).
+            users, without your name);
+          </li>
+          <li>
+            your answers to satisfaction surveys in the App (a score from 0 to 10 and your comment)
+            and whether you have answered or closed a survey. Answering is voluntary.
           </li>
         </ul>
         <p>4.6. Technical data:</p>
@@ -267,8 +271,8 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>
             <b>Security and service quality</b> — protecting the App and accounts from unauthorised
-            access, resolving errors, preparing anonymised statistics to improve our services.
-            Grounds: our legitimate interest.
+            access, resolving errors, asking for your feedback in satisfaction surveys and preparing
+            anonymised statistics to improve our services. Grounds: our legitimate interest.
           </li>
         </ol>
         <p>
@@ -376,6 +380,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             Push subscription of your device — until you sign out of the App on that device; it is
             also deleted when notifications are turned off or the App is removed (the notification
             service informs us about it).
+          </li>
+          <li>
+            Satisfaction survey answers — for as long as they are needed for service quality
+            statistics; when your client card is deleted, they are kept without your name and
+            without a link to your account.
           </li>
           <li>Server logs — for a limited period needed to ensure security.</li>
           <li>

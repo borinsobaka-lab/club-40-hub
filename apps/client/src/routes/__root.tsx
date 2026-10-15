@@ -41,6 +41,7 @@ import { RotateOverlay } from "@/components/rotate-overlay";
 import { InstallScreen } from "@/components/install-screen";
 import { useInstalledDisplay } from "@/hooks/use-pwa-install";
 import { usePushSync } from "@/hooks/use-push-sync";
+import { NpsSurveyHost } from "@/components/nps-survey";
 import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
@@ -626,6 +627,8 @@ function AppShell() {
         </main>
 
         {!showAppLoading && <BottomNav />}
+        {/* NPS-опрос модальным окном — на главной, когда база его назначила. */}
+        {!showAppLoading && session && <NpsSurveyHost />}
       </div>
     </div>
   );
