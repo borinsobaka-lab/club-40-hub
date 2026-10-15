@@ -54,6 +54,20 @@ describe("sendMail", () => {
     });
   });
 
+  test("Resend: свой отправитель", async () => {
+    const calls = mockFetch(200, { id: "x" });
+    await sendMail(
+      {
+        to: "a@b.ru",
+        subject: "s",
+        html: "h",
+        from: { email: "noreply@lady-stretch.one", name: "Lady Stretch" },
+      },
+      { RESEND_API_KEY: "re" },
+    );
+    expect(calls[0].body.from).toBe("Lady Stretch <noreply@lady-stretch.one>");
+  });
+
   test("Resend: ошибка — не ok, со статусом и телом ответа", async () => {
     mockFetch(403, { message: "domain not verified" });
     const origErr = console.error;

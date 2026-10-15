@@ -216,8 +216,10 @@ Query): при открытии, при возвращении в приложе
 после кода уходит в анкету — салют ждёт её конца и звучит один раз.
 
 Паролей у клиентов НЕТ; настройка писем и длины кода в Supabase — см.
-AUTH_SETUP.md в корне репозитория. Письма уходят с noreply@base40.fit через
-Resend (хук в админке, `RESEND_API_KEY` у club40-admin).
+AUTH_SETUP.md в корне репозитория. Письма уходят через Resend (хук в
+админке, `RESEND_API_KEY` у club40-admin): подписочному — Base40 с
+noreply@base40.fit, пакетному — письмо Lady Stretch (розовое, с
+`LADY_STRETCH_MAIL_FROM`; `apps/admin/CLAUDE.md`, «Письма Lady Stretch»).
 
 ## Политика конфиденциальности (решение владельца 2026-10-13)
 
