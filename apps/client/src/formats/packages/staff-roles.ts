@@ -31,6 +31,13 @@ export const staffOrder = (row: { role: string | null }) => (row.role === "senio
 /** Рейтинг и оценки — у тренеров и массажистов; администраторов не оценивают. */
 export const staffHasRating = (role: StaffRole) => role !== "admin";
 
+/**
+ * «Записаться на массаж» — закреплённая кнопка внизу карточки массажиста
+ * (решение владельца 2026-10-15): одна ссылка на запись NEBA для всех
+ * массажистов (сопоставления с мастерами NEBA нет — MASSAGE_BOOKING.md).
+ */
+export const MASSAGE_BOOKING_URL = "https://booking.neba.space/";
+
 /** Подписи карточки сотрудника по роли (переводятся при показе — t(…)). */
 export const STAFF_ROLE_TEXT: Record<
   StaffRole,

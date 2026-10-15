@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Drawer as DrawerPrimitive } from "vaul";
 
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   SquircleAvatar,
@@ -13,6 +14,7 @@ import { FormattedText } from "@/lib/formatted-text";
 import { mediaUrl } from "@/lib/media";
 import { trainerInitials } from "./entries";
 import {
+  MASSAGE_BOOKING_URL,
   STAFF_ROLE_TEXT,
   staffHasRating,
   staffRole,
@@ -27,7 +29,8 @@ import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
  * рейтинг, «Поблагодарить …» (чаевые), под ними «Оцените …» (решение
  * владельца 2026-10-12: оценка выше биографии), биография. У администратора
  * (2026-10-12) — без рейтинга и оценки: только описание и чаевые; массажист
- * — как тренер. Открывается из вкладок «Студии» и из окна тренировки (там —
+ * — как тренер, плюс закреплённая внизу «Записаться на массаж» (2026-10-15,
+ * MASSAGE_BOOKING_URL). Открывается из вкладок «Студии» и из окна тренировки (там —
  * вложенной шторкой, nested, поверх окна).
  *
  * Данные — trainerCardQuery по id; из списка тренеров приходят сразу
@@ -56,6 +59,7 @@ export function TrainerDrawer({
     placeholderData: shown.initial ?? undefined,
   });
   const trainer = query.data ?? null;
+  const masseur = !!trainer && staffRole(trainer) === "masseur";
   const Root = nested ? DrawerPrimitive.NestedRoot : DrawerPrimitive.Root;
 
   return (
@@ -73,7 +77,13 @@ export function TrainerDrawer({
           aria-describedby={undefined}
         >
           <div className="mx-auto mb-1 mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
-          <div className="overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">
+          <div
+            className={
+              masseur
+                ? "overflow-y-auto overscroll-contain px-4 pb-6 pt-3"
+                : "overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3"
+            }
+          >
             {trainer ? (
               <TrainerCard trainer={trainer} />
             ) : query.isError ? (
@@ -98,6 +108,15 @@ export function TrainerDrawer({
               </>
             )}
           </div>
+          {masseur && (
+            <div className="shrink-0 border-t border-border bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <Button asChild className="w-full">
+                <a href={MASSAGE_BOOKING_URL} target="_blank" rel="noopener noreferrer">
+                  {t("Записаться на массаж")}
+                </a>
+              </Button>
+            </div>
+          )}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
     </Root>
