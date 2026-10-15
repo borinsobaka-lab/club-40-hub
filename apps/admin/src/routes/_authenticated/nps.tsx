@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/ui/form-field";
+import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -59,6 +59,8 @@ import { cn } from "@/lib/utils";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { NpsPageSkeleton, NpsStatsSkeleton, NpsSurveysSkeleton } from "@/components/page-skeletons";
+import { ClientNameLink } from "@/components/client-name-link";
+import { useCrmLinks } from "@/hooks/use-crm-links";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -83,14 +85,43 @@ type NpsResponse = {
   survey_type: SurveyType;
   handled: boolean;
   created_at: string;
+  /** Карточка клиента, ответившего в приложении; внесённые вручную — null. */
+  client_id: string | null;
 };
 
-const SURVEY_TYPES: { type: SurveyType; label: string; hint: string }[] = [
-  { type: "first_lessons", label: "Первые занятия", hint: "После 3–5 посещений" },
-  { type: "first_month", label: "Первый месяц", hint: "Через 30 дней после старта" },
-  { type: "before_renewal", label: "Перед продлением", hint: "За 7–14 дней до окончания" },
-  { type: "after_return", label: "После возобновления", hint: "Вернувшимся после паузы" },
-  { type: "general", label: "Общий", hint: "Любой контекст" },
+/** Показы опроса в приложении (RPC nps_prompt_stats). */
+type PromptStats = { survey_type: SurveyType; shown: number; answered: number; closed: number };
+
+/**
+ * Когда опрос показывается в приложении — db/migrations/2026-10-15_zz_nps_surveys.sql
+ * (nps_pending_survey). «Общий» приложение не показывает (inApp: false).
+ */
+const SURVEY_TYPES: { type: SurveyType; label: string; hint: string; inApp: boolean }[] = [
+  {
+    type: "first_lessons",
+    label: "Первые занятия",
+    hint: "Когда закончилась 4-я тренировка клиента",
+    inApp: true,
+  },
+  {
+    type: "first_month",
+    label: "Первый месяц",
+    hint: "Через 30 дней после начала первого абонемента (пробное не в счёт)",
+    inApp: true,
+  },
+  {
+    type: "before_renewal",
+    label: "Перед продлением",
+    hint: "За 10 дней до окончания абонемента, в пакетных клубах — и когда осталось 2 тренировки",
+    inApp: true,
+  },
+  {
+    type: "after_return",
+    label: "После возобновления",
+    hint: "Вернувшимся из БЧК (без абонемента дольше 14 дней) — после 2-й тренировки",
+    inApp: true,
+  },
+  { type: "general", label: "Общий", hint: "Любой контекст", inApp: false },
 ];
 
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(
@@ -162,6 +193,13 @@ function NpsPage() {
     meta: { errorMessage: "Не удалось загрузить ответы NPS" },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["nps_responses"] });
+
+  const { data: promptStats = [], isLoading: promptsLoading } = useQuery({
+    queryKey: ["nps_survey_prompts", studioId],
+    queryFn: () =>
+      unwrap<PromptStats[]>(supabase.rpc("nps_prompt_stats", { p_studio_id: studioId ?? null })),
+    meta: { errorMessage: "Не удалось загрузить показы опросов" },
+  });
 
   const toggleHandled = async (id: string, current: boolean) => {
     const { error } = await supabase
@@ -242,6 +280,18 @@ function NpsPage() {
   );
 
   const pg = usePagination(tableData);
+  const crmLinkOf = useCrmLinks(studioId, "id", [
+    ...pg.paged.map((r) => r.client_id),
+    ...unhandled.map((r) => r.client_id),
+  ]);
+  const clientCell = (r: NpsResponse) =>
+    r.client_id ? (
+      <ClientNameLink clientId={r.client_id} crmLink={crmLinkOf(r.client_id)}>
+        {r.client_name || "—"}
+      </ClientNameLink>
+    ) : (
+      r.client_name || "—"
+    );
 
   return (
     <AdminShell
@@ -314,8 +364,18 @@ function NpsPage() {
           )}
         </TableToolbar>
 
+        {tab === "surveys" && (
+          <InfoNote>
+            Опросы первых занятий, первого месяца, перед продлением и после возобновления
+            показываются клиенту окном на главной мобильного приложения, когда наступает момент;
+            клиент может закрыть окно крестиком и не отвечать — тогда этот опрос больше не
+            показывается. Не чаще одного опроса в 14 дней, «Перед продлением» — не чаще раза в 90
+            дней и не раньше чем через 30 дней после другого опроса.
+          </InfoNote>
+        )}
+
         {/* Болванка своей вкладки: у «Опросов» и «Статистики» разная раскладка. */}
-        {loading ? (
+        {loading || (tab === "surveys" && promptsLoading) ? (
           tab === "surveys" ? (
             <NpsSurveysSkeleton />
           ) : (
@@ -325,6 +385,7 @@ function NpsPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {SURVEY_TYPES.map((s) => {
               const st = npsStats(responses.filter((r) => r.survey_type === s.type));
+              const shows = promptStats.find((p) => p.survey_type === s.type);
               return (
                 <div key={s.type} className="rounded-lg border bg-background p-5">
                   <h3 className="text-base font-semibold">{s.label}</h3>
@@ -335,6 +396,17 @@ function NpsPage() {
                     <Stat label="Промо" value={st.promoters} cls="text-emerald-600" />
                     <Stat label="Критики" value={st.detractors} cls="text-destructive" />
                   </div>
+                  {s.inApp ? (
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      В приложении: показан клиентам — {shows?.shown ?? 0}, ответили —{" "}
+                      {shows?.answered ?? 0}, закрыли без ответа — {shows?.closed ?? 0}
+                    </p>
+                  ) : (
+                    <InfoNote variant="warning" className="mt-4">
+                      Не реализовано: в приложении не показывается — нужно продумать механику
+                      отправки. Ответы можно внести вручную («Добавить ответ»).
+                    </InfoNote>
+                  )}
                 </div>
               );
             })}
@@ -401,7 +473,7 @@ function NpsPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium">{r.client_name || "—"}</span>
+                          <span className="text-sm font-medium">{clientCell(r)}</span>
                           <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                             {r.score}
                           </span>
@@ -470,7 +542,7 @@ function NpsPage() {
                             <TableCell className="whitespace-nowrap text-muted-foreground">
                               {format(parseISO(r.created_at), "d MMM, HH:mm", { locale: ru })}
                             </TableCell>
-                            <TableCell className="font-medium">{r.client_name || "—"}</TableCell>
+                            <TableCell className="font-medium">{clientCell(r)}</TableCell>
                             <TableCell className="text-center font-bold">{r.score}</TableCell>
                             <TableCell>
                               <span
