@@ -502,6 +502,16 @@ GoTrue и видит только хук писем — в браузер он �
   для списков берут `photo_url`.
 - Телефон клиента — `phone` и необязательный второй `phone2` («Добавить
   ещё номер» под полем; ищется в поиске клиентов и шапке).
+- «Заявки» (2026-10-15, `routes/_authenticated/requests.tsx`, блок
+  «Обратная связь», раздел клуба `requests`, пакетные клубы) — заявки
+  клиентов из приложения на персональные занятия и диагностику
+  (`client_requests`); «Отработано» — в строке. Счётчик неотработанных —
+  `hooks/use-client-requests.ts` (`useClubRequestsBadge`): на «Клубе» в
+  рейке (`badge` у `RailItem`) и на пункте меню (`NavItem.badge`).
+  Диагностика в «Расписании» — тип `diagnostic` (`lib/schedule-activities.ts`,
+  только пакетные клубы — `activityKindsFor`; как персональное —
+  `isOneOnOne`), остаток в окне — `BalanceKind` из `lib/booking-coverage.ts`.
+  Подробно — STUDIO_FORMATS.md, журнал 2026-10-15.
 - `src/lib/confetti.ts` — `celebrateSale()`: конфетти после успешного внесения
   продажи (абонемент и прочая продажа); canvas-confetti грузится отдельным чанком.
 

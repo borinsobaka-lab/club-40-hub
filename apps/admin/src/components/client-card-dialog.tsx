@@ -174,6 +174,8 @@ type MembershipRow = {
   visits_left: number | null;
   /** Пакетный клуб: остаток персональных (у пакета тренировок — подарочные). */
   personal_left: number | null;
+  /** Пакетный клуб: остаток диагностик тела. */
+  diagnostics_left?: number | null;
   auto_renew: boolean | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
@@ -204,7 +206,7 @@ const SALE_COLUMNS =
   "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit)";
 
 const MEMBERSHIP_COLUMNS =
-  "id, status, source, started_at, ends_at, visits_left, personal_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind)";
+  "id, status, source, started_at, ends_at, visits_left, personal_left, diagnostics_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind)";
 
 /**
  * Карточка клиента — одна и та же, откуда бы её ни открыли (раздел
@@ -426,7 +428,8 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                     {" · "}
                     {isPackages
                       ? // Два баланса пакетного клуба — групповые и персональные.
-                        `групповых: ${active.visits_left ?? "безлимит"} · персональных: ${active.personal_left ?? 0}`
+                        `групповых: ${active.visits_left ?? "безлимит"} · персональных: ${active.personal_left ?? 0}` +
+                        (active.diagnostics_left ? ` · диагностик: ${active.diagnostics_left}` : "")
                       : active.visits_left == null
                         ? "посещения: безлимит"
                         : `осталось посещений: ${active.visits_left}`}
@@ -552,6 +555,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                 ends_at: active.ends_at,
                 visits_left: active.visits_left,
                 personal_left: active.personal_left,
+                diagnostics_left: active.diagnostics_left,
                 status: active.status,
                 freeze_days_used: active.freeze_days_used,
                 frozen_until: active.frozen_until,

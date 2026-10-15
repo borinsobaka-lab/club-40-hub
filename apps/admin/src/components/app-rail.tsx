@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useClubRequestsBadge } from "@/hooks/use-client-requests";
 import {
   ADMIN_SECTIONS,
   SECTIONS,
@@ -16,10 +17,13 @@ import { RailAccount } from "@/components/rail-account";
 function RailItem({
   section,
   active,
+  badge,
   onNavigate,
 }: {
   section: RailSection;
   active: boolean;
+  /** Счётчик на иконке («Клуб» — неотработанные заявки клиентов). */
+  badge?: number;
   onNavigate?: () => void;
 }) {
   const content = (
@@ -38,6 +42,14 @@ function RailItem({
         )}
       >
         <section.icon active={active} className="size-5" />
+        {!!badge && (
+          <span
+            aria-label={`Новых заявок: ${badge}`}
+            className="absolute -top-1.5 -right-2.5 min-w-4 rounded-full bg-brand px-1 text-center text-[10px] leading-4 font-semibold text-white tabular-nums"
+          >
+            {badge}
+          </span>
+        )}
       </span>
       <span
         className={cn(
@@ -89,6 +101,7 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const activeKey = railSectionKey(pathname);
   const access = useAdminAccess();
   const studioId = useActiveStudioId();
+  const openRequests = useClubRequestsBadge();
 
   // Разделы, закрытые сотруднику в «Доступах», не показываем; заготовки без
   // url — как есть. «Клуб» виден, если открыт раздел рейки, — даже когда
@@ -114,6 +127,7 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
             key={section.key}
             section={section}
             active={section.key === activeKey}
+            badge={section.key === "club" ? openRequests : undefined}
             onNavigate={onNavigate}
           />
         ))

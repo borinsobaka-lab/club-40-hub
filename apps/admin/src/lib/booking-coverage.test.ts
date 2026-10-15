@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   attendanceBlock,
   balanceFor,
+  entryBalance,
   isCharged,
   tbilisiDate,
   type BalanceRow,
@@ -20,7 +21,7 @@ const row = (r: Partial<BalanceRow>): BalanceRow => ({
 describe("остаток на дату занятия", () => {
   test("групповые — с пакета тренировок, вместе со ждущим продлением", () => {
     expect(
-      balanceFor([row({}), row({ status: "pending", visits_left: 8 })], false, "2026-10-20"),
+      balanceFor([row({}), row({ status: "pending", visits_left: 8 })], "visits", "2026-10-20"),
     ).toBe(10);
   });
 
@@ -29,8 +30,21 @@ describe("остаток на дату занятия", () => {
       row({ visits_left: 3, personal_left: 1 }),
       row({ balance_kind: "personal", visits_left: 0, personal_left: 5 }),
     ];
-    expect(balanceFor(rows, false, "2026-10-20")).toBe(3);
-    expect(balanceFor(rows, true, "2026-10-20")).toBe(6);
+    expect(balanceFor(rows, "visits", "2026-10-20")).toBe(3);
+    expect(balanceFor(rows, "personal", "2026-10-20")).toBe(6);
+  });
+
+  test("диагностики — с любого абонемента, где они есть", () => {
+    const rows = [
+      row({ visits_left: 3, diagnostics_left: 1 }),
+      row({ balance_kind: "personal", visits_left: 0, personal_left: 5, diagnostics_left: 2 }),
+      row({ status: "pending", diagnostics_left: 3 }),
+    ];
+    expect(balanceFor(rows, "diagnostic", "2026-10-20")).toBe(6);
+    expect(balanceFor([row({})], "diagnostic", "2026-10-20")).toBe(0);
+    expect(entryBalance("diagnostic")).toBe("diagnostic");
+    expect(entryBalance("personal")).toBe("personal");
+    expect(entryBalance("group")).toBe("visits");
   });
 
   test("истёкший к дате занятия, заменённый и с возвратом не считаются", () => {
@@ -39,14 +53,14 @@ describe("остаток на дату занятия", () => {
       row({ status: "replaced" }),
       row({ status: "refunded" }),
     ];
-    expect(balanceFor(rows, false, "2026-10-20")).toBe(0);
+    expect(balanceFor(rows, "visits", "2026-10-20")).toBe(0);
     // Последний день срока — ещё действует.
-    expect(balanceFor([row({ ends_at: "2026-10-20" })], false, "2026-10-20")).toBe(2);
+    expect(balanceFor([row({ ends_at: "2026-10-20" })], "visits", "2026-10-20")).toBe(2);
   });
 
   test("без счётчика — безлимит; отрицательный остаток — ноль", () => {
-    expect(balanceFor([row({ visits_left: null })], false, "2026-10-20")).toBe(Infinity);
-    expect(balanceFor([row({ visits_left: -1 })], false, "2026-10-20")).toBe(0);
+    expect(balanceFor([row({ visits_left: null })], "visits", "2026-10-20")).toBe(Infinity);
+    expect(balanceFor([row({ visits_left: -1 })], "visits", "2026-10-20")).toBe(0);
   });
 
   test("дата занятия — по Тбилиси (UTC+4): 21:30 UTC — уже следующий день", () => {
