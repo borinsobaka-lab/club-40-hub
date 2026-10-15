@@ -34,7 +34,7 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   перед коммитом
 - `bun run lint`, `bun run test`, `bun run build` — то же по обоим
 - `bun run test:db` — тесты базы: мигратора (`TEST_DATABASE_URL` — пустая
-  база) и логики пакетных клубов `db/packages.test.ts`
+  база), рассылки пушей `db/push.test.ts` и логики пакетных клубов `db/packages.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -409,6 +409,27 @@ AUTH_SETUP.md.
   — RPC `replace_sale_installments` (security invoker: невнесённые платежи
   заменяются, внесённые не трогаются, сумма графика не меньше
   `sales.total_amount`), `sales_remaining_installments_check` — `>= 0`.
+  **Пуш-уведомления — настоящая рассылка** (решение владельца 2026-10-15):
+  `db/migrations/2026-10-15_push_delivery.sql` — стандарт Web Push с ключами
+  VAPID, без сторонних сервисов. Ключи — `push_vapid_keys` (создаёт сервер
+  админки при первом запуске, только service_role; открытый ключ — RPC
+  `push_public_key`; не менять — на нём все подписки); устройства —
+  `push_subscriptions` (строка на телефон, язык приложения на нём `locale`
+  — на нём и придёт пуш; пишут только RPC `register_push_subscription` /
+  `unregister_push_subscription`, адрес — только служб браузеров
+  `push_endpoint_allowed`, до 10 устройств на учётную запись); кому ушло и
+  прочитано — `push_recipients` (лента «Уведомления» приложения: RPC
+  `my_push_inbox`, `push_mark_read`); очередь доставки — `push_deliveries`
+  (RPC `push_start_due` → `push_claim_deliveries` → `push_finish_deliveries`
+  / `push_finalize`, только service_role; подтверждение показа и нажатия с
+  телефона — `push_delivery_ack`, anon по id доставки). У
+  `push_notifications` — статус `sending`, счётчики `recipients_count`,
+  `devices_count`, `failed_count`, `finished_at`; из админки — только
+  черновик или запланированное («Отправить сейчас» = запланировано на
+  сейчас), отправленное не правится (триггер `push_notifications_guard`);
+  охват для формы — `push_audience_stats`. Тесты — `db/push.test.ts`.
+  Отправитель — apps/admin (`src/lib/push/`), приём — apps/client
+  (`public/sw.js`, `src/lib/push.ts`).
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

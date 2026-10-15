@@ -1,7 +1,12 @@
 import { errorResponse } from "./lib/error-page";
+import { startPushWorker } from "./lib/push/push-worker.server";
 
 // Серверная точка входа (vite.config: tanstackStart({ server: { entry: "server" } })).
 // Обёртка ловит то, что не дошло до errorMiddleware в start.ts.
+
+// Рассылка пуш-уведомлений — фоновый цикл этого же процесса (без сервис-ключа
+// Supabase не запускается).
+startPushWorker();
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;

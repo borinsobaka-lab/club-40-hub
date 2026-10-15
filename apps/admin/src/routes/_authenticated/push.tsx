@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Pencil, Trash2, Send } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Send, Copy } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckboxOption, FormField } from "@/components/ui/form-field";
+import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -43,6 +44,17 @@ import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/componen
 import { useContentTranslations } from "@/hooks/use-content-translations";
 import type { ContentTranslations } from "@/lib/content-i18n";
 import { splitStudioIds, useDefaultStudioIds, useMyStudioIds } from "@/hooks/use-app-studios";
+import { getPushServiceStatus, kickPushQueue } from "@/lib/push.functions";
+
+/**
+ * Пуш-уведомления клиентам в мобильное приложение (решение владельца
+ * 2026-10-15: настоящая рассылка). Форма сохраняет уведомление
+ * запланированным (сейчас или на дату) — отправляет сервер админки
+ * (lib/push/push-worker.server.ts), статус и счётчики ведёт он же; схема —
+ * db/migrations/2026-10-15_push_delivery.sql. Пуш приходит клиенту на языке
+ * приложения на его телефоне; кто не включил уведомления — увидит его в
+ * разделе «Уведомления» приложения.
+ */
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -50,6 +62,13 @@ const TIPS = {
   segments:
     "ЧК — есть действующий абонемент, БЧК — был, но закончился, ПЧК — ещё ни разу не покупал.",
   studios: "Клиентам каких клубов уйдёт уведомление.",
+  recipients:
+    "Клиентов в выборке, у которых есть приложение, и сколько у них телефонов с включёнными уведомлениями. Уведомление попадает всем в раздел «Уведомления» приложения, пуш — на эти телефоны.",
+  sent: "На сколько телефонов пуш принят службой доставки (Apple, Google). «Не дошло» — телефон отклонил: приложение удалено или уведомления выключены.",
+  delivered: "Сколько телефонов показали пуш (подтверждение от приложения).",
+  read: "Сколько клиентов открыли уведомление: нажали на пуш или открыли в разделе «Уведомления».",
+  actionUrl:
+    "Раздел приложения — /schedule (расписание), /memberships (абонементы), /club (студия) — или ссылка https://…. По нажатию на пуш клиент попадёт туда, в разделе «Уведомления» — кнопка «Перейти».",
 };
 
 export const Route = createFileRoute("/_authenticated/push")({
@@ -59,7 +78,7 @@ export const Route = createFileRoute("/_authenticated/push")({
 });
 
 type Segment = ClubStatus | "all";
-type PushStatus = "draft" | "scheduled" | "sent";
+type PushStatus = "draft" | "scheduled" | "sending" | "sent";
 
 type PushNotification = {
   id: string;
@@ -74,7 +93,14 @@ type PushNotification = {
   scheduled_at: string | null;
   sent_at: string | null;
   status: PushStatus;
+  /** Клиентов в выборке с приложением. */
+  recipients_count: number;
+  /** Их телефонов с включёнными уведомлениями. */
+  devices_count: number;
+  /** Телефонов, чья служба доставки приняла пуш. */
   sent_count: number;
+  /** Не принято службой доставки. */
+  failed_count: number;
   delivered_count: number;
   read_count: number;
   created_at: string;
@@ -83,8 +109,29 @@ type PushNotification = {
 const STATUS_LABEL: Record<PushStatus, string> = {
   draft: "Черновик",
   scheduled: "Запланировано",
+  sending: "Отправляется",
   sent: "Отправлено",
 };
+
+const STATUS_VARIANT: Record<PushStatus, "default" | "secondary" | "outline"> = {
+  draft: "outline",
+  scheduled: "secondary",
+  sending: "secondary",
+  sent: "default",
+};
+
+/** Ушло ли уведомление в рассылку (тогда его не правят, а копируют). */
+const isSent = (p: PushNotification) => p.status === "sending" || p.status === "sent";
+
+/** Рассылка идёт или вот-вот начнётся — список обновляется сам. */
+function isInFlight(p: PushNotification) {
+  if (p.status === "sending") return true;
+  return (
+    p.status === "scheduled" &&
+    !!p.scheduled_at &&
+    new Date(p.scheduled_at).getTime() <= Date.now() + 30_000
+  );
+}
 
 function renderSegments(segments: Segment[]) {
   if (!segments || segments.length === 0 || segments.includes("all")) {
@@ -101,11 +148,30 @@ function renderSegments(segments: Segment[]) {
   );
 }
 
+/** Число со второй строкой-пояснением (только у отправленных). */
+function StatCell({ p, value, note }: { p: PushNotification; value: number; note?: string }) {
+  if (!isSent(p)) return <span className="text-muted-foreground">—</span>;
+  return (
+    <div className="tabular-nums">
+      {value}
+      {note ? <div className="text-xs text-muted-foreground">{note}</div> : null}
+    </div>
+  );
+}
+
 function PushPage() {
   const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PushNotification | null>(null);
+  const [template, setTemplate] = useState<PushNotification | null>(null);
+
+  const serviceStatus = useServerFn(getPushServiceStatus);
+  const { data: service } = useQuery({
+    queryKey: ["push-service-status"],
+    queryFn: () => serviceStatus(),
+    staleTime: 5 * 60_000,
+  });
 
   // Уведомления, где есть хоть один мой клуб (чужие RLS и не отдаст).
   const myStudioIds = useMyStudioIds();
@@ -120,6 +186,8 @@ function PushPage() {
           .order("created_at", { ascending: false }),
       ),
     enabled: !!myStudioIds,
+    // Пока идёт рассылка — счётчики и статус обновляются на глазах.
+    refetchInterval: (query) => (query.state.data?.some(isInFlight) ? 4000 : false),
     meta: { errorMessage: "Не удалось загрузить уведомления" },
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["push_notifications"] });
@@ -135,7 +203,9 @@ function PushPage() {
     if (
       !(await confirm({
         title: "Удалить уведомление?",
-        description: `«${p.title}» будет удалено без возможности восстановления.`,
+        description: isSent(p)
+          ? `«${p.title}» пропадёт и из раздела «Уведомления» в приложении клиентов. Пуши, которые уже пришли на телефоны, останутся.`
+          : `«${p.title}» будет удалено без возможности восстановления.`,
       }))
     )
       return;
@@ -150,6 +220,13 @@ function PushPage() {
 
   const openEdit = (p: PushNotification | null) => {
     setEditing(p);
+    setTemplate(null);
+    setOpen(true);
+  };
+
+  const openCopy = (p: PushNotification) => {
+    setEditing(null);
+    setTemplate(p);
     setOpen(true);
   };
 
@@ -166,6 +243,12 @@ function PushPage() {
       }
     >
       <div className="space-y-3">
+        {service && !service.ready ? (
+          <InfoNote variant="warning">
+            Рассылка не настроена на сервере: не задан сервис-ключ Supabase
+            (APP_SUPABASE_SERVICE_KEY). Уведомления сохраняются, но не отправляются.
+          </InfoNote>
+        ) : null}
         <div className="rounded-lg border bg-background">
           <Table>
             <TableHeader>
@@ -177,17 +260,18 @@ function PushPage() {
                 <TableHead tip={TIPS.segments}>Сегмент</TableHead>
                 <TableHead>Отправка</TableHead>
                 <TableHead>Статус</TableHead>
-                <TableHead>Отправлено</TableHead>
-                <TableHead>Доставлено</TableHead>
-                <TableHead>Прочитано</TableHead>
+                <TableHead tip={TIPS.recipients}>Получатели</TableHead>
+                <TableHead tip={TIPS.sent}>Отправлено</TableHead>
+                <TableHead tip={TIPS.delivered}>Доставлено</TableHead>
+                <TableHead tip={TIPS.read}>Прочитано</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableSkeletonRows columns={8} />
+                <TableSkeletonRows columns={9} />
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                     Пока нет уведомлений. Нажмите «Добавить уведомление».
                   </TableCell>
                 </TableRow>
@@ -196,7 +280,9 @@ function PushPage() {
                   <RowContextMenu
                     key={p.id}
                     actions={[
-                      { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
+                      isSent(p)
+                        ? { label: "Создать копию", icon: Copy, onSelect: () => openCopy(p) }
+                        : { label: "Редактировать", icon: Pencil, onSelect: () => openEdit(p) },
                       {
                         label: "Удалить",
                         icon: Trash2,
@@ -217,28 +303,38 @@ function PushPage() {
                       </TableCell>
                       <TableCell>{renderSegments(p.segments)}</TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {p.status === "sent"
+                        {isSent(p)
                           ? formatDateTime(p.sent_at)
                           : p.status === "scheduled"
                             ? formatDateTime(p.scheduled_at)
                             : "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            p.status === "sent"
-                              ? "default"
-                              : p.status === "scheduled"
-                                ? "secondary"
-                                : "outline"
-                          }
-                        >
+                        <Badge variant={STATUS_VARIANT[p.status]} className="gap-1">
+                          {p.status === "sending" ? <Loader2 className="animate-spin" /> : null}
                           {STATUS_LABEL[p.status]}
                         </Badge>
                       </TableCell>
-                      <TableCell className="tabular-nums">{p.sent_count}</TableCell>
-                      <TableCell className="tabular-nums">{p.delivered_count}</TableCell>
-                      <TableCell className="tabular-nums">{p.read_count}</TableCell>
+                      <TableCell>
+                        <StatCell
+                          p={p}
+                          value={p.recipients_count}
+                          note={`телефонов: ${p.devices_count}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <StatCell
+                          p={p}
+                          value={p.sent_count}
+                          note={p.failed_count > 0 ? `не дошло: ${p.failed_count}` : undefined}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <StatCell p={p} value={p.delivered_count} />
+                      </TableCell>
+                      <TableCell>
+                        <StatCell p={p} value={p.read_count} />
+                      </TableCell>
                     </TableRow>
                   </RowContextMenu>
                 ))
@@ -253,9 +349,10 @@ function PushPage() {
         <DialogContent className="max-w-xl">
           {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
           <PushForm
-            key={editing?.id ?? "new"}
+            key={editing?.id ?? (template ? `copy-${template.id}` : "new")}
             onOpenChange={setOpen}
             item={editing}
+            template={template}
             onSaved={reload}
           />
         </DialogContent>
@@ -267,26 +364,70 @@ function PushPage() {
 
 const ALL_SEGMENTS: ClubStatus[] = ["chk", "bchk", "pchk"];
 
+type AudienceStats = { clients: number; app_users: number; push_users: number };
+
+/**
+ * Охват: сколько клиентов в выборке, у скольких приложение и включены
+ * уведомления. Считается по своим клубам (RPC push_audience_stats).
+ */
+function useAudience(studioIds: string[], segments: Segment[]) {
+  return useQuery({
+    queryKey: ["push-audience", studioIds.join(","), segments.join(",")],
+    queryFn: async () => {
+      const rows = await unwrap<AudienceStats[]>(
+        supabase.rpc("push_audience_stats", { p_studio_ids: studioIds, p_segments: segments }),
+      );
+      return rows[0] ?? { clients: 0, app_users: 0, push_users: 0 };
+    },
+    enabled: studioIds.length > 0 && segments.length > 0,
+    staleTime: 30_000,
+    meta: { errorMessage: "Не удалось посчитать получателей" },
+  });
+}
+
+function AudienceNote({ stats, loading }: { stats?: AudienceStats; loading: boolean }) {
+  if (loading || !stats) {
+    return <InfoNote>Считаем получателей…</InfoNote>;
+  }
+  return (
+    <InfoNote>
+      В выборке клиентов: <b className="text-foreground">{stats.clients}</b>, в приложении —{" "}
+      <b className="text-foreground">{stats.app_users}</b>, уведомления включены у{" "}
+      <b className="text-foreground">{stats.push_users}</b>. Пуш придёт на их телефоны, остальные в
+      приложении увидят уведомление в разделе «Уведомления».
+    </InfoNote>
+  );
+}
+
 function PushForm({
   onOpenChange,
   item,
+  template,
   onSaved,
 }: {
   onOpenChange: (v: boolean) => void;
+  /** Редактируемое (черновик или запланированное). */
   item: PushNotification | null;
+  /** «Создать копию» отправленного: новое уведомление с его текстом. */
+  template: PushNotification | null;
   onSaved: () => void;
 }) {
-  const initialSegments = item?.segments ?? ["all"];
+  const source = item ?? template;
+  const initialSegments = source?.segments ?? ["all"];
   const defaultStudioIds = useDefaultStudioIds();
-  const split = splitStudioIds(item?.studio_ids ?? [], useMyStudioIds());
-  const [studioIds, setStudioIds] = useState(item ? split.mine : defaultStudioIds);
-  // Запланированное (но не отправленное) открываем в режиме планирования.
-  const scheduled = item?.scheduled_at && item.status !== "sent" ? item.scheduled_at : null;
+  const split = splitStudioIds(source?.studio_ids ?? [], useMyStudioIds());
+  // У копии — только свои клубы: чужие в новое уведомление не выбрать.
+  const locked = item ? split.locked : [];
+  const [studioIds, setStudioIds] = useState(source ? split.mine : defaultStudioIds);
+  // Запланированное открываем в режиме планирования.
+  const scheduled = item?.status === "scheduled" && item.scheduled_at ? item.scheduled_at : null;
+  const { confirm, confirmDialog } = useConfirm();
+  const kick = useServerFn(kickPushQueue);
 
-  const [title, setTitle] = useState(item?.title ?? "");
-  const [message, setMessage] = useState(item?.message ?? "");
-  const [actionUrl, setActionUrl] = useState(item?.action_url ?? "");
-  const tr = useContentTranslations(item?.translations);
+  const [title, setTitle] = useState(source?.title ?? "");
+  const [message, setMessage] = useState(source?.message ?? "");
+  const [actionUrl, setActionUrl] = useState(source?.action_url ?? "");
+  const tr = useContentTranslations(source?.translations);
   const [allSelected, setAllSelected] = useState(initialSegments.includes("all"));
   const [segments, setSegments] = useState<ClubStatus[]>(() =>
     initialSegments.includes("all")
@@ -298,6 +439,9 @@ function PushForm({
     scheduled ? toDateTimeLocalValue(new Date(scheduled)) : "",
   );
   const [saving, setSaving] = useState(false);
+
+  const audienceSegments: Segment[] = allSelected ? ["all"] : segments;
+  const audience = useAudience(studioIds, audienceSegments);
 
   const toggleSegment = (s: ClubStatus, checked: boolean) => {
     setSegments((prev) =>
@@ -311,7 +455,7 @@ function PushForm({
       toast.error("Укажите заголовок");
       return;
     }
-    if (studioIds.length === 0 && split.locked.length === 0) {
+    if (studioIds.length === 0 && locked.length === 0) {
       toast.error("Выберите хотя бы один клуб");
       return;
     }
@@ -323,21 +467,38 @@ function PushForm({
       toast.error("Укажите дату и время отправки");
       return;
     }
-
-    // Реальной рассылки пока нет: «Отправить» только помечает уведомление
-    // отправленным, «Запланировать» — запланированным.
     const sendNow = sendMode === "now";
-    const status: PushStatus = sendNow ? "sent" : "scheduled";
+    const when = sendNow ? new Date() : new Date(scheduledAt);
+    if (!sendNow && when.getTime() < Date.now() - 60_000) {
+      toast.error("Время отправки уже прошло", {
+        description: "Выберите время в будущем или «Отправить сейчас».",
+      });
+      return;
+    }
+    // Пуш не отозвать — перед отправкой сейчас переспрашиваем.
+    if (sendNow) {
+      const reach = audience.data
+        ? ` Пуш получат ${audience.data.push_users} из ${audience.data.app_users} клиентов в приложении.`
+        : "";
+      const ok = await confirm({
+        title: "Отправить уведомление сейчас?",
+        description: `«${title.trim()}» уйдёт клиентам выбранных клубов.${reach} Отменить отправку будет нельзя.`,
+        confirmLabel: "Отправить",
+        destructive: false,
+      });
+      if (!ok) return;
+    }
+
+    // Отправляет сервер: здесь — запланированное (сейчас или на дату).
     const payload = {
       title: title.trim(),
       message: message.trim() || null,
       translations: tr.cleaned(),
-      segments: allSelected ? ["all"] : segments,
-      studio_ids: [...studioIds, ...split.locked],
+      segments: audienceSegments,
+      studio_ids: [...studioIds, ...locked],
       action_url: actionUrl.trim() || null,
-      scheduled_at: sendNow ? null : new Date(scheduledAt).toISOString(),
-      sent_at: sendNow ? new Date().toISOString() : null,
-      status,
+      scheduled_at: when.toISOString(),
+      status: "scheduled" as const,
       updated_at: new Date().toISOString(),
     };
 
@@ -350,7 +511,11 @@ function PushForm({
         toast.error("Ошибка сохранения: " + error.message);
         return;
       }
-      toast.success(sendNow ? "Уведомление отправлено" : "Уведомление запланировано");
+      if (sendNow) {
+        // Не ждать очередного прохода рассылки; не вышло — уйдёт в течение 15 секунд.
+        kick().catch(() => {});
+      }
+      toast.success(sendNow ? "Уведомление отправляется" : "Уведомление запланировано");
       onOpenChange(false);
       onSaved();
     } finally {
@@ -361,9 +526,16 @@ function PushForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{item ? "Редактировать уведомление" : "Новое пуш-уведомление"}</DialogTitle>
+        <DialogTitle>
+          {item
+            ? "Редактировать уведомление"
+            : template
+              ? "Копия уведомления"
+              : "Новое пуш-уведомление"}
+        </DialogTitle>
         <DialogDescription>
-          Уведомление будет отправлено клиентам выбранных клубов в мобильное приложение.
+          Уведомление будет отправлено клиентам выбранных клубов в мобильное приложение — на языке
+          приложения на телефоне клиента.
         </DialogDescription>
         <ContentLangSwitch tr={tr} />
       </DialogHeader>
@@ -378,36 +550,34 @@ function PushForm({
             >
               <Input
                 {...tr.input("title", title, setTitle, "Например: Скидка 20% на абонементы")}
+                maxLength={150}
               />
             </FormField>
 
             <FormField
               label={<ContentLangLabel lang={tr.lang}>Сообщение</ContentLangLabel>}
-              tip="На экране блокировки видно 2–3 строки — главное пишите в начале."
+              tip="На экране блокировки видно 2–3 строки — главное пишите в начале. В разделе «Уведомления» приложения текст виден целиком."
               optional
             >
               <Textarea
                 {...tr.input("message", message, setMessage, "Текст пуш-уведомления")}
                 rows={4}
+                maxLength={1000}
               />
             </FormField>
 
-            <FormField
-              label="Ссылка перехода"
-              optional
-              hint="Если указана, в мобильном приложении в уведомлении появится кнопка «Перейти»."
-            >
+            <FormField label="Ссылка перехода" optional tip={TIPS.actionUrl}>
               <Input
                 value={actionUrl}
                 onChange={(e) => setActionUrl(e.target.value)}
-                placeholder="https://… или внутренний раздел"
+                placeholder="/schedule или https://…"
               />
             </FormField>
 
             <AppStudiosField
               value={studioIds}
               onChange={setStudioIds}
-              locked={split.locked}
+              locked={locked}
               tip={TIPS.studios}
             />
 
@@ -431,6 +601,10 @@ function PushForm({
               </div>
             </FormField>
 
+            {studioIds.length > 0 && audienceSegments.length > 0 ? (
+              <AudienceNote stats={audience.data} loading={audience.isPending} />
+            ) : null}
+
             <FormField label="Время отправки" htmlFor={null} required>
               <RadioGroup
                 value={sendMode}
@@ -449,7 +623,11 @@ function PushForm({
             </FormField>
 
             {sendMode === "schedule" && (
-              <FormField label="Дата и время отправки" required>
+              <FormField
+                label="Дата и время отправки"
+                required
+                hint="По времени вашего компьютера. Уйдёт в течение 15 секунд после наступления."
+              >
                 <Input
                   type="datetime-local"
                   value={scheduledAt}
@@ -469,6 +647,7 @@ function PushForm({
           </Button>
         </DialogFooter>
       </DialogForm>
+      {confirmDialog}
     </>
   );
 }
