@@ -61,8 +61,8 @@ describe.skipIf(!url)("пуш-уведомления (база)", () => {
     return id as string;
   }
 
-  async function studio(tx: Tx): Promise<string> {
-    const [{ id }] = await tx`insert into studios (name, format) values ('Тест', 'packages') returning id`;
+  async function studio(tx: Tx, format: "packages" | "subscription" = "packages"): Promise<string> {
+    const [{ id }] = await tx`insert into studios (name, format) values ('Тест', ${format}) returning id`;
     return id as string;
   }
 
@@ -104,9 +104,15 @@ describe.skipIf(!url)("пуш-уведомления (база)", () => {
     return id;
   }
 
-  async function subscribe(tx: Tx, userId: string, endpoint: string, locale = "ru") {
+  async function subscribe(
+    tx: Tx,
+    userId: string,
+    endpoint: string,
+    locale = "ru",
+    format: "packages" | "subscription" = "packages",
+  ) {
     await as(tx, userId);
-    await tx`select register_push_subscription(${endpoint}, ${P256DH}, ${AUTH}, ${locale}, 'packages', 'test')`;
+    await tx`select register_push_subscription(${endpoint}, ${P256DH}, ${AUTH}, ${locale}, ${format}, 'test')`;
     await asServer(tx);
   }
 
@@ -332,6 +338,74 @@ describe.skipIf(!url)("пуш-уведомления (база)", () => {
       await asServer(tx);
       const [{ read_count }] = await tx`select read_count from push_notifications where id = ${onlyChk}`;
       expect(read_count).toBe(1);
+    });
+  });
+
+  test("два приложения: пуш и лента — своего формата клубов", async () => {
+    await scenario(async (tx) => {
+      const pkg = await studio(tx, "packages");
+      const sub = await studio(tx, "subscription");
+      // Один человек — карточки в клубах обоих форматов, оба приложения на телефоне.
+      const a = await client(tx, pkg, { active: true });
+      await tx`
+        insert into clients (studio_id, full_name, email, user_id)
+        values (${sub}, 'Клиент', ${`b-${crypto.randomUUID()}@example.com`}, ${a.user})`;
+      const ePkg = fcm();
+      const eSub = fcm();
+      await subscribe(tx, a.user!, ePkg, "ru", "packages");
+      await subscribe(tx, a.user!, eSub, "ru", "subscription");
+
+      const nPkg = await scheduled(tx, [pkg]);
+      const nSub = await scheduled(tx, [sub]);
+      const nBoth = await scheduled(tx, [pkg, sub]);
+      await tx`select push_start_due()`;
+      const devices = await tx`
+        select d.notification_id, s.endpoint from push_deliveries d
+          join push_subscriptions s on s.id = d.subscription_id`;
+      const to = (n: string) =>
+        devices
+          .filter((d: { notification_id: string }) => d.notification_id === n)
+          .map((d: { endpoint: string }) => d.endpoint)
+          .sort();
+      expect(to(nPkg)).toEqual([ePkg]);
+      expect(to(nSub)).toEqual([eSub]);
+      expect(to(nBoth)).toEqual([ePkg, eSub].sort());
+
+      // Триггер пакетного формата — только на телефон Lady Stretch.
+      const [{ sent }] = await tx`
+        select push_trigger_send(t, ${a.user}::uuid, ${pkg}::uuid, 'test-ref', '{}'::jsonb) as sent
+          from push_triggers t where t.format = 'packages' and t.key = 'birthday'`;
+      expect(sent).toBe(true);
+      const [{ endpoints }] = await tx`
+        select array_agg(s.endpoint) as endpoints from push_deliveries d
+          join push_subscriptions s on s.id = d.subscription_id
+          join push_notifications n on n.id = d.notification_id
+         where n.trigger_key = 'birthday'`;
+      expect(endpoints).toEqual([ePkg]);
+
+      // Лента: у каждого приложения — свои; без формата — все (прежнее приложение).
+      await as(tx, a.user!);
+      const ids = async (format: string | null) =>
+        (await tx`select notification_id from my_push_inbox(50, ${format})`)
+          .map((r: { notification_id: string }) => r.notification_id)
+          .sort();
+      expect((await ids("subscription")).length).toBe(2);
+      expect(await ids("subscription")).toEqual([nSub, nBoth].sort());
+      expect((await ids("packages")).length).toBe(3);
+      expect((await ids(null)).length).toBe(4);
+      // «Прочитать все» в Base40 не трогает ленту Lady Stretch.
+      expect((await tx`select push_mark_read(null, 'subscription')`)[0].push_mark_read).toBe(2);
+      const unread = await tx`select notification_id from my_push_inbox(50, 'packages') where read_at is null`;
+      expect(unread.length).toBe(2);
+      await asServer(tx);
+
+      // Охват формы: телефон приложения формата клуба.
+      await tx`delete from push_subscriptions where endpoint = ${ePkg}`;
+      const admin = await staff(tx, pkg);
+      await as(tx, admin);
+      const [stats] = await tx`select * from push_audience_stats(${arr([pkg])}::uuid[], ${arr(["all"])}::text[])`;
+      expect(stats).toEqual({ clients: 1, app_users: 1, push_users: 0 });
+      await asServer(tx);
     });
   });
 

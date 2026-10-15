@@ -499,7 +499,9 @@ function PushForm({
       segments: audienceSegments,
       studio_ids: [...studioIds, ...locked],
       action_url: actionUrl.trim() || null,
-      scheduled_at: when.toISOString(),
+      // «Сейчас» — время ставит база (now()): часы компьютера могут спешить,
+      // и рассылка ждала бы их «сейчас».
+      scheduled_at: sendNow ? null : when.toISOString(),
       status: "scheduled" as const,
       updated_at: new Date().toISOString(),
     };
@@ -573,6 +575,7 @@ function PushForm({
                 value={actionUrl}
                 onChange={(e) => setActionUrl(e.target.value)}
                 placeholder="/schedule или https://…"
+                maxLength={1000}
               />
             </FormField>
 

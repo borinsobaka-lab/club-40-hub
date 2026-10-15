@@ -11,6 +11,7 @@ import {
 } from "@solar-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 import { untypedDb } from "@/lib/untyped-db";
+import { fetchMyDiagnosticEntryIds } from "@/lib/home-queries";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
@@ -25,6 +26,7 @@ import { msg, useLocalize, useT, type ContentTranslations, type Translator } fro
 // ---- Types ----
 
 type BookingRow = {
+  entry_id: string | null;
   starts_at: string;
   duration_min: number | null;
   calories: number | null;
@@ -366,10 +368,12 @@ export function StatsSection() {
     queryFn: async () => {
       // Только посещения (attended): отменённые, пропуски и записи без отметки
       // администратора в статистику — и в серию недель — не идут.
-      const [logs, mvRes, profile, compareRes] = await Promise.all([
+      const [logs, mvRes, profile, compareRes, diagnostics] = await Promise.all([
         (supabase as unknown as { from: (t: string) => any })
           .from("bookings_log")
-          .select("starts_at,duration_min,calories,workout_id,workout_name,workout_type,studio_id")
+          .select(
+            "entry_id,starts_at,duration_min,calories,workout_id,workout_name,workout_type,studio_id",
+          )
           .eq("user_id", userId)
           .eq("status", "attended")
           .order("starts_at", { ascending: false })
@@ -382,11 +386,15 @@ export function StatsSection() {
         IS_PACKAGES
           ? untypedDb.rpc("my_studio_visit_stats")
           : Promise.resolve({ data: null, error: null }),
+        fetchMyDiagnosticEntryIds(userId!),
       ]);
       // Без истории статистика пустая — это ошибка, а не ноль тренировок.
       // Матвью и профиль необязательны: без них карточки работают.
       if (logs.error) throw logs.error;
-      const rows = (logs.data ?? []) as BookingRow[];
+      // Диагностика тела — не тренировка: в статистику не идёт.
+      const rows = ((logs.data ?? []) as BookingRow[]).filter(
+        (r) => !r.entry_id || !diagnostics.has(r.entry_id),
+      );
       // Пакетное: цвета тренировок — для полоски «Тренировки» (как в расписании),
       // имена с переводами — для подписей под ней.
       let workouts: WorkoutInfo[] = [];

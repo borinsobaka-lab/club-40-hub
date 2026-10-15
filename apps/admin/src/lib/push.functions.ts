@@ -1,7 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireStaff } from "@/integrations/supabase/auth-middleware";
-import { pushWorkerReady, runPushQueue, startPushWorker } from "@/lib/push/push-worker.server";
+import {
+  pushWorkerEnabled,
+  pushWorkerReady,
+  runPushQueue,
+  startPushWorker,
+} from "@/lib/push/push-worker.server";
 
 /**
  * Пуш-уведомления (раздел «Мобильное приложение» → «Пуш-уведомления»).
@@ -14,6 +19,8 @@ import { pushWorkerReady, runPushQueue, startPushWorker } from "@/lib/push/push-
 export const kickPushQueue = createServerFn({ method: "POST" })
   .middleware([requireStaff])
   .handler(async () => {
+    // PUSH_WORKER=off — рассылает другой сервер: он заберёт уведомление сам.
+    if (!pushWorkerEnabled()) return { ok: true };
     startPushWorker();
     // Не ждём: рассылка на тысячи устройств идёт в фоне, страница следит за
     // статусом сама.

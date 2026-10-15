@@ -110,7 +110,7 @@ export function visitHistoryQuery(userId: string | null) {
 
       const workoutIds = [...new Set(rows.flatMap((r) => (r.workout_id ? [r.workout_id] : [])))];
       const entryIds = [...new Set(rows.flatMap((r) => (r.entry_id ? [r.entry_id] : [])))];
-      const [workouts, trainers] = await Promise.all([
+      const [workouts, trainers, diagnostics] = await Promise.all([
         fetchByIds(workoutIds, async (part) => {
           const res = await untypedDb
             .from("workouts")
@@ -125,6 +125,7 @@ export function visitHistoryQuery(userId: string | null) {
             .in("entry_id", part);
           return (res.data as { entry_id: string; trainer: VisitTrainer | null }[] | null) ?? [];
         }),
+        userId ? fetchMyDiagnosticEntryIds(userId) : Promise.resolve(new Set<string>()),
       ]);
       const workoutById = new Map(workouts.map((w) => [w.id, w]));
       const trainersByEntry = new Map<string, VisitTrainer[]>();
@@ -138,10 +139,33 @@ export function visitHistoryQuery(userId: string | null) {
         ...r,
         workout: (workout_id && workoutById.get(workout_id)) || null,
         trainers: (r.entry_id && trainersByEntry.get(r.entry_id)) || [],
+        diagnostic: !!r.entry_id && diagnostics.has(r.entry_id),
       }));
     },
     enabled: !!userId,
   });
+}
+
+/**
+ * Занятия-диагностики тела, на которые клиент записан (пакетное, 2026-10-15):
+ * в журнале bookings_log вида занятия нет, а диагностика — не тренировка
+ * (история посещений подписывает её, статистика не считает). Свои
+ * диагностики клиенту видны (RLS «… own diagnostic»); сбой или база без
+ * миграции — пусто.
+ */
+export async function fetchMyDiagnosticEntryIds(userId: string): Promise<Set<string>> {
+  if (!IS_PACKAGES) return new Set();
+  try {
+    const { data, error } = await untypedDb
+      .from("schedule_bookings")
+      .select("entry_id, entry:schedule_entries!inner(kind)")
+      .eq("user_id", userId)
+      .eq("entry.kind", "diagnostic");
+    if (error || !data) return new Set();
+    return new Set((data as { entry_id: string }[]).map((r) => r.entry_id));
+  } catch {
+    return new Set();
+  }
 }
 
 /** Догрузка по id частями; сбой — пустой список (история показывается и без этого). */

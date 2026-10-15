@@ -219,7 +219,11 @@ AUTH_SETUP.md.
   = 'single'` (1 групповая, 30 дней, 1 платёж — `memberships_single_terms_check`),
   в приложении не покупается (`sales_client_insert_guard` — актуальное
   определение здесь), строка «Разовое посещение» в общем каталоге (цена 0 —
-  ставят в «Номенклатурах»).
+  ставят в «Номенклатурах»). Живой пакет разовое не вытесняет и само им не
+  вытесняется — новая продажа встаёт в очередь, как продление:
+  `db/migrations/2026-10-15_zzzz_packages_review_fixes.sql` (актуальное
+  определение `activate_membership_from_sale`; там же `my_studio_visit_stats`
+  — без диагностик тела).
   Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
   — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
   триггер списания), `payroll_lines` — пакет персональных не идёт в продажи
@@ -444,7 +448,13 @@ AUTH_SETUP.md.
   `devices_count`, `failed_count`, `finished_at`; из админки — только
   черновик или запланированное («Отправить сейчас» = запланировано на
   сейчас), отправленное не правится (триггер `push_notifications_guard`);
-  охват для формы — `push_audience_stats`. Тесты — `db/push.test.ts`.
+  охват для формы — `push_audience_stats`. Пуш и лента — своего приложения
+  (`db/migrations/2026-10-15_zzzz_push_review_fixes.sql`, актуальные
+  определения `push_start_due`, `push_trigger_send`, `push_audience_stats`,
+  `my_push_inbox` / `push_mark_read` — здесь): доставка — на телефоны с
+  `push_subscriptions.app_format` формата клубов рассылки (или триггера),
+  лента и «Прочитать все» — с `p_app_format` (уведомления клубов формата;
+  без него — все). Ссылка перехода — до 1000 символов. Тесты — `db/push.test.ts`.
   Отправитель — apps/admin (`src/lib/push/`), приём — apps/client
   (`public/sw.js`, `src/lib/push.ts`).
   **Обратная связь — своя форма** (решение владельца 2026-10-15, вместо
@@ -458,7 +468,11 @@ AUTH_SETUP.md.
   сотрудники (`db/security_hardening.sql`). Админка: «Обратная связь» —
   фильтр по дате, «Ссылка и QR-код» (PNG 600×600 рисуется в браузере,
   пакет `qrcode`), счётчик неотработанных у пункта меню (вместо
-  Telegram-уведомлений прежнего сервиса). Тесты — `db/feedback.test.ts`.
+  Telegram-уведомлений прежнего сервиса). Как есть сохраняется только
+  запись из админки (`source = 'portal'`): обращение сотрудника-клиента из
+  приложения — «из приложения», как у клиента (актуальное определение
+  `feedback_insert_guard` — `db/migrations/2026-10-15_zzzz_feedback_staff_client.sql`).
+  Тесты — `db/feedback.test.ts`.
   **Диагностика тела и заявки клиентов** (пакетные клубы, решение владельца
   2026-10-15): `db/migrations/2026-10-15_zz_diagnostics_client_requests.sql`
   — `memberships.diagnostics_count`, `client_memberships.diagnostics_left`
@@ -495,7 +509,13 @@ AUTH_SETUP.md.
   Тбилиси), ночью (22:00–09:00) необязательные ждут утра, ежедневные — в
   `send_hour`. «Кто записал» — `schedule_bookings.booked_by`/`booked_at`
   (триггер `schedule_bookings_booked_by_biu`, `auth.uid()`), статистика —
-  `push_trigger_stats` (security invoker). Тесты — `db/push-triggers.test.ts`.
+  `push_trigger_stats` (security invoker). Актуальное определение
+  `push_triggers_run` — `db/migrations/2026-10-15_zzzz_push_review_fixes.sql`:
+  кандидаты — без уже отправленного (иначе пачку `limit 500` каждый проход
+  забивали отправленные), «после пробной» и «оцените тренера» — окно 48 ч от
+  момента отправки, «давно не был» — посещения и записи в клубах формата,
+  без диагностик; журнал «давно не был» и дня рождения — свой у формата.
+  Тесты — `db/push-triggers.test.ts`.
   **NPS-опросы в приложении** (решение владельца 2026-10-15, оба формата):
   `db/migrations/2026-10-15_zz_nps_surveys.sql` — какой опрос положен
   клиенту, решает база (`nps_pending_survey`: первые занятия — закончилась

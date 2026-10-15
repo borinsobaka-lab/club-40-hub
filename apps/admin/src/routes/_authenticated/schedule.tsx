@@ -2937,8 +2937,9 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
       .select(
         "client_id, status, started_at, ends_at, visits_left, personal_left, diagnostics_left, balance_kind, membership:memberships(name)",
       )
-      // Ждущее продление — только в остаток: с него спишется, когда кончится текущий.
-      .in("status", balanceCheck ? ["active", "pending"] : ["active"])
+      // Ждущее продление — только в остаток: с него спишется, когда кончится
+      // текущий. Замороженный — чтобы знать, что текущий есть (balanceFor).
+      .in("status", balanceCheck ? ["active", "pending", "frozen"] : ["active"])
       .in("client_id", ids),
     // Записи клиентов на такие же занятия раньше этого, ещё без отметки:
     // остаток уйдёт на них.
@@ -2965,7 +2966,7 @@ async function fetchBookings(entry: Entry, packages: boolean): Promise<BookingsD
     allByClient.set(m.client_id, [...(allByClient.get(m.client_id) ?? []), m]);
     if (m.status === "active")
       membershipsByClient.set(m.client_id, [...(membershipsByClient.get(m.client_id) ?? []), m]);
-    else renewals.add(`${m.client_id}:${m.balance_kind}`);
+    else if (m.status === "pending") renewals.add(`${m.client_id}:${m.balance_kind}`);
   }
   if (balanceCheck) {
     const aheadByClient = new Map<string, number>();

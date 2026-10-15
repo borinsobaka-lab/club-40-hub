@@ -171,7 +171,10 @@ function saleFormError(form: SaleFields, t: ReturnType<typeof saleTotals>) {
 /** Действующий абонемент клиента (embed memberships — объект или массив). */
 type CurrentMembership = {
   status: string;
-  memberships: { name: string } | { name: string }[] | null;
+  memberships:
+    | { name: string; kind: string | null }
+    | { name: string; kind: string | null }[]
+    | null;
 };
 
 export type SaleDialogProps = {
@@ -325,7 +328,7 @@ function SaleForm({
       // балансы, вытесняется только абонемент того же вида (balance_kind).
       let currentQuery = supabase
         .from("client_memberships")
-        .select("id, status, memberships(name)")
+        .select("id, status, memberships(name, kind)")
         .eq("client_id", form.clientId)
         .in("status", ["active", "frozen"]);
       if (isPackages)
@@ -339,11 +342,19 @@ function SaleForm({
         return;
       }
       const current = (currentRows as CurrentMembership[] | null)?.[0];
+      const currentInfo = Array.isArray(current?.memberships)
+        ? current?.memberships[0]
+        : current?.memberships;
       // Продление в пакетной студии ничего не заменяет — встаёт в очередь
-      // после текущего (db/migrations/2026-10-11_zzz_packages_renewal_queue.sql).
-      if (current && !isRenewal) {
-        const m = current.memberships;
-        const name = (Array.isArray(m) ? m[0]?.name : m?.name) ?? "—";
+      // после текущего (db/migrations/2026-10-11_zzz_packages_renewal_queue.sql);
+      // так же — разовое посещение и пакет при разовом
+      // (db/migrations/2026-10-15_zzzz_packages_review_fixes.sql).
+      const queued =
+        isPackages &&
+        membership?.kind !== "personal" &&
+        (membership?.kind === "single" || currentInfo?.kind === "single");
+      if (current && !isRenewal && !queued) {
+        const name = currentInfo?.name ?? "—";
         const kind = current.status === "frozen" ? "замороженный" : "активный";
         const ok = await confirm({
           title: `Заменить ${kind} абонемент?`,
@@ -729,6 +740,13 @@ function SaleForm({
                 Продление не заменяет текущий абонемент клиента: посещения сначала списываются с
                 текущего, пока он не истечёт или на нём не закончатся тренировки. Срок нового
                 абонемента пойдёт с первого посещения по нему.
+              </InfoNote>
+            )}
+            {isPackages && !isRenewal && membership?.kind === "single" && (
+              <InfoNote>
+                Разовое посещение не заменяет действующий абонемент клиента: встанет в очередь и
+                спишется, когда текущий истечёт или на нём закончатся тренировки. Так же и пакет,
+                проданный при неиспользованном разовом посещении.
               </InfoNote>
             )}
 

@@ -112,14 +112,17 @@ let keyPromise: Promise<string | null> | null = null;
 
 /**
  * Открытый ключ VAPID сервера (RPC push_public_key) — заранее, чтобы по
- * нажатию «Включить» подписка не ждала сети. Помним на телефоне.
+ * нажатию «Включить» подписка не ждала сети. Помним на телефоне. Ключа на
+ * сервере ещё нет (сервер рассылки не запускался) — не запоминаем: спросим
+ * снова при следующей попытке.
  */
 export function prefetchPushKey(): Promise<string | null> {
   keyPromise ??= (async () => {
     const { data, error } = await untypedDb.rpc("push_public_key");
     if (error) throw error;
     const key = typeof data === "string" && data ? data : null;
-    storageSet(KEY_STORAGE, key);
+    if (key) storageSet(KEY_STORAGE, key);
+    else keyPromise = null;
     return key;
   })().catch(() => {
     keyPromise = null;

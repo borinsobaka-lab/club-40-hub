@@ -161,7 +161,9 @@ function VisitCard({ visit: v }: { visit: VisitRow }) {
   const meta = STATUS_META[status];
   const StatusIcon = meta.icon;
   const workout = loc(v.workout);
-  const name = workout?.name ?? v.workout_name ?? t("Тренировка");
+  const name = v.diagnostic
+    ? t("Диагностика тела")
+    : (workout?.name ?? v.workout_name ?? t("Тренировка"));
   const trainerNames = v.trainers.map((tr) => loc(tr).full_name).filter((n): n is string => !!n);
   const minutes = visitMinutes(v);
   const start = new Date(v.starts_at);

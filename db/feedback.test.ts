@@ -147,4 +147,23 @@ describe.skipIf(!url)("обратная связь (база)", () => {
       expect(rows[0].status).toBe("resolved");
     });
   });
+  test("сотрудник-клиент из приложения — обращение «из приложения», как у клиента", async () => {
+    await scenario(async (tx) => {
+      const s = await studio(tx);
+      const staff = await user(tx, `s-${crypto.randomUUID()}@example.com`);
+      await tx`insert into user_roles (user_id, studio_id, role) values (${staff}, ${s}, 'trainer')`;
+      await as(tx, staff);
+      // Форма приложения источник не передаёт; статус и дату не подделать.
+      await tx`
+        insert into feedback (studio_id, topic, message, status, created_at)
+        values (${s}, 'app', 'Из приложения', 'resolved', '2020-01-01')`;
+      await tx`insert into feedback (studio_id, topic, message, source) values (${s}, 'other', 'Звонок', 'portal')`;
+      await asOwner(tx);
+      const rows = await tx`
+        select source, status, created_at from feedback where studio_id = ${s} order by source`;
+      expect(rows.map((r: { source: string }) => r.source)).toEqual(["app", "portal"]);
+      expect(rows[0].status).toBe("pending");
+      expect(new Date(rows[0].created_at).getFullYear()).toBeGreaterThan(2020);
+    });
+  });
 });

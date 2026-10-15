@@ -239,12 +239,8 @@ function hasTrainingsLeft(
   return m.visits_left == null || m.visits_left > 0 || personal > 0;
 }
 
-/** Диагностик на своих абонементах (вкладка «Диагностика» расписания). */
-export function diagnosticsBalance(rows: Pick<MyMembership, "status" | "diagnostics_left">[]) {
-  return rows
-    .filter((m) => m.status === "active" || m.status === "pending")
-    .reduce((sum, m) => sum + Math.max(0, m.diagnostics_left ?? 0), 0);
-}
+/** Диагностик на своих абонементах — balance.ts (без запросов: его проверяют тесты). */
+export { diagnosticsBalance } from "./balance";
 
 /**
  * Невнесённые платежи по продажам абонементов — отдельным запросом: не

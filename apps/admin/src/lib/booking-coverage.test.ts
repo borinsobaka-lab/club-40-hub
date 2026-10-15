@@ -40,7 +40,22 @@ describe("остаток на дату занятия", () => {
       row({ balance_kind: "personal", visits_left: 0, personal_left: 5, diagnostics_left: 2 }),
       row({ status: "pending", diagnostics_left: 3 }),
     ];
-    expect(balanceFor(rows, "diagnostic", "2026-10-20")).toBe(6);
+    // Диагностики ждущего продления база не спишет, пока жив текущий того же
+    // вида (его кончают тренировки): 1 + 2, без 3 у продления.
+    expect(balanceFor(rows, "diagnostic", "2026-10-20")).toBe(3);
+    // Текущего группового нет — продление спишется.
+    expect(balanceFor(rows.slice(1), "diagnostic", "2026-10-20")).toBe(5);
+    // Замороженный текущий тоже держит продление, сам в остаток не идёт.
+    expect(
+      balanceFor(
+        [
+          row({ status: "frozen", diagnostics_left: 4 }),
+          row({ status: "pending", diagnostics_left: 3 }),
+        ],
+        "diagnostic",
+        "2026-10-20",
+      ),
+    ).toBe(0);
     expect(balanceFor([row({})], "diagnostic", "2026-10-20")).toBe(0);
     expect(entryBalance("diagnostic")).toBe("diagnostic");
     expect(entryBalance("personal")).toBe("personal");

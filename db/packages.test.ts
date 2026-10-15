@@ -1049,4 +1049,76 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(await failure(tx, buy(s.pack))).toBeNull();
     });
   });
+  test("разовое посещение не вытесняет пакет и не вытесняется им — встаёт в очередь", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await asStaff(tx, s);
+      const [{ id: single }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, personal_count, duration_days, price, max_payments)
+        values (${s.studio}, 'Разовое', 'single', 1, 0, 30, 30, 1) returning id`;
+
+      // Живой пакет (2 тренировки, одна отхожена) — разовое продано как «Новая».
+      const pack = await sell(tx, s);
+      const b = await book(tx, s, await entry(tx, s, -1));
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      const one = await sell(tx, s, { membership: single, kind: "new" });
+      expect(await membershipOf(tx, pack)).toMatchObject({ status: "active", visits_left: 1 });
+      expect(await membershipOf(tx, one)).toMatchObject({ status: "pending", visits_left: 1 });
+
+      // Последняя тренировка пакета — дальше списывается разовое.
+      const b2 = await book(tx, s, await entry(tx, s, 1));
+      await tx`update schedule_bookings set status = 'attended' where id = ${b2}`;
+      expect(await membershipOf(tx, pack)).toMatchObject({ status: "expired", visits_left: 0 });
+      expect(await membershipOf(tx, one)).toMatchObject({ status: "active", visits_left: 1 });
+
+      // Пакет при неиспользованном разовом — тоже в очередь, разовое остаётся.
+      const next = await sell(tx, s, { kind: "new" });
+      expect(await membershipOf(tx, one)).toMatchObject({ status: "active", visits_left: 1 });
+      expect(await membershipOf(tx, next)).toMatchObject({ status: "pending", visits_left: 2 });
+
+      // Пакет при живом пакете — как раньше, заменяет.
+      const b3 = await book(tx, s, await entry(tx, s, 2));
+      await tx`update schedule_bookings set status = 'attended' where id = ${b3}`;
+      expect(await membershipOf(tx, one)).toMatchObject({ status: "expired", visits_left: 0 });
+      expect(await membershipOf(tx, next)).toMatchObject({ status: "active" });
+      const upsell = await sell(tx, s, { kind: "upsell" });
+      expect(await membershipOf(tx, next)).toMatchObject({ status: "replaced" });
+      expect(await membershipOf(tx, upsell)).toMatchObject({ status: "active" });
+    });
+  });
+
+  test("сравнение со студией: диагностика — не посещение", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await tx`update memberships set diagnostics_count = 1 where id = ${s.pack}`;
+      await sell(tx, s);
+      await asStaff(tx, s);
+      const d = await book(tx, s, await entry(tx, s, -1, "diagnostic"));
+      await tx`update schedule_bookings set status = 'attended' where id = ${d}`;
+      const g = await book(tx, s, await entry(tx, s, -2));
+      await tx`update schedule_bookings set status = 'attended' where id = ${g}`;
+
+      // Ещё 4 клиента студии — по 2 посещения в журнале.
+      await tx`
+        insert into bookings_log (studio_id, client_id, status, starts_at, ends_at)
+        select ${s.studio}, c.id, 'attended', now() - interval '3 days', now() - interval '3 days'
+          from (select gen_random_uuid() as id from generate_series(1, 4)) c
+          cross join generate_series(1, 2) n`;
+
+      await tx`set local session_replication_role = replica`;
+      const [{ id: uid }] = await tx`
+        insert into auth.users (email) values (${`anna-${s.studio}@example.com`}) returning id`;
+      await tx`set local session_replication_role = origin`;
+      await tx`update clients set user_id = ${uid} where id = ${s.client}`;
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+      const [{ total }] = await tx`
+        select count(*)::int as total from bookings_log l
+         where l.client_id = ${s.client} and l.status = 'attended'`;
+      expect(total).toBe(2);
+      const [{ stats }] = await tx`select my_studio_visit_stats() as stats`;
+      // Своё посещение одно (диагностика не в счёт), у остальных по два — все выше.
+      expect(stats.total_cohort).toBe(5);
+      expect(stats.total_top_pct).toBe(100);
+    });
+  });
 });
