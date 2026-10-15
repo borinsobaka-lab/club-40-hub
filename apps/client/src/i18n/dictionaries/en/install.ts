@@ -20,7 +20,6 @@ const dict: Dictionary = {
     "Choose “Add to Home Screen” and tap “Add”",
   "Значок приложения появится на домашнем экране — откройте приложение с него.":
     "The app icon will appear on your Home Screen — open the app from there.",
-  "Откройте этот сайт в браузере Chrome": "Open this site in Chrome",
   "Перейдите на сайт и нажмите на три точки в правом верхнем углу Chrome":
     "Go to the site and tap the three dots in the top right corner of Chrome",
   "Выберите «Добавить на главный экран»": "Choose “Add to Home screen”",
@@ -37,6 +36,10 @@ const dict: Dictionary = {
   "Ссылка скопирована": "Link copied",
   "Не удалось скопировать — выделите ссылку и скопируйте её вручную":
     "Couldn't copy — select the link and copy it manually",
+  "Откройте эту ссылку в браузере Chrome": "Open this link in Chrome",
+  "Приложение будет установлено в течение 10 секунд": "The app will be installed within 10 seconds",
+  "Не удалось открыть установку — установите приложение по шагам ниже":
+    "Couldn't start the installation — install the app using the steps below",
 };
 
 export default dict;

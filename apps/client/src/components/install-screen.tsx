@@ -1,22 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, DownloadMinimalistic } from "@solar-icons/react";
+import { Copy, DownloadMinimalistic, Refresh } from "@solar-icons/react";
 import { Check } from "lucide-react";
 
 import packagesLogo from "@/assets/packages-logo.svg";
-import androidChromeMenu from "@/assets/install/android-chrome-menu.webp";
-import iosHomeScreen from "@/assets/install/ios-home-screen.webp";
+import androidChromeMenuRu from "@/assets/install/android-chrome-menu-ru.webp";
+import chromeIcon from "@/assets/install/chrome-icon.webp";
+import iosHomeScreenRu from "@/assets/install/ios-home-screen-ru.webp";
 import iosShareButton from "@/assets/install/ios-share-button.webp";
-import iosShareMore from "@/assets/install/ios-share-more.webp";
+import iosShareMoreRu from "@/assets/install/ios-share-more-ru.webp";
+import safariIcon from "@/assets/install/safari-icon.webp";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { UnderlineTabs } from "@/components/underline-tabs";
 import { Button } from "@/components/ui/button";
 import { DarkFrame } from "@/formats/packages/dark-frame";
 import { useInstallPrompt } from "@/hooks/use-pwa-install";
-import { msg, useT } from "@/i18n";
+import { msg, useI18n, useT } from "@/i18n";
 import {
   detectIosGuide,
   detectPlatform,
-  splitQuoted,
+  isAndroidChrome,
+  splitStepText,
   type InstallPlatform,
   type IosGuide,
 } from "@/lib/pwa-install";
@@ -29,47 +32,61 @@ import { IS_PACKAGES } from "@/lib/terms";
  *
  * iPhone — две вкладки: iOS 26+ («Поделиться» спрятан под три точки) и
  * ранние версии; первой открывается та, что подходит по версии Safari
- * (lib/pwa-install.ts). Android — одна инструкция для Chrome, а если Chrome
- * разрешает установку в одно нажатие — ещё и кнопка «Установить приложение».
+ * (lib/pwa-install.ts). Android — одна инструкция для Chrome, а в самом
+ * Chrome, если он разрешает установку в одно нажатие, — ещё и кнопка
+ * «Установить приложение» (в других браузерах её нет: работает не везде).
  * Компьютер — переключатель iPhone / Android: ссылку открывают на телефоне.
  *
  * Тексты шагов — от владельца; названия кнопок телефона — в кавычках, на
- * экране они жирные. Картинки — src/assets/install/ (96×96 от владельца).
+ * экране они жирные, названия браузеров — жирные со значком. Скриншоты —
+ * src/assets/install/ (720×364 от владельца): у русского свои, у английского
+ * и грузинского — английские (пока их нет — русские).
  */
+type Screenshot = { ru: string; en?: string };
+
 type Step = {
   text: string;
   /** Подсказка мелким шрифтом под шагом. */
   hint?: string;
-  image?: string;
+  image?: Screenshot;
   /** Под шагом — адрес приложения и кнопка «Скопировать ссылку». */
   copyLink?: boolean;
 };
+
+const SCREENSHOT_SIZE = { width: 720, height: 364 };
+
+const IOS_SHARE_BUTTON: Screenshot = { ru: iosShareButton, en: iosShareButton };
+const IOS_SHARE_MORE: Screenshot = { ru: iosShareMoreRu };
+const IOS_HOME_SCREEN: Screenshot = { ru: iosHomeScreenRu };
+const ANDROID_CHROME_MENU: Screenshot = { ru: androidChromeMenuRu };
+
+const BROWSER_ICONS: Record<string, string> = { Safari: safariIcon, Chrome: chromeIcon };
 
 const IOS26_STEPS: Step[] = [
   { text: msg("Откройте эту ссылку в браузере Safari"), copyLink: true },
   {
     text: msg("Нажмите на три точки справа внизу — «Поделиться» — «Показать больше»"),
-    image: iosShareMore,
+    image: IOS_SHARE_MORE,
   },
   {
     text: msg(
       "Выберите «На экран „Домой“», включите опцию «Открыть как веб-приложение» и нажмите «Добавить»",
     ),
-    image: iosHomeScreen,
+    image: IOS_HOME_SCREEN,
   },
 ];
 
 const IOS_LEGACY_STEPS: Step[] = [
   { text: msg("Откройте эту ссылку в браузере Safari"), copyLink: true },
-  { text: msg("Перейдите на сайт и нажмите на иконку «Поделиться»"), image: iosShareButton },
-  { text: msg("Выберите пункт «На экран „Домой“» и нажмите «Добавить»"), image: iosHomeScreen },
+  { text: msg("Перейдите на сайт и нажмите на иконку «Поделиться»"), image: IOS_SHARE_BUTTON },
+  { text: msg("Выберите пункт «На экран „Домой“» и нажмите «Добавить»"), image: IOS_HOME_SCREEN },
 ];
 
 const ANDROID_STEPS: Step[] = [
-  { text: msg("Откройте этот сайт в браузере Chrome"), copyLink: true },
+  { text: msg("Откройте эту ссылку в браузере Chrome"), copyLink: true },
   {
     text: msg("Перейдите на сайт и нажмите на три точки в правом верхнем углу Chrome"),
-    image: androidChromeMenu,
+    image: ANDROID_CHROME_MENU,
   },
   {
     text: msg("Выберите «Добавить на главный экран»"),
@@ -151,13 +168,13 @@ function InstallGuide() {
     return {
       platform: detectPlatform(ua, navigator.maxTouchPoints),
       iosGuide: detectIosGuide(ua),
+      oneTapInstall: isAndroidChrome(ua),
     };
   }, []);
   const [platform, setPlatform] = useState<Exclude<InstallPlatform, "other">>(
     detected.platform === "android" ? "android" : "ios",
   );
   const [iosGuide, setIosGuide] = useState<IosGuide>(detected.iosGuide);
-  const prompt = useInstallPrompt();
 
   const platformTabs = useMemo(
     () => [
@@ -198,24 +215,7 @@ function InstallGuide() {
         <UnderlineTabs tabs={iosTabs} value={iosGuide} onChange={setIosGuide} className="px-1" />
       )}
 
-      {platform === "android" && prompt.installed && (
-        <Finish
-          title={t("Готово!")}
-          text={t("Приложение установлено — откройте его с главного экрана телефона.")}
-          className="mt-4"
-        />
-      )}
-      {platform === "android" && prompt.canInstall && !prompt.installed && (
-        <div className="mt-2">
-          <Button type="button" onClick={() => void prompt.install()} className="w-full">
-            <DownloadMinimalistic />
-            {t("Установить приложение")}
-          </Button>
-          <p className="mt-3 text-center text-sm text-muted-foreground">
-            {t("Или установите вручную по шагам ниже")}
-          </p>
-        </div>
-      )}
+      {platform === "android" && detected.oneTapInstall && <OneTapInstall />}
 
       <ol className="mt-5 space-y-6">
         {steps.map((step, i) => (
@@ -242,7 +242,7 @@ function InstallGuide() {
 }
 
 function StepItem({ n, step }: { n: number; step: Step }) {
-  const t = useT();
+  const { t, locale } = useI18n();
   return (
     <li className="flex gap-3">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
@@ -250,22 +250,22 @@ function StepItem({ n, step }: { n: number; step: Step }) {
       </span>
       <div className="min-w-0 flex-1 pt-0.5">
         <p className="text-base leading-snug">
-          <QuotedText text={t(step.text)} />
+          <StepText text={t(step.text)} />
         </p>
         {step.hint && (
           <p className="mt-1.5 text-sm leading-snug text-muted-foreground">
-            <QuotedText text={t(step.hint)} />
+            <StepText text={t(step.hint)} />
           </p>
         )}
         {step.copyLink && <CopyLink />}
         {step.image && (
           <img
-            src={step.image}
+            src={locale === "ru" ? step.image.ru : (step.image.en ?? step.image.ru)}
             alt=""
-            width={96}
-            height={96}
+            {...SCREENSHOT_SIZE}
+            loading="lazy"
             decoding="async"
-            className="mt-3 h-32 w-32 rounded-2xl object-cover ring-1 ring-black/10"
+            className="mt-3 h-auto w-full rounded-2xl ring-1 ring-black/10"
           />
         )}
       </div>
@@ -273,12 +273,23 @@ function StepItem({ n, step }: { n: number; step: Step }) {
   );
 }
 
-/** Названия кнопок телефона («Поделиться», “Share”) — жирным. */
-function QuotedText({ text }: { text: string }) {
+/** Названия кнопок телефона («Поделиться», “Share”) — жирным, браузер — со значком. */
+function StepText({ text }: { text: string }) {
   return (
     <>
-      {splitQuoted(text).map((part, i) =>
-        part.quoted ? (
+      {splitStepText(text).map((part, i) =>
+        part.kind === "browser" ? (
+          <span key={i} className="whitespace-nowrap font-semibold">
+            <img
+              src={BROWSER_ICONS[part.text]}
+              alt=""
+              width={20}
+              height={20}
+              className="mr-1 inline-block h-5 w-5 align-[-0.3em]"
+            />
+            {part.text}
+          </span>
+        ) : part.kind === "quoted" ? (
           <span key={i} className="font-semibold">
             {part.text}
           </span>
@@ -288,6 +299,70 @@ function QuotedText({ text }: { text: string }) {
       )}
     </>
   );
+}
+
+/**
+ * Установка в одно нажатие (только Chrome на Android, hooks/use-pwa-install.ts):
+ * кнопка → окно Chrome → крутилка, пока Chrome ставит приложение
+ * (INSTALL_SECONDS) → «Готово».
+ */
+function OneTapInstall() {
+  const t = useT();
+  const prompt = useInstallPrompt();
+
+  if (prompt.phase === "installed") {
+    return (
+      <Finish
+        title={t("Готово!")}
+        text={t("Приложение установлено — откройте его с главного экрана телефона.")}
+        className="mt-4"
+      />
+    );
+  }
+  if (prompt.phase === "installing") {
+    return (
+      <div className="mt-4 flex items-center gap-3 rounded-2xl bg-muted p-4">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <Refresh className="h-4 w-4 animate-spin" weight="Bold" />
+        </span>
+        <p className="text-sm font-medium leading-snug">
+          {t("Приложение будет установлено в течение 10 секунд")}
+        </p>
+      </div>
+    );
+  }
+  if (prompt.phase === "prompting" || prompt.canInstall) {
+    return (
+      <div className="mt-2">
+        <Button
+          type="button"
+          onClick={() => void prompt.install()}
+          disabled={prompt.phase === "prompting"}
+          className="w-full"
+        >
+          {prompt.phase === "prompting" ? (
+            <Refresh className="animate-spin" weight="BoldDuotone" />
+          ) : (
+            <DownloadMinimalistic />
+          )}
+          {t("Установить приложение")}
+        </Button>
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          {prompt.phase === "failed"
+            ? t("Не удалось открыть установку — установите приложение по шагам ниже")
+            : t("Или установите вручную по шагам ниже")}
+        </p>
+      </div>
+    );
+  }
+  if (prompt.phase === "failed") {
+    return (
+      <p className="mt-3 text-center text-sm text-muted-foreground">
+        {t("Не удалось открыть установку — установите приложение по шагам ниже")}
+      </p>
+    );
+  }
+  return null;
 }
 
 function Finish({
