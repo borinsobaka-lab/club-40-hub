@@ -66,12 +66,12 @@ Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
 `PACKAGES_APP_URLS`, `isPackagesApp`) получают письма в брендинге студий
 растяжки — `emailBrand` → `"ladyStretch"`: светлое (решение владельца
 2026-10-15, тёмное — «мрачно»): светло-серая подложка, белая карточка с
-розовой шапкой `#f763fc` и белым логотипом
-(`public/email/lady-stretch-logo-pink.png` — PNG: почтовики не показывают
+тёмной шапкой цвета меню `#1a2027` и белым логотипом
+(`public/email/lady-stretch-logo-dark.png` — PNG: почтовики не показывают
 SVG; грузится с `ADMIN_APP_URL`), текст и цифры кода — серый меню
-`#1a2027`, код — на бледно-розовой плашке с розовой рамкой. Вёрстка
+`#1a2027`, код — на бледно-розовой плашке с розовой рамкой `#f763fc`. Вёрстка
 таблицами с `bgcolor` — иначе почтовик, срезавший фон у div, потерял бы
-розовую шапку.
+тёмную шапку.
 Отправитель — `emailSender`: `LADY_STRETCH_MAIL_FROM`
 (`noreply@lady-stretch.one`, задаётся только после Verified домена в Resend —
 AGENT_TASKS.md, Задача 13), без неё — `noreply@base40.fit` под именем
