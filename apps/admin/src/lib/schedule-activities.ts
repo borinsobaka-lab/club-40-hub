@@ -1,4 +1,4 @@
-import { Shapes, Stethoscope, UserRound, Users } from "lucide-react";
+import { Ruler, Shapes, UserRound, Users } from "lucide-react";
 
 import type { StudioFormat } from "@/lib/studio-formats";
 
@@ -47,7 +47,7 @@ export const ACTIVITY_KINDS: {
     label: "Диагностика",
     plural: "Диагностики",
     description: "Тренер, время и клиент — спишется диагностика с абонемента клиента",
-    icon: Stethoscope,
+    icon: Ruler,
     color: "#0f172a",
     formats: ["packages"],
   },

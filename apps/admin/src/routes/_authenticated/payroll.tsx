@@ -662,8 +662,7 @@ function EmployeePayroll({
   const [pending, setPending] = useState<string | null>(null);
   const shifts = lines.filter((l) => l.kind === "shift");
   const lessons = lines.filter(
-    (l) =>
-      l.kind === "group" || l.kind === "personal" || l.kind === "diagnostic" || l.kind === "other",
+    (l) => l.kind === "group" || l.kind === "personal" || l.kind === "other",
   );
   const shiftsTotal = shifts.reduce((sum, l) => sum + l.amount, 0);
   const lessonsTotal = lessons.reduce((sum, l) => sum + l.amount, 0);
@@ -770,7 +769,6 @@ function EmployeePayroll({
               {[
                 summary.groups && `групповых ${summary.groups}`,
                 summary.personals && `персональных ${summary.personals}`,
-                summary.diagnostics && `диагностик ${summary.diagnostics}`,
                 summary.others && `прочих ${summary.others}`,
               ]
                 .filter(Boolean)
@@ -910,6 +908,5 @@ function EmployeePayroll({
 function lessonChip(l: PayrollLine, abbr: string) {
   if (l.kind === "group") return `${abbr}:${l.units}`;
   if (l.kind === "personal") return `${abbr} перс.:${l.units}`;
-  if (l.kind === "diagnostic") return `${abbr} диагн.:${l.units}`;
   return `${l.title ?? "Прочее"}${l.units > 1 ? ` ×${l.units}` : ""}`;
 }

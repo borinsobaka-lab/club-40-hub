@@ -96,7 +96,6 @@ describe("summarize", () => {
       shifts: 0,
       groups: 2,
       personals: 1,
-      diagnostics: 0,
       others: 1,
       sales: 4718,
       salesCount: 2,
