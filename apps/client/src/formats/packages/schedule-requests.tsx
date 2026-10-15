@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, Stethoscope, UserHeart } from "@solar-icons/react";
+import { CheckCircle, Ruler, UserHeart } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -106,12 +106,24 @@ function useSendRequest(kind: RequestKind) {
 
 // ---- «Персональные» ----
 
+/** Поле на серой карточке — белое (решение владельца 2026-10-15: серое не видно). */
+const WHITE_FIELD = "bg-background focus:bg-background";
+
+/** Персональных на текущих абонементах (у пакета тренировок — подарочные). */
+function personalBalance(rows: { status: string; personal_left: number | null }[]) {
+  return rows
+    .filter((m) => m.status === "active" || m.status === "frozen")
+    .reduce((sum, m) => sum + Math.max(0, m.personal_left ?? 0), 0);
+}
+
 export function PersonalRequestTab() {
   const t = useT();
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const open = useQuery(myOpenRequestsQuery(userId));
   const goals = useQuery(myGoalsQuery(userId));
+  const mine = useQuery(packMyMembershipsQuery(userId));
+  const personalLeft = personalBalance(mine.data ?? []);
   const pendingAt = open.data?.personal;
 
   return (
@@ -121,7 +133,20 @@ export function PersonalRequestTab() {
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15">
             <UserHeart className="h-7 w-7 text-primary" weight="BoldDuotone" />
           </div>
-          <h2 className="text-xl font-semibold leading-tight">{t("Персональные тренировки")}</h2>
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-tight">{t("Персональные тренировки")}</h2>
+            {/* Остаток на текущем абонементе — только если он есть. */}
+            {personalLeft > 0 && (
+              <div className="mt-0.5 text-sm font-medium text-primary">
+                {t("На балансе: {balance}", {
+                  balance: t.plural(
+                    personalLeft,
+                    "{n} персональная|{n} персональные|{n} персональных",
+                  ),
+                })}
+              </div>
+            )}
+          </div>
         </div>
         <p className="mt-3 text-[15px] leading-relaxed text-foreground/90">
           {t(
@@ -196,11 +221,11 @@ function PersonalRequestForm({
                 className={cn(
                   "inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors",
                   active
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? "border-primary bg-primary/10 text-foreground"
                     : "border-border bg-card text-card-foreground",
                 )}
               >
-                {active && <CheckCircle className="h-4 w-4 shrink-0" weight="Bold" />}
+                {active && <CheckCircle className="h-4 w-4 shrink-0 text-primary" weight="Bold" />}
                 {t(g.label)}
               </button>
             );
@@ -208,7 +233,7 @@ function PersonalRequestForm({
         </div>
         {picked.includes("other") && (
           <Input
-            className="mt-3"
+            className={cn("mt-3", WHITE_FIELD)}
             value={other}
             onChange={(e) => setOther(e.target.value)}
             maxLength={300}
@@ -220,7 +245,7 @@ function PersonalRequestForm({
       <div>
         <h3 className="text-lg font-semibold">{t("Комментарий")}</h3>
         <Textarea
-          className="mt-2"
+          className={cn("mt-2", WHITE_FIELD)}
           rows={3}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -291,7 +316,7 @@ export function DiagnosticsTab() {
     <div className="space-y-4 p-4 pb-24">
       <Card className="flex items-center gap-3 rounded-2xl p-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
-          <Stethoscope className="h-7 w-7" weight="BoldDuotone" />
+          <Ruler className="h-7 w-7" weight="BoldDuotone" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm text-muted-foreground">{t("На вашем абонементе")}</div>

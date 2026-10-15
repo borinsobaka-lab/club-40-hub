@@ -475,8 +475,9 @@ AUTH_SETUP.md.
   `diagnostic`): создаёт только RPC `create_client_request` (одна
   неотработанная заявка вида на клиента), «Отработано» — `processed_at`,
   кто и когда ставит триггер `client_requests_guard`; раздел клуба
-  `requests` в админке. Зарплата за диагностику — по `pay_rate` занятия
-  (пока 0: ставку владелец не назвал). Тесты — `db/packages.test.ts`.
+  `requests` в админке. Диагностика в зарплату не идёт (решение владельца
+  2026-10-15): `db/migrations/2026-10-15_zzz_diagnostics_no_payroll.sql` —
+  актуальное определение `payroll_lines`. Тесты — `db/packages.test.ts`.
   **Триггерные уведомления** (раздел «Триггеры», 2026-10-15):
   `db/migrations/2026-10-15_push_triggers.sql` — `push_triggers` (строка на
   формат = приложение и триггер: `enabled`, тексты `title`/`message` +

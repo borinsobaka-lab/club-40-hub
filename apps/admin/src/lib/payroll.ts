@@ -13,7 +13,7 @@
  * месяца — основная часть за 20–конец месяца.
  */
 
-export type PayrollLineKind = "shift" | "group" | "personal" | "diagnostic" | "other" | "sale";
+export type PayrollLineKind = "shift" | "group" | "personal" | "other" | "sale";
 
 /** Строка RPC payroll_lines: сотрудник × день × студия × вид (× название). */
 export type PayrollLine = {
@@ -180,8 +180,6 @@ export type PayrollSummary = {
   shifts: number;
   groups: number;
   personals: number;
-  /** Диагностики (2026-10-15): ставка — pay_rate занятия, пока 0. */
-  diagnostics: number;
   others: number;
   sales: number;
   salesCount: number;
@@ -196,7 +194,6 @@ export const EMPTY_SUMMARY: PayrollSummary = {
   shifts: 0,
   groups: 0,
   personals: 0,
-  diagnostics: 0,
   others: 0,
   sales: 0,
   salesCount: 0,
@@ -241,9 +238,6 @@ export function summarize(
       case "personal":
         s.personals += l.units;
         break;
-      case "diagnostic":
-        s.diagnostics += l.units;
-        break;
       case "other":
         s.others += l.units;
         break;
@@ -272,7 +266,6 @@ export function workSummary(s: PayrollSummary): string {
   if (s.shifts) parts.push(`${s.shifts} ${plural(s.shifts, ["смена", "смены", "смен"])}`);
   if (s.groups) parts.push(`${s.groups} гр.`);
   if (s.personals) parts.push(`${s.personals} перс.`);
-  if (s.diagnostics) parts.push(`${s.diagnostics} диагн.`);
   if (s.others) parts.push(`${s.others} проч.`);
   return parts.join(" · ");
 }
