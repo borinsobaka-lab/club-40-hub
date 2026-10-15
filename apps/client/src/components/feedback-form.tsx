@@ -86,6 +86,10 @@ export function FeedbackForm({
     card?.full_name?.trim() || [card?.first_name, card?.last_name].filter(Boolean).join(" ");
   const nameValue = name ?? cardName ?? "";
   const contactValue = contact ?? card?.phone ?? "";
+  // «Как к вам обращаться» — только посетителю без входа (страница по QR-коду):
+  // у клиента приложения имя и телефон уходят из карточки сами и видны на
+  // портале (решение владельца 2026-10-15).
+  const askContacts = !user;
 
   const reset = () => {
     setTopic(null);
@@ -164,6 +168,7 @@ export function FeedbackForm({
               {studios.map((s) => (
                 <OptionButton
                   key={s.id}
+                  soft
                   active={studioId === s.id}
                   onClick={() => {
                     setPicked(s.id);
@@ -183,6 +188,7 @@ export function FeedbackForm({
           {FEEDBACK_TOPICS.map((o) => (
             <OptionButton
               key={o.key}
+              soft
               active={topic === o.key}
               onClick={() => {
                 setTopic(o.key);
@@ -244,26 +250,28 @@ export function FeedbackForm({
         </div>
       </Block>
 
-      <Block title={t("Как к вам обращаться")}>
-        <div className="space-y-2">
-          <Input
-            value={nameValue}
-            maxLength={FEEDBACK_LIMITS.name}
-            autoComplete="name"
-            placeholder={t("Ваше имя")}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input
-            value={contactValue}
-            maxLength={FEEDBACK_LIMITS.contact}
-            placeholder={t("Телефон или Instagram")}
-            onChange={(e) => setContact(e.target.value)}
-          />
-          <p className="px-1 text-xs text-muted-foreground">
-            {t("Если хотите получить ответ. Можно оставить пустым.")}
-          </p>
-        </div>
-      </Block>
+      {askContacts && (
+        <Block title={t("Как к вам обращаться")}>
+          <div className="space-y-2">
+            <Input
+              value={nameValue}
+              maxLength={FEEDBACK_LIMITS.name}
+              autoComplete="name"
+              placeholder={t("Ваше имя")}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              value={contactValue}
+              maxLength={FEEDBACK_LIMITS.contact}
+              placeholder={t("Телефон или Instagram")}
+              onChange={(e) => setContact(e.target.value)}
+            />
+            <p className="px-1 text-xs text-muted-foreground">
+              {t("Если хотите получить ответ. Можно оставить пустым.")}
+            </p>
+          </div>
+        </Block>
+      )}
 
       <Button type="submit" className="w-full" disabled={sending}>
         {sending ? (

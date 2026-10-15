@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
  * закрывается свайпом вниз или касанием фона. Решение владельца 2026-10-15:
  * так же открываются «О приложении» и политика конфиденциальности в профиле
  * и «Фидбэк» на главной (раньше — переход на страницу или раскрытие строки).
- * Ручка, заголовок (необязательное описание под ним) и прокручиваемое
- * содержимое; содержимое монтируется только в открытой шторке.
+ * Ручка, заголовок (необязательное описание под ним), прокручиваемое
+ * содержимое и закреплённый низ (кнопка действия всегда на виду);
+ * содержимое монтируется только в открытой шторке.
  */
 export function BottomDrawer({
   open,
@@ -18,6 +19,7 @@ export function BottomDrawer({
   hideTitle = false,
   description,
   className,
+  footer,
   children,
 }: {
   open: boolean;
@@ -28,6 +30,8 @@ export function BottomDrawer({
   description?: ReactNode;
   /** Размер шторки: по умолчанию — по содержимому, до 90% экрана. */
   className?: string;
+  /** Закреплён под прокруткой: не уезжает вместе с содержимым. */
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -54,9 +58,19 @@ export function BottomDrawer({
               )}
             </div>
           )}
-          <div className="min-h-0 grow overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-3">
+          <div
+            className={cn(
+              "min-h-0 grow overflow-y-auto overscroll-contain px-4 pt-3",
+              footer ? "pb-4" : "pb-[calc(env(safe-area-inset-bottom)+24px)]",
+            )}
+          >
             {children}
           </div>
+          {footer && (
+            <div className="shrink-0 border-t border-border bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              {footer}
+            </div>
+          )}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
