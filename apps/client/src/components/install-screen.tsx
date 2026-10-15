@@ -220,9 +220,9 @@ function InstallGuide() {
 
       {platform === "android" && detected.oneTapInstall && <OneTapInstall />}
 
-      <ol className="mt-5 space-y-6">
+      <ol className="mt-6 space-y-6">
         {steps.map((step, i) => (
-          <StepItem key={step.text} n={i + 1} step={step} />
+          <StepItem key={step.text} n={i + 1} step={step} last={i === steps.length - 1} />
         ))}
       </ol>
 
@@ -244,10 +244,18 @@ function InstallGuide() {
   );
 }
 
-function StepItem({ n, step }: { n: number; step: Step }) {
+function StepItem({ n, step, last }: { n: number; step: Step; last: boolean }) {
   const { t, locale } = useI18n();
   return (
-    <li className="flex gap-3">
+    <li className="relative flex gap-3">
+      {/* Линия от кружка к кружку следующего шага (зазор 4px с обеих сторон;
+          между шагами space-y-6 = 24px). */}
+      {!last && (
+        <span
+          aria-hidden="true"
+          className="absolute top-8 -bottom-5 left-[13px] w-0.5 rounded-full bg-primary/40"
+        />
+      )}
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
         {n}
       </span>
@@ -334,9 +342,10 @@ function OneTapInstall() {
       </div>
     );
   }
+  // Кнопка с подсказкой — на своей плашке, чтобы не сливаться с шагами.
   if (prompt.phase === "prompting" || prompt.canInstall) {
     return (
-      <div className="mt-2">
+      <div className="mt-2 rounded-2xl bg-muted p-4">
         <Button
           type="button"
           onClick={() => void prompt.install()}
@@ -360,7 +369,7 @@ function OneTapInstall() {
   }
   if (prompt.phase === "failed") {
     return (
-      <p className="mt-3 text-center text-sm text-muted-foreground">
+      <p className="mt-2 rounded-2xl bg-muted p-4 text-center text-sm text-muted-foreground">
         {t("Не удалось открыть установку — установите приложение по шагам ниже")}
       </p>
     );
