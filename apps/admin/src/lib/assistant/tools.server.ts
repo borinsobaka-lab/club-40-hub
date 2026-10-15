@@ -446,7 +446,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== ПУШ-УВЕДОМЛЕНИЯ ======
     list_push_notifications: tool({
       description:
-        "Пуш-уведомления клиентам текущего клуба: заголовок, текст, action_url, сегменты, статус (draft/scheduled/sending — идёт рассылка/sent), запланировано/отправлено, метрики: recipients_count — клиентов с приложением, devices_count — их телефонов с уведомлениями, sent_count — принято службой доставки, failed_count — не дошло, delivered_count — показано на телефоне, read_count — клиентов открыли.",
+        "Пуш-рассылки клиентам текущего клуба из раздела «Пуш-уведомления» (автоматические триггерные уведомления сюда не входят): заголовок, текст, action_url, сегменты, статус (draft/scheduled/sending — идёт рассылка/sent), запланировано/отправлено, метрики: recipients_count — клиентов с приложением, devices_count — их телефонов с уведомлениями, sent_count — принято службой доставки, failed_count — не дошло, delivered_count — показано на телефоне, read_count — клиентов открыли.",
       inputSchema: z.object({
         status: z.enum(["draft", "scheduled", "sending", "sent"]).optional(),
         limit: limit(500, 200),
@@ -458,6 +458,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
             "id, title, message, action_url, segments, studio_ids, status, scheduled_at, sent_at, recipients_count, devices_count, sent_count, failed_count, delivered_count, read_count, created_at, updated_at",
           )
           .contains("studio_ids", [studioId])
+          .is("trigger_key", null)
           .order("created_at", { ascending: false })
           .limit(limit);
         if (status) q = q.eq("status", status);
@@ -611,6 +612,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
             .from("push_notifications")
             .select("id", head)
             .contains("studio_ids", [studioId])
+            .is("trigger_key", null)
             .eq("status", "sent"),
           feedback_pending: supabase
             .from("feedback")

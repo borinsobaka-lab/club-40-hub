@@ -34,7 +34,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   перед коммитом
 - `bun run lint`, `bun run test`, `bun run build` — то же по обоим
 - `bun run test:db` — тесты базы: мигратора (`TEST_DATABASE_URL` — пустая
-  база), рассылки пушей `db/push.test.ts`, логики пакетных клубов `db/packages.test.ts`
+  база), рассылки пушей `db/push.test.ts`, триггерных уведомлений
+  `db/push-triggers.test.ts`, логики пакетных клубов `db/packages.test.ts`
   и обратной связи `db/feedback.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
@@ -476,6 +477,24 @@ AUTH_SETUP.md.
   кто и когда ставит триггер `client_requests_guard`; раздел клуба
   `requests` в админке. Зарплата за диагностику — по `pay_rate` занятия
   (пока 0: ставку владелец не назвал). Тесты — `db/packages.test.ts`.
+  **Триггерные уведомления** (раздел «Триггеры», 2026-10-15):
+  `db/migrations/2026-10-15_push_triggers.sql` — `push_triggers` (строка на
+  формат = приложение и триггер: `enabled`, тексты `title`/`message` +
+  `translations` en/ka с переменными `{name}`, `{class}`, `{when}`…,
+  `action_url`, `params` — hours/days/left/send_hour; строки заводит только
+  миграция, админка правит — раздел рейки `app` + клуб формата, параметры
+  проверяет `push_triggers_guard`, включение ставит `active_since` — старые
+  события не рассылаются); проход — `push_triggers_run(p_now)` (только
+  service_role, сервер админки раз в минуту): по каждому включённому
+  триггеру ищет события и шлёт через ту же очередь — строка
+  `push_notifications` с `trigger_key` (в «Пуш-уведомлениях» и у Kate её
+  нет), один получатель, доставки на его телефоны; без повторов —
+  `push_trigger_log` (триггер × учётная запись × событие). Тексты
+  подставляет база (`push_trigger_vars` / `push_trigger_render`, время — по
+  Тбилиси), ночью (22:00–09:00) необязательные ждут утра, ежедневные — в
+  `send_hour`. «Кто записал» — `schedule_bookings.booked_by`/`booked_at`
+  (триггер `schedule_bookings_booked_by_biu`, `auth.uid()`), статистика —
+  `push_trigger_stats` (security invoker). Тесты — `db/push-triggers.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

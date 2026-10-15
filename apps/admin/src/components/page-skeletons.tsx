@@ -1,6 +1,6 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Info, Wallet, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Wallet } from "lucide-react";
 
 import {
   ShellSkeleton,
@@ -1158,20 +1158,45 @@ export function PushPageSkeleton() {
   );
 }
 
+/** «Триггеры» (/push-triggers): пояснение и группы карточек триггеров. */
 export function PushTriggersPageSkeleton() {
   return (
     <ShellSkeleton title="Триггерные уведомления">
-      <div className="mx-auto max-w-3xl">
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border bg-background p-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            <Zap className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <Skeleton className="h-6 w-80 max-w-full" />
-          <Skeleton className="h-4 w-96 max-w-full" />
-          <Skeleton className="h-4 w-64 max-w-full" />
-        </div>
+      <div className="max-w-4xl space-y-6">
+        <Skeleton className="h-14 w-full rounded-md" />
+        <PushTriggersListSkeleton />
       </div>
     </ShellSkeleton>
+  );
+}
+
+/** Карточки триггеров: название, описание, текст, статистика; справа — включатель и «Изменить». */
+export function PushTriggersListSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[3, 2].map((cards, g) => (
+        <div key={g} className="space-y-3">
+          <Skeleton className="h-5 w-32" />
+          {Array.from({ length: cards }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-3 rounded-lg border bg-background p-4 sm:flex-row sm:items-start"
+            >
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-5 w-56 max-w-full" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-16 w-full rounded-md" />
+                <Skeleton className="h-3 w-64 max-w-full" />
+              </div>
+              <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+                <Skeleton className="h-5 w-9 rounded-full" />
+                <Skeleton className="h-9 w-28 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
 
