@@ -42,24 +42,67 @@ export function detectIosGuide(userAgent: string): IosGuide {
 
 /**
  * Открыто ли приложение установленным (с экрана «Домой»), а не во вкладке
- * браузера. iOS — navigator.standalone и display-mode; Android — display-mode
- * установленного приложения (манифест: display "standalone").
+ * браузера: iOS — navigator.standalone, остальные — display-mode
+ * "standalone" (так открывается установленное приложение, манифест: display
+ * "standalone"). Встроенный браузер мессенджера или соцсети (Telegram,
+ * WhatsApp, Instagram… — WebView внутри их приложения) установленным не бывает,
+ * что бы он ни сообщал о display-mode.
+ *
+ * Адрес источника «android-app://…» (признак Trusted Web Activity) не
+ * учитываем: такой же Chrome ставит любой ссылке, открытой из Telegram,
+ * WhatsApp или Gmail, — по нему заслон пропускал клиентов из мессенджеров на
+ * вход (2026-10-15).
  */
-export function isInstalledDisplay(): boolean {
-  if (typeof window === "undefined") return false;
-  if ((window.navigator as Navigator & { standalone?: boolean }).standalone === true) return true;
-  if (document.referrer.startsWith("android-app://")) return true;
-  return INSTALLED_DISPLAY_MODES.some(
-    (mode) => window.matchMedia?.(`(display-mode: ${mode})`).matches === true,
-  );
+export function detectInstalledDisplay(env: {
+  userAgent: string;
+  /** navigator.standalone (только iOS). */
+  standalone?: boolean;
+  /** matchMedia("(display-mode: standalone)").matches */
+  displayModeStandalone: boolean;
+}): boolean {
+  if (IN_APP_BROWSERS.test(env.userAgent)) return false;
+  return env.standalone === true || env.displayModeStandalone;
 }
 
-export const INSTALLED_DISPLAY_MODES = [
-  "standalone",
-  "fullscreen",
-  "minimal-ui",
-  "window-controls-overlay",
-] as const;
+export const STANDALONE_DISPLAY_QUERY = "(display-mode: standalone)";
+
+export function isInstalledDisplay(): boolean {
+  if (typeof window === "undefined") return false;
+  return detectInstalledDisplay({
+    userAgent: window.navigator.userAgent,
+    standalone: (window.navigator as Navigator & { standalone?: boolean }).standalone,
+    displayModeStandalone: window.matchMedia?.(STANDALONE_DISPLAY_QUERY).matches === true,
+  });
+}
+
+/**
+ * Встроенные браузеры приложений: Android WebView («; wv)») и метки
+ * приложений в user agent (на iOS у них свой WebKit без отдельной метки
+ * WebView).
+ */
+const IN_APP_BROWSER_TOKENS = [
+  "; wv\\)",
+  "Instagram",
+  "FBAN",
+  "FBAV",
+  "FB_IAB",
+  "Telegram",
+  "Line\\/",
+  "Snapchat",
+  "musical_ly",
+  "Bytedance",
+  "Pinterest",
+  "Twitter",
+  "LinkedInApp",
+  "Viber",
+  "WhatsApp",
+  "VKAndroidApp",
+  "vkclient",
+  "OKApp",
+  "GSA\\/",
+];
+
+const IN_APP_BROWSERS = new RegExp(IN_APP_BROWSER_TOKENS.join("|"));
 
 /**
  * Настоящий Chrome на Android — только в нём показываем кнопку установки в
@@ -77,7 +120,7 @@ export function isAndroidChrome(userAgent: string): boolean {
 
 const OTHER_ANDROID_BROWSERS = new RegExp(
   [
-    "; wv\\)",
+    ...IN_APP_BROWSER_TOKENS,
     "Version\\/\\d",
     "SamsungBrowser",
     "EdgA",
@@ -100,24 +143,6 @@ const OTHER_ANDROID_BROWSERS = new RegExp(
     "DuckDuckGo",
     "Puffin",
     "Silk",
-    "GSA\\/",
-    "Instagram",
-    "FBAN",
-    "FBAV",
-    "FB_IAB",
-    "Telegram",
-    "Line\\/",
-    "Snapchat",
-    "musical_ly",
-    "Bytedance",
-    "Pinterest",
-    "Twitter",
-    "LinkedInApp",
-    "Viber",
-    "WhatsApp",
-    "VKAndroidApp",
-    "vkclient",
-    "OKApp",
   ].join("|"),
 );
 

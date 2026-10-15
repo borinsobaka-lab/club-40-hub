@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { detectIosGuide, detectPlatform, isAndroidChrome, splitStepText } from "./pwa-install";
+import {
+  detectInstalledDisplay,
+  detectIosGuide,
+  detectPlatform,
+  isAndroidChrome,
+  splitStepText,
+} from "./pwa-install";
 
 const UA = {
   // iOS 26: версия системы заморожена на 18_6, Safari — Version/26.
@@ -162,5 +168,55 @@ describe("splitStepText", () => {
     expect(splitStepText("Перейдите на сайт")).toEqual([
       { text: "Перейдите на сайт", kind: "plain" },
     ]);
+  });
+});
+
+describe("detectInstalledDisplay", () => {
+  const WEBVIEW =
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36";
+  const IOS_WEB_APP =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
+
+  test("установленное: display-mode standalone или navigator.standalone на iPhone", () => {
+    expect(detectInstalledDisplay({ userAgent: UA.android, displayModeStandalone: true })).toBe(
+      true,
+    );
+    expect(
+      detectInstalledDisplay({
+        userAgent: IOS_WEB_APP,
+        standalone: true,
+        displayModeStandalone: false,
+      }),
+    ).toBe(true);
+  });
+
+  test("вкладка браузера — не установленное", () => {
+    expect(detectInstalledDisplay({ userAgent: UA.android, displayModeStandalone: false })).toBe(
+      false,
+    );
+    expect(
+      detectInstalledDisplay({
+        userAgent: UA.safari26,
+        standalone: false,
+        displayModeStandalone: false,
+      }),
+    ).toBe(false);
+  });
+
+  test("встроенный браузер мессенджера — не установленное, что бы ни сообщал", () => {
+    expect(detectInstalledDisplay({ userAgent: WEBVIEW, displayModeStandalone: true })).toBe(false);
+    expect(
+      detectInstalledDisplay({
+        userAgent: `${WEBVIEW} Telegram-Android/12.0.1`,
+        displayModeStandalone: true,
+      }),
+    ).toBe(false);
+    expect(
+      detectInstalledDisplay({
+        userAgent: `${IOS_WEB_APP} Instagram 400.0.0`,
+        standalone: true,
+        displayModeStandalone: true,
+      }),
+    ).toBe(false);
   });
 });
