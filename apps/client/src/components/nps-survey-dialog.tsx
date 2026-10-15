@@ -111,9 +111,10 @@ export default function NpsSurveyDialog({
           <DialogPrimitive.Close
             aria-label={t("Закрыть")}
             disabled={sending}
-            className="absolute right-3 top-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-muted text-muted-foreground transition active:scale-95 disabled:opacity-50"
+            // Без подложки; область нажатия — 36px вокруг значка 18px.
+            className="absolute right-3 top-[18px] flex h-9 w-9 cursor-pointer items-center justify-center text-muted-foreground transition hover:text-foreground active:scale-90 disabled:opacity-50"
           >
-            <X className="h-5 w-5" />
+            <X className="h-[18px] w-[18px]" />
           </DialogPrimitive.Close>
 
           {done ? (
