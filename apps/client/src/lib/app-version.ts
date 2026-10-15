@@ -6,7 +6,7 @@
  * (scripts/bump-version.ts переписывает строку ниже). Показывается в профиле,
  * «О приложении», и попадает в скопированную техническую информацию.
  */
-export const APP_VERSION = "1.2";
+export const APP_VERSION = "1.3";
 
 /** Следующая версия: 1.0 → 1.1, 1.9 → 1.10, 1.99 → 2.0. */
 export function nextAppVersion(version: string): string {
