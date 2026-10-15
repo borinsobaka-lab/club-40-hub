@@ -124,15 +124,6 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
       aria-label="Разделы"
       className="sidebar-scroll flex w-(--rail-width) shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-rail px-1 py-4"
     >
-      {/* Вверху — фирменный знак (тот же, что фавикон), ведёт на главную. */}
-      <Link
-        to="/"
-        aria-label="На главную"
-        onClick={onNavigate}
-        className="mx-auto mb-2 shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-      >
-        <img src="/logo-mark.png" alt="" width={40} height={40} className="size-10" />
-      </Link>
       {/*
         Рабочие разделы стоят по центру высоты. my-auto, а не
         justify-center: когда разделов станет больше высоты экрана,
