@@ -102,10 +102,11 @@ export function buildPushPayload(
     ...(icon ? { i: icon } : {}),
   };
   let json = JSON.stringify(payload);
-  // Длинная ссылка или текст сверх предела — укорачиваем текст.
+  // Длинная ссылка или текст сверх предела — укорачиваем текст. Каждый шаг
+  // короче прежнего хотя бы на символ: «…» вместо одного символа не остаётся.
   while (bytes(json) > MAX_PAYLOAD_BYTES && payload.b.length > 0) {
-    payload.b = clip(payload.b, Math.max(1, Math.floor(Array.from(payload.b).length * 0.8)));
-    if (payload.b === "…") payload.b = "";
+    const next = Math.floor(Array.from(payload.b).length * 0.8);
+    payload.b = next < 2 ? "" : clip(payload.b, next);
     json = JSON.stringify(payload);
   }
   if (bytes(json) > MAX_PAYLOAD_BYTES) {

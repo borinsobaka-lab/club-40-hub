@@ -453,6 +453,125 @@ describe.skipIf(!url)("триггерные уведомления (база)", 
     });
   });
 
+  test("больше 500 событий: следующий проход доходит до остальных", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const e = await entry(tx, s, 2);
+      await tx`set local session_replication_role = replica`;
+      await tx`
+        insert into auth.users (email)
+        select 'bulk-' || g || '-' || ${s.studio}::text || '@example.com' from generate_series(1, 500) g`;
+      await tx`set local session_replication_role = origin`;
+      await tx`
+        insert into clients (studio_id, first_name, email, user_id)
+        select ${s.studio}, 'Клиент', u.email, u.id
+          from auth.users u where u.email like 'bulk-%-' || ${s.studio}::text || '@example.com'`;
+      await tx`
+        insert into schedule_bookings (studio_id, entry_id, client_id, status)
+        select ${s.studio}, ${e}, c.id, 'booked' from clients c where c.studio_id = ${s.studio}`;
+
+      // 501 записанный: за проход — 500, остальной — в следующий.
+      expect(await run(tx)).toBe(500);
+      expect(await run(tx, 1)).toBe(1);
+      expect(await run(tx, 2)).toBe(0);
+      expect(await sent(tx, "class_reminder")).toHaveLength(501);
+    });
+  });
+
+  test("оценка тренера через 48 часов после занятия — приходит", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at)
+        values (${s.studio}, ${s.client}, ${s.pack}, 100, current_date)`;
+      await tx`update push_triggers set params = ${{ hours: 48 }} where format = 'packages' and key = 'rate_trainer'`;
+      await tx`update push_triggers set active_since = now() - interval '10 days' where key = 'rate_trainer'`;
+      // Закончилось 49 часов назад: срок наступил час назад.
+      const e = await entry(tx, s, -50);
+      const b = await book(tx, s, e);
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      await run(tx);
+      expect(await sent(tx, "rate_trainer")).toHaveLength(1);
+    });
+  });
+
+  test("давно не был: диагностика — не посещение; другой формат — не в счёт", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await tx`update memberships set diagnostics_count = 1 where id = ${s.pack}`;
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at)
+        values (${s.studio}, ${s.client}, ${s.pack}, 100, current_date - 20)`;
+      await tx`update push_triggers set active_since = now() - interval '30 days' where key = 'no_visits'`;
+      const staff = await user(tx, `staff-${s.studio}@example.com`);
+      await tx`insert into user_roles (user_id, studio_id, role) values (${staff}, ${s.studio}, 'admin')`;
+      await tx`select set_config('request.jwt.claim.sub', ${staff}::text, true)`;
+
+      // Тренировка 15 дней назад (параметр — 14 дней), диагностика — 2 дня назад.
+      const old = await entry(tx, s, -15 * 24);
+      const b = await book(tx, s, old);
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      const [{ id: diag }] = await tx.unsafe(
+        `insert into schedule_entries (studio_id, kind, starts_at, ends_at)
+         values ($1, 'diagnostic', ${NOON} - interval '48 hours', ${NOON} - interval '47 hours')
+         returning id`,
+        [s.studio],
+      );
+      const [{ id: db }] = await tx`
+        insert into schedule_bookings (studio_id, entry_id, client_id, status)
+        values (${s.studio}, ${diag}, ${s.client}, 'booked') returning id`;
+      await tx`update schedule_bookings set status = 'attended' where id = ${db}`;
+
+      // Свежее посещение в клубе другого формата «Мы скучаем» в этом приложении не отменяет.
+      const [{ id: other }] = await tx`
+        insert into studios (name, format) values ('Base40', 'subscription') returning id`;
+      const [{ id: otherClient }] = await tx`
+        insert into clients (studio_id, first_name, email, user_id)
+        values (${other}, 'Анна', ${`anna2-${s.studio}@example.com`}, ${s.user}) returning id`;
+      const [{ id: otherWorkout }] = await tx`
+        insert into workouts (studio_id, name) values (${other}, 'Пилатес') returning id`;
+      const [{ id: otherEntry }] = await tx.unsafe(
+        `insert into schedule_entries (studio_id, workout_id, kind, starts_at, ends_at)
+         values ($1, $2, 'group', ${NOON} - interval '24 hours', ${NOON} - interval '23 hours') returning id`,
+        [other, otherWorkout],
+      );
+      await tx`
+        insert into schedule_bookings (studio_id, entry_id, client_id, status)
+        values (${other}, ${otherEntry}, ${otherClient}, 'attended')`;
+      await asServer(tx);
+
+      await run(tx);
+      const list = await sent(tx, "no_visits");
+      expect(list).toHaveLength(1);
+      const [{ d }] = await tx.unsafe(
+        `select to_char((${NOON} at time zone 'Asia/Tbilisi')::date - 15, 'DD.MM') as d`,
+      );
+      expect(list[0].message).toContain(`Последняя тренировка была ${d}.`);
+    });
+  });
+
+  test("день рождения — в каждом приложении, по разу", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const [{ id: other }] = await tx`
+        insert into studios (name, format) values ('Base40', 'subscription') returning id`;
+      await tx`
+        insert into clients (studio_id, first_name, email, user_id)
+        values (${other}, 'Анна', ${`anna2-${s.studio}@example.com`}, ${s.user})`;
+      await tx.unsafe(
+        `update clients set birthday = (${NOON} at time zone 'Asia/Tbilisi')::date - interval '30 years'
+          where user_id = $1`,
+        [s.user],
+      );
+      await run(tx);
+      await run(tx, 1);
+      const list = await tx`
+        select s.format from push_notifications n join studios s on s.id = n.studio_id
+         where n.trigger_key = 'birthday' order by s.format`;
+      expect(list.map((r: { format: string }) => r.format)).toEqual(["packages", "subscription"]);
+    });
+  });
+
   test("админка: правка своего формата, параметры в пределах, клиенту закрыто, статистика", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);

@@ -11,10 +11,11 @@ import { syncPushDevice, usePushPermission } from "@/lib/push";
  *
  * - разрешение есть — подписка телефона в базе на вошедшего и на языке
  *   приложения (при запуске, входе, смене языка, после включения в
- *   настройках телефона);
+ *   настройках телефона, при возвращении в приложение);
  * - пришёл пуш при открытом приложении — лента «Уведомления» обновляется;
  * - нажали на пуш при открытом приложении — переход внутри него
- *   (public/sw.js шлёт push-open вместо новой вкладки).
+ *   (public/sw.js шлёт push-open вместо новой вкладки; окно отвечает, и
+ *   service worker выводит вперёд его, а не вкладку браузера).
  */
 export function usePushSync() {
   const { user } = useAuth();
@@ -26,9 +27,19 @@ export function usePushSync() {
 
   useEffect(() => {
     if (!userId || permission !== "granted") return;
-    syncPushDevice(userId, locale).catch(() => {
-      // нет сети или базы без миграции — повторим при следующем запуске
-    });
+    const sync = () => {
+      syncPushDevice(userId, locale).catch(() => {
+        // нет сети или базы без миграции — повторим ниже
+      });
+    };
+    sync();
+    // Не вышло (нет сети, ключа на сервере ещё нет) — повторим, когда
+    // приложение снова откроют; подписанное за сегодня в базу не пишется.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [userId, locale, permission]);
 
   useEffect(() => {
@@ -39,6 +50,9 @@ export function usePushSync() {
         void queryClient.invalidateQueries({ queryKey: ["push-inbox"] });
       }
       if (data?.type === "push-open" && typeof data.url === "string" && data.url.startsWith("/")) {
+        // Ответ service worker: нажатие принято этим окном — его он и выведет
+        // вперёд (а не вкладку браузера с инструкцией по установке).
+        event.ports[0]?.postMessage("ok");
         void queryClient.invalidateQueries({ queryKey: ["push-inbox"] });
         router.history.push(data.url);
       }

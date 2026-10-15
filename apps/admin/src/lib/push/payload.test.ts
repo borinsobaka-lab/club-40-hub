@@ -69,4 +69,20 @@ describe("текст пуша на языке устройства", () => {
     expect((parsed.t as string).endsWith("…")).toBe(true);
     expect(parsed.u).toStartWith("https://x/");
   });
+
+  test("текст из одного символа и ссылка сверх предела — без зацикливания", () => {
+    for (const message of ["!", "🎉", "Да"]) {
+      const json = buildPushPayload(
+        { ...push, title: "Т", message, action_url: "https://x/" + "a".repeat(3900) },
+        "ru",
+        "d1",
+        null,
+      );
+      expect(new TextEncoder().encode(json).length).toBeLessThanOrEqual(MAX_PAYLOAD_BYTES);
+      const parsed = JSON.parse(json);
+      // Текст ушёл, ссылка не влезла — пуш всё равно уходит (целиком — в ленте).
+      expect(parsed.b).toBe("");
+      expect(parsed.u).toBeNull();
+    }
+  });
 });

@@ -1,6 +1,7 @@
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/use-auth";
+import { APP_FORMAT } from "@/lib/app-format";
 import { untypedDb } from "@/lib/untyped-db";
 import type { ContentTranslations } from "@/i18n";
 
@@ -23,11 +24,23 @@ export type InboxNotification = {
   read_at: string | null;
 };
 
+/**
+ * RPC ленты с форматом приложения: у человека с карточками в клубах обоих
+ * форматов два приложения — у каждого своя лента
+ * (db/migrations/2026-10-15_zzzz_push_review_fixes.sql). База без этой
+ * миграции такой подписи не знает (PGRST202) — тогда без формата, как раньше.
+ */
+async function rpcWithFormat(fn: string, args: Record<string, unknown>) {
+  const res = await untypedDb.rpc(fn, { ...args, p_app_format: APP_FORMAT });
+  if (res.error?.code === "PGRST202") return untypedDb.rpc(fn, args);
+  return res;
+}
+
 export const pushInboxQuery = (userId: string | null) =>
   queryOptions({
     queryKey: ["push-inbox", userId],
     queryFn: async (): Promise<InboxNotification[]> => {
-      const { data, error } = await untypedDb.rpc("my_push_inbox", { p_limit: 100 });
+      const { data, error } = await rpcWithFormat("my_push_inbox", { p_limit: 100 });
       if (error) throw error;
       return (data as InboxNotification[] | null) ?? [];
     },
@@ -63,7 +76,7 @@ export function useNotifications() {
           : n,
       ),
     );
-    void untypedDb.rpc("push_mark_read", { p_ids: ids }).then(({ error }) => {
+    void rpcWithFormat("push_mark_read", { p_ids: ids }).then(({ error }) => {
       if (error) void queryClient.invalidateQueries({ queryKey });
     });
   };

@@ -82,8 +82,13 @@ export function pushWorkerReady() {
   return hasSupabaseAdmin();
 }
 
+/** Рассылает ли этот сервер: `PUSH_WORKER=off` — нет (рассылает другой). */
+export function pushWorkerEnabled() {
+  return hasSupabaseAdmin() && process.env.PUSH_WORKER !== "off";
+}
+
 export function startPushWorker() {
-  if (state.started || !hasSupabaseAdmin() || process.env.PUSH_WORKER === "off") return;
+  if (state.started || !pushWorkerEnabled()) return;
   state.started = true;
   setTimeout(() => void runPushQueue(), 3_000);
   setInterval(() => void runPushQueue(), TICK_MS);

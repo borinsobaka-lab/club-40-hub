@@ -212,17 +212,49 @@ function pushTarget(url, notificationId) {
   return inbox.href;
 }
 
+/**
+ * Окно отвечает на push-open, только если в нём запущено приложение
+ * (usePushSync в AppShell): вкладка браузера с инструкцией по установке
+ * молчит. Нет ответа за ACK_TIMEOUT_MS — false.
+ */
+const ACK_TIMEOUT_MS = 700;
+
+function askWindow(client, path) {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => resolve(false), ACK_TIMEOUT_MS);
+    channel.port1.onmessage = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    try {
+      client.postMessage({ type: "push-open", url: path }, [channel.port2]);
+    } catch {
+      clearTimeout(timer);
+      resolve(false);
+    }
+  });
+}
+
 async function openTarget(href) {
   const url = new URL(href);
-  const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   if (url.origin === self.location.origin) {
-    // Приложение открыто — переходим внутри него, без перезагрузки.
-    const client = windows.find((c) => new URL(c.url).origin === self.location.origin);
+    // Приложение открыто — переходим внутри него, без перезагрузки, и выводим
+    // вперёд то окно, что ответило (приложение, а не вкладку браузера).
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const path = url.pathname + url.search;
+    const answered = await Promise.all(
+      windows
+        .filter((c) => new URL(c.url).origin === self.location.origin)
+        .map((c) => askWindow(c, path).then((ok) => (ok ? c : null))),
+    );
+    const client = answered.find(Boolean);
     if (client) {
       await client.focus().catch(() => {});
-      client.postMessage({ type: "push-open", url: url.pathname + url.search });
       return;
     }
   }
+  // Приложение не открыто — открываем ссылку (Android откроет её в
+  // установленном приложении).
   await self.clients.openWindow(href);
 }

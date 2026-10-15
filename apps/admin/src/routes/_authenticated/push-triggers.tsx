@@ -622,6 +622,7 @@ function TriggerForm({
                 value={actionUrl}
                 onChange={(e) => setActionUrl(e.target.value)}
                 placeholder="/schedule или https://…"
+                maxLength={1000}
               />
             </FormField>
           </div>
