@@ -328,13 +328,16 @@ function OneTapInstall() {
         title={t("Готово!")}
         text={t("Приложение установлено — откройте его с главного экрана телефона.")}
         className="mt-4"
+        // Зелёный «готово» после жёлтой крутилки (решение владельца 2026-10-15).
+        iconClassName="bg-emerald-500 text-white"
       />
     );
   }
   if (prompt.phase === "installing") {
     return (
       <div className="mt-4 flex items-center gap-3 rounded-2xl bg-muted p-4">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        {/* Жёлтая, пока Chrome ставит приложение (решение владельца 2026-10-15). */}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-yellow-950">
           <Refresh className="h-4 w-4 animate-spin" weight="Bold" />
         </span>
         <p className="text-sm font-medium leading-snug">
@@ -382,14 +385,19 @@ function Finish({
   title,
   text,
   className = "",
+  iconClassName = "bg-primary text-primary-foreground",
 }: {
   title?: string;
   text: string;
   className?: string;
+  /** Цвет кружка с галочкой (по умолчанию — фирменный). */
+  iconClassName?: string;
 }) {
   return (
     <div className={`flex gap-3 rounded-2xl bg-muted p-4 ${className}`}>
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${iconClassName}`}
+      >
         <Check className="h-4 w-4" strokeWidth={3} />
       </span>
       <div className="min-w-0 flex-1 pt-0.5">
