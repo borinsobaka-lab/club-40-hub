@@ -8,9 +8,10 @@ import { msg } from "@/i18n/translate";
 export type StaffRole = "trainer" | "admin" | "masseur";
 
 /**
- * Вкладка строки; неизвестная или пустая роль — тренер. Старший
- * администратор (`senior_admin`, 2026-10-13) — во вкладке «Админы» вместе с
- * администраторами, подпись своя (`staffRoleLabel`).
+ * Вкладка строки; неизвестная или пустая роль — тренер. Руководитель студии
+ * (`senior_admin`; до 2026-10-15 — «старший администратор») — во вкладке
+ * «Админы» вместе с администраторами, первым в списке (`staffOrder`), подпись
+ * своя (`staffRoleLabel`).
  */
 export function staffRole(row: { role: string | null }): StaffRole {
   if (row.role === "admin" || row.role === "senior_admin") return "admin";
@@ -20,9 +21,12 @@ export function staffRole(row: { role: string | null }): StaffRole {
 /** Подпись роли в карточке и списке (переводится при показе — t(…)). */
 export function staffRoleLabel(row: { role: string | null }): string {
   return row.role === "senior_admin"
-    ? msg("Старший администратор")
+    ? msg("Руководитель студии")
     : STAFF_ROLE_TEXT[staffRole(row)].label;
 }
+
+/** Порядок во вкладке: руководитель студии — перед остальными (0), прочие — 1. */
+export const staffOrder = (row: { role: string | null }) => (row.role === "senior_admin" ? 0 : 1);
 
 /** Рейтинг и оценки — у тренеров и массажистов; администраторов не оценивают. */
 export const staffHasRating = (role: StaffRole) => role !== "admin";

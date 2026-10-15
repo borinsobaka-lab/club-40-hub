@@ -245,6 +245,7 @@ async function attachUpcomingPayments(rows: MyMembership[]): Promise<MyMembershi
 export {
   STAFF_ROLE_TEXT,
   staffHasRating,
+  staffOrder,
   staffRole,
   staffRoleLabel,
   type StaffRole,
