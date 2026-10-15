@@ -14,6 +14,7 @@ import {
   ChartSquare,
   ChatRoundDots,
   ClipboardCheck,
+  ClipboardList,
   ClipboardRemove,
   DocumentText,
   Dumbbell,
@@ -78,7 +79,7 @@ export type NavItem = {
   exact?: boolean;
   /** Другие страницы пункта: на них он тоже подсвечен («Сотрудники» → вкладки). */
   paths?: string[];
-  /** Счётчик справа (новые предложения в «Скриптах LS»). */
+  /** Счётчик справа (новые предложения в «Скриптах LS», не отработанная обратная связь). */
   badge?: number;
 };
 export type ClubNavItem = NavItem & {
@@ -88,6 +89,9 @@ export type ClubNavItem = NavItem & {
   fullTitle?: string;
 };
 export type NavGroup<T extends NavItem = NavItem> = { key: string; label: string; items: T[] };
+
+/** «Заявки» клиентов — на пункте и на «Клубе» в рейке горит счётчик. */
+export const REQUESTS_URL = "/requests";
 
 /**
  * Меню клуба (раздел рейки «Клуб»). Каждый пункт — раздел, который
@@ -146,6 +150,15 @@ export const CLUB_GROUPS: NavGroup<ClubNavItem>[] = [
     label: "Обратная связь",
     items: [
       { title: "Обратная связь", url: "/feedback", icon: ChatRoundDots, section: "feedback" },
+      // Заявки из приложения пакетных клубов: персональные и диагностика
+      // (2026-10-15). Счётчик неотработанных — useOpenRequestsCount.
+      {
+        title: "Заявки",
+        url: REQUESTS_URL,
+        icon: ClipboardList,
+        section: "requests",
+        formats: ["packages"],
+      },
       { title: "NPS-опросы", url: "/nps", icon: ChartSquare, section: "nps" },
     ],
   },

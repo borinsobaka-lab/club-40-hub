@@ -20,6 +20,7 @@ import onboarding from "./onboarding";
 import invite from "./invite";
 import notifications from "./notifications";
 import install from "./install";
+import feedback from "./feedback";
 import nps from "./nps";
 
 const dict: Dictionary = {
@@ -38,6 +39,7 @@ const dict: Dictionary = {
   ...invite,
   ...notifications,
   ...install,
+  ...feedback,
   ...nps,
 };
 

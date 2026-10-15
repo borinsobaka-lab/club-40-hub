@@ -39,14 +39,12 @@ type Settings = {
   studio_id: string;
   write_url: string | null;
   call_url: string | null;
-  feedback_url: string | null;
   cancel_booking_minutes: number;
 };
 
 type FormValues = {
   writeUrl: string;
   callUrl: string;
-  feedbackUrl: string;
   cancelMinutes: string;
 };
 
@@ -54,7 +52,6 @@ function toFormValues(s: Settings | null | undefined): FormValues {
   return {
     writeUrl: s?.write_url ?? "",
     callUrl: s?.call_url ?? "",
-    feedbackUrl: s?.feedback_url ?? "",
     cancelMinutes: String(s?.cancel_booking_minutes ?? 180),
   };
 }
@@ -163,7 +160,6 @@ function ClubSettingsForm({
         studio_id: studioId,
         write_url: form.writeUrl.trim() || null,
         call_url: form.callUrl.trim() || null,
-        feedback_url: form.feedbackUrl.trim() || null,
         cancel_booking_minutes: minutes,
       };
       const { error } = await supabase
@@ -199,7 +195,8 @@ function ClubSettingsForm({
         <div>
           <h2 className="text-lg font-semibold">Кнопки на главном экране</h2>
           <p className="text-sm text-muted-foreground">
-            Ссылки для кнопок «Написать», «Позвонить» и «Обратная связь» в мобильном приложении.
+            Ссылки для кнопок «Написать» и «Позвонить» в мобильном приложении. Кнопка «Фидбэк»
+            открывает форму обратной связи приложения — обращения приходят в «Обратную связь».
           </p>
         </div>
         <FormField
@@ -222,16 +219,6 @@ function ClubSettingsForm({
             placeholder="tel:+79991234567"
             value={form.callUrl}
             onChange={(e) => setField("callUrl", e.target.value)}
-          />
-        </FormField>
-        <FormField
-          label="Ссылка для кнопки «Обратная связь»"
-          tip="Например, Google-форма. Пусто — кнопки «Фидбэк» в приложении не будет."
-        >
-          <Input
-            placeholder="https://forms.example.com/feedback"
-            value={form.feedbackUrl}
-            onChange={(e) => setField("feedbackUrl", e.target.value)}
           />
         </FormField>
       </section>

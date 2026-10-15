@@ -11,7 +11,12 @@ import { useCatalogStudioIds } from "@/hooks/use-catalog-studios";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { formatMoney } from "@/lib/format";
-import { MEMBERSHIP_KIND_LABEL, MEMBERSHIP_KINDS, type MembershipKind } from "@/lib/payments";
+import {
+  MEMBERSHIP_KIND_LABEL,
+  MEMBERSHIP_KINDS,
+  SINGLE_VISIT,
+  type MembershipKind,
+} from "@/lib/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormattedTextarea } from "@/components/formatted-textarea";
@@ -52,7 +57,9 @@ import { PackagesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
-  kind: "Пакет тренировок расходуется на групповых занятиях, пакет персональных — на персональных с тренером. Пробное посещение продаётся типом «Оплата пробного» в «Абонементах».",
+  kind: "Пакет тренировок расходуется на групповых занятиях, пакет персональных — на персональных с тренером. Разовое посещение — одна групповая тренировка на месяц, продаёт администратор, в приложении его нет. Пробное посещение продаётся типом «Оплата пробного» в «Абонементах».",
+  single:
+    "У разового посещения условия постоянные: 1 групповая тренировка, срок 1 месяц (30 дней), оплата одним платежом. Меняется только стоимость.",
   visits:
     "Сколько тренировок входит в пакет. С баланса списывается одна, когда администратор отмечает посещение группового занятия.",
   trainings:
@@ -61,6 +68,8 @@ const TIPS = {
     "Сколько персональных тренировок входит в пакет в подарок. Это отдельный баланс: списывается, когда отмечено посещение персонального занятия. 0 — нет.",
   personal:
     "Сколько персональных тренировок в пакете. С баланса списывается одна, когда администратор отмечает посещение персонального занятия.",
+  diagnostics:
+    "Сколько диагностик тела входит в абонемент. Это отдельный баланс: списывается, когда отмечено посещение диагностики в расписании. В «В подарок» не показывается — для клиента напишите в «Что входит». 0 — нет.",
   duration: "Считается от даты продажи.",
   price:
     "Полная цена. Подставляется в продажу, скидку (например, постоянному клиенту) дают там, снижая стоимость. На уже проданные пакеты не влияет.",
@@ -130,6 +139,8 @@ type Package = {
   kind: MembershipKind;
   /** Персональных: у пакета тренировок — подарочные, у пакета персональных — количество. */
   personal_count: number;
+  /** Диагностик тела в абонементе (0 — нет), отдельный баланс. */
+  diagnostics_count: number;
   is_active: boolean;
   /** Порядок в таблице и в приложении (по возрастанию, перетаскивание строк). */
   sort_order: number;
@@ -148,13 +159,16 @@ type Package = {
 type PackageDraft = Omit<Package, "id" | "studio_id" | "sort_order">;
 
 const COLUMNS =
-  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, is_active, sort_order, tag_text, tag_style, gift_text, benefits, translations";
+  "id, studio_id, name, description, visits_count, duration_days, price, max_payments, kind, personal_count, diagnostics_count, is_active, sort_order, tag_text, tag_style, gift_text, benefits, translations";
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
-  if (p.kind === "personal") return `${p.personal_count} перс.`;
+  const diagnostics = p.diagnostics_count > 0 ? ` + ${p.diagnostics_count} диагн.` : "";
+  if (p.kind === "personal") return `${p.personal_count} перс.${diagnostics}`;
   const visits = p.visits_count ?? "—";
-  return p.personal_count > 0 ? `${visits} + ${p.personal_count} перс.` : String(visits);
+  return (
+    (p.personal_count > 0 ? `${visits} + ${p.personal_count} перс.` : String(visits)) + diagnostics
+  );
 }
 
 function formatDuration(days: number | null) {
@@ -429,17 +443,22 @@ function PackagesPage() {
                           {p.description ? stripFormatting(p.description) : "—"}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={p.is_active}
-                              onCheckedChange={(v) => handleToggleActive(p, v)}
-                            />
-                            {p.is_active ? (
-                              <Badge variant="secondary">Активен</Badge>
-                            ) : (
-                              <Badge variant="outline">Скрыт</Badge>
-                            )}
-                          </div>
+                          {p.kind === "single" ? (
+                            // Разовое в приложении не показывается — переключать нечего.
+                            <Badge variant="outline">Не в приложении</Badge>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={p.is_active}
+                                onCheckedChange={(v) => handleToggleActive(p, v)}
+                              />
+                              {p.is_active ? (
+                                <Badge variant="secondary">Активен</Badge>
+                              ) : (
+                                <Badge variant="outline">Скрыт</Badge>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     </RowContextMenu>
@@ -510,11 +529,15 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
   const [personalCount, setPersonalCount] = useState(
     init?.kind === "personal" ? String(init.personal_count) : "",
   );
+  const [diagnosticsCount, setDiagnosticsCount] = useState(
+    init?.kind !== "trial" && init?.diagnostics_count ? String(init.diagnostics_count) : "",
+  );
   const [durationDays, setDurationDays] = useState(
     init?.duration_days != null ? String(init.duration_days) : "",
   );
   const [price, setPrice] = useState(init?.price != null ? String(init.price) : "");
   const [kind, setKind] = useState<MembershipKind>(init?.kind ?? "package");
+  const isSingle = kind === "single";
   const [maxPayments, setMaxPayments] = useState(String(init?.max_payments ?? 1));
   const [isActive, setIsActive] = useState(init?.is_active ?? true);
   const [tagText, setTagText] = useState(init?.tag_text ?? "");
@@ -539,8 +562,8 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
     }
     const isPersonal = kind === "personal";
     // У пакета персональных обычных тренировок нет (0): по нему нельзя
-    // записаться на групповое.
-    const visits = isPersonal ? 0 : positiveInt(visitsCount);
+    // записаться на групповое. У разового условия постоянные (SINGLE_VISIT).
+    const visits = isPersonal ? 0 : isSingle ? SINGLE_VISIT.visits : positiveInt(visitsCount);
     if (visits == null) {
       toast.error("Укажите количество тренировок (целое число больше 0)");
       return;
@@ -560,7 +583,16 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       );
       return;
     }
-    const days = positiveInt(durationDays);
+    // Диагностики — у пакетов тренировок и персональных, у пробного и разового нет.
+    const diagnostics =
+      kind === "trial" || isSingle || diagnosticsCount.trim() === ""
+        ? 0
+        : Number(diagnosticsCount.trim());
+    if (!Number.isInteger(diagnostics) || diagnostics < 0) {
+      toast.error("Диагностик — целое число (0 — нет)");
+      return;
+    }
+    const days = isSingle ? SINGLE_VISIT.durationDays : positiveInt(durationDays);
     if (days == null) {
       toast.error("Укажите срок действия в днях (целое число больше 0)");
       return;
@@ -570,8 +602,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       toast.error("Укажите стоимость");
       return;
     }
-    // У пробного посещения рассрочки нет — всегда один платёж.
-    const payments = kind === "trial" ? 1 : positiveInt(maxPayments);
+    // У пробного и разового посещения рассрочки нет — всегда один платёж.
+    const payments =
+      kind === "trial" || isSingle ? SINGLE_VISIT.payments : positiveInt(maxPayments);
     if (payments == null || payments > MAX_PAYMENTS_LIMIT) {
       toast.error(`Укажите число платежей — целое от 1 до ${MAX_PAYMENTS_LIMIT}`);
       return;
@@ -593,11 +626,14 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         description: description.trim() || null,
         visits_count: visits,
         personal_count: personal,
+        diagnostics_count: diagnostics,
         duration_days: days,
         price: priceNum,
         max_payments: payments,
         kind,
-        is_active: isActive,
+        // Разовое в приложении не показывается (его отсекает тип), is_active
+        // ему не нужен — держим включённым.
+        is_active: isSingle ? true : isActive,
         tag_text: tagText.trim() || null,
         tag_style: hasTag ? tagStyle : null,
         gift_text: giftText.trim() || null,
@@ -635,9 +671,10 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
         <DialogTitle>{item ? "Редактировать номенклатуру" : "Новая номенклатура"}</DialogTitle>
         <DialogDescription>
           Пакет — несколько тренировок за фиксированную цену на ограниченный срок: групповых (пакет
-          тренировок) или персональных с тренером (пакет персональных). Пробное посещение продаётся
-          типом «Оплата пробного» в «Абонементах». Номенклатура общая для всех клубов с пакетами
-          тренировок: изменения сразу видны во всех клубах.
+          тренировок) или персональных с тренером (пакет персональных). Разовое посещение — одна
+          групповая тренировка, продаёт администратор, в приложении его нет. Пробное посещение
+          продаётся типом «Оплата пробного» в «Абонементах». Номенклатура общая для всех клубов с
+          пакетами тренировок: изменения сразу видны во всех клубах.
         </DialogDescription>
         <ContentLangSwitch tr={tr} />
       </DialogHeader>
@@ -648,7 +685,11 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
             <FormField label="Тип" tip={TIPS.kind} htmlFor={null} required>
               <RadioGroup
                 value={kind}
-                onValueChange={(v) => setKind(v as MembershipKind)}
+                onValueChange={(v) => {
+                  setKind(v as MembershipKind);
+                  // Разовое называется «Разовое посещение» — подставляем, если пусто.
+                  if (v === "single" && !name.trim()) setName(SINGLE_VISIT.name);
+                }}
                 className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
               >
                 {MEMBERSHIP_KINDS.map((k) => (
@@ -671,9 +712,11 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
                   setName,
                   kind === "trial"
                     ? "Например: Пробное занятие"
-                    : kind === "personal"
-                      ? "Например: 5 персональных"
-                      : "Например: 8 тренировок",
+                    : kind === "single"
+                      ? SINGLE_VISIT.name
+                      : kind === "personal"
+                        ? "Например: 5 персональных"
+                        : "Например: 8 тренировок",
                 )}
               />
             </FormField>
@@ -690,23 +733,25 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
                   />
                 </FormField>
               ) : (
-                <FormField label="Тренировок" tip={TIPS.visits} required>
+                <FormField label="Тренировок" tip={isSingle ? TIPS.single : TIPS.visits} required>
                   <Input
                     type="number"
                     min={1}
-                    value={visitsCount}
+                    value={isSingle ? String(SINGLE_VISIT.visits) : visitsCount}
                     onChange={(e) => setVisitsCount(e.target.value)}
                     placeholder="8"
+                    disabled={isSingle}
                   />
                 </FormField>
               )}
-              <FormField label="Срок, дней" tip={TIPS.duration} required>
+              <FormField label="Срок, дней" tip={isSingle ? TIPS.single : TIPS.duration} required>
                 <Input
                   type="number"
                   min={1}
-                  value={durationDays}
+                  value={isSingle ? String(SINGLE_VISIT.durationDays) : durationDays}
                   onChange={(e) => setDurationDays(e.target.value)}
                   placeholder="30"
+                  disabled={isSingle}
                 />
               </FormField>
               <FormField label="Стоимость, ₾" tip={TIPS.price} required>
@@ -719,20 +764,32 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </FormField>
             </div>
 
-            {kind === "package" && (
-              <FormField label="Персональных в подарок" tip={TIPS.giftPersonal} optional>
-                <Input
-                  type="number"
-                  min={0}
-                  value={giftPersonal}
-                  onChange={(e) => setGiftPersonal(e.target.value)}
-                  placeholder="0"
-                  className="sm:w-32"
-                />
-              </FormField>
+            {kind !== "trial" && !isSingle && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {kind === "package" && (
+                  <FormField label="Персональных в подарок" tip={TIPS.giftPersonal} optional>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={giftPersonal}
+                      onChange={(e) => setGiftPersonal(e.target.value)}
+                      placeholder="0"
+                    />
+                  </FormField>
+                )}
+                <FormField label="Диагностик" tip={TIPS.diagnostics} optional>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={diagnosticsCount}
+                    onChange={(e) => setDiagnosticsCount(e.target.value)}
+                    placeholder="0"
+                  />
+                </FormField>
+              </div>
             )}
 
-            {kind !== "trial" && (
+            {kind !== "trial" && !isSingle && (
               <FormField
                 label="Сколькими платежами можно оплатить"
                 tip={TIPS.payments}
@@ -750,67 +807,76 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </FormField>
             )}
 
-            <FormField
-              label={<ContentLangLabel lang={tr.lang}>Описание</ContentLangLabel>}
-              tip={TIPS.description}
-              optional
-            >
-              <FormattedTextarea
-                rows={4}
-                {...tr.text("description", description, setDescription)}
-              />
-            </FormField>
+            {isSingle ? (
+              <InfoNote>
+                Разовое посещение в мобильном приложении не показывается и не продаётся: его
+                оформляет администратор в «Абонементах» или в карточке клиента.
+              </InfoNote>
+            ) : (
+              <>
+                <FormField
+                  label={<ContentLangLabel lang={tr.lang}>Описание</ContentLangLabel>}
+                  tip={TIPS.description}
+                  optional
+                >
+                  <FormattedTextarea
+                    rows={4}
+                    {...tr.text("description", description, setDescription)}
+                  />
+                </FormField>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
-              <FormField
-                label={<ContentLangLabel lang={tr.lang}>Тег</ContentLangLabel>}
-                tip={TIPS.tag}
-                optional
-              >
-                <Input
-                  maxLength={24}
-                  {...tr.input("tag_text", tagText, setTagText, "Например: Популярно")}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+                  <FormField
+                    label={<ContentLangLabel lang={tr.lang}>Тег</ContentLangLabel>}
+                    tip={TIPS.tag}
+                    optional
+                  >
+                    <Input
+                      maxLength={24}
+                      {...tr.input("tag_text", tagText, setTagText, "Например: Популярно")}
+                    />
+                  </FormField>
+                  <FormField label="Вид тега" htmlFor={null}>
+                    <SegmentedControl
+                      aria-label="Вид тега"
+                      value={tagStyle}
+                      onChange={setTagStyle}
+                      options={TAG_STYLES}
+                    />
+                  </FormField>
+                </div>
+                {tagPreview && (
+                  <div className="-mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    В приложении: <PackageTag text={tagPreview} style={tagStyle} />
+                  </div>
+                )}
+
+                <FormField
+                  label={<ContentLangLabel lang={tr.lang}>Что входит</ContentLangLabel>}
+                  tip={TIPS.benefits}
+                  optional
+                  hint={benefitsRuHint}
+                >
+                  {/* key: недописанный пункт не переезжает на другой язык. */}
+                  <BenefitsEditor key={tr.lang} {...benefitsField} />
+                </FormField>
+
+                <FormField
+                  label={<ContentLangLabel lang={tr.lang}>В подарок</ContentLangLabel>}
+                  tip={TIPS.gift}
+                  optional
+                >
+                  <FormattedTextarea rows={3} {...tr.text("gift_text", giftText, setGiftText)} />
+                </FormField>
+
+                <SwitchRow
+                  title="Показывать в мобильном приложении"
+                  hint="Выключите, чтобы пакет нельзя было купить. Уже купившие сохранят условия."
+                  checked={isActive}
+                  onCheckedChange={setIsActive}
                 />
-              </FormField>
-              <FormField label="Вид тега" htmlFor={null}>
-                <SegmentedControl
-                  aria-label="Вид тега"
-                  value={tagStyle}
-                  onChange={setTagStyle}
-                  options={TAG_STYLES}
-                />
-              </FormField>
-            </div>
-            {tagPreview && (
-              <div className="-mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                В приложении: <PackageTag text={tagPreview} style={tagStyle} />
-              </div>
+              </>
             )}
-
-            <FormField
-              label={<ContentLangLabel lang={tr.lang}>Что входит</ContentLangLabel>}
-              tip={TIPS.benefits}
-              optional
-              hint={benefitsRuHint}
-            >
-              {/* key: недописанный пункт не переезжает на другой язык. */}
-              <BenefitsEditor key={tr.lang} {...benefitsField} />
-            </FormField>
-
-            <FormField
-              label={<ContentLangLabel lang={tr.lang}>В подарок</ContentLangLabel>}
-              tip={TIPS.gift}
-              optional
-            >
-              <FormattedTextarea rows={3} {...tr.text("gift_text", giftText, setGiftText)} />
-            </FormField>
-
-            <SwitchRow
-              title="Показывать в мобильном приложении"
-              hint="Выключите, чтобы пакет нельзя было купить. Уже купившие сохранят условия."
-              checked={isActive}
-              onCheckedChange={setIsActive}
-            />
 
             {item && (
               <InfoNote variant="warning">

@@ -110,8 +110,8 @@ not verified`); resend.com → Emails — ушло ли письмо и что �
 (HMAC, standardized-webhooks); логика писем — `apps/admin/src/lib/auth-email.ts`,
 покрыта тестами (`bun test`): решение принимается по хосту адреса возврата,
 роли пользователя на письмо не влияют. Приложение пакетных клубов
-(app.lady-stretch.one, pack.base40.fit) получает письма Lady Stretch: тёмные,
-розовый #f763fc, отправитель — `LADY_STRETCH_MAIL_FROM`. Типы писем: signup (код), magiclink
+(app.lady-stretch.one, pack.base40.fit) получает письма Lady Stretch: светлые,
+розовая шапка #f763fc, отправитель — `LADY_STRETCH_MAIL_FROM`. Типы писем: signup (код), magiclink
 (код клиенту / ссылка сотруднику), recovery (ссылка), invite (ссылка),
 email_change (код). Секреты живут только в Coolify у админки — у клиентского
 приложения секретов нет по-прежнему.

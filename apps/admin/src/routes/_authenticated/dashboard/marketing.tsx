@@ -284,7 +284,7 @@ function MarketingBody(view: DashboardView) {
           className="lg:col-span-2"
         >
           {chartsLoading ? (
-            <DashboardFunnelSkeleton rows={withTrials ? 5 : 4} />
+            <DashboardFunnelSkeleton rows={withTrials ? 6 : 4} />
           ) : chartsError || !charts || cohort?.length === 0 ? (
             <Empty error={chartsError} text="Новых клиентов за период нет" />
           ) : (

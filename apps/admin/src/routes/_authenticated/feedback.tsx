@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MessageSquare, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Trash2, MessageSquare, Loader2, QrCode, Copy, Download } from "lucide-react";
+import { endOfDay, format, startOfDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import QRCode from "qrcode";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useActiveStudio } from "@/hooks/use-studios";
+import { STUDIO_FORMAT_APP_URL } from "@/lib/studio-formats";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -47,6 +50,7 @@ import {
 import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
+import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { FeedbackPageSkeleton, FeedbackStatsSkeleton } from "@/components/page-skeletons";
@@ -64,6 +68,7 @@ export const Route = createFileRoute("/_authenticated/feedback")({
 
 type Feedback = {
   id: string;
+  studio_id: string | null;
   topic: string;
   message: string;
   mood: string | null;
@@ -75,6 +80,14 @@ type Feedback = {
   resolved_at: string | null;
   resolution_comment: string | null;
   created_at: string;
+  /** Откуда пришло (db/migrations/2026-10-15_zz_feedback_in_app.sql); старые — null. */
+  source: "app" | "link" | "portal" | null;
+};
+
+const SOURCES: Record<string, string> = {
+  app: "Мобильное приложение",
+  link: "Ссылка или QR-код",
+  portal: "Добавлено в портале",
 };
 
 const TOPICS: Record<string, string> = {
@@ -115,6 +128,8 @@ function FeedbackPage() {
   const [topicFilter, setTopicFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [moodFilter, setMoodFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [linksOpen, setLinksOpen] = useState(false);
 
   const queryKey = ["feedback", studioId];
   const { data: items = [], isLoading: loading } = useQuery({
@@ -141,9 +156,12 @@ function FeedbackPage() {
         if (moodFilter === "none" && i.mood) return false;
         if (moodFilter !== "none" && i.mood !== moodFilter) return false;
       }
+      const created = new Date(i.created_at);
+      if (dateRange?.from && created < startOfDay(dateRange.from)) return false;
+      if (dateRange?.to && created > endOfDay(dateRange.to)) return false;
       return true;
     });
-  }, [items, topicFilter, statusFilter, moodFilter]);
+  }, [items, topicFilter, statusFilter, moodFilter, dateRange]);
 
   const pg = usePagination(filtered);
 
@@ -174,27 +192,33 @@ function FeedbackPage() {
     toast.success("Удалено");
   };
 
-  const hasFilters = topicFilter !== "all" || statusFilter !== "all" || moodFilter !== "all";
+  const hasFilters =
+    topicFilter !== "all" || statusFilter !== "all" || moodFilter !== "all" || !!dateRange;
 
   return (
     <AdminShell
       title="Обратная связь"
       actions={
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus /> Добавить
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
-            <NewFeedbackForm
-              studioId={studioId}
-              onClose={() => setAddOpen(false)}
-              onSaved={reload}
-            />
-          </DialogContent>
-        </Dialog>
+        <>
+          <Button variant="outline" onClick={() => setLinksOpen(true)}>
+            <QrCode /> Ссылка и QR-код
+          </Button>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus /> Добавить
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+              <NewFeedbackForm
+                studioId={studioId}
+                onClose={() => setAddOpen(false)}
+                onSaved={reload}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
       }
     >
       <div className="space-y-3">
@@ -259,12 +283,20 @@ function FeedbackPage() {
               <SelectItem value="none">Без оценки</SelectItem>
             </SelectContent>
           </Select>
+          <DateRangeFilter
+            placeholder="Дата"
+            title="Дата обращения"
+            value={dateRange}
+            onChange={setDateRange}
+            className="w-48"
+          />
           <ToolbarReset
             active={hasFilters}
             onReset={() => {
               setTopicFilter("all");
               setStatusFilter("all");
               setMoodFilter("all");
+              setDateRange(undefined);
             }}
           />
         </TableToolbar>
@@ -382,6 +414,10 @@ function FeedbackPage() {
         </SheetContent>
       </Sheet>
 
+      <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
+        <DialogContent className="max-w-lg">{linksOpen && <FeedbackLinks />}</DialogContent>
+      </Dialog>
+
       {confirmDialog}
     </AdminShell>
   );
@@ -417,6 +453,7 @@ function NewFeedbackForm({
         mood: mood || null,
         client_name: clientName.trim() || null,
         client_contact: clientContact.trim() || null,
+        source: "portal",
       });
       if (error) {
         toast.error(error.message);
@@ -518,7 +555,7 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
       {
         status: "resolved",
         resolved_by: me?.id ?? null,
-        resolved_by_name: me?.email ?? null,
+        resolved_by_name: me?.displayName || null,
         resolved_at: new Date().toISOString(),
         resolution_comment: resolutionComment.trim() || null,
       },
@@ -544,6 +581,7 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
         <ReadOnlyValue label="Дата">
           {format(new Date(item.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
         </ReadOnlyValue>
+        {item.source && <ReadOnlyValue label="Откуда">{SOURCES[item.source]}</ReadOnlyValue>}
         <ReadOnlyValue label="Сообщение">
           <span className="whitespace-pre-wrap">{item.message}</span>
         </ReadOnlyValue>
@@ -602,6 +640,116 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * Ссылка на форму обратной связи клиентского приложения (routes/feedback.tsx
+ * в apps/client) и её QR-код — для стойки и стен клуба. Форма открывается без
+ * входа и без установки приложения; клуб в ссылке подставляется сам, по общей
+ * ссылке клиент выбирает клуб сам. QR-код рисуется в браузере (без внешних
+ * сервисов), PNG 600×600.
+ */
+function FeedbackLinks() {
+  const studio = useActiveStudio();
+  if (!studio) {
+    return (
+      <DialogHeader>
+        <DialogTitle>Ссылка и QR-код</DialogTitle>
+        <DialogDescription>Выберите клуб в шапке.</DialogDescription>
+      </DialogHeader>
+    );
+  }
+  const base = `${STUDIO_FORMAT_APP_URL[studio.format]}/feedback`;
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Ссылка и QR-код</DialogTitle>
+        <DialogDescription>
+          Форма обратной связи открывается по ссылке без входа в приложение. Обращения попадают
+          сюда, в «Обратную связь».
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-4">
+          <FeedbackLinkRow
+            title={`Клуб «${studio.name}»`}
+            hint="Клуб подставляется сам — для QR-кода в клубе."
+            url={`${base}?studio=${studio.id}`}
+            fileName={`feedback-qr-${studio.name}`}
+          />
+          <FeedbackLinkRow
+            title="Общая ссылка"
+            hint="Клиент сам выбирает клуб."
+            url={base}
+            fileName="feedback-qr"
+          />
+        </div>
+      </DialogBody>
+    </>
+  );
+}
+
+function FeedbackLinkRow({
+  title,
+  hint,
+  url,
+  fileName,
+}: {
+  title: string;
+  hint: string;
+  url: string;
+  fileName: string;
+}) {
+  const [qr, setQr] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(url, { width: 600, margin: 2 }).then(
+      (data) => !cancelled && setQr(data),
+      () => !cancelled && setQr(null),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  const copy = () =>
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Ссылка скопирована"),
+      () => toast.error("Не удалось скопировать"),
+    );
+
+  return (
+    <div className="flex gap-4 rounded-lg border p-3">
+      <div className="h-24 w-24 shrink-0 rounded-md bg-muted">
+        {qr && <img src={qr} alt="" className="h-full w-full rounded-md" />}
+      </div>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div>
+          <p className="text-sm font-medium">{title}</p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        </div>
+        <p className="truncate text-xs text-muted-foreground" title={url}>
+          {url}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={copy}>
+            <Copy /> Скопировать ссылку
+          </Button>
+          <Button size="sm" variant="outline" disabled={!qr} asChild={!!qr}>
+            {qr ? (
+              <a href={qr} download={`${fileName}.png`}>
+                <Download /> Скачать QR-код
+              </a>
+            ) : (
+              <span>
+                <Download /> Скачать QR-код
+              </span>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

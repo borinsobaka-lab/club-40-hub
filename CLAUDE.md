@@ -34,7 +34,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   перед коммитом
 - `bun run lint`, `bun run test`, `bun run build` — то же по обоим
 - `bun run test:db` — тесты базы: мигратора (`TEST_DATABASE_URL` — пустая
-  база), рассылки пушей `db/push.test.ts`, NPS-опросов `db/nps.test.ts` и логики пакетных клубов `db/packages.test.ts`
+  база), рассылки пушей `db/push.test.ts`, триггерных уведомлений
+  `db/push-triggers.test.ts`, логики пакетных клубов `db/packages.test.ts`,
+  обратной связи `db/feedback.test.ts` и NPS-опросов `db/nps.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -212,6 +214,12 @@ AUTH_SETUP.md.
   `schedule_bookings_charge_balance` (из `zz_packages_personal_balance`),
   `sale_installments.payment_method`; вью `client_packages_list` пересоздана
   (актуальное определение — здесь).
+  Разовое посещение пакетных клубов (2026-10-15):
+  `db/migrations/2026-10-15_zz_packages_single_visit.sql` — `memberships.kind
+  = 'single'` (1 групповая, 30 дней, 1 платёж — `memberships_single_terms_check`),
+  в приложении не покупается (`sales_client_insert_guard` — актуальное
+  определение здесь), строка «Разовое посещение» в общем каталоге (цена 0 —
+  ставят в «Номенклатурах»).
   Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
   — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
   триггер списания), `payroll_lines` — пакет персональных не идёт в продажи
@@ -305,7 +313,8 @@ AUTH_SETUP.md.
   любого пакетного клуба видит и правит каталог всех пакетных
   (`can_manage_catalog` в политиках «… trainer write»), покупка в приложении
   принимает пакет любого пакетного клуба (`catalog_shared` в
-  `sales_client_insert_guard` — актуальное определение здесь), удаление
+  `sales_client_insert_guard`; актуальное определение —
+  `2026-10-15_zz_packages_single_visit.sql`), удаление
   пакетного клуба переносит его каталог в другой пакетный
   (`studios_packages_catalog_rehome`). Разово слиты одинаковые строки
   (`packages_merge_catalog`: тренировки — по названию, номенклатура — по
@@ -438,6 +447,54 @@ AUTH_SETUP.md.
   охват для формы — `push_audience_stats`. Тесты — `db/push.test.ts`.
   Отправитель — apps/admin (`src/lib/push/`), приём — apps/client
   (`public/sw.js`, `src/lib/push.ts`).
+  **Обратная связь — своя форма** (решение владельца 2026-10-15, вместо
+  внешнего сервиса): `db/migrations/2026-10-15_zz_feedback_in_app.sql` —
+  отправить обращение в `feedback` может клиент приложения и anon (форма
+  `/feedback` клиентского приложения открывается без входа по ссылке или
+  QR-коду клуба, `?studio=<id>`); у не сотрудника клуб обязателен, статус,
+  поля отработки и дату сбрасывает триггер `feedback_insert_guard`,
+  `feedback.source` — `app` / `link` / `portal` (добавил сотрудник), размеры
+  полей — `feedback_lengths_check`. Читают, отрабатывают и удаляют — только
+  сотрудники (`db/security_hardening.sql`). Админка: «Обратная связь» —
+  фильтр по дате, «Ссылка и QR-код» (PNG 600×600 рисуется в браузере,
+  пакет `qrcode`), счётчик неотработанных у пункта меню (вместо
+  Telegram-уведомлений прежнего сервиса). Тесты — `db/feedback.test.ts`.
+  **Диагностика тела и заявки клиентов** (пакетные клубы, решение владельца
+  2026-10-15): `db/migrations/2026-10-15_zz_diagnostics_client_requests.sql`
+  — `memberships.diagnostics_count`, `client_memberships.diagnostics_left`
+  (ставит `client_memberships_packages_fill`); `schedule_entries.kind =
+  'diagnostic'` (тренер, время, клиент; записывает только сотрудник),
+  клиент видит СВОИ диагностики (политики «… own diagnostic»,
+  `client_has_entry_booking`) и отменяет их сам; «Посетил» списывает
+  диагностику (`charged_balance = 'diagnostic'`, без остатка — исключение
+  `no_diagnostics`), возврат — как у тренировок. Актуальные определения
+  `schedule_bookings_charge_balance`, `schedule_bookings_refund_on_delete`,
+  `packages_settle` (диагностики держат отхоженный абонемент), вью
+  `client_packages_list`, `guest_client_json`, `client_memberships_packages_fill`
+  — здесь. Заявки — `client_requests` (`personal` с целями и комментарием /
+  `diagnostic`): создаёт только RPC `create_client_request` (одна
+  неотработанная заявка вида на клиента), «Отработано» — `processed_at`,
+  кто и когда ставит триггер `client_requests_guard`; раздел клуба
+  `requests` в админке. Зарплата за диагностику — по `pay_rate` занятия
+  (пока 0: ставку владелец не назвал). Тесты — `db/packages.test.ts`.
+  **Триггерные уведомления** (раздел «Триггеры», 2026-10-15):
+  `db/migrations/2026-10-15_push_triggers.sql` — `push_triggers` (строка на
+  формат = приложение и триггер: `enabled`, тексты `title`/`message` +
+  `translations` en/ka с переменными `{name}`, `{class}`, `{when}`…,
+  `action_url`, `params` — hours/days/left/send_hour; строки заводит только
+  миграция, админка правит — раздел рейки `app` + клуб формата, параметры
+  проверяет `push_triggers_guard`, включение ставит `active_since` — старые
+  события не рассылаются); проход — `push_triggers_run(p_now)` (только
+  service_role, сервер админки раз в минуту): по каждому включённому
+  триггеру ищет события и шлёт через ту же очередь — строка
+  `push_notifications` с `trigger_key` (в «Пуш-уведомлениях» и у Kate её
+  нет), один получатель, доставки на его телефоны; без повторов —
+  `push_trigger_log` (триггер × учётная запись × событие). Тексты
+  подставляет база (`push_trigger_vars` / `push_trigger_render`, время — по
+  Тбилиси), ночью (22:00–09:00) необязательные ждут утра, ежедневные — в
+  `send_hour`. «Кто записал» — `schedule_bookings.booked_by`/`booked_at`
+  (триггер `schedule_bookings_booked_by_biu`, `auth.uid()`), статистика —
+  `push_trigger_stats` (security invoker). Тесты — `db/push-triggers.test.ts`.
   **NPS-опросы в приложении** (решение владельца 2026-10-15, оба формата):
   `db/migrations/2026-10-15_zz_nps_surveys.sql` — какой опрос положен
   клиенту, решает база (`nps_pending_survey`: первые занятия — закончилась
@@ -576,7 +633,8 @@ own"` оставить). Альтернатива — выдача абонем�
   отдельным заходом с UI.
 - Известные особенности живой БД: `club_settings` — глобальный синглтон
   (id = true), колонка studio_id в живой БД есть, но не используется;
-  `feedback` и `nps_responses` не привязаны к студии (гэп для мультистудии);
+  `nps_responses` не привязаны к студии (гэп для мультистудии; `feedback` —
+  с `studio_id`, см. «Обратная связь» выше);
   `schedule_days` объявлена в db/, но в живой БД не создана (фича не выкачена).
 
 ## Документы

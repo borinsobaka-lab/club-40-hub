@@ -19,6 +19,7 @@ import {
   entryColor,
   entryTrainers,
   fmtTime,
+  isDiagnostic,
   replacedTrainer,
   spotsLabel,
   spotsLeft,
@@ -124,7 +125,7 @@ export function PackWorkoutCard({
         </div>
         <div className="ml-1 min-w-0 flex-1">
           <div className="break-words font-semibold leading-snug">
-            {loc(entry.workout)?.name ?? t("Тренировка")}
+            {isDiagnostic(entry) ? t("Диагностика") : (loc(entry.workout)?.name ?? t("Тренировка"))}
           </div>
           {studioName && (
             <div className="mt-0.5 truncate text-xs font-medium text-muted-foreground">

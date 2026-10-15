@@ -89,7 +89,7 @@ type MembershipRow = {
   installment_enabled: boolean;
   /** Пакетный формат: сколькими платежами можно оплатить (1 — только сразу). */
   max_payments: number;
-  /** Пакетный формат: пакет тренировок или пробное посещение. */
+  /** Пакетный формат: пакет тренировок, персональных, разовое или пробное посещение. */
   kind: MembershipKind;
 };
 
@@ -257,7 +257,8 @@ function SaleForm({
   const admins = staffRows.filter((r) => isAdminRole(r.role));
   const seller = admins.find((r) => r.id === form.sellerId) ?? null;
 
-  // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты.
+  // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты
+  // и разовое посещение (его продают только здесь, в приложении его нет).
   const options = isPackages
     ? memberships.filter((m) => (m.kind === "trial") === isTrial)
     : memberships;
@@ -512,7 +513,9 @@ function SaleForm({
                   hint:
                     isPackages && m.kind === "personal"
                       ? `Персональные · ${formatMoney(Number(m.price ?? 0))}`
-                      : formatMoney(Number(m.price ?? 0)),
+                      : isPackages && m.kind === "single"
+                        ? `Разовое · ${formatMoney(Number(m.price ?? 0))}`
+                        : formatMoney(Number(m.price ?? 0)),
                   searchText: m.name,
                 }))}
               />

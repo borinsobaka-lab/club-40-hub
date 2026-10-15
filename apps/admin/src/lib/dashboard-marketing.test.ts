@@ -22,6 +22,7 @@ function sale(p: Partial<SaleRecord> & { clientId: string; soldAt: string }): Sa
     totalAmount: 100,
     membershipName: "Пакет 8",
     trial: false,
+    single: false,
     personal: false,
     method: "cash",
     source: "admin",
@@ -126,6 +127,8 @@ describe("новые клиенты периода", () => {
     sale({ clientId: "a", soldAt: "2026-10-02", trial: true }),
     sale({ clientId: "a", soldAt: "2026-10-05", totalAmount: 250 }),
     sale({ clientId: "a", soldAt: "2026-10-20", totalAmount: 50 }),
+    // Разовое — не абонемент: в покупки и выручку источника не идёт.
+    sale({ clientId: "c", soldAt: "2026-10-04", totalAmount: 40, single: true }),
   ];
 
   test("путь: каждый шаг — от всех новых клиентов", () => {
@@ -134,12 +137,13 @@ describe("новые клиенты периода", () => {
       ["new", 3],
       ["app", 2],
       ["trial", 1],
+      ["single", 1],
       ["visit", 2],
       ["purchase", 1],
     ]);
-    expect(newClientsFunnel(cohort, sales, new Set(), false).map((s) => s.key)).not.toContain(
-      "trial",
-    );
+    const keys = newClientsFunnel(cohort, sales, new Set(), false).map((s) => s.key);
+    expect(keys).not.toContain("trial");
+    expect(keys).not.toContain("single");
   });
 
   test("по ответу анкеты; без ответа — последней строкой", () => {

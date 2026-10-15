@@ -201,6 +201,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             users, without your name);
           </li>
           <li>
+            the feedback you send through the feedback form (studio, topic, message, mood and, if
+            you choose to provide them, your name and phone number or Instagram account) — it is
+            available only to studio staff who handle feedback;
+          </li>
+          <li>
             your answers to satisfaction surveys in the App (a score from 0 to 10 and your comment)
             and whether you have answered or closed a survey. Answering is voluntary.
           </li>

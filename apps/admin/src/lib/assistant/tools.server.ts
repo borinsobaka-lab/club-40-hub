@@ -446,7 +446,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== ПУШ-УВЕДОМЛЕНИЯ ======
     list_push_notifications: tool({
       description:
-        "Пуш-уведомления клиентам текущего клуба: заголовок, текст, action_url, сегменты, статус (draft/scheduled/sending — идёт рассылка/sent), запланировано/отправлено, метрики: recipients_count — клиентов с приложением, devices_count — их телефонов с уведомлениями, sent_count — принято службой доставки, failed_count — не дошло, delivered_count — показано на телефоне, read_count — клиентов открыли.",
+        "Пуш-рассылки клиентам текущего клуба из раздела «Пуш-уведомления» (автоматические триггерные уведомления сюда не входят): заголовок, текст, action_url, сегменты, статус (draft/scheduled/sending — идёт рассылка/sent), запланировано/отправлено, метрики: recipients_count — клиентов с приложением, devices_count — их телефонов с уведомлениями, sent_count — принято службой доставки, failed_count — не дошло, delivered_count — показано на телефоне, read_count — клиентов открыли.",
       inputSchema: z.object({
         status: z.enum(["draft", "scheduled", "sending", "sent"]).optional(),
         limit: limit(500, 200),
@@ -458,6 +458,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
             "id, title, message, action_url, segments, studio_ids, status, scheduled_at, sent_at, recipients_count, devices_count, sent_count, failed_count, delivered_count, read_count, created_at, updated_at",
           )
           .contains("studio_ids", [studioId])
+          .is("trigger_key", null)
           .order("created_at", { ascending: false })
           .limit(limit);
         if (status) q = q.eq("status", status);
@@ -468,7 +469,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== ОБРАТНАЯ СВЯЗЬ ======
     list_feedback: tool({
       description:
-        "Обратная связь от клиентов: тема, сообщение, настроение, контакт, статус (pending/resolved).",
+        "Обратная связь от клиентов (форма в мобильном приложении и по QR-коду клуба): тема, сообщение, настроение, контакт, статус (pending/resolved), откуда (source: app — приложение, link — ссылка или QR-код, portal — добавил сотрудник).",
       inputSchema: z.object({
         status: z.enum(["pending", "resolved"]).optional(),
         topic: z
@@ -480,7 +481,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
         let q = supabase
           .from("feedback")
           .select(
-            "id, topic, message, mood, client_name, client_contact, status, resolved_by_name, resolved_at, resolution_comment, created_at",
+            "id, topic, message, mood, client_name, client_contact, status, resolved_by_name, resolved_at, resolution_comment, created_at, source",
           )
           .or(ownOrUnassigned)
           .order("created_at", { ascending: false })
@@ -565,12 +566,12 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== НАСТРОЙКИ КЛУБА ======
     get_club_settings: tool({
       description:
-        "Контакты и правила мобильного приложения в текущем клубе: ссылки кнопок «Написать», «Позвонить», «Обратная связь» и минуты для отмены брони.",
+        "Контакты и правила мобильного приложения в текущем клубе: ссылки кнопок «Написать» и «Позвонить» и минуты для отмены брони. Кнопка «Фидбэк» — своя форма приложения, обращения — в list_feedback.",
       inputSchema: z.object({}),
       execute: async () => {
         const { data, error } = await supabase
           .from("studio_app_settings")
-          .select("write_url, call_url, feedback_url, cancel_booking_minutes, updated_at")
+          .select("write_url, call_url, cancel_booking_minutes, updated_at")
           .eq("studio_id", studioId)
           .maybeSingle();
         if (error) return { error: error.message };
@@ -579,7 +580,6 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
           data ?? {
             write_url: null,
             call_url: null,
-            feedback_url: null,
             cancel_booking_minutes: 180,
           }
         );
@@ -612,6 +612,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
             .from("push_notifications")
             .select("id", head)
             .contains("studio_ids", [studioId])
+            .is("trigger_key", null)
             .eq("status", "sent"),
           feedback_pending: supabase
             .from("feedback")

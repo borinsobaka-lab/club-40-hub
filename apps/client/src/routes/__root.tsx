@@ -452,8 +452,11 @@ function usePrefetchScreens(ready: boolean) {
   }, [ready, userId, studioId, studioReady, router, queryClient]);
 }
 
-/** Страницы, которые открываются без входа (политика — только у Lady Stretch). */
-const PUBLIC_ROUTES = new Set(PRIVACY_POLICY_INFO ? ["/privacy"] : []);
+/**
+ * Страницы, которые открываются без входа и без установки: обратная связь
+ * (ссылка и QR-код клуба из админки) и политика (только у Lady Stretch).
+ */
+const PUBLIC_ROUTES = new Set(["/feedback", ...(PRIVACY_POLICY_INFO ? ["/privacy"] : [])]);
 
 /**
  * Заслон установки: в дев-сервере — только с ?install в адресе (проверить
@@ -469,7 +472,7 @@ const INSTALL_GATE =
  * (components/install-screen.tsx). Открыто ли установленным — известно
  * только в браузере: сервер и гидратация рисуют приложение как раньше
  * (у пакетного это заставка), затем во вкладке — инструкция. Публичные
- * страницы (политика) открываются и в браузере.
+ * страницы (обратная связь, политика) открываются и в браузере.
  */
 function InstallGate({ children }: { children: ReactNode }) {
   const installed = useInstalledDisplay();
@@ -487,7 +490,7 @@ function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onAuthRoute = pathname === "/auth";
   const onOnboardingRoute = pathname === "/onboarding";
-  // Открываются и без входа (политика конфиденциальности — ссылка у входа).
+  // Открываются и без входа (обратная связь по QR-коду, политика — ссылка у входа).
   const onPublicRoute = PUBLIC_ROUTES.has(pathname);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
 
@@ -511,7 +514,7 @@ function AppShell() {
   useEffect(() => {
     if (loading || !user) return;
     if (onAuthRoute) return;
-    // Публичную страницу (политику) читают и до анкеты — проверка при уходе с неё.
+    // Публичную страницу (политику, обратную связь) открывают и до анкеты — проверка при уходе с неё.
     if (onOnboardingRoute || onPublicRoute || readOnboarded(user.id)) {
       setOnboardingChecked(true);
       return;
