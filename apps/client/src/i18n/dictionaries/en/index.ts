@@ -21,6 +21,7 @@ import invite from "./invite";
 import notifications from "./notifications";
 import install from "./install";
 import feedback from "./feedback";
+import nps from "./nps";
 
 const dict: Dictionary = {
   ...common,
@@ -39,6 +40,7 @@ const dict: Dictionary = {
   ...notifications,
   ...install,
   ...feedback,
+  ...nps,
 };
 
 export default dict;

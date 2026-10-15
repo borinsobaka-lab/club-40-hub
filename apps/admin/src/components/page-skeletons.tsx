@@ -1050,6 +1050,8 @@ export function NpsSurveysSkeleton() {
               </div>
             ))}
           </div>
+          {/* Показы в приложении (у «Общего» — плашка «Не реализовано»). */}
+          <Skeleton className="mt-4 h-3 w-72 max-w-full" />
         </div>
       ))}
     </div>
@@ -1101,6 +1103,8 @@ export function NpsPageSkeleton() {
         <ToolbarSkeleton search={false}>
           <TabsSkeleton labels={["Опросы", "Статистика"]} className="toolbar-full" />
         </ToolbarSkeleton>
+        {/* Плашка «как показываются опросы» над карточками. */}
+        <Skeleton className="h-16 w-full rounded-md" />
         <NpsSurveysSkeleton />
       </div>
     </ShellSkeleton>

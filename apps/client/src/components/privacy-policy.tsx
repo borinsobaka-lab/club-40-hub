@@ -203,7 +203,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           <li>
             the feedback you send through the feedback form (studio, topic, message, mood and, if
             you choose to provide them, your name and phone number or Instagram account) — it is
-            available only to studio staff who handle feedback.
+            available only to studio staff who handle feedback;
+          </li>
+          <li>
+            your answers to satisfaction surveys in the App (a score from 0 to 10 and your comment)
+            and whether you have answered or closed a survey. Answering is voluntary.
           </li>
         </ul>
         <p>4.6. Technical data:</p>
@@ -272,8 +276,8 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>
             <b>Security and service quality</b> — protecting the App and accounts from unauthorised
-            access, resolving errors, preparing anonymised statistics to improve our services.
-            Grounds: our legitimate interest.
+            access, resolving errors, asking for your feedback in satisfaction surveys and preparing
+            anonymised statistics to improve our services. Grounds: our legitimate interest.
           </li>
         </ol>
         <p>
@@ -381,6 +385,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             Push subscription of your device — until you sign out of the App on that device; it is
             also deleted when notifications are turned off or the App is removed (the notification
             service informs us about it).
+          </li>
+          <li>
+            Satisfaction survey answers — for as long as they are needed for service quality
+            statistics; when your client card is deleted, they are kept without your name and
+            without a link to your account.
           </li>
           <li>Server logs — for a limited period needed to ensure security.</li>
           <li>

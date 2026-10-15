@@ -35,8 +35,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
 - `bun run lint`, `bun run test`, `bun run build` — то же по обоим
 - `bun run test:db` — тесты базы: мигратора (`TEST_DATABASE_URL` — пустая
   база), рассылки пушей `db/push.test.ts`, триггерных уведомлений
-  `db/push-triggers.test.ts`, логики пакетных клубов `db/packages.test.ts`
-  и обратной связи `db/feedback.test.ts`
+  `db/push-triggers.test.ts`, логики пакетных клубов `db/packages.test.ts`,
+  обратной связи `db/feedback.test.ts` и NPS-опросов `db/nps.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -495,6 +495,18 @@ AUTH_SETUP.md.
   `send_hour`. «Кто записал» — `schedule_bookings.booked_by`/`booked_at`
   (триггер `schedule_bookings_booked_by_biu`, `auth.uid()`), статистика —
   `push_trigger_stats` (security invoker). Тесты — `db/push-triggers.test.ts`.
+  **NPS-опросы в приложении** (решение владельца 2026-10-15, оба формата):
+  `db/migrations/2026-10-15_zz_nps_surveys.sql` — какой опрос положен
+  клиенту, решает база (`nps_pending_survey`: первые занятия — закончилась
+  4-я тренировка, первый месяц — 30 дней с начала первого абонемента, перед
+  продлением — за 10 дней до конца или при остатке ≤ 2 в пакетном клубе,
+  после возобновления — после 2-й тренировки вернувшегося из БЧК; частота и
+  сроки — в шапке миграции); показы — `nps_survey_prompts` (закрыт
+  крестиком / отвечен), ответы — `nps_responses` (+ `user_id`, `client_id`,
+  студия — карточки). Приложение — только RPC `my_nps_survey`,
+  `nps_survey_shown`, `nps_survey_close`, `submit_nps_response`; вставка в
+  `nps_responses` напрямую — только сотрудник (было — любой вошедший);
+  счётчики показов для админки — `nps_prompt_stats`. Тесты — `db/nps.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
@@ -581,7 +593,8 @@ AUTH_SETUP.md.
   любой студии — для пулов без studio_id: feedback/nps). Правки доступа собраны
   в `db/security_hardening.sql` (аудит 2026-08-07): ужесточён select у
   `clients`/`client_memberships`, закрыт IDOR в `cancel_membership*`,
-  `feedback`/`nps` — чтение/правка только сотрудник. Storage: запись/удаление в
+  `feedback`/`nps` — чтение/правка только сотрудник (`nps_responses`: с 2026-10-15 и
+  вставка — клиент отвечает через `submit_nps_response`). Storage: запись/удаление в
   маркетинговых бакетах (news/services/memberships/trainer/workout-media) —
   только сотрудник, фото тренеров — с разделом «Сотрудники», новости и услуги —
   с «Мобильным приложением» (`db/migrations/2026-10-10_storage_media_write.sql`,
