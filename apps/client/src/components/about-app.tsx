@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { BottomDrawer } from "@/components/bottom-drawer";
 import { useAuth } from "@/hooks/use-auth";
 import { useClientStudio } from "@/hooks/use-studios";
 import { LOCALES, msg, useI18n, useLocalize, useT } from "@/i18n";
@@ -18,10 +18,11 @@ import { detectPlatform, isInstalledDisplay } from "@/lib/pwa-install";
 import { IS_PACKAGES } from "@/lib/terms";
 
 /**
- * «О приложении» в профиле (решение владельца 2026-10-15): по нажатию строка
- * раскрывается вниз — пара слов о приложении, технические данные для разбора
- * проблем клиента и «Скопировать техническую информацию» (клиент отправляет
- * текст администратору в мессенджер). Копируется то же, что на экране, на
+ * «О приложении» в профиле (решение владельца 2026-10-15): по нажатию строки
+ * снизу выдвигается шторка (как у новостей и тренировок) — пара слов о
+ * приложении, технические данные для разбора проблем клиента и «Скопировать
+ * техническую информацию» (клиент отправляет текст администратору в
+ * мессенджер). Копируется то же, что на экране, на
  * языке приложения. Новое поле — строкой в TechRow ниже (подпись — msg()).
  */
 
@@ -69,29 +70,26 @@ export function AboutAppRow() {
   const [open, setOpen] = useState(false);
 
   return (
-    <Collapsible asChild open={open} onOpenChange={setOpen}>
-      <li>
-        <CollapsibleTrigger asChild>
-          <button type="button" className="w-full flex items-center gap-3 px-4 py-4 text-left">
-            <span className="text-muted-foreground">
-              <Smartphone className="h-5 w-5" weight="BoldDuotone" />
-            </span>
-            <span className="flex-1 min-w-0 block text-sm font-medium">{t("О приложении")}</span>
-            <span className="text-sm text-muted-foreground">
-              {t("Версия {version}", { version: APP_VERSION })}
-            </span>
-            <AltArrowRight
-              className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
-              weight="BoldDuotone"
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-          {/* Содержимое монтируется при раскрытии: данные устройства — только в браузере. */}
-          <AboutAppDetails />
-        </CollapsibleContent>
-      </li>
-    </Collapsible>
+    <li>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-3 px-4 py-4 text-left"
+      >
+        <span className="text-muted-foreground">
+          <Smartphone className="h-5 w-5" weight="BoldDuotone" />
+        </span>
+        <span className="flex-1 min-w-0 block text-sm font-medium">{t("О приложении")}</span>
+        <span className="text-sm text-muted-foreground">
+          {t("Версия {version}", { version: APP_VERSION })}
+        </span>
+        <AltArrowRight className="h-4 w-4 text-muted-foreground" weight="BoldDuotone" />
+      </button>
+      {/* Содержимое монтируется в открытой шторке: данные устройства — только в браузере. */}
+      <BottomDrawer open={open} onOpenChange={setOpen} title={t("О приложении")}>
+        <AboutAppDetails />
+      </BottomDrawer>
+    </li>
   );
 }
 
@@ -104,7 +102,7 @@ function AboutAppDetails() {
   const studio = useClientStudio();
   const [pushDevice, setPushDevice] = useState<PushDevice | null>(null);
   const [copied, setCopied] = useState(false);
-  // Снимок на момент раскрытия: время и сеть — те, что были при проблеме.
+  // Снимок на момент открытия: время и сеть — те, что были при проблеме.
   const [now] = useState(() => new Date());
 
   useEffect(() => {
@@ -172,7 +170,7 @@ function AboutAppDetails() {
   };
 
   return (
-    <div className="px-4 pb-5 space-y-4">
+    <div className="space-y-4">
       <p className="flex gap-2 text-sm leading-relaxed">
         <Heart className="h-5 w-5 shrink-0 text-primary" weight="Bold" />
         <span>
