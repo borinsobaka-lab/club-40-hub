@@ -218,6 +218,13 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>IP address, device and browser type, date and time of requests (in server logs);</li>
           <li>
+            how you use the App: the devices on which you use it (device type and model, operating
+            system, browser and their versions, screen size, interface theme, device language and
+            time zone), the App version, whether the App is installed on the home screen and whether
+            notifications are allowed on the device, when you open the App and which of its sections
+            you view;
+          </li>
+          <li>
             if you turn on notifications — the push subscription of your device (a technical address
             and encryption keys issued by your phone’s notification service) and the App language on
             that device;
@@ -225,8 +232,9 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           <li>your language setting and data stored on your device (see Section 12).</li>
         </ul>
         <p>
-          4.7. We do not use advertising trackers or third-party analytics in the App and do not
-          process biometric data.
+          4.7. We do not use advertising trackers or third-party analytics in the App (the App usage
+          data in clause 4.6 is collected by the App itself and stored only in our database) and do
+          not process biometric data.
         </p>
       </Section>
 
@@ -276,8 +284,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>
             <b>Security and service quality</b> — protecting the App and accounts from unauthorised
-            access, resolving errors, asking for your feedback in satisfaction surveys and preparing
-            anonymised statistics to improve our services. Grounds: our legitimate interest.
+            access, resolving errors and helping you with the App (for this, the staff of your
+            studio see your devices, the App version, whether notifications are turned on and when
+            you last used the App), asking for your feedback in satisfaction surveys, analysing how
+            the App is used and preparing anonymised statistics to improve the App and our services.
+            Grounds: our legitimate interest.
           </li>
         </ol>
         <p>
@@ -391,6 +402,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             statistics; when your client card is deleted, they are kept without your name and
             without a link to your account.
           </li>
+          <li>
+            Information about your devices and how you use the App — for as long as you have an App
+            account (we keep only the 10 most recently used devices); the day-by-day record of App
+            usage — for 400 days.
+          </li>
           <li>Server logs — for a limited period needed to ensure security.</li>
           <li>
             Anonymised statistical data, which no longer identifies you, may be stored without time
@@ -464,7 +480,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           <li>your sign-in session, so that you do not have to enter a code each time;</li>
           <li>
             a copy of recently loaded screens, so that the App opens faster — it is deleted when you
-            sign out.
+            sign out;
+          </li>
+          <li>
+            a random identifier of the App installation, so that we can tell your devices apart, and
+            the list of App sections you have opened until it is sent to us (see clause 4.6).
           </li>
         </ul>
         <p>

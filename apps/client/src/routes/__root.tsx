@@ -41,6 +41,7 @@ import { RotateOverlay } from "@/components/rotate-overlay";
 import { InstallScreen } from "@/components/install-screen";
 import { useInstalledDisplay } from "@/hooks/use-pwa-install";
 import { usePushSync } from "@/hooks/use-push-sync";
+import { useAppActivity } from "@/hooks/use-app-activity";
 import { NpsSurveyHost } from "@/components/nps-survey";
 import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
@@ -497,6 +498,7 @@ function AppShell() {
   useRouteScrollReset(pathname);
   useInternalNavigationScrollReset();
   usePushSync();
+  useAppActivity();
 
   useEffect(() => {
     if (loading) return;

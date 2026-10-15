@@ -38,6 +38,25 @@ export function readPushPermission(): PushPermission {
   return Notification.permission;
 }
 
+export type PushDevice = "subscribed" | "not-subscribed" | "no-worker" | "unsupported";
+
+/**
+ * Есть ли у телефона подписка на пуши и работает ли service worker («О
+ * приложении» в профиле, устройство в базе — lib/app-activity.ts).
+ */
+export async function readPushDevice(): Promise<PushDevice> {
+  if (!("serviceWorker" in navigator)) return "unsupported";
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration?.active) return "no-worker";
+    if (!("pushManager" in registration)) return "unsupported";
+    const subscription = await registration.pushManager.getSubscription();
+    return subscription ? "subscribed" : "not-subscribed";
+  } catch {
+    return "unsupported";
+  }
+}
+
 // ---- Состояние разрешения для React -----------------------------------------
 
 const listeners = new Set<() => void>();

@@ -10,7 +10,12 @@ import { useClientStudio } from "@/hooks/use-studios";
 import { LOCALES, msg, useI18n, useLocalize, useT } from "@/i18n";
 import { APP_VERSION } from "@/lib/app-version";
 import { copyText } from "@/lib/clipboard";
-import { readPushPermission, type PushPermission } from "@/lib/push";
+import {
+  readPushDevice,
+  readPushPermission,
+  type PushDevice,
+  type PushPermission,
+} from "@/lib/push";
 import { detectPlatform, isInstalledDisplay } from "@/lib/pwa-install";
 import { IS_PACKAGES } from "@/lib/terms";
 
@@ -35,22 +40,6 @@ const PUSH_PERMISSION_LABEL: Record<PushPermission, string> = {
   default: msg("Ещё не спрашивали"),
   unsupported: msg("Не поддерживаются"),
 };
-
-type PushDevice = "subscribed" | "not-subscribed" | "no-worker" | "unsupported";
-
-/** Есть ли у телефона подписка на пуши и работает ли service worker. */
-async function readPushDevice(): Promise<PushDevice> {
-  if (!("serviceWorker" in navigator)) return "unsupported";
-  try {
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (!registration?.active) return "no-worker";
-    if (!("pushManager" in registration)) return "unsupported";
-    const subscription = await registration.pushManager.getSubscription();
-    return subscription ? "subscribed" : "not-subscribed";
-  } catch {
-    return "unsupported";
-  }
-}
 
 const PUSH_DEVICE_LABEL: Record<PushDevice, string> = {
   subscribed: msg("Подписано"),
