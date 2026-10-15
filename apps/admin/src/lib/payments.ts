@@ -29,19 +29,34 @@ export const PAYMENT_TYPES: PaymentType[] = ["first", "recurring", "other"];
 
 /**
  * Номенклатура пакетной студии (memberships.kind): пакет тренировок, пакет
- * персональных тренировок или пробное посещение. Пакет тренировок и пробное
- * расходуются на групповых занятиях (visits_left), пакет персональных — на
- * персональных (personal_left; туда же — подарочные персональные пакета
- * тренировок, memberships.personal_count). Подписочный формат тип не использует.
+ * персональных тренировок, разовое посещение или пробное посещение. Пакет
+ * тренировок, разовое и пробное расходуются на групповых занятиях
+ * (visits_left), пакет персональных — на персональных (personal_left; туда
+ * же — подарочные персональные пакета тренировок, memberships.personal_count).
+ * Подписочный формат тип не использует.
  */
-export type MembershipKind = "package" | "personal" | "trial";
+export type MembershipKind = "package" | "personal" | "single" | "trial";
 
 export const MEMBERSHIP_KIND_LABEL: Record<MembershipKind, string> = {
   package: "Пакет тренировок",
   personal: "Пакет персональных тренировок",
+  single: "Разовое посещение",
   trial: "Пробное посещение",
 };
-export const MEMBERSHIP_KINDS: MembershipKind[] = ["package", "personal", "trial"];
+export const MEMBERSHIP_KINDS: MembershipKind[] = ["package", "personal", "single", "trial"];
+
+/**
+ * Разовое посещение (memberships.kind = single, 2026-10-15): условия
+ * постоянные — их же проверяет база (memberships_single_terms_check,
+ * db/migrations/2026-10-15_zz_packages_single_visit.sql). Стоимость задают в
+ * «Номенклатурах». Продаёт только администратор: в приложении разового нет.
+ */
+export const SINGLE_VISIT = {
+  name: "Разовое посещение",
+  visits: 1,
+  durationDays: 30,
+  payments: 1,
+} as const;
 
 /**
  * Тип продажи пакетной студии (sales.sale_kind) — для аналитики: сколько

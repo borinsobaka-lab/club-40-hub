@@ -882,4 +882,57 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       ).toContain("возврат");
     });
   });
+
+  // ---- 2026-10-15. Разовое посещение ----
+
+  test("разовое посещение: условия постоянные, 1 групповая, в приложении не покупается", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      // Миграция заводит одну строку в общем каталоге; повторный прогон — не дублирует.
+      const migration = await Bun.file(
+        new URL("./migrations/2026-10-15_zz_packages_single_visit.sql", import.meta.url),
+      ).text();
+      await tx.unsafe(migration);
+      await tx.unsafe(migration);
+      const singles = await tx`
+        select id, name, visits_count, personal_count, duration_days, max_payments, price, is_active
+          from memberships where kind = 'single'`;
+      expect(singles.length).toBe(1);
+      expect(singles[0]).toMatchObject({
+        name: "Разовое посещение",
+        visits_count: 1,
+        personal_count: 0,
+        duration_days: 30,
+        max_payments: 1,
+        is_active: true,
+      });
+      const single = singles[0].id as string;
+
+      // Другие условия база не сохраняет; стоимость — любая.
+      expect(
+        await failure(tx, () => tx`update memberships set visits_count = 2 where id = ${single}`),
+      ).toContain("memberships_single_terms_check");
+      expect(
+        await failure(tx, () => tx`update memberships set max_payments = 3 where id = ${single}`),
+      ).toContain("memberships_single_terms_check");
+      await tx`update memberships set price = 35 where id = ${single}`;
+
+      // Администратор продаёт: 1 групповая, посещение списывает её — «Закончился».
+      const sale = await sell(tx, s, { membership: single });
+      const [cm] = await tx`
+        select visits_left, personal_left, balance_kind from client_memberships where sale_id = ${sale}`;
+      expect(cm).toMatchObject({ visits_left: 1, personal_left: 0, balance_kind: "group" });
+      const b = await book(tx, s, await entry(tx, s, 1));
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      expect(await membershipOf(tx, sale)).toMatchObject({ status: "expired", visits_left: 0 });
+
+      // Клиент в приложении разовое не оформляет, пакет — по-прежнему да.
+      await tx`select set_config('request.jwt.claim.sub', gen_random_uuid()::text, true)`;
+      const buy = (membership: string) => () =>
+        tx`insert into sales (studio_id, client_id, membership_id, total_amount)
+           values (${s.studio}, ${s.client}, ${membership}, 35)`;
+      expect(await failure(tx, buy(single))).toContain("Абонемент недоступен для покупки");
+      expect(await failure(tx, buy(s.pack))).toBeNull();
+    });
+  });
 });

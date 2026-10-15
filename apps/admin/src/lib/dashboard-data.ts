@@ -601,6 +601,7 @@ export async function loadSalesHistory(studioIds: string[]): Promise<SalesHistor
         totalAmount: Number(r.total_amount ?? 0),
         membershipName: membership?.name ?? "Без названия",
         trial: membership?.kind === "trial",
+        single: membership?.kind === "single",
         personal: membership?.kind === "personal",
         method: (r.payment_method as string | null) ?? null,
         source: String(r.source ?? "admin"),

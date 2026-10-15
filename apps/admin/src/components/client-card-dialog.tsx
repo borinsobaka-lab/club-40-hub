@@ -323,12 +323,12 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
     }
   };
 
-  // Пакетный клуб: у клиента уже были абонементы (не только пробное) —
-  // кнопка оформляет продление, оно встанет в очередь после текущего
-  // абонемента; иначе — новая продажа (решение владельца 2026-10-14).
+  // Пакетный клуб: у клиента уже были абонементы (не только пробное или
+  // разовое) — кнопка оформляет продление, оно встанет в очередь после
+  // текущего абонемента; иначе — новая продажа (решение владельца 2026-10-14).
   const hadPackages = sales.some((s) => {
     const kind = membershipKind(s.memberships);
-    return kind != null && kind !== "trial";
+    return kind != null && kind !== "trial" && kind !== "single";
   });
   const saleKind = isPackages && hadPackages ? "renewal" : "new";
 
