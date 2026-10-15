@@ -145,16 +145,25 @@ function RequestsPage() {
   const clientIds = useMemo(() => [...new Set(items.map((i) => i.client_id))].sort(), [items]);
   const { data: balances } = useQuery({
     queryKey: ["client_memberships", "requests", studioId, clientIds.join(",")],
-    queryFn: () =>
-      unwrap<MembershipBalance[]>(
-        supabase
-          .from("client_memberships")
-          .select(
-            "client_id, status, visits_left, personal_left, diagnostics_left, balance_kind, memberships(name, kind)",
-          )
-          .in("client_id", clientIds)
-          .in("status", ["active", "frozen", "pending"]),
-      ),
+    // Частями по 100: сотни id в адрес одного GET-запроса не помещаются.
+    queryFn: async () => {
+      const parts: string[][] = [];
+      for (let i = 0; i < clientIds.length; i += 100) parts.push(clientIds.slice(i, i + 100));
+      const rows = await Promise.all(
+        parts.map((part) =>
+          unwrap<MembershipBalance[]>(
+            supabase
+              .from("client_memberships")
+              .select(
+                "client_id, status, visits_left, personal_left, diagnostics_left, balance_kind, memberships(name, kind)",
+              )
+              .in("client_id", part)
+              .in("status", ["active", "frozen", "pending"]),
+          ),
+        ),
+      );
+      return rows.flatMap((r) => r ?? []);
+    },
     enabled: clientIds.length > 0,
     meta: { errorMessage: "Не удалось загрузить абонементы клиентов" },
   });
