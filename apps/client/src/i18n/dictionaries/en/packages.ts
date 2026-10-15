@@ -104,6 +104,9 @@ const dict: Dictionary = {
   "Можно оплатить частями — до {n} платежей": "Pay in up to {n} installments",
   "Что входит:": "What's included:",
   "В подарок": "Bonus gift",
+  "Для вас — выгоднее": "Better price for you",
+  "Здесь указана полная стоимость. Вы уже наш клиент, поэтому продление обойдётся дешевле — подробности у администратора.":
+    "This is the full price. As our client, you'll pay less to renew — ask the front desk for details.",
   "Срок действия — {duration}": "Valid for {duration}",
   "Продление — начнётся, когда закончится текущий": "Renewal — starts when the current one ends",
   Заморожен: "Frozen",
