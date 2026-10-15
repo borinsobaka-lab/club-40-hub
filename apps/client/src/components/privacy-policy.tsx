@@ -208,6 +208,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             your e-mail;
           </li>
           <li>IP address, device and browser type, date and time of requests (in server logs);</li>
+          <li>
+            if you turn on notifications — the push subscription of your device (a technical address
+            and encryption keys issued by your phone’s notification service) and the App language on
+            that device;
+          </li>
           <li>your language setting and data stored on your device (see Section 12).</li>
         </ul>
         <p>
@@ -240,12 +245,14 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>
             <b>Service messages</b> — sign-in codes, notices about bookings, cancelled or changed
-            classes and your memberships, in the App, by e-mail, by phone or SMS. Grounds:
-            performance of the contract.
+            classes and your memberships, in the App (including push notifications, if you have
+            turned them on), by e-mail, by phone or SMS. Grounds: performance of the contract.
           </li>
           <li>
-            <b>Studio news and offers</b> — news and offers in the App and, only if you have agreed
-            to it, by e-mail or messengers. You can opt out at any time. Grounds: your consent.
+            <b>Studio news and offers</b> — news and offers in the App (including push
+            notifications, if you have turned them on; you can turn them off at any time in your
+            phone settings) and, only if you have agreed to it, by e-mail or messengers. You can opt
+            out at any time. Grounds: your consent.
           </li>
           <li>
             <b>Photos and videos at the studio</b> — publishing photos and videos taken at the
@@ -318,6 +325,12 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             receives only your e-mail address and the content of the e-mail;
           </li>
           <li>
+            Apple Inc. (USA) and Google LLC (USA) — delivery of push notifications to your device
+            through their notification services, if you have turned notifications on; the content of
+            a notification is encrypted for your device, and they receive only its technical
+            address;
+          </li>
+          <li>
             banks and payment providers — if you pay online, only the data needed to process the
             payment.
           </li>
@@ -337,7 +350,8 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
         <p>
           8.1. The App’s servers are located in the European Union, which provides an adequate level
           of personal data protection. E-mail delivery involves a transfer of your e-mail address to
-          the United States (Resend, Inc.).
+          the United States (Resend, Inc.). If you turn on notifications, they are delivered through
+          the notification services of Apple Inc. or Google LLC (USA).
         </p>
         <p>
           8.2. We carry out cross-border transfers only on the grounds provided by the Law —
@@ -357,6 +371,11 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           <li>
             Records of sales, payments and refunds — for the period required by the tax and
             accounting legislation of Georgia, even after your account is deleted.
+          </li>
+          <li>
+            Push subscription of your device — until you sign out of the App on that device; it is
+            also deleted when notifications are turned off or the App is removed (the notification
+            service informs us about it).
           </li>
           <li>Server logs — for a limited period needed to ensure security.</li>
           <li>

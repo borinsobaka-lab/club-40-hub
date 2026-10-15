@@ -40,6 +40,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RotateOverlay } from "@/components/rotate-overlay";
 import { InstallScreen } from "@/components/install-screen";
 import { useInstalledDisplay } from "@/hooks/use-pwa-install";
+import { usePushSync } from "@/hooks/use-push-sync";
 import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
@@ -240,11 +241,11 @@ function RootComponent() {
     return () => window.removeEventListener("vite:preloadError", onPreloadError);
   }, []);
 
-  // Service worker (public/sw.js): файлы сборки — из кэша телефона, без сети,
-  // поэтому повторный запуск не ждёт загрузки JS и CSS. Пока только у
-  // пакетного приложения.
+  // Service worker (public/sw.js): пуш-уведомления и файлы сборки из кэша
+  // телефона — повторный запуск не ждёт загрузки JS и CSS. У обоих приложений
+  // (с 2026-10-15: без него нет пушей).
   useEffect(() => {
-    if (!import.meta.env.PROD || !IS_PACKAGES || !("serviceWorker" in navigator)) return;
+    if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("/sw.js").catch(() => {
       // без service worker приложение работает как раньше
     });
@@ -491,6 +492,7 @@ function AppShell() {
 
   useRouteScrollReset(pathname);
   useInternalNavigationScrollReset();
+  usePushSync();
 
   useEffect(() => {
     if (loading) return;

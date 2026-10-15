@@ -21,6 +21,7 @@ import { Route as ClubRouteImport } from './routes/club'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NewsNewsIdRouteImport } from './routes/news.$newsId'
+import { Route as ApiPushAckRouteImport } from './routes/api/push-ack'
 
 const ScheduleRoute = ScheduleRouteImport.update({
   id: '/schedule',
@@ -82,6 +83,11 @@ const NewsNewsIdRoute = NewsNewsIdRouteImport.update({
   path: '/news/$newsId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPushAckRoute = ApiPushAckRouteImport.update({
+  id: '/api/push-ack',
+  path: '/api/push-ack',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
+  '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
+  '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/schedule': typeof ScheduleRoute
+  '/api/push-ack': typeof ApiPushAckRoute
   '/news/$newsId': typeof NewsNewsIdRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/profile'
     | '/schedule'
+    | '/api/push-ack'
     | '/news/$newsId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/profile'
     | '/schedule'
+    | '/api/push-ack'
     | '/news/$newsId'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/profile'
     | '/schedule'
+    | '/api/push-ack'
     | '/news/$newsId'
   fileRoutesById: FileRoutesById
 }
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ScheduleRoute: typeof ScheduleRoute
+  ApiPushAckRoute: typeof ApiPushAckRoute
   NewsNewsIdRoute: typeof NewsNewsIdRoute
 }
 
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewsNewsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/push-ack': {
+      id: '/api/push-ack'
+      path: '/api/push-ack'
+      fullPath: '/api/push-ack'
+      preLoaderRoute: typeof ApiPushAckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ScheduleRoute: ScheduleRoute,
+  ApiPushAckRoute: ApiPushAckRoute,
   NewsNewsIdRoute: NewsNewsIdRoute,
 }
 export const routeTree = rootRouteImport
