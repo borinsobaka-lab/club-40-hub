@@ -23,6 +23,8 @@ export type ActiveMembership = {
   visits_left: number | null;
   /** Пакетный клуб: остаток персональных тренировок. */
   personal_left?: number | null;
+  /** Пакетный клуб: остаток диагностик тела. */
+  diagnostics_left?: number | null;
   status?: string;
   freeze_days_used?: number | null;
   frozen_until?: string | null;
@@ -57,7 +59,7 @@ export function EditActiveMembershipDialog({
           <DialogTitle>Редактировать активный абонемент</DialogTitle>
           <DialogDescription>
             {isPackages
-              ? "Срок действия, остаток групповых и персональных тренировок, заморозка."
+              ? "Срок действия, остаток групповых и персональных тренировок, диагностик, заморозка."
               : "Срок действия, остаток посещений и заморозка."}
           </DialogDescription>
         </DialogHeader>
@@ -86,6 +88,7 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
     membership.visits_left != null ? String(membership.visits_left) : "",
   );
   const [personalLeft, setPersonalLeft] = useState(String(membership.personal_left ?? 0));
+  const [diagnosticsLeft, setDiagnosticsLeft] = useState(String(membership.diagnostics_left ?? 0));
   const [saving, setSaving] = useState(false);
   const [freezeDaysInput, setFreezeDaysInput] = useState("");
   const [freezing, setFreezing] = useState(false);
@@ -168,6 +171,15 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
       }
       personal = n;
     }
+    let diagnostics: number | undefined;
+    if (isPackages) {
+      const n = Number(diagnosticsLeft.trim());
+      if (diagnosticsLeft.trim() === "" || !Number.isInteger(n) || n < 0) {
+        toast.error("Укажите количество диагностик (целое число от 0)");
+        return;
+      }
+      diagnostics = n;
+    }
     setSaving(true);
     try {
       const { error } = await supabase
@@ -176,6 +188,7 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
           ends_at: endsAt || null,
           visits_left: visits,
           ...(personal !== undefined ? { personal_left: personal } : {}),
+          ...(diagnostics !== undefined ? { diagnostics_left: diagnostics } : {}),
         })
         .eq("id", membership.id);
       if (error) {
@@ -230,6 +243,21 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
                 min={0}
                 value={personalLeft}
                 onChange={(e) => setPersonalLeft(e.target.value)}
+                placeholder="Например, 1"
+              />
+            </FormField>
+          )}
+          {isPackages && (
+            <FormField
+              label="Диагностики"
+              required
+              tip="Сколько диагностик тела осталось. Списываются, когда отмечено посещение диагностики в расписании."
+            >
+              <Input
+                type="number"
+                min={0}
+                value={diagnosticsLeft}
+                onChange={(e) => setDiagnosticsLeft(e.target.value)}
                 placeholder="Например, 1"
               />
             </FormField>

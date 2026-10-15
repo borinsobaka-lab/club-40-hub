@@ -34,6 +34,11 @@ export type SaleRecord = {
   /** memberships.kind: пробное не делает следующую покупку продлением. */
   trial: boolean;
   /**
+   * Разовое посещение (memberships.kind = single, пакетные клубы): своя доля
+   * выручки, историей абонементов не считается — как пробное.
+   */
+  single: boolean;
+  /**
    * Пакет персональных тренировок (memberships.kind = personal, пакетные
    * клубы) — свой вид баланса: продлевается и считается отдельно от
    * групповых абонементов, как в базе (client_memberships.balance_kind).
@@ -138,13 +143,14 @@ export function sumBy<T>(rows: T[], value: (row: T) => number) {
   return rows.reduce((s, r) => s + value(r), 0);
 }
 
-/** Тип продажи абонемента по истории клиента. */
-export type SaleOrigin = "new" | "renewal" | "return";
+/** Тип продажи абонемента по истории клиента; разовое посещение — отдельно. */
+export type SaleOrigin = "new" | "renewal" | "return" | "single";
 
 export const SALE_ORIGIN_LABEL: Record<SaleOrigin, string> = {
   new: "Новые абонементы",
   renewal: "Продления",
   return: "Возвраты",
+  single: "Разовые посещения",
 };
 
 /**
@@ -169,8 +175,8 @@ function compareSales(a: SaleRecord, b: SaleRecord) {
     : a.soldAt.localeCompare(b.soldAt);
 }
 
-/** Продажа считается в истории клиента: не пробное и абонемент по ней был. */
-const counts = (s: SaleRecord) => !s.trial && !s.noMembership;
+/** Продажа считается в истории клиента: не пробное, не разовое и абонемент по ней был. */
+const counts = (s: SaleRecord) => !s.trial && !s.single && !s.noMembership;
 
 /**
  * Самое позднее окончание абонементов из списка (null — какой-то из них без
@@ -191,15 +197,18 @@ function latestEnd(list: SaleRecord[]): string | null {
  * Новый абонемент, продление или возврат: до этой продажи абонементов у
  * клиента не было — новый; прежний ещё действовал или закончился не раньше
  * чем за RENEWAL_GRACE_DAYS дней — продление; перерыв дольше — возврат.
- * Пробные посещения историей не считаются; групповые абонементы и пакеты
- * персональных — две отдельные истории.
+ * Пробные и разовые посещения историей не считаются (разовое — своя
+ * категория «single»); групповые абонементы и пакеты персональных — две
+ * отдельные истории.
  */
 export function classifySales(all: SaleRecord[]): Map<string, SaleOrigin> {
   const result = new Map<string, SaleOrigin>();
   for (const list of byClient(all).values()) {
     const prior: SaleRecord[] = [];
     for (const s of list) {
-      if (prior.length === 0) {
+      if (s.single) {
+        result.set(s.id, "single");
+      } else if (prior.length === 0) {
         result.set(s.id, "new");
       } else {
         const end = latestEnd(prior);
@@ -395,11 +404,14 @@ export function salesMetrics(
   const membershipRevenue = sumBy(sold, (s) => s.totalAmount);
   const paid = sumBy(payments, (p) => p.amount);
   const otherRevenue = sumBy(others, (s) => s.totalAmount);
+  const singles = sold.filter((s) => s.single && !s.noMembership);
   const avg = (total: number, n: number) => (n ? total / n : 0);
   return {
     membershipRevenue,
     membershipPayments: paid,
     otherRevenue,
+    singleRevenue: sumBy(singles, (s) => s.totalAmount),
+    singleVisits: singles.length,
     avgMembershipCheck: avg(membershipRevenue, sold.length),
     avgMembershipPayment: avg(paid, payments.length),
     avgOtherCheck: avg(otherRevenue, others.length),

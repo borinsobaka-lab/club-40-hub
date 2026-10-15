@@ -99,8 +99,13 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
     return id;
   }
 
-  /** Занятие через days дней (групповое или персональное). */
-  async function entry(tx: Tx, s: Seed, days: number, kind: "group" | "personal" = "group") {
+  /** Занятие через days дней (групповое, персональное или диагностика). */
+  async function entry(
+    tx: Tx,
+    s: Seed,
+    days: number,
+    kind: "group" | "personal" | "diagnostic" = "group",
+  ) {
     const [{ id }] = await tx`
       insert into schedule_entries (studio_id, workout_id, kind, starts_at, ends_at)
       values (${s.studio}, ${kind === "group" ? s.workout : null}, ${kind},
@@ -880,6 +885,168 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(
         await failure(tx, () => replace([{ amount: 50, due_date: "2030-01-10" }])),
       ).toContain("возврат");
+    });
+  });
+
+  // ---- Диагностика тела (2026-10-15) ----
+
+  test("диагностика списывается с абонемента и возвращается", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await tx`update memberships set diagnostics_count = 2 where id = ${s.pack}`;
+      const sale = await sell(tx, s);
+      const [{ diagnostics_left: left0 }] = await tx`
+        select diagnostics_left from client_memberships where sale_id = ${sale}`;
+      expect(left0).toBe(2);
+
+      // Клиент сам на диагностику не записывается — только сотрудник.
+      const diag = await entry(tx, s, 1, "diagnostic");
+      expect(await failure(tx, () => book(tx, s, diag))).toContain("не групповое");
+
+      await asStaff(tx, s);
+      const b = await book(tx, s, diag);
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      const [after] = await tx`
+        select cm.diagnostics_left, cm.visits_left, cm.started_at, b.charged_balance
+          from client_memberships cm, schedule_bookings b
+         where cm.sale_id = ${sale} and b.id = ${b}`;
+      expect(after).toMatchObject({ diagnostics_left: 1, visits_left: 2, charged_balance: "diagnostic" });
+      // Диагностика — посещение: срок пошёл.
+      expect(iso(after.started_at)).toBe(await tbilisiDate(tx, diag));
+
+      await tx`update schedule_bookings set status = 'booked' where id = ${b}`;
+      const [back] = await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
+      expect(back.diagnostics_left).toBe(2);
+
+      // Удалённая запись тоже возвращает диагностику.
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      await tx`delete from schedule_bookings where id = ${b}`;
+      const [del] = await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
+      expect(del.diagnostics_left).toBe(2);
+    });
+  });
+
+  test("без диагностик на абонементе «Посетил» на диагностике не сохраняется", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await sell(tx, s);
+      await asStaff(tx, s);
+      const b = await book(tx, s, await entry(tx, s, 1, "diagnostic"));
+      expect(
+        await failure(tx, () => tx`update schedule_bookings set status = 'attended' where id = ${b}`),
+      ).toContain("нет абонемента с диагностиками");
+    });
+  });
+
+  test("отхоженный абонемент с диагностиками не заканчивается, пока их не пройдут", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await tx`update memberships set diagnostics_count = 1 where id = ${s.pack}`;
+      const sale = await sell(tx, s);
+      await asStaff(tx, s);
+      const visits = [await book(tx, s, await entry(tx, s, 1)), await book(tx, s, await entry(tx, s, 2))];
+      await tx`update schedule_bookings set status = 'attended' where id in (${visits[0]}, ${visits[1]})`;
+      expect((await membershipOf(tx, sale)).status).toBe("active");
+
+      const d = await book(tx, s, await entry(tx, s, 3, "diagnostic"));
+      await tx`update schedule_bookings set status = 'attended' where id = ${d}`;
+      expect((await membershipOf(tx, sale)).status).toBe("expired");
+
+      // Сняли отметку с диагностики — абонемент снова действующий.
+      await tx`update schedule_bookings set status = 'booked' where id = ${d}`;
+      expect((await membershipOf(tx, sale)).status).toBe("active");
+    });
+  });
+
+  // ---- Заявки клиентов (2026-10-15) ----
+
+  test("заявка клиента: одна неотработанная на вид, «Отработано» ставит база", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await tx`set local session_replication_role = replica`;
+      const [{ id: uid }] = await tx`
+        insert into auth.users (email) values (${`client-${s.studio}@example.com`}) returning id`;
+      await tx`set local session_replication_role = origin`;
+      await tx`update clients set user_id = ${uid} where id = ${s.client}`;
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+
+      const [{ r: first }] = await tx`
+        select create_client_request('personal', array['flexibility', 'flexibility', 'other'],
+                                     'Осанка', 'Удобно вечером') as r`;
+      expect(first.ok).toBe(true);
+      const [{ r: again }] = await tx`select create_client_request('personal') as r`;
+      expect(again).toMatchObject({ ok: false, reason: "pending" });
+      const [{ r: diag }] = await tx`select create_client_request('diagnostic') as r`;
+      expect(diag.ok).toBe(true);
+
+      const [row] = await tx`
+        select studio_id, goals, goal_other, comment from client_requests where id = ${first.id}`;
+      expect(row.studio_id).toBe(s.studio);
+      expect([...row.goals].sort()).toEqual(["flexibility", "other"]);
+      expect(row).toMatchObject({ goal_other: "Осанка", comment: "Удобно вечером" });
+
+      await asStaff(tx, s);
+      await tx`
+        update client_requests set processed_at = '2000-01-01', comment = 'подмена'
+         where id = ${first.id}`;
+      const [done] = await tx`
+        select processed_at, processed_by, comment from client_requests where id = ${first.id}`;
+      expect(done.comment).toBe("Удобно вечером");
+      expect(done.processed_by).not.toBeNull();
+      expect(new Date(done.processed_at).getFullYear()).toBeGreaterThan(2000);
+    });
+  });
+
+  // ---- 2026-10-15. Разовое посещение ----
+
+  test("разовое посещение: условия постоянные, 1 групповая, в приложении не покупается", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      // Миграция заводит одну строку в общем каталоге; повторный прогон — не дублирует.
+      const migration = await Bun.file(
+        new URL("./migrations/2026-10-15_zz_packages_single_visit.sql", import.meta.url),
+      ).text();
+      await tx.unsafe(migration);
+      await tx.unsafe(migration);
+      const singles = await tx`
+        select id, name, visits_count, personal_count, duration_days, max_payments, price, is_active
+          from memberships where kind = 'single'`;
+      expect(singles.length).toBe(1);
+      expect(singles[0]).toMatchObject({
+        name: "Разовое посещение",
+        visits_count: 1,
+        personal_count: 0,
+        duration_days: 30,
+        max_payments: 1,
+        is_active: true,
+      });
+      const single = singles[0].id as string;
+
+      // Другие условия база не сохраняет; стоимость — любая.
+      expect(
+        await failure(tx, () => tx`update memberships set visits_count = 2 where id = ${single}`),
+      ).toContain("memberships_single_terms_check");
+      expect(
+        await failure(tx, () => tx`update memberships set max_payments = 3 where id = ${single}`),
+      ).toContain("memberships_single_terms_check");
+      await tx`update memberships set price = 35 where id = ${single}`;
+
+      // Администратор продаёт: 1 групповая, посещение списывает её — «Закончился».
+      const sale = await sell(tx, s, { membership: single });
+      const [cm] = await tx`
+        select visits_left, personal_left, balance_kind from client_memberships where sale_id = ${sale}`;
+      expect(cm).toMatchObject({ visits_left: 1, personal_left: 0, balance_kind: "group" });
+      const b = await book(tx, s, await entry(tx, s, 1));
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      expect(await membershipOf(tx, sale)).toMatchObject({ status: "expired", visits_left: 0 });
+
+      // Клиент в приложении разовое не оформляет, пакет — по-прежнему да.
+      await tx`select set_config('request.jwt.claim.sub', gen_random_uuid()::text, true)`;
+      const buy = (membership: string) => () =>
+        tx`insert into sales (studio_id, client_id, membership_id, total_amount)
+           values (${s.studio}, ${s.client}, ${membership}, 35)`;
+      expect(await failure(tx, buy(single))).toContain("Абонемент недоступен для покупки");
+      expect(await failure(tx, buy(s.pack))).toBeNull();
     });
   });
 });

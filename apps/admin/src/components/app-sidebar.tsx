@@ -9,6 +9,7 @@ import {
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
   MOBILE_APP_ITEMS,
+  REQUESTS_URL,
   SCRIPTS_SETTINGS_URL,
   SCRIPTS_URL,
   STAFF_CLUB_GROUP,
@@ -23,6 +24,7 @@ import { usePlaybook, useScriptAccess, useUnreadSuggestions } from "@/lib/script
 import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useClubRequestsBadge } from "@/hooks/use-client-requests";
 import { canOpenClubSection, canOpenRail, type AdminAccess } from "@/lib/admin-access";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
@@ -207,11 +209,18 @@ export function AppSidebar() {
     studioId,
     !sectionMenu && !!access && canOpenClubSection(access, studioId, "feedback"),
   );
+  const openRequests = useClubRequestsBadge();
+  // Счётчики меню клуба: неотработанные заявки клиентов — на «Заявках»,
+  // неотработанная обратная связь — на «Обратной связи».
+  const badges: Record<string, number> = {
+    [REQUESTS_URL]: openRequests,
+    "/feedback": pendingFeedback,
+  };
   const groups =
     sectionMenu?.groups ??
     visibleGroups(studioFormat, access, studioId).map((g) => ({
       ...g,
-      items: g.items.map((i) => (i.url === "/feedback" ? { ...i, badge: pendingFeedback } : i)),
+      items: g.items.map((i) => (i.url in badges ? { ...i, badge: badges[i.url] } : i)),
     }));
   // Меню клуба собирается по правам сотрудника: пока их нет, оно пустое.
   const menuLoading = railKey === "scripts" ? scriptsMenu.loading : !sectionMenu && !access;

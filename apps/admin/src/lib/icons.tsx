@@ -46,6 +46,7 @@ import {
   ChevronsLeft as ChevronsLeftArt,
   ChevronsRight as ChevronsRightArt,
   Circle as CircleArt,
+  ClipboardList as ClipboardListArt,
   Copy as CopyArt,
   CreditCard as CreditCardArt,
   Download as DownloadArt,
@@ -88,6 +89,7 @@ import {
   ShoppingBag as ShoppingBagArt,
   Smartphone as SmartphoneArt,
   Square as SquareArt,
+  Stethoscope as StethoscopeArt,
   Ticket as TicketArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
@@ -146,6 +148,7 @@ export const ChevronUp = icon(ChevronUpArt, "ChevronUp");
 export const ChevronsLeft = icon(ChevronsLeftArt, "ChevronsLeft");
 export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
 export const Circle = icon(CircleArt, "Circle");
+export const ClipboardList = icon(ClipboardListArt, "ClipboardList");
 export const Copy = icon(CopyArt, "Copy");
 export const CreditCard = icon(CreditCardArt, "CreditCard");
 export const Download = icon(DownloadArt, "Download");
@@ -188,6 +191,7 @@ export const Shapes = icon(ShapesArt, "Shapes");
 export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
 export const Smartphone = icon(SmartphoneArt, "Smartphone");
 export const Square = icon(SquareArt, "Square");
+export const Stethoscope = icon(StethoscopeArt, "Stethoscope");
 export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");

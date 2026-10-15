@@ -21,6 +21,7 @@ import { Route as AuthenticatedStudiosRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
 import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
+import { Route as AuthenticatedRequestsRouteImport } from './routes/_authenticated/requests'
 import { Route as AuthenticatedPushTriggersRouteImport } from './routes/_authenticated/push-triggers'
 import { Route as AuthenticatedPushRouteImport } from './routes/_authenticated/push'
 import { Route as AuthenticatedPromocodesRouteImport } from './routes/_authenticated/promocodes'
@@ -109,6 +110,11 @@ const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
 const AuthenticatedSalesRoute = AuthenticatedSalesRouteImport.update({
   id: '/sales',
   path: '/sales',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRequestsRoute = AuthenticatedRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPushTriggersRoute =
@@ -303,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
+  '/requests': typeof AuthenticatedRequestsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/services': typeof AuthenticatedServicesRoute
@@ -345,6 +352,7 @@ export interface FileRoutesByTo {
   '/promocodes': typeof AuthenticatedPromocodesRoute
   '/push': typeof AuthenticatedPushRoute
   '/push-triggers': typeof AuthenticatedPushTriggersRoute
+  '/requests': typeof AuthenticatedRequestsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/services': typeof AuthenticatedServicesRoute
@@ -390,6 +398,7 @@ export interface FileRoutesById {
   '/_authenticated/promocodes': typeof AuthenticatedPromocodesRoute
   '/_authenticated/push': typeof AuthenticatedPushRoute
   '/_authenticated/push-triggers': typeof AuthenticatedPushTriggersRoute
+  '/_authenticated/requests': typeof AuthenticatedRequestsRoute
   '/_authenticated/sales': typeof AuthenticatedSalesRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
@@ -436,6 +445,7 @@ export interface FileRouteTypes {
     | '/promocodes'
     | '/push'
     | '/push-triggers'
+    | '/requests'
     | '/sales'
     | '/schedule'
     | '/services'
@@ -478,6 +488,7 @@ export interface FileRouteTypes {
     | '/promocodes'
     | '/push'
     | '/push-triggers'
+    | '/requests'
     | '/sales'
     | '/schedule'
     | '/services'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/_authenticated/promocodes'
     | '/_authenticated/push'
     | '/_authenticated/push-triggers'
+    | '/_authenticated/requests'
     | '/_authenticated/sales'
     | '/_authenticated/schedule'
     | '/_authenticated/services'
@@ -634,6 +646,13 @@ declare module '@tanstack/react-router' {
       path: '/sales'
       fullPath: '/sales'
       preLoaderRoute: typeof AuthenticatedSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/requests': {
+      id: '/_authenticated/requests'
+      path: '/requests'
+      fullPath: '/requests'
+      preLoaderRoute: typeof AuthenticatedRequestsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/push-triggers': {
@@ -872,6 +891,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPromocodesRoute: typeof AuthenticatedPromocodesRoute
   AuthenticatedPushRoute: typeof AuthenticatedPushRoute
   AuthenticatedPushTriggersRoute: typeof AuthenticatedPushTriggersRoute
+  AuthenticatedRequestsRoute: typeof AuthenticatedRequestsRoute
   AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
   AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
@@ -913,6 +933,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPromocodesRoute: AuthenticatedPromocodesRoute,
   AuthenticatedPushRoute: AuthenticatedPushRoute,
   AuthenticatedPushTriggersRoute: AuthenticatedPushTriggersRoute,
+  AuthenticatedRequestsRoute: AuthenticatedRequestsRoute,
   AuthenticatedSalesRoute: AuthenticatedSalesRoute,
   AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,

@@ -221,11 +221,15 @@ type Row = {
     visits_count: number | null;
     /** Персональных в номенклатуре: подарочные или количество у пакета персональных. */
     personal_count: number | null;
+    /** Диагностик тела в номенклатуре. */
+    diagnostics_count?: number | null;
   } | null;
   membership_status: string | null;
   visits_left: number | null;
   /** Остаток персональных (пакетный формат). */
   personal_left: number | null;
+  /** Остаток диагностик тела (2026-10-15_zz_diagnostics_client_requests.sql). */
+  diagnostics_left: number | null;
   ends_at: string | null;
   payments: Payment[];
   payment_state: PaymentState;
@@ -239,7 +243,7 @@ const COLUMNS =
   "id, studio_id, client_id, admin_name, trainer_name, sold_at, total_amount, paid_amount, " +
   "sale_kind, source, promo_code, comment, membership_note, clients, memberships, " +
   "membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
-  "membership_started_at, starts_on_first_visit";
+  "membership_started_at, starts_on_first_visit, diagnostics_left";
 
 /**
  * Колонки: клиент, абонемент, статус, баланс, сумма, продал / тренер,
@@ -571,7 +575,11 @@ function ClientMembershipsPage() {
                           <div>{r.memberships?.name ?? "—"}</div>
                           {r.memberships?.kind !== "package" && r.memberships?.kind && (
                             <div className="text-xs text-muted-foreground">
-                              {r.memberships.kind === "trial" ? "Пробное" : "Персональные"}
+                              {r.memberships.kind === "trial"
+                                ? "Пробное"
+                                : r.memberships.kind === "single"
+                                  ? "Разовое"
+                                  : "Персональные"}
                             </div>
                           )}
                           {r.sale_kind && (
@@ -693,12 +701,13 @@ function StripeLegend() {
 /**
  * Баланс абонемента: групповые тренировки (у пакета персональных их нет) и
  * отдельной строкой персональные — у пакета персональных и у пакета
- * тренировок с подарочными.
+ * тренировок с подарочными; диагностики — если входят в абонемент.
  */
 function Balance({ row }: { row: Row }) {
   const m = row.memberships;
   const isPersonal = m?.kind === "personal";
   const personalTotal = m?.personal_count ?? 0;
+  const diagnosticsTotal = m?.diagnostics_count ?? 0;
   const line = (left: number | null, total: number | null, unit: string) => (
     <div>
       {left ?? "—"}
@@ -712,6 +721,7 @@ function Balance({ row }: { row: Row }) {
     <>
       {!isPersonal && line(row.visits_left, m?.visits_count ?? null, "трен.")}
       {(isPersonal || personalTotal > 0) && line(row.personal_left, personalTotal || null, "перс.")}
+      {diagnosticsTotal > 0 && line(row.diagnostics_left, diagnosticsTotal, "диагн.")}
     </>
   );
 }
