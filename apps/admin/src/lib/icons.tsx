@@ -49,6 +49,7 @@ import {
   ClipboardList as ClipboardListArt,
   Copy as CopyArt,
   CreditCard as CreditCardArt,
+  Download as DownloadArt,
   Ellipsis as EllipsisArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
@@ -76,6 +77,7 @@ import {
   Pencil as PencilArt,
   Play as PlayArt,
   Plus as PlusArt,
+  QrCode as QrCodeArt,
   Receipt as ReceiptArt,
   RefreshCw as RefreshCwArt,
   Repeat as RepeatArt,
@@ -148,6 +150,7 @@ export const Circle = icon(CircleArt, "Circle");
 export const ClipboardList = icon(ClipboardListArt, "ClipboardList");
 export const Copy = icon(CopyArt, "Copy");
 export const CreditCard = icon(CreditCardArt, "CreditCard");
+export const Download = icon(DownloadArt, "Download");
 export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
@@ -175,6 +178,7 @@ export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Pencil = icon(PencilArt, "Pencil");
 export const Play = icon(PlayArt, "Play");
 export const Plus = icon(PlusArt, "Plus");
+export const QrCode = icon(QrCodeArt, "QrCode");
 export const Receipt = icon(ReceiptArt, "Receipt");
 export const RefreshCw = icon(RefreshCwArt, "RefreshCw");
 export const Repeat = icon(RepeatArt, "Repeat");

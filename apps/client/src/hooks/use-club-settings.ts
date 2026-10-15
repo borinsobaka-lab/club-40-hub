@@ -6,18 +6,17 @@ import { type Translator, currentT } from "@/i18n";
 export type ClubSettings = {
   write_url: string | null;
   call_url: string | null;
-  feedback_url: string | null;
   cancel_booking_minutes: number;
 };
 
 const DEFAULTS: ClubSettings = {
   write_url: null,
   call_url: null,
-  feedback_url: null,
   cancel_booking_minutes: 180,
 };
 
-// «Контакты и правила» — у каждой студии свои: studio_app_settings
+// «Контакты и правила» — у каждой студии свои (feedback_url с 2026-10-15 не
+// читается: «Фидбэк» — своя форма, routes/feedback.tsx): studio_app_settings
 // (db/migrations/2026-10-11_zzzzzzzzzz_app_content_by_studio.sql, правятся в
 // админке). Строки нет (новая студия) — значения по умолчанию. Клиент без
 // карточки (студия неизвестна) — прежний общий синглтон club_settings.
@@ -26,7 +25,7 @@ const DEFAULTS: ClubSettings = {
 // дедлайном отмены). Кэш — React Query по студии (настройки меняются редко,
 // а читают их главная и расписание).
 async function fetchSettings(studioId: string | null): Promise<ClubSettings> {
-  const columns = "write_url, call_url, feedback_url, cancel_booking_minutes";
+  const columns = "write_url, call_url, cancel_booking_minutes";
   const { data, error } = studioId
     ? await supabase
         .from("studio_app_settings")

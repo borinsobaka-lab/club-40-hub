@@ -198,7 +198,12 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
           </li>
           <li>
             the ratings you give to trainers (only the average rating of a trainer is shown to other
-            users, without your name).
+            users, without your name);
+          </li>
+          <li>
+            the feedback you send through the feedback form (studio, topic, message, mood and, if
+            you choose to provide them, your name and phone number or Instagram account) — it is
+            available only to studio staff who handle feedback.
           </li>
         </ul>
         <p>4.6. Technical data:</p>

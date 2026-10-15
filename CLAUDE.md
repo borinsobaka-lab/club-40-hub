@@ -35,7 +35,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
 - `bun run lint`, `bun run test`, `bun run build` — то же по обоим
 - `bun run test:db` — тесты базы: мигратора (`TEST_DATABASE_URL` — пустая
   база), рассылки пушей `db/push.test.ts`, триггерных уведомлений
-  `db/push-triggers.test.ts` и логики пакетных клубов `db/packages.test.ts`
+  `db/push-triggers.test.ts`, логики пакетных клубов `db/packages.test.ts`
+  и обратной связи `db/feedback.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -446,6 +447,18 @@ AUTH_SETUP.md.
   охват для формы — `push_audience_stats`. Тесты — `db/push.test.ts`.
   Отправитель — apps/admin (`src/lib/push/`), приём — apps/client
   (`public/sw.js`, `src/lib/push.ts`).
+  **Обратная связь — своя форма** (решение владельца 2026-10-15, вместо
+  внешнего сервиса): `db/migrations/2026-10-15_zz_feedback_in_app.sql` —
+  отправить обращение в `feedback` может клиент приложения и anon (форма
+  `/feedback` клиентского приложения открывается без входа по ссылке или
+  QR-коду клуба, `?studio=<id>`); у не сотрудника клуб обязателен, статус,
+  поля отработки и дату сбрасывает триггер `feedback_insert_guard`,
+  `feedback.source` — `app` / `link` / `portal` (добавил сотрудник), размеры
+  полей — `feedback_lengths_check`. Читают, отрабатывают и удаляют — только
+  сотрудники (`db/security_hardening.sql`). Админка: «Обратная связь» —
+  фильтр по дате, «Ссылка и QR-код» (PNG 600×600 рисуется в браузере,
+  пакет `qrcode`), счётчик неотработанных у пункта меню (вместо
+  Telegram-уведомлений прежнего сервиса). Тесты — `db/feedback.test.ts`.
   **Диагностика тела и заявки клиентов** (пакетные клубы, решение владельца
   2026-10-15): `db/migrations/2026-10-15_zz_diagnostics_client_requests.sql`
   — `memberships.diagnostics_count`, `client_memberships.diagnostics_left`
@@ -607,7 +620,8 @@ own"` оставить). Альтернатива — выдача абонем�
   отдельным заходом с UI.
 - Известные особенности живой БД: `club_settings` — глобальный синглтон
   (id = true), колонка studio_id в живой БД есть, но не используется;
-  `feedback` и `nps_responses` не привязаны к студии (гэп для мультистудии);
+  `nps_responses` не привязаны к студии (гэп для мультистудии; `feedback` —
+  с `studio_id`, см. «Обратная связь» выше);
   `schedule_days` объявлена в db/, но в живой БД не создана (фича не выкачена).
 
 ## Документы
