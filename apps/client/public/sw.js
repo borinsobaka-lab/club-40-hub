@@ -236,13 +236,40 @@ function askWindow(client, path) {
   });
 }
 
+/*
+ * Отложенный переход (src/lib/push-open.ts — те же имена): iOS открывает
+ * приложение по openWindow не всегда на нужном адресе, а уснувшее в фоне
+ * окно отвечает на push-open с опозданием. Приложение при запуске и при
+ * возвращении на экран забирает раздел отсюда и, если оно не там, переходит.
+ * Кэш не «base40-…» — его не чистит смена VERSION.
+ */
+const PUSH_STATE_CACHE = "push-state-v1";
+const PUSH_PENDING_KEY = "/__push-pending";
+
+async function savePendingPath(path) {
+  try {
+    const cache = await caches.open(PUSH_STATE_CACHE);
+    await cache.put(
+      PUSH_PENDING_KEY,
+      new Response(JSON.stringify({ path, at: Date.now() }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  } catch {
+    // без отложенного перехода — как раньше
+  }
+}
+
 async function openTarget(href) {
   const url = new URL(href);
   if (url.origin === self.location.origin) {
+    const path = url.pathname + url.search;
     // Приложение открыто — переходим внутри него, без перезагрузки, и выводим
     // вперёд то окно, что ответило (приложение, а не вкладку браузера).
-    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const path = url.pathname + url.search;
+    const [windows] = await Promise.all([
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }),
+      savePendingPath(path),
+    ]);
     const answered = await Promise.all(
       windows
         .filter((c) => new URL(c.url).origin === self.location.origin)
@@ -250,11 +277,20 @@ async function openTarget(href) {
     );
     const client = answered.find(Boolean);
     if (client) {
-      await client.focus().catch(() => {});
-      return;
+      try {
+        await client.focus();
+        return;
+      } catch {
+        // окно не вывести вперёд — открываем адрес, как будто приложение закрыто
+      }
     }
   }
-  // Приложение не открыто — открываем ссылку (Android откроет её в
-  // установленном приложении).
-  await self.clients.openWindow(href);
+  // Приложение закрыто или спит — открываем адрес: Android откроет его в
+  // установленном приложении (адрес в его scope), iOS — приложение с экрана
+  // «Домой»; не на том разделе — догонит отложенный переход.
+  try {
+    await self.clients.openWindow(href);
+  } catch {
+    // iOS без разрешения окна — приложение откроет сама система по нажатию
+  }
 }
