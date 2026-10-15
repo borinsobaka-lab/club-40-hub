@@ -81,7 +81,7 @@ const dict: Dictionary = {
   Администратор: "Administrator",
   "Поблагодарить администратора": "Thank your administrator",
   "Рассказ об администраторе скоро появится.": "The administrator's bio is coming soon.",
-  "Старший администратор": "Senior administrator",
+  "Руководитель студии": "Studio manager",
   Массажист: "Massage therapist",
   "Поблагодарить массажиста": "Thank your massage therapist",
   "Оцените массажиста": "Rate your massage therapist",

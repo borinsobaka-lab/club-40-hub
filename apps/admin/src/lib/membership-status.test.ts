@@ -31,16 +31,16 @@ describe("статус абонемента клиента", () => {
 });
 
 describe("роли сотрудников", () => {
-  test("старший администратор — администратор со своей подписью и без рейтинга", () => {
+  test("руководитель студии — администратор со своей подписью и без рейтинга", () => {
     expect(isAdminRole("senior_admin")).toBe(true);
     expect(isAdminRole("admin")).toBe(true);
     expect(isAdminRole("trainer")).toBe(false);
     expect(isAdminRole(null)).toBe(false);
-    expect(TRAINER_ROLES.senior_admin.label).toBe("Старший администратор");
+    expect(TRAINER_ROLES.senior_admin.label).toBe("Руководитель студии");
     expect(hasRating("senior_admin")).toBe(false);
   });
 
-  test("группы в списках: старший администратор — с администраторами, неизвестная — тренер", () => {
+  test("группы в списках: руководитель студии — с администраторами, неизвестная — тренер", () => {
     expect(roleGroup("senior_admin")).toBe("admin");
     expect(roleGroup("masseur")).toBe("masseur");
     expect(roleGroup("trainer")).toBe("trainer");

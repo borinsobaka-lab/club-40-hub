@@ -19,6 +19,7 @@ import { AboutTab } from "./about-page";
 import {
   STAFF_ROLE_TEXT,
   staffHasRating,
+  staffOrder,
   staffRole,
   staffRoleLabel,
   studioStaffQuery,
@@ -113,13 +114,18 @@ function StaffTab({ role }: { role: StaffRole }) {
   const t = useT();
   const loc = useLocalize();
   const { data: rows, isPending, error } = useQuery(studioStaffQuery(studioId, studioReady));
-  // Имена — на языке клиента, порядок — по переведённому имени.
+  // Имена — на языке клиента, порядок — руководитель студии первым, дальше
+  // по переведённому имени.
   const data = useMemo(
     () =>
       rows
         ?.filter((row) => staffRole(row) === role)
         .map((row) => ({ row, tr: loc(row) }))
-        .sort((a, b) => a.tr.full_name.localeCompare(b.tr.full_name, t.intl)),
+        .sort(
+          (a, b) =>
+            staffOrder(a.row) - staffOrder(b.row) ||
+            a.tr.full_name.localeCompare(b.tr.full_name, t.intl),
+        ),
     [rows, role, loc, t],
   );
 

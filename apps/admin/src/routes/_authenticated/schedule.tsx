@@ -1801,7 +1801,7 @@ function TrainerChecks({
       ))}
     </div>
   );
-  // Неизвестная роль — к тренерам, старший администратор — к администраторам.
+  // Неизвестная роль — к тренерам, руководитель студии — к администраторам.
   const groups = ROLE_GROUPS.map((g) => ({
     ...g,
     list: options.filter((t) => roleGroup(t.role) === g.role),

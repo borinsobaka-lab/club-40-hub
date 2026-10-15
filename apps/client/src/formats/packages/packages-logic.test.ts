@@ -1,14 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
-import { staffHasRating, staffRole, staffRoleLabel } from "./staff-roles";
+import { staffHasRating, staffOrder, staffRole, staffRoleLabel } from "./staff-roles";
 import { chunks, groupSubstitutions, replacedOf } from "./substitutions";
 import { isOverdue, paymentsBySale, tbilisiToday } from "./upcoming-payments";
 import { startsIn, startsInParts } from "./starts-in";
 
 describe("вкладки «Студии»: роли сотрудников", () => {
-  test("старший администратор — во вкладке «Админы», с подписью «Старший администратор»", () => {
+  test("руководитель студии — во вкладке «Админы», первым, с подписью «Руководитель студии»", () => {
     expect(staffRole({ role: "senior_admin" })).toBe("admin");
-    expect(staffRoleLabel({ role: "senior_admin" })).toBe("Старший администратор");
+    expect(staffRoleLabel({ role: "senior_admin" })).toBe("Руководитель студии");
+    expect(staffOrder({ role: "senior_admin" })).toBeLessThan(staffOrder({ role: "admin" }));
     expect(staffRoleLabel({ role: "admin" })).toBe("Администратор");
     expect(staffHasRating(staffRole({ role: "senior_admin" }))).toBe(false);
   });
