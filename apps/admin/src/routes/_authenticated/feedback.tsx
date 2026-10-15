@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -395,24 +394,23 @@ function FeedbackPage() {
         </div>
       </div>
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
-        {/* Шапка и кнопки закреплены, прокручивается только середина. */}
-        <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-          <SheetHeader className="shrink-0 border-b px-6 py-4 pr-12">
-            <SheetTitle>{selected ? TOPICS[selected.topic] || selected.topic : ""}</SheetTitle>
-          </SheetHeader>
+      {/* Обращение — окно, как карточки во всей админке (решение владельца
+          2026-10-15; раньше — боковая панель). */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
+        <DialogContent className="max-w-lg">
           {selected && (
             <FeedbackDetails
               key={selected.id}
               item={selected}
+              onClose={() => setSelectedId(null)}
               onDone={() => {
                 setSelectedId(null);
                 reload();
               }}
             />
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
         <DialogContent className="max-w-lg">{linksOpen && <FeedbackLinks />}</DialogContent>
@@ -528,8 +526,16 @@ function NewFeedbackForm({
   );
 }
 
-/** Карточка обращения в боковой панели: отметить отработанным / вернуть в работу. */
-function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void }) {
+/** Окно обращения: отметить отработанным / вернуть в работу. */
+function FeedbackDetails({
+  item,
+  onClose,
+  onDone,
+}: {
+  item: Feedback;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const { ensure: ensureMe } = useStaffProfile();
   const [resolutionComment, setResolutionComment] = useState(item.resolution_comment || "");
   const [busy, setBusy] = useState(false);
@@ -577,11 +583,14 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
 
   return (
     <>
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-        <ReadOnlyValue label="Дата">
+      <DialogHeader>
+        <DialogTitle>{TOPICS[item.topic] || item.topic}</DialogTitle>
+        <DialogDescription>
           {format(new Date(item.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
-        </ReadOnlyValue>
-        {item.source && <ReadOnlyValue label="Откуда">{SOURCES[item.source]}</ReadOnlyValue>}
+          {item.source && ` · ${SOURCES[item.source]}`}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody className="space-y-4">
         <ReadOnlyValue label="Сообщение">
           <span className="whitespace-pre-wrap">{item.message}</span>
         </ReadOnlyValue>
@@ -625,20 +634,23 @@ function FeedbackDetails({ item, onDone }: { item: Feedback; onDone: () => void 
             )}
           </InfoNote>
         )}
-      </div>
-      <div className="shrink-0 border-t px-6 py-4">
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={busy}>
+          Закрыть
+        </Button>
         {item.status === "pending" ? (
-          <Button className="w-full" onClick={handleResolve} disabled={busy}>
+          <Button onClick={handleResolve} disabled={busy}>
             {busy && <Loader2 className="animate-spin" />}
             Отметить отработанным
           </Button>
         ) : (
-          <Button variant="outline" className="w-full" onClick={handleReopen} disabled={busy}>
+          <Button onClick={handleReopen} disabled={busy}>
             {busy && <Loader2 className="animate-spin" />}
             Вернуть в работу
           </Button>
         )}
-      </div>
+      </DialogFooter>
     </>
   );
 }
