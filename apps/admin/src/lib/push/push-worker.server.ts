@@ -269,6 +269,10 @@ async function tick() {
       return { id: d.delivery_id, result: sent.outcome, error: sent.error };
     });
     await finish(admin, results);
+    // Служба доставки перегружена (429/5xx у заметной части пачки): повторы
+    // вернулись в очередь первыми — не тратить на них попытки в этом же
+    // проходе, подождать следующего (15 с).
+    if (results.filter((r) => r.result === "retry").length > results.length / 4) break;
   }
   check(await admin.rpc("push_finalize"));
 }

@@ -27,6 +27,19 @@ export function hasSupabaseAdmin() {
 
 let admin: SupabaseClient | undefined;
 
+// Предел ожидания ответа базы для сервис-клиента. Без него зависший запрос
+// навсегда останавливал бы фоновую рассылку пушей: цикл не начинает новый
+// проход, пока не закончился прежний (src/lib/push/push-worker.server.ts).
+const ADMIN_FETCH_TIMEOUT_MS = 30_000;
+
+const timedFetch: typeof fetch = (input, init) => {
+  const timeout = AbortSignal.timeout(ADMIN_FETCH_TIMEOUT_MS);
+  return fetch(input, {
+    ...init,
+    signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
+  });
+};
+
 /**
  * Клиент с service_role — в обход RLS. Только для того, что RLS не позволяет
  * (auth.admin.*), и только после явной проверки вызывающего.
@@ -38,7 +51,10 @@ export function getSupabaseAdmin(): SupabaseClient {
     if (!SUPABASE_URL || !serviceKey) {
       throw new Error("Сервер не настроен: не задан APP_SUPABASE_SERVICE_KEY");
     }
-    admin = createClient(SUPABASE_URL, serviceKey, { auth: SERVER_AUTH });
+    admin = createClient(SUPABASE_URL, serviceKey, {
+      auth: SERVER_AUTH,
+      global: { fetch: timedFetch },
+    });
   }
   return admin;
 }
