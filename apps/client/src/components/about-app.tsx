@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AltArrowRight, Heart, Smartphone } from "@solar-icons/react";
+import { AltArrowRight, Smartphone } from "@solar-icons/react";
 import { toast } from "sonner";
+
+import borinLogo from "@/assets/borin-logo.webp";
 
 import { Button } from "@/components/ui/button";
 import { BottomDrawer } from "@/components/bottom-drawer";
@@ -21,8 +23,8 @@ import { IS_PACKAGES } from "@/lib/terms";
 
 /**
  * «О приложении» в профиле (решение владельца 2026-10-15): по нажатию строки
- * снизу выдвигается шторка (как у новостей и тренировок) — пара слов о
- * приложении, технические данные для разбора проблем клиента и закреплённая
+ * снизу выдвигается шторка (как у новостей и тренировок) — плашка
+ * разработчика, технические данные для разбора проблем клиента и закреплённая
  * внизу «Скопировать техническую информацию» (клиент отправляет текст
  * администратору в мессенджер). Копируется то же, что на экране, на языке
  * приложения. Без ID учётной записи, карточки и студии, адреса и сборки
@@ -145,18 +147,29 @@ function AboutAppDetails() {
 
   return (
     <div className="space-y-4">
-      <p className="flex gap-2 text-sm leading-relaxed">
-        <Heart className="h-5 w-5 shrink-0 text-primary" weight="Bold" />
-        <span>
-          {IS_PACKAGES
-            ? t(
-                "Мы сделали это приложение с любовью для клиентов студии Lady Stretch — чтобы записываться на тренировки и следить за абонементом было легко и приятно.",
-              )
-            : t(
-                "Мы сделали это приложение с любовью для клиентов клуба Base40 — чтобы записываться на тренировки и следить за абонементом было легко и приятно.",
-              )}
-        </span>
-      </p>
+      {/* Плашка разработчика (решение владельца 2026-10-16) — одна на обе сборки. */}
+      <div className="rounded-2xl bg-muted p-4 space-y-3">
+        <img
+          src={borinLogo}
+          alt="borin"
+          width={402}
+          height={140}
+          className="h-9 w-auto rounded-lg"
+        />
+        <p className="text-sm leading-relaxed">
+          {t("Мобильное приложение сделано с любовью в Грузии.")}
+          <br />
+          {t("Разработчик: {developer}.", { developer: "borin digital team" })}
+        </p>
+        <a
+          href="https://vaborin.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block text-sm font-medium text-primary underline underline-offset-4"
+        >
+          {t("Перейти на сайт разработчика")}
+        </a>
+      </div>
 
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">{t("Техническая информация")}</h3>
