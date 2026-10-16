@@ -9,6 +9,7 @@
 
 | Задача                                                                   | Статус                                                                                                        |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 14. 🔴 Перед запуском: мощности, лимиты писем, бэкапы                    | ⏳ см. Задачу 14 — **до утра запуска**: тариф Resend, лимит писем GoTrue, сервер, бэкапы, отчёт по шаблону    |
 | 13. 🟠 Почта Lady Stretch: домен lady-stretch.one в Resend               | ⏳ см. Задачу 13 — до неё письма Lady Stretch уходят с noreply@base40.fit                                     |
 | 12. 🔴 Приложение пакетов: новый адрес app.lady-stretch.one              | ⏳ DNS готов 2026-10-12, Coolify и Auth — см. Задачу 12                                                       |
 | 11. 🔴 Почта: Unisender Go → Resend, вход в pack.base40.fit              | ⏳ см. Задачу 11 — без неё письма с кодом могут не приходить                                                  |
@@ -35,6 +36,382 @@ Supabase — self-hosted в Coolify (Studio в ресурсе Supabase, API
 переменных `GOTRUE_*` сервиса auth), Coolify
 (https://coolify.base40.fit), Resend, GitHub (`borinsobaka-lab`),
 Hetzner Cloud. **Ничего не удаляй**, ключи и пароли никуда не пересылай.
+
+---
+
+# Задача 14. 🔴 Перед запуском приложения: мощности, лимиты, бэкапы (2026-10-16)
+
+Владелец запускает клиентские приложения (Lady Stretch —
+https://app.lady-stretch.one, Base40 — https://app.base40.fit) для живых
+клиентов. Закладываем **1000 клиентов одновременно** (с запасом). Всё
+работает на **одном сервере Hetzner**: Coolify, self-hosted Supabase (база,
+вход, API, файлы), админка и оба приложения. Claude проверил код и базу
+(анализ — `LAUNCH_READINESS.md` в корне репозитория); твоя часть — то, что
+видно только в панелях: сервер, лимиты сервисов, тарифы, бэкапы. Итог —
+отчёт по шаблону в конце: хватает ли текущих мощностей и подписок, и что
+владельцу купить или включить до запуска.
+
+**Общие правила.** Ничего не удаляй. Ключи и пароли никуда не пересылай и
+не пиши в отчёт (только имена переменных). Базу (контейнер `supabase-db`) и
+сервер **не перезагружай**, приложения не передеплоивай — кроме шагов, где
+это прямо написано. Каждое изменение записывай в отчёт: где, что было, что
+стало. Если интерфейс не похож на описание — опиши, что видишь, и иди
+дальше, не импровизируй.
+
+**Покупки — только с отметкой владельца.** Перед запуском агента владелец
+отмечает, что разрешено (пустая клетка — не покупать, а записать в отчёт
+как рекомендацию с ценой):
+
+- [ ] Resend → тариф **Pro** ($20/мес, 50 000 писем, без дневного лимита)
+- [ ] Hetzner → **Backups** у сервера (+20 % к цене сервера)
+- [ ] Hetzner → **Rescale** сервера на тип, рекомендованный в Части 1, шаг 6
+      (перезагрузка, простой 2–5 минут — только ночью до запуска)
+- [ ] UptimeRobot (бесплатно) — завести аккаунт на почту владельца для
+      мониторинга (Часть 8)
+
+## Часть 1. Hetzner — сервер (только смотреть, кроме шагов 4 и 6)
+
+1. https://console.hetzner.com → проект **club40** → сервер
+   **club40-coolify** (IP 62.238.104.251). Записать: тип (CX32 / CX33 /
+   …), vCPU, RAM, диск, локация, цена в месяц.
+2. Вкладка **Graphs**, период 7 дней и 24 часа: CPU (пик и обычный уровень,
+   и какая шкала — 100 % или 400 % на 4 vCPU), Disk (IOPS/throughput),
+   Network. Скриншоты или числа — в отчёт.
+3. **Traffic**: использовано в этом месяце / включено.
+4. **Backups**: включены ли, дата последнего бэкапа. Выключены и владелец
+   отметил покупку — **Enable backups** (ежедневно, хранится 7 копий),
+   дождаться первого бэкапа или записать, когда он будет. **Snapshots** —
+   какие есть, даты.
+5. **Firewalls**: файрвол привязан к серверу; входящие правила — только TCP
+   22, 80, 443 и ICMP. Если открыты 5432, 6543, 8000, 3000, 4000, 9000 или
+   «All» — записать в отчёт как 🔴 (база или служебные панели открыты в
+   интернет), **ничего не менять**.
+6. **Rescale** (не нажимать, только посмотреть варианты и цены): записать
+   текущие цены в месяц для (а) shared vCPU 8 vCPU / 16 GB (CX43 или
+   аналог), (б) dedicated 4 vCPU / 16 GB (CCX23 или аналог), (в) dedicated
+   8 vCPU / 32 GB (CCX33). Галочку «CPU and RAM only» (без увеличения
+   диска — тогда можно вернуться на меньший тип) — отметить, есть ли она.
+   Если по итогам Части 2 сервер в 🔴 и владелец отметил Rescale —
+   выполнить **ночью**: Power off → Rescale на (а) с «CPU and RAM only» →
+   Power on, дождаться, что https://admin.base40.fit,
+   https://app.lady-stretch.one и https://api.base40.fit/auth/v1/health
+   открываются (последний может отвечать 401 «No API key» — это значит,
+   что сервис жив).
+
+## Часть 2. Внутри сервера — память, диск, падения (только смотреть)
+
+Coolify https://coolify.base40.fit → **Servers** → сервер (localhost) →
+**Terminal** (или значок терминала у сервера). Выполнить по одной команде и
+скопировать вывод в отчёт (это только чтение, ничего не меняют):
+
+```bash
+uptime; nproc
+free -h; swapon --show
+df -h /
+docker system df
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | sort -k3 -h | tail -25
+docker ps --format "table {{.Names}}\t{{.Status}}" | head -40
+dmesg -T 2>/dev/null | grep -iE "out of memory|oom-kill|killed process" | tail -20
+journalctl -k --since "14 days ago" 2>/dev/null | grep -iE "oom|killed process" | tail -20
+```
+
+Оценка (впиши в отчёт цветом):
+
+- `free -h`, колонка **available**: больше 3 GB — 🟢; 1,5–3 GB — 🟠; меньше
+  1,5 GB — 🔴. Swap 0 B — отметить (при нехватке памяти ядро сразу убивает
+  процессы, первым может пострадать Postgres).
+- `df -h /`: занято меньше 70 % — 🟢; 70–85 % — 🟠; больше 85 % — 🔴 (при
+  заполненном диске база останавливается).
+- `uptime`, load average: меньше числа vCPU — 🟢.
+- Любые строки про OOM / killed process за 14 дней — 🔴, переписать, какой
+  процесс убит и когда.
+- Контейнеры в статусе `Restarting` или с `Up` меньше часа (кроме только
+  что задеплоенных) — записать.
+
+Если диск 🔴: Coolify → сервер → **Docker Cleanup** (или Cleanup Storage) →
+запустить очистку (удаляет неиспользуемые образы и кэш сборок; работающие
+контейнеры и тома не трогает), затем снова `df -h /`.
+
+Если swap **0 B**, а на диске свободно больше 20 GB — добавить файл подкачки
+4 GB (страховка: при нехватке памяти, например во время сборки, ядро не
+убьёт сразу базу). Команды по одной:
+
+```bash
+fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+sysctl -w vm.swappiness=10 && echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf
+swapon --show; free -h
+```
+
+Если любая команда выдала ошибку — остановиться, вывод в отчёт, дальше
+этот шаг не продолжать (убрать подкачку: `swapoff /swapfile`).
+
+## Часть 3. Coolify — настройки сборки, уведомления, здоровье
+
+1. Сервер → **Configuration / Advanced**:
+   - **Docker Cleanup** — включена ли автоочистка, порог и частота.
+     Выключена — включить с порогом 80 %.
+   - **Concurrent Builds** — сколько сборок одновременно. Если RAM сервера
+     8 GB или меньше — поставить **1** (сборка приложения занимает 1–2 GB
+     памяти; два клиентских приложения собираются при каждом деплое
+     клиента, параллельно они могут вытеснить память у базы). Записать,
+     сколько было.
+2. **Settings → Notifications** (или Notifications у команды): какие каналы
+   настроены (Email, Telegram, Discord…) и на какие события (Deployment
+   failed, Container stopped/restarted, Server disk usage, Server
+   unreachable, Backup failed). Ничего не настроено — записать как 🟠;
+   настроить, только если канал уже подключён (например, Email уже работает
+   для других уведомлений) — включить все события выше.
+3. Проект **club40** → **production**: у ресурсов `club40-admin`,
+   `club40-client`, `club40-client-packages` записать статус (Running /
+   Healthy / Unhealthy), дату последнего деплоя, **Advanced → Resource
+   Limits** (заданы ли лимиты памяти/CPU — менять не надо). После выкатки
+   правок 2026-10-16 у клиентских приложений должен появиться статус
+   **healthy** (в образ добавлена проверка `/api/health`).
+4. `club40-admin` → **Logs** (последние сутки): найти строки `[mail]`,
+   `[auth-email]`, `[push]`, `[migrate]` с ошибками — переписать (без
+   ключей).
+5. Ресурс **Supabase**: список сервисов и их статус (db, auth, rest, kong,
+   storage, realtime, analytics, vector, studio, imgproxy, meta, minio,
+   supavisor, edge-functions). Unhealthy / Restarting — 🔴. Логи сервиса
+   **auth** за сутки: строки с `rate limit`, `hook`, `error` — в отчёт.
+
+## Часть 4. Supabase Auth — лимит писем с кодом (🔴 главный пункт)
+
+Вход в приложения — только кодом из письма. У GoTrue есть **общий на весь
+сервер** лимит писем в час (`GOTRUE_RATE_LIMIT_EMAIL_SENT`; по умолчанию
+**30 в час**, раньше в инструкциях — 100). Он считает письма обоих
+приложений и админки вместе. Утром, когда клиенты массово входят, при лимите
+30–100 в час большинство получит ошибку «Слишком часто» вместо кода.
+
+1. Coolify → ресурс **Supabase** → сервис **auth** (или общий список
+   переменных ресурса) → Environment Variables. Записать значения (секретов
+   в них нет): `GOTRUE_RATE_LIMIT_EMAIL_SENT`, `GOTRUE_RATE_LIMIT_HEADER`,
+   `GOTRUE_RATE_LIMIT_OTP`, `GOTRUE_RATE_LIMIT_VERIFY`,
+   `GOTRUE_RATE_LIMIT_TOKEN_REFRESH`, `GOTRUE_MAILER_AUTOCONFIRM`
+   (`ENABLE_EMAIL_AUTOCONFIRM`), `GOTRUE_SMTP_MAX_FREQUENCY`,
+   `GOTRUE_JWT_EXP` (`JWT_EXPIRY`), `GOTRUE_MAILER_OTP_EXP`,
+   `GOTRUE_DISABLE_SIGNUP` (`DISABLE_SIGNUP` — должно быть `false`),
+   `GOTRUE_HOOK_SEND_EMAIL_ENABLED`, `GOTRUE_HOOK_SEND_EMAIL_URI`. Не
+   задана — так и писать «не задана».
+2. Изменить:
+   - `GOTRUE_RATE_LIMIT_EMAIL_SENT` = **`3000`** (писем в час на весь сервер:
+     1000 клиентов с повторами и запасом; защиту от перебора это не
+     ослабляет — у каждого адреса свой предел «раз в минуту»). Если
+     переменной нет в списке — добавить её в сервис auth (в compose
+     ресурса Supabase, блок `supabase-auth` → `environment`).
+   - Только если `GOTRUE_RATE_LIMIT_HEADER` **задана** (например,
+     `X-Forwarded-For`): тогда лимиты считаются по IP, и все клиенты на
+     Wi-Fi студии — один IP. Поставить `GOTRUE_RATE_LIMIT_OTP=300`,
+     `GOTRUE_RATE_LIMIT_TOKEN_REFRESH=1500`; `GOTRUE_RATE_LIMIT_VERIFY` —
+     не увеличивать (защита от подбора кода). Не задана — эти три не
+     трогать: по IP GoTrue тогда не ограничивает.
+   - Больше ничего в auth не менять.
+3. Применить: перезапустить **только сервис auth**, если Coolify это
+   позволяет. Если можно только весь ресурс Supabase (с базой) — делать
+   **ночью**, предупредив в отчёте, и дождаться, что все сервисы снова
+   Running/Healthy (1–3 минуты).
+4. Проверка: https://admin.base40.fit → вход кодом — письмо пришло.
+
+## Часть 5. База — соединения и состояние (только чтение)
+
+Studio Supabase (ресурс Supabase в Coolify → ссылка Studio) → **SQL
+Editor** → выполнить и скопировать результаты:
+
+```sql
+select current_setting('max_connections') as max_conn,
+       current_setting('shared_buffers') as shared_buffers,
+       current_setting('work_mem') as work_mem,
+       pg_size_pretty(pg_database_size(current_database())) as db_size;
+
+select usename, application_name, state, count(*)
+  from pg_stat_activity group by 1, 2, 3 order by 4 desc;
+
+select rolname, rolconfig from pg_roles
+ where rolname in ('anon', 'authenticated', 'authenticator', 'service_role');
+
+select relname, n_live_tup from pg_stat_user_tables
+ order by n_live_tup desc limit 15;
+
+select schemaname, tablename from pg_publication_tables
+ where pubname = 'supabase_realtime';
+
+select name from app_migrations.applied order by name desc limit 5;
+
+-- Миграция безопасности (Задача 0): должны быть политики
+-- «clients self or trainer select», «client_memberships self or trainer select»
+-- и по 4 политики у feedback и nps_responses.
+select tablename, policyname from pg_policies
+ where schemaname = 'public'
+   and tablename in ('clients', 'client_memberships', 'feedback', 'nps_responses')
+ order by 1, 2;
+
+-- Карточки клиентов с почтой: войти в приложение может только клиент,
+-- у которого в карточке есть почта.
+select s.name, s.format, count(c.id) as clients,
+       count(c.id) filter (where coalesce(trim(c.email), '') <> '') as with_email,
+       count(c.user_id) as with_app_account
+  from studios s left join clients c on c.studio_id = s.id
+ group by 1, 2 order by 1;
+
+-- Отмена записи с причиной: приложение вызывает вариант (uuid, text).
+select pg_get_function_identity_arguments(oid) as args
+  from pg_proc where proname = 'cancel_schedule_booking';
+
+-- Журнал записей принимает «лист ожидания» (в списке должно быть 'waitlist').
+select pg_get_constraintdef(oid) from pg_constraint
+ where conname = 'bookings_log_status_check';
+
+-- Есть ли статистика запросов (если ошибка — просто записать «нет»).
+select query, calls, round(mean_exec_time::numeric, 1) as ms_avg,
+       round(total_exec_time::numeric) as ms_total
+  from pg_stat_statements order by total_exec_time desc limit 15;
+```
+
+Оценка: соединений всего (сумма count) меньше 60 % от `max_conn` — 🟢.
+Последние миграции в `app_migrations.applied` после выкатки правок —
+`2026-10-16_zz_rls_initplan_perf.sql` и перед ней
+`2026-10-16_packages_no_app_purchase.sql`. Нет первой — в логах
+`club40-admin` найти строку `[migrate]` с ошибкой и переписать в отчёт
+(админка при этом продолжает работать на прежней версии). В
+`cancel_schedule_booking` нет варианта `p_entry_id uuid, p_reason text` или
+в `bookings_log_status_check` нет `'waitlist'` — 🔴 (отмена записи или
+запись на полное занятие у клиентов падают с ошибкой). Клубы, где карточек
+с почтой заметно меньше, чем клиентов, — 🟠 (эти клиенты не войдут). Если в политиках `clients` видны
+старые `clients studio select` или у `feedback` — `feedback read all auth`,
+это 🔴: Задача 0 не выполнена (клиенты видят чужие данные) — в отчёт
+первой строкой.
+
+## Часть 6. Resend — тариф и лимиты (🔴 главный пункт)
+
+На бесплатном тарифе Resend — **100 писем в сутки** и 3000 в месяц. Каждый
+вход клиента — письмо с кодом. 1000 клиентов в первый день = 1000+ писем:
+на бесплатном тарифе после сотого письма за сутки коды перестанут
+приходить всем — и клиентам, и сотрудникам в админку.
+
+1. https://resend.com → **Settings → Billing** (или Usage): тариф,
+   отправлено за сегодня / за месяц, лимиты на экране. Записать.
+2. **Domains**: какие домены в этом аккаунте и их статус (`base40.fit`,
+   `lady-stretch.one`, `neba.space` — система записи на массаж тоже может
+   слать отсюда; тогда лимит общий).
+3. **Emails**: за 7 дней — сколько Delivered / Bounced / Failed; есть ли
+   ошибки `rate_limit_exceeded` или `quota`.
+4. Если тариф Free и владелец отметил покупку — **Upgrade → Pro** ($20/мес).
+   Если не отметил — в отчёт первой строкой: «🔴 Resend Free — вход
+   остановится после 100 писем в сутки».
+5. Лимит скорости API Resend — 10 запросов в секунду на команду. Код
+   админки (с 2026-10-16) сам выстраивает письма в очередь до 8 в секунду и
+   повторяет при перегрузке — менять ничего не нужно, только записать, если
+   в Settings где-то показан другой лимит.
+
+## Часть 7. Домены и сертификаты (только смотреть)
+
+1. Cloudflare → `base40.fit` → DNS: записи `api`, `app`, `admin`, `coolify`,
+   `pack` — значение и **Proxy status** (оранжевое облако или DNS only).
+   Если проксируются — **SSL/TLS** → режим (должен быть Full или Full
+   (strict)). Ничего не менять.
+2. Где зарегистрированы `base40.fit`, `lady-stretch.one`, `neba.space`;
+   **дата окончания** и включено ли **автопродление** у каждого.
+   Истекает в ближайшие 60 дней и автопродления нет — 🔴.
+3. Замок в браузере у https://app.lady-stretch.one, https://app.base40.fit,
+   https://admin.base40.fit, https://api.base40.fit — сертификат
+   действителен до какой даты (Let's Encrypt — 90 дней, продлевается сам).
+
+## Часть 8. Мониторинг доступности
+
+Если владелец отметил UptimeRobot: https://uptimerobot.com → аккаунт на
+почту владельца (пароль — в менеджер паролей владельца) → мониторы HTTP(s),
+интервал 5 минут, уведомления на почту владельца:
+
+| Монитор          | Адрес                                                                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Lady Stretch     | `https://app.lady-stretch.one/api/health` (после выкатки правок 2026-10-16; до неё — `https://app.lady-stretch.one/manifest.webmanifest`) |
+| Base40 app       | `https://app.base40.fit/api/health` (так же)                                                                                              |
+| Админка          | `https://admin.base40.fit/auth`                                                                                                           |
+| API (вход)       | `https://api.base40.fit/auth/v1/health?apikey=<anon-ключ>` — ключ из `apps/client/.env` репозитория (публичный, он и так в приложении)    |
+| Запись на массаж | `https://booking.neba.space/`                                                                                                             |
+
+Не отметил — записать в отчёт, что мониторинга нет (о падении узнаем от
+клиентов).
+
+## Часть 9. Бэкапы базы (только смотреть)
+
+1. Hetzner Backups — см. Часть 1, шаг 4.
+2. Coolify → ресурс **Supabase** → сервис/вкладка **db** → **Backups**
+   (Scheduled Backups): настроены ли, расписание, куда (локально или S3),
+   дата последнего успешного. Записать. Если бэкапов нет ни в Hetzner, ни
+   в Coolify — 🔴 первой строкой отчёта: при сбое диска потеряются все
+   клиенты, абонементы и продажи. Настраивать S3-бэкапы без владельца не
+   нужно — только предложить (Hetzner Object Storage или Cloudflare R2).
+
+## Часть 10. Запись на массаж NEBA (только смотреть)
+
+В приложении Lady Stretch это пока только ссылка на https://booking.neba.space
+(свой сервер записи на Cloudflare, данные — в приватном репозитории
+GitHub). Нагрузка от запуска на него мала, но есть два места, где он может
+лечь целиком:
+
+1. https://dash.cloudflare.com → **Workers & Pages** → `booking-system`:
+   тариф аккаунта (Workers Free / Paid), **Metrics** за 7 дней (запросы,
+   ошибки, «Exceeded CPU»), **Settings → Variables and Secrets** — какие
+   есть (только имена: `DATA_TOKEN`, `SESSION_SECRET`, `RESEND_API_KEY` или
+   `UNISENDER_GO_API_KEY`, `CORS_ORIGIN`), **Triggers** — cron. Есть ли
+   ещё Worker `booking-api` и живой ли он.
+2. GitHub (аккаунт `borinsobaka-lab`) → https://github.com/settings/personal-access-tokens
+   → токен с доступом к `booking-system-data`: **Expires on** (дата). Истекает
+   в ближайшие 30 дней — 🔴 (по истечении сайт записи и его админка
+   перестают работать).
+3. Репозиторий `booking-system-data` → размер файла `data.json` (больше
+   900 KB — 🔴: при 1 MB GitHub перестаёт отдавать содержимое, и сервер
+   записи видит пустые данные).
+
+## Часть 11. Проверка после выкатки правок 2026-10-16
+
+Claude выкатил ветку с правками под нагрузку (клиенты — версия приложения
+1.14). Когда деплои в Coolify зелёные:
+
+1. https://app.lady-stretch.one/api/health и https://app.base40.fit/api/health
+   — ответ `ok`.
+2. Ресурсы `club40-client` и `club40-client-packages` — статус **healthy**.
+3. https://admin.base40.fit → вход кодом — письмо приходит меньше чем за
+   30 секунд.
+4. Приложение Lady Stretch (телефон или эмуляция телефона), тестовый клиент
+   — вход кодом, главная, расписание, профиль → «О приложении» — версия
+   1.14.
+
+## Отчёт владельцу (шаблон)
+
+Первой строкой — **итог**: «Готовы к 1000 одновременно / Готовы с
+оговорками / Не готовы» и список 🔴, если есть.
+
+| Пункт                                                | Факт | Оценка 🟢/🟠/🔴 | Что сделано / что рекомендую (с ценой) |
+| ---------------------------------------------------- | ---- | --------------- | -------------------------------------- |
+| Сервер Hetzner: тип, vCPU/RAM/диск                   |      |                 |                                        |
+| CPU за 7 дней (пик / обычно)                         |      |                 |                                        |
+| Память available / swap                              |      |                 |                                        |
+| Диск занято                                          |      |                 |                                        |
+| OOM / падения контейнеров за 14 дней                 |      |                 |                                        |
+| Самые «тяжёлые» контейнеры (RAM)                     |      |                 |                                        |
+| Concurrent Builds, Docker Cleanup                    |      |                 |                                        |
+| Уведомления Coolify                                  |      |                 |                                        |
+| Файрвол (лишние порты)                               |      |                 |                                        |
+| GoTrue: лимит писем (было → стало)                   |      |                 |                                        |
+| GoTrue: RATE_LIMIT_HEADER и лимиты IP                |      |                 |                                        |
+| Postgres: max_connections / занято                   |      |                 |                                        |
+| Клиенты с почтой по клубам                           |      |                 |                                        |
+| Отмена с причиной, лист ожидания                     |      |                 |                                        |
+| Миграция безопасности (Задача 0)                     |      |                 |                                        |
+| Последняя миграция                                   |      |                 |                                        |
+| Resend: тариф, отправлено сегодня/мес.               |      |                 |                                        |
+| Resend: домены в аккаунте                            |      |                 |                                        |
+| Бэкапы Hetzner / Coolify                             |      |                 |                                        |
+| Домены: даты окончания, автопродление                |      |                 |                                        |
+| Мониторинг                                           |      |                 |                                        |
+| NEBA: тариф Workers, ошибки, токен, размер data.json |      |                 |                                        |
+| Проверка после выкатки (Часть 11)                    |      |                 |                                        |
+
+Отдельно: список всех изменений (где, было → стало) и всё, что купил (тариф,
+цена).
 
 ---
 
@@ -291,7 +668,7 @@ Base40» за сегодня со статусом Delivered — переход�
    `GOTRUE_DISABLE_SIGNUP` (или `DISABLE_SIGNUP`) = `false` (**обязательно
    false**: клиент, заведённый на портале, при первом входе получает учётную
    запись автоматически, при `true` войти впервые нельзя),
-   `GOTRUE_RATE_LIMIT_EMAIL_SENT` ≥ 100. Что не так — исправить в Части 2.
+   `GOTRUE_RATE_LIMIT_EMAIL_SENT` = 3000 (с 2026-10-16, см. Задачу 14). Что не так — исправить в Части 2.
 
 ### Часть 1. Resend
 
@@ -303,7 +680,8 @@ Base40» за сегодня со статусом Delivered — переход�
 2. **API Keys** → **Create API Key**: имя `club40-admin`, Permission
    **Sending access**, Domain `base40.fit`. Ключ (`re_...`) скопировать —
    он показывается один раз. Старые ключи Base40, если есть, пока не трогать.
-3. Тариф: бесплатного (3000 писем в месяц, 100 в день, 1 домен) достаточно.
+3. Тариф: для тестов хватало бесплатного (3000 писем в месяц, 100 в день);
+   к запуску для клиентов нужен Pro — Задача 14, Часть 6.
    Если Resend не даёт сделать шаги 1–2 без оплаты — остановиться и сообщить
    владельцу, какой тариф нужен.
 
@@ -780,7 +1158,7 @@ Supabase в Coolify (API `https://api.base40.fit`) 1:1. Код обоих при
      `GOTRUE_HOOK_SEND_EMAIL_URI=https://admin.base40.fit/api/auth-email`,
      `GOTRUE_HOOK_SEND_EMAIL_SECRETS=` то же значение, что
      `SEND_EMAIL_HOOK_SECRET` у club40-admin (`v1,whsec_...`);
-   - `GOTRUE_RATE_LIMIT_EMAIL_SENT=100`.
+   - `GOTRUE_RATE_LIMIT_EMAIL_SENT=3000` (с 2026-10-16; было 100 — мало для запуска, см. Задачу 14).
    - Код входа (оба приложения вводят 6 цифр): `GOTRUE_MAILER_OTP_LENGTH`
      не задавать или `=6`; `GOTRUE_MAILER_OTP_EXP=3600` (в письме написано
      «действует 1 час»). `GOTRUE_RATE_LIMIT_VERIFY` не увеличивать — это
