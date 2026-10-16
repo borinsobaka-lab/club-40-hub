@@ -2,7 +2,9 @@
 # Контекст сборки — КОРЕНЬ монорепозитория (Coolify: Base Directory «/»,
 # Dockerfile Location «/apps/admin/Dockerfile»): кроме apps/admin нужен общий
 # db/ — мигратор и миграции.
-FROM oven/bun:1 AS build
+# Версия Bun закреплена (2026-10-16): плавающий тег «1» мог подтянуть новую
+# версию в любой деплой — например, в день запуска. Обновлять осознанно.
+FROM oven/bun:1.4.3 AS build
 WORKDIR /app
 
 COPY apps/admin/package.json apps/admin/bun.lock apps/admin/bunfig.toml ./
@@ -19,7 +21,7 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
 
 RUN bun run build
 
-FROM oven/bun:1-slim AS runtime
+FROM oven/bun:1.4.3-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 
