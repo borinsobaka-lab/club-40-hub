@@ -108,6 +108,73 @@ describe("sendMail: таймаут провайдера", () => {
   });
 });
 
+describe("sendMail: перегрузка Resend", () => {
+  // Без очереди в тестах: слот каждую миллисекунду.
+  const env = { RESEND_API_KEY: "k", RESEND_RPS: "1000" };
+  const msg = { to: "a@b.ru", subject: "s", html: "h" };
+  function mockFetchSeq(replies: { status: number; body: string }[]) {
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      const r = replies[Math.min(calls, replies.length - 1)];
+      calls += 1;
+      return new Response(r.body, { status: r.status });
+    }) as unknown as typeof fetch;
+    return () => calls;
+  }
+  const quiet = async <T>(run: () => Promise<T>) => {
+    const origErr = console.error;
+    console.error = () => {};
+    try {
+      return await run();
+    } finally {
+      console.error = origErr;
+    }
+  };
+
+  test("429 — повтор, письмо уходит", async () => {
+    const calls = mockFetchSeq([
+      { status: 429, body: '{"name":"rate_limit_exceeded"}' },
+      { status: 200, body: '{"id":"x"}' },
+    ]);
+    const r = await quiet(() => sendMail(msg, env));
+    expect(r.ok).toBe(true);
+    expect(calls()).toBe(2);
+  });
+
+  test("5xx — повтор", async () => {
+    const calls = mockFetchSeq([
+      { status: 502, body: "bad gateway" },
+      { status: 200, body: '{"id":"x"}' },
+    ]);
+    const r = await quiet(() => sendMail(msg, env));
+    expect(r.ok).toBe(true);
+    expect(calls()).toBe(2);
+  });
+
+  test("исчерпана квота тарифа — без повтора", async () => {
+    const calls = mockFetchSeq([{ status: 429, body: '{"name":"daily_quota_exceeded"}' }]);
+    const r = await quiet(() => sendMail(msg, env));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("daily_quota_exceeded");
+    expect(calls()).toBe(1);
+  });
+
+  test("429 подряд — не больше трёх попыток", async () => {
+    const calls = mockFetchSeq([{ status: 429, body: '{"name":"rate_limit_exceeded"}' }]);
+    const r = await quiet(() => sendMail(msg, env));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("Resend 429");
+    expect(calls()).toBe(3);
+  });
+
+  test("до deadline не успеть — запроса нет", async () => {
+    const calls = mockFetchSeq([{ status: 200, body: '{"id":"x"}' }]);
+    const r = await quiet(() => sendMail(msg, env, { deadline: Date.now() + 300 }));
+    expect(r.ok).toBe(false);
+    expect(calls()).toBe(0);
+  });
+});
+
 test("htmlToText: ссылка — адресом", () =>
   expect(htmlToText('<p>Нажмите</p><a href="https://x.ru/v">Войти</a>')).toBe(
     "Нажмите\nВойти: https://x.ru/v",
