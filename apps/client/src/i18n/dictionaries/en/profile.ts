@@ -74,10 +74,9 @@ const dict: Dictionary = {
   "Техническая информация скопирована": "Technical information copied",
   "Не удалось скопировать — выделите текст и скопируйте его вручную":
     "Couldn't copy — select the text and copy it manually",
-  "Мы сделали это приложение с любовью для клиентов студии Lady Stretch — чтобы записываться на тренировки и следить за абонементом было легко и приятно.":
-    "We made this app with love for Lady Stretch clients — so that booking classes and keeping track of your membership is easy and enjoyable.",
-  "Мы сделали это приложение с любовью для клиентов клуба Base40 — чтобы записываться на тренировки и следить за абонементом было легко и приятно.":
-    "We made this app with love for Base40 members — so that booking workouts and keeping track of your membership is easy and enjoyable.",
+  "Мобильное приложение сделано с любовью в Грузии.": "Mobile app made with love in Georgia.",
+  "Разработчик: {developer}.": "Developer: {developer}.",
+  "Перейти на сайт разработчика": "Visit the developer's website",
   "Техническая информация": "Technical information",
   "Если что-то работает не так, скопируйте эти данные и отправьте администратору — так мы быстрее разберёмся.":
     "If something isn't working right, copy this information and send it to the admin — it helps us sort things out faster.",
