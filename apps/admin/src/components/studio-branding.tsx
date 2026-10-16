@@ -10,8 +10,8 @@ import { rememberStudioFormat } from "@/lib/page-skeleton-layout";
  * - красит админку в цвет активной студии: --brand (иконка активного пункта
  *   меню, «сегодня» в расписании и прочие акценты) берётся из
  *   studios.brand_color. Без студии остаётся цвет по умолчанию из styles.css;
- * - фавикон по формату клуба: пакетный — Lady Stretch, подписочный и без
- *   студии — Base40 из разметки (__root.tsx).
+ * - фавикон по формату клуба: пакетный — розовый круг, подписочный и без
+ *   студии — жёлтый из разметки (__root.tsx).
  */
 export function StudioBranding() {
   const { data: studios } = useStudios();
@@ -39,7 +39,9 @@ export function StudioBranding() {
     const original = links.map((link) => link.getAttribute("href"));
     for (const link of links) {
       link.href =
-        link.sizes.value === "32x32" ? "/favicon-packages-32.png" : "/favicon-packages-180.png";
+        link.sizes.value === "32x32"
+          ? "/favicon-packages-32.png?v=2"
+          : "/favicon-packages-180.png?v=2";
     }
     return () => {
       links.forEach((link, i) => {
