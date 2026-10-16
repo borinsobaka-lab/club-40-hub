@@ -91,14 +91,14 @@ https://app.lady-stretch.one, Base40 — https://app.base40.fit) для живы
    аналог), (б) dedicated 4 vCPU / 16 GB (CCX23 или аналог), (в) dedicated
    8 vCPU / 32 GB (CCX33). Галочку «CPU and RAM only» (без увеличения
    диска — тогда можно вернуться на меньший тип) — отметить, есть ли она.
-   Если по итогам Части 2 сервер в 🔴 и владелец отметил Rescale —
-   выполнить **ночью**: Power off → Rescale на (а) с «CPU and RAM only» →
+   Вернуться к этому шагу после Части 2: если сервер там в 🔴 и владелец
+   отметил Rescale — выполнить **ночью**: Power off → Rescale на (а) с «CPU and RAM only» →
    Power on, дождаться, что https://admin.base40.fit,
    https://app.lady-stretch.one и https://api.base40.fit/auth/v1/health
    открываются (последний может отвечать 401 «No API key» — это значит,
    что сервис жив).
 
-## Часть 2. Внутри сервера — память, диск, падения (только смотреть)
+## Часть 2. Внутри сервера — память, диск, падения (менять — только где написано)
 
 Coolify https://coolify.base40.fit → **Servers** → сервер (localhost) →
 **Terminal** (или значок терминала у сервера). Выполнить по одной команде и
