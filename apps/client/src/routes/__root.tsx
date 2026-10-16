@@ -60,7 +60,9 @@ const SUPABASE_ORIGIN = (() => {
 /**
  * Старая вкладка после деплоя: файлы прежней сборки с сервера уже удалены, и
  * переход в ещё не загруженный раздел падал с «Страница не загрузилась».
- * Перезагружаем страницу (не чаще раза в 10 секунд, чтобы не зациклиться).
+ * Перезагружаем страницу (не чаще раза в минуту, чтобы не зациклиться: та же
+ * ошибка бывает и от сбоя сети, а каждая перезагрузка — полный холодный запуск
+ * с десятками запросов к базе; до 2026-10-16 — раз в 10 секунд).
  */
 function isStaleChunkError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -72,7 +74,7 @@ function reloadForStaleChunks(): boolean {
   try {
     const key = "base40.chunkReloadAt";
     const last = Number(window.sessionStorage.getItem(key) ?? 0);
-    if (Date.now() - last < 10_000) return false;
+    if (Date.now() - last < 60_000) return false;
     window.sessionStorage.setItem(key, String(Date.now()));
   } catch {
     return false;

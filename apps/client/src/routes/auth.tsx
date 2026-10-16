@@ -112,7 +112,9 @@ function AuthPage() {
   // Значение со страницы — только первое: страница могла прийти устаревшей
   // (кэш сервера, копия service worker'а в установленном приложении), поэтому
   // флаг сразу перепроверяется в базе, при возвращении в приложение и, пока
-  // вход закрыт, раз в 30 секунд — открыли вход, и форма появится сама.
+  // вход закрыт, раз в 60–90 секунд — открыли вход, и форма появится сама.
+  // Разброс — чтобы в минуту открытия клиенты, ждущие на этом экране, не
+  // запросили коды все в одну секунду (лимиты писем, 2026-10-16).
   const ssrSignInClosed = useLoaderData({ from: "__root__" })?.signInClosed === true;
   const { data: signInClosedLive } = useQuery({
     queryKey: ["sign-in-closed"],
@@ -121,7 +123,7 @@ function AuthPage() {
     initialDataUpdatedAt: 0,
     staleTime: 0,
     refetchOnWindowFocus: "always",
-    refetchInterval: (q) => (q.state.data ? 30_000 : false),
+    refetchInterval: (q) => (q.state.data ? 60_000 + Math.random() * 30_000 : false),
     meta: { persist: false },
   });
   const signInClosed = signInClosedLive === true && step === "form";

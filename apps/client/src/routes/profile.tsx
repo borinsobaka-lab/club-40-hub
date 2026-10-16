@@ -297,23 +297,9 @@ function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    // Уникальное имя канала: с прежним именем supabase.channel() отдавал
-    // ещё закрывающийся канал прошлого эффекта, и подписка молча умирала.
-    const channel = supabase
-      .channel(`clients-${user.id}-${Math.random().toString(36).slice(2)}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "clients", filter: `user_id=eq.${user.id}` },
-        () => queryClient.invalidateQueries({ queryKey: ["client-card", user.id] }),
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, queryClient]);
+  // Подписка Realtime на свою карточку убрана (2026-10-16, запуск): лишнее
+  // постоянное соединение с каждого телефона; правки администратора
+  // приходят при следующем открытии профиля.
 
   const fullName =
     composeFullName(client) || (user?.user_metadata?.full_name as string) || t("Участник");

@@ -263,6 +263,10 @@ export function PackagesSchedulePage() {
       toast.info(reasonMessages[res.reason]);
       navigate({ to: "/memberships" });
     } else if (res?.reason) {
+      // Места разобрали, пока расписание было открыто: показать занятие
+      // заполненным, чтобы не нажимали «Записаться» снова.
+      if (res.reason === "full")
+        queryClient.invalidateQueries({ queryKey: scheduleQuery.queryKey });
       toast.error(
         reasonMessages[res.reason] ??
           t("Не удалось выполнить действие: {reason}", { reason: res.reason }),
