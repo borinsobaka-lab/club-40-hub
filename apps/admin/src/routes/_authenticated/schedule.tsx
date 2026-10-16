@@ -2175,11 +2175,13 @@ function EntryForm({
       if (entry && isOneOnOne(kind) && !cancelled) {
         // Персональное без клиента не сохраняем: клиент записан в панели ниже.
         // У отменённого записей уже нет — его можно править и так.
+        // «Не посетил» (no_show) — клиент тоже записан: такое занятие
+        // переносят и правят, не трогая клиента.
         const { count, error: countError } = await supabase
           .from("schedule_bookings")
           .select("id", { count: "exact", head: true })
           .eq("entry_id", entry.id)
-          .in("status", ["booked", "attended"]);
+          .in("status", ["booked", "attended", "no_show"]);
         if (countError) {
           toast.error("Не удалось проверить запись клиента: " + countError.message);
           return;
