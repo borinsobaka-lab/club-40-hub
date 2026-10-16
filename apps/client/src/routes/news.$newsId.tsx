@@ -98,16 +98,19 @@ function NewsDetailPage() {
     );
   }
 
-  const hero = mediaUrl(item.banner_url) || mediaUrl(item.image_url);
+  // Внутри — только баннер. Картинка превью (image_url) — для карточки на
+  // главном экране; без баннера сразу заголовок и текст.
+  const hero = mediaUrl(item.banner_url);
   const title = item.full_title || item.title;
   const hasCta = !!item.button_text && !!item.button_url;
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto pb-24">
-        <div className="relative">
-          <div className="px-4 pt-4">
-            {hero ? (
+        {/* Без баннера кнопка «Назад» стоит над заголовком, не на картинке. */}
+        <div className={hero ? "relative" : "relative h-12"}>
+          {hero && (
+            <div className="px-4 pt-4">
               <div className="relative w-full aspect-[4/3]">
                 {!imgLoaded && <Skeleton className="absolute inset-0 rounded-xl" />}
                 <img
@@ -118,10 +121,8 @@ function NewsDetailPage() {
                   className={`w-full aspect-[4/3] object-cover rounded-xl transition-opacity duration-200 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
                 />
               </div>
-            ) : (
-              <div className="w-full aspect-[4/3] bg-gradient-to-br from-primary/80 to-primary rounded-xl" />
-            )}
-          </div>
+            </div>
+          )}
           <Link
             to="/"
             aria-label={t("Назад")}

@@ -72,7 +72,9 @@ export function ContentDrawer({
     };
   }, [table, itemId]);
 
-  const hero = mediaUrl(item?.banner_url, bucket) || mediaUrl(item?.image_url, bucket);
+  // Внутри — только баннер. Картинка превью (image_url) — для карточки на
+  // главном экране; без баннера сразу заголовок и текст.
+  const hero = mediaUrl(item?.banner_url, bucket);
   const title = item?.full_title || item?.title || "";
   const hasCta = !!item?.button_text && !!item?.button_url;
 
@@ -88,10 +90,7 @@ export function ContentDrawer({
           <div className="flex-1 overflow-y-auto overscroll-contain pb-10">
             {loading ? (
               <>
-                <div className="px-3 pt-1">
-                  <Skeleton className="w-full aspect-[4/3] rounded-2xl" />
-                </div>
-                <div className="px-3 pt-4 space-y-3">
+                <div className="px-3 pt-3 space-y-3">
                   <Skeleton className="h-7 w-3/4 rounded-md" />
                   <Skeleton className="h-4 w-full rounded-md" />
                   <Skeleton className="h-4 w-5/6 rounded-md" />
