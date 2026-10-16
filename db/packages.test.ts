@@ -552,18 +552,22 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
     });
   });
 
-  test("клиент покупает в приложении пакет любого пакетного клуба, но не подписочного", async () => {
+  test("клиент не оформляет себе продажу в пакетном клубе; в подписочном — только из своего каталога", async () => {
     await scenario(async (tx) => {
       const a = await seed(tx);
       const b = await seed(tx);
       const c = await seed(tx, "subscription");
-      // Покупатель — не сотрудник: guard проверяет пакет.
+      // Покупатель — не сотрудник: guard проверяет клуб и пакет.
       await tx`select set_config('request.jwt.claim.sub', gen_random_uuid()::text, true)`;
-      const buy = (membership: string) => () =>
+      const buy = (s: Seed, membership: string) => () =>
         tx`insert into sales (studio_id, client_id, membership_id, total_amount)
-           values (${a.studio}, ${a.client}, ${membership}, 100)`;
-      expect(await failure(tx, buy(b.pack))).toBeNull();
-      expect(await failure(tx, buy(c.pack))).toContain("Абонемент недоступен для покупки");
+           values (${s.studio}, ${s.client}, ${membership}, 100)`;
+      // Пакетный клуб: оплаты в приложении нет — продажу вносит администратор (2026-10-16).
+      expect(await failure(tx, buy(a, a.pack))).toContain("Покупка в приложении недоступна");
+      expect(await failure(tx, buy(a, b.pack))).toContain("Покупка в приложении недоступна");
+      // Подписочный — как раньше: свой каталог можно, пакетный — нет.
+      expect(await failure(tx, buy(c, c.pack))).toBeNull();
+      expect(await failure(tx, buy(c, b.pack))).toContain("Абонемент недоступен для покупки");
     });
   });
 
@@ -1008,6 +1012,12 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       ).text();
       await tx.unsafe(migration);
       await tx.unsafe(migration);
+      // Повторный прогон вернул прежний guard покупки — актуальный (2026-10-16) поверх.
+      await tx.unsafe(
+        await Bun.file(
+          new URL("./migrations/2026-10-16_packages_no_app_purchase.sql", import.meta.url),
+        ).text(),
+      );
       const singles = await tx`
         select id, name, visits_count, personal_count, duration_days, max_payments, price, is_active
           from memberships where kind = 'single'`;
@@ -1040,13 +1050,13 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
       expect(await membershipOf(tx, sale)).toMatchObject({ status: "expired", visits_left: 0 });
 
-      // Клиент в приложении разовое не оформляет, пакет — по-прежнему да.
+      // Клиент в приложении ничего не оформляет: покупка в пакетном клубе закрыта (2026-10-16).
       await tx`select set_config('request.jwt.claim.sub', gen_random_uuid()::text, true)`;
       const buy = (membership: string) => () =>
         tx`insert into sales (studio_id, client_id, membership_id, total_amount)
            values (${s.studio}, ${s.client}, ${membership}, 35)`;
-      expect(await failure(tx, buy(single))).toContain("Абонемент недоступен для покупки");
-      expect(await failure(tx, buy(s.pack))).toBeNull();
+      expect(await failure(tx, buy(single))).toContain("Покупка в приложении недоступна");
+      expect(await failure(tx, buy(s.pack))).toContain("Покупка в приложении недоступна");
     });
   });
   test("разовое посещение не вытесняет пакет и не вытесняется им — встаёт в очередь", async () => {
