@@ -40,9 +40,10 @@ import { mailProvider, sendMail } from "@/lib/mail";
 // ensure_client_profile.
 async function isClubMember(userId: string): Promise<boolean> {
   if (!hasSupabaseAdmin()) return true;
-  const { data, error } = await getSupabaseAdmin().rpc("client_app_sign_in_allowed", {
-    _user_id: userId,
-  });
+  // Не дольше 1,5 с: остальное окно GoTrue (5 с на хук) — на отправку письма.
+  const { data, error } = await getSupabaseAdmin()
+    .rpc("client_app_sign_in_allowed", { _user_id: userId })
+    .abortSignal(AbortSignal.timeout(CLUB_CHECK_TIMEOUT_MS));
   if (error) {
     console.error("[auth-email] проверка карточки клиента:", error.message);
     return true;
@@ -64,6 +65,12 @@ function verifySignature(secretRaw: string, id: string, ts: string, sig: string,
     return a.length === b.length && timingSafeEqual(a, b);
   });
 }
+
+// GoTrue ждёт хук 5 секунд — на все свои попытки сразу (таймаут общий),
+// поэтому проверка карточки и письмо (с повторами при перегрузке Resend,
+// src/lib/mail.ts) укладываются в 4,3 с от прихода запроса.
+const HOOK_BUDGET_MS = 4300;
+const CLUB_CHECK_TIMEOUT_MS = 1500;
 
 // Полезная нагрузка хука — пользователь и данные письма, единицы килобайт.
 // Роут открыт в интернет, а тело читается до проверки подписи, поэтому
@@ -96,6 +103,7 @@ export const Route = createFileRoute("/api/auth-email")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const deadline = Date.now() + HOOK_BUDGET_MS;
         const secret = process.env.SEND_EMAIL_HOOK_SECRET;
         if (!secret || !mailProvider()) {
           console.error("[auth-email] SEND_EMAIL_HOOK_SECRET / RESEND_API_KEY не заданы");
@@ -139,7 +147,7 @@ export const Route = createFileRoute("/api/auth-email")({
         const brand = emailBrand(payload.email_data.redirect_to);
         const from = emailSender(brand);
         for (const email of buildEmails(payload, fromAdminApp, brand)) {
-          const sent = await sendMail({ ...email, from });
+          const sent = await sendMail({ ...email, from }, process.env, { deadline });
           if (!sent.ok) {
             console.error("[auth-email] письмо не отправлено:", sent.error);
             // Не-200 заставит Supabase показать ошибку отправки и повторить.

@@ -84,9 +84,12 @@ export async function runMigrations(
         log(`[migrate] ${m.name}…`);
         await conn.unsafe("begin");
         try {
-          // Ждать блокировку таблицы под живой нагрузкой не дольше минуты:
-          // иначе старт контейнера мог бы висеть бесконечно.
-          await conn.unsafe("set local lock_timeout = '60s'");
+          // Ждать блокировку таблицы под живой нагрузкой не дольше 5 секунд:
+          // пока миграция ждёт, за ней в очереди стоят все запросы приложения
+          // к этой таблице (клиенты видят зависание). Не дождалась — миграция
+          // откатывается, новый контейнер не стартует, работает прежний;
+          // повторить деплой в тихое время (было 60 с — до 2026-10-16).
+          await conn.unsafe("set local lock_timeout = '5s'");
           await conn.unsafe(m.sql);
           await conn`insert into app_migrations.applied (name, checksum) values (${m.name}, ${m.checksum})`;
           await conn.unsafe("commit");

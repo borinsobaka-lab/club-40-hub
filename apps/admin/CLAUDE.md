@@ -60,8 +60,20 @@ src/lib/mail.ts с noreply@base40.fit через Resend (`RESEND_API_KEY`).
 карточка клиента с этой почтой (RPC `client_app_sign_in_allowed` сервис-ключом,
 `needsClubMembership`); иначе хук отвечает GoTrue ошибкой `not_a_club_member`.
 Env: SEND_EMAIL_HOOK_SECRET, RESEND_API_KEY,
-опционально ADMIN_APP_URL (runtime, Coolify). Настройка — AUTH_SETUP.md
+опционально ADMIN_APP_URL и RESEND_RPS (runtime, Coolify). Настройка — AUTH_SETUP.md
 в корне репозитория.
+
+**Нагрузка** (2026-10-16, запуск приложений: ~1000 клиентов входят в одно
+утро): GoTrue ждёт хук 5 секунд **на все свои попытки сразу**, поэтому хук
+укладывается в 4,3 с (`HOOK_BUDGET_MS`): проверка карточки — не дольше 1,5 с,
+письма — `sendMail(…, { deadline })`. Лимит Resend — запросов в секунду на
+команду (10), сверх — 429: `sendMail` выстраивает письма в очередь (не чаще
+`RESEND_RPS`, по умолчанию 8 в секунду) и повторяет 429 (кроме исчерпанной
+квоты тарифа) и 5xx с паузой, пока успевает до deadline; таймаут и обрыв
+связи не повторяет (письмо могло уйти — был бы второй код). Тесты —
+`src/lib/mail.test.ts`. Объём писем ограничивают не код, а тариф Resend
+(Free — 100 в сутки) и `GOTRUE_RATE_LIMIT_EMAIL_SENT` (в час на весь сервер)
+— AUTH_SETUP.md, шаг 6.
 
 **Письма Lady Stretch** (решение владельца 2026-10-15): клиенты пакетных
 клубов (redirect_to — `app.lady-stretch.one` или `pack.base40.fit`, список —
@@ -550,7 +562,11 @@ GoTrue и видит только хук писем — в браузер он �
 
 - Параметры Supabase читаются только в `src/integrations/supabase/env.ts`;
   клиенты на сервере — `createUserClient(token)` (RLS действует) и
-  `getSupabaseAdmin()` (service-ключ) из `client.server.ts`.
+  `getSupabaseAdmin()` (service-ключ) из `client.server.ts`. У сервис-клиента
+  предел ответа — 30 с (`ADMIN_FETCH_TIMEOUT_MS`): зависший запрос иначе
+  навсегда останавливал бы цикл рассылки пушей.
+- `gcTime` React Query на сервере — `Infinity` (`lib/query.ts`): QueryClient
+  создаётся на каждый SSR-запрос, таймер держал бы его кэш в памяти.
 - Модули `*.server.ts` в клиентский бандл не попадают — сборка падает
   (importProtection в vite.config). Серверное — только в таких файлах или в
   обработчиках `createServerFn`/API-роутов.
@@ -578,7 +594,9 @@ GoTrue и видит только хук писем — в браузер он �
   берут разные строки (`skip locked`). Ответ службы: 2xx — отправлено,
   404/410 — телефона больше нет (подписка удаляется), 429/5xx/сеть —
   повтор (до 5 попыток), прочее — «не дошло» (403 подписку НЕ удаляет:
-  так отвечают и на ошибку подписи).
+  так отвечают и на ошибку подписи). Если повторов больше четверти пачки
+  (служба перегружена), остальная очередь ждёт следующего прохода — иначе
+  все 5 попыток сгорали бы за секунды.
 - Шифрование (RFC 8291, aes128gcm) и подпись VAPID (RFC 8292, ES256) —
   `src/lib/push/web-push.server.ts`, только WebCrypto и fetch (без
   библиотек). Ключи VAPID — в базе (`push_vapid_keys`), нет — создаются при

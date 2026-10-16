@@ -236,6 +236,9 @@ function HomePage() {
       return (data as News[] | null) ?? [];
     },
     enabled: studioReady,
+    // Контент из админки меняется редко — не перезапрашивать при каждом
+    // возвращении на главную.
+    staleTime: 10 * 60_000,
   });
   const news = newsQuery.data ?? null;
   const newsError = newsQuery.isError;
@@ -255,28 +258,15 @@ function HomePage() {
       return (data as Service[] | null) ?? [];
     },
     enabled: studioReady,
+    staleTime: 10 * 60_000,
   });
   const services = servicesQuery.data ?? null;
   const servicesError = servicesQuery.isError;
 
-  // Правки новостей и услуг в админке — сразу на открытой главной.
-  // Уникальное имя канала: supabase.channel() с тем же именем возвращает
-  // ещё не закрытый (leaving) канал из прошлого эффекта, и subscribe() на
-  // нём молча ничего не делает — обновления переставали приходить.
-  useEffect(() => {
-    const channel = supabase
-      .channel(`home-feed-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "news" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["news"] }),
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["services"] }),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
+  // Подписки Realtime на правки новостей и услуг убраны (2026-10-16, запуск):
+  // постоянное соединение с каждого телефона и проверка доступа на каждое
+  // событие для каждого подписчика — тяжело для одного сервера, а правки
+  // контента и так приходят при следующем открытии главной (staleTime).
 
   return (
     <PageShell
