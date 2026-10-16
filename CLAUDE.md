@@ -559,6 +559,25 @@ AUTH_SETUP.md.
   оценки, заявки, последний NPS). Последняя карточка удалена — устройства и
   активность уходят (`clients_app_activity_cleanup_ad`). Тесты —
   `db/app-activity.test.ts`.
+  **Скорость RLS под нагрузкой** (2026-10-16, перед запуском; нагрузочный
+  прогон — LAUNCH_READINESS.md): `db/migrations/2026-10-16_zz_rls_initplan_perf.sql`
+  — политики горячих таблиц (`schedule_entries`, `schedule_entry_trainers`,
+  `schedule_entry_substitutions`, `trainers`, `trainer_studios`, `clients`,
+  `client_memberships`, `schedule_bookings`, `bookings_log`, `workouts`,
+  `memberships`, `sales`, `sale_installments`) — актуальные определения
+  здесь. Хелперы с SECURITY DEFINER не инлайнятся и в политике считались
+  для каждой строки (неделя расписания — ~2300 вызовов); теперь то, что не
+  зависит от строки, — один раз на запрос: `(select auth.uid())`,
+  `(select current_studio_id(auth.uid()))`, списки студий вызывающего
+  массивом — `auth_staff_studio_ids()` (= `is_trainer`),
+  `auth_browse_studio_ids()` (= `client_can_browse_studio`),
+  `auth_catalog_studio_ids()` (= `can_manage_catalog`):
+  `studio_id = any ((select auth_staff_studio_ids())::uuid[])`. **Новые
+  политики — в том же виде**, не `is_trainer(auth.uid(), studio_id)`.
+  `current_studio_id` — на plpgsql (план кэшируется). `nps_pending_survey` —
+  `plan_cache_mode = force_custom_plan` (новое определение функции —
+  сразу с этой настройкой). Индексы: `clients_email_unlinked_idx` (первый
+  вход), `bookings_log_studio_attended_idx` (`my_studio_visit_stats`).
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
