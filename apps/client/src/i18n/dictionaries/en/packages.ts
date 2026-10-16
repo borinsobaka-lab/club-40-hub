@@ -153,9 +153,6 @@ const dict: Dictionary = {
   "Удобные дни и время, пожелания к тренеру": "Convenient days and times, wishes for the trainer",
   "Отправить заявку": "Send request",
   "Диагностика отменена": "Diagnostics cancelled",
-  "На вашем абонементе": "On your membership",
-  "Диагностик нет": "No diagnostics",
-  "Что такое диагностика тела": "What is body diagnostics",
   "Диагностики входят в абонементы на 24, 36 и 50 занятий.":
     "Diagnostics are included in 24, 36 and 50-session memberships.",
   "Записаться на диагностику": "Book diagnostics",

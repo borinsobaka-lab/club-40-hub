@@ -314,22 +314,30 @@ export function DiagnosticsTab() {
 
   return (
     <div className="space-y-4 p-4 pb-24">
-      <Card className="flex items-center gap-3 rounded-2xl p-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
-          <Ruler className="h-7 w-7" weight="BoldDuotone" />
+      {/* Шапка — как у «Персональных»: иконка, заголовок, остаток розовым. */}
+      <Card className="rounded-2xl p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <Ruler className="h-7 w-7 text-primary" weight="BoldDuotone" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-tight">{t("Диагностика тела")}</h2>
+            {balance > 0 && (
+              <div className="mt-0.5 text-sm font-medium text-primary">
+                {t("На балансе: {balance}", {
+                  balance: t.plural(balance, "{n} диагностика|{n} диагностики|{n} диагностик"),
+                })}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm text-muted-foreground">{t("На вашем абонементе")}</div>
-          {mine.isPending ? (
-            <div className="mt-1 h-6 w-32 animate-pulse rounded bg-muted" />
-          ) : (
-            <div className="text-xl font-semibold">
-              {balance > 0
-                ? t.plural(balance, "{n} диагностика|{n} диагностики|{n} диагностик")
-                : t("Диагностик нет")}
-            </div>
-          )}
-        </div>
+        <FormattedText
+          text={diagnosticDescription(t)}
+          className="mt-3 text-[15px] leading-relaxed text-foreground/90"
+        />
+        <p className="mt-3 text-sm text-muted-foreground">
+          {t("Диагностики входят в абонементы на 24, 36 и 50 занятий.")}
+        </p>
       </Card>
 
       {diagnostics.length > 0 && (
@@ -351,17 +359,6 @@ export function DiagnosticsTab() {
           ))}
         </section>
       )}
-
-      <Card className="rounded-2xl p-5">
-        <h2 className="text-xl font-semibold leading-tight">{t("Что такое диагностика тела")}</h2>
-        <FormattedText
-          text={diagnosticDescription(t)}
-          className="mt-3 text-[15px] leading-relaxed text-foreground/90"
-        />
-        <p className="mt-3 text-sm text-muted-foreground">
-          {t("Диагностики входят в абонементы на 24, 36 и 50 занятий.")}
-        </p>
-      </Card>
 
       <Card className="space-y-3 rounded-2xl p-5">
         <h2 className="text-xl font-semibold leading-tight">{t("Записаться на диагностику")}</h2>
