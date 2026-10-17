@@ -368,6 +368,13 @@ AUTH_SETUP.md.
   готовит `apps/admin/scripts/import-1c/` из выгрузки 1С, владелец
   загружает его в «Доступы» → «Импорт из 1С». Правила переноса —
   STUDIO_FORMATS.md, журнал 2026-10-18. Тесты — `db/import-1c.test.ts`.
+  «Добавлен» в «Клиентах»: `db/migrations/2026-10-18_zz_clients_source.sql`
+  — `clients.source` (`admin` — «Сотрудником», по умолчанию; `import` —
+  «Импорт», у всех с `onec_ref`; `mobile` — «Приложение», под будущую
+  регистрацию). Ставит триггер `clients_source_guard_biu`: из админки и
+  приложения (роли authenticated/anon) `source` и `onec_ref` не подделать,
+  функции владельца базы пишут как есть. Вью `clients_with_status`
+  пересоздана (актуальное определение — здесь).
   Правки приложения пакетов 2026-10-12:
   `db/migrations/2026-10-12_zz_packages_app_fixes.sql` — `memberships.tag_text`
   / `tag_style` (`soft` / `bright`) / `gift_text` (тег и «В подарок» в
@@ -481,7 +488,8 @@ AUTH_SETUP.md.
   триггер `schedule_entries_fill_capacity_bi`).
   Статус клуба без пробных: `db/migrations/2026-10-14_club_status_no_trial.sql`
   — `clients_with_status` не считает абонементы `memberships.kind = 'trial'`
-  (актуальное определение вью — здесь).
+  (актуальное определение вью — `2026-10-18_zz_clients_source.sql`, та же
+  логика + новые колонки `clients`).
   Отхоженный абонемент пакетного клуба:
   `db/migrations/2026-10-14_zz_packages_exhausted_expire.sql` — без
   остатка тренировок (и пробное) → `expired` и без ждущего продления;
