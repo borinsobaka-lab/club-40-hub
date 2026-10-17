@@ -9,4 +9,20 @@ export const CLIENT_TIPS = {
     "По ней считаются «новые клиенты» на дашборде. У клиентов из приложения ставится сама.",
   lastVisit: "Обновляется сам при отметке посещения. Вручную — только для переноса старой истории.",
   notes: "Для сотрудников: травмы, договорённости, пожелания. Клиент их изменить не может.",
+  source:
+    "Как карточка попала в базу: завёл сотрудник в админке или перенесена из 1С импортом. Ставит база, вручную не меняется.",
 };
+
+/**
+ * «Добавлен» — clients.source (db/migrations/2026-10-18_zz_clients_source.sql):
+ * сотрудником в админке, импортом из 1С, позже — регистрацией в приложении.
+ */
+export const CLIENT_SOURCE_LABEL: Record<string, string> = {
+  admin: "Сотрудником",
+  import: "Импорт",
+  mobile: "Приложение",
+};
+
+export function clientSourceLabel(source: string | null | undefined): string {
+  return (source && CLIENT_SOURCE_LABEL[source]) || CLIENT_SOURCE_LABEL.admin;
+}
