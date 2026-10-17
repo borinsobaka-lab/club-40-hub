@@ -4,7 +4,8 @@
  * продажи с рассрочкой и абонементы в состоянии из 1С (остаток, срок,
  * очередь, перенос подарочной персональной), историю «Закончился»; повтор
  * ничего не задваивает; заливает только владелец; import_1c_rollback удаляет
- * перенесённое, пока клиенты не вошли в приложение.
+ * перенесённое, пока клиенты не вошли в приложение. «Добавлен» (clients.source,
+ * 2026-10-18_zz_clients_source.sql) у перенесённых — import.
  *
  * Нужна база с полной схемой — её собирает db/test/build-schema.sh:
  *   bash db/test/build-schema.sh postgres://postgres@localhost:5432/base40_test
@@ -210,6 +211,7 @@ describe.skipIf(!url)("перенос клиентов из 1С (база)", () 
         phone: "+995555123456",
         phone2: "+79161234567",
         gender: "female",
+        source: "import",
       });
 
       const rows = await tx`
@@ -303,6 +305,28 @@ describe.skipIf(!url)("перенос клиентов из 1С (база)", () 
       const [cm] =
         await tx`select client_id, visits_left, status from client_memberships where onec_ref = '1-5/rest/2'`;
       expect(cm).toMatchObject({ client_id: existing, visits_left: 3, status: "active" });
+      // Карточку завёл сотрудник — «Добавлен» остаётся «Сотрудником».
+      const [{ source }] = await tx`select source from clients where id = ${existing}`;
+      expect(source).toBe("admin");
+    });
+  });
+
+  test("«Добавлен»: из админки «Импорт» и ключ 1С не подделать", async () => {
+    await scenario(async (tx) => {
+      const s = await setup(tx);
+      await as(tx, s.owner);
+      await tx`select import_1c_chunk(${chunk}::jsonb)`;
+      const [created] = await tx`
+        insert into clients (studio_id, first_name, source, onec_ref)
+        values (${s.vake}, 'Новая', 'import', '1c-fake') returning source, onec_ref`;
+      expect(created).toEqual({ source: "admin", onec_ref: null });
+      const [edited] = await tx`
+        update clients set source = 'admin', onec_ref = null, first_name = 'Анюта'
+         where onec_ref = '1c-000001' returning source, onec_ref, first_name`;
+      expect(edited).toEqual({ source: "import", onec_ref: "1c-000001", first_name: "Анюта" });
+      const [{ source }] =
+        await tx`select source from clients_with_status where onec_ref = '1c-000002'`;
+      expect(source).toBe("import");
     });
   });
 

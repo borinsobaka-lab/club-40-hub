@@ -54,7 +54,7 @@ import {
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { ClientDialog } from "@/components/client-form-dialog";
-import { CLIENT_TIPS } from "@/lib/client-fields";
+import { CLIENT_TIPS, clientSourceLabel } from "@/lib/client-fields";
 import { formatPhoneDisplay } from "@/lib/contacts";
 import { ClientsPageSkeleton } from "@/components/page-skeletons";
 
@@ -102,13 +102,15 @@ type Client = {
   created_at: string;
   // Приходит из вью clients_with_status (см. db/performance_indexes.sql).
   club_status: ClubStatus;
+  /** «Добавлен»: admin / import / mobile (db/migrations/2026-10-18_zz_clients_source.sql). */
+  source: string | null;
 };
 
 // Колонки запрашиваем поимённо: во вью есть ещё search_name, который нужен
 // только для фильтрации на сервере и незачем гонять по сети.
 const CLIENT_COLUMNS =
   "id, studio_id, user_id, full_name, first_name, last_name, phone, phone2, email, birthday, gender, " +
-  "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status";
+  "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status, source";
 
 const CLUB_STATUSES = Object.keys(CLUB_STATUS_FULL) as ClubStatus[];
 
@@ -297,17 +299,18 @@ function ClientsPage() {
                   <TableHead>Пол</TableHead>
                   <TableHead>Дата рождения</TableHead>
                   <TableHead tip={TIPS.registration}>Регистрация</TableHead>
+                  <TableHead tip={TIPS.source}>Добавлен</TableHead>
                   <TableHead tip={TIPS.lastVisit}>Последний визит</TableHead>
                   <TableHead tip={TIPS.notes}>Заметки</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {table.loading ? (
-                  <TableSkeletonRows columns={9} />
+                  <TableSkeletonRows columns={10} />
                 ) : table.rows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={10}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       {hasFilters
@@ -358,6 +361,9 @@ function ClientsPage() {
                         <TableCell>{genderLabel(c.gender)}</TableCell>
                         <TableCell>{formatDate(c.birthday)}</TableCell>
                         <TableCell>{formatDate(c.registration_date)}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {clientSourceLabel(c.source)}
+                        </TableCell>
                         <TableCell>{formatDate(c.last_visit_date)}</TableCell>
                         <TableCell>
                           <CommentCell text={c.notes} />
