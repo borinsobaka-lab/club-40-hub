@@ -5,6 +5,7 @@ import { Loader2, Search } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { useStudios } from "@/hooks/use-studios";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { clientName, phoneSearchTerm, sanitizeSearch } from "@/lib/format";
@@ -78,17 +79,20 @@ function FoundItem({
 
 /**
  * Поиск клиента в шапке AdminShell: имя, фамилия, телефон или почта в
- * активном клубе. Выбор (клик или Enter) открывает карточку клиента — как
- * клик по имени в любой таблице. Стрелки ↑/↓ — по списку, Esc — очистить.
+ * базе клиентов активного клуба (у пакетного — общая база всех пакетных
+ * клубов, 2026-10-17). Выбор (клик или Enter) открывает карточку клиента —
+ * как клик по имени в любой таблице. Стрелки ↑/↓ — по списку, Esc — очистить.
  *
  * Под клиентами клуба — пункт «Искать в другом клубе» (решение владельца
- * 2026-10-14): тот же поиск по остальным клубам сотрудника, найденные — ниже,
- * с названием клуба; карточка такого клиента работает в его клубе.
+ * 2026-10-14): тот же поиск по остальным клубам сотрудника с другой базой
+ * клиентов, найденные — ниже, с названием клуба; карточка такого клиента
+ * работает в его клубе.
  */
 export function HeaderClientSearch({ className }: { className?: string }) {
   const studioId = useActiveStudioId();
+  const networkIds = useNetworkStudioIds(studioId);
   const { data: studios = [] } = useStudios();
-  const otherStudios = studios.filter((s) => s.id !== studioId);
+  const otherStudios = studios.filter((s) => s.id !== studioId && !networkIds?.includes(s.id));
   const otherIds = otherStudios.map((s) => s.id);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -102,18 +106,18 @@ export function HeaderClientSearch({ className }: { className?: string }) {
   const searchOthers = !!term && otherTerm === term && otherIds.length > 0;
 
   const { data: found = [], isFetching } = useQuery({
-    queryKey: ["clients_with_status", studioId, "header-search", term],
+    queryKey: ["clients_with_status", studioId, "header-search", networkIds?.join(","), term],
     queryFn: () =>
       unwrap<FoundClient[]>(
         supabase
           .from("clients_with_status")
           .select(COLUMNS)
-          .eq("studio_id", studioId!)
+          .in("studio_id", networkIds!)
           .or(clientSearchFilter(term))
           .order("full_name", { ascending: true })
           .limit(LIMIT),
       ),
-    enabled: !!studioId && !!term,
+    enabled: !!studioId && !!networkIds && !!term,
     placeholderData: keepPreviousData,
     meta: { errorMessage: "Не удалось найти клиентов" },
   });

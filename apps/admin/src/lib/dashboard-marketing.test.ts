@@ -6,6 +6,8 @@ import {
   cohortByAnswer,
   firstPurchases,
   marketingMetrics,
+  marketingSeries,
+  newClients,
   newClientsFunnel,
   npsScore,
   promoCodes,
@@ -114,6 +116,33 @@ describe("marketingMetrics", () => {
     expect(m.discounts).toBe(20);
     expect(m.nps).toBe(100);
     expect(promoCodes(sales, FROM, TO)).toEqual([{ key: "FIT10", value: 100, n: 1 }]);
+  });
+});
+
+describe("общая база клиентов пакетных клубов", () => {
+  test("член клуба с карточкой другого клуба — не новый клиент, но член клуба и покупатель", () => {
+    const clients: MarketingClient[] = [
+      client("own", "2026-10-02"),
+      { ...client("guest", "2026-10-03", "u-g"), ownClub: false },
+    ];
+    const sales = [
+      sale({ clientId: "own", soldAt: "2026-10-04" }),
+      sale({ clientId: "guest", soldAt: "2026-10-06" }),
+    ];
+    expect(newClients(clients, FROM, TO).map((c) => c.id)).toEqual(["own"]);
+    const m = marketingMetrics(
+      { sales, clients, memberIds: new Set(["own", "guest"]), nps: [] },
+      FROM,
+      TO,
+    );
+    expect(m.newClients).toBe(1);
+    expect(m.purchaseConversion).toBe(100);
+    expect(m.newBuyers).toBe(2);
+    // Дней до покупки — и у купившего здесь клиента с карточкой другого клуба.
+    expect(m.daysToPurchase).toBe(2.5);
+    expect(m.appMembers).toBe(50);
+    const series = marketingSeries({ sales, clients });
+    expect(series.purchaseConversion?.map((p) => p.date)).toEqual(["2026-10-02"]);
   });
 });
 

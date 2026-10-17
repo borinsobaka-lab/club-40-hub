@@ -472,7 +472,9 @@ export const updateEmployee = createServerFn({ method: "POST" })
       // почту на свою и войти в приложение под ним. Поэтому почту не меняем,
       // если вне клубов владельца есть хоть что-то: любая роль (и member
       // клиента), профиль, карточка клиента (абонементы висят на ней) или
-      // записи на занятия. Анкета member_profiles к клубу не привязана — по
+      // записи на занятия, а у общей базы клиентов пакетных клубов
+      // (2026-10-17) — и абонементы и продажи чужого клуба на карточке,
+      // заведённой в своём. Анкета member_profiles к клубу не привязана — по
       // ней чужого клиента не отличить, его выдают роль и карточка.
       // Клиенту своего клуба почту менять можно.
       const notOwned = `(${ownedStudioIds.join(",")})`;
@@ -499,6 +501,18 @@ export const updateEmployee = createServerFn({ method: "POST" })
           .from("schedule_bookings")
           .select("id")
           .eq("user_id", data.user_id)
+          .not("studio_id", "in", notOwned)
+          .limit(1),
+        admin
+          .from("client_memberships")
+          .select("id, clients!inner(user_id)")
+          .eq("clients.user_id", data.user_id)
+          .not("studio_id", "in", notOwned)
+          .limit(1),
+        admin
+          .from("sales")
+          .select("id, clients!inner(user_id)")
+          .eq("clients.user_id", data.user_id)
           .not("studio_id", "in", notOwned)
           .limit(1),
       ]);

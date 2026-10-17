@@ -4,8 +4,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, studioDayStart, studioToday } from "./dates";
 import { createAssistantTools } from "./tools.server";
 
-/** Поддельный клиент: записывает цепочку вызовов и отвечает заданным результатом. */
-function fakeSupabase(result: { data: unknown; error: { message: string } | null }) {
+type FakeResult = { data: unknown; error: { message: string } | null };
+
+/**
+ * Поддельный клиент: записывает цепочку вызовов и отвечает заданным
+ * результатом (или своим для каждой таблицы).
+ */
+function fakeSupabase(result: FakeResult | ((table: string) => FakeResult)) {
   const calls: string[] = [];
   const builder = (table: string): unknown =>
     new Proxy(
@@ -13,7 +18,8 @@ function fakeSupabase(result: { data: unknown; error: { message: string } | null
       {
         get(_t, prop: string) {
           if (prop === "then") {
-            return (resolve: (v: unknown) => void) => resolve({ ...result, count: 0 });
+            const r = typeof result === "function" ? result(table) : result;
+            return (resolve: (v: unknown) => void) => resolve({ ...r, count: 0 });
           }
           return (...args: unknown[]) => {
             calls.push(`${table}.${prop}(${args.map((a) => JSON.stringify(a)).join(", ")})`);
@@ -84,6 +90,21 @@ describe("инструменты Kate", () => {
     })) as { count: number; total_amount: number };
     expect(res.count).toBe(3);
     expect(res.total_amount).toBe(150.5);
+  });
+
+  test("клиенты пакетного клуба — общей базы всех пакетных клубов, подписочного — только его", async () => {
+    const studios = [
+      { id: "p1", format: "packages" },
+      { id: "s1", format: "subscription" },
+      { id: "p2", format: "packages" },
+    ];
+    const answer = (table: string) => ({ data: table === "studios" ? studios : [], error: null });
+    const pack = fakeSupabase(answer);
+    await run(createAssistantTools(pack.client, "p2"), "list_clients", { limit: 10 });
+    expect(pack.calls).toContain('clients.in("studio_id", ["p1","p2"])');
+    const sub = fakeSupabase(answer);
+    await run(createAssistantTools(sub.client, "s1"), "list_clients", { limit: 10 });
+    expect(sub.calls).toContain('clients.in("studio_id", ["s1"])');
   });
 
   test("сводка не выдаёт ошибку запроса за ноль", async () => {

@@ -182,7 +182,7 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
     }
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("client_memberships")
         .update({
           ends_at: endsAt || null,
@@ -190,9 +190,16 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
           ...(personal !== undefined ? { personal_left: personal } : {}),
           ...(diagnostics !== undefined ? { diagnostics_left: diagnostics } : {}),
         })
-        .eq("id", membership.id);
+        .eq("id", membership.id)
+        .select("id");
       if (error) {
         toast.error("Ошибка сохранения: " + error.message);
+        return;
+      }
+      // RLS не пустил (абонемент клуба другой базы клиентов) — ошибки нет,
+      // но и строка не изменилась.
+      if (!data?.length) {
+        toast.error("Абонемент не сохранён: нет прав в клубе, где его продали");
         return;
       }
       done("Абонемент обновлён");

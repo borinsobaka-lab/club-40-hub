@@ -10,6 +10,7 @@ import { CommentCell } from "@/components/comment-cell";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { useServerTable } from "@/hooks/use-server-table";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -146,10 +147,13 @@ function ClientsPage() {
     term || genderFilter || statusFilter || regFrom || regTo || visitFrom || visitTo,
   );
 
+  // Пакетный клуб — общая база клиентов всех пакетных клубов (2026-10-17).
+  const networkIds = useNetworkStudioIds(studioId);
   const table = useServerTable<Client>({
     queryKey: [
       "clients_with_status",
       studioId,
+      networkIds?.join(","),
       term,
       genderFilter,
       statusFilter,
@@ -162,7 +166,7 @@ function ClientsPage() {
       let query = supabase
         .from("clients_with_status")
         .select(CLIENT_COLUMNS, { count: "exact" })
-        .eq("studio_id", studioId!);
+        .in("studio_id", networkIds!);
       if (term) {
         query = query.or(
           `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,phone2.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
@@ -176,7 +180,7 @@ function ClientsPage() {
       if (visitTo) query = query.lte("last_visit_date", visitTo);
       return query.order("created_at", { ascending: false }).range(from, to);
     },
-    enabled: !!studioId,
+    enabled: !!studioId && !!networkIds,
     errorMessage: "Не удалось загрузить клиентов",
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["clients_with_status"] });
@@ -191,14 +195,20 @@ function ClientsPage() {
       }))
     )
       return;
-    const { error } = await supabase.from("clients").delete().eq("id", c.id);
+    const { data, error } = await supabase.from("clients").delete().eq("id", c.id).select("id");
     if (error) {
-      // Продажи абонементов держат клиента внешним ключом (on delete restrict).
+      // Продажи абонементов держат клиента внешним ключом (on delete restrict);
+      // у клиента общей базы они могут быть и в другом клубе сети.
       toast.error(
         error.code === "23503"
-          ? "Клиента нельзя удалить: у него есть продажи абонементов. Сначала удалите их."
+          ? "Клиента нельзя удалить: у него есть продажи абонементов (в этом или другом клубе). Сначала удалите их."
           : "Ошибка удаления: " + error.message,
       );
+      return;
+    }
+    // RLS не пустил — строка не удалена, хотя ошибки нет.
+    if (!data?.length) {
+      toast.error("Клиента не удалось удалить: нет прав в его клубе");
       return;
     }
     toast.success("Клиент удалён");

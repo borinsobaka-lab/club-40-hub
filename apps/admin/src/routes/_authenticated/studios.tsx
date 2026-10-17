@@ -297,11 +297,28 @@ function DeleteStudioForm({
     queryKey: ["studios", "delete-counts", studio.id],
     queryFn: async () => {
       const head = { count: "exact" as const, head: true };
-      const [clients, sales] = await Promise.all([
+      const [clients, sales, heir] = await Promise.all([
         unwrapPage(supabase.from("clients").select("id", head).eq("studio_id", studio.id)),
         unwrapPage(supabase.from("sales").select("id", head).eq("studio_id", studio.id)),
+        // Пакетный клуб: клиенты и каталог общие — уходят в самый старый из
+        // остальных пакетных (studios_packages_catalog_rehome в базе).
+        studio.format === "packages"
+          ? supabase
+              .from("studios")
+              .select("name")
+              .eq("format", "packages")
+              .neq("id", studio.id)
+              .order("created_at")
+              .order("id")
+              .limit(1)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
-      return { clients: clients.count, sales: sales.count };
+      return {
+        clients: clients.count,
+        sales: sales.count,
+        heir: (heir.data?.name as string | undefined) ?? null,
+      };
     },
     meta: { errorMessage: "Не удалось посчитать данные клуба" },
   });
@@ -340,13 +357,24 @@ function DeleteStudioForm({
       <DialogForm onSubmit={handleDelete}>
         <DialogBody>
           <div className="space-y-4">
-            <InfoNote>
-              Удалятся карточки клиентов
-              {counts ? ` (${counts.clients})` : ""}, продажи
-              {counts ? ` (${counts.sales})` : ""}, абонементы, касса, расписание и записи,
-              номенклатура, промокоды, доступы сотрудников в этом клубе. Останутся учётные записи
-              людей, справочник сотрудников, новости, услуги и пуши приложения.
-            </InfoNote>
+            {counts?.heir ? (
+              // Пакетный клуб: база клиентов и каталог общие для пакетных клубов.
+              <InfoNote>
+                Карточки клиентов, заведённые здесь ({counts.clients}), их заявки, тренировки и
+                номенклатура перейдут в клуб «{counts.heir}» — у пакетных клубов они общие. Удалятся
+                продажи этого клуба ({counts.sales}) и абонементы по ним, касса, расписание и записи
+                на его занятия, промокоды, доступы сотрудников в этом клубе. Останутся учётные
+                записи людей, справочник сотрудников, новости, услуги и пуши приложения.
+              </InfoNote>
+            ) : (
+              <InfoNote>
+                Удалятся карточки клиентов
+                {counts ? ` (${counts.clients})` : ""}, продажи
+                {counts ? ` (${counts.sales})` : ""}, абонементы, касса, расписание и записи,
+                номенклатура, промокоды, доступы сотрудников в этом клубе. Останутся учётные записи
+                людей, справочник сотрудников, новости, услуги и пуши приложения.
+              </InfoNote>
+            )}
             <FormField
               label="Название клуба"
               required

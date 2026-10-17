@@ -377,15 +377,24 @@ async function expiringDates(studioIds: string[], from: string, to: string) {
   const since = ending
     .map((m) => String(m.created_at))
     .reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a));
-  const later = await loadAllRows({
-    page: (lo, hi) =>
-      select("client_memberships", "client_id, balance_kind, created_at", lo)
-        .in("studio_id", studioIds)
-        .not("status", "in", "(cancelled,refunded)")
-        .gt("created_at", since)
-        .order("id")
-        .range(lo, hi),
-  });
+  // Продление — у тех же клиентов, в любом клубе: база клиентов пакетных
+  // клубов общая (2026-10-17), абонемент из Ваке могли продлить в Сабуртало.
+  const clientIds = [...new Set(ending.map((m) => String(m.client_id)))];
+  const later = (
+    await Promise.all(
+      chunks(clientIds).map((ids) =>
+        loadAllRows({
+          page: (lo, hi) =>
+            select("client_memberships", "client_id, balance_kind, created_at", lo)
+              .in("client_id", ids)
+              .not("status", "in", "(cancelled,refunded)")
+              .gt("created_at", since)
+              .order("id")
+              .range(lo, hi),
+        }),
+      ),
+    )
+  ).flat();
   const key = (m: Row) => `${m.client_id}:${m.balance_kind ?? "group"}`;
   return notRenewedBeforeEnd(
     ending.map((m) => ({
@@ -652,6 +661,12 @@ export type ClientRow = {
   name: string;
   birthday: string | null;
   registrationDate: string | null;
+  /**
+   * Карточку завели в выбранных клубах. false — член клуба по абонементу,
+   * проданному здесь, а карточка из другого клуба общей базы (пакетные
+   * клубы, 2026-10-17): он не «новый клиент» этих клубов.
+   */
+  ownClub: boolean;
 };
 
 export type VisitRow = { clientId: string | null; userId: string | null; name: string };
@@ -668,15 +683,14 @@ function isTrialRow(m: Record<string, unknown>) {
   return (Array.isArray(ref) ? ref[0] : ref)?.kind === "trial";
 }
 
+const CLIENT_DATA_COLUMNS =
+  "user_id, first_name, last_name, full_name, birthday, registration_date";
+
 export async function loadClientsData(studioIds: string[]): Promise<ClientsData> {
   const [clientRows, termRows] = await Promise.all([
     loadAllRows({
       page: (lo, hi) =>
-        select(
-          "clients",
-          "user_id, first_name, last_name, full_name, birthday, registration_date",
-          lo,
-        )
+        select("clients", CLIENT_DATA_COLUMNS, lo)
           .in("studio_id", studioIds)
           .order("id")
           .range(lo, hi),
@@ -698,15 +712,36 @@ export async function loadClientsData(studioIds: string[]): Promise<ClientsData>
       .filter((m) => m.status === "frozen" || !m.ends_at || String(m.ends_at) >= today)
       .map((m) => String(m.client_id)),
   );
+  // Член клуба — по абонементу, проданному в выбранных клубах; у общей базы
+  // клиентов пакетных клубов (2026-10-17) его карточку могли завести в другом
+  // клубе — догружаем её, иначе он выпал бы из «Членов клуба» везде, кроме
+  // «все клубы».
+  const own = new Set(clientRows.map((r) => String(r.id)));
+  const missing = [...memberIds].filter((id) => !own.has(id));
+  const extraRows = (
+    await Promise.all(
+      chunks(missing).map((ids) =>
+        loadAllRows({
+          page: (lo, hi) =>
+            select("clients", CLIENT_DATA_COLUMNS, lo).in("id", ids).order("id").range(lo, hi),
+        }),
+      ),
+    )
+  ).flat();
+  const toClient = (r: Row, ownClub: boolean): ClientRow => ({
+    id: String(r.id),
+    userId: (r.user_id as string | null) ?? null,
+    name:
+      [r.last_name, r.first_name].filter(Boolean).join(" ").trim() || String(r.full_name ?? "—"),
+    birthday: (r.birthday as string | null) ?? null,
+    registrationDate: (r.registration_date as string | null) ?? null,
+    ownClub,
+  });
   return {
-    clients: clientRows.map((r) => ({
-      id: String(r.id),
-      userId: (r.user_id as string | null) ?? null,
-      name:
-        [r.last_name, r.first_name].filter(Boolean).join(" ").trim() || String(r.full_name ?? "—"),
-      birthday: (r.birthday as string | null) ?? null,
-      registrationDate: (r.registration_date as string | null) ?? null,
-    })),
+    clients: [
+      ...clientRows.map((r) => toClient(r, true)),
+      ...extraRows.map((r) => toClient(r, false)),
+    ],
     memberIds,
   };
 }
@@ -897,7 +932,8 @@ export async function loadProfileAnswers(userIds: string[]) {
 
 /**
  * Карточки клиентов из `clientIds`, у которых есть отмеченное посещение — в
- * любом клубе сети (гостевое посещение пишется картой домашнего клуба).
+ * любом клубе сети (база клиентов пакетных клубов общая, журнал всех клубов
+ * сети по карточке открыт — 2026-10-17).
  */
 export async function loadVisitedClientIds(clientIds: string[]) {
   const pages = await Promise.all(

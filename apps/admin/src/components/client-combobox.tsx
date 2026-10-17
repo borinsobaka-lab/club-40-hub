@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { clientName, phoneSearchTerm, sanitizeSearch } from "@/lib/format";
 import { unwrap } from "@/lib/query";
@@ -23,7 +24,9 @@ export type ClientOption = {
 const PAGE = 50;
 
 /**
- * Выбор клиента студии (диалоги продаж). Поиск серверный: без запроса —
+ * Выбор клиента студии (диалоги продаж, запись на занятие). Клиенты — общей
+ * базы клуба: у пакетного — всех пакетных клубов (2026-10-17), у
+ * подписочного — его. Поиск серверный: без запроса —
  * последние зарегистрированные клиенты, с запросом — совпадения по «Фамилия
  * Имя», телефону и почте (search_name во вью clients_with_status, как в
  * разделе «Клиенты»). Целиком список клиентов не грузим: у PostgREST лимит
@@ -56,14 +59,15 @@ export function ClientCombobox({
   const [createOpen, setCreateOpen] = useState(false);
   const queryClient = useQueryClient();
   const term = sanitizeSearch(useDebouncedValue(search, 250));
+  const networkIds = useNetworkStudioIds(studioId);
 
   const { data: clients = [], isFetching } = useQuery({
-    queryKey: ["clients", studioId, "options", term],
+    queryKey: ["clients", studioId, "options", networkIds?.join(","), term],
     queryFn: () => {
       let q = supabase
         .from("clients_with_status")
         .select("id, full_name, first_name, last_name, phone, email")
-        .eq("studio_id", studioId!);
+        .in("studio_id", networkIds!);
       if (term) {
         q = q
           .or(
@@ -75,7 +79,7 @@ export function ClientCombobox({
       }
       return unwrap<ClientOption[]>(q.limit(PAGE));
     },
-    enabled: !!studioId,
+    enabled: !!studioId && !!networkIds,
     placeholderData: keepPreviousData,
     meta: { errorMessage: "Не удалось загрузить клиентов" },
   });

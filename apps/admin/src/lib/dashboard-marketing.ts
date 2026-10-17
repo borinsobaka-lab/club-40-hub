@@ -17,6 +17,12 @@ export type MarketingClient = {
   userId: string | null;
   /** clients.registration_date — по ней «новые клиенты». */
   registrationDate: string | null;
+  /**
+   * false — карточку завели в другом клубе общей базы (пакетные клубы,
+   * 2026-10-17), здесь он член клуба по абонементу: «новым клиентом» этих
+   * клубов не считается. Нет — свой клиент.
+   */
+  ownClub?: boolean;
 };
 
 /** Ответы анкеты приложения (member_profiles) по учётной записи. */
@@ -39,9 +45,11 @@ export function firstPurchases(sales: SaleRecord[]): Map<string, SaleRecord> {
   return first;
 }
 
-/** Клиенты, появившиеся в периоде (дата регистрации в карточке). */
+/** Клиенты, появившиеся в периоде (дата регистрации в карточке, заведённой в этих клубах). */
 export function newClients(clients: MarketingClient[], from: string, to: string) {
-  return clients.filter((c) => !!c.registrationDate && inPeriod(c.registrationDate, from, to));
+  return clients.filter(
+    (c) => c.ownClub !== false && !!c.registrationDate && inPeriod(c.registrationDate, from, to),
+  );
 }
 
 const share = (part: number, base: number) => (base ? (part / base) * 100 : undefined);
@@ -136,7 +144,7 @@ export function marketingSeries(
   return {
     newBuyers: firsts.map((s) => ({ date: s.soldAt, amount: 0, n: 1 })),
     purchaseConversion: input.clients.flatMap((c) =>
-      c.registrationDate
+      c.registrationDate && c.ownClub !== false
         ? [{ date: c.registrationDate, amount: first.has(c.id) ? 100 : 0, n: 1 }]
         : [],
     ),

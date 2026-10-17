@@ -32,6 +32,7 @@ import { SaleDialog } from "@/components/sale-dialog";
 import { ClientDialog, type SavedClient } from "@/components/client-form-dialog";
 import { ClientAppTab } from "@/components/client-app-tab";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useStudioFormat, useWorkStudioId } from "@/hooks/use-catalog-studios";
 import { useStudios } from "@/hooks/use-studios";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
@@ -116,7 +117,11 @@ const PROFILE_GENDER: Record<string, string> = {
 /** Поля клиента, которые нужны карточке (строка clients или clients_with_status). */
 export type ClientLike = {
   id: string;
-  /** Клуб карточки; нет — активный клуб (карточку открыли из его списков). */
+  /**
+   * Клуб карточки (где её завели); нет — активный клуб (карточку открыли из
+   * его списков). У пакетных клубов база клиентов общая: с клиентом работают
+   * в активном клубе, где бы карточку ни завели.
+   */
   studio_id?: string | null;
   user_id?: string | null;
   full_name: string;
@@ -136,6 +141,9 @@ export type ClientLike = {
 
 type SaleRow = {
   id: string;
+  /** Клуб продажи: у клиента общей базы — любой пакетный клуб. */
+  studio_id: string;
+  studio: { name: string | null } | null;
   sold_at: string;
   total_amount: number;
   down_payment_amount: number;
@@ -204,7 +212,7 @@ function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
 }
 
 const SALE_COLUMNS =
-  "id, sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit)";
+  "id, studio_id, studio:studios(name), sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit)";
 
 const MEMBERSHIP_COLUMNS =
   "id, status, source, started_at, ends_at, visits_left, personal_left, diagnostics_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind)";
@@ -247,13 +255,17 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
   // Сохранённая правка клиента — поверх переданной строки, без перезапроса.
   const [saved, setSaved] = useState<SavedClient | null>(null);
   const client: ClientLike = saved ? { ...initial, ...saved } : initial;
-  // Клуб карточки: продажа, правка и анкета — в нём. Обычно это активный
-  // клуб; клиент другого клуба приходит из поиска в шапке.
+  // Клуб, где работают с клиентом: продажа — в нём. У общей базы клиентов
+  // (пакетные клубы, 2026-10-17) это активный клуб, где бы карточку ни
+  // завели; клиент подписочного клуба из поиска «в другом клубе» — его клуб.
   const activeStudioId = useActiveStudioId();
-  const studioId = client.studio_id ?? activeStudioId;
+  const cardStudioId = client.studio_id ?? activeStudioId;
+  const studioId = useWorkStudioId(cardStudioId);
   const { data: studios } = useStudios();
   const studio = studios?.find((s) => s.id === studioId) ?? null;
-  const isPackages = studio?.format === "packages";
+  // Формат — по клубу карточки: он может быть пакетным клубом, где у
+  // сотрудника нет роли (useStudios его не знает).
+  const isPackages = (useStudioFormat(cardStudioId) ?? studio?.format) === "packages";
   const otherStudio = !!studio && studio.id !== activeStudioId;
   const userId = client.user_id ?? null;
 
@@ -505,6 +517,8 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {formatDate(s.sold_at)}
+                            {/* Продажа другого клуба сети — правит её только тот клуб. */}
+                            {s.studio_id !== studioId && ` · клуб «${s.studio?.name ?? "—"}»`}
                             {" · "}
                             {saleSourceLabel(s.source)}
                             {s.admin_name ? ` · ${s.admin_name}` : ""}
@@ -755,8 +769,8 @@ type VisitRow = {
 /**
  * Записи клиента: по карточке (client_id — и записи администратора клиента без
  * приложения) и по учётной записи (старые строки журнала без client_id).
- * Пакетные студии: гостевые посещения в других клубах сети тоже здесь —
- * с колонкой «Клуб», если они есть.
+ * Пакетные студии: посещения во всех клубах сети (база клиентов общая) —
+ * с колонкой «Клуб», если есть записи не в активном клубе.
  */
 function VisitsTab({
   clientId,
@@ -808,12 +822,7 @@ function VisitsTab({
               <TableRow key={r.id}>
                 <TableCell>{r.workout_name ?? "Персональное занятие"}</TableCell>
                 {showStudio && (
-                  <TableCell className="whitespace-nowrap">
-                    {r.studio?.name ?? "—"}
-                    {r.studio_id !== studioId && (
-                      <span className="ml-1 text-xs text-muted-foreground">(гость)</span>
-                    )}
-                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{r.studio?.name ?? "—"}</TableCell>
                 )}
                 <TableCell className="whitespace-nowrap">{formatDateTime(r.starts_at)}</TableCell>
                 <TableCell>

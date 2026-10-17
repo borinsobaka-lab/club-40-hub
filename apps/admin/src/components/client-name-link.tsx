@@ -4,28 +4,31 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { ClientCardDialog, type ClientLike } from "@/components/client-card-dialog";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 
 /**
  * Ссылка amoCRM клиента, если её не передали сверху. Запрос кэшируется React
  * Query: одна и та же строка в разных таблицах не дёргает базу повторно.
+ * По учётной записи — карточка из базы клиентов активного клуба
+ * (`networkIds`: у пакетного — все пакетные клубы, там карточка на человека одна).
  */
 function useCrmLink(opts: {
   clientId?: string | null;
   userId?: string | null;
-  studioId: string | null;
+  networkIds: string[] | null;
   enabled: boolean;
 }) {
-  const { clientId, userId, studioId } = opts;
+  const { clientId, userId, networkIds } = opts;
   return useQuery({
-    queryKey: ["client-crm-link", clientId ?? null, userId ?? null, studioId],
+    queryKey: ["client-crm-link", clientId ?? null, userId ?? null, networkIds?.join(",")],
     queryFn: async () => {
       let q = supabase.from("clients").select("id, user_id, crm_link").limit(1);
       if (clientId) q = q.eq("id", clientId);
       else {
         q = q.eq("user_id", userId as string);
-        if (studioId) q = q.eq("studio_id", studioId);
+        if (networkIds) q = q.in("studio_id", networkIds);
       }
       const { data } = await q.maybeSingle();
       return (data?.crm_link as string | null | undefined) ?? null;
@@ -69,13 +72,14 @@ export function ClientNameLink({
   className?: string;
 }) {
   const studioId = useActiveStudioId();
+  const networkIds = useNetworkStudioIds(studioId);
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState<ClientLike | null>(client ?? null);
   const [loading, setLoading] = useState(false);
   // crmLink === undefined — страница ссылку не знает, запрашиваем сами;
   // null — знает, что ссылки нет. Карточка клиента (client/loaded) тоже знает.
   const known = crmLink !== undefined || !!client || !!loaded;
-  const fetchedCrm = useCrmLink({ clientId, userId, studioId, enabled: !known });
+  const fetchedCrm = useCrmLink({ clientId, userId, networkIds, enabled: !known });
   const resolvedCrm = (crmLink ?? client?.crm_link ?? loaded?.crm_link ?? fetchedCrm) || null;
 
   const handleClick = async () => {
@@ -91,7 +95,8 @@ export function ClientNameLink({
         query = query.eq("id", clientId);
       } else if (userId) {
         query = query.eq("user_id", userId);
-        if (studioId) query = query.eq("studio_id", studioId);
+        if (networkIds) query = query.in("studio_id", networkIds);
+        else if (studioId) query = query.eq("studio_id", studioId);
       } else {
         toast.error("Карточка клиента недоступна");
         return;

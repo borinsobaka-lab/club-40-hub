@@ -185,7 +185,14 @@ function ClientForm({
             .select(saved)
             .single();
       if (error || !data) {
-        toast.error("Ошибка сохранения: " + (error?.message ?? "база не вернула клиента"));
+        // 23505 — почта или вход приложения уже у другой карточки: у пакетных
+        // клубов карточка на человека одна (clients_network_unique_guard),
+        // текст базы называет клиента.
+        toast.error(
+          error?.code === "23505"
+            ? error.message
+            : "Ошибка сохранения: " + (error?.message ?? "база не вернула клиента"),
+        );
         return;
       }
       toast.success(client ? "Клиент обновлён" : "Клиент добавлен");

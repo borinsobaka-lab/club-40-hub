@@ -233,7 +233,7 @@ describe.skipIf(!url)("устройства и активность прилож
     });
   });
 
-  test("сводка: только сотрудник клуба карточки, приложение формата клуба", async () => {
+  test("сводка: только сотрудник сети клуба карточки, приложение формата клуба", async () => {
     await scenario(async (tx) => {
       const pack = await studio(tx, "packages");
       const sub = await studio(tx, "subscription");
@@ -242,7 +242,10 @@ describe.skipIf(!url)("устройства и активность прилож
       const c2 = await client(tx, sub, { userId: c.user! });
       const admin = await staff(tx, pack);
       const subAdmin = await staff(tx, sub);
-      const stranger = await staff(tx, await studio(tx));
+      // Сотрудник другого подписочного клуба — чужой; другого пакетного — свой:
+      // база клиентов пакетных клубов общая (2026-10-17).
+      const stranger = await staff(tx, await studio(tx, "subscription"));
+      const networkAdmin = await staff(tx, await studio(tx, "packages"));
       const noApp = await client(tx, pack, { app: false });
 
       await ping(tx, c.user!, { device: "phone-pack", screens: { memberships: 1 } });
@@ -273,6 +276,12 @@ describe.skipIf(!url)("устройства и активность прилож
       const o2 = await overview(tx, subAdmin, c2.client);
       expect(o2.devices?.map((d) => d.device_id)).toEqual(["phone-sub"]);
       expect(o2.activity?.screens_30d).toEqual({});
+      // Подписочную карточку того же человека сотрудник пакетной сети не видит.
+      expect(await failure(tx, () => overview(tx, networkAdmin, c2.client))).toContain("Нет доступа");
+      await asServer(tx);
+      expect((await overview(tx, networkAdmin, c.client)).devices?.map((d) => d.device_id)).toEqual([
+        "phone-pack",
+      ]);
 
       expect(await overview(tx, admin, noApp.client)).toEqual({ has_account: false, app_format: "packages" });
     });
@@ -334,7 +343,9 @@ describe.skipIf(!url)("устройства и активность прилож
   test("удалена последняя карточка — устройства и активность уходят", async () => {
     await scenario(async (tx) => {
       const a = await studio(tx);
-      const b = await studio(tx);
+      // Вторая карточка того же человека — в клубе другого формата: в пакетных
+      // клубах карточка на человека одна (2026-10-17).
+      const b = await studio(tx, "subscription");
       const c = await client(tx, a);
       const c2 = await client(tx, b, { userId: c.user! });
       await ping(tx, c.user!, { screens: { home: 1 } });
