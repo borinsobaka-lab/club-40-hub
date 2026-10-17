@@ -3,6 +3,7 @@ import { useRouter, useRouterState } from "@tanstack/react-router";
 import { PanelLeft, RefreshCw } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { RailVersion } from "@/components/rail-version";
 import {
   Table,
   TableBody,
@@ -364,6 +365,9 @@ export function AppShellSkeleton() {
               <Skeleton className="h-2.5 w-10 bg-white/10" />
             </div>
             <RailSkeleton items={2} />
+            <div className="flex justify-center">
+              <RailVersion />
+            </div>
           </div>
         </div>
         <div className="flex min-w-0 flex-1 flex-col">

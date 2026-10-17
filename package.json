@@ -12,6 +12,7 @@
     "test": "cd apps/admin && bun test && cd ../client && bun test && cd ../.. && bun test db",
     "test:db": "bun test db",
     "migrate": "bun db/migrate.ts",
-    "version:client": "bun run --cwd apps/client version:bump"
+    "version:client": "bun run --cwd apps/client version:bump",
+    "version:admin": "bun run --cwd apps/admin version:bump"
   }
 }

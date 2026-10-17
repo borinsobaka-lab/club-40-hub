@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useConfirm } from "@/components/confirm-dialog";
+import { RailVersion } from "@/components/rail-version";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { initials } from "@/lib/format";
@@ -12,7 +13,8 @@ import { useStorageUrl } from "@/lib/storage";
 /**
  * Последний пункт рейки, под «Клубами»: аватарка сотрудника и «Выход» под ней — по
  * аватарке видно, кто вошёл, имя — во всплывающей подсказке и в
- * подтверждении. Аватарку ставит владелец в «Доступах».
+ * подтверждении. Аватарку ставит владелец в «Доступах». Ниже — версия
+ * админки (RailVersion).
  */
 export function RailAccount() {
   const navigate = useNavigate();
@@ -64,6 +66,7 @@ export function RailAccount() {
           Выход
         </span>
       </button>
+      <RailVersion />
       {confirmDialog}
     </>
   );
