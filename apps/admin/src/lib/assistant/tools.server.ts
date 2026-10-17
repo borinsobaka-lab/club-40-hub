@@ -3,7 +3,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { sanitizeSearch } from "@/lib/format";
-import { catalogStudioIds, type CatalogStudio } from "@/lib/studio-catalog";
+import { catalogStudioIds, networkStudioIds, type CatalogStudio } from "@/lib/studio-catalog";
 
 import { addDays, studioDayStart, studioToday } from "./dates";
 
@@ -68,12 +68,18 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     const { data } = await supabase.from("studios").select("id, format");
     return catalogStudioIds((data ?? []) as CatalogStudio[], studioId);
   };
+  // База клиентов пакетных клубов — тоже общая (2026-10-17): клиент абонемента
+  // или продажи клуба мог быть заведён в другом пакетном клубе.
+  const clientStudioIds = async () => {
+    const { data } = await supabase.from("studios").select("id, format");
+    return networkStudioIds((data ?? []) as CatalogStudio[], studioId);
+  };
 
   return {
     // ====== КЛИЕНТЫ ======
     list_clients: tool({
       description:
-        "Клиенты клуба со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото. Можно фильтровать по точным ID.",
+        "Клиенты клуба со всеми полями: ФИО, имя/фамилия, телефон, email, ДР, пол, заметки, дата регистрации, последний визит, CRM-ссылка, фото. У клубов с пакетами тренировок база клиентов общая — здесь клиенты всех таких клубов. Можно фильтровать по точным ID.",
       inputSchema: z.object({
         ids: z
           .array(z.string().uuid())
@@ -88,7 +94,7 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
           .select(
             "id, full_name, first_name, last_name, phone, email, birthday, gender, notes, registration_date, last_visit_date, crm_link, photo_url, created_at",
           )
-          .eq("studio_id", studioId)
+          .in("studio_id", await clientStudioIds())
           .order("created_at", { ascending: false })
           .limit(limit);
         if (ids?.length) q = q.in("id", ids);
@@ -589,14 +595,17 @@ export function createAssistantTools(supabase: SupabaseClient, studioId: string)
     // ====== СВОДКА ======
     counts_overview: tool({
       description:
-        "Сводка по клубу: число клиентов, тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, фидбэка, ответов NPS, новостей и услуг в приложении клуба, отправленных пушей.",
+        "Сводка по клубу: число клиентов (у клубов с пакетами тренировок — общей базы всех таких клубов), тренеров, шаблонов абонементов, активных клиентских абонементов, продаж за 30 дней, операций кассы, фидбэка, ответов NPS, новостей и услуг в приложении клуба, отправленных пушей.",
       inputSchema: z.object({}),
       execute: async () => {
         const head = { count: "exact" as const, head: true };
         const byStudio = (table: string) =>
           supabase.from(table).select("id", head).eq("studio_id", studioId);
         const queries = {
-          clients: byStudio("clients"),
+          clients: supabase
+            .from("clients")
+            .select("id", head)
+            .in("studio_id", await clientStudioIds()),
           trainers: supabase
             .from("trainer_studios")
             .select("trainer_id", head)

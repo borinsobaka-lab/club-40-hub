@@ -26,3 +26,21 @@ export function catalogStudioIds(studios: CatalogStudio[], studioId: string): st
 /** Общий ли каталог у клуба этого формата (подсказки «правка — во всех клубах»). */
 export const isSharedCatalog = (format: StudioFormat | undefined | null) =>
   !!format && SHARED_CATALOG_FORMATS.includes(format);
+
+/**
+ * Клубы общей базы клиентов клуба studioId
+ * (db/migrations/2026-10-17_packages_shared_clients.sql, решение владельца
+ * 2026-10-17): у пакетного — все пакетные клубы (одна карточка клиента на
+ * сеть, её видят и ведут сотрудники любого пакетного клуба), у подписочного —
+ * он сам. Это те же клубы, что у общего каталога (сеть в базе —
+ * studios_same_network). Списки и поиск клиентов — `.in("studio_id", …)`;
+ * продажа — по-прежнему в активном клубе.
+ */
+export function networkStudioIds(studios: CatalogStudio[], studioId: string): string[] {
+  return catalogStudioIds(studios, studioId);
+}
+
+/** Клубы a и b — одна база клиентов (тот же клуб или оба пакетные). */
+export function sameNetwork(studios: CatalogStudio[], a: string, b: string): boolean {
+  return a === b || networkStudioIds(studios, a).includes(b);
+}

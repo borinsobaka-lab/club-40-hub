@@ -148,6 +148,7 @@ function MarketingBody(view: DashboardView) {
         id: c.id,
         userId: c.userId,
         registrationDate: c.registrationDate,
+        ownClub: c.ownClub,
       })),
     [clientsQuery.data],
   );
