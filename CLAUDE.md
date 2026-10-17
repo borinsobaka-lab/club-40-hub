@@ -36,8 +36,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
 - `bun run test:db` — тесты базы: мигратора (`TEST_DATABASE_URL` — пустая
   база), рассылки пушей `db/push.test.ts`, триггерных уведомлений
   `db/push-triggers.test.ts`, логики пакетных клубов `db/packages.test.ts`,
-  обратной связи `db/feedback.test.ts`, NPS-опросов `db/nps.test.ts` и
-  устройств и активности приложения `db/app-activity.test.ts`
+  обратной связи `db/feedback.test.ts`, NPS-опросов `db/nps.test.ts`,
+  устройств и активности приложения `db/app-activity.test.ts` и общей базы
+  клиентов пакетных клубов `db/shared-clients.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -410,6 +411,36 @@ AUTH_SETUP.md.
   занятия — RPC `entry_guest_clients` / `network_client_search` (имя,
   телефон, клуб, абонементы; карточку RLS не открывает); журнал гостевых
   посещений читает и домашняя студия (`bookings_log home studio read`).
+  С 2026-10-17 гостей нет — база клиентов общая (абзац ниже); гостевые RPC
+  в базе остались, админка их не вызывает.
+  **Общая база клиентов пакетных клубов** (решение владельца 2026-10-17):
+  `db/migrations/2026-10-17_packages_shared_clients.sql` — у человека одна
+  карточка `clients` на все пакетные клубы, её видят и ведут сотрудники
+  любого пакетного клуба; продажа — клуба, где её внесли (`sales.studio_id`,
+  по ней `client_memberships.studio_id`): «Абонементы», касса, зарплаты,
+  бонус продавца — по клубу продажи, как раньше. `clients.studio_id` —
+  клуб, где карточку завели (на нём, как и прежде, пуши по клубам, заявки,
+  NPS, сравнение в статистике и студия приложения по умолчанию). Доступ —
+  по сети: `is_network_staff(uid, studio)` и `auth_network_studio_ids()`
+  (для политик, как `auth_staff_studio_ids`; те же клубы, что у общего
+  каталога). Сотрудник сети: карточка — читает и правит (политики
+  `clients`, `clients_guard_self_update`); абонементы — читает и правит
+  остаток, срок, заморозку (`client_memberships network update`,
+  `freeze_membership`/`unfreeze_membership`), выдаёт и удаляет — только клуб
+  абонемента; продажи и платежи других клубов — только читает
+  (`sales network read`, `sale_installments network read`); журнал
+  посещений, анкета, вес, `client_app_overview` — по карточке сети. Одна
+  карточка на человека: почта (без регистра и пробелов) и учётная запись
+  приложения — у одной карточки пакетных клубов (`clients_network_unique_guard`,
+  ошибка 23505 «уже есть в базе клубов»); разово слиты дубли
+  (`packages_merge_duplicate_clients` / `packages_merge_client_into`:
+  продажи, абонементы — живой второй встаёт в очередь, записи — общая на
+  занятии удаляется с журналом, журнал, заявки, NPS; вход в приложение не
+  теряется). Удаление пакетного клуба переносит его клиентов и их заявки в
+  другой пакетный (`studios_packages_catalog_rehome`, актуальное
+  определение — здесь). Остаток на занятии с записями во всех клубах — RPC
+  `entry_bookings_ahead`. Подписочные клубы — без изменений. Тесты —
+  `db/shared-clients.test.ts`.
   Вместимость тренировки по клубам:
   `db/migrations/2026-10-14_workout_studio_capacity.sql` —
   `workout_capacities` (тренировка × клуб, null — без лимита; нет строки —
