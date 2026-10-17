@@ -1374,6 +1374,28 @@ export function AppSettingsPageSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
+// Импорт из 1С
+
+export function Import1cPageSkeleton() {
+  return (
+    <ShellSkeleton title="Импорт из 1С">
+      <div className="max-w-2xl space-y-8">
+        {[0, 1].map((i) => (
+          <div key={i} className="space-y-4 rounded-lg border bg-background p-6">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+            <Skeleton className="h-9 w-40 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Сотрудники
 
 export function TrainersPageSkeleton() {

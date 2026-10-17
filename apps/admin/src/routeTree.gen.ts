@@ -32,6 +32,7 @@ import { Route as AuthenticatedOtherSalesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
+import { Route as AuthenticatedImport1cRouteImport } from './routes/_authenticated/import-1c'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedClubSettingsRouteImport } from './routes/_authenticated/club-settings'
@@ -169,6 +170,11 @@ const AuthenticatedMembershipsRoute =
     path: '/memberships',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedImport1cRoute = AuthenticatedImport1cRouteImport.update({
+  id: '/import-1c',
+  path: '/import-1c',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
+  '/import-1c': typeof AuthenticatedImport1cRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
@@ -342,6 +349,7 @@ export interface FileRoutesByTo {
   '/club-settings': typeof AuthenticatedClubSettingsRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
+  '/import-1c': typeof AuthenticatedImport1cRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
@@ -388,6 +396,7 @@ export interface FileRoutesById {
   '/_authenticated/club-settings': typeof AuthenticatedClubSettingsRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
+  '/_authenticated/import-1c': typeof AuthenticatedImport1cRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
@@ -435,6 +444,7 @@ export interface FileRouteTypes {
     | '/club-settings'
     | '/employees'
     | '/feedback'
+    | '/import-1c'
     | '/memberships'
     | '/news'
     | '/nps'
@@ -478,6 +488,7 @@ export interface FileRouteTypes {
     | '/club-settings'
     | '/employees'
     | '/feedback'
+    | '/import-1c'
     | '/memberships'
     | '/news'
     | '/nps'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/_authenticated/club-settings'
     | '/_authenticated/employees'
     | '/_authenticated/feedback'
+    | '/_authenticated/import-1c'
     | '/_authenticated/memberships'
     | '/_authenticated/news'
     | '/_authenticated/nps'
@@ -725,6 +737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembershipsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/import-1c': {
+      id: '/_authenticated/import-1c'
+      path: '/import-1c'
+      fullPath: '/import-1c'
+      preLoaderRoute: typeof AuthenticatedImport1cRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/feedback': {
       id: '/_authenticated/feedback'
       path: '/feedback'
@@ -881,6 +900,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClubSettingsRoute: typeof AuthenticatedClubSettingsRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
+  AuthenticatedImport1cRoute: typeof AuthenticatedImport1cRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
@@ -923,6 +943,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClubSettingsRoute: AuthenticatedClubSettingsRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
+  AuthenticatedImport1cRoute: AuthenticatedImport1cRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,

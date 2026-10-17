@@ -53,6 +53,7 @@ import {
   Ellipsis as EllipsisArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
+  FileUp as FileUpArt,
   FlaskConical as FlaskConicalArt,
   DragDropVerticalIcon as GripVerticalArt,
   Heading2 as Heading2Art,
@@ -154,6 +155,7 @@ export const Download = icon(DownloadArt, "Download");
 export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
+export const FileUp = icon(FileUpArt, "FileUp");
 export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
 export const GripVertical = icon(GripVerticalArt, "GripVertical");
 export const Heading2 = icon(Heading2Art, "Heading2");

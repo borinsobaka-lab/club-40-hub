@@ -305,17 +305,25 @@ export const SECTIONS: RailSection[] = [
 ];
 
 /**
- * Меню «Доступов» и «Клубов» — по одному пункту (их единственная страница):
- * меню клуба там не к месту, разделы общие для студий.
+ * Меню «Доступов» и «Клубов»: меню клуба там не к месту, разделы общие для
+ * студий. «Доступы» (и их страницы) видит только владелец.
  */
 export const ACCESS_ITEMS: NavItem[] = [
   { title: "Администраторы", url: "/employees", icon: ShieldUser },
+  // Перенос клиентов из 1С (2026-10-18) — как и «Доступы», только владельцу.
+  { title: "Импорт из 1С", url: "/import-1c", icon: ClipboardList },
 ];
 export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Settings }];
 
 /** Настройки над студиями — внизу рейки. */
 export const ADMIN_SECTIONS: RailSection[] = [
-  { key: "access", title: "Доступы", url: ACCESS_ITEMS[0].url, icon: ShieldUser },
+  {
+    key: "access",
+    title: "Доступы",
+    url: ACCESS_ITEMS[0].url,
+    paths: ACCESS_ITEMS.slice(1).map((i) => i.url),
+    icon: ShieldUser,
+  },
   { key: "studios", title: "Клубы", url: STUDIOS_ITEMS[0].url, icon: Widget3 },
 ];
 
