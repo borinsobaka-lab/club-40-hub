@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import {
   Select,
@@ -190,7 +191,16 @@ function WorkoutsPage() {
       )
     : workouts;
 
-  const pg = usePagination(filteredWorkouts);
+  // Вместимость — своя в каждом клубе: сортируем по активному.
+  const sort = useTableSort<Workout>({
+    color: (w) => w.color,
+    name: (w) => w.name,
+    type: (w) => (w.type ? dayTypeLabel(w.type) : null),
+    description: (w) => (w.description ? stripFormatting(w.description) : null),
+    capacity: (w) => (studioId ? capacityIn(w, studioId) : w.capacity),
+    met: (w) => (w.met_value != null ? Number(w.met_value) : null),
+  });
+  const pg = usePagination(sort.apply(filteredWorkouts), undefined, sort.key);
 
   const handleDelete = async (w: Workout) => {
     if (
@@ -245,23 +255,29 @@ function WorkoutsPage() {
               <TableHeader>
                 <TableRow>
                   {packages ? (
-                    <TableHead className="w-[80px]" tip={TIPS.color}>
+                    <TableHead className="w-[80px]" tip={TIPS.color} {...sort.head("color")}>
                       Цвет
                     </TableHead>
                   ) : (
                     <TableHead className="w-[100px]">Иконка</TableHead>
                   )}
-                  <TableHead>Название</TableHead>
+                  <TableHead {...sort.head("name")}>Название</TableHead>
                   {!packages && (
-                    <TableHead className="w-[160px]" tip={TIPS.type}>
+                    <TableHead className="w-[160px]" tip={TIPS.type} {...sort.head("type")}>
                       Тип
                     </TableHead>
                   )}
-                  <TableHead tip={TIPS.description}>Описание</TableHead>
-                  <TableHead className="w-[160px]" tip={TIPS.capacity}>
+                  <TableHead tip={TIPS.description} {...sort.head("description")}>
+                    Описание
+                  </TableHead>
+                  <TableHead className="w-[160px]" tip={TIPS.capacity} {...sort.head("capacity")}>
                     Вместимость
                   </TableHead>
-                  <TableHead className="w-[90px]" tip={packages ? TIPS.met : undefined}>
+                  <TableHead
+                    className="w-[90px]"
+                    tip={packages ? TIPS.met : undefined}
+                    {...sort.head("met")}
+                  >
                     MET
                   </TableHead>
                 </TableRow>

@@ -42,6 +42,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -99,6 +101,20 @@ type Membership = {
 
 /** Поля, которыми можно предзаполнить новый абонемент (дублирование). */
 type MembershipDraft = Omit<Membership, "id" | "studio_id">;
+
+/** Сортировка колонок (lib/table-sort.ts); безлимит — больше любого числа. */
+const SORT_GETTERS: SortGetters<Membership> = {
+  cover: (m) => Boolean(m.cover_url),
+  name: (m) => m.name,
+  description: (m) => (m.description ? stripFormatting(m.description) : null),
+  benefits: (m) => m.benefits?.length || null,
+  visits: (m) => m.visits_count ?? Number.POSITIVE_INFINITY,
+  duration: (m) => m.duration_days || null,
+  autoRenew: (m) => m.auto_renew,
+  installment: (m) => m.installment_enabled,
+  price: (m) => Number(m.price),
+  status: (m) => m.is_active,
+};
 
 function formatDuration(days: number | null) {
   if (!days) return "—";
@@ -182,7 +198,8 @@ function MembershipsPage() {
       )
     : items;
 
-  const pg = usePagination(filtered);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(filtered), undefined, sort.key);
 
   return (
     <AdminShell
@@ -208,16 +225,32 @@ function MembershipsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">Обложка</TableHead>
-                  <TableHead>Название</TableHead>
-                  <TableHead tip={TIPS.description}>Описание</TableHead>
-                  <TableHead tip={TIPS.benefits}>Преимущества</TableHead>
-                  <TableHead tip={TIPS.visits}>Посещения</TableHead>
-                  <TableHead tip={TIPS.duration}>Срок</TableHead>
-                  <TableHead tip={TIPS.autoRenew}>Автопродление</TableHead>
-                  <TableHead tip={TIPS.installment}>Рассрочка</TableHead>
-                  <TableHead tip={TIPS.price}>Цена</TableHead>
-                  <TableHead>Статус</TableHead>
+                  <TableHead className="w-[80px]" {...sort.head("cover")}>
+                    Обложка
+                  </TableHead>
+                  <TableHead {...sort.head("name")}>Название</TableHead>
+                  <TableHead tip={TIPS.description} {...sort.head("description")}>
+                    Описание
+                  </TableHead>
+                  <TableHead tip={TIPS.benefits} {...sort.head("benefits")}>
+                    Преимущества
+                  </TableHead>
+                  <TableHead tip={TIPS.visits} {...sort.head("visits")}>
+                    Посещения
+                  </TableHead>
+                  <TableHead tip={TIPS.duration} {...sort.head("duration")}>
+                    Срок
+                  </TableHead>
+                  <TableHead tip={TIPS.autoRenew} {...sort.head("autoRenew")}>
+                    Автопродление
+                  </TableHead>
+                  <TableHead tip={TIPS.installment} {...sort.head("installment")}>
+                    Рассрочка
+                  </TableHead>
+                  <TableHead tip={TIPS.price} {...sort.head("price")}>
+                    Цена
+                  </TableHead>
+                  <TableHead {...sort.head("status")}>Статус</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
