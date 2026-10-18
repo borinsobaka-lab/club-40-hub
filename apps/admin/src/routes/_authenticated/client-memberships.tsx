@@ -27,7 +27,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { isAdminRole } from "@/lib/staff-directory";
 import { useStudioStaff } from "@/lib/studio-staff";
-import { MEMBERSHIP_STATUS_LABEL } from "@/lib/membership-status";
+import { MEMBERSHIP_STATUS_DOT, MEMBERSHIP_STATUS_LABEL } from "@/lib/membership-status";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import {
@@ -591,7 +591,13 @@ function ClientMembershipsPage() {
                 <SelectItem value={ALL}>Все статусы</SelectItem>
                 {STATUS_FILTER_ORDER.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {MEMBERSHIP_STATUS_LABEL[s]}
+                    <span className="flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className={cn("size-2.5 shrink-0 rounded-full", MEMBERSHIP_STATUS_DOT[s])}
+                      />
+                      {MEMBERSHIP_STATUS_LABEL[s]}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
