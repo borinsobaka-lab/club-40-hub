@@ -54,6 +54,8 @@ import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { PackagesPageSkeleton } from "@/components/page-skeletons";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -76,7 +78,7 @@ const TIPS = {
   description:
     "Короткий текст под названием пакета в приложении, до цены. Можно выделять жирным, делать списки и ссылки.",
   order:
-    "Перетащите строку за ручку, чтобы поменять порядок: в таком же порядке абонементы стоят в приложении.",
+    "Перетащите строку за ручку, чтобы поменять порядок: в таком же порядке абонементы стоят в приложении. При поиске и сортировке по колонке перетаскивание выключено.",
   payments:
     "Сколькими ежемесячными платежами можно оплатить пакет (внутренняя рассрочка). 1 — только сразу. При продаже можно выбрать меньше.",
   tag: "Короткая пометка справа от названия в приложении: «Популярно», «Максимум», «Старт». Пусто — без тега. Яркий — розовая плашка с белым текстом, бледный — светлая.",
@@ -170,6 +172,18 @@ function trainingsLabel(p: Package) {
     (p.personal_count > 0 ? `${visits} + ${p.personal_count} перс.` : String(visits)) + diagnostics
   );
 }
+
+/** Сортировка колонок (lib/table-sort.ts); «Тренировок» — основное число пакета. */
+const SORT_GETTERS: SortGetters<Package> = {
+  name: (p) => p.name,
+  kind: (p) => MEMBERSHIP_KIND_LABEL[p.kind],
+  trainings: (p) => (p.kind === "personal" ? p.personal_count : p.visits_count),
+  duration: (p) => p.duration_days || null,
+  price: (p) => Number(p.price),
+  payments: (p) => p.max_payments,
+  description: (p) => (p.description ? stripFormatting(p.description) : null),
+  status: (p) => (p.kind === "single" ? null : p.is_active),
+};
 
 function formatDuration(days: number | null) {
   if (!days) return "—";
@@ -326,8 +340,12 @@ function PackagesPage() {
         (p) => p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q),
       )
     : items;
-  // Порядок меняется только по полному списку: при поиске строки не тянутся.
-  const canDrag = !q && items.length > 1;
+  const sort = useTableSort(SORT_GETTERS);
+  const rows = sort.apply(filtered);
+  // Порядок меняется только по полному списку в его порядке: при поиске и
+  // сортировке по колонке строки не тянутся — место строки на экране не её
+  // место в приложении.
+  const canDrag = !q && !sort.sort && items.length > 1;
 
   return (
     <AdminShell
@@ -356,14 +374,26 @@ function PackagesPage() {
                   <TableHead className="w-10" tip={TIPS.order}>
                     <span className="sr-only">Порядок</span>
                   </TableHead>
-                  <TableHead>Название</TableHead>
-                  <TableHead tip={TIPS.kind}>Тип</TableHead>
-                  <TableHead tip={TIPS.trainings}>Тренировок</TableHead>
-                  <TableHead tip={TIPS.duration}>Срок действия</TableHead>
-                  <TableHead tip={TIPS.price}>Стоимость</TableHead>
-                  <TableHead tip={TIPS.payments}>Платежей</TableHead>
-                  <TableHead tip={TIPS.description}>Описание</TableHead>
-                  <TableHead>Статус</TableHead>
+                  <TableHead {...sort.head("name")}>Название</TableHead>
+                  <TableHead tip={TIPS.kind} {...sort.head("kind")}>
+                    Тип
+                  </TableHead>
+                  <TableHead tip={TIPS.trainings} {...sort.head("trainings")}>
+                    Тренировок
+                  </TableHead>
+                  <TableHead tip={TIPS.duration} {...sort.head("duration")}>
+                    Срок действия
+                  </TableHead>
+                  <TableHead tip={TIPS.price} {...sort.head("price")}>
+                    Стоимость
+                  </TableHead>
+                  <TableHead tip={TIPS.payments} {...sort.head("payments")}>
+                    Платежей
+                  </TableHead>
+                  <TableHead tip={TIPS.description} {...sort.head("description")}>
+                    Описание
+                  </TableHead>
+                  <TableHead {...sort.head("status")}>Статус</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -381,7 +411,7 @@ function PackagesPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((p) => (
+                  rows.map((p) => (
                     <RowContextMenu
                       key={p.id}
                       actions={[

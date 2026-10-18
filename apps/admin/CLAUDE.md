@@ -19,7 +19,8 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
   статус абонемента `lib/membership-status.ts`, роли `lib/staff-roles.ts`;
   пуши — шифрование и VAPID `lib/push/web-push.test.ts` по примеру RFC 8291,
   содержимое пуша `lib/push/payload.test.ts`, каталог триггеров
-  `lib/push-triggers.test.ts`; вкладка «Приложение» карточки клиента —
+  `lib/push-triggers.test.ts`; сортировка таблиц — `lib/table-sort.test.ts`;
+  вкладка «Приложение» карточки клиента —
   `lib/client-app.test.ts`; версия админки — `lib/app-version.test.ts`;
   файл переноса из 1С — `lib/import-1c.test.ts`).
 - `bun run version:bump` — повысить версию админки (`ADMIN_VERSION` в
@@ -385,7 +386,10 @@ GoTrue и видит только хук писем — в браузер он �
 - Серверная пагинация — `useServerTable` (`src/hooks/use-server-table.ts`):
   все фильтры в queryKey (строками, не объектами), смена фильтра сама
   возвращает на 1-ю страницу; подвал — `<DataPagination {...table.pagination} />`.
-  Клиентская пагинация небольших списков — `usePagination`. Поиск —
+  Клиентская пагинация небольших списков — `usePagination`. Сортировка по
+  клику на заголовок колонки (2026-10-18, во всех таблицах, внутри
+  фильтров) — `useTableSort` + `lib/table-sort.ts` (+ тест), правила —
+  `.interface-design/system.md`, «Таблицы». Поиск —
   `useDebouncedValue` + `sanitizeSearch`.
 - Студия — `useActiveStudioId()` (`src/hooks/use-active-studio.ts`), заглушка
   без студии — `<RequireStudio>`, страница одного формата студий —

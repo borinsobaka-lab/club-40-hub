@@ -33,6 +33,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import { CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
 import { formatDateTime, toDateTimeLocalValue } from "@/lib/format";
 import { TableSkeletonRows } from "@/components/skeletons";
@@ -133,6 +135,24 @@ function isInFlight(p: PushNotification) {
   );
 }
 
+/** Число колонки статистики — только у отправленных, как в StatCell. */
+const sentStat = (p: PushNotification, value: number) => (isSent(p) ? value : null);
+
+/** Сортировка колонок (lib/table-sort.ts); статус — по ходу рассылки. */
+const SORT_GETTERS: SortGetters<PushNotification> = {
+  title: (p) => p.title,
+  segments: (p) =>
+    !p.segments?.length || p.segments.includes("all")
+      ? "Все"
+      : p.segments.map((s) => CLUB_STATUS_LABEL[s as ClubStatus]).join(", "),
+  when: (p) => (isSent(p) ? p.sent_at : p.status === "scheduled" ? p.scheduled_at : null),
+  status: (p) => Object.keys(STATUS_LABEL).indexOf(p.status),
+  recipients: (p) => sentStat(p, p.recipients_count),
+  sent: (p) => sentStat(p, p.sent_count),
+  delivered: (p) => sentStat(p, p.delivered_count),
+  read: (p) => sentStat(p, p.read_count),
+};
+
 function renderSegments(segments: Segment[]) {
   if (!segments || segments.length === 0 || segments.includes("all")) {
     return <Badge variant="secondary">Все</Badge>;
@@ -232,7 +252,8 @@ function PushPage() {
     setOpen(true);
   };
 
-  const pg = usePagination(items);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(items), undefined, sort.key);
 
   return (
     <AdminShell
@@ -255,17 +276,29 @@ function PushPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead tip={TIPS.title}>Заголовок</TableHead>
+                <TableHead tip={TIPS.title} {...sort.head("title")}>
+                  Заголовок
+                </TableHead>
                 <TableHead className="w-[180px]" tip={TIPS.studios}>
                   Клубы
                 </TableHead>
-                <TableHead tip={TIPS.segments}>Сегмент</TableHead>
-                <TableHead>Отправка</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead tip={TIPS.recipients}>Получатели</TableHead>
-                <TableHead tip={TIPS.sent}>Отправлено</TableHead>
-                <TableHead tip={TIPS.delivered}>Доставлено</TableHead>
-                <TableHead tip={TIPS.read}>Прочитано</TableHead>
+                <TableHead tip={TIPS.segments} {...sort.head("segments")}>
+                  Сегмент
+                </TableHead>
+                <TableHead {...sort.head("when")}>Отправка</TableHead>
+                <TableHead {...sort.head("status")}>Статус</TableHead>
+                <TableHead tip={TIPS.recipients} {...sort.head("recipients")}>
+                  Получатели
+                </TableHead>
+                <TableHead tip={TIPS.sent} {...sort.head("sent")}>
+                  Отправлено
+                </TableHead>
+                <TableHead tip={TIPS.delivered} {...sort.head("delivered")}>
+                  Доставлено
+                </TableHead>
+                <TableHead tip={TIPS.read} {...sort.head("read")}>
+                  Прочитано
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

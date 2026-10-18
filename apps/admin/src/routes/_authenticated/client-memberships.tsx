@@ -20,6 +20,8 @@ import { RequireStudio } from "@/components/require-studio";
 import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useServerTable } from "@/hooks/use-server-table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { orderBy } from "@/lib/table-sort";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { isAdminRole } from "@/lib/staff-directory";
@@ -282,6 +284,23 @@ const COLUMNS =
 // membership_state (db/migrations/2026-10-18_zzzzz_client_packages_filters.sql).
 
 /**
+ * Колонки сортировки (lib/table-sort.ts): ключ заголовка → колонки вью
+ * client_packages_list. Клиент и абонемент — поля json-колонок (PostgREST
+ * сортирует по `col->>key`), платежи — по ближайшему невнесённому.
+ */
+const SORT_COLUMNS = {
+  client: ["clients->>last_name", "clients->>first_name", "clients->>full_name"],
+  membership: "memberships->>name",
+  status: ["membership_state", "ends_at"],
+  balance: "balance_left",
+  amount: "total_amount",
+  soldBy: ["admin_name", "trainer_name"],
+  addedVia: "added_via",
+  comments: ["comment", "membership_note"],
+  payment: "next_due_date",
+};
+
+/**
  * Колонки: клиент, абонемент, статус, баланс, сумма, продал / тренер,
  * «Добавлен» (2026-10-18), комментарии и платежи — с 2026-10-14 одной
  * колонкой (решение владельца):
@@ -335,6 +354,7 @@ function ClientMembershipsPage() {
   const payFrom = nextPayment?.from ? isoDay(nextPayment.from) : "";
   // Выбран только первый день диапазона — это и есть «одно число».
   const payTo = nextPayment?.to ? isoDay(nextPayment.to) : payFrom;
+  const sort = useTableSort();
   // Срок окончания — так же: один день или период.
   const [endsRange, setEndsRange] = useState<DateRange | undefined>();
   const endsFrom = endsRange?.from ? isoDay(endsRange.from) : "";
@@ -382,6 +402,7 @@ function ClientMembershipsPage() {
       String(balanceMax ?? ""),
       seller,
       status,
+      sort.key,
     ],
     queryFn: ({ from, to }) => {
       let q = supabase
@@ -399,17 +420,19 @@ function ClientMembershipsPage() {
       if (seller === NO_SELLER) q = q.is("seller_id", null);
       else if (seller !== ALL) q = q.eq("seller_id", seller);
       if (status !== ALL) q = q.eq("membership_state", status);
-      // Ждут платежа и просроченные — по ближайшему платежу: сверху те, с кем
-      // разбираться первыми. Остальное — новые продажи сверху.
-      if (payFrom || state === "overdue" || state === "soon" || state === "pending")
-        q = q.order("next_due_date", { ascending: true });
-      // По сроку окончания — сначала те, у кого он кончается раньше.
-      if (endsFrom) q = q.order("ends_at", { ascending: true });
-      return q
-        .order("sold_at", { ascending: false })
-        .order("created_at", { ascending: false })
-        .order("id")
-        .range(from, to);
+      // Без сортировки по колонке: ждут платежа и просроченные — по
+      // ближайшему платежу (сверху те, с кем разбираться первыми), по сроку
+      // окончания — сначала те, у кого он кончается раньше, остальное — новые
+      // продажи сверху.
+      const byDue = payFrom || state === "overdue" || state === "soon" || state === "pending";
+      return orderBy(q, sort.sort, SORT_COLUMNS, (o) => {
+        let d = byDue ? o.order("next_due_date", { ascending: true }) : o;
+        if (endsFrom) d = d.order("ends_at", { ascending: true });
+        return d
+          .order("sold_at", { ascending: false })
+          .order("created_at", { ascending: false })
+          .order("id");
+      }).range(from, to);
     },
     enabled: !!studioId,
     errorMessage: "Не удалось загрузить абонементы",
@@ -621,17 +644,33 @@ function ClientMembershipsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[170px]" tip={TIPS.client}>
+                  <TableHead className="min-w-[170px]" tip={TIPS.client} {...sort.head("client")}>
                     Клиент
                   </TableHead>
-                  <TableHead tip={TIPS.membership}>Абонемент</TableHead>
-                  <TableHead tip={TIPS.status}>Статус</TableHead>
-                  <TableHead tip={TIPS.balance}>Баланс</TableHead>
-                  <TableHead tip={TIPS.amount}>Сумма</TableHead>
-                  <TableHead tip={TIPS.soldBy}>Продал / тренер</TableHead>
-                  <TableHead tip={TIPS.addedVia}>Добавлен</TableHead>
-                  <TableHead tip={TIPS.comments}>Комментарии</TableHead>
-                  <TableHead tip={TIPS.payment}>Платежи</TableHead>
+                  <TableHead tip={TIPS.membership} {...sort.head("membership")}>
+                    Абонемент
+                  </TableHead>
+                  <TableHead tip={TIPS.status} {...sort.head("status")}>
+                    Статус
+                  </TableHead>
+                  <TableHead tip={TIPS.balance} {...sort.head("balance")}>
+                    Баланс
+                  </TableHead>
+                  <TableHead tip={TIPS.amount} {...sort.head("amount")}>
+                    Сумма
+                  </TableHead>
+                  <TableHead tip={TIPS.soldBy} {...sort.head("soldBy")}>
+                    Продал / тренер
+                  </TableHead>
+                  <TableHead tip={TIPS.addedVia} {...sort.head("addedVia")}>
+                    Добавлен
+                  </TableHead>
+                  <TableHead tip={TIPS.comments} {...sort.head("comments")}>
+                    Комментарии
+                  </TableHead>
+                  <TableHead tip={TIPS.payment} {...sort.head("payment")}>
+                    Платежи
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

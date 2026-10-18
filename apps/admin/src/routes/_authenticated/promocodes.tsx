@@ -41,6 +41,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { formatDate, formatMoneyPrecise } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -76,6 +78,17 @@ type PromoCode = {
   description: string | null;
   is_active: boolean;
   created_at: string;
+};
+
+/** Сортировка колонок (lib/table-sort.ts). */
+const SORT_GETTERS: SortGetters<PromoCode> = {
+  name: (p) => p.name,
+  code: (p) => p.code,
+  discount: (p) => p.discount_value,
+  expires: (p) => p.expires_at,
+  usage: (p) => p.usage_count,
+  description: (p) => p.description,
+  active: (p) => p.is_active,
 };
 
 function formatDiscount(type: DiscountType, value: number) {
@@ -147,7 +160,8 @@ function PromoCodesPage() {
     setOpen(true);
   };
 
-  const pg = usePagination(items);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(items), undefined, sort.key);
 
   return (
     <AdminShell
@@ -165,13 +179,23 @@ function PromoCodesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Название</TableHead>
-                  <TableHead tip={TIPS.code}>Промокод</TableHead>
-                  <TableHead tip={TIPS.discount}>Скидка</TableHead>
-                  <TableHead tip={TIPS.expires}>Действует до</TableHead>
-                  <TableHead tip={TIPS.usageLimit}>Применений</TableHead>
-                  <TableHead>Описание</TableHead>
-                  <TableHead className="w-[100px]">Активен</TableHead>
+                  <TableHead {...sort.head("name")}>Название</TableHead>
+                  <TableHead tip={TIPS.code} {...sort.head("code")}>
+                    Промокод
+                  </TableHead>
+                  <TableHead tip={TIPS.discount} {...sort.head("discount")}>
+                    Скидка
+                  </TableHead>
+                  <TableHead tip={TIPS.expires} {...sort.head("expires")}>
+                    Действует до
+                  </TableHead>
+                  <TableHead tip={TIPS.usageLimit} {...sort.head("usage")}>
+                    Применений
+                  </TableHead>
+                  <TableHead {...sort.head("description")}>Описание</TableHead>
+                  <TableHead className="w-[100px]" {...sort.head("active")}>
+                    Активен
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

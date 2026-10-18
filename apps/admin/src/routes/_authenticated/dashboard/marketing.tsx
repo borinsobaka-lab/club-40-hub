@@ -243,6 +243,13 @@ function MarketingBody(view: DashboardView) {
       key: g.key,
       name: g.key === NO_ANSWER ? "Нет ответа в анкете" : (REFERRAL_LABELS[g.key] ?? g.key),
       muted: g.key === NO_ANSWER,
+      values: {
+        name: REFERRAL_LABELS[g.key] ?? g.key,
+        clients: g.clients,
+        buyers: g.buyers,
+        conversion: g.conversion,
+        revenue: g.revenue,
+      },
       cells: {
         clients: formatNumber(g.clients),
         buyers: formatNumber(g.buyers),

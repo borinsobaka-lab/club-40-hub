@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -98,6 +100,16 @@ type ShowcaseItem = {
   /** Переводы для приложения: {en|ka: {title, description, full_title, full_text, button_text}}. */
   translations: ContentTranslations;
   created_at: string;
+};
+
+/** Сортировка колонок (lib/table-sort.ts). */
+const SORT_GETTERS: SortGetters<ShowcaseItem> = {
+  position: (n) => n.position,
+  image: (n) => Boolean(n.image_url),
+  banner: (n) => Boolean(n.banner_url),
+  title: (n) => n.title,
+  description: (n) => n.description,
+  button: (n) => (n.button_text && n.button_url ? n.button_text : null),
 };
 
 export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
@@ -198,7 +210,11 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
     setOpen(true);
   };
 
-  const pg = usePagination(items);
+  const sort = useTableSort(SORT_GETTERS);
+  // Стрелки порядка — только в порядке приложения: при сортировке по колонке
+  // «выше/ниже» на экране не совпадало бы с соседом по position.
+  const canReorder = !sort.sort;
+  const pg = usePagination(sort.apply(items), undefined, sort.key);
 
   return (
     <AdminShell
@@ -215,19 +231,23 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">Порядок</TableHead>
-                <TableHead className="w-[100px]" tip={TIPS.image}>
+                <TableHead className="w-[90px]" {...sort.head("position")}>
+                  Порядок
+                </TableHead>
+                <TableHead className="w-[100px]" tip={TIPS.image} {...sort.head("image")}>
                   Картинка
                 </TableHead>
-                <TableHead className="w-[140px]" tip={TIPS.banner}>
+                <TableHead className="w-[140px]" tip={TIPS.banner} {...sort.head("banner")}>
                   Баннер
                 </TableHead>
-                <TableHead>Заголовок</TableHead>
+                <TableHead {...sort.head("title")}>Заголовок</TableHead>
                 <TableHead className="w-[180px]" tip={TIPS.studios}>
                   Клубы
                 </TableHead>
-                <TableHead>Описание</TableHead>
-                <TableHead className="w-[140px]">Кнопка</TableHead>
+                <TableHead {...sort.head("description")}>Описание</TableHead>
+                <TableHead className="w-[140px]" {...sort.head("button")}>
+                  Кнопка
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -261,7 +281,7 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              disabled={idx === 0 || reordering}
+                              disabled={!canReorder || idx === 0 || reordering}
                               onClick={() => move(idx, -1)}
                               aria-label="Выше"
                             >
@@ -270,7 +290,7 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              disabled={idx === items.length - 1 || reordering}
+                              disabled={!canReorder || idx === items.length - 1 || reordering}
                               onClick={() => move(idx, 1)}
                               aria-label="Ниже"
                             >

@@ -34,13 +34,14 @@ import { ClientAppTab } from "@/components/client-app-tab";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStudioFormat, useWorkStudioId } from "@/hooks/use-catalog-studios";
 import { useStudios } from "@/hooks/use-studios";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-status-badge";
 import { effectiveStatus, isLiveStatus } from "@/lib/membership-status";
 import { computeClubStatus } from "@/lib/client-status";
 import { GOAL_LABELS, REFERRAL_LABELS } from "@/lib/client-profile";
-import type { BookingStatus } from "@/lib/bookings";
+import { BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
 import {
   clientName,
   formatDate,
@@ -797,6 +798,13 @@ function VisitsTab({
     meta: { errorMessage: "Не удалось загрузить посещения клиента" },
   });
   const showStudio = rows.some((r) => r.studio_id !== studioId);
+  const sort = useTableSort<VisitRow>({
+    workout: (r) => r.workout_name ?? "Персональное занятие",
+    studio: (r) => r.studio?.name,
+    startsAt: (r) => r.starts_at,
+    status: (r) => BOOKING_STATUS_LABEL[r.status] ?? r.status,
+    cancelledAt: (r) => r.cancelled_at,
+  });
 
   if (!loading && rows.length === 0) {
     return <InfoNote variant="empty">Посещений пока нет.</InfoNote>;
@@ -807,18 +815,18 @@ function VisitsTab({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Тренировка</TableHead>
-            {showStudio && <TableHead>Клуб</TableHead>}
-            <TableHead>Дата и время</TableHead>
-            <TableHead>Статус</TableHead>
-            <TableHead>Отменена</TableHead>
+            <TableHead {...sort.head("workout")}>Тренировка</TableHead>
+            {showStudio && <TableHead {...sort.head("studio")}>Клуб</TableHead>}
+            <TableHead {...sort.head("startsAt")}>Дата и время</TableHead>
+            <TableHead {...sort.head("status")}>Статус</TableHead>
+            <TableHead {...sort.head("cancelledAt")}>Отменена</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading ? (
             <TableSkeletonRows columns={showStudio ? 5 : 4} rows={5} />
           ) : (
-            rows.map((r) => (
+            sort.apply(rows).map((r) => (
               <TableRow key={r.id}>
                 <TableCell>{r.workout_name ?? "Персональное занятие"}</TableCell>
                 {showStudio && (

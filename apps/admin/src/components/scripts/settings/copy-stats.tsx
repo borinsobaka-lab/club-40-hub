@@ -35,12 +35,32 @@ import { findById, LANGS, plural } from "@/lib/scripts/logic";
 import { defaultPeriod, periodBounds, type Period } from "@/lib/scripts/period";
 import type { CopyStats, LangCounts, ScriptLang } from "@/lib/scripts/types";
 import { cn } from "@/lib/utils";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import { PeriodFilter } from "./period-filter";
 import { Bar, ScriptTitle, StatTile } from "./shared";
 import { useOpenScript } from "./use-open-script";
 
 /** «Все» в Select: пустое значение Radix не принимает. */
 const ALL = "all";
+
+type ItemRow = CopyStats["items"][number] & { rank: number };
+type UserRow = CopyStats["users"][number];
+
+/** Колонки языков — общие у обеих таблиц. */
+const LANG_GETTERS: SortGetters<LangCounts> = Object.fromEntries(
+  LANGS.map((l) => [l.key, (r: LangCounts) => r[l.key] || null]),
+);
+const ITEM_GETTERS: SortGetters<ItemRow> = {
+  ...LANG_GETTERS,
+  title: (r) => r.title || "Без названия",
+  total: (r) => r.total,
+};
+const USER_GETTERS: SortGetters<UserRow> = {
+  ...LANG_GETTERS,
+  name: (r) => r.name || "Без имени",
+  total: (r) => r.total,
+};
 
 export function CopyStatsTab() {
   const { data: sections = [] } = usePlaybook();
@@ -83,6 +103,11 @@ export function CopyStatsTab() {
   const filtered = !!user || !!lang;
 
   const dimLang = (key: ScriptLang) => !!lang && lang !== key;
+  // «#» — место по числу копирований (порядок базы), сортировка его не меняет.
+  const itemSort = useTableSort(ITEM_GETTERS);
+  const userSort = useTableSort(USER_GETTERS);
+  const items = itemSort.apply((data?.items ?? []).map((row, i) => ({ ...row, rank: i + 1 })));
+  const users = userSort.apply(data?.users ?? []);
 
   return (
     <div className="space-y-3">
@@ -151,11 +176,13 @@ export function CopyStatsTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12 text-right">#</TableHead>
-                  <TableHead>Скрипт</TableHead>
+                  <TableHead {...itemSort.head("title")}>Скрипт</TableHead>
                   <TableHead className="w-40">Доля</TableHead>
-                  <TableHead className="text-right">Всего</TableHead>
+                  <TableHead className="text-right" {...itemSort.head("total")}>
+                    Всего
+                  </TableHead>
                   {LANGS.map((l) => (
-                    <TableHead key={l.key} className="text-right">
+                    <TableHead key={l.key} className="text-right" {...itemSort.head(l.key)}>
                       {l.label}
                     </TableHead>
                   ))}
@@ -178,12 +205,12 @@ export function CopyStatsTab() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  data.items.map((row, i) => {
+                  items.map((row) => {
                     const live = row.item_id ? findById(sections, row.item_id) : null;
                     return (
-                      <TableRow key={row.item_id ?? `gone-${i}`}>
+                      <TableRow key={row.item_id ?? `gone-${row.rank}`}>
                         <TableCell className="text-right text-muted-foreground tabular-nums">
-                          {i + 1}
+                          {row.rank}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
@@ -229,17 +256,19 @@ export function CopyStatsTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Сотрудник</TableHead>
-                    <TableHead className="text-right">Всего</TableHead>
+                    <TableHead {...userSort.head("name")}>Сотрудник</TableHead>
+                    <TableHead className="text-right" {...userSort.head("total")}>
+                      Всего
+                    </TableHead>
                     {LANGS.map((l) => (
-                      <TableHead key={l.key} className="text-right">
+                      <TableHead key={l.key} className="text-right" {...userSort.head(l.key)}>
                         {l.label}
                       </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.users.map((u) => (
+                  {users.map((u) => (
                     <TableRow
                       key={u.user_id}
                       className="cursor-pointer"

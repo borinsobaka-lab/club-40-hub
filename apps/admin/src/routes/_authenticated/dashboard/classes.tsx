@@ -260,6 +260,7 @@ function ClassesBody(view: DashboardView) {
         key: id,
         name: info?.name ?? "Без тренера",
         muted: !info,
+        values: { name: info?.name, ...tallyValues(t), rating: info?.rating ?? null },
         cells: {
           ...tallyCells(t, color),
           rating:
@@ -292,6 +293,7 @@ function ClassesBody(view: DashboardView) {
             {info?.name ?? "Без тренировки"}
           </span>
         ),
+        values: { name: info?.name, ...tallyValues(t) },
         cells: tallyCells(t, color),
       };
     });
@@ -427,6 +429,19 @@ function ClassesBody(view: DashboardView) {
 function sortRows(rows: [string, ClassTally][], sort: SortKey) {
   const value = SORTS[sort].value;
   return rows.sort(([, a], [, b]) => (value(b) ?? -1) - (value(a) ?? -1) || b.visits - a.visits);
+}
+
+/** Значения колонок для сортировки по заголовку — те же, что в tallyCells. */
+function tallyValues(t: ClassTally): NonNullable<MetricRow["values"]> {
+  return {
+    classes: t.classes,
+    visits: t.visits,
+    avg: avgPerClass(t),
+    fill: fillRate(t),
+    show: showRate(t),
+    clients: t.clients.size,
+    repeat: repeatRate(t),
+  };
 }
 
 function tallyCells(t: ClassTally, color: string): MetricRow["cells"] {

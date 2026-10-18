@@ -9,6 +9,8 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useServerTable } from "@/hooks/use-server-table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { orderBy } from "@/lib/table-sort";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -93,6 +95,18 @@ const CATEGORIES: Record<CashKind, { value: string; label: string }[]> = {
   ],
 };
 
+/**
+ * Колонки сортировки (lib/table-sort.ts). «Сотрудник» не сортируется: в
+ * операции только user_id, имя подставляется в браузере.
+ */
+const SORT_COLUMNS = {
+  occurredAt: "occurred_at",
+  kind: "kind",
+  category: "category",
+  amount: "amount",
+  comment: "comment",
+};
+
 const ALL_CATEGORIES = [...CATEGORIES.income, ...CATEGORIES.expense];
 
 function categoryLabel(v: string) {
@@ -109,17 +123,17 @@ function CashPage() {
   // Форма после сохранения монтируется заново — так все поля возвращаются
   // к начальным значениям (приход, сейчас, текущий сотрудник) без ручного сброса.
   const [formKey, setFormKey] = useState(0);
+  const sort = useTableSort();
 
   const table = useServerTable<CashOp>({
-    queryKey: ["cash_operations", studioId],
+    queryKey: ["cash_operations", studioId, sort.key],
     queryFn: ({ from, to }) =>
-      supabase
-        .from("cash_operations")
-        .select("*", { count: "exact" })
-        .eq("studio_id", studioId!)
-        .order("occurred_at", { ascending: false })
-        .order("id")
-        .range(from, to),
+      orderBy(
+        supabase.from("cash_operations").select("*", { count: "exact" }).eq("studio_id", studioId!),
+        sort.sort,
+        SORT_COLUMNS,
+        (q) => q.order("occurred_at", { ascending: false }).order("id"),
+      ).range(from, to),
     enabled: !!studioId,
     errorMessage: "Не удалось загрузить операции",
   });
@@ -210,12 +224,20 @@ function CashPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead tip={TIPS.occurredAt}>Дата</TableHead>
-                  <TableHead>Тип</TableHead>
-                  <TableHead tip={TIPS.category}>Категория</TableHead>
-                  <TableHead tip={TIPS.amount}>Сумма</TableHead>
+                  <TableHead tip={TIPS.occurredAt} {...sort.head("occurredAt")}>
+                    Дата
+                  </TableHead>
+                  <TableHead {...sort.head("kind")}>Тип</TableHead>
+                  <TableHead tip={TIPS.category} {...sort.head("category")}>
+                    Категория
+                  </TableHead>
+                  <TableHead tip={TIPS.amount} {...sort.head("amount")}>
+                    Сумма
+                  </TableHead>
                   <TableHead tip={TIPS.operator}>Сотрудник</TableHead>
-                  <TableHead tip={TIPS.comment}>Комментарий</TableHead>
+                  <TableHead tip={TIPS.comment} {...sort.head("comment")}>
+                    Комментарий
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

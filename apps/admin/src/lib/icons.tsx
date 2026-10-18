@@ -24,6 +24,7 @@ import {
   ArrowLeft as ArrowLeftArt,
   ArrowLeftRight as ArrowLeftRightArt,
   ArrowUp as ArrowUpArt,
+  ArrowUpDown as ArrowUpDownArt,
   ArrowUpRight as ArrowUpRightArt,
   BanIcon as BanArt,
   Banknote as BanknoteArt,
@@ -126,6 +127,7 @@ export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
 export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowLeftRight = icon(ArrowLeftRightArt, "ArrowLeftRight");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
+export const ArrowUpDown = icon(ArrowUpDownArt, "ArrowUpDown");
 export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
 export const Ban = icon(BanArt, "Ban");
 export const Banknote = icon(BanknoteArt, "Banknote");

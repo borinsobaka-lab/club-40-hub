@@ -75,6 +75,7 @@ import {
   type TrainerRole,
 } from "@/lib/staff-directory";
 import { cn } from "@/lib/utils";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { PeriodStepper } from "@/components/period-stepper";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { PayrollPageSkeleton } from "@/components/page-skeletons";
@@ -117,6 +118,9 @@ const STATUS_VIEW: Record<RowStatus, { label: string; className: string }> = {
   unpaid: { label: "Не выплачено", className: "border-amber-200 bg-amber-50 text-amber-700" },
   none: { label: "—", className: "border-transparent text-muted-foreground" },
 };
+
+/** Порядок статусов при сортировке колонки «Статус»: сначала к выплате. */
+const STATUS_RANK: Record<RowStatus, number> = { unpaid: 0, partial: 1, paid: 2, none: 3 };
 
 const sameAmount = (a: number, b: number) => Math.abs(a - b) < 0.005;
 
@@ -191,14 +195,25 @@ function PayrollPage() {
       Number(isAdminRole(b.role)) - Number(isAdminRole(a.role)) ||
       a.full_name.localeCompare(b.full_name, "ru"),
   );
+  const sort = useTableSort<Employee>({
+    name: (e) => e.full_name,
+    role: (e) => TRAINER_ROLES[e.role]?.label ?? e.role,
+    base: (e) => summaryOf(e.id).base,
+    sales: (e) => summaryOf(e.id).sales || null,
+    bonus: (e) => summaryOf(e.id).bonus || null,
+    adjustments: (e) => summaryOf(e.id).adjustments || null,
+    total: (e) => summaryOf(e.id).total,
+    status: (e) => STATUS_RANK[statusOf(e.id)],
+  });
   const term = search.trim().toLowerCase();
-  const rows = sorted.filter(
+  const filteredRows = sorted.filter(
     (e) =>
       (roleFilter === ALL || e.role === roleFilter) &&
       (!term || e.full_name.toLowerCase().includes(term)) &&
       (statusFilter === ALL ||
         (statusFilter === "paid" ? statusOf(e.id) === "paid" : statusOf(e.id) !== "paid")),
   );
+  const rows = sort.apply(filteredRows);
   const filtered = !!term || roleFilter !== ALL || statusFilter !== ALL;
 
   // Итоги шапки — по всем сотрудникам периода, без фильтров.
@@ -360,24 +375,30 @@ function PayrollPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Сотрудник</TableHead>
-                    <TableHead>Роль</TableHead>
-                    <TableHead className="text-right" tip={TIPS.base}>
+                    <TableHead {...sort.head("name")}>Сотрудник</TableHead>
+                    <TableHead {...sort.head("role")}>Роль</TableHead>
+                    <TableHead className="text-right" tip={TIPS.base} {...sort.head("base")}>
                       Оклад
                     </TableHead>
-                    <TableHead className="text-right" tip={TIPS.sales}>
+                    <TableHead className="text-right" tip={TIPS.sales} {...sort.head("sales")}>
                       Продажи
                     </TableHead>
-                    <TableHead className="text-right" tip={TIPS.bonus}>
+                    <TableHead className="text-right" tip={TIPS.bonus} {...sort.head("bonus")}>
                       Бонус {BONUS_RATE * 100}%
                     </TableHead>
-                    <TableHead className="text-right" tip={TIPS.adjustments}>
+                    <TableHead
+                      className="text-right"
+                      tip={TIPS.adjustments}
+                      {...sort.head("adjustments")}
+                    >
                       Корректир.
                     </TableHead>
-                    <TableHead className="text-right" tip={TIPS.total}>
+                    <TableHead className="text-right" tip={TIPS.total} {...sort.head("total")}>
                       Итого
                     </TableHead>
-                    <TableHead tip={TIPS.status}>Статус</TableHead>
+                    <TableHead tip={TIPS.status} {...sort.head("status")}>
+                      Статус
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

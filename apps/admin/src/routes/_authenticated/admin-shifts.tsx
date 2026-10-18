@@ -51,6 +51,7 @@ import {
   plural,
   type AdjustmentKind,
   type MonthKey,
+  type PayrollAdjustment,
 } from "@/lib/payroll";
 import { unwrap } from "@/lib/query";
 import {
@@ -61,6 +62,7 @@ import {
   type Employee,
 } from "@/lib/staff-directory";
 import { cn } from "@/lib/utils";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { PeriodStepper } from "@/components/period-stepper";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { AdminShiftsPageSkeleton } from "@/components/page-skeletons";
@@ -612,7 +614,14 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
   const { confirm, confirmDialog } = useConfirm();
   const { data: all = [], isLoading } = usePayrollAdjustments(month);
   const employeeById = new Map(employees.map((e) => [e.id, e]));
-  const adjustments = all.filter((a) => employeeById.has(a.trainer_id));
+  const sort = useTableSort<PayrollAdjustment>({
+    date: (a) => a.adjusted_on,
+    employee: (a) => employeeById.get(a.trainer_id)?.full_name,
+    amount: (a) => ADJUSTMENT_KINDS[a.kind].sign * Number(a.amount),
+    reason: (a) => a.reason,
+    author: (a) => a.created_by_name,
+  });
+  const adjustments = sort.apply(all.filter((a) => employeeById.has(a.trainer_id)));
   // Администраторы — первыми: корректировки чаще всего про смены.
   const sortedEmployees = [...employees].sort(
     (a, b) =>
@@ -761,11 +770,13 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Дата</TableHead>
-              <TableHead>Сотрудник</TableHead>
-              <TableHead className="text-right">Сумма</TableHead>
-              <TableHead>Причина</TableHead>
-              <TableHead>Добавил</TableHead>
+              <TableHead {...sort.head("date")}>Дата</TableHead>
+              <TableHead {...sort.head("employee")}>Сотрудник</TableHead>
+              <TableHead className="text-right" {...sort.head("amount")}>
+                Сумма
+              </TableHead>
+              <TableHead {...sort.head("reason")}>Причина</TableHead>
+              <TableHead {...sort.head("author")}>Добавил</TableHead>
               <TableHead className="w-10">
                 <span className="sr-only">Действия</span>
               </TableHead>

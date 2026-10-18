@@ -1,6 +1,9 @@
 import * as React from "react";
 
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+
 import { FieldHint } from "@/components/ui/field-hint";
+import type { SortDir } from "@/lib/table-sort";
 import { cn } from "@/lib/utils";
 
 /**
@@ -127,29 +130,62 @@ TableRow.displayName = "TableRow";
  * tip — подсказка «?» у заголовка колонки, тот же текст, что у поля формы
  * (FormField tip). Значок без текста, поэтому подпись колонки для карточек
  * на телефоне (labelCells, textContent) он не портит.
+ *
+ * onSort — колонка сортируется по клику на подпись (hooks/use-table-sort.ts:
+ * `{...sort.head("key")}`); sortDir — текущее направление, null — по этой
+ * колонке не сортируется. Стрелки — тоже без текста.
  */
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement> & { tip?: React.ReactNode }
->(({ className, tip, children, ...props }, ref) => (
-  <th
-    ref={ref}
-    className={cn(
-      "h-10 whitespace-nowrap px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-      className,
-    )}
-    {...props}
-  >
-    {tip ? (
-      <span className="inline-flex items-center gap-1">
-        {children}
-        <FieldHint>{tip}</FieldHint>
-      </span>
-    ) : (
-      children
-    )}
-  </th>
-));
+  React.ThHTMLAttributes<HTMLTableCellElement> & {
+    tip?: React.ReactNode;
+    sortDir?: SortDir | null;
+    onSort?: () => void;
+  }
+>(({ className, tip, sortDir, onSort, children, ...props }, ref) => {
+  const SortIcon = sortDir === "asc" ? ArrowUp : sortDir === "desc" ? ArrowDown : ArrowUpDown;
+  const label = onSort ? (
+    <button
+      type="button"
+      onClick={onSort}
+      className={cn(
+        "group/sort -mx-1 inline-flex items-center gap-1 rounded px-1 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        sortDir && "text-foreground",
+      )}
+    >
+      {children}
+      <SortIcon
+        aria-hidden
+        className={cn(
+          "size-3.5 shrink-0",
+          !sortDir && "opacity-30 transition-opacity group-hover/sort:opacity-70",
+        )}
+      />
+    </button>
+  ) : (
+    children
+  );
+  return (
+    <th
+      ref={ref}
+      aria-sort={sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : undefined}
+      className={cn(
+        "h-10 whitespace-nowrap px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        className,
+      )}
+      {...props}
+    >
+      {tip || onSort ? (
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {tip && <FieldHint>{tip}</FieldHint>}
+        </span>
+      ) : (
+        children
+      )}
+    </th>
+  );
+});
 TableHead.displayName = "TableHead";
 
 const TableCell = React.forwardRef<

@@ -54,6 +54,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { cn } from "@/lib/utils";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -147,6 +149,17 @@ const BUCKET: Record<NpsBucket, { label: string; cls: string; order: number }> =
   detractor: { label: "Критик", cls: "bg-destructive/10 text-destructive", order: 0 },
   passive: { label: "Пассивный", cls: "bg-amber-500/10 text-amber-700", order: 1 },
   promoter: { label: "Промоутер", cls: "bg-emerald-500/10 text-emerald-700", order: 2 },
+};
+
+/** Сортировка колонок (lib/table-sort.ts); «Прочитано» по возрастанию — новые первыми. */
+const SORT_GETTERS: SortGetters<NpsResponse> = {
+  date: (r) => r.created_at,
+  client: (r) => r.client_name,
+  score: (r) => r.score,
+  category: (r) => BUCKET[npsBucket(r.score)].order,
+  comment: (r) => r.comment,
+  survey: (r) => TYPE_LABEL[r.survey_type],
+  read: (r) => Boolean(r.read_at),
 };
 
 /** NPS = % промоутеров − % критиков; без ответов — null. */
@@ -313,7 +326,8 @@ function NpsPage() {
     [byType],
   );
 
-  const pg = usePagination(tableData);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(tableData), undefined, sort.key);
   const unreadCount = useMemo(() => responses.filter((r) => !r.read_at).length, [responses]);
   const crmLinkOf = useCrmLinks(studioId, "id", [
     ...pg.paged.map((r) => r.client_id),
@@ -549,15 +563,19 @@ function NpsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Дата</TableHead>
-                    <TableHead>Клиент</TableHead>
-                    <TableHead className="w-[80px]" tip={TIPS.score}>
+                    <TableHead {...sort.head("date")}>Дата</TableHead>
+                    <TableHead {...sort.head("client")}>Клиент</TableHead>
+                    <TableHead className="w-[80px]" tip={TIPS.score} {...sort.head("score")}>
                       Оценка
                     </TableHead>
-                    <TableHead>Категория</TableHead>
-                    <TableHead>Комментарий</TableHead>
-                    <TableHead tip={TIPS.surveyType}>Опрос</TableHead>
-                    <TableHead tip={TIPS.read}>Прочитано</TableHead>
+                    <TableHead {...sort.head("category")}>Категория</TableHead>
+                    <TableHead {...sort.head("comment")}>Комментарий</TableHead>
+                    <TableHead tip={TIPS.surveyType} {...sort.head("survey")}>
+                      Опрос
+                    </TableHead>
+                    <TableHead tip={TIPS.read} {...sort.head("read")}>
+                      Прочитано
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

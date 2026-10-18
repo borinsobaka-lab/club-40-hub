@@ -12,6 +12,8 @@ import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { useServerTable } from "@/hooks/use-server-table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { orderBy } from "@/lib/table-sort";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
@@ -112,6 +114,20 @@ const CLIENT_COLUMNS =
   "id, studio_id, user_id, full_name, first_name, last_name, phone, phone2, email, birthday, gender, " +
   "notes, registration_date, last_visit_date, crm_link, photo_url, created_at, club_status, source";
 
+/** Колонки сортировки (lib/table-sort.ts): ключ заголовка → колонки вью. */
+const SORT_COLUMNS = {
+  name: ["last_name", "first_name", "full_name"],
+  status: "club_status",
+  phone: "phone",
+  email: "email",
+  gender: "gender",
+  birthday: "birthday",
+  registration: "registration_date",
+  source: "source",
+  lastVisit: "last_visit_date",
+  notes: "notes",
+};
+
 const CLUB_STATUSES = Object.keys(CLUB_STATUS_FULL) as ClubStatus[];
 
 // Локальная дата (YYYY-MM-DD): даты регистрации/визита хранятся без времени.
@@ -132,6 +148,7 @@ function ClientsPage() {
   const [editing, setEditing] = useState<Client | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardClient, setCardClient] = useState<Client | null>(null);
+  const sort = useTableSort();
 
   const openCard = (c: Client) => {
     setCardClient(c);
@@ -163,6 +180,7 @@ function ClientsPage() {
       regTo,
       visitFrom,
       visitTo,
+      sort.key,
     ],
     queryFn: ({ from, to }) => {
       let query = supabase
@@ -180,7 +198,9 @@ function ClientsPage() {
       if (regTo) query = query.lte("registration_date", regTo);
       if (visitFrom) query = query.gte("last_visit_date", visitFrom);
       if (visitTo) query = query.lte("last_visit_date", visitTo);
-      return query.order("created_at", { ascending: false }).range(from, to);
+      return orderBy(query, sort.sort, SORT_COLUMNS, (q) =>
+        q.order("created_at", { ascending: false }),
+      ).range(from, to);
     },
     enabled: !!studioId && !!networkIds,
     errorMessage: "Не удалось загрузить клиентов",
@@ -290,18 +310,30 @@ function ClientsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[240px]">Клиент</TableHead>
-                  <TableHead className="w-[80px]" tip={TIPS.status}>
+                  <TableHead className="min-w-[240px]" {...sort.head("name")}>
+                    Клиент
+                  </TableHead>
+                  <TableHead className="w-[80px]" tip={TIPS.status} {...sort.head("status")}>
                     Статус
                   </TableHead>
-                  <TableHead>Телефон</TableHead>
-                  <TableHead tip={TIPS.email}>Email</TableHead>
-                  <TableHead>Пол</TableHead>
-                  <TableHead>Дата рождения</TableHead>
-                  <TableHead tip={TIPS.registration}>Регистрация</TableHead>
-                  <TableHead tip={TIPS.source}>Добавлен</TableHead>
-                  <TableHead tip={TIPS.lastVisit}>Последний визит</TableHead>
-                  <TableHead tip={TIPS.notes}>Заметки</TableHead>
+                  <TableHead {...sort.head("phone")}>Телефон</TableHead>
+                  <TableHead tip={TIPS.email} {...sort.head("email")}>
+                    Email
+                  </TableHead>
+                  <TableHead {...sort.head("gender")}>Пол</TableHead>
+                  <TableHead {...sort.head("birthday")}>Дата рождения</TableHead>
+                  <TableHead tip={TIPS.registration} {...sort.head("registration")}>
+                    Регистрация
+                  </TableHead>
+                  <TableHead tip={TIPS.source} {...sort.head("source")}>
+                    Добавлен
+                  </TableHead>
+                  <TableHead tip={TIPS.lastVisit} {...sort.head("lastVisit")}>
+                    Последний визит
+                  </TableHead>
+                  <TableHead tip={TIPS.notes} {...sort.head("notes")}>
+                    Заметки
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
