@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,16 +13,26 @@ import {
 export const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 export const DEFAULT_PAGE_SIZE = 25;
 
-export function usePagination<T>(items: T[], defaultPageSize: number = DEFAULT_PAGE_SIZE) {
-  const [page, setPage] = useState(1);
+/**
+ * Клиентская пагинация. `resetKey` — сортировка или фильтр строкой: при его
+ * смене — сразу (в том же рендере) 1-я страница, как в useServerTable.
+ */
+export function usePagination<T>(
+  items: T[],
+  defaultPageSize: number = DEFAULT_PAGE_SIZE,
+  resetKey = "",
+) {
+  const [pageState, setPageState] = useState({ resetKey, page: 1 });
   const [pageSize, setPageSize] = useState(defaultPageSize);
+  const page = pageState.resetKey === resetKey ? pageState.page : 1;
+  const setPage = useCallback((p: number) => setPageState({ resetKey, page: p }), [resetKey]);
 
   const total = items.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
-  }, [page, pageCount]);
+  }, [page, pageCount, setPage]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
