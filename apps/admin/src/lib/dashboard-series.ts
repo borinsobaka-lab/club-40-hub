@@ -13,6 +13,8 @@ import {
 } from "date-fns";
 import { ru } from "date-fns/locale";
 
+import type { DetailRow } from "@/lib/dashboard-details";
+
 /**
  * Разбивка показателя дашборда по времени — для графика в окне карточки.
  * Без React и Supabase: строки из базы приходят уже точками (дата + сумма),
@@ -37,8 +39,12 @@ export type Bucket = {
 /** Как из корзины получается число на графике. */
 export type SeriesKind = "sum" | "count" | "avg";
 
-/** Строка из базы: локальная дата, сумма (у счётчиков — 0) и вклад в число сделок/штук. */
-export type SeriesPoint = { date: string; amount: number; n: number };
+/**
+ * Строка из базы: локальная дата, сумма (у счётчиков — 0) и вклад в число
+ * сделок/штук. `row` — та же строка в подробном отчёте окна плитки (кто это,
+ * что купил), lib/dashboard-details.ts.
+ */
+export type SeriesPoint = { date: string; amount: number; n: number; row?: DetailRow };
 
 export type SeriesValue = { bucket: Bucket; amount: number; n: number; value: number | null };
 

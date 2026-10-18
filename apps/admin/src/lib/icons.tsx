@@ -77,6 +77,7 @@ import {
   Minus as MinusArt,
   PanelLeft as PanelLeftArt,
   Pencil as PencilArt,
+  Phone as PhoneArt,
   Play as PlayArt,
   Plus as PlusArt,
   QrCode as QrCodeArt,
@@ -180,6 +181,7 @@ export const Minimize = icon(MinimizeArt, "Minimize");
 export const Minus = icon(MinusArt, "Minus");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Pencil = icon(PencilArt, "Pencil");
+export const Phone = icon(PhoneArt, "Phone");
 export const Play = icon(PlayArt, "Play");
 export const Plus = icon(PlusArt, "Plus");
 export const QrCode = icon(QrCodeArt, "QrCode");

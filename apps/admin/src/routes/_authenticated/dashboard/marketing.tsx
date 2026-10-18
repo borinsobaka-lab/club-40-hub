@@ -15,7 +15,7 @@ import { DashboardShell, type DashboardView } from "@/components/dashboard/dashb
 import { FunnelBars } from "@/components/dashboard/funnel";
 import { MetricTable, ShareCell, type MetricRow } from "@/components/dashboard/metric-table";
 import { useSalesHistory } from "@/components/dashboard/queries";
-import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
+import { StatGrid, type StatDef, type StatList } from "@/components/dashboard/stat-cards";
 import {
   DashboardFunnelSkeleton,
   DashboardMarketingPageSkeleton,
@@ -24,6 +24,7 @@ import {
 } from "@/components/page-skeletons";
 import { GOAL_LABELS, REFERRAL_LABELS } from "@/lib/client-profile";
 import { foldSlices, inPeriod } from "@/lib/dashboard-analytics";
+import type { DetailRow, DetailsSpec } from "@/lib/dashboard-details";
 import {
   OVERVIEW_SERIES,
   loadClientsData,
@@ -80,10 +81,19 @@ const CHANNELS = [
   { key: "mobile", label: "Купил в приложении", color: SERIES_COLORS[1] },
 ] as const;
 
+const CLIENTS_UNIT: DetailsSpec["unit"] = ["клиент", "клиента", "клиентов"];
+const SALES_UNIT: DetailsSpec["unit"] = ["продажа", "продажи", "продаж"];
+
 const NPS_SERIES: SeriesDef = {
   kind: "avg",
   description: "ответы NPS: промоутеры минус критики",
   base: { label: "Ответов", empty: "нет ответов" },
+  details: {
+    title: "Ответы — критиков первыми",
+    unit: ["ответ", "ответа", "ответов"],
+    sort: "dateDesc",
+    empty: "Ответов нет",
+  },
   load: async (studioIds, from, to) => npsPoints(await loadNpsScores(studioIds, from, to)),
 };
 
@@ -93,30 +103,106 @@ function seriesDefs(points: Partial<Record<MarketingKey, SeriesPoint[]>>) {
     key: MarketingKey,
     kind: SeriesDef["kind"],
     description: string,
+    details: DetailsSpec,
     base?: SeriesDef["base"],
-  ): SeriesDef => ({ kind, description, base, load: async () => points[key] ?? [] });
+  ): SeriesDef => ({ kind, description, base, details, load: async () => points[key] ?? [] });
+  const firsts: DetailsSpec = {
+    title: "Первые покупки",
+    unit: CLIENTS_UNIT,
+    format: "money",
+    totalLabel: "Итого",
+    sort: "dateDesc",
+    empty: "Новых покупателей нет",
+  };
   return {
     newClients: OVERVIEW_SERIES.signups,
-    newBuyers: def("newBuyers", "count", "клиенты по дате первой покупки абонемента"),
+    newBuyers: def("newBuyers", "count", "клиенты по дате первой покупки абонемента", firsts),
     purchaseConversion: def(
       "purchaseConversion",
       "avg",
       "новые клиенты месяца регистрации, купившие абонемент",
+      {
+        title: "Новые клиенты — кто не купил, первыми",
+        unit: CLIENTS_UNIT,
+        dateLabel: "Добавлен",
+        sort: "dateDesc",
+        empty: "Новых клиентов нет",
+      },
       { label: "Новых клиентов", empty: "нет новых клиентов" },
     ),
-    trialConversion: def("trialConversion", "avg", "пробные, после которых купили абонемент", {
-      label: "Пробных",
-      empty: "нет пробных",
+    trialConversion: def(
+      "trialConversion",
+      "avg",
+      "пробные, после которых купили абонемент",
+      {
+        title: "Пробные — кто не купил, первыми",
+        unit: CLIENTS_UNIT,
+        dateLabel: "Пробное",
+        sort: "dateDesc",
+        empty: "Пробных нет",
+      },
+      { label: "Пробных", empty: "нет пробных" },
+    ),
+    firstRevenue: def(
+      "firstRevenue",
+      "sum",
+      "стоимость первых абонементов новых покупателей",
+      firsts,
+    ),
+    daysToPurchase: def(
+      "daysToPurchase",
+      "avg",
+      "дней от регистрации до первой покупки",
+      {
+        title: "Покупатели — дольше всех думали сверху",
+        unit: CLIENTS_UNIT,
+        format: "days",
+        sort: "value",
+        empty: "Покупок нет",
+      },
+      { label: "Покупателей", empty: "нет покупок" },
+    ),
+    appSales: def("appSales", "avg", "доля абонементов, купленных в приложении", {
+      title: "Проданные абонементы",
+      unit: SALES_UNIT,
+      format: "money",
+      sort: "dateDesc",
+      empty: "Продаж нет",
     }),
-    firstRevenue: def("firstRevenue", "sum", "стоимость первых абонементов новых покупателей"),
-    daysToPurchase: def("daysToPurchase", "avg", "дней от регистрации до первой покупки", {
-      label: "Покупателей",
-      empty: "нет покупок",
-    }),
-    appSales: def("appSales", "avg", "доля абонементов, купленных в приложении"),
     nps: NPS_SERIES,
-    discounts: def("discounts", "sum", "скидки от цены номенклатуры по дате продажи"),
+    discounts: def("discounts", "sum", "скидки от цены номенклатуры по дате продажи", {
+      title: "Продажи со скидкой",
+      unit: SALES_UNIT,
+      format: "money",
+      totalLabel: "Скидки",
+      sort: "value",
+      empty: "Скидок нет",
+    }),
   } satisfies Partial<Record<MarketingKey, SeriesDef>>;
+}
+
+const APP_MEMBERS_DETAILS: DetailsSpec = {
+  title: "Члены клуба — без приложения первыми",
+  unit: CLIENTS_UNIT,
+  dateLabel: "Добавлен",
+  sort: "dateDesc",
+  empty: "Членов клуба нет",
+};
+
+/** Члены клуба и вошли ли в приложение: не вошедшим не доходят пуши и новости. */
+function appMemberRows(clients: MarketingClient[], memberIds: Set<string>): DetailRow[] {
+  return clients
+    .filter((c) => memberIds.has(c.id))
+    .map((c) => ({
+      key: `client:${c.id}`,
+      date: c.registrationDate ?? "0000-01-01",
+      dateText: c.registrationDate ? undefined : "—",
+      clientId: c.id,
+      badge: c.userId
+        ? { text: "В приложении", tone: "good" as const }
+        : { text: "Нет приложения", tone: "bad" as const },
+      attention: !c.userId,
+    }));
 }
 
 const percent = (n: number) => formatStat("percent", n);
@@ -190,8 +276,16 @@ function MarketingBody(view: DashboardView) {
   const stats = useMemo<StatDef<MarketingKey>[]>(() => {
     const defs: Partial<Record<MarketingKey, SeriesDef>> =
       h && clients ? seriesDefs(marketingSeries({ sales: h.sales, clients })) : {};
-    return MARKETING_STATS.map((s) => ({ ...s, series: defs[s.key] }));
-  }, [h, clients]);
+    const appMembers: StatList = {
+      details: APP_MEMBERS_DETAILS,
+      rows: clients && memberIds && appMemberRows(clients, memberIds),
+    };
+    return MARKETING_STATS.map((s) => ({
+      ...s,
+      series: defs[s.key],
+      list: s.key === "appMembers" ? appMembers : undefined,
+    }));
+  }, [h, clients, memberIds]);
 
   // NPS — отдельный запрос: не загрузился — «—» только у его плитки.
   const metrics = (p: typeof period) => {

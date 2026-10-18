@@ -5,13 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { CategoryPlot, ChartArea, ChartPanel, RankList } from "@/components/dashboard/chart-panel";
 import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { useSalesHistory } from "@/components/dashboard/queries";
-import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
+import { StatGrid, type StatDef, type StatList } from "@/components/dashboard/stat-cards";
 import {
   DashboardClientsPageSkeleton,
   DashboardClientsSkeleton,
 } from "@/components/page-skeletons";
 import { ageGroups, ageOn, clientLtv } from "@/lib/dashboard-analytics";
 import { loadClientsData, loadVisits, type VisitRow } from "@/lib/dashboard-data";
+import type { DetailRow, DetailsSpec } from "@/lib/dashboard-details";
 import {
   CLIENTS_CHARTS,
   CLIENTS_GRID,
@@ -28,7 +29,26 @@ export const Route = createFileRoute("/_authenticated/dashboard/clients")({
   component: ClientsPage,
 });
 
-const STATS: StatDef<ClientsKey>[] = CLIENTS_STATS;
+const MEMBERS_UNIT: DetailsSpec["unit"] = ["член клуба", "члена клуба", "членов клуба"];
+
+const VISITS_DETAILS: DetailsSpec = {
+  title: "Члены клуба — реже всех ходят сверху",
+  unit: MEMBERS_UNIT,
+  valueUnit: ["посещение", "посещения", "посещений"],
+  sort: "valueAsc",
+  noDate: true,
+  empty: "Членов клуба нет",
+};
+
+const LTV_DETAILS: DetailsSpec = {
+  title: "Члены клуба по LTV",
+  unit: MEMBERS_UNIT,
+  format: "money",
+  totalLabel: "Итого",
+  sort: "value",
+  noDate: true,
+  empty: "Членов клуба нет",
+};
 
 function ClientsPage() {
   return (
@@ -127,6 +147,47 @@ function ClientsBody(view: DashboardView) {
         : 0
       : undefined;
 
+  // Подробные отчёты плиток (без графика): кто из членов клуба не ходит —
+  // кандидаты на уход, кто принёс больше всех.
+  const stats = useMemo<StatDef<ClientsKey>[]>(() => {
+    const visitsBy = new Map<string, number>();
+    if (visits && people)
+      for (const v of visits.current) {
+        const id = people.clientOf(v);
+        if (id) visitsBy.set(id, (visitsBy.get(id) ?? 0) + 1);
+      }
+    const memberRow = (c: { id: string }, value: number): DetailRow => ({
+      key: `client:${c.id}`,
+      date: "",
+      clientId: c.id,
+      value,
+    });
+    const lists: Partial<Record<ClientsKey, StatList>> = {
+      visitsPerClient: {
+        details: VISITS_DETAILS,
+        description: "посещения за период",
+        rows:
+          visits && people
+            ? people.members.map((c) => {
+                const n = visitsBy.get(c.id) ?? 0;
+                return {
+                  ...memberRow(c, n),
+                  badge: n === 0 ? { text: "Без посещений", tone: "bad" as const } : undefined,
+                  attention: n === 0,
+                };
+              })
+            : undefined,
+      },
+      ltv: {
+        details: LTV_DETAILS,
+        description: "за всё время",
+        rows:
+          ltv && people ? people.members.map((c) => memberRow(c, ltv.get(c.id) ?? 0)) : undefined,
+      },
+    };
+    return CLIENTS_STATS.map((s) => ({ ...s, list: lists[s.key] }));
+  }, [visits, people, ltv]);
+
   const current: Partial<Record<ClientsKey, number>> = {
     avgAge: people?.avgAge,
     visitsPerClient: perMember(visits?.current),
@@ -140,7 +201,7 @@ function ClientsBody(view: DashboardView) {
     <>
       <StatGrid
         target={view}
-        stats={STATS}
+        stats={stats}
         current={current}
         previous={previous}
         loading={clientsQuery.isLoading || visitsQuery.isLoading || history.isLoading}
