@@ -881,22 +881,84 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       ).toContain("меньше стоимости");
       expect((await rows()).length).toBe(4);
 
-      // Внесённый платёж правкой графика не меняется.
-      expect(
-        await failure(tx, () => replace([{ id: paid.id, amount: 100, due_date: "2030-01-10" }])),
-      ).toContain("уже внесён");
+      // У внесённого платежа меняется только сумма (2026-10-18): отметка и
+      // дата остаются, график в сумме по-прежнему покрывает стоимость.
+      const [{ due: paidDue }] = await tx`
+        select due_date::text as due from sale_installments where id = ${paid.id}`;
+      now = await rows();
+      await replace([
+        { id: paid.id, amount: 40, due_date: "2030-01-10" },
+        ...now
+          .slice(1)
+          .map((r, i) => ({
+            id: r.id,
+            amount: r.amount + (i === 0 ? 10 : 0),
+            due_date: `2030-0${i + 1}-10`,
+          })),
+      ]);
+      const [edited] = await tx`
+        select amount::float as amount, paid, due_date::text as due from sale_installments where id = ${paid.id}`;
+      expect(edited).toEqual({ amount: 40, paid: true, due: paidDue });
+      // Внесённый, которого нет в списке, не удаляется.
+      now = await rows();
+      await replace([
+        { id: now[1].id, amount: 20, due_date: "2030-01-10" },
+        { id: now[2].id, amount: 15, due_date: "2030-02-10" },
+        { id: now[3].id, amount: 25, due_date: "2030-03-10" },
+      ]);
+      expect((await rows()).map((r) => r.amount)).toEqual([40, 20, 15, 25]);
+      // Новый платёж сразу внесённым не становится.
+      expect(await failure(tx, () => replace([{ amount: 10, paid: true }]))).toContain("внесённым");
 
       // Убрали платёж и добавили сумму в другой — всего снова 100.
       now = await rows();
       await replace([
-        { id: now[1].id, amount: 10, due_date: "2030-01-10" },
+        { id: now[1].id, amount: 20, due_date: "2030-01-10" },
         { id: now[2].id, amount: 40, due_date: "2030-02-10" },
       ]);
-      expect((await rows()).map((r) => r.amount)).toEqual([50, 10, 40]);
+      expect((await rows()).map((r) => r.amount)).toEqual([40, 20, 40]);
 
       await tx`insert into refunds (studio_id, sale_id, amount) values (${s.studio}, ${sale}, 10)`;
       expect(await failure(tx, () => replace([{ amount: 50, due_date: "2030-01-10" }]))).toContain(
         "возврат",
+      );
+    });
+  });
+
+  test("правка графика у оплаченного сразу: оплата при продаже становится внесённым платежом", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const sale = await sell(tx, s);
+      await tx`update sales set payment_method = 'card' where id = ${sale}`;
+      const replace = (r: unknown) =>
+        tx`select replace_sale_installments(${sale}, ${JSON.stringify(r)}::text::jsonb)`;
+
+      // Внесли не 100, а 70 — остаток 30 новым платежом.
+      await replace([
+        { id: null, amount: 70, paid: true },
+        { amount: 30, due_date: "2030-01-10" },
+      ]);
+      const rows = await tx`
+        select amount::float as amount, paid, paid_at::text as paid_at, payment_method::text as method,
+               (due_date = current_date) as sold_day
+          from sale_installments where sale_id = ${sale} order by due_date`;
+      expect(rows.map((r: { amount: number; paid: boolean }) => [r.amount, r.paid])).toEqual([
+        [70, true],
+        [30, false],
+      ]);
+      expect(rows[0].method).toBe("card");
+      expect(rows[0].sold_day).toBe(true);
+      expect(rows[0].paid_at).not.toBeNull();
+      const [{ ri }] = await tx`select remaining_installments as ri from sales where id = ${sale}`;
+      expect(ri).toBe(1);
+      const [view] = await tx`
+        select paid_amount::float as paid_amount, payment_state from client_packages_list where id = ${sale}`;
+      expect(view.paid_amount).toBe(70);
+      expect(view.payment_state).not.toBe("paid");
+
+      // График уже есть — второй «оплаты при продаже» не будет.
+      expect(await failure(tx, () => replace([{ id: null, amount: 100, paid: true }]))).toContain(
+        "внесённым",
       );
     });
   });
