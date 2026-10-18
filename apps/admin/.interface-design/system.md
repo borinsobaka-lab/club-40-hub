@@ -182,6 +182,9 @@
   - `DateRangeFilter` (`components/date-range-filter.tsx`) — фильтр по
     периоду: поле с календарём диапазона, подпись `01.10–31.10.26`; два
     `type="date"` для периода в фильтрах не ставим;
+  - `NumberRangeFilter` (`components/number-range-filter.tsx`) — фильтр по
+    числовому промежутку («Абонементы»: баланс): поле, по нажатию — «от» и
+    «до», подпись `Баланс: 2–5`; ширина `w-40`;
   - `Input type="date"` / `"datetime-local"` — одна дата в форме;
   - `ColorInput` (`ui/color-input.tsx`) — цвет: образцы, пипетка, код;
   - `PhoneInput` / `EmailInput` (`components/contact-inputs.tsx`) —

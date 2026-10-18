@@ -1131,4 +1131,43 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(stats.total_top_pct).toBe(100);
     });
   });
+
+  // ---- 2026-10-18. Фильтры «Абонементов» ----
+
+  test("вью абонементов: продавец, остаток баланса и статус как у бейджа", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const [{ id: seller }] = await tx`
+        insert into trainers (full_name, role) values ('Ольга', 'admin') returning id`;
+      const pack = await sell(tx, s);
+      await tx`update sales set seller_id = ${seller} where id = ${pack}`;
+      const personal = await sell(tx, s, { membership: s.personalPack, kind: "upsell" });
+
+      const row = async (id: string) => {
+        const [r] = await tx`
+          select seller_id, balance_left, membership_state
+            from client_packages_list where id = ${id}`;
+        return r;
+      };
+      // Без первого посещения — «Ожидает посещения»; баланс — групповые.
+      expect(await row(pack)).toEqual({
+        seller_id: seller,
+        balance_left: 2,
+        membership_state: "awaiting",
+      });
+      // Пакет персональных: баланс — персональные.
+      expect(await row(personal)).toMatchObject({ seller_id: null, balance_left: 1 });
+
+      // Действующий с прошедшим сроком — «Истёк», как у бейджа.
+      await tx`set local session_replication_role = replica`;
+      await tx`
+        update client_memberships
+           set status = 'active', started_at = current_date - 40, ends_at = current_date - 10
+         where sale_id = ${pack}`;
+      await tx`set local session_replication_role = origin`;
+      expect((await row(pack)).membership_state).toBe("expired");
+      await tx`update client_memberships set status = 'frozen' where sale_id = ${pack}`;
+      expect((await row(pack)).membership_state).toBe("frozen");
+    });
+  });
 });
