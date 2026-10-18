@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -129,7 +130,18 @@ function EmployeesPage() {
   const employees = data?.employees ?? [];
   const studios = data?.studios ?? [];
   const studioName = new Map(studios.map((s) => [s.id, s.name]));
-  const pg = usePagination(employees);
+  const sort = useTableSort<EmployeeRow>({
+    name: (e) => e.full_name,
+    email: (e) => e.email,
+    role: (e) => ROLE_LABEL[e.role],
+    studios: (e) =>
+      e.studios
+        .map((s) => studioName.get(s.studio_id) ?? "")
+        .sort()
+        .join(", "),
+    sections: (e) => railSummary(e),
+  });
+  const pg = usePagination(sort.apply(employees), undefined, sort.key);
 
   const openForm = (employee: EmployeeRow | null) => {
     setEditing(employee);
@@ -158,11 +170,17 @@ function EmployeesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Имя</TableHead>
-                  <TableHead tip={TIPS.email}>Email</TableHead>
-                  <TableHead tip={TIPS.role}>Роль</TableHead>
-                  <TableHead>Клубы</TableHead>
-                  <TableHead tip={TIPS.sections}>Разделы</TableHead>
+                  <TableHead {...sort.head("name")}>Имя</TableHead>
+                  <TableHead tip={TIPS.email} {...sort.head("email")}>
+                    Email
+                  </TableHead>
+                  <TableHead tip={TIPS.role} {...sort.head("role")}>
+                    Роль
+                  </TableHead>
+                  <TableHead {...sort.head("studios")}>Клубы</TableHead>
+                  <TableHead tip={TIPS.sections} {...sort.head("sections")}>
+                    Разделы
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

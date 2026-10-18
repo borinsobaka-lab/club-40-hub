@@ -8,6 +8,7 @@ import { AdminShell } from "@/components/admin-shell";
 import { ContentLangLabel, ContentLangNote, ContentLangSwitch } from "@/components/content-lang";
 import { ImageUploadField, StorageImage } from "@/components/image-upload-field";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,12 @@ function StudiosPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Studio | null>(null);
   const [deleting, setDeleting] = useState<Studio | null>(null);
+  const sort = useTableSort<Studio>({
+    name: (s) => s.name,
+    format: (s) => STUDIO_FORMAT_LABEL[s.format],
+    color: (s) => s.brand_color,
+    app: (s) => STUDIO_FORMAT_APP_URL[s.format],
+  });
 
   const isOwnerAnywhere = studios.some((s) => s.roles.includes("owner"));
   const reload = () => queryClient.invalidateQueries({ queryKey: ["studios"] });
@@ -112,13 +119,17 @@ function StudiosPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Название</TableHead>
+              <TableHead {...sort.head("name")}>Название</TableHead>
               <TableHead className="w-[180px]" tip={TIPS.logo}>
                 Логотип
               </TableHead>
-              <TableHead tip={TIPS.format}>Тип</TableHead>
-              <TableHead tip={TIPS.color}>Цвет</TableHead>
-              <TableHead>Приложение клиентов</TableHead>
+              <TableHead tip={TIPS.format} {...sort.head("format")}>
+                Тип
+              </TableHead>
+              <TableHead tip={TIPS.color} {...sort.head("color")}>
+                Цвет
+              </TableHead>
+              <TableHead {...sort.head("app")}>Приложение клиентов</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -131,7 +142,7 @@ function StudiosPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              studios.map((s) => {
+              sort.apply(studios).map((s) => {
                 const isOwner = s.roles.includes("owner");
                 return (
                   <RowContextMenu

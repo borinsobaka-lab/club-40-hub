@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { StaffTabs } from "@/components/staff-tabs";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { EmployeePhoto } from "@/components/employee-photo";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { InfoNote } from "@/components/ui/form-field";
@@ -20,7 +21,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { TRAINER_ROLES, useEmployees, usePayRates, type PayRates } from "@/lib/staff-directory";
+import {
+  TRAINER_ROLES,
+  useEmployees,
+  usePayRates,
+  type Employee,
+  type PayRates,
+} from "@/lib/staff-directory";
 import { PayRatesPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/pay-rates")({
@@ -63,7 +70,18 @@ function PayRatesPage() {
   const { data: employees = [], isLoading: loading } = useEmployees();
   const { data: rates = [], isLoading: ratesLoading } = usePayRates();
   const byEmployee = new Map(rates.map((r) => [r.trainer_id, r]));
-  const pg = usePagination(employees);
+  // Ставка — сумма, если сотрудник её сейчас получает; выключенные — в конце.
+  const rateOf = (e: Employee, kind: RateKind) => {
+    const r = byEmployee.get(e.id);
+    return r?.[`${kind}_enabled`] ? r[`${kind}_rate`] : null;
+  };
+  const sort = useTableSort<Employee>({
+    name: (e) => e.full_name,
+    admin_shift: (e) => rateOf(e, "admin_shift"),
+    group_training: (e) => rateOf(e, "group_training"),
+    personal_training: (e) => rateOf(e, "personal_training"),
+  });
+  const pg = usePagination(sort.apply(employees), undefined, sort.key);
 
   /** Сохраняет одно изменённое поле; строку ставок заводит при первой правке. */
   const save = async (trainerId: string, patch: RatePatch) => {
@@ -99,9 +117,9 @@ function PayRatesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Сотрудник</TableHead>
+                <TableHead {...sort.head("name")}>Сотрудник</TableHead>
                 {RATE_KINDS.map((k) => (
-                  <TableHead key={k.key} tip={k.tip}>
+                  <TableHead key={k.key} tip={k.tip} {...sort.head(k.key)}>
                     {k.label}
                   </TableHead>
                 ))}

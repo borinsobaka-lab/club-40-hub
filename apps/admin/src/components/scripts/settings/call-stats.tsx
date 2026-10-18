@@ -43,12 +43,16 @@ import {
   pct,
   runProgress,
   type CallStats,
+  type EndStat,
+  type FunnelStep,
 } from "@/lib/scripts/call-stats";
 import { usePlaybook } from "@/lib/scripts/data";
 import { formatWhen, plural } from "@/lib/scripts/logic";
 import { defaultPeriod, periodBounds, type Period } from "@/lib/scripts/period";
 import type { CallNode, CallRunRow, CallStatsRaw } from "@/lib/scripts/types";
 import { cn } from "@/lib/utils";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import { PeriodFilter } from "./period-filter";
 import { Bar, Chip, EmptyCard, LoadMore, StatTile } from "./shared";
 import { afterCursor, PAGE_SIZE, usePaged, type Cursor } from "./use-paged";
@@ -212,7 +216,20 @@ function SectionTitle({ title, hint }: { title: string; hint: string }) {
 
 /* --- Воронка ------------------------------------------------------------- */
 
+type FunnelRow = FunnelStep & { step: number };
+const FUNNEL_GETTERS: SortGetters<FunnelRow> = {
+  step: (s) => s.step,
+  title: (s) => s.title,
+  reached: (s) => s.reached,
+  ended: (s) => s.ended_here || null,
+};
+const ENDS_GETTERS: SortGetters<EndStat> = {
+  title: (e) => e.title,
+  count: (e) => e.count,
+};
+
 function Funnel({ data }: { data: CallStats }) {
+  const sort = useTableSort(FUNNEL_GETTERS);
   if (!data.funnel.length) return null;
   const total = data.totals.runs;
   const endIds = new Set(data.ends.filter((e) => e.script_end).map((e) => e.node_id));
@@ -231,15 +248,21 @@ function Funnel({ data }: { data: CallStats }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12 text-right">#</TableHead>
-              <TableHead>Этап</TableHead>
+              <TableHead className="w-12 text-right" {...sort.head("step")}>
+                #
+              </TableHead>
+              <TableHead {...sort.head("title")}>Этап</TableHead>
               <TableHead className="w-56">Доля дошедших</TableHead>
-              <TableHead className="text-right">Дошли</TableHead>
-              <TableHead className="text-right">Закончились здесь</TableHead>
+              <TableHead className="text-right" {...sort.head("reached")}>
+                Дошли
+              </TableHead>
+              <TableHead className="text-right" {...sort.head("ended")}>
+                Закончились здесь
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.funnel.map((s, i) => {
+            {sort.apply(data.funnel.map((s, i) => ({ ...s, step: i + 1 }))).map((s) => {
               const isEnd = endIds.has(s.node_id);
               const isWorst = worst === s.node_id;
               return (
@@ -249,7 +272,7 @@ function Funnel({ data }: { data: CallStats }) {
                   title={`${s.title}: дошли ${s.reached} из ${total}, закончились здесь ${s.ended_here}`}
                 >
                   <TableCell className="text-right text-muted-foreground tabular-nums">
-                    {i + 1}
+                    {s.step}
                   </TableCell>
                   <TableCell className="font-medium">{s.title}</TableCell>
                   <TableCell>
@@ -287,6 +310,7 @@ function Funnel({ data }: { data: CallStats }) {
 /* --- Где заканчивались звонки --------------------------------------------- */
 
 function Ends({ data }: { data: CallStats }) {
+  const sort = useTableSort(ENDS_GETTERS);
   if (!data.ends.length) return null;
   const total = data.totals.runs;
   const max = Math.max(1, ...data.ends.map((e) => e.count));
@@ -300,14 +324,16 @@ function Ends({ data }: { data: CallStats }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Блок</TableHead>
+              <TableHead {...sort.head("title")}>Блок</TableHead>
               <TableHead className="w-56">Доля</TableHead>
-              <TableHead className="text-right">Звонков</TableHead>
+              <TableHead className="text-right" {...sort.head("count")}>
+                Звонков
+              </TableHead>
               <TableHead className="text-right">%</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.ends.map((e) => (
+            {sort.apply(data.ends).map((e) => (
               <TableRow key={e.node_id} title={`${e.title}: ${e.count} из ${total}`}>
                 <TableCell>
                   <span className="inline-flex flex-wrap items-center gap-2">

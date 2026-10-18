@@ -46,6 +46,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination, usePagination } from "@/components/data-pagination";
+import { useTableSort } from "@/hooks/use-table-sort";
+import type { SortGetters } from "@/lib/table-sort";
 import {
   Dialog,
   DialogContent,
@@ -129,6 +131,23 @@ function RatingCell({ e }: { e: Employee }) {
   );
 }
 
+/** Сортировка колонок (lib/table-sort.ts). */
+const SORT_GETTERS: SortGetters<Employee> = {
+  name: (e) => e.full_name,
+  role: (e) => TRAINER_ROLES[e.role]?.label ?? e.role,
+  studios: (e) =>
+    e.trainer_studios
+      .map((s) => s.studio?.name ?? "")
+      .sort()
+      .join(", "),
+  rating: (e) =>
+    hasRating(e.role) && e.rating_avg != null && e.rating_count ? Number(e.rating_avg) : null,
+  telegram: (e) => e.telegram,
+  bank: (e) => bankLabel(bankOf(e)?.bank),
+  account: (e) => bankOf(e)?.account_number,
+  holder: (e) => bankOf(e)?.account_holder,
+};
+
 /** В поле — ссылка целиком или ник (с @ или без). */
 function telegramHref(value: string) {
   const nick = value.replace(/^@/, "");
@@ -199,7 +218,8 @@ function EmployeesTable({
   onChanged: () => void;
 }) {
   const { confirm, confirmDialog } = useConfirm();
-  const pg = usePagination(employees);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(employees), undefined, sort.key);
 
   const handleDelete = async (e: Employee) => {
     if (
@@ -224,14 +244,28 @@ function EmployeesTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[80px]">Фото</TableHead>
-            <TableHead tip={TIPS.name}>Имя</TableHead>
-            <TableHead tip={TIPS.role}>Роль</TableHead>
-            <TableHead tip={TIPS.studios}>Клубы</TableHead>
-            <TableHead tip={TIPS.rating}>Рейтинг</TableHead>
-            <TableHead>Telegram</TableHead>
-            <TableHead tip={TIPS.bank}>Банк</TableHead>
-            <TableHead tip={TIPS.bank}>Счёт</TableHead>
-            <TableHead tip={TIPS.bank}>Владелец счёта</TableHead>
+            <TableHead tip={TIPS.name} {...sort.head("name")}>
+              Имя
+            </TableHead>
+            <TableHead tip={TIPS.role} {...sort.head("role")}>
+              Роль
+            </TableHead>
+            <TableHead tip={TIPS.studios} {...sort.head("studios")}>
+              Клубы
+            </TableHead>
+            <TableHead tip={TIPS.rating} {...sort.head("rating")}>
+              Рейтинг
+            </TableHead>
+            <TableHead {...sort.head("telegram")}>Telegram</TableHead>
+            <TableHead tip={TIPS.bank} {...sort.head("bank")}>
+              Банк
+            </TableHead>
+            <TableHead tip={TIPS.bank} {...sort.head("account")}>
+              Счёт
+            </TableHead>
+            <TableHead tip={TIPS.bank} {...sort.head("holder")}>
+              Владелец счёта
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

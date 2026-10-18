@@ -9,6 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { sortRows } from "@/lib/table-sort";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,6 +18,11 @@ import { cn } from "@/lib/utils";
  * «Источники клиентов» («Маркетинг»). Первая колонка — название, дальше
  * числа по правому краю; пока данных нет — та же шапка с болванками строк
  * (DashboardTableSkeleton). На телефоне строки — карточки (ui/table).
+ *
+ * Сортировка по клику на заголовок (lib/table-sort.ts) — по `values` строк:
+ * колонка сортируется, если у строк есть значение с её ключом, название —
+ * по ключу `name`. Выключена — порядок, в котором строки пришли.
+ * Приглушённые строки («Без тренера», «Нет ответа») — всегда внизу.
  */
 
 export type MetricColumn = { key: string; label: string; tip?: string };
@@ -25,6 +32,8 @@ export type MetricRow = {
   name: ReactNode;
   /** Значения колонок по ключу; нет значения — «—». */
   cells: Record<string, ReactNode>;
+  /** Значения для сортировки по ключу колонки; `name` — колонка названия. */
+  values?: Record<string, number | string | null | undefined>;
   /** Приглушённая строка («Нет ответа», «Без тренера»). */
   muted?: boolean;
 };
@@ -44,6 +53,20 @@ export function MetricTable({
   error?: boolean;
   emptyText?: string;
 }) {
+  const sort = useTableSort();
+  const sortable = (key: string) => rows.some((r) => r.values && key in r.values);
+  const head = (key: string) => (sortable(key) ? sort.head(key) : {});
+  const active = sort.sort;
+  const sorted = active
+    ? [
+        ...sortRows(
+          rows.filter((r) => !r.muted),
+          active,
+          { [active.key]: (r: MetricRow) => r.values?.[active.key] },
+        ),
+        ...rows.filter((r) => r.muted),
+      ]
+    : rows;
   if (loading)
     return <DashboardTableSkeleton name={nameLabel} columns={columns.map((c) => c.label)} />;
   if (error || rows.length === 0)
@@ -56,16 +79,21 @@ export function MetricTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>{nameLabel}</TableHead>
+          <TableHead {...head("name")}>{nameLabel}</TableHead>
           {columns.map((c) => (
-            <TableHead key={c.key} tip={c.tip} className="text-right [&>span]:justify-end">
+            <TableHead
+              key={c.key}
+              tip={c.tip}
+              className="text-right [&>span]:justify-end"
+              {...head(c.key)}
+            >
               {c.label}
             </TableHead>
           ))}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => (
+        {sorted.map((row) => (
           <TableRow key={row.key} className={cn(row.muted && "text-muted-foreground")}>
             <TableCell className="min-w-40 font-medium">{row.name}</TableCell>
             {columns.map((c) => (
