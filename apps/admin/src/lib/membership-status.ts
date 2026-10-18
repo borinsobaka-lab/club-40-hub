@@ -31,6 +31,21 @@ export const MEMBERSHIP_STATUS_LABEL: Record<string, string> = {
   awaiting: "Ожидает посещения",
 };
 
+/**
+ * Цветная точка статуса в фильтре «Статус» «Абонементов» — тот же оттенок,
+ * что у бейджа (components/membership-status-badge.tsx), насыщенней.
+ */
+export const MEMBERSHIP_STATUS_DOT: Record<string, string> = {
+  active: "bg-emerald-500",
+  frozen: "bg-blue-500",
+  pending: "bg-violet-500",
+  replaced: "bg-amber-500",
+  expired: "bg-muted-foreground/50",
+  cancelled: "bg-rose-500",
+  refunded: "bg-orange-500",
+  awaiting: "bg-yellow-400",
+};
+
 export type MembershipStatusInput = {
   status: CMStatus | null | undefined;
   ends_at?: string | null;
