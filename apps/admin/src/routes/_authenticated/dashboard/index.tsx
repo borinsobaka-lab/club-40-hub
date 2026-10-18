@@ -16,6 +16,7 @@ import {
   renewalRates,
 } from "@/lib/dashboard-analytics";
 import {
+  OVERVIEW_LISTS,
   OVERVIEW_SERIES,
   loadPeriodMetrics,
   loadSnapshotMetrics,
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/")({
 const STATS: StatDef<OverviewKey>[] = OVERVIEW_STATS.map((s) => ({
   ...s,
   series: OVERVIEW_SERIES[s.key],
+  list: OVERVIEW_LISTS[s.key],
 }));
 
 /** Цвета линий — как у продлений и возвратов в долях «Продаж». */

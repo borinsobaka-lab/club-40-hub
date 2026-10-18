@@ -25,27 +25,57 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ChartType } from "@/components/metric-chart-plot";
 import { DashboardStatsSkeleton } from "@/components/page-skeletons";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { toISO, type SeriesDef } from "@/lib/dashboard-data";
+import { toISO, type Period, type SeriesDef } from "@/lib/dashboard-data";
+import { detailRows, type DetailRow, type DetailsSpec } from "@/lib/dashboard-details";
 import { aggregate, buildBuckets, seriesTotal, type Granularity } from "@/lib/dashboard-series";
 import { formatStat, type StatFormat, type StatInfo } from "@/lib/dashboard-stats";
-import { formatNumber } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
  * Плитки показателей дашборда: подпись с «?» (что значит показатель),
  * значение и пометка «за период» / «сейчас» справа от него, ниже — сравнение
  * с предыдущим периодом. Плитка с графиком открывает окно с разбивкой по
- * месяцам / неделям / дням.
+ * месяцам / неделям / дням; у графика с подробным отчётом (SeriesDef.details)
+ * окно шире — график слева, справа список клиентов, продаж, абонементов за
+ * период (нажатие на столбец — за него). «Сейчас»-плитка со списком (list)
+ * открывает только список.
  */
 
-/** Выбранные клубы: по ним грузится график, их название — в окне. */
-type ChartTarget = { clubIds: string[]; scope: string; name: string; color: string };
+/** Выбранные клубы и период: по ним грузится график, их название — в окне. */
+type ChartTarget = {
+  clubIds: string[];
+  scope: string;
+  name: string;
+  color: string;
+  /** Период дашборда — за него список справа от графика. */
+  period: Period | null;
+};
+
+/**
+ * Подробный отчёт плитки без графика: строки грузит `load` при открытии
+ * окна или страница отдаёт уже посчитанные (`rows`; undefined — ещё грузятся).
+ */
+export type StatList = {
+  details: DetailsSpec;
+  /** Подзаголовок окна после клубов; по умолчанию «на сегодня». */
+  description?: string;
+} & (
+  | { load: (studioIds: string[]) => Promise<DetailRow[]>; rows?: never }
+  | { rows: DetailRow[] | undefined; load?: never }
+);
 
 /** Плитка: подпись, подсказка и вид значения (lib/dashboard-stats.ts) и график в окне. */
 export type StatDef<K extends string = string> = StatInfo<K> & {
-  /** График в окне плитки; без него плитка не нажимается. */
+  /** График в окне плитки; без него и без списка плитка не нажимается. */
   series?: SeriesDef;
+  /** Только список (у «сейчас»-плиток истории для графика нет). */
+  list?: StatList;
 };
+
+// Список с карточкой клиента (формы, libphonenumber-js) — отдельным чанком,
+// как и график: дашборд открывается первым после входа.
+const DetailsPanel = lazy(() => import("@/components/dashboard/details-panel"));
 
 /** Единица разницы в пунктах — у долей и индексов. */
 const POINTS: Partial<Record<StatFormat, string>> = { percent: " п. п.", score: " п." };
@@ -115,7 +145,10 @@ export function StatGrid<K extends string>({
   className: string;
 }) {
   // Показатель держим и после закрытия: иначе окно пустеет, пока гаснет.
-  const [chartStat, setChartStat] = useState<StatDef<K> | null>(null);
+  // Храним ключ, а не саму плитку: страница пересчитывает её график и список,
+  // когда догружаются данные, — окно должно показывать свежие.
+  const [chartKey, setChartKey] = useState<K | null>(null);
+  const chartStat = stats.find((s) => s.key === chartKey) ?? null;
   const [chartOpen, setChartOpen] = useState(false);
 
   if (loading)
@@ -145,9 +178,9 @@ export function StatGrid<K extends string>({
                 ) : null
               }
               onOpenChart={
-                stat.series
+                stat.series || stat.list
                   ? () => {
-                      setChartStat(stat);
+                      setChartKey(stat.key);
                       setChartOpen(true);
                     }
                   : undefined
@@ -158,8 +191,16 @@ export function StatGrid<K extends string>({
       </div>
 
       <Dialog open={chartOpen} onOpenChange={setChartOpen}>
-        <DialogContent className="sm:max-w-5xl">
-          {chartStat?.series && (
+        <DialogContent
+          className={
+            chartStat?.series?.details
+              ? "sm:max-w-7xl"
+              : chartStat?.series
+                ? "sm:max-w-5xl"
+                : "sm:max-w-2xl"
+          }
+        >
+          {chartStat?.series ? (
             <MetricChart
               key={chartStat.key}
               target={target}
@@ -167,6 +208,15 @@ export function StatGrid<K extends string>({
               def={chartStat.series}
               periodEnd={periodEnd}
             />
+          ) : (
+            chartStat?.list && (
+              <MetricList
+                key={chartStat.key}
+                target={target}
+                stat={chartStat}
+                list={chartStat.list}
+              />
+            )
           )}
         </DialogContent>
       </Dialog>
@@ -203,7 +253,9 @@ function StatCard({
           onClick={onOpenChart}
           className="absolute inset-0 cursor-pointer rounded-lg focus-visible:outline-none"
         >
-          <span className="sr-only">{stat.label} — открыть график</span>
+          <span className="sr-only">
+            {stat.label} — {stat.series ? "открыть график" : "открыть список"}
+          </span>
         </button>
       )}
       {chartable && (
@@ -235,10 +287,35 @@ function StatCard({
 /** Знаменатель среднего по умолчанию — продажи (средний чек). */
 const SALES_BASE = { label: "Продаж", empty: "нет продаж" };
 
-const GRANULARITIES: { value: Granularity; label: string; span: string; unit: string }[] = [
-  { value: "month", label: "По месяцам", span: "12 месяцев", unit: "месяц" },
-  { value: "week", label: "По неделям", span: "12 недель", unit: "неделю" },
-  { value: "day", label: "По дням", span: "30 дней", unit: "день" },
+const GRANULARITIES: {
+  value: Granularity;
+  label: string;
+  span: string;
+  unit: string;
+  /** Подсказка под графиком с отчётом: «Список за отдельный месяц — …». */
+  pick: string;
+}[] = [
+  {
+    value: "month",
+    label: "По месяцам",
+    span: "12 месяцев",
+    unit: "месяц",
+    pick: "отдельный месяц — нажмите на него",
+  },
+  {
+    value: "week",
+    label: "По неделям",
+    span: "12 недель",
+    unit: "неделю",
+    pick: "отдельную неделю — нажмите на неё",
+  },
+  {
+    value: "day",
+    label: "По дням",
+    span: "30 дней",
+    unit: "день",
+    pick: "отдельный день — нажмите на него",
+  },
 ];
 
 // График (recharts, ~100 kB gzip) — отдельным чанком: дашборд открывается
@@ -270,7 +347,10 @@ function MetricChart({
 }) {
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [chartType, setChartType] = useState<ChartType>("bar");
+  // Нажатый столбец — список справа за него; ещё раз — снова за период.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const details = def.details;
 
   const anchor = def.future ? periodEnd : min([periodEnd, new Date()]);
   const anchorISO = toISO(anchor);
@@ -278,21 +358,40 @@ function MetricChart({
     () => buildBuckets(granularity, new Date(`${anchorISO}T00:00:00`)),
     [granularity, anchorISO],
   );
-  const from = buckets[0].from;
+  const period = target.period;
+  // Список — за период дашборда: если тот начинается раньше графика (длинный
+  // период и разбивка по дням), строки грузим и за него.
+  const from = details && period && period.from < buckets[0].from ? period.from : buckets[0].from;
   const to = buckets[buckets.length - 1].to;
 
   const query = useQuery({
     queryKey: ["dashboard", target.scope, "series", stat.key, granularity, from, to],
     queryFn: async () => {
       const points = await def.load(target.clubIds, from, to);
-      return aggregate(granularity, buckets, points, def.kind);
+      return {
+        values: aggregate(granularity, buckets, points, def.kind),
+        rows: details ? points.flatMap((p) => (p.row ? [p.row] : [])) : [],
+      };
     },
     // Пока грузится другая разбивка — прежний график, а не пустое место.
     placeholderData: keepPreviousData,
     meta: { errorMessage: `${target.name}: не удалось загрузить график «${stat.label}»` },
   });
 
-  const values = query.data;
+  const values = query.data?.values;
+  const selectedIndex = values?.findIndex((v) => v.bucket.key === selectedKey) ?? -1;
+  const selected = selectedIndex >= 0 && !query.isPlaceholderData ? values![selectedIndex] : null;
+  const listRange = selected
+    ? { from: selected.bucket.from, to: selected.bucket.to }
+    : (period ?? { from: buckets[0].from, to });
+  const { from: listFrom, to: listTo } = listRange;
+  const rows = useMemo(
+    () =>
+      details && query.data && !query.isPlaceholderData
+        ? detailRows(query.data.rows, details, { from: listFrom, to: listTo })
+        : undefined,
+    [details, query.data, query.isPlaceholderData, listFrom, listTo],
+  );
   const g = GRANULARITIES.find((x) => x.value === granularity)!;
   const fmt = (n: number) => formatStat(stat.format, n);
   const color = target.color;
@@ -340,6 +439,95 @@ function MetricChart({
     },
   ];
 
+  const chart = (
+    <div className="min-w-0 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SegmentedControl
+          aria-label="Разбивка"
+          value={granularity}
+          onChange={(g) => {
+            setGranularity(g);
+            setSelectedKey(null);
+          }}
+          options={GRANULARITIES}
+        />
+        <SegmentedControl
+          aria-label="Вид графика"
+          iconOnly
+          value={chartType}
+          onChange={setChartType}
+          options={CHART_TYPES}
+        />
+      </div>
+
+      {/* На телефоне итоги — строками «подпись · значение»: в трети ширины
+          суммы вида «18 222 313 GEL» обрезались. */}
+      <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
+        {summary.map((s) => (
+          <div
+            key={s.label}
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border px-3 py-2 sm:grid-cols-1 sm:content-start sm:p-3"
+          >
+            <div className="text-xs text-muted-foreground">{s.label}</div>
+            {values ? (
+              <div className="whitespace-nowrap text-base font-semibold tabular-nums max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1 sm:truncate sm:text-lg">
+                {s.value}
+              </div>
+            ) : (
+              <Skeleton className="h-6 w-20 max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1.5" />
+            )}
+            {s.note && (
+              <div className="truncate text-xs text-muted-foreground first-letter:uppercase">
+                {s.note}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div
+        className={cn("relative transition-opacity", query.isPlaceholderData && "opacity-50")}
+        style={{ height: isMobile ? 260 : 340 }}
+      >
+        {!values ? (
+          query.isError ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Не удалось загрузить график
+            </div>
+          ) : (
+            <Skeleton className="h-full w-full" />
+          )
+        ) : filled.length === 0 && !query.isPlaceholderData ? (
+          <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+            Нет данных за {g.span}
+          </div>
+        ) : (
+          <Suspense fallback={<Skeleton className="h-full w-full" />}>
+            <MetricChartPlot
+              data={data}
+              chartType={chartType}
+              color={color}
+              dots={granularity !== "day"}
+              format={fmt}
+              showDeals={def.kind === "avg"}
+              base={base}
+              selected={selected ? selectedIndex : null}
+              onSelect={
+                details
+                  ? (i) => {
+                      const key = values[i]?.bucket.key ?? null;
+                      setSelectedKey((prev) => (prev === key ? null : key));
+                    }
+                  : undefined
+              }
+            />
+          </Suspense>
+        )}
+      </div>
+      {details && <p className="text-xs text-muted-foreground">Список за {g.pick} на графике.</p>}
+    </div>
+  );
+
   return (
     <>
       <DialogHeader>
@@ -348,78 +536,80 @@ function MetricChart({
           {target.name} · {def.description}
         </DialogDescription>
       </DialogHeader>
-      <DialogBody className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <SegmentedControl
-            aria-label="Разбивка"
-            value={granularity}
-            onChange={setGranularity}
-            options={GRANULARITIES}
-          />
-          <SegmentedControl
-            aria-label="Вид графика"
-            iconOnly
-            value={chartType}
-            onChange={setChartType}
-            options={CHART_TYPES}
-          />
-        </div>
-
-        {/* На телефоне итоги — строками «подпись · значение»: в трети ширины
-            суммы вида «18 222 313 GEL» обрезались. */}
-        <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
-          {summary.map((s) => (
-            <div
-              key={s.label}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border px-3 py-2 sm:grid-cols-1 sm:content-start sm:p-3"
-            >
-              <div className="text-xs text-muted-foreground">{s.label}</div>
-              {values ? (
-                <div className="whitespace-nowrap text-base font-semibold tabular-nums max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1 sm:truncate sm:text-lg">
-                  {s.value}
-                </div>
-              ) : (
-                <Skeleton className="h-6 w-20 max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1.5" />
-              )}
-              {s.note && (
-                <div className="truncate text-xs text-muted-foreground first-letter:uppercase">
-                  {s.note}
-                </div>
-              )}
+      <DialogBody>
+        {details ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+            {chart}
+            {/* Высоту строки задаёт график, список прокручивается внутри
+                (на широком экране — absolute в details-panel). */}
+            <div className="relative min-h-0 max-lg:min-h-64">
+              <Suspense fallback={<Skeleton className="h-full min-h-64 w-full" />}>
+                <DetailsPanel
+                  fit
+                  spec={details}
+                  rows={rows}
+                  loading={!rows && !query.isError}
+                  error={query.isError}
+                  range={
+                    selected
+                      ? { label: selected.bucket.label, onReset: () => setSelectedKey(null) }
+                      : { label: rangeLabel(listRange) }
+                  }
+                />
+              </Suspense>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          chart
+        )}
+      </DialogBody>
+    </>
+  );
+}
 
-        <div
-          className={cn("relative transition-opacity", query.isPlaceholderData && "opacity-50")}
-          style={{ height: isMobile ? 260 : 340 }}
-        >
-          {!values ? (
-            query.isError ? (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Не удалось загрузить график
-              </div>
-            ) : (
-              <Skeleton className="h-full w-full" />
-            )
-          ) : filled.length === 0 && !query.isPlaceholderData ? (
-            <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-              Нет данных за {g.span}
-            </div>
-          ) : (
-            <Suspense fallback={<Skeleton className="h-full w-full" />}>
-              <MetricChartPlot
-                data={data}
-                chartType={chartType}
-                color={color}
-                dots={granularity !== "day"}
-                format={fmt}
-                showDeals={def.kind === "avg"}
-                base={base}
-              />
-            </Suspense>
-          )}
-        </div>
+/** «1.10.2026 – 31.10.2026» — за что список, когда столбец не выбран. */
+function rangeLabel(range: Period) {
+  return range.from === range.to
+    ? formatDate(range.from)
+    : `${formatDate(range.from)} – ${formatDate(range.to)}`;
+}
+
+/** Окно «сейчас»-плитки: только список, от периода дашборда не зависит. */
+function MetricList({
+  target,
+  stat,
+  list,
+}: {
+  target: ChartTarget;
+  stat: StatDef;
+  list: StatList;
+}) {
+  const load = list.load;
+  const query = useQuery({
+    queryKey: ["dashboard", target.scope, "list", stat.key],
+    queryFn: () => load!(target.clubIds),
+    enabled: !!load,
+    meta: { errorMessage: `${target.name}: не удалось загрузить список «${stat.label}»` },
+  });
+  const source = load ? query.data : list.rows;
+  const rows = useMemo(() => source && detailRows(source, list.details), [source, list.details]);
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{stat.label}</DialogTitle>
+        <DialogDescription>
+          {target.name} · {list.description ?? "на сегодня"}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+          <DetailsPanel
+            spec={list.details}
+            rows={rows}
+            loading={!rows && !query.isError}
+            error={query.isError}
+          />
+        </Suspense>
       </DialogBody>
     </>
   );

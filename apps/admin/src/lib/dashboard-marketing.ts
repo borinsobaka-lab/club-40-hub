@@ -1,7 +1,9 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
 
 import { inPeriod, sumBy, type SaleRecord } from "@/lib/dashboard-analytics";
+import { conversionBadge, saleDetail, type DetailRow } from "@/lib/dashboard-details";
 import type { SeriesPoint } from "@/lib/dashboard-series";
+import { formatMoney } from "@/lib/format";
 import type { MarketingKey } from "@/lib/dashboard-stats";
 
 /**
@@ -94,7 +96,18 @@ export type MarketingInput = {
   /** Члены клуба (ЧК) — для доли в приложении. */
   memberIds: Set<string>;
   /** Оценки NPS с датой ответа (локальная yyyy-MM-dd). */
-  nps: { date: string; score: number }[];
+  nps: NpsAnswer[];
+};
+
+/** Ответ NPS: оценка и дата; кто ответил и комментарий — для подробного отчёта. */
+export type NpsAnswer = {
+  date: string;
+  score: number;
+  id?: string;
+  clientId?: string | null;
+  userId?: string | null;
+  name?: string | null;
+  comment?: string | null;
 };
 
 /** Плитки «Маркетинга» за период; не посчитать (нет базы для доли) — undefined. */
@@ -132,7 +145,8 @@ export function marketingMetrics(
 /**
  * Точки графиков плиток «Маркетинга» — из уже загруженных строк: у долей и
  * средних сумма и знаменатель по клиенту, продаже или ответу
- * (lib/dashboard-series.ts, avg). Точки вне корзин отбросит aggregate.
+ * (lib/dashboard-series.ts, avg). Точки вне корзин отбросит aggregate. У
+ * точек — строки подробного отчёта (кто купил, кто не купил после пробного).
  */
 export function marketingSeries(
   input: Pick<MarketingInput, "sales" | "clients">,
@@ -141,38 +155,107 @@ export function marketingSeries(
   const firsts = [...first.values()];
   const registration = new Map(input.clients.map((c) => [c.id, c.registrationDate]));
   const trials = trialOutcomes(input.sales, "0000-01-01", "9999-12-31");
+  const sinceRegistration = (s: SaleRecord) => {
+    const reg = registration.get(s.clientId);
+    return reg ? daysBetween(reg, s.soldAt) : undefined;
+  };
+  const firstRow = (s: SaleRecord) => {
+    const days = sinceRegistration(s);
+    return saleDetail(s, {
+      note: days === undefined ? undefined : `Через ${days} дн. после регистрации`,
+    });
+  };
   return {
-    newBuyers: firsts.map((s) => ({ date: s.soldAt, amount: 0, n: 1 })),
-    purchaseConversion: input.clients.flatMap((c) =>
-      c.registrationDate && c.ownClub !== false
-        ? [{ date: c.registrationDate, amount: first.has(c.id) ? 100 : 0, n: 1 }]
-        : [],
-    ),
+    newBuyers: firsts.map((s) => ({ date: s.soldAt, amount: 0, n: 1, row: firstRow(s) })),
+    purchaseConversion: input.clients.flatMap((c) => {
+      if (!c.registrationDate || c.ownClub === false) return [];
+      const sale = first.get(c.id);
+      const row: DetailRow = {
+        key: `client:${c.id}`,
+        date: c.registrationDate,
+        clientId: c.id,
+        title: sale?.membershipName,
+        badge: sale ? { text: "Купил", tone: "good" } : { text: "Не купил", tone: "bad" },
+        attention: !sale,
+      };
+      return [{ date: c.registrationDate, amount: sale ? 100 : 0, n: 1, row }];
+    }),
     trialConversion: trials.map((t) => ({
       date: t.trial.soldAt,
       amount: t.converted ? 100 : 0,
       n: 1,
+      // Цена пробного в этом списке ни о чём не говорит — без суммы.
+      row: saleDetail(t.trial, {
+        value: undefined,
+        badge: conversionBadge(t.converted),
+        attention: !t.converted,
+      }),
     })),
-    firstRevenue: firsts.map((s) => ({ date: s.soldAt, amount: s.totalAmount, n: 1 })),
+    firstRevenue: firsts.map((s) => ({
+      date: s.soldAt,
+      amount: s.totalAmount,
+      n: 1,
+      row: firstRow(s),
+    })),
     daysToPurchase: firsts.flatMap((s) => {
-      const reg = registration.get(s.clientId);
-      return reg ? [{ date: s.soldAt, amount: daysBetween(reg, s.soldAt), n: 1 }] : [];
+      const days = sinceRegistration(s);
+      return days === undefined
+        ? []
+        : [{ date: s.soldAt, amount: days, n: 1, row: saleDetail(s, { value: days }) }];
     }),
     appSales: input.sales.map((s) => ({
       date: s.soldAt,
       amount: s.source === "mobile" ? 100 : 0,
       n: 1,
+      row: saleDetail(s, {
+        badge:
+          s.source === "mobile"
+            ? { text: "В приложении", tone: "good" }
+            : { text: "Администратор", tone: "muted" },
+      }),
     })),
-    discounts: input.sales.map((s) => ({ date: s.soldAt, amount: s.discount, n: 1 })),
+    // В отчёте — только продажи со скидкой.
+    discounts: input.sales.map((s) => ({
+      date: s.soldAt,
+      amount: s.discount,
+      n: 1,
+      row:
+        s.discount > 0
+          ? saleDetail(s, {
+              value: s.discount,
+              note: [s.promoCode && `Промокод ${s.promoCode}`, `Цена ${formatMoney(s.totalAmount)}`]
+                .filter(Boolean)
+                .join(" · "),
+            })
+          : undefined,
+    })),
   };
 }
 
+const NPS_BADGE = {
+  promoter: { text: "Промоутер", tone: "good" },
+  passive: { text: "Нейтрал", tone: "muted" },
+  detractor: { text: "Критик", tone: "bad" },
+} as const satisfies Record<string, DetailRow["badge"]>;
+
 /** Точки графика NPS: промоутер +100, критик −100, нейтральный 0 — среднее и есть NPS. */
 export function npsPoints(rows: MarketingInput["nps"]): SeriesPoint[] {
-  return rows.map((r) => ({
+  return rows.map((r, i) => ({
     date: r.date,
     amount: r.score >= 9 ? 100 : r.score <= 6 ? -100 : 0,
     n: 1,
+    row: {
+      key: `nps:${r.id ?? i}`,
+      date: r.date,
+      clientId: r.clientId,
+      userId: r.userId,
+      name: r.name ?? undefined,
+      note: r.comment ?? undefined,
+      value: r.score,
+      badge: NPS_BADGE[r.score >= 9 ? "promoter" : r.score <= 6 ? "detractor" : "passive"],
+      // Критик — повод связаться и разобраться.
+      attention: r.score <= 6,
+    },
   }));
 }
 

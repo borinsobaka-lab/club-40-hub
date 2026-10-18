@@ -49,6 +49,7 @@ import {
   type ClassesKey,
 } from "@/lib/dashboard-classes";
 import { loadCancelledBookings, loadClassEntries, type SeriesDef } from "@/lib/dashboard-data";
+import type { DetailsSpec } from "@/lib/dashboard-details";
 import {
   CLASSES_CHARTS,
   CLASSES_COLUMNS,
@@ -79,46 +80,105 @@ function ClassesPage() {
 
 /**
  * Графики плиток — занятия за окно графика (12 месяцев / недель, 30 дней),
- * только статусы записей. У «Клиентов на занятиях» графика нет: разные
- * клиенты по месяцам не складываются.
+ * только статусы записей; «Не пришли» и персональные — с карточками
+ * записанных: их отчёт — клиенты. У «Клиентов на занятиях» графика нет:
+ * разные клиенты по месяцам не складываются.
  */
 function seriesDef(
   key: Exclude<ClassesKey, "uniqueClients">,
   kind: SeriesDef["kind"],
   description: string,
+  details: DetailsSpec,
   base?: SeriesDef["base"],
 ): SeriesDef {
+  const light = key !== "noShows" && key !== "personal";
   return {
     kind,
     description,
     base,
+    details,
     load: async (studioIds, from, to) =>
-      classesSeries(await loadClassEntries(studioIds, from, to, true), Date.now(), key),
+      classesSeries(await loadClassEntries(studioIds, from, to, light), Date.now(), key, true),
   };
 }
 
+const ENTRIES_UNIT: DetailsSpec["unit"] = ["занятие", "занятия", "занятий"];
+const VISITS_UNIT: DetailsSpec["unit"] = ["посещение", "посещения", "посещений"];
+
+/** Отчёт по занятиям: число справа — доля или посещения. */
+const entries = (
+  title: string,
+  sort: DetailsSpec["sort"],
+  value: Pick<DetailsSpec, "format" | "valueUnit">,
+): DetailsSpec => ({ title, unit: ENTRIES_UNIT, sort, empty: "Занятий нет", ...value });
+
 const CLASSES_SERIES: Partial<Record<ClassesKey, SeriesDef>> = {
-  fillRate: seriesDef("fillRate", "avg", "посещения / вместимость групповых занятий", {
-    label: "Мест",
-    empty: "нет занятий",
+  fillRate: seriesDef(
+    "fillRate",
+    "avg",
+    "посещения / вместимость групповых занятий",
+    entries("Занятия — пустые первыми", "valueAsc", { format: "percent" }),
+    { label: "Мест", empty: "нет занятий" },
+  ),
+  showRate: seriesDef(
+    "showRate",
+    "avg",
+    "«Посетил» / («Посетил» + «Не пришёл»)",
+    entries("Занятия — с пропусками первыми", "valueAsc", { format: "percent" }),
+    { label: "Отмеченных записей", empty: "нет отметок" },
+  ),
+  avgPerClass: seriesDef(
+    "avgPerClass",
+    "avg",
+    "посещения / проведённые групповые занятия",
+    entries("Занятия — меньше всего посещений первыми", "valueAsc", { valueUnit: VISITS_UNIT }),
+    { label: "Занятий", empty: "нет занятий" },
+  ),
+  visits: seriesDef(
+    "visits",
+    "count",
+    "отмеченные посещения групповых занятий",
+    entries("Занятия по посещениям", "value", { valueUnit: VISITS_UNIT }),
+  ),
+  classes: seriesDef(
+    "classes",
+    "count",
+    "проведённые групповые занятия",
+    entries("Проведённые занятия", "dateDesc", { valueUnit: VISITS_UNIT }),
+  ),
+  personal: seriesDef("personal", "count", "отмеченные посещения персональных тренировок", {
+    title: "Кто ходил на персональные",
+    unit: ["клиент", "клиента", "клиентов"],
+    valueUnit: ["тренировка", "тренировки", "тренировок"],
+    dateLabel: "Последняя",
+    sort: "value",
+    group: true,
+    empty: "Персональных нет",
   }),
-  showRate: seriesDef("showRate", "avg", "«Посетил» / («Посетил» + «Не пришёл»)", {
-    label: "Отмеченных записей",
-    empty: "нет отметок",
+  cancelRate: seriesDef(
+    "cancelRate",
+    "avg",
+    "отменённые записи / все записи",
+    entries("Занятия с отменами записей", "value", {
+      valueUnit: ["отмена", "отмены", "отмен"],
+    }),
+    { label: "Записей", empty: "нет записей" },
+  ),
+  noShows: seriesDef("noShows", "count", "записи с отметкой «Не пришёл»", {
+    title: "Кто не пришёл",
+    unit: ["клиент", "клиента", "клиентов"],
+    valueUnit: ["пропуск", "пропуска", "пропусков"],
+    dateLabel: "Последний",
+    sort: "value",
+    group: true,
+    empty: "Пропусков нет",
   }),
-  avgPerClass: seriesDef("avgPerClass", "avg", "посещения / проведённые групповые занятия", {
-    label: "Занятий",
-    empty: "нет занятий",
+  cancelledClasses: seriesDef("cancelledClasses", "count", "групповые занятия, отменённые клубом", {
+    title: "Отменённые занятия",
+    unit: ENTRIES_UNIT,
+    sort: "dateDesc",
+    empty: "Отмен нет",
   }),
-  visits: seriesDef("visits", "count", "отмеченные посещения групповых занятий"),
-  classes: seriesDef("classes", "count", "проведённые групповые занятия"),
-  personal: seriesDef("personal", "count", "отмеченные посещения персональных тренировок"),
-  cancelRate: seriesDef("cancelRate", "avg", "отменённые записи / все записи", {
-    label: "Записей",
-    empty: "нет записей",
-  }),
-  noShows: seriesDef("noShows", "count", "записи с отметкой «Не пришёл»"),
-  cancelledClasses: seriesDef("cancelledClasses", "count", "групповые занятия, отменённые клубом"),
 };
 
 const STATS: StatDef<ClassesKey>[] = CLASSES_STATS.map((s) => ({

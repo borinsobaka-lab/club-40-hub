@@ -1,3 +1,4 @@
+import type { DetailRow } from "@/lib/dashboard-details";
 import type { SeriesPoint } from "@/lib/dashboard-series";
 import { formatNumber } from "@/lib/format";
 
@@ -20,6 +21,9 @@ export type ClassBooking = {
   status: string;
   /** Кто записан: карточка клиента, иначе учётная запись приложения. */
   client: string | null;
+  /** Карточка и учётная запись по отдельности — для подробного отчёта (не light-загрузка). */
+  clientId?: string | null;
+  userId?: string | null;
 };
 
 export type ClassEntry = {
@@ -210,19 +214,34 @@ export function classesMetrics(entries: ClassEntry[], now: number) {
 /**
  * Точки графика плитки (окно «По месяцам / неделям / дням»): у долей и
  * среднего — сумма и знаменатель по занятию (lib/dashboard-series.ts, avg),
- * у счётчиков — число штук.
+ * у счётчиков — число штук. `withRows` — со строками подробного отчёта:
+ * занятие (тренировка, время, тренер, число) или, у «Не пришли» и
+ * персональных, клиент — для них записи нужны с карточкой (не light).
  */
 export function classesSeries(
   entries: ClassEntry[],
   now: number,
   key: Exclude<ClassesKey, "uniqueClients">,
+  withRows = false,
 ): SeriesPoint[] {
   const out: SeriesPoint[] = [];
   for (const e of entries) {
-    const point = (amount: number, n: number) => out.push({ date: e.date, amount, n });
+    const point = (amount: number, n: number, value?: number) =>
+      out.push({
+        date: e.date,
+        amount,
+        n,
+        ...(withRows && { row: entryRow(e, value) }),
+      });
     if (key === "personal") {
-      if (e.kind === "personal" && !e.cancelled && e.startsAt <= now)
+      if (e.kind !== "personal" || e.cancelled || e.startsAt > now) continue;
+      if (!withRows) {
         point(0, entryCounts(e).visits);
+        continue;
+      }
+      for (const b of e.bookings)
+        if (b.status === "attended")
+          out.push({ date: e.date, amount: 0, n: 1, row: bookingRow(e, b) });
       continue;
     }
     if (key === "cancelledClasses") {
@@ -231,16 +250,56 @@ export function classesSeries(
     }
     if (!isHeld(e, now)) continue;
     const c = entryCounts(e);
-    if (key === "visits") point(0, c.visits);
-    else if (key === "noShows") point(0, c.noShows);
-    else if (key === "classes") point(0, 1);
-    else if (key === "avgPerClass") point(c.visits, 1);
+    if (key === "visits") point(0, c.visits, c.visits);
+    else if (key === "noShows") {
+      if (!withRows) point(0, c.noShows);
+      else
+        for (const b of e.bookings)
+          if (b.status === "no_show")
+            out.push({ date: e.date, amount: 0, n: 1, row: bookingRow(e, b) });
+    } else if (key === "classes") point(0, 1, c.visits);
+    else if (key === "avgPerClass") point(c.visits, 1, c.visits);
     else if (key === "fillRate") {
-      if (e.capacity) point(c.visits * 100, e.capacity);
-    } else if (key === "showRate") point(c.visits * 100, c.visits + c.noShows);
-    else point(c.cancelled * 100, c.cancelled + c.held);
+      if (e.capacity) point(c.visits * 100, e.capacity, (c.visits / e.capacity) * 100);
+    } else if (key === "showRate") {
+      const marked = c.visits + c.noShows;
+      point(c.visits * 100, marked, marked ? (c.visits / marked) * 100 : undefined);
+    } else {
+      const base = c.cancelled + c.held;
+      // В отчёте — только занятия с отменами.
+      out.push({
+        date: e.date,
+        amount: c.cancelled * 100,
+        n: base,
+        ...(withRows && c.cancelled > 0 && { row: entryRow(e, c.cancelled) }),
+      });
+    }
   }
   return out;
+}
+
+/** «Пн 19:00 · Иванова» — когда и кто вёл. */
+function entryWhen(e: ClassEntry) {
+  const trainers = e.trainers.map((t) => t.name).join(", ");
+  return [`${WEEKDAYS[e.weekday]} ${e.time}`, trainers].filter(Boolean).join(" · ");
+}
+
+/** Занятие строкой отчёта: тренировка, день, время и тренер, число справа. */
+function entryRow(e: ClassEntry, value?: number): DetailRow {
+  return { key: `entry:${e.id}`, date: e.date, name: e.workoutName, title: entryWhen(e), value };
+}
+
+/** Запись на занятие строкой отчёта: клиент, тренировка и когда. */
+function bookingRow(e: ClassEntry, b: ClassBooking): DetailRow {
+  return {
+    key: `booking:${e.id}:${b.clientId ?? b.userId ?? b.client}`,
+    date: e.date,
+    clientId: b.clientId ?? null,
+    userId: b.clientId ? null : (b.userId ?? null),
+    title: e.workoutName,
+    note: entryWhen(e),
+    value: 1,
+  };
 }
 
 // ---------------------------------------------------------------------------

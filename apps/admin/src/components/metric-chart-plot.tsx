@@ -5,9 +5,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
   ResponsiveContainer,
+  ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
@@ -44,6 +46,8 @@ export function MetricChartPlot({
   format,
   showDeals,
   base = { label: "Продаж", empty: "нет продаж" },
+  selected = null,
+  onSelect,
 }: {
   data: ChartPoint[];
   chartType: ChartType;
@@ -55,6 +59,10 @@ export function MetricChartPlot({
   showDeals: boolean;
   /** Чем считается знаменатель: подпись и текст пустой корзины. */
   base?: { label: string; empty: string };
+  /** Выбранная корзина (индекс) — подсвечена, остальные бледнее. */
+  selected?: number | null;
+  /** Нажатие на корзину — подробный отчёт за неё (список справа в окне). */
+  onSelect?: (index: number) => void;
 }) {
   const gradientId = `chart-fill-${useId().replace(/:/g, "")}`;
   // У средних корзина без продаж — null, а не 0. Линия и область рисуются
@@ -98,7 +106,22 @@ export function MetricChartPlot({
       }}
     />
   );
-  const common = { data, margin: { top: 8, right: 8, bottom: 0, left: 0 } };
+  const common = {
+    data,
+    margin: { top: 8, right: 8, bottom: 0, left: 0 },
+    // Нажатие в любом месте над корзиной, а не только по столбцу: у низких
+    // столбцов и у линии попасть иначе трудно.
+    onClick: onSelect
+      ? (state: { activeTooltipIndex?: number } | null) => {
+          if (state?.activeTooltipIndex != null) onSelect(state.activeTooltipIndex);
+        }
+      : undefined,
+    style: onSelect ? { cursor: "pointer" } : undefined,
+  };
+  // У линии и области выбранная корзина — вертикальной чертой.
+  const band = selected !== null && data[selected] && (
+    <ReferenceLine x={data[selected].tick} stroke={color} strokeDasharray="4 3" />
+  );
   const grid = <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />;
   const xAxis = (
     <XAxis dataKey="tick" {...axis} interval="preserveStartEnd" minTickGap={12} tickMargin={8} />
@@ -115,11 +138,16 @@ export function MetricChartPlot({
           {xAxis}
           {yAxis}
           {tooltip}
-          <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} />
+          <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48}>
+            {data.map((d, i) => (
+              <Cell key={d.tick + i} fillOpacity={selected === null || selected === i ? 1 : 0.35} />
+            ))}
+          </Bar>
         </BarChart>
       ) : chartType === "line" ? (
         <LineChart {...common}>
           {grid}
+          {band}
           {xAxis}
           {yAxis}
           {tooltip}
@@ -142,6 +170,7 @@ export function MetricChartPlot({
             </linearGradient>
           </defs>
           {grid}
+          {band}
           {xAxis}
           {yAxis}
           {tooltip}

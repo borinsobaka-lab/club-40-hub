@@ -31,6 +31,13 @@ import {
   type SaleOrigin,
 } from "@/lib/dashboard-analytics";
 import type { SalesHistory, SeriesDef } from "@/lib/dashboard-data";
+import {
+  ORIGIN_BADGE,
+  boughtSince,
+  conversionBadge,
+  saleDetail,
+  type DetailsSpec,
+} from "@/lib/dashboard-details";
 import type { SeriesPoint } from "@/lib/dashboard-series";
 import {
   DASHBOARD_PIE_HEIGHT,
@@ -59,43 +66,125 @@ function SalesPage() {
 
 const ORIGINS: SaleOrigin[] = ["new", "renewal", "return", "single"];
 
+const MONEY_ROWS = {
+  unit: ["продажа", "продажи", "продаж"],
+  format: "money",
+  totalLabel: "Итого",
+  empty: "Продаж нет",
+} as const satisfies Partial<DetailsSpec>;
+
 /**
  * Графики плиток «Продаж» — из уже загруженной истории продаж: окно графика
- * не ходит в базу. Точки вне 12 корзин графика отбрасывает aggregate.
+ * не ходит в базу. Точки вне 12 корзин графика отбрасывает aggregate. У
+ * каждой точки — строка подробного отчёта (кто купил, что, тип продажи).
  */
 function salesSeries(history: SalesHistory): Record<SalesKey, SeriesDef> {
+  const origins = classifySales(history.sales);
+  const salesById = new Map(history.sales.map((s) => [s.id, s]));
   const sold: SeriesPoint[] = history.sales.map((s) => ({
     date: s.soldAt,
     amount: s.totalAmount,
     n: 1,
+    row: saleDetail(s, { badge: ORIGIN_BADGE[origins.get(s.id) ?? "new"] }),
   }));
-  const paid: SeriesPoint[] = membershipPayments(history.sales).map((p) => ({
-    date: p.date,
-    amount: p.amount,
-    n: 1,
-  }));
+  const paid: SeriesPoint[] = membershipPayments(history.sales).map((p, i) => {
+    const sale = salesById.get(p.saleId);
+    const method = p.method && PAYMENT_METHOD_LABEL[p.method as PaymentMethod];
+    return {
+      date: p.date,
+      amount: p.amount,
+      n: 1,
+      row: {
+        key: `payment:${p.saleId}:${i}`,
+        date: p.date,
+        clientId: p.clientId,
+        title: sale?.membershipName,
+        note: method || undefined,
+        value: p.amount,
+      },
+    };
+  });
   const others: SeriesPoint[] = history.otherSales.map((s) => ({
     date: s.soldAt,
     amount: s.totalAmount,
     n: 1,
+    row: {
+      key: `other:${s.id}`,
+      date: s.soldAt,
+      clientId: s.clientId,
+      title: s.itemName,
+      value: s.totalAmount,
+    },
   }));
+  // Разовое посещение — шаг до пакета: кто так и не купил, тех зовём первыми.
   const singles: SeriesPoint[] = history.sales
     .filter((s) => s.single && !s.noMembership)
-    .map((s) => ({ date: s.soldAt, amount: s.totalAmount, n: 1 }));
-  const def = (kind: SeriesDef["kind"], description: string, points: SeriesPoint[]) => ({
-    kind,
-    description,
-    load: async () => points,
+    .map((s) => {
+      const bought = boughtSince(history.sales, s.clientId, s.soldAt);
+      return {
+        date: s.soldAt,
+        amount: s.totalAmount,
+        n: 1,
+        row: saleDetail(s, { badge: conversionBadge(bought), attention: !bought }),
+      };
+    });
+  const def = (
+    kind: SeriesDef["kind"],
+    description: string,
+    points: SeriesPoint[],
+    details: DetailsSpec,
+  ): SeriesDef => ({ kind, description, details, load: async () => points });
+  const soldList = (sort: DetailsSpec["sort"]): DetailsSpec => ({
+    title: "Проданные абонементы",
+    sort,
+    ...MONEY_ROWS,
   });
+  const paidList = (sort: DetailsSpec["sort"]): DetailsSpec => ({
+    title: "Поступившие платежи",
+    sort,
+    ...MONEY_ROWS,
+    unit: ["платёж", "платежа", "платежей"],
+    empty: "Платежей нет",
+  });
+  const otherList = (sort: DetailsSpec["sort"]): DetailsSpec => ({
+    title: "Прочие продажи",
+    sort,
+    ...MONEY_ROWS,
+  });
+  const singleList: DetailsSpec = {
+    title: "Разовые посещения — предложить пакет",
+    sort: "dateDesc",
+    ...MONEY_ROWS,
+  };
   return {
-    membershipRevenue: def("sum", "стоимость проданных абонементов по дате продажи", sold),
-    membershipPayments: def("sum", "поступившие платежи по абонементам", paid),
-    otherRevenue: def("sum", "прочие продажи: услуги и товары", others),
-    singleRevenue: def("sum", "стоимость проданных разовых посещений", singles),
-    singleVisits: def("count", "проданные разовые посещения", singles),
-    avgMembershipCheck: def("avg", "стоимость проданных абонементов / число продаж", sold),
-    avgMembershipPayment: def("avg", "платежи по абонементам / число платежей", paid),
-    avgOtherCheck: def("avg", "прочие продажи / их число", others),
+    membershipRevenue: def(
+      "sum",
+      "стоимость проданных абонементов по дате продажи",
+      sold,
+      soldList("dateDesc"),
+    ),
+    membershipPayments: def(
+      "sum",
+      "поступившие платежи по абонементам",
+      paid,
+      paidList("dateDesc"),
+    ),
+    otherRevenue: def("sum", "прочие продажи: услуги и товары", others, otherList("dateDesc")),
+    singleRevenue: def("sum", "стоимость проданных разовых посещений", singles, singleList),
+    singleVisits: def("count", "проданные разовые посещения", singles, singleList),
+    avgMembershipCheck: def(
+      "avg",
+      "стоимость проданных абонементов / число продаж",
+      sold,
+      soldList("value"),
+    ),
+    avgMembershipPayment: def(
+      "avg",
+      "платежи по абонементам / число платежей",
+      paid,
+      paidList("value"),
+    ),
+    avgOtherCheck: def("avg", "прочие продажи / их число", others, otherList("value")),
   };
 }
 
