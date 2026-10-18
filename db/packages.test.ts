@@ -543,10 +543,16 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(hidden.map((m: { id: string }) => m.id)).toEqual([b.pack]);
       // Новую тренировку можно завести в своём клубе, в чужом подписочном — нет.
       expect(
-        await failure(tx, () => tx`insert into workouts (studio_id, name) values (${a.studio}, 'Пилатес')`),
+        await failure(
+          tx,
+          () => tx`insert into workouts (studio_id, name) values (${a.studio}, 'Пилатес')`,
+        ),
       ).toBeNull();
       expect(
-        await failure(tx, () => tx`insert into workouts (studio_id, name) values (${c.studio}, 'Пилатес')`),
+        await failure(
+          tx,
+          () => tx`insert into workouts (studio_id, name) values (${c.studio}, 'Пилатес')`,
+        ),
       ).toContain("row-level security");
       await tx`reset role`;
     });
@@ -593,7 +599,8 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       const [{ workout_id }] = await tx`select workout_id from schedule_entries where id = ${e}`;
       expect(workout_id).toBe(kept.id);
       // Подписочный клуб не трогается.
-      const [{ n: subs }] = await tx`select count(*)::int as n from workouts where id = ${c.workout}`;
+      const [{ n: subs }] =
+        await tx`select count(*)::int as n from workouts where id = ${c.workout}`;
       expect(subs).toBe(1);
 
       const packs = await tx`select id from memberships where id in (${a.pack}, ${b.pack})`;
@@ -605,7 +612,8 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
         select membership_id as cm from client_memberships where sale_id = ${sale}`;
       expect(cm).toBe(keptPack);
       // Другая цена — другой пакет.
-      const [{ n: other }] = await tx`select count(*)::int as n from memberships where id = ${pricier}`;
+      const [{ n: other }] =
+        await tx`select count(*)::int as n from memberships where id = ${pricier}`;
       expect(other).toBe(1);
 
       // Повторный вызов ничего не меняет.
@@ -727,12 +735,13 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       const one = await add(b.studio, 1);
       await sell(tx, a);
       await asStaff(tx, b);
-      expect(
-        (await tx`select admin_book_client(${one.id}, ${a.client}) as r`)[0].r,
-      ).toMatchObject({ ok: true });
-      expect(
-        (await tx`select admin_book_client(${one.id}, ${b.client}) as r`)[0].r,
-      ).toMatchObject({ ok: false, reason: "full" });
+      expect((await tx`select admin_book_client(${one.id}, ${a.client}) as r`)[0].r).toMatchObject({
+        ok: true,
+      });
+      expect((await tx`select admin_book_client(${one.id}, ${b.client}) as r`)[0].r).toMatchObject({
+        ok: false,
+        reason: "full",
+      });
     });
   });
 
@@ -886,9 +895,9 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect((await rows()).map((r) => r.amount)).toEqual([50, 10, 40]);
 
       await tx`insert into refunds (studio_id, sale_id, amount) values (${s.studio}, ${sale}, 10)`;
-      expect(
-        await failure(tx, () => replace([{ amount: 50, due_date: "2030-01-10" }])),
-      ).toContain("возврат");
+      expect(await failure(tx, () => replace([{ amount: 50, due_date: "2030-01-10" }]))).toContain(
+        "возврат",
+      );
     });
   });
 
@@ -914,18 +923,24 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
         select cm.diagnostics_left, cm.visits_left, cm.started_at, b.charged_balance
           from client_memberships cm, schedule_bookings b
          where cm.sale_id = ${sale} and b.id = ${b}`;
-      expect(after).toMatchObject({ diagnostics_left: 1, visits_left: 2, charged_balance: "diagnostic" });
+      expect(after).toMatchObject({
+        diagnostics_left: 1,
+        visits_left: 2,
+        charged_balance: "diagnostic",
+      });
       // Диагностика — посещение: срок пошёл.
       expect(iso(after.started_at)).toBe(await tbilisiDate(tx, diag));
 
       await tx`update schedule_bookings set status = 'booked' where id = ${b}`;
-      const [back] = await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
+      const [back] =
+        await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
       expect(back.diagnostics_left).toBe(2);
 
       // Удалённая запись тоже возвращает диагностику.
       await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
       await tx`delete from schedule_bookings where id = ${b}`;
-      const [del] = await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
+      const [del] =
+        await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
       expect(del.diagnostics_left).toBe(2);
     });
   });
@@ -937,7 +952,10 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       await asStaff(tx, s);
       const b = await book(tx, s, await entry(tx, s, 1, "diagnostic"));
       expect(
-        await failure(tx, () => tx`update schedule_bookings set status = 'attended' where id = ${b}`),
+        await failure(
+          tx,
+          () => tx`update schedule_bookings set status = 'attended' where id = ${b}`,
+        ),
       ).toContain("нет абонемента с диагностиками");
     });
   });
@@ -948,7 +966,10 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       await tx`update memberships set diagnostics_count = 1 where id = ${s.pack}`;
       const sale = await sell(tx, s);
       await asStaff(tx, s);
-      const visits = [await book(tx, s, await entry(tx, s, 1)), await book(tx, s, await entry(tx, s, 2))];
+      const visits = [
+        await book(tx, s, await entry(tx, s, 1)),
+        await book(tx, s, await entry(tx, s, 2)),
+      ];
       await tx`update schedule_bookings set status = 'attended' where id in (${visits[0]}, ${visits[1]})`;
       expect((await membershipOf(tx, sale)).status).toBe("active");
 
