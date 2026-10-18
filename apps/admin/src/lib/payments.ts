@@ -115,6 +115,18 @@ export function saleDeleteDescription(clientName: string | null, membershipName:
   );
 }
 
+/**
+ * «Добавлен» в «Абонементах» — client_packages_list.added_via
+ * (db/migrations/2026-10-18_zzz_client_packages_added_via.sql).
+ */
+export type SaleAddedVia = "admin" | "import" | "mobile";
+
+export const SALE_ADDED_VIA_LABEL: Record<SaleAddedVia, string> = {
+  admin: "Админка",
+  import: "Из 1С",
+  mobile: "Приложение",
+};
+
 export const SALE_TIPS = {
   soldAt: "С этой даты начинается абонемент: от неё считается срок действия и график рассрочки.",
   membership:

@@ -29,12 +29,14 @@ import {
   PAYMENT_METHODS,
   SALE_KIND_LABEL,
   SALE_KINDS,
+  SALE_ADDED_VIA_LABEL,
   SALE_TIPS,
   addMonthsISO,
   saleDeleteDescription,
   scheduleShortfall,
   type MembershipKind,
   type PaymentMethod,
+  type SaleAddedVia,
   type SaleKind,
 } from "@/lib/payments";
 import {
@@ -105,12 +107,14 @@ const TIPS = {
   client: "Кому продан абонемент: телефон и почта. Нажмите на имя — откроется карточка клиента.",
   membership: `Что продано (из «Номенклатур») и тип продажи: «С» — дата продажи, «До» — последний день срока абонемента. У продления срок появится после первого посещения по нему. ${SALE_TIPS.saleKind}`,
   status:
-    "Действует, ждёт начала (продление), истёк, заменён новым и т. п. Ниже — сколько дней осталось до конца срока. «Приложение» — клиент купил абонемент сам в приложении.",
+    "Действует, ждёт начала (продление), истёк, заменён новым и т. п. Ниже — сколько дней осталось до конца срока.",
   balance:
     "Тренировок на балансе (из скольких в пакете), ниже — персональных, если они входят. Групповые списываются, когда отмечено посещение группового занятия, персональные — персонального. Срок задан в «Номенклатурах» и считается от даты продажи.",
   amount:
     "Стоимость продажи (со скидкой). Ниже — сколько из неё уже внесено, промокод и возвраты. Возврат — правый клик (касание) по строке.",
   soldBy: `Кто продал — администратор, оформивший продажу. Ниже — тренер при продаже. ${SALE_TIPS.trainer}`,
+  addedVia:
+    "Как абонемент попал в базу: внесён в админке, перенесён из 1С или куплен клиентом в приложении. Ставит база.",
   comments:
     "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
@@ -203,6 +207,8 @@ type Row = {
   sale_kind: SaleKind | null;
   /** Откуда продажа: админка или клиентское приложение. */
   source: "admin" | "mobile" | null;
+  /** «Добавлен»: админка, импорт из 1С или приложение (считает вью). */
+  added_via: SaleAddedVia | null;
   promo_code: string | null;
   comment: string | null;
   membership_note: string | null;
@@ -243,14 +249,15 @@ const COLUMNS =
   "id, studio_id, client_id, admin_name, trainer_name, sold_at, total_amount, paid_amount, " +
   "sale_kind, source, promo_code, comment, membership_note, clients, memberships, " +
   "membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
-  "membership_started_at, starts_on_first_visit, diagnostics_left";
+  "membership_started_at, starts_on_first_visit, diagnostics_left, added_via";
 
 /**
  * Колонки: клиент, абонемент, статус, баланс, сумма, продал / тренер,
- * комментарии и платежи — с 2026-10-14 одной колонкой (решение владельца):
+ * «Добавлен» (2026-10-18), комментарии и платежи — с 2026-10-14 одной
+ * колонкой (решение владельца):
  * плашки по два в ряд, сколько бы платежей ни было.
  */
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 9;
 
 export const Route = createFileRoute("/_authenticated/client-memberships")({
   head: () => ({ meta: [{ title: "Абонементы — Base40 Admin" }] }),
@@ -505,6 +512,7 @@ function ClientMembershipsPage() {
                   <TableHead tip={TIPS.balance}>Баланс</TableHead>
                   <TableHead tip={TIPS.amount}>Сумма</TableHead>
                   <TableHead tip={TIPS.soldBy}>Продал / тренер</TableHead>
+                  <TableHead tip={TIPS.addedVia}>Добавлен</TableHead>
                   <TableHead tip={TIPS.comments}>Комментарии</TableHead>
                   <TableHead tip={TIPS.payment}>Платежи</TableHead>
                 </TableRow>
@@ -621,11 +629,6 @@ function ClientMembershipsPage() {
                                 notStarted={r.starts_on_first_visit && !r.membership_started_at}
                               />
                             </div>
-                            {r.source === "mobile" && (
-                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                                Приложение
-                              </span>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap tabular-nums">
@@ -639,6 +642,9 @@ function ClientMembershipsPage() {
                           <div className="text-xs text-muted-foreground">
                             {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
                           </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {SALE_ADDED_VIA_LABEL[r.added_via ?? "admin"]}
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] space-y-1">

@@ -768,6 +768,7 @@ export function ClientMembershipsPageSkeleton() {
         "Баланс",
         "Сумма",
         "Продал / тренер",
+        "Добавлен",
         "Комментарии",
         "Платежи",
       ]}

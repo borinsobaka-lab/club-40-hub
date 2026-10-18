@@ -263,6 +263,24 @@ describe.skipIf(!url)("перенос клиентов из 1С (база)", () 
         Number(p16.discount_amount),
       ]).toEqual([410, 410, 0]);
 
+      // «Добавлен» в «Абонементах»: перенесённые — «Импорт», внесённые в
+      // админке — «Админка» (2026-10-18_zzz_client_packages_added_via.sql).
+      const [m24] =
+        await tx`select id from memberships where name = 'Premium 24' and studio_id = ${s.vake}`;
+      const [{ id: manual }] = await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sale_kind)
+        values (${s.sab}, ${anna.id}, ${m24.id}, 540, 'renewal') returning id`;
+      const added = await tx`
+        select l.id = ${manual} as manual, l.added_via from client_packages_list l
+         where l.client_id = ${anna.id}`;
+      const viaOf = (manualRow: boolean) =>
+        added
+          .filter((x: { manual: boolean }) => x.manual === manualRow)
+          .map((x: { added_via: string }) => x.added_via);
+      expect(viaOf(true)).toEqual(["admin"]);
+      expect(new Set(viaOf(false))).toEqual(new Set(["import"]));
+      await tx`delete from sales where id = ${manual}`;
+
       // Повтор — ничего нового.
       await as(tx, s.owner);
       const [{ r: again }] = await tx`select import_1c_chunk(${chunk}::jsonb) as r`;
