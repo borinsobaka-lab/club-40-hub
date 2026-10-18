@@ -370,11 +370,17 @@ AUTH_SETUP.md.
   STUDIO_FORMATS.md, журнал 2026-10-18. Тесты — `db/import-1c.test.ts`.
   «Добавлен» в «Клиентах»: `db/migrations/2026-10-18_zz_clients_source.sql`
   — `clients.source` (`admin` — «Сотрудником», по умолчанию; `import` —
-  «Импорт», у всех с `onec_ref`; `mobile` — «Приложение», под будущую
+  «Из 1С», у всех с `onec_ref`; `mobile` — «Приложение», под будущую
   регистрацию). Ставит триггер `clients_source_guard_biu`: из админки и
   приложения (роли authenticated/anon) `source` и `onec_ref` не подделать,
   функции владельца базы пишут как есть. Вью `clients_with_status`
   пересоздана (актуальное определение — здесь).
+  «Добавлен» в «Абонементах»: `db/migrations/2026-10-18_zzz_client_packages_added_via.sql`
+  — `client_packages_list.added_via` считается из продажи (`onec_ref` →
+  `import` «Из 1С», `source = 'mobile'` → «Приложение», иначе `admin` —
+  «Админка»); отдельной колонки в `sales` нет — `sales.source` переходит в
+  `client_memberships.source`, где `import` нарушил бы проверку. Актуальное
+  определение `client_packages_list` — здесь.
   Правки приложения пакетов 2026-10-12:
   `db/migrations/2026-10-12_zz_packages_app_fixes.sql` — `memberships.tag_text`
   / `tag_style` (`soft` / `bright`) / `gift_text` (тег и «В подарок» в
