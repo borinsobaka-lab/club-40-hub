@@ -14,6 +14,7 @@ import { STUDIO_FORMAT_APP_URL } from "@/lib/studio-formats";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { cn } from "@/lib/utils";
 import { noteBoxClass } from "@/components/comment-cell";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,26 @@ const MOOD: Record<string, string> = Object.fromEntries(
   MOOD_OPTIONS.map((m) => [m.value, m.emoji]),
 );
 
+/** Оценка для сортировки: от «Плохо» к «Хорошо». */
+const MOOD_RANK: Record<string, number> = Object.fromEntries(
+  MOOD_OPTIONS.map((m, i) => [m.value, i]),
+);
+
+/**
+ * Сортировка по колонкам (lib/table-sort.ts) — в браузере, после фильтров.
+ * Без сортировки — как прежде: не отработанные сверху, новые первыми.
+ */
+const SORT_GETTERS = {
+  createdAt: (i: Feedback) => i.created_at,
+  topic: (i: Feedback) => TOPICS[i.topic] || i.topic,
+  message: (i: Feedback) => i.message,
+  mood: (i: Feedback) => (i.mood ? MOOD_RANK[i.mood] : null),
+  name: (i: Feedback) => i.client_name,
+  contact: (i: Feedback) => i.client_contact,
+  status: (i: Feedback) => (i.status === "pending" ? 0 : 1),
+  resolvedBy: (i: Feedback) => i.resolved_by_name,
+};
+
 function moodSelectItems() {
   return MOOD_OPTIONS.map((m) => (
     <SelectItem key={m.value} value={m.value}>
@@ -162,7 +183,8 @@ function FeedbackPage() {
     });
   }, [items, topicFilter, statusFilter, moodFilter, dateRange]);
 
-  const pg = usePagination(filtered);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(filtered), undefined, sort.key);
 
   const selected = items.find((i) => i.id === selectedId) || null;
 
@@ -304,14 +326,18 @@ function FeedbackPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Дата</TableHead>
-                <TableHead>Тема</TableHead>
-                <TableHead>Сообщение</TableHead>
-                <TableHead className="w-[80px] text-center">Оценка</TableHead>
-                <TableHead>Имя</TableHead>
-                <TableHead tip={TIPS.contact}>Контакт</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Отработал</TableHead>
+                <TableHead {...sort.head("createdAt")}>Дата</TableHead>
+                <TableHead {...sort.head("topic")}>Тема</TableHead>
+                <TableHead {...sort.head("message")}>Сообщение</TableHead>
+                <TableHead className="w-[80px] text-center" {...sort.head("mood")}>
+                  Оценка
+                </TableHead>
+                <TableHead {...sort.head("name")}>Имя</TableHead>
+                <TableHead tip={TIPS.contact} {...sort.head("contact")}>
+                  Контакт
+                </TableHead>
+                <TableHead {...sort.head("status")}>Статус</TableHead>
+                <TableHead {...sort.head("resolvedBy")}>Отработал</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

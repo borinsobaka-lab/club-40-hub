@@ -7,6 +7,8 @@ import { AdminShell, FloatingActions } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useServerTable } from "@/hooks/use-server-table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { orderBy } from "@/lib/table-sort";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { SellerSelect } from "@/components/seller-select";
 import { isAdminRole } from "@/lib/staff-directory";
@@ -110,6 +112,32 @@ type OtherSale = {
 };
 
 const KIND_LABEL: Record<ItemKind, string> = { service: "Услуга", product: "Товар" };
+
+/**
+ * Колонки сортировки продаж (lib/table-sort.ts): ключ заголовка → колонки
+ * other_sales; клиент — по встроенной карточке (to-one, PostgREST сортирует
+ * родительские строки по её колонкам).
+ */
+const SALE_SORT_COLUMNS = {
+  item: "item_name",
+  kind: "item_kind",
+  client: ["clients(last_name)", "clients(first_name)", "clients(full_name)"],
+  quantity: "quantity",
+  unitPrice: "unit_price",
+  total: "total_amount",
+  payment: "payment_method",
+  soldAt: ["sold_at", "created_at"],
+  seller: "admin_name",
+  comment: "comment",
+};
+
+/** Сортировка каталога позиций — в браузере. */
+const ITEM_SORT_GETTERS = {
+  name: (i: SaleItem) => i.name,
+  kind: (i: SaleItem) => KIND_LABEL[i.kind],
+  price: (i: SaleItem) => Number(i.price),
+  active: (i: SaleItem) => i.is_active,
+};
 
 /** Каталог позиций нужен обеим вкладкам — запрос у них общий через кэш. */
 const saleItemsKey = (studioId: string) => ["sale_items", studioId];
@@ -230,21 +258,27 @@ function SalesTab({
   const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
   const { data: items = [], isLoading: itemsLoading } = useSaleItems(studioId);
+  const sort = useTableSort();
 
   // Серверная пагинация: прежний limit(500) молча прятал старые продажи.
   // Порядок с уникальным хвостом (id) — иначе строки с одной датой и временем
   // на границе страниц дублируются или пропадают.
   const table = useServerTable<OtherSale>({
-    queryKey: ["other_sales", studioId],
+    queryKey: ["other_sales", studioId, sort.key],
     queryFn: ({ from, to }) =>
-      supabase
-        .from("other_sales")
-        .select("*, clients(first_name, last_name, full_name)", { count: "exact" })
-        .eq("studio_id", studioId)
-        .order("sold_at", { ascending: false })
-        .order("created_at", { ascending: false })
-        .order("id")
-        .range(from, to),
+      orderBy(
+        supabase
+          .from("other_sales")
+          .select("*, clients(first_name, last_name, full_name)", { count: "exact" })
+          .eq("studio_id", studioId),
+        sort.sort,
+        SALE_SORT_COLUMNS,
+        (q) =>
+          q
+            .order("sold_at", { ascending: false })
+            .order("created_at", { ascending: false })
+            .order("id"),
+      ).range(from, to),
     errorMessage: "Не удалось загрузить продажи",
   });
   const { rows, loading } = table;
@@ -286,18 +320,28 @@ function SalesTab({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead tip={TIPS.item}>Позиция</TableHead>
-              <TableHead>Тип</TableHead>
-              <TableHead>Клиент</TableHead>
-              <TableHead className="text-right">Кол-во</TableHead>
-              <TableHead className="text-right" tip={TIPS.unitPrice}>
+              <TableHead tip={TIPS.item} {...sort.head("item")}>
+                Позиция
+              </TableHead>
+              <TableHead {...sort.head("kind")}>Тип</TableHead>
+              <TableHead {...sort.head("client")}>Клиент</TableHead>
+              <TableHead className="text-right" {...sort.head("quantity")}>
+                Кол-во
+              </TableHead>
+              <TableHead className="text-right" tip={TIPS.unitPrice} {...sort.head("unitPrice")}>
                 Цена
               </TableHead>
-              <TableHead className="text-right">Сумма</TableHead>
-              <TableHead tip={TIPS.payment}>Оплата</TableHead>
-              <TableHead>Дата</TableHead>
-              <TableHead tip={TIPS.seller}>Администратор</TableHead>
-              <TableHead>Комментарий</TableHead>
+              <TableHead className="text-right" {...sort.head("total")}>
+                Сумма
+              </TableHead>
+              <TableHead tip={TIPS.payment} {...sort.head("payment")}>
+                Оплата
+              </TableHead>
+              <TableHead {...sort.head("soldAt")}>Дата</TableHead>
+              <TableHead tip={TIPS.seller} {...sort.head("seller")}>
+                Администратор
+              </TableHead>
+              <TableHead {...sort.head("comment")}>Комментарий</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -670,7 +714,8 @@ function CatalogTab({
     );
   };
 
-  const pg = usePagination(items);
+  const sort = useTableSort(ITEM_SORT_GETTERS);
+  const pg = usePagination(sort.apply(items), undefined, sort.key);
 
   return (
     <>
@@ -678,12 +723,14 @@ function CatalogTab({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Название</TableHead>
-              <TableHead>Тип</TableHead>
-              <TableHead className="text-right" tip={TIPS.catalogPrice}>
+              <TableHead {...sort.head("name")}>Название</TableHead>
+              <TableHead {...sort.head("kind")}>Тип</TableHead>
+              <TableHead className="text-right" tip={TIPS.catalogPrice} {...sort.head("price")}>
                 Цена
               </TableHead>
-              <TableHead className="w-[100px]">Активна</TableHead>
+              <TableHead className="w-[100px]" {...sort.head("active")}>
+                Активна
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

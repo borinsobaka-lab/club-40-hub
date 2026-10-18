@@ -9,6 +9,8 @@ import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio } from "@/hooks/use-studios";
 import { useServerTable } from "@/hooks/use-server-table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { orderBy } from "@/lib/table-sort";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,6 +75,21 @@ type LogRow = {
 
 const STATUS_ALL = "__all__";
 
+/** Колонки сортировки (lib/table-sort.ts): ключ заголовка → колонки вью. */
+const SORT_COLUMNS = {
+  name: ["client_full_name", "client_first_name", "client_last_name"],
+  contacts: "client_phone",
+  workout: "workout_name",
+  startsAt: "starts_at",
+  status: "status",
+  met: "met_value",
+  weight: "weight_at_time",
+  duration: "duration_min",
+  calories: "calories",
+  cancelledAt: "cancelled_at",
+  reason: "cancel_reason",
+};
+
 // Срок отмены: >0 — за сколько до начала, <=0 — после начала занятия.
 function formatLead(minutes: number) {
   if (minutes <= 0) return "после начала";
@@ -88,6 +105,7 @@ function BookingsLogPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>(STATUS_ALL);
   const [markingNoShows, setMarkingNoShows] = useState(false);
+  const sort = useTableSort();
   // В пакетных клубах приход фиксируют только в «Расписании» (решение
   // владельца 2026-10-11) — массовой отметки пропусков здесь нет.
   const isPackages = useActiveStudio()?.format === "packages";
@@ -95,7 +113,7 @@ function BookingsLogPage() {
   const term = useDebouncedValue(search).trim();
 
   const table = useServerTable<LogRow>({
-    queryKey: ["bookings_log_full", studioId, status, term],
+    queryKey: ["bookings_log_full", studioId, status, term, sort.key],
     queryFn: ({ from, to }) => {
       // Вью bookings_log_full уже объединяет журнал с записями, которые в него
       // ещё не попали (см. db/performance_indexes.sql), поэтому сшивать
@@ -106,7 +124,9 @@ function BookingsLogPage() {
         .eq("studio_id", studioId!);
       if (status !== STATUS_ALL) query = query.eq("status", status);
       if (term) query = query.ilike("search_text", `%${term}%`);
-      return query.order("starts_at", { ascending: false }).range(from, to);
+      return orderBy(query, sort.sort, SORT_COLUMNS, (q) =>
+        q.order("starts_at", { ascending: false }),
+      ).range(from, to);
     },
     enabled: !!studioId,
     errorMessage: "Не удалось загрузить историю",
@@ -188,17 +208,35 @@ function BookingsLogPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[220px]">Клиент</TableHead>
-                  <TableHead>Контакты</TableHead>
-                  <TableHead>Тренировка</TableHead>
-                  <TableHead className="w-[160px]">Дата и время</TableHead>
-                  <TableHead className="w-[140px]">Статус</TableHead>
-                  <TableHead className="w-[70px] text-right">MET</TableHead>
-                  <TableHead className="w-[80px] text-right">Вес, кг</TableHead>
-                  <TableHead className="w-[80px] text-right">Длит., мин</TableHead>
-                  <TableHead className="w-[90px] text-right">Ккал</TableHead>
-                  <TableHead className="w-[160px]">Отменена</TableHead>
-                  <TableHead className="min-w-[180px]">Причина отмены</TableHead>
+                  <TableHead className="min-w-[220px]" {...sort.head("name")}>
+                    Клиент
+                  </TableHead>
+                  <TableHead {...sort.head("contacts")}>Контакты</TableHead>
+                  <TableHead {...sort.head("workout")}>Тренировка</TableHead>
+                  <TableHead className="w-[160px]" {...sort.head("startsAt")}>
+                    Дата и время
+                  </TableHead>
+                  <TableHead className="w-[140px]" {...sort.head("status")}>
+                    Статус
+                  </TableHead>
+                  <TableHead className="w-[70px] text-right" {...sort.head("met")}>
+                    MET
+                  </TableHead>
+                  <TableHead className="w-[80px] text-right" {...sort.head("weight")}>
+                    Вес, кг
+                  </TableHead>
+                  <TableHead className="w-[80px] text-right" {...sort.head("duration")}>
+                    Длит., мин
+                  </TableHead>
+                  <TableHead className="w-[90px] text-right" {...sort.head("calories")}>
+                    Ккал
+                  </TableHead>
+                  <TableHead className="w-[160px]" {...sort.head("cancelledAt")}>
+                    Отменена
+                  </TableHead>
+                  <TableHead className="min-w-[180px]" {...sort.head("reason")}>
+                    Причина отмены
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

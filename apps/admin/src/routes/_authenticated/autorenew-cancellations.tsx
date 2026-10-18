@@ -8,6 +8,7 @@ import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
+import { useTableSort } from "@/hooks/use-table-sort";
 import {
   Select,
   SelectContent,
@@ -79,6 +80,19 @@ function rowClientName(r: Row) {
   );
 }
 
+const REASON_LABEL = { self: "Самостоятельная", auto: "Автоматическая" } as const;
+
+/** Сортировка по колонкам (lib/table-sort.ts) — в браузере, после фильтров. */
+const SORT_GETTERS = {
+  name: (r: Row) => rowClientName(r),
+  contacts: (r: Row) => r.client?.phone,
+  membership: (r: Row) => r.membership?.name,
+  endsAt: (r: Row) => r.ends_at,
+  reason: (r: Row) =>
+    r.auto_renew_cancel_reason ? REASON_LABEL[r.auto_renew_cancel_reason] : null,
+  cancelledAt: (r: Row) => r.auto_renew_cancelled_at,
+};
+
 function ReasonBadge({ value }: { value: Row["auto_renew_cancel_reason"] }) {
   if (value === "self") {
     return <Badge variant="secondary">Самостоятельная</Badge>;
@@ -121,7 +135,8 @@ function AutorenewCancellationsPage() {
     });
   }, [rows, search, reason]);
 
-  const pg = usePagination(filtered);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(filtered), undefined, sort.key);
 
   return (
     <AdminShell title="Отмены автопродления">
@@ -149,12 +164,20 @@ function AutorenewCancellationsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[220px]">Клиент</TableHead>
-                  <TableHead>Контакты</TableHead>
-                  <TableHead>Абонемент</TableHead>
-                  <TableHead className="w-[140px]">Действует до</TableHead>
-                  <TableHead className="w-[180px]">Причина отмены</TableHead>
-                  <TableHead className="w-[160px]">Отменено</TableHead>
+                  <TableHead className="min-w-[220px]" {...sort.head("name")}>
+                    Клиент
+                  </TableHead>
+                  <TableHead {...sort.head("contacts")}>Контакты</TableHead>
+                  <TableHead {...sort.head("membership")}>Абонемент</TableHead>
+                  <TableHead className="w-[140px]" {...sort.head("endsAt")}>
+                    Действует до
+                  </TableHead>
+                  <TableHead className="w-[180px]" {...sort.head("reason")}>
+                    Причина отмены
+                  </TableHead>
+                  <TableHead className="w-[160px]" {...sort.head("cancelledAt")}>
+                    Отменено
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

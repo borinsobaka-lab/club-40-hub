@@ -17,6 +17,7 @@ import {
 } from "@/hooks/use-client-requests";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { cn } from "@/lib/utils";
 import { clientName } from "@/lib/format";
 import { GOAL_LABELS } from "@/lib/client-profile";
@@ -113,6 +114,20 @@ const COLUMNS =
 
 type StatusFilter = "open" | "done" | "all";
 
+/**
+ * Сортировка по колонкам (lib/table-sort.ts) — в браузере, после фильтров.
+ * «Абонемент» не сортируется: у клиента их может быть несколько.
+ * «Статус» по возрастанию — сначала не отработанные.
+ */
+const SORT_GETTERS = {
+  createdAt: (i: RequestRow) => i.created_at,
+  client: (i: RequestRow) => (i.client ? clientName(i.client) : null),
+  kind: (i: RequestRow) => REQUEST_KIND_LABEL[i.kind] ?? i.kind,
+  goals: (i: RequestRow) => goalsText(i),
+  comment: (i: RequestRow) => i.comment,
+  status: (i: RequestRow) => (i.processed_at ? 1 : 0),
+};
+
 function RequestsPage() {
   const studioId = useActiveStudioId();
   const queryClient = useQueryClient();
@@ -183,7 +198,8 @@ function RequestsPage() {
       }),
     [items, status, kind],
   );
-  const pg = usePagination(filtered);
+  const sort = useTableSort(SORT_GETTERS);
+  const pg = usePagination(sort.apply(filtered), undefined, sort.key);
 
   const now = new Date();
   const openCount = items.filter((i) => !i.processed_at).length;
@@ -307,13 +323,19 @@ function RequestsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Дата</TableHead>
-                  <TableHead>Клиент</TableHead>
-                  <TableHead tip={TIPS.kind}>Заявка</TableHead>
-                  <TableHead tip={TIPS.goals}>Цели</TableHead>
-                  <TableHead>Комментарий</TableHead>
+                  <TableHead {...sort.head("createdAt")}>Дата</TableHead>
+                  <TableHead {...sort.head("client")}>Клиент</TableHead>
+                  <TableHead tip={TIPS.kind} {...sort.head("kind")}>
+                    Заявка
+                  </TableHead>
+                  <TableHead tip={TIPS.goals} {...sort.head("goals")}>
+                    Цели
+                  </TableHead>
+                  <TableHead {...sort.head("comment")}>Комментарий</TableHead>
                   <TableHead tip={TIPS.balance}>Абонемент</TableHead>
-                  <TableHead tip={TIPS.status}>Статус</TableHead>
+                  <TableHead tip={TIPS.status} {...sort.head("status")}>
+                    Статус
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
