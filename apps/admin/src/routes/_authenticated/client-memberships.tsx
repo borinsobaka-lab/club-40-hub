@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   Banknote,
   Check,
+  ChevronDown,
   CreditCard,
   Loader2,
   Plus,
@@ -58,6 +59,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField, InfoNote } from "@/components/ui/form-field";
+import { fieldTriggerClass } from "@/components/ui/field-styles";
 import {
   Dialog,
   DialogBody,
@@ -127,10 +129,12 @@ const TIPS = {
     "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
   payment:
-    "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, синий — внести сегодня или в ближайшие 2 дня, красный — просрочен. Нажмите на платёж, чтобы отметить оплату (когда и как внесён). «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты.",
+    "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, синий — внести сегодня или в ближайшие 2 дня, красный — просрочен. Нажмите на платёж, чтобы отметить оплату (когда и как внесён). «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты или исправить сумму внесённого.",
   editPayments:
-    "Клиент не может внести платёж целиком — поставьте в платёж сумму, которую он внёс, и добавьте платежи на остаток. Внесённые платежи не меняются. Сохранить можно, только если платежи в сумме покрывают стоимость абонемента.",
+    "Клиент не может внести платёж целиком — поставьте в платёж сумму, которую он внёс, и добавьте платежи на остаток. У внесённого платежа можно исправить сумму; дату, способ оплаты и «Снять отметку об оплате» — нажатием на отметку «Внесён» (сохраняется сразу). Сохранить можно, только если платежи в сумме покрывают стоимость абонемента.",
   paymentAmount: "Сколько клиент внёс или должен внести этим платежом.",
+  paidMark:
+    "Когда и как клиент внёс платёж. Нажмите, чтобы изменить или снять отметку об оплате — сохраняется сразу, как при нажатии на платёж в таблице.",
   dueDate:
     "До какого числа клиент должен внести платёж. За два дня до даты и в сам день невнесённый платёж помечает строку синим, дата прошла — красным.",
   paidAt: "Когда клиент фактически заплатил.",
@@ -1057,13 +1061,24 @@ const PAYMENT_METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
  */
 function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
+  const [marked, setMarked] = useState(false);
   const payments = row.payments ?? [];
   if (payments.length === 0) return <span className="text-muted-foreground">—</span>;
-  // График есть (не «оплачено сразу») и по продаже не было возврата.
+  // Любой абонемент без возврата — и оплаченный полностью, и сразу при продаже
+  // (решение владельца 2026-10-18); бесплатный без графика править нечего.
   const editable =
-    payments.some((p) => p.id) &&
+    (payments.some((p) => p.id) || Number(row.total_amount) > 0) &&
     !payments.some((p) => p.refunded) &&
     row.membership_status !== "refunded";
+  // Отметка оплаты из окна правки сохраняется сразу — таблицу обновляем, когда
+  // окно закроют (иначе строка могла бы уйти из фильтра вместе с окном).
+  const closeEdit = () => {
+    setEditOpen(false);
+    if (marked) {
+      setMarked(false);
+      onSaved();
+    }
+  };
   return (
     // Плашки по ширине содержимого (суммы — до трёх знаков, решение владельца
     // 2026-10-14): колонки по самой широкой плашке, без пустоты справа.
@@ -1084,16 +1099,18 @@ function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
           Редактировать платежи
         </Button>
       )}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog open={editOpen} onOpenChange={(o) => (o ? setEditOpen(true) : closeEdit())}>
         <DialogContent className="max-w-lg">
           {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
           <PaymentsEditForm
             row={row}
-            onClose={() => setEditOpen(false)}
+            onClose={closeEdit}
             onSaved={() => {
               setEditOpen(false);
+              setMarked(false);
               onSaved();
             }}
+            onMarked={() => setMarked(true)}
           />
         </DialogContent>
       </Dialog>
@@ -1214,37 +1231,57 @@ function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
   );
 }
 
-/** Невнесённый платёж в окне правки графика; id null — новый. */
-type DraftPayment = { key: string; id: string | null; amount: string; dueDate: string };
+/**
+ * Платёж в окне правки графика. id null — новый невнесённый или оплата при
+ * продаже у продажи без графика (paid: база запишет её первым платежом).
+ */
+type DraftPayment = {
+  key: string;
+  id: string | null;
+  amount: string;
+  dueDate: string;
+  paid: boolean;
+  paidAt: string | null;
+  method: PaymentMethod | null;
+};
 
 /**
- * «Редактировать платежи» (решение владельца 2026-10-14): внесённые платежи —
- * как есть, невнесённые можно менять, удалять и добавлять. Сохраняет RPC
- * replace_sale_installments (db/migrations/2026-10-14_zzz_sale_installments_edit.sql)
+ * «Редактировать платежи» (решения владельца 2026-10-14, 2026-10-18): у
+ * невнесённых платежей — сумма и дата, их можно удалять и добавлять; у
+ * внесённых — только сумма, отметку снимают нажатием на «внесён» (та же
+ * форма, что у платежа в таблице, сохраняется сразу). Сохраняет RPC
+ * replace_sale_installments (db/migrations/2026-10-18_zzzzzz_sale_installments_edit_paid.sql)
  * — одним действием, и сама база не даст сохранить график меньше стоимости.
  */
 function PaymentsEditForm({
   row,
   onClose,
   onSaved,
+  onMarked,
 }: {
   row: Row;
   onClose: () => void;
   onSaved: () => void;
+  /** Отметка оплаты сохранена из окна — таблицу обновить после закрытия. */
+  onMarked: () => void;
 }) {
-  const paid = row.payments.filter((p) => p.paid);
   const [drafts, setDrafts] = useState<DraftPayment[]>(() =>
     row.payments
-      .filter((p) => !p.paid && p.id)
-      .map((p) => ({ key: p.id!, id: p.id, amount: String(p.amount), dueDate: p.due_date })),
+      .filter((p) => !p.refunded)
+      .map((p, i) => ({
+        key: p.id ?? `sold-${i}`,
+        id: p.id,
+        amount: String(p.amount),
+        dueDate: p.due_date,
+        paid: p.paid,
+        paidAt: p.paid_at,
+        method: p.payment_method,
+      })),
   );
   const [saving, setSaving] = useState(false);
 
   const total = Number(row.total_amount) || 0;
-  const amounts = [
-    ...paid.map((p) => Number(p.amount)),
-    ...drafts.map((d) => Number(d.amount.replace(",", "."))),
-  ];
+  const amounts = drafts.map((d) => Number(d.amount.replace(",", ".")));
   const shortfall = scheduleShortfall(total, amounts);
   const sum = amounts.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0);
 
@@ -1253,8 +1290,12 @@ function PaymentsEditForm({
   const remove = (key: string) => setDrafts((list) => list.filter((d) => d.key !== key));
   const add = () =>
     setDrafts((list) => {
-      const dates = [...paid.map((p) => p.due_date), ...list.map((d) => d.dueDate)].filter(Boolean);
-      const last = dates.sort().at(-1) ?? todayISO();
+      const last =
+        list
+          .map((d) => d.dueDate)
+          .filter(Boolean)
+          .sort()
+          .at(-1) ?? todayISO();
       return [
         ...list,
         {
@@ -1263,6 +1304,9 @@ function PaymentsEditForm({
           // Новый платёж сразу предлагает недостающую сумму.
           amount: shortfall > 0 ? String(shortfall) : "",
           dueDate: addMonthsISO(last < todayISO() ? todayISO() : last, 1),
+          paid: false,
+          paidAt: null,
+          method: null,
         },
       ];
     });
@@ -1275,7 +1319,7 @@ function PaymentsEditForm({
         toast.error("Укажите сумму каждого платежа");
         return;
       }
-      if (!d.dueDate) {
+      if (!d.paid && !d.dueDate) {
         toast.error("Укажите дату каждого платежа");
         return;
       }
@@ -1294,6 +1338,7 @@ function PaymentsEditForm({
           id: d.id,
           amount: Number(d.amount.replace(",", ".")),
           due_date: d.dueDate,
+          paid: d.paid,
         })),
       });
       if (error) {
@@ -1322,26 +1367,16 @@ function PaymentsEditForm({
           <div className="space-y-3">
             <InfoNote>{TIPS.editPayments}</InfoNote>
             <ol className="space-y-2">
-              {paid.map((p, i) => (
-                <li
-                  key={p.id ?? i}
-                  className="flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm"
-                >
-                  <span className="w-5 shrink-0 text-muted-foreground">{i + 1}.</span>
-                  <span className="font-medium tabular-nums">
-                    {formatMoneyPrecise(Number(p.amount))}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-emerald-700">
-                    <Check className="h-3.5 w-3.5" />
-                    внесён {formatDate(p.paid_at ?? p.due_date)}
-                    {p.payment_method && ` · ${PAYMENT_METHOD_LABEL[p.payment_method]}`}
-                  </span>
-                </li>
-              ))}
               {drafts.map((d, i) => (
-                <li key={d.key} className="flex items-end gap-2 rounded-md border px-3 py-2">
+                <li
+                  key={d.key}
+                  className={cn(
+                    "flex items-end gap-2 rounded-md border px-3 py-2",
+                    d.paid && "border-emerald-200 bg-emerald-50",
+                  )}
+                >
                   <span className="w-5 shrink-0 pb-2.5 text-sm text-muted-foreground">
-                    {paid.length + i + 1}.
+                    {i + 1}.
                   </span>
                   <FormField label="Сумма, ₾" tip={TIPS.paymentAmount} required className="flex-1">
                     <Input
@@ -1352,18 +1387,40 @@ function PaymentsEditForm({
                       onChange={(e) => update(d.key, { amount: e.target.value })}
                     />
                   </FormField>
-                  <FormField label="Внести до" tip={TIPS.dueDate} required className="flex-1">
-                    <Input
-                      type="date"
-                      value={d.dueDate}
-                      onChange={(e) => update(d.key, { dueDate: e.target.value })}
-                    />
-                  </FormField>
+                  {d.paid ? (
+                    <FormField label="Внесён" tip={TIPS.paidMark} className="flex-1">
+                      <PaidMarkButton
+                        draft={d}
+                        onMarked={(mark) => {
+                          update(d.key, {
+                            paid: mark.paid,
+                            paidAt: mark.paidAt,
+                            method: mark.method,
+                          });
+                          onMarked();
+                        }}
+                      />
+                    </FormField>
+                  ) : (
+                    <FormField label="Внести до" tip={TIPS.dueDate} required className="flex-1">
+                      <Input
+                        type="date"
+                        value={d.dueDate}
+                        onChange={(e) => update(d.key, { dueDate: e.target.value })}
+                      />
+                    </FormField>
+                  )}
+                  {/* Внесённый не убрать — сначала снять отметку; место кнопки
+                      держим, чтобы поля строк стояли ровно. */}
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="mb-1 shrink-0 text-muted-foreground hover:text-destructive"
-                    aria-label={`Убрать платёж ${paid.length + i + 1}`}
+                    className={cn(
+                      "mb-1 shrink-0 text-muted-foreground hover:text-destructive",
+                      d.paid && "invisible",
+                    )}
+                    aria-label={`Убрать платёж ${i + 1}`}
+                    disabled={d.paid}
                     onClick={() => remove(d.key)}
                   >
                     <X />
@@ -1398,17 +1455,81 @@ function PaymentsEditForm({
 }
 
 /**
+ * Отметка «внесён» у платежа в окне правки: по нажатию — та же форма, что у
+ * платежа в таблице (когда, как, «Снять отметку об оплате»). Оплата при
+ * продаже без графика (id null) отдельной строкой в базе не хранится —
+ * отмечать нечего.
+ */
+function PaidMarkButton({
+  draft,
+  onMarked,
+}: {
+  draft: DraftPayment;
+  onMarked: (mark: PaymentMark) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const label = (
+    <span className="flex min-w-0 items-center gap-1 text-emerald-700">
+      <Check className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">
+        {formatDate(draft.paidAt ?? draft.dueDate)}
+        {draft.method && ` · ${PAYMENT_METHOD_LABEL[draft.method]}`}
+      </span>
+    </span>
+  );
+  if (!draft.id)
+    return (
+      <div title="Оплачено при продаже" className={cn(fieldTriggerClass, "cursor-default")}>
+        {label}
+      </div>
+    );
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" title="Изменить отметку об оплате" className={fieldTriggerClass}>
+          {label}
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)]">
+        <PaymentForm
+          payment={{
+            id: draft.id,
+            amount: Number(draft.amount.replace(",", ".")) || 0,
+            due_date: draft.dueDate,
+            paid: draft.paid,
+            paid_at: draft.paidAt,
+            payment_method: draft.method,
+          }}
+          onDone={(mark) => {
+            setOpen(false);
+            onMarked(mark);
+          }}
+          onCancel={() => setOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Отметка платежа после сохранения в PaymentForm. */
+type PaymentMark = { paid: boolean; paidAt: string | null; method: PaymentMethod | null };
+
+/**
  * Отметка оплаты по клику на платёж (решение владельца 2026-10-14): сумма и
  * «внести до» здесь не меняются — только когда внесён и способ оплаты; график
  * правят в «Редактировать платежи». Внесённый по ошибке — «Снять отметку».
+ * Та же форма — у внесённого платежа в «Редактировать платежи».
  */
 function PaymentForm({
   payment,
   onDone,
   onCancel,
 }: {
-  payment: Payment & { id: string };
-  onDone: () => void;
+  payment: Pick<Payment, "amount" | "due_date" | "paid" | "paid_at" | "payment_method"> & {
+    id: string;
+  };
+  onDone: (mark: PaymentMark) => void;
   onCancel: () => void;
 }) {
   // Отмечают оплату обычно в день, когда клиент заплатил, — сегодня.
@@ -1437,7 +1558,7 @@ function PaymentForm({
         return;
       }
       toast.success(paid ? "Платёж отмечен внесённым" : "Отметка об оплате снята");
-      onDone();
+      onDone({ paid, paidAt: paid ? paidAt : null, method: paid ? method : null });
     } finally {
       setSaving(false);
     }
@@ -1447,6 +1568,9 @@ function PaymentForm({
     <form
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
+        // В «Редактировать платежи» форма — в портале внутри формы окна: React
+        // довёл бы submit и до неё (сохранил бы график).
+        e.stopPropagation();
         save(true);
       }}
       className="space-y-3"

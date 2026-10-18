@@ -543,10 +543,16 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(hidden.map((m: { id: string }) => m.id)).toEqual([b.pack]);
       // Новую тренировку можно завести в своём клубе, в чужом подписочном — нет.
       expect(
-        await failure(tx, () => tx`insert into workouts (studio_id, name) values (${a.studio}, 'Пилатес')`),
+        await failure(
+          tx,
+          () => tx`insert into workouts (studio_id, name) values (${a.studio}, 'Пилатес')`,
+        ),
       ).toBeNull();
       expect(
-        await failure(tx, () => tx`insert into workouts (studio_id, name) values (${c.studio}, 'Пилатес')`),
+        await failure(
+          tx,
+          () => tx`insert into workouts (studio_id, name) values (${c.studio}, 'Пилатес')`,
+        ),
       ).toContain("row-level security");
       await tx`reset role`;
     });
@@ -593,7 +599,8 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       const [{ workout_id }] = await tx`select workout_id from schedule_entries where id = ${e}`;
       expect(workout_id).toBe(kept.id);
       // Подписочный клуб не трогается.
-      const [{ n: subs }] = await tx`select count(*)::int as n from workouts where id = ${c.workout}`;
+      const [{ n: subs }] =
+        await tx`select count(*)::int as n from workouts where id = ${c.workout}`;
       expect(subs).toBe(1);
 
       const packs = await tx`select id from memberships where id in (${a.pack}, ${b.pack})`;
@@ -605,7 +612,8 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
         select membership_id as cm from client_memberships where sale_id = ${sale}`;
       expect(cm).toBe(keptPack);
       // Другая цена — другой пакет.
-      const [{ n: other }] = await tx`select count(*)::int as n from memberships where id = ${pricier}`;
+      const [{ n: other }] =
+        await tx`select count(*)::int as n from memberships where id = ${pricier}`;
       expect(other).toBe(1);
 
       // Повторный вызов ничего не меняет.
@@ -727,12 +735,13 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       const one = await add(b.studio, 1);
       await sell(tx, a);
       await asStaff(tx, b);
-      expect(
-        (await tx`select admin_book_client(${one.id}, ${a.client}) as r`)[0].r,
-      ).toMatchObject({ ok: true });
-      expect(
-        (await tx`select admin_book_client(${one.id}, ${b.client}) as r`)[0].r,
-      ).toMatchObject({ ok: false, reason: "full" });
+      expect((await tx`select admin_book_client(${one.id}, ${a.client}) as r`)[0].r).toMatchObject({
+        ok: true,
+      });
+      expect((await tx`select admin_book_client(${one.id}, ${b.client}) as r`)[0].r).toMatchObject({
+        ok: false,
+        reason: "full",
+      });
     });
   });
 
@@ -872,23 +881,85 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       ).toContain("меньше стоимости");
       expect((await rows()).length).toBe(4);
 
-      // Внесённый платёж правкой графика не меняется.
-      expect(
-        await failure(tx, () => replace([{ id: paid.id, amount: 100, due_date: "2030-01-10" }])),
-      ).toContain("уже внесён");
+      // У внесённого платежа меняется только сумма (2026-10-18): отметка и
+      // дата остаются, график в сумме по-прежнему покрывает стоимость.
+      const [{ due: paidDue }] = await tx`
+        select due_date::text as due from sale_installments where id = ${paid.id}`;
+      now = await rows();
+      await replace([
+        { id: paid.id, amount: 40, due_date: "2030-01-10" },
+        ...now
+          .slice(1)
+          .map((r, i) => ({
+            id: r.id,
+            amount: r.amount + (i === 0 ? 10 : 0),
+            due_date: `2030-0${i + 1}-10`,
+          })),
+      ]);
+      const [edited] = await tx`
+        select amount::float as amount, paid, due_date::text as due from sale_installments where id = ${paid.id}`;
+      expect(edited).toEqual({ amount: 40, paid: true, due: paidDue });
+      // Внесённый, которого нет в списке, не удаляется.
+      now = await rows();
+      await replace([
+        { id: now[1].id, amount: 20, due_date: "2030-01-10" },
+        { id: now[2].id, amount: 15, due_date: "2030-02-10" },
+        { id: now[3].id, amount: 25, due_date: "2030-03-10" },
+      ]);
+      expect((await rows()).map((r) => r.amount)).toEqual([40, 20, 15, 25]);
+      // Новый платёж сразу внесённым не становится.
+      expect(await failure(tx, () => replace([{ amount: 10, paid: true }]))).toContain("внесённым");
 
       // Убрали платёж и добавили сумму в другой — всего снова 100.
       now = await rows();
       await replace([
-        { id: now[1].id, amount: 10, due_date: "2030-01-10" },
+        { id: now[1].id, amount: 20, due_date: "2030-01-10" },
         { id: now[2].id, amount: 40, due_date: "2030-02-10" },
       ]);
-      expect((await rows()).map((r) => r.amount)).toEqual([50, 10, 40]);
+      expect((await rows()).map((r) => r.amount)).toEqual([40, 20, 40]);
 
       await tx`insert into refunds (studio_id, sale_id, amount) values (${s.studio}, ${sale}, 10)`;
-      expect(
-        await failure(tx, () => replace([{ amount: 50, due_date: "2030-01-10" }])),
-      ).toContain("возврат");
+      expect(await failure(tx, () => replace([{ amount: 50, due_date: "2030-01-10" }]))).toContain(
+        "возврат",
+      );
+    });
+  });
+
+  test("правка графика у оплаченного сразу: оплата при продаже становится внесённым платежом", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const sale = await sell(tx, s);
+      await tx`update sales set payment_method = 'card' where id = ${sale}`;
+      const replace = (r: unknown) =>
+        tx`select replace_sale_installments(${sale}, ${JSON.stringify(r)}::text::jsonb)`;
+
+      // Внесли не 100, а 70 — остаток 30 новым платежом.
+      await replace([
+        { id: null, amount: 70, paid: true },
+        { amount: 30, due_date: "2030-01-10" },
+      ]);
+      const rows = await tx`
+        select amount::float as amount, paid, paid_at::text as paid_at, payment_method::text as method,
+               (due_date = current_date) as sold_day
+          from sale_installments where sale_id = ${sale} order by due_date`;
+      expect(rows.map((r: { amount: number; paid: boolean }) => [r.amount, r.paid])).toEqual([
+        [70, true],
+        [30, false],
+      ]);
+      expect(rows[0].method).toBe("card");
+      expect(rows[0].sold_day).toBe(true);
+      expect(rows[0].paid_at).not.toBeNull();
+      const [{ ri }] = await tx`select remaining_installments as ri from sales where id = ${sale}`;
+      expect(ri).toBe(1);
+      const [view] = await tx`
+        select paid_amount::float as paid_amount, payment_state from client_packages_list where id = ${sale}`;
+      expect(view.paid_amount).toBe(70);
+      expect(view.payment_state).not.toBe("paid");
+
+      // График уже есть — второй «оплаты при продаже» не будет.
+      expect(await failure(tx, () => replace([{ id: null, amount: 100, paid: true }]))).toContain(
+        "внесённым",
+      );
     });
   });
 
@@ -914,18 +985,24 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
         select cm.diagnostics_left, cm.visits_left, cm.started_at, b.charged_balance
           from client_memberships cm, schedule_bookings b
          where cm.sale_id = ${sale} and b.id = ${b}`;
-      expect(after).toMatchObject({ diagnostics_left: 1, visits_left: 2, charged_balance: "diagnostic" });
+      expect(after).toMatchObject({
+        diagnostics_left: 1,
+        visits_left: 2,
+        charged_balance: "diagnostic",
+      });
       // Диагностика — посещение: срок пошёл.
       expect(iso(after.started_at)).toBe(await tbilisiDate(tx, diag));
 
       await tx`update schedule_bookings set status = 'booked' where id = ${b}`;
-      const [back] = await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
+      const [back] =
+        await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
       expect(back.diagnostics_left).toBe(2);
 
       // Удалённая запись тоже возвращает диагностику.
       await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
       await tx`delete from schedule_bookings where id = ${b}`;
-      const [del] = await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
+      const [del] =
+        await tx`select diagnostics_left from client_memberships where sale_id = ${sale}`;
       expect(del.diagnostics_left).toBe(2);
     });
   });
@@ -937,7 +1014,10 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       await asStaff(tx, s);
       const b = await book(tx, s, await entry(tx, s, 1, "diagnostic"));
       expect(
-        await failure(tx, () => tx`update schedule_bookings set status = 'attended' where id = ${b}`),
+        await failure(
+          tx,
+          () => tx`update schedule_bookings set status = 'attended' where id = ${b}`,
+        ),
       ).toContain("нет абонемента с диагностиками");
     });
   });
@@ -948,7 +1028,10 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       await tx`update memberships set diagnostics_count = 1 where id = ${s.pack}`;
       const sale = await sell(tx, s);
       await asStaff(tx, s);
-      const visits = [await book(tx, s, await entry(tx, s, 1)), await book(tx, s, await entry(tx, s, 2))];
+      const visits = [
+        await book(tx, s, await entry(tx, s, 1)),
+        await book(tx, s, await entry(tx, s, 2)),
+      ];
       await tx`update schedule_bookings set status = 'attended' where id in (${visits[0]}, ${visits[1]})`;
       expect((await membershipOf(tx, sale)).status).toBe("active");
 
