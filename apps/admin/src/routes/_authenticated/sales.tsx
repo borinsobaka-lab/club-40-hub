@@ -10,6 +10,8 @@ import { RequireStudio } from "@/components/require-studio";
 import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useServerTable } from "@/hooks/use-server-table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { orderBy } from "@/lib/table-sort";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -75,6 +77,26 @@ const SALE_COLUMNS =
   "down_payment_amount, remaining_installments, source, payment_type, promo_code, comment, " +
   "created_at, clients, memberships, client_memberships";
 
+/**
+ * Колонки сортировки (lib/table-sort.ts): ключ заголовка → колонки вью.
+ * Клиент и абонемент — поля json-колонок вью (PostgREST сортирует по
+ * `col->>key`). Статус — массив абонементов продажи, не сортируется.
+ */
+const SORT_COLUMNS = {
+  client: ["clients->>last_name", "clients->>first_name", "clients->>full_name"],
+  contacts: "clients->>phone",
+  soldAt: ["sold_at", "created_at"],
+  source: "source",
+  membership: "memberships->>name",
+  paymentType: "payment_type",
+  promo: "promo_code",
+  amount: "total_amount",
+  downPayment: "down_payment_amount",
+  installments: "remaining_installments",
+  admin: "admin_name",
+  comment: "comment",
+};
+
 type Sale = {
   id: string;
   studio_id: string;
@@ -133,10 +155,11 @@ function SalesPage() {
   const [saleOpen, setSaleOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundSale, setRefundSale] = useState<RefundSale | null>(null);
+  const sort = useTableSort();
 
   const term = useDebouncedValue(search).trim();
   const table = useServerTable<Sale>({
-    queryKey: ["sales_list", studioId, term],
+    queryKey: ["sales_list", studioId, term, sort.key],
     queryFn: ({ from, to }) => {
       let q = supabase
         .from("sales_list")
@@ -145,11 +168,12 @@ function SalesPage() {
       if (term) q = q.ilike("search_text", `%${term}%`);
       // sold_at — дата, у многих продаж одна: без уникального хвоста строки
       // на границе страниц дублируются или пропадают.
-      return q
-        .order("sold_at", { ascending: false })
-        .order("created_at", { ascending: false })
-        .order("id")
-        .range(from, to);
+      return orderBy(q, sort.sort, SORT_COLUMNS, (o) =>
+        o
+          .order("sold_at", { ascending: false })
+          .order("created_at", { ascending: false })
+          .order("id"),
+      ).range(from, to);
     },
     enabled: !!studioId,
     errorMessage: "Не удалось загрузить продажи",
@@ -222,19 +246,37 @@ function SalesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[220px]">Клиент</TableHead>
-                  <TableHead>Контакты</TableHead>
-                  <TableHead tip={TIPS.soldAt}>Дата</TableHead>
-                  <TableHead>Источник</TableHead>
-                  <TableHead tip={TIPS.membership}>Абонемент</TableHead>
+                  <TableHead className="min-w-[220px]" {...sort.head("client")}>
+                    Клиент
+                  </TableHead>
+                  <TableHead {...sort.head("contacts")}>Контакты</TableHead>
+                  <TableHead tip={TIPS.soldAt} {...sort.head("soldAt")}>
+                    Дата
+                  </TableHead>
+                  <TableHead {...sort.head("source")}>Источник</TableHead>
+                  <TableHead tip={TIPS.membership} {...sort.head("membership")}>
+                    Абонемент
+                  </TableHead>
                   <TableHead>Статус</TableHead>
-                  <TableHead tip={TIPS.paymentType}>Тип оплаты</TableHead>
-                  <TableHead tip={TIPS.promo}>Промо-код</TableHead>
-                  <TableHead tip={TIPS.amount}>Сумма</TableHead>
-                  <TableHead tip={TIPS.downPayment}>Первый взнос</TableHead>
-                  <TableHead tip={TIPS.installments}>Рассрочка</TableHead>
-                  <TableHead tip={TIPS.admin}>Администратор</TableHead>
-                  <TableHead>Комментарий</TableHead>
+                  <TableHead tip={TIPS.paymentType} {...sort.head("paymentType")}>
+                    Тип оплаты
+                  </TableHead>
+                  <TableHead tip={TIPS.promo} {...sort.head("promo")}>
+                    Промо-код
+                  </TableHead>
+                  <TableHead tip={TIPS.amount} {...sort.head("amount")}>
+                    Сумма
+                  </TableHead>
+                  <TableHead tip={TIPS.downPayment} {...sort.head("downPayment")}>
+                    Первый взнос
+                  </TableHead>
+                  <TableHead tip={TIPS.installments} {...sort.head("installments")}>
+                    Рассрочка
+                  </TableHead>
+                  <TableHead tip={TIPS.admin} {...sort.head("admin")}>
+                    Администратор
+                  </TableHead>
+                  <TableHead {...sort.head("comment")}>Комментарий</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
