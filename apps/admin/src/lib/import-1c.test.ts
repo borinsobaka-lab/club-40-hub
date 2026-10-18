@@ -10,7 +10,7 @@ import {
 } from "./import-1c";
 
 const file: ImportFile = {
-  version: 1,
+  version: 2,
   source: "1С, выгрузка 2026-10-17",
   studios: { vake: "Lady Stretch Vake", saburtalo: "Lady Stretch Saburtalo" },
   clients: [
@@ -40,7 +40,12 @@ describe("файл заливки из 1С", () => {
 
   test("разбор: понятные ошибки", () => {
     expect(() => parseImportFile("{")).toThrow("не удалось прочитать JSON");
-    expect(() => parseImportFile(JSON.stringify({ ...file, version: 2 }))).toThrow("нет версии 1");
+    expect(() => parseImportFile(JSON.stringify({ ...file, version: 1 }))).toThrow(
+      "старый файл заливки",
+    );
+    expect(() => parseImportFile(JSON.stringify({ ...file, version: 3 }))).toThrow(
+      "не файл заливки из 1С",
+    );
     expect(() => parseImportFile(JSON.stringify({ ...file, studios: {} }))).toThrow(
       "не указаны клубы",
     );

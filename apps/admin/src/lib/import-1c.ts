@@ -21,7 +21,8 @@ export type ImportClient = {
 };
 
 export type ImportFile = {
-  version: 1;
+  /** 2 — без служебной заметки «Перенесено из 1С…» (2026-10-18). */
+  version: 2;
   source?: string;
   /** Ключ клуба в файле → название пакетного клуба в «Клубах». */
   studios: Record<string, string>;
@@ -63,9 +64,12 @@ export function parseImportFile(text: string): ImportFile {
   } catch {
     throw new Error("Это не файл заливки: не удалось прочитать JSON");
   }
-  const f = data as Partial<ImportFile> | null;
-  if (!f || typeof f !== "object" || f.version !== 1) {
-    throw new Error("Это не файл заливки из 1С (нет версии 1)");
+  const f = data as (Omit<Partial<ImportFile>, "version"> & { version?: unknown }) | null;
+  if (f?.version === 1) {
+    throw new Error("Это старый файл заливки — возьмите новый (без заметки «Перенесено из 1С»)");
+  }
+  if (!f || typeof f !== "object" || f.version !== 2) {
+    throw new Error("Это не файл заливки из 1С");
   }
   if (!f.studios || typeof f.studios !== "object" || Object.keys(f.studios).length === 0) {
     throw new Error("В файле не указаны клубы");

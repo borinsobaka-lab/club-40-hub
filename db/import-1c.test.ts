@@ -108,7 +108,7 @@ describe.skipIf(!url)("перенос клиентов из 1С (база)", () 
         email: "anna.1c@example.com",
         phone: "+995555123456",
         phone2: "+79161234567",
-        notes: "Перенесено из 1С",
+        notes: "Сотрудник",
         memberships: [
           {
             ref: "1-1/24/1",
