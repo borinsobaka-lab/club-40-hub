@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { addDays, format, startOfDay } from "date-fns";
 import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
@@ -10,7 +10,7 @@ import { CommentCell } from "@/components/comment-cell";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useNetworkStudioIds } from "@/hooks/use-catalog-studios";
+import { useNetworkStudioIds, useStudioFormat } from "@/hooks/use-catalog-studios";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { orderBy } from "@/lib/table-sort";
@@ -45,18 +45,12 @@ import {
   type ClubStatus,
 } from "@/lib/client-status";
 import { TableSkeletonRows } from "@/components/skeletons";
-import {
-  GENDER_OPTIONS,
-  clientName,
-  formatDate,
-  genderLabel,
-  phoneSearchTerm,
-  sanitizeSearch,
-} from "@/lib/format";
+import { clientName, formatDate, genderLabel, phoneSearchTerm, sanitizeSearch } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { ClientDialog } from "@/components/client-form-dialog";
 import { CLIENT_TIPS, clientSourceLabel } from "@/lib/client-fields";
+import { GOAL_LABELS, goalOptions } from "@/lib/client-profile";
 import { formatPhoneDisplay } from "@/lib/contacts";
 import { ClientsPageSkeleton } from "@/components/page-skeletons";
 
@@ -135,15 +129,22 @@ function toISODate(d: Date | undefined) {
   return d ? format(d, "yyyy-MM-dd") : null;
 }
 
+// Граница периода для времени (app_last_seen_at): начало дня `d` по часам
+// браузера; конец периода — начало следующего дня (фильтр «меньше»).
+function dayStart(d: Date | undefined, nextDay = false) {
+  return d ? addDays(startOfDay(d), nextDay ? 1 : 0).toISOString() : null;
+}
+
 function ClientsPage() {
   const { confirm, confirmDialog } = useConfirm();
   const studioId = useActiveStudioId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [genderFilter, setGenderFilter] = useState<string>("");
+  const [goalFilter, setGoalFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [regRange, setRegRange] = useState<DateRange | undefined>();
   const [visitRange, setVisitRange] = useState<DateRange | undefined>();
+  const [appRange, setAppRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
@@ -162,9 +163,21 @@ function ClientsPage() {
   const regTo = toISODate(regRange?.to);
   const visitFrom = toISODate(visitRange?.from);
   const visitTo = toISODate(visitRange?.to);
+  const appFrom = dayStart(appRange?.from);
+  const appTo = dayStart(appRange?.to, true);
   const hasFilters = Boolean(
-    term || genderFilter || statusFilter || regFrom || regTo || visitFrom || visitTo,
+    term ||
+    goalFilter ||
+    statusFilter ||
+    regFrom ||
+    regTo ||
+    visitFrom ||
+    visitTo ||
+    appFrom ||
+    appTo,
   );
+  // Цели — из анкеты приложения формата клуба (у пакетного — свои).
+  const goals = goalOptions(useStudioFormat(studioId));
 
   // Пакетный клуб — общая база клиентов всех пакетных клубов (2026-10-17).
   const networkIds = useNetworkStudioIds(studioId);
@@ -174,12 +187,14 @@ function ClientsPage() {
       studioId,
       networkIds?.join(","),
       term,
-      genderFilter,
+      goalFilter,
       statusFilter,
       regFrom,
       regTo,
       visitFrom,
       visitTo,
+      appFrom,
+      appTo,
       sort.key,
     ],
     queryFn: ({ from, to }) => {
@@ -192,12 +207,14 @@ function ClientsPage() {
           `search_name.ilike.%${term}%,phone.ilike.%${phoneSearchTerm(term)}%,phone2.ilike.%${phoneSearchTerm(term)}%,email.ilike.%${term}%`,
         );
       }
-      if (genderFilter) query = query.eq("gender", genderFilter);
+      if (goalFilter) query = query.eq("primary_goal", goalFilter);
       if (statusFilter) query = query.eq("club_status", statusFilter);
       if (regFrom) query = query.gte("registration_date", regFrom);
       if (regTo) query = query.lte("registration_date", regTo);
       if (visitFrom) query = query.gte("last_visit_date", visitFrom);
       if (visitTo) query = query.lte("last_visit_date", visitTo);
+      if (appFrom) query = query.gte("app_last_seen_at", appFrom);
+      if (appTo) query = query.lt("app_last_seen_at", appTo);
       return orderBy(query, sort.sort, SORT_COLUMNS, (q) =>
         q.order("created_at", { ascending: false }),
       ).range(from, to);
@@ -249,10 +266,11 @@ function ClientsPage() {
 
   const resetFilters = () => {
     setSearch("");
-    setGenderFilter("");
+    setGoalFilter("");
     setStatusFilter("");
     setRegRange(undefined);
     setVisitRange(undefined);
+    setAppRange(undefined);
   };
 
   return (
@@ -273,14 +291,14 @@ function ClientsPage() {
               onChange={setSearch}
               placeholder="Поиск по имени, телефону, email"
             />
-            <Select value={genderFilter} onValueChange={setGenderFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Пол" />
+            <Select value={goalFilter} onValueChange={setGoalFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Цель клиента" />
               </SelectTrigger>
               <SelectContent>
-                {GENDER_OPTIONS.map((g) => (
-                  <SelectItem key={g.value} value={g.value}>
-                    {g.label}
+                {goals.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {GOAL_LABELS[g]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -302,6 +320,13 @@ function ClientsPage() {
               placeholder="Последний визит"
               value={visitRange}
               onChange={setVisitRange}
+            />
+            <DateRangeFilter
+              placeholder="Последний раз в приложении"
+              title="Когда клиент последний раз открывал приложение клуба"
+              className="w-64"
+              value={appRange}
+              onChange={setAppRange}
             />
             <ToolbarReset active={hasFilters} onReset={resetFilters} />
           </TableToolbar>

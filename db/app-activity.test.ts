@@ -3,7 +3,8 @@
  * (db/migrations/2026-10-15_zzzzz_client_app_activity.sql): app_ping
  * (открытия, разделы, проверки), сводка карточки client_app_overview (кто
  * видит, приложение формата клуба, уведомления и действия), уборка при
- * удалении последней карточки.
+ * удалении последней карточки, «последний раз в приложении» и цель в
+ * «Клиентах» (db/migrations/2026-10-18_zzzzzzz_clients_goal_app_seen.sql).
  *
  * Нужна база с полной схемой — как для db/packages.test.ts:
  *   bash db/test/build-schema.sh postgres://postgres@localhost:5432/base40_test
@@ -337,6 +338,60 @@ describe.skipIf(!url)("устройства и активность прилож
       });
       expect(o.actions).toMatchObject({ bookings_self_30d: 1, bookings_staff_30d: 1, purchases_app: 0 });
       expect(o.devices).toEqual([]);
+    });
+  });
+
+  test("фильтры «Клиентов»: последний раз в приложении формата клуба и цель из анкеты", async () => {
+    await scenario(async (tx) => {
+      const pack = await studio(tx, "packages");
+      const sub = await studio(tx, "subscription");
+      const c = await client(tx, pack);
+      const c2 = await client(tx, sub, { userId: c.user! });
+      const networkAdmin = await staff(tx, await studio(tx, "packages"));
+      const stranger = await staff(tx, await studio(tx, "subscription"));
+
+      const seen = async (id: string) =>
+        (await tx`select app_last_seen_at = now() as now_, app_last_seen_at from clients where id = ${id}`)[0];
+
+      // Пакетное приложение — только карточка пакетного клуба.
+      await ping(tx, c.user!);
+      expect((await seen(c.client)).now_).toBe(true);
+      expect((await seen(c2.client)).app_last_seen_at).toBeNull();
+
+      // Пинг каждые 5 минут карточку не трогает — только через 15 минут или
+      // в новый день (по Тбилиси).
+      await tx`update clients set app_last_seen_at = now() - interval '10 minutes' where id = ${c.client}`;
+      await ping(tx, c.user!);
+      const [{ moved }] = await tx`
+        select ((now() - interval '10 minutes') at time zone 'Asia/Tbilisi')::date
+               <> (now() at time zone 'Asia/Tbilisi')::date as moved`;
+      expect((await seen(c.client)).now_).toBe(moved);
+      await tx`update clients set app_last_seen_at = now() - interval '20 minutes' where id = ${c.client}`;
+      await ping(tx, c.user!);
+      expect((await seen(c.client)).now_).toBe(true);
+
+      // Подписочное приложение — своя карточка.
+      await ping(tx, c.user!, { device: "phone-sub", format: "subscription" });
+      expect((await seen(c2.client)).now_).toBe(true);
+
+      // Из админки и приложения колонку не подделать.
+      await as(tx, networkAdmin);
+      await tx`update clients set app_last_seen_at = '2020-01-01', notes = 'x' where id = ${c.client}`;
+      await as(tx, c.user!);
+      await tx`update clients set app_last_seen_at = '2020-01-01' where id = ${c.client}`;
+      await asServer(tx);
+      expect((await seen(c.client)).now_).toBe(true);
+
+      // Цель — из анкеты приложения, видна сотрудникам сети карточки.
+      await tx`insert into member_profiles (user_id, primary_goal) values (${c.user}, 'flexibility')`;
+      await as(tx, networkAdmin);
+      const rows = await tx`select primary_goal, app_last_seen_at is not null as seen
+                              from clients_with_status where id = ${c.client}`;
+      expect(rows).toEqual([{ primary_goal: "flexibility", seen: true }]);
+      await as(tx, stranger);
+      expect((await tx`select 1 from clients_with_status where id = ${c.client}`).length).toBe(0);
+      expect((await tx`select 1 from member_profiles where user_id = ${c.user}`).length).toBe(0);
+      await asServer(tx);
     });
   });
 
