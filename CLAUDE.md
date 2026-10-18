@@ -378,7 +378,16 @@ AUTH_SETUP.md.
   регистрацию). Ставит триггер `clients_source_guard_biu`: из админки и
   приложения (роли authenticated/anon) `source` и `onec_ref` не подделать,
   функции владельца базы пишут как есть. Вью `clients_with_status`
-  пересоздана (актуальное определение — здесь).
+  пересоздана.
+  Фильтры «Клиентов» (2026-10-18, «Пол» убран):
+  `db/migrations/2026-10-18_zzzzzzz_clients_goal_app_seen.sql` —
+  `clients.app_last_seen_at` (последний раз в приложении формата клуба
+  карточки; переносит из `app_devices` триггер `app_devices_client_seen_aiu`
+  не чаще раза в 15 минут и при смене дня по Тбилиси; подделать нельзя —
+  `clients_source_guard`, актуальное определение здесь) и
+  `clients_with_status.primary_goal` (цель из анкеты `member_profiles`);
+  политики `member_profiles` сотрудника и клиента — в виде initplan.
+  Актуальное определение `clients_with_status` — здесь.
   «Добавлен» в «Абонементах»: `db/migrations/2026-10-18_zzz_client_packages_added_via.sql`
   — `client_packages_list.added_via` считается из продажи (`onec_ref` →
   `import` «Из 1С», `source = 'mobile'` → «Приложение», иначе `admin` —
@@ -502,8 +511,8 @@ AUTH_SETUP.md.
   триггер `schedule_entries_fill_capacity_bi`).
   Статус клуба без пробных: `db/migrations/2026-10-14_club_status_no_trial.sql`
   — `clients_with_status` не считает абонементы `memberships.kind = 'trial'`
-  (актуальное определение вью — `2026-10-18_zz_clients_source.sql`, та же
-  логика + новые колонки `clients`).
+  (актуальное определение вью — `2026-10-18_zzzzzzz_clients_goal_app_seen.sql`,
+  та же логика + новые колонки `clients`).
   Отхоженный абонемент пакетного клуба:
   `db/migrations/2026-10-14_zz_packages_exhausted_expire.sql` — без
   остатка тренировок (и пробное) → `expired` и без ждущего продления;
