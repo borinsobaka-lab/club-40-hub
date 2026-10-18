@@ -19,6 +19,18 @@ export type CMStatus =
   | "awaiting"
   | string;
 
+/** Подписи статусов — бейдж и фильтр «Статус» в «Абонементах». */
+export const MEMBERSHIP_STATUS_LABEL: Record<string, string> = {
+  active: "Активен",
+  frozen: "Заморожен",
+  pending: "Ждёт начала",
+  replaced: "Заменён",
+  expired: "Истёк",
+  cancelled: "Отменён",
+  refunded: "Возврат",
+  awaiting: "Ожидает посещения",
+};
+
 export type MembershipStatusInput = {
   status: CMStatus | null | undefined;
   ends_at?: string | null;
@@ -29,6 +41,7 @@ export type MembershipStatusInput = {
   started_at?: string | null;
 };
 
+/** Та же логика — client_packages_list.membership_state (фильтр «Абонементов»). */
 export function effectiveStatus(m: MembershipStatusInput, today = todayISO()): CMStatus {
   if (!m.status) return "expired";
   if (m.status === "active" && m.starts_on_first_visit && !m.started_at) return "awaiting";
