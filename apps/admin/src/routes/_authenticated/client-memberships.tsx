@@ -22,6 +22,9 @@ import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
+import { isAdminRole } from "@/lib/staff-directory";
+import { useStudioStaff } from "@/lib/studio-staff";
+import { MEMBERSHIP_STATUS_LABEL } from "@/lib/membership-status";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import {
@@ -81,6 +84,9 @@ import {
 } from "@/components/ui/table";
 import { DataPagination } from "@/components/data-pagination";
 import { DateRangeFilter, type DateRange } from "@/components/date-range-filter";
+import { NumberRangeFilter } from "@/components/number-range-filter";
+import { EMPTY_NUMBER_RANGE, rangeBound, type NumberRange } from "@/lib/number-range";
+import { StaffOption } from "@/components/employee-photo";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
@@ -131,7 +137,29 @@ const TIPS = {
     "Срок абонемента идёт с первого посещения: пока клиент не пришёл, абонемент ожидает посещения. Продление — тренировки списываются после текущего абонемента.",
   nextPayment:
     "Абонементы, у которых ближайший невнесённый платёж приходится на выбранные даты. Одна дата — платежи за этот день, две — за период.",
+  endsAt:
+    "Абонементы, срок которых заканчивается в выбранные даты (последний день срока). Одна дата — заканчиваются в этот день. Абонементы без срока (ещё не было первого посещения) не попадают.",
+  balanceRange:
+    "Остаток баланса от и до (включительно): групповых тренировок, у пакета персональных — персональных. Одну границу можно оставить пустой.",
 };
+
+/**
+ * Статусы в фильтре — как на бейдже (client_packages_list.membership_state
+ * считает их так же, как effectiveStatus): сначала действующие.
+ */
+const STATUS_FILTER_ORDER = [
+  "active",
+  "awaiting",
+  "pending",
+  "frozen",
+  "expired",
+  "replaced",
+  "cancelled",
+  "refunded",
+] as const;
+type StatusFilter = (typeof STATUS_FILTER_ORDER)[number];
+/** Продажи без продавца (перенесённые из 1С). */
+const NO_SELLER = "none";
 
 /**
  * Состояние оплаты (client_packages_list.payment_state) — цвет полоски строки:
@@ -250,6 +278,8 @@ const COLUMNS =
   "sale_kind, source, promo_code, comment, membership_note, clients, memberships, " +
   "membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
   "membership_started_at, starts_on_first_visit, diagnostics_left, added_via";
+// Фильтры по продавцу, остатку и статусу — колонки seller_id, balance_left и
+// membership_state (db/migrations/2026-10-18_zzzzz_client_packages_filters.sql).
 
 /**
  * Колонки: клиент, абонемент, статус, баланс, сумма, продал / тренер,
@@ -305,6 +335,19 @@ function ClientMembershipsPage() {
   const payFrom = nextPayment?.from ? isoDay(nextPayment.from) : "";
   // Выбран только первый день диапазона — это и есть «одно число».
   const payTo = nextPayment?.to ? isoDay(nextPayment.to) : payFrom;
+  // Срок окончания — так же: один день или период.
+  const [endsRange, setEndsRange] = useState<DateRange | undefined>();
+  const endsFrom = endsRange?.from ? isoDay(endsRange.from) : "";
+  const endsTo = endsRange?.to ? isoDay(endsRange.to) : endsFrom;
+  const [balance, setBalance] = useState<NumberRange>(EMPTY_NUMBER_RANGE);
+  const debouncedBalance = useDebouncedValue(balance);
+  const balanceMin = rangeBound(debouncedBalance.min);
+  const balanceMax = rangeBound(debouncedBalance.max);
+  const [seller, setSeller] = useState<string>(ALL);
+  const [status, setStatus] = useState<StatusFilter | typeof ALL>(ALL);
+  // Продавцы — администраторы клуба из «Сотрудников», как в форме продажи.
+  const { data: staffRows = [] } = useStudioStaff(studioId);
+  const sellers = staffRows.filter((r) => isAdminRole(r.role));
 
   // Досчитать очередь продлений: у кого срок текущего абонемента вышел без
   // записей, продление становится действующим (packages_settle_studio). Один
@@ -325,7 +368,21 @@ function ClientMembershipsPage() {
 
   const term = sanitizeSearch(useDebouncedValue(search));
   const table = useServerTable<Row>({
-    queryKey: ["client_packages_list", studioId, term, state, kind, payFrom, payTo],
+    queryKey: [
+      "client_packages_list",
+      studioId,
+      term,
+      state,
+      kind,
+      payFrom,
+      payTo,
+      endsFrom,
+      endsTo,
+      String(balanceMin ?? ""),
+      String(balanceMax ?? ""),
+      seller,
+      status,
+    ],
     queryFn: ({ from, to }) => {
       let q = supabase
         .from("client_packages_list")
@@ -336,10 +393,18 @@ function ClientMembershipsPage() {
       if (kind !== ALL) q = q.eq("sale_kind", kind);
       // next_due_date во вью — ближайший невнесённый платёж (у оплаченных — null).
       if (payFrom) q = q.gte("next_due_date", payFrom).lte("next_due_date", payTo);
+      if (endsFrom) q = q.gte("ends_at", endsFrom).lte("ends_at", endsTo);
+      if (balanceMin != null) q = q.gte("balance_left", balanceMin);
+      if (balanceMax != null) q = q.lte("balance_left", balanceMax);
+      if (seller === NO_SELLER) q = q.is("seller_id", null);
+      else if (seller !== ALL) q = q.eq("seller_id", seller);
+      if (status !== ALL) q = q.eq("membership_state", status);
       // Ждут платежа и просроченные — по ближайшему платежу: сверху те, с кем
       // разбираться первыми. Остальное — новые продажи сверху.
       if (payFrom || state === "overdue" || state === "soon" || state === "pending")
         q = q.order("next_due_date", { ascending: true });
+      // По сроку окончания — сначала те, у кого он кончается раньше.
+      if (endsFrom) q = q.order("ends_at", { ascending: true });
       return q
         .order("sold_at", { ascending: false })
         .order("created_at", { ascending: false })
@@ -424,7 +489,16 @@ function ClientMembershipsPage() {
   );
 
   const columns = COLUMN_COUNT;
-  const filtered = !!term || state !== ALL || kind !== ALL || !!payFrom;
+  const filtered =
+    !!term ||
+    state !== ALL ||
+    kind !== ALL ||
+    !!payFrom ||
+    !!endsFrom ||
+    !!balance.min.trim() ||
+    !!balance.max.trim() ||
+    seller !== ALL ||
+    status !== ALL;
 
   return (
     <AdminShell
@@ -446,11 +520,11 @@ function ClientMembershipsPage() {
               placeholder="Поиск по клиенту, абонементу, сотруднику"
             />
             <Select value={state} onValueChange={(v) => setState(v as PaymentState | typeof ALL)}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48" aria-label="Оплата">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Все абонементы</SelectItem>
+                <SelectItem value={ALL}>Все платежи</SelectItem>
                 {PAYMENT_STATE_ORDER.map((s) => (
                   <SelectItem key={s} value={s}>
                     <span className="flex items-center gap-2">
@@ -482,12 +556,51 @@ function ClientMembershipsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter | typeof ALL)}>
+              <SelectTrigger className="w-40" aria-label="Статус абонемента">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Все статусы</SelectItem>
+                {STATUS_FILTER_ORDER.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {MEMBERSHIP_STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <DateRangeFilter
               value={nextPayment}
               onChange={setNextPayment}
               placeholder="Ближайший платёж"
               title={TIPS.nextPayment}
             />
+            <DateRangeFilter
+              value={endsRange}
+              onChange={setEndsRange}
+              placeholder="Окончание срока"
+              title={TIPS.endsAt}
+            />
+            <NumberRangeFilter
+              value={balance}
+              onChange={setBalance}
+              placeholder="Баланс"
+              title={TIPS.balanceRange}
+            />
+            <Select value={seller} onValueChange={setSeller}>
+              <SelectTrigger className="w-48" aria-label="Кто продал">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Все продавцы</SelectItem>
+                {sellers.map((a) => (
+                  <SelectItem key={a.id} value={a.id} textValue={a.full_name}>
+                    <StaffOption name={a.full_name} photo={a.photo_url} />
+                  </SelectItem>
+                ))}
+                <SelectItem value={NO_SELLER}>Без продавца</SelectItem>
+              </SelectContent>
+            </Select>
             <ToolbarReset
               active={filtered}
               onReset={() => {
@@ -495,6 +608,10 @@ function ClientMembershipsPage() {
                 setState(ALL);
                 setKind(ALL);
                 setNextPayment(undefined);
+                setEndsRange(undefined);
+                setBalance(EMPTY_NUMBER_RANGE);
+                setSeller(ALL);
+                setStatus(ALL);
               }}
             />
             <StripeLegend />

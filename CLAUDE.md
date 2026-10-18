@@ -383,8 +383,12 @@ AUTH_SETUP.md.
   — `client_packages_list.added_via` считается из продажи (`onec_ref` →
   `import` «Из 1С», `source = 'mobile'` → «Приложение», иначе `admin` —
   «Админка»); отдельной колонки в `sales` нет — `sales.source` переходит в
-  `client_memberships.source`, где `import` нарушил бы проверку. Актуальное
-  определение `client_packages_list` — здесь.
+  `client_memberships.source`, где `import` нарушил бы проверку.
+  Фильтры «Абонементов»: `db/migrations/2026-10-18_zzzzz_client_packages_filters.sql`
+  — `client_packages_list.seller_id` (кто продал), `balance_left` (у пакета
+  персональных — `personal_left`, иначе `visits_left`), `membership_state`
+  (статус как у бейджа: `awaiting`, `expired` и у active с прошедшим
+  сроком). Актуальное определение `client_packages_list` — здесь.
   Правки приложения пакетов 2026-10-12:
   `db/migrations/2026-10-12_zz_packages_app_fixes.sql` — `memberships.tag_text`
   / `tag_style` (`soft` / `bright`) / `gift_text` (тег и «В подарок» в

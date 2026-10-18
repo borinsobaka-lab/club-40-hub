@@ -1,19 +1,12 @@
 import { useActiveStudio } from "@/hooks/use-studios";
-import { effectiveStatus, type MembershipStatusInput } from "@/lib/membership-status";
+import {
+  MEMBERSHIP_STATUS_LABEL,
+  effectiveStatus,
+  type MembershipStatusInput,
+} from "@/lib/membership-status";
 import { cn } from "@/lib/utils";
 
 // Статусы и effectiveStatus — lib/membership-status.ts (их проверяют тесты).
-
-const LABELS: Record<string, string> = {
-  active: "Активен",
-  frozen: "Заморожен",
-  pending: "Ждёт начала",
-  replaced: "Заменён",
-  expired: "Истёк",
-  cancelled: "Отменён",
-  refunded: "Возврат",
-  awaiting: "Ожидает посещения",
-};
 
 const CLASSES: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
@@ -35,7 +28,7 @@ export function MembershipStatusBadge({ m }: { m: MembershipStatusInput }) {
         CLASSES[s] ?? CLASSES.expired,
       )}
     >
-      {LABELS[s] ?? s}
+      {MEMBERSHIP_STATUS_LABEL[s] ?? s}
     </span>
   );
 }
