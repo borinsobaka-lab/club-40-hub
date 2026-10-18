@@ -229,6 +229,9 @@ AUTH_SETUP.md в корне репозитория. Письма уходят ч
 админке, `RESEND_API_KEY` у club40-admin): подписочному — Base40 с
 noreply@base40.fit, пакетному — письмо Lady Stretch (розовое, с
 `LADY_STRETCH_MAIL_FROM`; `apps/admin/CLAUDE.md`, «Письма Lady Stretch»).
+Письмо с кодом — на языке, выбранном на экране входа (`requestOtp` кладёт
+его в `emailRedirectTo` — `/?lang=…` — и в `data.locale`), иначе на
+английском (2026-10-18).
 
 ## Версия и «О приложении» (решение владельца 2026-10-15)
 

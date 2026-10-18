@@ -4,6 +4,7 @@ import {
   buildEmail,
   buildEmails,
   emailBrand,
+  emailLocale,
   emailSender,
   isAdminApp,
   isPackagesApp,
@@ -169,7 +170,7 @@ describe("Lady Stretch — письма клиентам пакетных клу
   });
 
   test("вход — код Lady Stretch в розовом, без ссылки и без Base40", () => {
-    const { html, subject } = buildEmail(payload(LS), false, "ladyStretch");
+    const { html, subject } = buildEmail(payload(`${LS}/?lang=ru`), false, "ladyStretch");
     expect(subject).toBe("Код для входа — Lady Stretch");
     expect(hasCode(html)).toBe(true);
     expect(hasLoginLink(html)).toBe(false);
@@ -231,4 +232,79 @@ describe("Lady Stretch — письма клиентам пакетных клу
       email: "noreply@base40.fit",
       name: "Base40",
     }));
+});
+
+describe("язык письма клиенту — выбранный в приложении, иначе английский", () => {
+  const withMeta = (redirect_to: string, locale: unknown): HookPayload => ({
+    ...payload(redirect_to),
+    user: { id: "u1", email: "owner@example.com", user_metadata: { locale } },
+  });
+
+  test("?lang= в redirect_to", () => {
+    expect(emailLocale(payload(`${CLIENT}?lang=ka`), false)).toBe("ka");
+    expect(emailLocale(payload(`${CLIENT}?lang=ru`), false)).toBe("ru");
+    expect(emailLocale(payload(`${CLIENT}?lang=en`), false)).toBe("en");
+  });
+
+  test("без языка — английский", () => {
+    expect(emailLocale(payload(CLIENT), false)).toBe("en");
+    expect(emailLocale(payload(""), false)).toBe("en");
+    expect(emailLocale(payload(`${CLIENT}?lang=de`), false)).toBe("en");
+  });
+
+  test("нет ?lang= — язык из метаданных учётной записи", () => {
+    expect(emailLocale(withMeta(CLIENT, "ka"), false)).toBe("ka");
+    expect(emailLocale(withMeta(CLIENT, "xx"), false)).toBe("en");
+    // Язык экрана входа важнее сохранённого при создании учётной записи.
+    expect(emailLocale(withMeta(`${CLIENT}?lang=ru`, "ka"), false)).toBe("ru");
+  });
+
+  test("админка — по-русски, что бы ни пришло", () =>
+    expect(emailLocale(payload(`${ADMIN}?lang=en`), true)).toBe("ru"));
+
+  test("по умолчанию клиентское письмо — английское, без кириллицы", () => {
+    for (const brand of ["base40", "ladyStretch"] as const) {
+      for (const type of ["magiclink", "signup", "recovery", "invite", "email_change", "x"]) {
+        const { subject, html } = buildEmail(payload(CLIENT, type), false, brand);
+        expect(hasCode(html)).toBe(true);
+        expect(/[а-яё]/i.test(subject + html)).toBe(false);
+      }
+    }
+    expect(buildEmail(payload(CLIENT), false).subject).toBe("Your sign-in code — Base40");
+  });
+
+  test("грузинский — без кириллицы", () => {
+    for (const type of ["magiclink", "signup", "recovery", "invite", "email_change", "x"]) {
+      const { subject, html } = buildEmail(
+        payload(`${CLIENT}?lang=ka`, type),
+        false,
+        "ladyStretch",
+      );
+      expect(hasCode(html)).toBe(true);
+      expect(/[а-яё]/i.test(subject + html)).toBe(false);
+      expect(/[\u10D0-\u10FF]/.test(subject)).toBe(true);
+    }
+  });
+
+  test("смена почты с двумя кодами — оба письма на языке клиента", () => {
+    const p: HookPayload = {
+      user: { id: "u1", email: "old@example.com", new_email: "new@example.com" },
+      email_data: {
+        token: "111111",
+        token_hash: "h1",
+        token_new: "222222",
+        redirect_to: `${CLIENT}?lang=en`,
+        email_action_type: "email_change",
+        site_url: CLIENT,
+      },
+    };
+    for (const e of buildEmails(p, false))
+      expect(e.subject).toBe("Confirm your email change — Base40");
+  });
+
+  test("админка — русское письмо", () => {
+    const { subject, html } = buildEmail(payload(`${ADMIN}?lang=en`), true);
+    expect(subject).toBe("Код для входа в админ-панель Base40");
+    expect(html).toContain("Код действует 1 час.");
+  });
 });

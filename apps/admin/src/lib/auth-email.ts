@@ -101,11 +101,132 @@ export function needsClubMembership(payload: HookPayload, fromAdminApp: boolean)
 export const NOT_A_CLUB_MEMBER = "not_a_club_member";
 
 // ---------------------------------------------------------------------------
+// Язык письма клиенту (решение владельца 2026-10-18): язык, выбранный в
+// приложении, иначе английский — как и само приложение по умолчанию.
+// Источники по порядку: ?lang= в redirect_to (экран входа добавляет язык,
+// выбранный сейчас, — apps/client, use-auth.tsx), user_metadata.locale (его
+// пишет signInWithOtp при создании учётной записи; у существующей GoTrue
+// метаданные из запроса не обновляет). Письма админки — по-русски:
+// интерфейс админки только русский.
+// ---------------------------------------------------------------------------
+
+export type EmailLocale = "en" | "ka" | "ru";
+
+const isEmailLocale = (value: unknown): value is EmailLocale =>
+  value === "en" || value === "ka" || value === "ru";
+
+export function emailLocale(payload: HookPayload, fromAdminApp: boolean): EmailLocale {
+  if (fromAdminApp) return "ru";
+  try {
+    const lang = new URL(payload.email_data.redirect_to).searchParams.get("lang");
+    if (isEmailLocale(lang)) return lang;
+  } catch {
+    // нет redirect_to или не URL — смотрим метаданные
+  }
+  const meta = payload.user.user_metadata?.locale;
+  return isEmailLocale(meta) ? meta : "en";
+}
+
+type EmailTexts = {
+  ignore: string;
+  validFor: string;
+  validForPrivate: string;
+  codeSubject: (name: string) => string;
+  welcomeTitle: (name: string) => string;
+  codeLead: string;
+  signInSubject: (name: string) => string;
+  signInTitle: (name: string) => string;
+  signInLead: string;
+  recoverySubject: (name: string) => string;
+  recoveryTitle: string;
+  recoveryLead: string;
+  inviteSubject: (name: string) => string;
+  inviteTitle: (name: string) => string;
+  inviteLead: string;
+  emailChangeSubject: (name: string) => string;
+  emailChangeTitle: string;
+  emailChangeOldLead: string;
+  emailChangeNewLead: string;
+  confirmTitle: string;
+};
+
+const TEXTS: Record<EmailLocale, EmailTexts> = {
+  ru: {
+    ignore: "Если вы не запрашивали это письмо — просто проигнорируйте его.",
+    validFor: "Код действует 1 час.",
+    validForPrivate: "Код действует 1 час. Никому его не сообщайте.",
+    codeSubject: (name) => `Код подтверждения — ${name}`,
+    welcomeTitle: (name) => `Добро пожаловать в ${name}!`,
+    codeLead: "Ваш код подтверждения:",
+    signInSubject: (name) => `Код для входа — ${name}`,
+    signInTitle: (name) => `Вход в ${name}`,
+    signInLead: "Ваш код для входа в приложение:",
+    recoverySubject: (name) => `Восстановление доступа — ${name}`,
+    recoveryTitle: "Восстановление доступа",
+    recoveryLead: "Ваш код для восстановления доступа:",
+    inviteSubject: (name) => `Приглашение в ${name}`,
+    inviteTitle: (name) => `Вас пригласили в ${name}`,
+    inviteLead: "Ваш код для принятия приглашения:",
+    emailChangeSubject: (name) => `Подтверждение смены почты — ${name}`,
+    emailChangeTitle: "Смена почты",
+    emailChangeOldLead: "Код для подтверждения смены почты (с текущего адреса):",
+    emailChangeNewLead: "Код для подтверждения новой почты:",
+    confirmTitle: "Подтверждение действия",
+  },
+  en: {
+    ignore: "If you didn't request this email, just ignore it.",
+    validFor: "The code is valid for 1 hour.",
+    validForPrivate: "The code is valid for 1 hour. Don't share it with anyone.",
+    codeSubject: (name) => `Verification code — ${name}`,
+    welcomeTitle: (name) => `Welcome to ${name}!`,
+    codeLead: "Your verification code:",
+    signInSubject: (name) => `Your sign-in code — ${name}`,
+    signInTitle: (name) => `Sign in to ${name}`,
+    signInLead: "Your code to sign in to the app:",
+    recoverySubject: (name) => `Account recovery — ${name}`,
+    recoveryTitle: "Account recovery",
+    recoveryLead: "Your account recovery code:",
+    inviteSubject: (name) => `Invitation to ${name}`,
+    inviteTitle: (name) => `You've been invited to ${name}`,
+    inviteLead: "Your code to accept the invitation:",
+    emailChangeSubject: (name) => `Confirm your email change — ${name}`,
+    emailChangeTitle: "Email change",
+    emailChangeOldLead: "Code to confirm the email change (from your current address):",
+    emailChangeNewLead: "Code to confirm your new email:",
+    confirmTitle: "Confirm the action",
+  },
+  // Название бренда латиницей — без грузинских падежных окончаний: «{name}
+  // გიწვევთ», «{name} — შესვლა».
+  ka: {
+    ignore: "თუ ეს წერილი არ მოგითხოვიათ, უბრალოდ უგულებელყავით.",
+    validFor: "კოდი მოქმედებს 1 საათის განმავლობაში.",
+    validForPrivate: "კოდი მოქმედებს 1 საათის განმავლობაში. არავის გაუზიაროთ.",
+    codeSubject: (name) => `დადასტურების კოდი — ${name}`,
+    welcomeTitle: (name) => `${name} მოგესალმებათ!`,
+    codeLead: "თქვენი დადასტურების კოდი:",
+    signInSubject: (name) => `შესვლის კოდი — ${name}`,
+    signInTitle: (name) => `${name} — შესვლა`,
+    signInLead: "თქვენი კოდი აპლიკაციაში შესასვლელად:",
+    recoverySubject: (name) => `წვდომის აღდგენა — ${name}`,
+    recoveryTitle: "წვდომის აღდგენა",
+    recoveryLead: "თქვენი კოდი წვდომის აღსადგენად:",
+    inviteSubject: (name) => `მოწვევა — ${name}`,
+    inviteTitle: (name) => `${name} გიწვევთ`,
+    inviteLead: "თქვენი კოდი მოწვევის მისაღებად:",
+    emailChangeSubject: (name) => `ელფოსტის შეცვლის დადასტურება — ${name}`,
+    emailChangeTitle: "ელფოსტის შეცვლა",
+    emailChangeOldLead: "კოდი ელფოსტის შეცვლის დასადასტურებლად (მიმდინარე მისამართიდან):",
+    emailChangeNewLead: "კოდი ახალი ელფოსტის დასადასტურებლად:",
+    confirmTitle: "მოქმედების დადასტურება",
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Письма. Инлайновые стили и литеральные цвета здесь уместны: это HTML почты,
 // токены дизайн-системы приложения на неё не распространяются.
 // ---------------------------------------------------------------------------
 
-const wrapBase40 = (inner: string) => `
+const wrapBase40 = (inner: string, tx: EmailTexts) => `
 <div style="margin:0;padding:32px 16px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:440px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;border:1px solid #e4e4e7">
     <div style="font-size:20px;font-weight:900;font-style:italic;letter-spacing:0.04em">
@@ -113,19 +234,22 @@ const wrapBase40 = (inner: string) => `
     </div>
     <div style="margin-top:24px">${inner}</div>
     <p style="margin-top:28px;color:#a1a1aa;font-size:12px;line-height:1.5">
-      Если вы не запрашивали это письмо — просто проигнорируйте его.
+      ${tx.ignore}
     </p>
   </div>
 </div>`;
 
-const codeBase40 = (title: string, lead: string, token: string) =>
-  wrapBase40(`
+const codeBase40 = (title: string, lead: string, token: string, tx: EmailTexts) =>
+  wrapBase40(
+    `
     <h2 style="margin:0;font-size:18px;color:#18181b">${title}</h2>
     <p style="color:#52525b;font-size:14px;line-height:1.5">${lead}</p>
     <div style="margin:20px 0;padding:16px;background:#fafafa;border:1px solid #e4e4e7;border-radius:12px;text-align:center">
       <span style="font-size:34px;font-weight:700;letter-spacing:10px;color:#18181b">${token}</span>
     </div>
-    <p style="color:#52525b;font-size:13px">Код действует 1 час.</p>`);
+    <p style="color:#52525b;font-size:13px">${tx.validFor}</p>`,
+    tx,
+  );
 
 // Lady Stretch: светлое письмо (решение владельца 2026-10-15: тёмное —
 // «мрачно»). Подложка — светло-серая, карточка белая, шапка карточки —
@@ -142,7 +266,7 @@ const LS_MUTED = "#5f6873";
 const LS_FAINT = "#8a929c";
 const LS_LOGO_URL = `${process.env.ADMIN_APP_URL ?? "https://admin.base40.fit"}/email/lady-stretch-logo-dark.png`;
 
-const codeLadyStretch = (title: string, lead: string, token: string) => `
+const codeLadyStretch = (title: string, lead: string, token: string, tx: EmailTexts) => `
 <div style="margin:0;padding:0;background:${LS_PAGE}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${LS_PAGE}" style="background:${LS_PAGE};font-family:Roboto,Arial,Helvetica,sans-serif">
   <tr><td align="center" style="padding:32px 16px">
@@ -158,10 +282,10 @@ const codeLadyStretch = (title: string, lead: string, token: string) => `
             <span style="font-size:36px;font-weight:700;letter-spacing:10px;padding-left:10px;color:${LS_INK}">${token}</span>
           </td></tr>
         </table>
-        <p style="margin:0;color:${LS_MUTED};font-size:13px;line-height:1.5">Код действует 1 час. Никому его не сообщайте.</p>
+        <p style="margin:0;color:${LS_MUTED};font-size:13px;line-height:1.5">${tx.validForPrivate}</p>
       </td></tr>
       <tr><td align="center" style="padding:24px 8px 0;color:${LS_FAINT};font-size:12px;line-height:1.5">
-        Если вы не запрашивали это письмо — просто проигнорируйте его.<br>
+        ${tx.ignore}<br>
         <span style="color:${LS_PINK}">&#9679;</span>&nbsp; Lady Stretch Tbilisi
       </td></tr>
     </table>
@@ -169,15 +293,14 @@ const codeLadyStretch = (title: string, lead: string, token: string) => `
 </table>
 </div>`;
 
-const CODE_EMAIL: Record<EmailBrand, (title: string, lead: string, token: string) => string> = {
+type CodeEmail = (title: string, lead: string, token: string, tx: EmailTexts) => string;
+
+const CODE_EMAIL: Record<EmailBrand, CodeEmail> = {
   base40: codeBase40,
   ladyStretch: codeLadyStretch,
 };
 
 export type OutgoingEmail = { to: string; subject: string; html: string };
-
-const emailChangeSubject = (brand: EmailBrand) =>
-  `Подтверждение смены почты — ${BRAND_NAME[brand]}`;
 
 /**
  * Все письма, которые нужно отправить по одному вызову хука.
@@ -196,28 +319,22 @@ export function buildEmails(
 ): OutgoingEmail[] {
   const { user, email_data } = payload;
   const b: EmailBrand = fromAdminApp ? "base40" : brand;
+  const tx = TEXTS[emailLocale(payload, fromAdminApp)];
   const codeEmail = CODE_EMAIL[b];
   if (email_data.email_action_type === "email_change") {
     const newEmail = user.new_email || null;
     if (email_data.token_new && newEmail) {
+      const subject = tx.emailChangeSubject(BRAND_NAME[b]);
       return [
         {
           to: user.email,
-          subject: emailChangeSubject(b),
-          html: codeEmail(
-            "Смена почты",
-            "Код для подтверждения смены почты (с текущего адреса):",
-            email_data.token,
-          ),
+          subject,
+          html: codeEmail(tx.emailChangeTitle, tx.emailChangeOldLead, email_data.token, tx),
         },
         {
           to: newEmail,
-          subject: emailChangeSubject(b),
-          html: codeEmail(
-            "Смена почты",
-            "Код для подтверждения новой почты:",
-            email_data.token_new,
-          ),
+          subject,
+          html: codeEmail(tx.emailChangeTitle, tx.emailChangeNewLead, email_data.token_new, tx),
         },
       ];
     }
@@ -235,7 +352,8 @@ export function buildEmail(
   // Админка — всегда Base40, какой бы бренд ни передали.
   const b: EmailBrand = fromAdminApp ? "base40" : brand;
   const name = BRAND_NAME[b];
-  const codeEmail = CODE_EMAIL[b];
+  const tx = TEXTS[emailLocale(payload, fromAdminApp)];
+  const code = (title: string, lead: string) => CODE_EMAIL[b](title, lead, token, tx);
 
   switch (email_action_type) {
     case "signup":
@@ -244,8 +362,8 @@ export function buildEmail(
       // (db/migrations/…_client_signin_only.sql). В админке shouldCreateUser:
       // false, сотрудников заводит владелец.
       return {
-        subject: `Код подтверждения — ${name}`,
-        html: codeEmail(`Добро пожаловать в ${name}!`, "Ваш код подтверждения:", token),
+        subject: tx.codeSubject(name),
+        html: code(tx.welcomeTitle(name), tx.codeLead),
       };
     // Вход — всегда код, в обоих приложениях. Ссылки авто-входа в письме
     // нет: её можно переслать или открыть превью почтовика, а код вводится
@@ -254,15 +372,14 @@ export function buildEmail(
       return fromAdminApp
         ? {
             subject: "Код для входа в админ-панель Base40",
-            html: codeEmail(
+            html: code(
               "Вход в админ-панель",
               "Введите этот код на странице входа в админ-панель. Никому его не сообщайте.",
-              token,
             ),
           }
         : {
-            subject: `Код для входа — ${name}`,
-            html: codeEmail(`Вход в ${name}`, "Ваш код для входа в приложение:", token),
+            subject: tx.signInSubject(name),
+            html: code(tx.signInTitle(name), tx.signInLead),
           };
     // Восстановления и приглашений ни одно приложение не запрашивает (паролей
     // нет ни у кого, сотрудников создаёт админка), но /recover у GoTrue
@@ -270,24 +387,24 @@ export function buildEmail(
     // код, а не ссылка: в письмах авторизации ссылок авто-входа нет вовсе.
     case "recovery":
       return {
-        subject: `Восстановление доступа — ${name}`,
-        html: codeEmail("Восстановление доступа", "Ваш код для восстановления доступа:", token),
+        subject: tx.recoverySubject(name),
+        html: code(tx.recoveryTitle, tx.recoveryLead),
       };
     case "invite":
       return {
-        subject: `Приглашение в ${name}`,
-        html: codeEmail(`Вас пригласили в ${name}`, "Ваш код для принятия приглашения:", token),
+        subject: tx.inviteSubject(name),
+        html: code(tx.inviteTitle(name), tx.inviteLead),
       };
     case "email_change":
       return {
-        subject: emailChangeSubject(b),
-        html: codeEmail("Смена почты", "Код для подтверждения новой почты:", token),
+        subject: tx.emailChangeSubject(name),
+        html: code(tx.emailChangeTitle, tx.emailChangeNewLead),
       };
     default:
       // reauthentication и будущие типы: код — универсальный запасной вариант.
       return {
-        subject: `Код подтверждения — ${name}`,
-        html: codeEmail("Подтверждение действия", "Ваш код подтверждения:", token),
+        subject: tx.codeSubject(name),
+        html: code(tx.confirmTitle, tx.codeLead),
       };
   }
 }

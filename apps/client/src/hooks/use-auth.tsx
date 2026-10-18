@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { readDocumentLocale } from "@/i18n";
 import { APP_FORMAT } from "@/lib/app-format";
 import { unregisterPushDevice } from "@/lib/push";
 import {
@@ -121,8 +122,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // emailRedirectTo задаём явно, хотя вход идёт по коду: по хосту в нём
       // обработчик писем (admin: /api/auth-email) отличает клиентское
       // приложение от админки. Без этого Supabase подставит Site URL
-      // (= админка), и клиенту уйдёт письмо админки.
-      const emailRedirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
+      // (= админка), и клиенту уйдёт письмо админки. В ?lang= — язык,
+      // выбранный сейчас: на нём придёт письмо с кодом (без него —
+      // английский). Путь «/» обязателен: разрешённые адреса GoTrue —
+      // `https://<хост>/**`, адрес без пути с ними не совпал бы.
+      const locale = readDocumentLocale();
+      const emailRedirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/?lang=${locale}` : undefined;
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -132,7 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo,
           // Формат приложения: если карточки с этой почтой есть в студиях
           // обоих форматов, триггер привяжет карточку студии этого формата.
-          data: { app_format: APP_FORMAT },
+          // Язык — и в метаданные новой учётной записи (у существующей
+          // GoTrue их из запроса не обновляет).
+          data: { app_format: APP_FORMAT, locale },
         },
       });
       return { error: error?.message ?? null };
