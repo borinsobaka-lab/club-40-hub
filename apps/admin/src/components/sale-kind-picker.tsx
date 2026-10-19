@@ -40,23 +40,29 @@ const SALE_KIND_ICON: Record<SaleKind, typeof ShoppingBag> = {
  * Выбор типа продажи (пакетный клуб, «Абонементы») — плитки с иконкой типа
  * на плашке цвета типа (как кружок в колонке «Тип продажи»: новая и пробное —
  * зелёный, допродажа — синий, продление — фиолетовый; решение владельца
- * 2026-10-14); дальше форма продажи.
+ * 2026-10-14); дальше форма продажи. Одно и то же окно везде, где продают
+ * абонемент: «Абонементы» и карточка клиента (решение владельца 2026-10-19).
  */
 export function SaleKindPickerDialog({
   open,
   onOpenChange,
   onPick,
+  clientName,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onPick: (kind: SaleKind) => void;
+  /** Продажа из карточки клиента — его имя в пояснении. */
+  clientName?: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Какая продажа?</DialogTitle>
-          <DialogDescription>Выберите тип продажи.</DialogDescription>
+          <DialogDescription>
+            {clientName ? `Выберите тип продажи — ${clientName}.` : "Выберите тип продажи."}
+          </DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

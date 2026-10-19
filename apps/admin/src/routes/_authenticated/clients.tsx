@@ -7,6 +7,7 @@ import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
 
 import { CommentCell } from "@/components/comment-cell";
+import { commentSaver } from "@/lib/comment-saver";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -423,7 +424,11 @@ function ClientsPage() {
                         </TableCell>
                         <TableCell>{formatDate(c.last_visit_date)}</TableCell>
                         <TableCell>
-                          <CommentCell text={c.notes} />
+                          <CommentCell
+                            text={c.notes}
+                            onSave={commentSaver("clients", c.id, "notes")}
+                            onSaved={reload}
+                          />
                         </TableCell>
                       </TableRow>
                     </RowContextMenu>

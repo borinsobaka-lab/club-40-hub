@@ -980,19 +980,21 @@ function SchedulePage() {
           <div
             className={cn(
               fullscreen
-                ? "fixed inset-0 z-50 flex flex-col gap-3 bg-background p-3 sm:p-4"
+                ? "fixed inset-0 z-50 flex flex-col gap-2 bg-background p-3 sm:p-4"
                 : "space-y-3",
             )}
           >
             {fullscreen && (
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-2xl font-bold">
+                {/* Заголовок и неделя — одной строкой: по высоте остаётся
+                    больше места сетке (решение владельца 2026-10-19). */}
+                <div className="flex min-w-0 items-baseline gap-3">
+                  <div className="truncate text-xl font-bold">
                     {studio?.name
                       ? `Schedule · ${enText(studio.translations, "name", studio.name)}`
                       : "Schedule"}
                   </div>
-                  <div className="text-base font-medium text-muted-foreground">
+                  <div className="shrink-0 whitespace-nowrap text-base font-medium text-muted-foreground">
                     {fmtDate(weekStart, true)} — {fmtDate(addDays(weekStart, 6), true)}
                   </div>
                 </div>
@@ -1073,30 +1075,38 @@ function SchedulePage() {
                         <div
                           key={i}
                           className={cn(
-                            "sticky top-0 z-20 border-r bg-background p-2 text-center",
-                            // Полный экран: день недели и дата крупно — их
-                            // должно быть видно на скриншоте.
-                            fullscreen ? "text-lg font-bold leading-tight" : "text-xs",
+                            "sticky top-0 z-20 border-r bg-background text-center",
+                            // Полный экран: дата и день недели крупно (их
+                            // должно быть видно на скриншоте), одной строкой —
+                            // «20 Oct (Mon)»: шапка ниже, сетке больше места.
+                            fullscreen
+                              ? "truncate px-2 py-1 text-lg font-bold leading-tight"
+                              : "p-2 text-xs",
                             today
                               ? "border-b-4 border-b-brand font-semibold text-primary"
                               : "border-b",
                           )}
                         >
-                          <div
-                            className={cn(
-                              "uppercase tracking-wide",
-                              fullscreen
-                                ? "text-sm font-semibold text-foreground/70"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {(fullscreen ? DAY_NAMES_EN : DAY_NAMES)[i]}
-                          </div>
-                          <div>
-                            {fullscreen
-                              ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-                              : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
-                          </div>
+                          {fullscreen ? (
+                            <>
+                              {d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{" "}
+                              <span className="font-semibold text-foreground/70">
+                                ({DAY_NAMES_EN[i]})
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="uppercase tracking-wide text-muted-foreground">
+                                {DAY_NAMES[i]}
+                              </div>
+                              <div>
+                                {d.toLocaleDateString("ru-RU", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                })}
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -1549,8 +1559,10 @@ function EntryCard({
     return (
       <div
         className={cn(
-          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background leading-tight text-foreground shadow-xs",
-          clean ? "text-[15px]" : "text-[11px]",
+          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background text-foreground shadow-xs",
+          // Полный экран: строки времени, названия и тренера плотнее —
+          // карточка ниже, в экран помещается больше занятий.
+          clean ? "text-[15px] leading-[1.1]" : "text-[11px] leading-tight",
           cancelled && "schedule-cancelled",
         )}
         title={
@@ -1570,7 +1582,7 @@ function EntryCard({
           onClick={onOpen}
           className={cn(
             "flex h-full w-full cursor-pointer flex-col px-1.5 text-left hover:bg-accent/40",
-            clean ? "py-1" : "pt-0.5 pb-px",
+            clean ? "py-0.5" : "pt-0.5 pb-px",
           )}
         >
           <span className="flex w-full items-start justify-between gap-1">
@@ -1598,8 +1610,8 @@ function EntryCard({
           </span>
           <span
             className={cn(
-              "font-semibold leading-[1.15]",
-              clean ? "text-lg" : "text-[13px]",
+              "font-semibold",
+              clean ? "text-lg leading-[1.05]" : "text-[13px] leading-[1.15]",
               // Персональному название в одну строку — место под клиента.
               clients ? "truncate" : "line-clamp-2",
             )}
@@ -1641,8 +1653,8 @@ function EntryCard({
   return (
     <div
       className={cn(
-        "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md leading-tight",
-        clean ? "text-[15px]" : "text-[11px]",
+        "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md",
+        clean ? "text-[15px] leading-[1.1]" : "text-[11px] leading-tight",
         colorClasses,
       )}
     >
@@ -1651,7 +1663,7 @@ function EntryCard({
         onClick={onOpen}
         className={cn(
           "flex h-full w-full cursor-pointer flex-col px-2 text-left hover:opacity-90",
-          clean ? "py-1" : "pt-0.5 pb-px",
+          clean ? "py-0.5" : "pt-0.5 pb-px",
         )}
       >
         <span className="flex w-full items-start justify-between gap-1">
@@ -1670,8 +1682,8 @@ function EntryCard({
         </span>
         <span
           className={cn(
-            "font-semibold leading-[1.15] line-clamp-2",
-            clean ? "text-lg" : "text-[13px]",
+            "font-semibold line-clamp-2",
+            clean ? "text-lg leading-[1.05]" : "text-[13px] leading-[1.15]",
           )}
         >
           {entryTitle(entry, clean)}
@@ -1778,11 +1790,20 @@ const TIPS = {
     "Сколько получит за эту активность каждый отмеченный сотрудник, в лари — пойдёт в зарплату. Без сотрудников можно не указывать.",
 };
 
+/** У заведённого занятия с записями окно в две колонки: слева настройки, справа клиенты. */
+function hasBookingsPanel(entry: Entry | null): entry is Entry {
+  return !!entry && entry.kind !== "other" && !entry.cancelled_at;
+}
+
 function EntryDialog({ open, ...formProps }: EntryDialogProps) {
   return (
     <Dialog open={open} onOpenChange={formProps.onOpenChange}>
-      {/* Одна ширина для создания и правки: записи идут под полями, в том же теле. */}
-      <DialogContent className="max-w-2xl">
+      {/* Заведённое занятие — широкое окно: записанные справа от настроек,
+          их видно больше без прокрутки (решение владельца 2026-10-19, как в
+          подробном отчёте дашборда). Новое и прочая активность — узкое. */}
+      <DialogContent
+        className={hasBookingsPanel(formProps.entry) ? "max-w-6xl sm:max-h-[92vh]" : "max-w-2xl"}
+      >
         {/*
           Форма монтируется при каждом открытии и сбрасывать её не нужно. Раньше
           поля сбрасывал эффект по списку тренировок, и любая перезагрузка
@@ -2266,253 +2287,273 @@ function EntryForm({
           {entry ? text.edit : text.create}
         </DialogTitle>
         <DialogDescription>
-          {entry && kind !== "other" ? "Настройки занятия, ниже — записанные клиенты." : text.hint}
+          {hasBookingsPanel(entry)
+            ? "Настройки занятия и записанные клиенты."
+            : entry && kind !== "other"
+              ? "Настройки занятия."
+              : text.hint}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
-          <div className="space-y-4">
-            {entry && cancelled && (
-              <InfoNote variant="warning" className="flex flex-wrap items-center gap-3">
-                <span className="flex min-w-0 flex-1 items-start gap-2 text-sm">
-                  <Ban className="mt-0.5 size-4 shrink-0 text-rose-600" />
-                  <span>
-                    <span className="font-medium">
-                      Отменено {entry.cancelled_at && formatDate(entry.cancelled_at)}
+          <div
+            className={cn(
+              hasBookingsPanel(entry) &&
+                "grid grid-cols-1 gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]",
+            )}
+          >
+            {/* Настройки при прокрутке длинного списка записей остаются на месте. */}
+            <div
+              className={cn(
+                "space-y-4",
+                hasBookingsPanel(entry) && "lg:sticky lg:top-0 lg:self-start",
+              )}
+            >
+              {entry && cancelled && (
+                <InfoNote variant="warning" className="flex flex-wrap items-center gap-3">
+                  <span className="flex min-w-0 flex-1 items-start gap-2 text-sm">
+                    <Ban className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                    <span>
+                      <span className="font-medium">
+                        Отменено {entry.cancelled_at && formatDate(entry.cancelled_at)}
+                      </span>
+                      {entry.cancel_reason && <> — {entry.cancel_reason}</>}. Клиенты его не видят и
+                      записаться не могут.
                     </span>
-                    {entry.cancel_reason && <> — {entry.cancel_reason}</>}. Клиенты его не видят и
-                    записаться не могут.
                   </span>
-                </span>
-                <Button variant="outline" size="sm" onClick={handleRestore} disabled={busy}>
-                  {restoring ? <Loader2 className="animate-spin" /> : <Undo2 />}
-                  Вернуть в расписание
-                </Button>
-              </InfoNote>
-            )}
+                  <Button variant="outline" size="sm" onClick={handleRestore} disabled={busy}>
+                    {restoring ? <Loader2 className="animate-spin" /> : <Undo2 />}
+                    Вернуть в расписание
+                  </Button>
+                </InfoNote>
+              )}
 
-            {kind === "group" && (
-              <div
-                className={cn(
-                  "grid grid-cols-1 gap-3",
-                  workoutId && "sm:grid-cols-[minmax(0,1fr)_9rem]",
-                )}
-              >
-                <FormField label="Тренировка" tip={TIPS.workout} required>
-                  <Select value={workoutId} onValueChange={pickWorkout}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите тренировку" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {workouts.map((w) => (
-                        <SelectItem key={w.id} value={w.id}>
-                          <WorkoutOption name={w.name} color={workoutColor(w)} />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-                {workoutId && (
-                  <FormField label="Вместимость" tip={TIPS.capacity} optional>
-                    <Input
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      value={capacity}
-                      onChange={(e) => setCapacity(e.target.value)}
-                      placeholder="Без лимита"
-                    />
+              {kind === "group" && (
+                <div
+                  className={cn(
+                    "grid grid-cols-1 gap-3",
+                    workoutId && "sm:grid-cols-[minmax(0,1fr)_9rem]",
+                  )}
+                >
+                  <FormField label="Тренировка" tip={TIPS.workout} required>
+                    <Select value={workoutId} onValueChange={pickWorkout}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите тренировку" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {workouts.map((w) => (
+                          <SelectItem key={w.id} value={w.id}>
+                            <WorkoutOption name={w.name} color={workoutColor(w)} />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormField>
-                )}
+                  {workoutId && (
+                    <FormField label="Вместимость" tip={TIPS.capacity} optional>
+                      <Input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        value={capacity}
+                        onChange={(e) => setCapacity(e.target.value)}
+                        placeholder="Без лимита"
+                      />
+                    </FormField>
+                  )}
+                </div>
+              )}
+
+              {isOneOnOne(kind) && (
+                <FormField
+                  label="Тренер"
+                  tip={kind === "diagnostic" ? TIPS.diagnosticTrainer : TIPS.personalTrainer}
+                  required
+                  htmlFor={trainerOptions.length === 0 ? null : undefined}
+                >
+                  {trainerOptions.length === 0 ? (
+                    <NoTrainersNote />
+                  ) : (
+                    <Select value={trainerIds[0] ?? ""} onValueChange={(id) => setTrainerIds([id])}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите тренера" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {trainerOptions.map((t) => (
+                          <SelectItem key={t.id} value={t.id} textValue={t.full_name}>
+                            <StaffOption name={t.full_name} photo={t.photo_url} />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
+              )}
+
+              {kind === "other" && (
+                <FormField label="Название" tip={TIPS.title} required>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Например, мастер-класс"
+                    autoFocus
+                  />
+                </FormField>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label="Начало" tip={kind === "group" ? TIPS.starts : undefined} required>
+                  <Input
+                    type="datetime-local"
+                    value={startsAt}
+                    onChange={(e) => setStartsAt(e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Окончание" required>
+                  <Input
+                    type="datetime-local"
+                    value={endsAt}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                  />
+                </FormField>
               </div>
-            )}
 
-            {isOneOnOne(kind) && (
-              <FormField
-                label="Тренер"
-                tip={kind === "diagnostic" ? TIPS.diagnosticTrainer : TIPS.personalTrainer}
-                required
-                htmlFor={trainerOptions.length === 0 ? null : undefined}
-              >
-                {trainerOptions.length === 0 ? (
-                  <NoTrainersNote />
-                ) : (
-                  <Select value={trainerIds[0] ?? ""} onValueChange={(id) => setTrainerIds([id])}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите тренера" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {trainerOptions.map((t) => (
-                        <SelectItem key={t.id} value={t.id} textValue={t.full_name}>
-                          <StaffOption name={t.full_name} photo={t.photo_url} />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-            )}
-
-            {kind === "other" && (
-              <FormField label="Название" tip={TIPS.title} required>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Например, мастер-класс"
-                  autoFocus
-                />
-              </FormField>
-            )}
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Начало" tip={kind === "group" ? TIPS.starts : undefined} required>
-                <Input
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={(e) => setStartsAt(e.target.value)}
-                />
-              </FormField>
-              <FormField label="Окончание" required>
-                <Input
-                  type="datetime-local"
-                  value={endsAt}
-                  onChange={(e) => setEndsAt(e.target.value)}
-                />
-              </FormField>
-            </div>
-
-            {assignMode && (
-              <FormField label="Тренер" tip={TIPS.groupTrainer} htmlFor={null}>
-                <TrainerAssignments
-                  options={trainerOptions}
-                  value={trainerIds}
-                  subs={subs}
-                  onChange={(ids, nextSubs) => {
-                    setTrainerIds(ids);
-                    setSubs(nextSubs);
-                  }}
-                />
-              </FormField>
-            )}
-
-            {singleGroupTrainer && (
-              <FormField
-                label="Тренер"
-                tip={TIPS.groupTrainer}
-                optional
-                htmlFor={trainerOptions.length === 0 ? null : undefined}
-              >
-                {trainerOptions.length === 0 ? (
-                  <NoTrainersNote />
-                ) : (
-                  <Select
-                    value={trainerIds[0] ?? NO_TRAINER}
-                    onValueChange={(id) => setTrainerIds(id === NO_TRAINER ? [] : [id])}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите тренера" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_TRAINER}>Без тренера</SelectItem>
-                      {trainerOptions.map((t) => (
-                        <SelectItem key={t.id} value={t.id} textValue={t.full_name}>
-                          <StaffOption name={t.full_name} photo={t.photo_url} />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-            )}
-
-            {!isOneOnOne(kind) && !assignMode && !singleGroupTrainer && (
-              <FormField
-                label={kind === "group" ? "Тренеры" : "Сотрудники"}
-                tip={kind === "group" ? TIPS.groupTrainers : TIPS.otherStaff}
-                optional
-                htmlFor={null}
-              >
-                {trainerOptions.length === 0 ? (
-                  <NoTrainersNote staff={kind === "other"} />
-                ) : (
-                  <TrainerChecks
+              {assignMode && (
+                <FormField label="Тренер" tip={TIPS.groupTrainer} htmlFor={null}>
+                  <TrainerAssignments
                     options={trainerOptions}
                     value={trainerIds}
-                    onToggle={toggleTrainer}
-                    byRole={kind === "other"}
+                    subs={subs}
+                    onChange={(ids, nextSubs) => {
+                      setTrainerIds(ids);
+                      setSubs(nextSubs);
+                    }}
                   />
-                )}
-              </FormField>
-            )}
+                </FormField>
+              )}
 
-            {kind === "other" && (
-              <FormField
-                label="Ставка, ₾"
-                tip={TIPS.payRate}
-                // Без ставки не сохранится, только если отмечены сотрудники.
-                required={trainerIds.length > 0}
-                optional={trainerIds.length === 0}
-              >
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="0.01"
-                  value={payRate}
-                  onChange={(e) => setPayRate(e.target.value)}
-                  placeholder="0"
-                />
-              </FormField>
-            )}
-
-            {!entry && kind !== "other" && (
-              <FormField
-                label="Клиенты"
-                tip={
-                  kind === "diagnostic"
-                    ? TIPS.diagnosticClients
-                    : kind === "personal"
-                      ? TIPS.personalClients
-                      : TIPS.groupClients
-                }
-                required={isOneOnOne(kind)}
-                optional={kind === "group"}
-                htmlFor={null}
-              >
-                <div className="space-y-2">
-                  {pending.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {pending.map((c) => (
-                        <span
-                          key={c.id}
-                          className="inline-flex items-center gap-1 rounded-full border bg-muted/40 py-1 pl-3 pr-1.5 text-sm"
-                        >
-                          {c.name}
-                          <button
-                            type="button"
-                            aria-label={`Убрать ${c.name}`}
-                            onClick={() => setPending((prev) => prev.filter((x) => x.id !== c.id))}
-                            className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+              {singleGroupTrainer && (
+                <FormField
+                  label="Тренер"
+                  tip={TIPS.groupTrainer}
+                  optional
+                  htmlFor={trainerOptions.length === 0 ? null : undefined}
+                >
+                  {trainerOptions.length === 0 ? (
+                    <NoTrainersNote />
+                  ) : (
+                    <Select
+                      value={trainerIds[0] ?? NO_TRAINER}
+                      onValueChange={(id) => setTrainerIds(id === NO_TRAINER ? [] : [id])}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите тренера" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_TRAINER}>Без тренера</SelectItem>
+                        {trainerOptions.map((t) => (
+                          <SelectItem key={t.id} value={t.id} textValue={t.full_name}>
+                            <StaffOption name={t.full_name} photo={t.photo_url} />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
-                  <ParticipantActions
-                    studioId={studioId}
-                    trial={kind === "group"}
-                    packages={packages}
-                    onPick={(c) =>
-                      setPending((prev) => (prev.some((x) => x.id === c.id) ? prev : [...prev, c]))
-                    }
-                  />
-                </div>
-              </FormField>
-            )}
+                </FormField>
+              )}
 
-            {entry && kind !== "other" && !cancelled && (
+              {!isOneOnOne(kind) && !assignMode && !singleGroupTrainer && (
+                <FormField
+                  label={kind === "group" ? "Тренеры" : "Сотрудники"}
+                  tip={kind === "group" ? TIPS.groupTrainers : TIPS.otherStaff}
+                  optional
+                  htmlFor={null}
+                >
+                  {trainerOptions.length === 0 ? (
+                    <NoTrainersNote staff={kind === "other"} />
+                  ) : (
+                    <TrainerChecks
+                      options={trainerOptions}
+                      value={trainerIds}
+                      onToggle={toggleTrainer}
+                      byRole={kind === "other"}
+                    />
+                  )}
+                </FormField>
+              )}
+
+              {kind === "other" && (
+                <FormField
+                  label="Ставка, ₾"
+                  tip={TIPS.payRate}
+                  // Без ставки не сохранится, только если отмечены сотрудники.
+                  required={trainerIds.length > 0}
+                  optional={trainerIds.length === 0}
+                >
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    value={payRate}
+                    onChange={(e) => setPayRate(e.target.value)}
+                    placeholder="0"
+                  />
+                </FormField>
+              )}
+
+              {!entry && kind !== "other" && (
+                <FormField
+                  label="Клиенты"
+                  tip={
+                    kind === "diagnostic"
+                      ? TIPS.diagnosticClients
+                      : kind === "personal"
+                        ? TIPS.personalClients
+                        : TIPS.groupClients
+                  }
+                  required={isOneOnOne(kind)}
+                  optional={kind === "group"}
+                  htmlFor={null}
+                >
+                  <div className="space-y-2">
+                    {pending.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {pending.map((c) => (
+                          <span
+                            key={c.id}
+                            className="inline-flex items-center gap-1 rounded-full border bg-muted/40 py-1 pl-3 pr-1.5 text-sm"
+                          >
+                            {c.name}
+                            <button
+                              type="button"
+                              aria-label={`Убрать ${c.name}`}
+                              onClick={() =>
+                                setPending((prev) => prev.filter((x) => x.id !== c.id))
+                              }
+                              className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <ParticipantActions
+                      studioId={studioId}
+                      trial={kind === "group"}
+                      packages={packages}
+                      onPick={(c) =>
+                        setPending((prev) =>
+                          prev.some((x) => x.id === c.id) ? prev : [...prev, c],
+                        )
+                      }
+                    />
+                  </div>
+                </FormField>
+              )}
+            </div>
+            {hasBookingsPanel(entry) && (
               <BookingsPanel
                 entry={entry}
                 trial={kind === "group"}
@@ -2783,6 +2824,8 @@ type ClientRow = {
   phone: string | null;
   email: string | null;
   crm_link: string | null;
+  /** Комментарий о клиенте — виден под строкой записи, правится в карточке. */
+  notes: string | null;
   /** Статус клуба (ЧК / БЧК / ПЧК) — из вью clients_with_status, как в «Клиентах». */
   club_status: ClubStatus | null;
   studio_id?: string;
@@ -2865,7 +2908,7 @@ async function fetchBookings(
   // Карточки и абонементы — дополнение: если они не загрузились, записи всё
   // равно показываем (с «Пользователь без анкеты»), а не ошибку на всю панель.
   const cols =
-    "id, user_id, first_name, last_name, full_name, phone, email, crm_link, club_status, studio_id";
+    "id, user_id, first_name, last_name, full_name, phone, email, crm_link, notes, club_status, studio_id";
   const [byId, byUser] = await Promise.all([
     clientIds.length
       ? supabase.from("clients_with_status").select(cols).in("id", clientIds)
@@ -3344,7 +3387,8 @@ function BookingsPanel({
   const capacity = entryCapacity(entry);
 
   return (
-    <div className="space-y-4 border-t pt-4">
+    // Правая колонка окна занятия; на узком экране — под настройками.
+    <div className="min-w-0 space-y-4 max-lg:border-t max-lg:pt-4 lg:border-l lg:pl-6">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-xs font-medium uppercase text-muted-foreground">
@@ -3424,6 +3468,16 @@ function BookingsPanel({
                         "Нет активного абонемента"
                       )}
                     </div>
+                    {/* Комментарий о клиенте — одной строкой; весь и правка —
+                        в карточке по нажатию на имя. */}
+                    {c?.notes?.trim() && (
+                      <div
+                        title={c.notes}
+                        className={cn(noteChipClass, "mt-1 truncate px-1.5 py-0.5 text-xs")}
+                      >
+                        {c.notes}
+                      </div>
+                    )}
                     {uncovered && (
                       <div className="text-xs text-rose-600/80">
                         {noBalance
