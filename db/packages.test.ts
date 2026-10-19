@@ -699,10 +699,58 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       const [{ r: denied }] = await tx`select admin_book_client(${e}, ${sub.client}) as r`;
       expect(denied).toMatchObject({ ok: false, reason: "client_not_found" });
 
-      // Клиент подписочного клуба в пакетный не записывается.
+      // Клиент подписочного клуба в пакетный не записывается (2026-10-19:
+      // абонемент в пакетном клубе не нужен — не пускает карточка не из сети).
       await asClient(tx, sub);
       const [{ r: own }] = await tx`select book_schedule_entry(${e}) as r`;
-      expect(own).toMatchObject({ ok: false, reason: "no_membership" });
+      expect(own).toMatchObject({ ok: false, reason: "no_client" });
+    });
+  });
+
+  // ---- 2026-10-19: запись без абонемента в пакетном клубе ----
+
+  test("без абонемента клиент пакетного клуба записывается, «Посетил» — только после продажи", async () => {
+    await scenario(async (tx) => {
+      const p = await seed(tx);
+      const e = await entry(tx, p, 1);
+      const uid = await asClient(tx, p);
+      const [{ r }] = await tx`select book_schedule_entry(${e}) as r`;
+      expect(r).toMatchObject({ ok: true, waitlisted: false, has_membership: false });
+      const [b] = await tx`select id, client_id, status from schedule_bookings where entry_id = ${e}`;
+      expect(b).toMatchObject({ client_id: p.client, status: "booked" });
+
+      // Пакет персональных на групповую не в счёт.
+      await tx`select set_config('request.jwt.claim.sub', '', true)`;
+      await sell(tx, p, { membership: p.personalPack });
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+      const [{ r: second }] = await tx`select book_schedule_entry(${await entry(tx, p, 2)}) as r`;
+      expect(second).toMatchObject({ ok: true, has_membership: false });
+
+      await asStaff(tx, p);
+      expect(
+        await failure(tx, () => tx`update schedule_bookings set status = 'attended' where id = ${b.id}`),
+      ).toContain("нет абонемента");
+      await sell(tx, p);
+      expect(
+        await failure(tx, () => tx`update schedule_bookings set status = 'attended' where id = ${b.id}`),
+      ).toBeNull();
+
+      // С действующим абонементом — has_membership.
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+      const [{ r: third }] = await tx`select book_schedule_entry(${await entry(tx, p, 3)}) as r`;
+      expect(third).toMatchObject({ ok: true, has_membership: true });
+    });
+  });
+
+  test("подписочный клуб без абонемента по-прежнему не записывает", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx, "subscription");
+      const e = await entry(tx, s, 1);
+      await asClient(tx, s);
+      const [{ r }] = await tx`select book_schedule_entry(${e}) as r`;
+      expect(r).toMatchObject({ ok: false, reason: "no_membership" });
+      const [{ n }] = await tx`select count(*)::int as n from schedule_bookings where entry_id = ${e}`;
+      expect(n).toBe(0);
     });
   });
 
