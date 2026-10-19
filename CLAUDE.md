@@ -38,8 +38,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   `db/push-triggers.test.ts`, логики пакетных клубов `db/packages.test.ts`,
   обратной связи `db/feedback.test.ts`, NPS-опросов `db/nps.test.ts`,
   устройств и активности приложения `db/app-activity.test.ts`, общей базы
-  клиентов пакетных клубов `db/shared-clients.test.ts` и переноса из 1С
-  `db/import-1c.test.ts` (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
+  клиентов пакетных клубов `db/shared-clients.test.ts`, переноса из 1С
+  `db/import-1c.test.ts` и AI-ассистента Kate `db/assistant.test.ts`
+  (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
 - Внутри приложения работают его собственные команды
@@ -684,6 +685,21 @@ AUTH_SETUP.md.
   `plan_cache_mode = force_custom_plan` (новое определение функции —
   сразу с этой настройкой). Индексы: `clients_email_unlinked_idx` (первый
   вход), `bookings_log_studio_attended_idx` (`my_studio_visit_stats`).
+  **AI-ассистент Kate** (2026-10-19): `db/migrations/2026-10-19_zz_assistant_kate.sql`
+  — переписка сотрудника с Kate: `assistant_threads` (диалог, заголовок,
+  клуб при первом вопросе) и `assistant_messages` (`parts` — только текст
+  ответа, `tools` — какие инструменты вызывала; строки данных из
+  инструментов не хранятся). Видит и правит только автор (даже владелец
+  чужие не видит), завести диалог — только сотрудник (`is_staff`); срока
+  хранения нет (решение владельца — переписка не стирается). Сводки для
+  инструментов Kate — security definer, только `is_trainer` клуба, клиенты
+  базы клуба (у пакетного — общая база пакетных; внутренний
+  `assistant_client_scope` наружу не выдан): `assistant_app_clients` (первый
+  вход и последний раз в приложении, открытия и просмотры абонементов за
+  30 дней, пуши — `app_devices`/`app_activity_days` напрямую закрыты),
+  `assistant_inactive_members` (действующий абонемент, давно не был или
+  ни разу), `assistant_birthdays`. Медицинское из анкеты Kate не получает.
+  Тесты — `db/assistant.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

@@ -1,15 +1,48 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Cat, Send, Loader2, Mic, Square } from "lucide-react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import {
+  Cat,
+  ChevronLeft,
+  History,
+  Loader2,
+  MessageCirclePlus,
+  Mic,
+  Send,
+  Square,
+  Trash2,
+} from "lucide-react";
+import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ChoiceCard } from "@/components/ui/choice-card";
+import { ListItemButton } from "@/components/ui/list-item-button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { ClientNameLink } from "@/components/client-name-link";
+import { useConfirm } from "@/components/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { activeStudioHeaders } from "@/hooks/use-active-studio";
+import { fromStored, MAX_QUESTION_CHARS } from "@/lib/assistant/history";
+import { formatDateTime } from "@/lib/format";
+import { unwrap } from "@/lib/query";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+type Thread = { id: string; title: string; updated_at: string };
+
+/**
+ * Диалоги сотрудника с Kate (assistant_threads, RLS — только свои), новые
+ * сверху. Сообщения пишет сервер (/api/chat), окно их только читает.
+ */
+const threadsQueryKey = ["assistant_threads"] as const;
+
+const SUGGESTIONS = [
+  "Кому позвонить сегодня, чтобы продать больше?",
+  "У кого заканчивается абонемент в ближайшие 2 недели?",
+  "Кто был на пробном в этом месяце и не купил?",
+  "Кто недавно зарегистрировался в приложении?",
+];
 
 export function KateChat({
   heightClass = "h-[calc(100dvh-8rem)]",
@@ -19,6 +52,243 @@ export function KateChat({
   /** Окно во весь экран на телефоне: без скруглений и рамки, место под крестик. */
   fullscreenOnMobile?: boolean;
 }) {
+  const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
+  const [view, setView] = useState<"chat" | "history">("chat");
+  const [busy, setBusy] = useState(false);
+  // Открытый диалог. fresh — ещё не сохранён (новый чат): сообщений в базе
+  // нет, загружать нечего. Выбирается один раз — после этого обновление
+  // списка диалогов не пересоздаёт идущий разговор.
+  const [active, setActive] = useState<{ id: string; fresh: boolean } | null>(null);
+
+  const threads = useQuery({
+    queryKey: threadsQueryKey,
+    queryFn: () =>
+      unwrap<Thread[]>(
+        supabase
+          .from("assistant_threads")
+          .select("id, title, updated_at")
+          .order("updated_at", { ascending: false })
+          .limit(100),
+      ),
+    meta: { errorMessage: "Не удалось загрузить историю переписки с Kate" },
+  });
+
+  // При открытии — последний диалог: переписка продолжается с того же места.
+  useEffect(() => {
+    if (active || !threads.data) return;
+    const last = threads.data[0];
+    setActive(last ? { id: last.id, fresh: false } : { id: crypto.randomUUID(), fresh: true });
+  }, [active, threads.data]);
+  // Историю не загрузить — всё равно можно начать новый чат.
+  useEffect(() => {
+    if (!active && threads.isError) setActive({ id: crypto.randomUUID(), fresh: true });
+  }, [active, threads.isError]);
+
+  const messages = useQuery({
+    queryKey: ["assistant_messages", active?.id],
+    queryFn: async () => {
+      const rows = await unwrap<{ id: string; role: string; parts: unknown }[]>(
+        supabase
+          .from("assistant_messages")
+          .select("id, role, parts")
+          .eq("thread_id", active!.id)
+          .order("created_at", { ascending: true })
+          .limit(500),
+      );
+      return rows.map(fromStored).filter((m): m is UIMessage => !!m);
+    },
+    enabled: !!active && !active.fresh,
+    // Сообщения живут в useChat; при каждом открытии диалога — свежие из базы.
+    gcTime: 0,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    meta: { errorMessage: "Не удалось загрузить переписку с Kate" },
+  });
+
+  const startNew = () => {
+    setActive({ id: crypto.randomUUID(), fresh: true });
+    setView("chat");
+  };
+
+  const openThread = (id: string) => {
+    if (id !== active?.id) setActive({ id, fresh: false });
+    setView("chat");
+  };
+
+  const deleteThread = async (t: Thread) => {
+    if (
+      !(await confirm({ title: "Удалить диалог?", description: `«${t.title}» удалится насовсем.` }))
+    )
+      return;
+    const { error } = await supabase.from("assistant_threads").delete().eq("id", t.id);
+    if (error) {
+      toast.error("Не удалось удалить диалог: " + error.message);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: threadsQueryKey });
+    if (t.id === active?.id) startNew();
+  };
+
+  const activeTitle =
+    active && !active.fresh ? threads.data?.find((t) => t.id === active.id)?.title : null;
+  const ready = !!active && (active.fresh || messages.isSuccess || messages.isError);
+
+  return (
+    <div
+      className={`relative isolate mx-auto ${heightClass} w-full max-w-3xl rounded-lg ${busy ? "ai-thinking-glow" : ""}`}
+    >
+      <div
+        className={`relative z-10 flex h-full flex-col overflow-hidden rounded-lg border bg-background ${fullscreenOnMobile ? "max-md:rounded-none max-md:border-0" : ""}`}
+      >
+        <div
+          className={cn(
+            "flex min-h-14 items-center gap-2 border-b px-3 py-2",
+            // Справа на телефоне — крестик окна.
+            fullscreenOnMobile && "max-md:pr-14",
+          )}
+        >
+          {view === "history" ? (
+            <Button variant="ghost" size="sm" onClick={() => setView("chat")}>
+              <ChevronLeft /> К диалогу
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setView("history")}
+              aria-label="История диалогов"
+            >
+              <History /> История
+            </Button>
+          )}
+          <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {view === "history" ? "Диалоги с Kate" : (activeTitle ?? "Новый чат")}
+          </p>
+          <Button variant="ghost" size="sm" onClick={startNew} disabled={busy && view === "chat"}>
+            <MessageCirclePlus /> <span className="max-sm:hidden">Новый чат</span>
+          </Button>
+        </div>
+
+        {view === "history" ? (
+          <ThreadList
+            threads={threads.data}
+            loading={threads.isPending}
+            activeId={active?.id ?? null}
+            onOpen={openThread}
+            onDelete={deleteThread}
+          />
+        ) : ready && active ? (
+          <ChatSession
+            key={active.id}
+            threadId={active.id}
+            initialMessages={messages.data ?? []}
+            onBusyChange={setBusy}
+            onSaved={() => void queryClient.invalidateQueries({ queryKey: threadsQueryKey })}
+          />
+        ) : (
+          <ChatSkeleton />
+        )}
+      </div>
+      {confirmDialog}
+    </div>
+  );
+}
+
+function ThreadList({
+  threads,
+  loading,
+  activeId,
+  onOpen,
+  onDelete,
+}: {
+  threads: Thread[] | undefined;
+  loading: boolean;
+  activeId: string | null;
+  onOpen: (id: string) => void;
+  onDelete: (t: Thread) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-2 overflow-y-auto p-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (!threads?.length) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+        Диалогов пока нет
+      </div>
+    );
+  }
+  return (
+    <div className="flex-1 space-y-1 overflow-y-auto p-3">
+      {threads.map((t) => (
+        <div key={t.id} className="group flex items-center gap-1">
+          <ListItemButton
+            active={t.id === activeId}
+            onClick={() => onOpen(t.id)}
+            className="flex-1"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{t.title}</span>
+              <span className="block text-xs font-normal text-muted-foreground">
+                {formatDateTime(t.updated_at)}
+              </span>
+            </span>
+          </ListItemButton>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onDelete(t)}
+            aria-label={`Удалить диалог «${t.title}»`}
+            title="Удалить диалог"
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChatSkeleton() {
+  return (
+    <>
+      <div className="flex-1 space-y-4 overflow-hidden p-4 sm:p-6">
+        <div className="flex justify-end">
+          <Skeleton className="h-10 w-2/5 rounded-lg" />
+        </div>
+        <div className="flex justify-start">
+          <Skeleton className="h-24 w-3/4 rounded-lg" />
+        </div>
+        <div className="flex justify-end">
+          <Skeleton className="h-10 w-1/3 rounded-lg" />
+        </div>
+      </div>
+      <div className="flex gap-2 border-t p-3">
+        <Skeleton className="h-20 flex-1" />
+        <Skeleton className="h-20 w-10" />
+      </div>
+    </>
+  );
+}
+
+function ChatSession({
+  threadId,
+  initialMessages,
+  onBusyChange,
+  onSaved,
+}: {
+  threadId: string;
+  initialMessages: UIMessage[];
+  onBusyChange: (busy: boolean) => void;
+  /** Ответ готов — сервер сохранил диалог (заголовок и порядок в списке). */
+  onSaved: () => void;
+}) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -26,6 +296,10 @@ export function KateChat({
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
+        // Историю сервер берёт из базы — отправляем только новый вопрос.
+        prepareSendMessagesRequest: ({ id, messages }) => ({
+          body: { threadId: id, message: messages[messages.length - 1] },
+        }),
         fetch: async (url, init) => {
           const { data } = await supabase.auth.getSession();
           const token = data.session?.access_token;
@@ -52,15 +326,20 @@ export function KateChat({
   );
 
   const { messages, sendMessage, status, error } = useChat({
+    id: threadId,
+    messages: initialMessages,
     transport,
     onError: (err) => toast.error(formatAssistantError(err)),
+    onFinish: () => onSaved(),
   });
+
+  const isLoading = status === "submitted" || status === "streaming";
+  useEffect(() => onBusyChange(isLoading), [isLoading, onBusyChange]);
+  useEffect(() => () => onBusyChange(false), [onBusyChange]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
-
-  const isLoading = status === "submitted" || status === "streaming";
 
   const sendText = async (text: string) => {
     try {
@@ -73,100 +352,90 @@ export function KateChat({
   const submit = () => {
     const text = input.trim();
     if (!text || isLoading) return;
+    if (text.length > MAX_QUESTION_CHARS) {
+      toast.error(`Вопрос длиннее ${MAX_QUESTION_CHARS} символов — сократите его`);
+      return;
+    }
     setInput("");
     void sendText(text);
   };
 
   return (
-    <div
-      className={`relative isolate mx-auto ${heightClass} w-full max-w-3xl rounded-lg ${isLoading ? "ai-thinking-glow" : ""}`}
-    >
-      <div
-        className={`relative z-10 flex h-full flex-col overflow-hidden rounded-lg border bg-background ${fullscreenOnMobile ? "max-md:rounded-none max-md:border-0" : ""}`}
-      >
-        <div
-          ref={scrollRef}
-          className={`flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 ${fullscreenOnMobile ? "max-md:pt-14" : ""}`}
-        >
-          {messages.length === 0 && (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-              <div className="ai-gradient flex h-14 w-14 items-center justify-center rounded-full text-white">
-                <Cat className="h-7 w-7" />
-              </div>
-              <div>
-                <p className="text-base font-medium text-foreground">Привет! Я Kate.</p>
-                <p className="mt-1 text-sm">
-                  Спросите про клиентов, тренеров, расписание или абонементы.
-                </p>
-              </div>
-              <div className="mt-4 grid w-full max-w-md gap-2 text-left text-sm">
-                {[
-                  "Во сколько и по каким дням на этой неделе кардио-тренировки?",
-                  "У скольких клиентов заканчивается абонемент?",
-                  "Какие клиенты зарегистрировались на этой неделе?",
-                ].map((s) => (
-                  <ChoiceCard key={s} compact onClick={() => sendText(s)}>
-                    {s}
-                  </ChoiceCard>
-                ))}
-              </div>
+    <>
+      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
+        {messages.length === 0 && (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+            <div className="ai-gradient flex h-14 w-14 items-center justify-center rounded-full text-white">
+              <Cat className="h-7 w-7" />
             </div>
-          )}
-          {messages.map((m: UIMessage) => (
-            <MessageBubble key={m.id} message={m} />
-          ))}
-          {isLoading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Kate думает…
+            <div>
+              <p className="text-base font-medium text-foreground">Привет! Я Kate.</p>
+              <p className="mt-1 text-sm">
+                Подскажу, кому позвонить и что предложить: продления, пробные, должники, новые
+                клиенты в приложении.
+              </p>
             </div>
-          )}
-          {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              Ошибка: {error.message}
-            </div>
-          )}
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-          className="border-t p-3"
-        >
-          <div className="flex items-start gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder="Напишите вопрос Kate…"
-              rows={2}
-              className="min-h-[80px] resize-none flex-1"
-            />
-            <div className="flex h-[80px] items-center gap-2">
-              <VoiceInputButton
-                disabled={isLoading}
-                onTranscribed={(text) =>
-                  setInput((prev) => (prev ? `${prev} ${text}` : text).trim())
-                }
-              />
-              <Button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                size="icon"
-                aria-label="Отправить"
-              >
-                <Send />
-              </Button>
+            <div className="mt-4 grid w-full max-w-md gap-2 text-left text-sm">
+              {SUGGESTIONS.map((s) => (
+                <ChoiceCard key={s} compact onClick={() => sendText(s)}>
+                  {s}
+                </ChoiceCard>
+              ))}
             </div>
           </div>
-        </form>
+        )}
+        {messages.map((m: UIMessage) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Kate думает…
+          </div>
+        )}
+        {error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            Ошибка: {error.message}
+          </div>
+        )}
       </div>
-    </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        className="border-t p-3"
+      >
+        <div className="flex items-start gap-2">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            placeholder="Напишите вопрос Kate…"
+            rows={2}
+            className="min-h-[80px] resize-none flex-1"
+          />
+          <div className="flex h-[80px] items-center gap-2">
+            <VoiceInputButton
+              disabled={isLoading}
+              onTranscribed={(text) => setInput((prev) => (prev ? `${prev} ${text}` : text).trim())}
+            />
+            <Button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              size="icon"
+              aria-label="Отправить"
+            >
+              <Send />
+            </Button>
+          </div>
+        </div>
+      </form>
+    </>
   );
 }
 
@@ -181,26 +450,31 @@ function formatAssistantError(error: Error) {
 function MessageBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
   const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
-  const toolParts = message.parts.filter((p) => p.type?.startsWith("tool-"));
+  // Идёт запрос к данным: последняя часть — вызов инструмента без текста после.
+  const last = message.parts[message.parts.length - 1];
+  const fetching = !isUser && !!last?.type?.startsWith("tool-");
+  if (!isUser && !text && !fetching) return null;
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-lg px-4 py-2 text-sm ${
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+        className={`min-w-0 rounded-lg px-4 py-2 text-sm ${
+          isUser
+            ? "max-w-[85%] bg-primary text-primary-foreground"
+            : // Ответ с таблицей на телефоне — во всю ширину.
+              "max-w-full bg-muted text-foreground md:max-w-[85%]"
         }`}
       >
-        {!isUser && toolParts.length > 0 && (
-          <div className="mb-2 text-xs text-muted-foreground">🔧 запрос к данным…</div>
-        )}
+        {fetching && <div className="mb-2 text-xs text-muted-foreground">🔧 запрос к данным…</div>}
         {isUser ? (
           <div className="whitespace-pre-wrap">{text}</div>
         ) : (
-          <div className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-2 prose-ul:my-2 prose-ol:my-2 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
+          <div className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-2 prose-ul:my-2 prose-ol:my-2 prose-pre:my-2 prose-table:my-0 prose-code:before:content-none prose-code:after:content-none">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               disallowedElements={MARKDOWN_DISALLOWED}
               components={MARKDOWN_COMPONENTS}
+              urlTransform={markdownUrl}
             >
               {text}
             </ReactMarkdown>
@@ -211,18 +485,43 @@ function MessageBubble({ message }: { message: UIMessage }) {
   );
 }
 
+/** Ссылка на карточку клиента в ответе Kate: `[Фамилия Имя](client:<uuid>)`. */
+const CLIENT_LINK_RE = /^client:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+
+/** Своя схема client: проходит как есть, остальное — стандартная очистка. */
+function markdownUrl(url: string) {
+  return CLIENT_LINK_RE.test(url) ? url : defaultUrlTransform(url);
+}
+
 /**
  * Ответ модели — недоверенный текст: в него может попасть инъекция из данных
  * (имена, заметки клиентов). Картинки не рендерим — браузер сам загрузил бы
  * URL и унёс бы в его параметрах данные из чата; ссылки открываются только
- * по клику, в новой вкладке и без Referer/opener.
+ * по клику, в новой вкладке и без Referer/opener. Ссылка client: открывает
+ * карточку клиента — RLS отдаст её, только если сотруднику она видна.
  */
 const MARKDOWN_DISALLOWED = ["img"];
 const MARKDOWN_COMPONENTS: Components = {
-  a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
+  a: ({ href, children }) => {
+    const client = href ? CLIENT_LINK_RE.exec(href) : null;
+    if (client) {
+      return (
+        <ClientNameLink clientId={client[1]} className="whitespace-normal">
+          {children}
+        </ClientNameLink>
+      );
+    }
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    );
+  },
+  // Широкая таблица прокручивается внутри сообщения, а не раздвигает окно.
+  table: ({ children }) => (
+    <div className="my-2 overflow-x-auto">
+      <table className="my-0">{children}</table>
+    </div>
   ),
 };
 
