@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLoaderData } from "@tanstack/react-router";
 import { Drawer as DrawerPrimitive } from "vaul";
-import { AltArrowRight, Bell, BellOff, Refresh } from "@solar-icons/react";
+import { Bell, BellOff, Refresh } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -70,31 +70,34 @@ export function PushBanner({ className = "" }: { className?: string }) {
     <>
       {permission === "default" && (
         <div className={className}>
-          <button
-            type="button"
-            onClick={() => void enable()}
-            disabled={busy}
-            className="flex w-full items-center gap-3 rounded-2xl bg-orange-50 p-3 text-left text-orange-700 transition active:scale-[0.99] disabled:opacity-80"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-400">
-              <Bell className="h-[18px] w-[18px]" weight="BoldDuotone" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-medium leading-snug">
-                {t("Включите уведомления")}
+          {/* Колокольчик и подписи сверху, под ними — оранжевая кнопка на всю
+              ширину плашки (решение владельца 2026-10-19: стрелки вправо было
+              мало, чтобы поняли, где включать). */}
+          <div className="rounded-2xl bg-orange-50 p-3 text-orange-700">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-400">
+                <Bell className="h-[18px] w-[18px]" weight="BoldDuotone" />
               </span>
-              <span className="block text-[13px] leading-snug opacity-75">
-                {IS_PACKAGES
-                  ? t("Чтобы получать новости студии")
-                  : t("Чтобы получать новости клуба")}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium leading-snug">
+                  {t("Включите уведомления")}
+                </span>
+                <span className="block text-[13px] leading-snug opacity-75">
+                  {IS_PACKAGES
+                    ? t("Чтобы получать новости студии")
+                    : t("Чтобы получать новости клуба")}
+                </span>
               </span>
-            </span>
-            {busy ? (
-              <Refresh className="h-4 w-4 shrink-0 animate-spin opacity-60" weight="BoldDuotone" />
-            ) : (
-              <AltArrowRight className="h-4 w-4 shrink-0 opacity-50" weight="BoldDuotone" />
-            )}
-          </button>
+            </div>
+            <Button
+              className="mt-3 w-full bg-orange-500 text-white hover:bg-orange-500/90"
+              onClick={() => void enable()}
+              disabled={busy}
+            >
+              {busy && <Refresh className="animate-spin" weight="BoldDuotone" />}
+              {t("Включить")}
+            </Button>
+          </div>
         </div>
       )}
       <PushHelpSheet open={helpOpen} onOpenChange={setHelpOpen} />
