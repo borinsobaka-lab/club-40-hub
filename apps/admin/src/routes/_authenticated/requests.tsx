@@ -10,6 +10,8 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
+import { StudioFilter, StudioLabel } from "@/components/studio-label";
 import {
   OPEN_REQUESTS_KEY,
   REQUEST_KIND_LABEL,
@@ -52,6 +54,8 @@ import { RequestsPageSkeleton, RequestsStatsSkeleton } from "@/components/page-s
  * диагностику — администратор связывается, согласует время с тренером и
  * ставит занятие в «Расписание», потом жмёт «Отработано». Пока заявка не
  * отработана, горит счётчик на «Клубе» в рейке и на «Заявках» в меню.
+ * Заявки всех пакетных клубов сотрудника — одним списком, клуб колонкой
+ * (решение владельца 2026-10-19: не переключать клуб в шапке).
  * Схема — db/migrations/2026-10-15_zz_diagnostics_client_requests.sql.
  */
 
@@ -130,36 +134,42 @@ const SORT_GETTERS = {
 
 function RequestsPage() {
   const studioId = useActiveStudioId();
+  const studios = useSectionStudios("requests", "packages");
+  const idsKey = studioIdsKey(studios);
+  const multi = (studios?.length ?? 0) > 1;
+  const studioOf = (id: string) => studios?.find((s) => s.id === id) ?? null;
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
   // По умолчанию — все заявки, новые сверху (решение владельца 2026-10-15).
   const [status, setStatus] = useState<StatusFilter>("all");
   const [kind, setKind] = useState<"all" | ClientRequestKind>("all");
+  const [studioFilter, setStudioFilter] = useState("all");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const queryKey = ["client_requests", studioId];
-  const { data: items = [], isLoading: loading } = useQuery({
+  const queryKey = ["client_requests", idsKey];
+  const { data: items = [], isLoading: queryLoading } = useQuery({
     queryKey,
     queryFn: () =>
       unwrap<RequestRow[]>(
         supabase
           .from("client_requests")
           .select(COLUMNS)
-          .eq("studio_id", studioId as string)
+          .in("studio_id", idsKey.split(","))
           .order("created_at", { ascending: false })
           .limit(1000),
       ),
-    enabled: !!studioId,
+    enabled: !!idsKey,
     // Заявки приходят из приложения — список обновляется сам.
     refetchInterval: 60_000,
     meta: { errorMessage: "Не удалось загрузить заявки" },
   });
+  const loading = studios === null || queryLoading;
 
   // Остаток абонементов клиентов — чтобы видеть, есть ли диагностики и
   // персональные, не открывая карточку.
   const clientIds = useMemo(() => [...new Set(items.map((i) => i.client_id))].sort(), [items]);
   const { data: balances } = useQuery({
-    queryKey: ["client_memberships", "requests", studioId, clientIds.join(",")],
+    queryKey: ["client_memberships", "requests", idsKey, clientIds.join(",")],
     // Частями по 100: сотни id в адрес одного GET-запроса не помещаются.
     queryFn: async () => {
       const parts: string[][] = [];
@@ -191,14 +201,18 @@ function RequestsPage() {
   const filtered = useMemo(
     () =>
       items.filter((i) => {
+        if (studioFilter !== "all" && i.studio_id !== studioFilter) return false;
         if (status === "open" && i.processed_at) return false;
         if (status === "done" && !i.processed_at) return false;
         if (kind !== "all" && i.kind !== kind) return false;
         return true;
       }),
-    [items, status, kind],
+    [items, status, kind, studioFilter],
   );
-  const sort = useTableSort(SORT_GETTERS);
+  const sort = useTableSort({
+    ...SORT_GETTERS,
+    studio: (i: RequestRow) => studioOf(i.studio_id)?.name,
+  });
   const pg = usePagination(sort.apply(filtered), undefined, sort.key);
 
   const now = new Date();
@@ -254,7 +268,8 @@ function RequestsPage() {
     reload();
   };
 
-  const hasFilters = status !== "all" || kind !== "all";
+  const hasFilters = status !== "all" || kind !== "all" || studioFilter !== "all";
+  const columns = multi ? 8 : 7;
 
   return (
     <AdminShell title="Заявки">
@@ -287,6 +302,9 @@ function RequestsPage() {
           )}
 
           <TableToolbar>
+            {multi && studios && (
+              <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
+            )}
             <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
               <SelectTrigger className="w-44">
                 <SelectValue />
@@ -315,6 +333,7 @@ function RequestsPage() {
               onReset={() => {
                 setStatus("all");
                 setKind("all");
+                setStudioFilter("all");
               }}
             />
           </TableToolbar>
@@ -325,6 +344,7 @@ function RequestsPage() {
                 <TableRow>
                   <TableHead {...sort.head("createdAt")}>Дата</TableHead>
                   <TableHead {...sort.head("client")}>Клиент</TableHead>
+                  {multi && <TableHead {...sort.head("studio")}>Клуб</TableHead>}
                   <TableHead tip={TIPS.kind} {...sort.head("kind")}>
                     Заявка
                   </TableHead>
@@ -340,11 +360,11 @@ function RequestsPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeletonRows columns={7} />
+                  <TableSkeletonRows columns={columns} />
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={columns}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       <ClipboardList className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
@@ -406,6 +426,11 @@ function RequestsPage() {
                               </div>
                             )}
                           </TableCell>
+                          {multi && (
+                            <TableCell>
+                              <StudioLabel studio={studioOf(i.studio_id)} />
+                            </TableCell>
+                          )}
                           <TableCell className="whitespace-nowrap">
                             <KindBadge kind={i.kind} />
                           </TableCell>

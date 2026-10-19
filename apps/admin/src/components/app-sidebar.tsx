@@ -25,6 +25,7 @@ import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useClubRequestsBadge } from "@/hooks/use-client-requests";
+import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
 import { canOpenClubSection, canOpenRail, type AdminAccess } from "@/lib/admin-access";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
@@ -138,18 +139,19 @@ function useScriptsMenu(enabled: boolean): { groups: NavGroup[]; loading: boolea
  * меню. Новые обращения приходят из приложения и по QR-коду
  * (db/migrations/2026-10-15_zz_feedback_in_app.sql); счётчик обновляется раз в
  * минуту и при возвращении на вкладку. Ключ начинается с "feedback": страница
- * раздела сбрасывает его вместе со своим списком.
+ * раздела сбрасывает его вместе со своим списком. Клубы — все клубы раздела
+ * (id через запятую), как на странице (2026-10-19).
  */
-function usePendingFeedback(studioId: string | null, enabled: boolean): number {
+function usePendingFeedback(studioIds: string, enabled: boolean): number {
   const { data = 0 } = useQuery({
-    queryKey: ["feedback", studioId, "pending-count"],
+    queryKey: ["feedback", studioIds, "pending-count"],
     queryFn: async () => {
       let q = supabase
         .from("feedback")
         .select("id", { count: "exact", head: true })
         .eq("status", "pending");
-      // Как на странице: свой клуб и старые обращения без клуба.
-      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      // Как на странице: клубы раздела и старые обращения без клуба.
+      if (studioIds) q = q.or(`studio_id.in.(${studioIds}),studio_id.is.null`);
       const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
@@ -165,18 +167,19 @@ function usePendingFeedback(studioId: string | null, enabled: boolean): number {
  * «Заявок». Новые ответы приходят из приложения
  * (db/migrations/2026-10-15_zzz_nps_read_renewal.sql); сотрудник отмечает
  * каждый прочитанным во вкладке «Статистика». Ключ начинается с
- * ["nps_responses", studioId]: страница сбрасывает его вместе со списком.
+ * ["nps_responses", studioIds]: страница сбрасывает его вместе со списком.
+ * Клубы — все клубы раздела (id через запятую), как на странице.
  */
-function useUnreadNps(studioId: string | null, enabled: boolean): number {
+function useUnreadNps(studioIds: string, enabled: boolean): number {
   const { data = 0 } = useQuery({
-    queryKey: ["nps_responses", studioId, "unread-count"],
+    queryKey: ["nps_responses", studioIds, "unread-count"],
     queryFn: async () => {
       let q = supabase
         .from("nps_responses")
         .select("id", { count: "exact", head: true })
         .is("read_at", null);
-      // Как на странице: свой клуб и старые ответы без клуба.
-      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      // Как на странице: клубы раздела и старые ответы без клуба.
+      if (studioIds) q = q.or(`studio_id.in.(${studioIds}),studio_id.is.null`);
       const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
@@ -232,14 +235,19 @@ export function AppSidebar() {
     railKey === "scripts"
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
       : SECTION_MENUS[railKey];
+  const feedbackStudios = useSectionStudios("feedback");
+  const npsStudios = useSectionStudios("nps");
   const pendingFeedback = usePendingFeedback(
-    studioId,
-    !sectionMenu && !!access && canOpenClubSection(access, studioId, "feedback"),
+    studioIdsKey(feedbackStudios),
+    !sectionMenu &&
+      !!feedbackStudios &&
+      !!access &&
+      canOpenClubSection(access, studioId, "feedback"),
   );
   const openRequests = useClubRequestsBadge();
   const unreadNps = useUnreadNps(
-    studioId,
-    !sectionMenu && !!access && canOpenClubSection(access, studioId, "nps"),
+    studioIdsKey(npsStudios),
+    !sectionMenu && !!npsStudios && !!access && canOpenClubSection(access, studioId, "nps"),
   );
   // Счётчики меню клуба: неотработанные заявки клиентов — на «Заявках»,
   // неотработанная обратная связь — на «Обратной связи», непрочитанные

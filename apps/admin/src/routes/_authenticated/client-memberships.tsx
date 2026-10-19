@@ -664,6 +664,12 @@ function ClientMembershipsPage() {
                   <TableHead tip={TIPS.status} {...sort.head("status")}>
                     Статус
                   </TableHead>
+                  <TableHead tip={TIPS.payment} {...sort.head("payment")}>
+                    Платежи
+                  </TableHead>
+                  <TableHead tip={TIPS.comments} {...sort.head("comments")}>
+                    Комментарии
+                  </TableHead>
                   <TableHead tip={TIPS.balance} {...sort.head("balance")}>
                     Баланс
                   </TableHead>
@@ -675,12 +681,6 @@ function ClientMembershipsPage() {
                   </TableHead>
                   <TableHead tip={TIPS.addedVia} {...sort.head("addedVia")}>
                     Добавлен
-                  </TableHead>
-                  <TableHead tip={TIPS.comments} {...sort.head("comments")}>
-                    Комментарии
-                  </TableHead>
-                  <TableHead tip={TIPS.payment} {...sort.head("payment")}>
-                    Платежи
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -798,20 +798,8 @@ function ClientMembershipsPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap tabular-nums">
-                          <Balance row={r} />
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <Amount row={r} refunded={refundedBySale?.[r.id] ?? 0} />
-                        </TableCell>
                         <TableCell>
-                          <div>{r.admin_name ?? "—"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {SALE_ADDED_VIA_LABEL[r.added_via ?? "admin"]}
+                          <PaymentsCell row={r} onSaved={reload} />
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] space-y-1">
@@ -834,8 +822,20 @@ function ClientMembershipsPage() {
                             />
                           </div>
                         </TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums">
+                          <Balance row={r} />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Amount row={r} refunded={refundedBySale?.[r.id] ?? 0} />
+                        </TableCell>
                         <TableCell>
-                          <PaymentsCell row={r} onSaved={reload} />
+                          <div>{r.admin_name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {SALE_ADDED_VIA_LABEL[r.added_via ?? "admin"]}
                         </TableCell>
                       </TableRow>
                     </RowContextMenu>

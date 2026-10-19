@@ -9,6 +9,9 @@ import { StaffOption } from "@/components/employee-photo";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
+import type { Studio } from "@/hooks/use-studios";
+import { StudioFilter, StudioLabel, StudioSelect } from "@/components/studio-label";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { orderBy } from "@/lib/table-sort";
@@ -48,6 +51,7 @@ const TIPS = {
   amount: "Всегда положительная — приход это или расход, задаёт «Тип».",
   operator: "Сотрудник, ответственный за операцию. По умолчанию — вы.",
   occurredAt: "Когда деньги фактически прошли. Можно указать задним числом.",
+  studio: "Касса какого клуба: у каждого клуба свой баланс.",
   comment: "Обязателен. Пишите так, чтобы через месяц было понятно, за что деньги.",
 };
 
@@ -97,8 +101,8 @@ const CATEGORIES: Record<CashKind, { value: string; label: string }[]> = {
 };
 
 /**
- * Колонки сортировки (lib/table-sort.ts). «Сотрудник» не сортируется: в
- * операции только user_id, имя подставляется в браузере.
+ * Колонки сортировки (lib/table-sort.ts). «Сотрудник» и «Клуб» не
+ * сортируются: в операции только id, имя подставляется в браузере.
  */
 const SORT_COLUMNS = {
   occurredAt: "occurred_at",
@@ -120,69 +124,95 @@ function operatorLabel(o: Operator) {
 
 function CashPage() {
   const studioId = useActiveStudioId();
+  // Кассы всех клубов сотрудника на одной странице: клуб операции выбирается
+  // в форме, баланс — плиткой на клуб, история — общая с колонкой «Клуб»
+  // (решение владельца 2026-10-19: не переключать клуб в шапке).
+  const studios = useSectionStudios("cash");
+  const idsKey = studioIdsKey(studios);
+  const ids = idsKey ? idsKey.split(",") : [];
+  const multi = ids.length > 1;
+  const studioOf = (id: string) => studios?.find((s) => s.id === id) ?? null;
   const queryClient = useQueryClient();
   // Форма после сохранения монтируется заново — так все поля возвращаются
   // к начальным значениям (приход, сейчас, текущий сотрудник) без ручного сброса.
   const [formKey, setFormKey] = useState(0);
+  // Клуб формы переживает сохранение: операции обычно вносят пачкой в один клуб.
+  const [pickedStudio, setPickedStudio] = useState("");
+  const formStudio =
+    (ids.includes(pickedStudio) && pickedStudio) ||
+    (studioId && ids.includes(studioId) ? studioId : ids[0]) ||
+    "";
+  const [studioFilter, setStudioFilter] = useState("all");
+  const historyIds = studioFilter === "all" ? idsKey : studioFilter;
   const sort = useTableSort();
 
   const table = useServerTable<CashOp>({
-    queryKey: ["cash_operations", studioId, sort.key],
+    queryKey: ["cash_operations", historyIds, sort.key],
     queryFn: ({ from, to }) =>
       orderBy(
-        supabase.from("cash_operations").select("*", { count: "exact" }).eq("studio_id", studioId!),
+        supabase
+          .from("cash_operations")
+          .select("*", { count: "exact" })
+          .in("studio_id", historyIds.split(",")),
         sort.sort,
         SORT_COLUMNS,
         (q) => q.order("occurred_at", { ascending: false }).order("id"),
       ).range(from, to),
-    enabled: !!studioId,
+    enabled: !!historyIds,
     errorMessage: "Не удалось загрузить операции",
   });
 
-  // Итоги считает БД по всем операциям студии, а не по текущей странице, —
-  // поэтому это отдельный запрос, который не повторяется при листании таблицы.
-  const { data: totalsRow, isLoading: totalsLoading } = useQuery({
-    queryKey: ["cash_totals", studioId],
+  // Итоги считает БД по всем операциям каждого клуба, а не по текущей
+  // странице, — поэтому это отдельный запрос, который не повторяется при
+  // листании таблицы.
+  const { data: totalsRows, isLoading: totalsQueryLoading } = useQuery({
+    queryKey: ["cash_totals", idsKey],
     queryFn: () =>
-      unwrap<{ income: number | null; expense: number | null } | null>(
-        supabase
-          .from("cash_totals")
-          .select("income, expense")
-          .eq("studio_id", studioId!)
-          .maybeSingle(),
+      unwrap<{ studio_id: string; income: number | null; expense: number | null }[]>(
+        supabase.from("cash_totals").select("studio_id, income, expense").in("studio_id", ids),
       ),
-    enabled: !!studioId,
+    enabled: ids.length > 0,
     meta: { errorMessage: "Не удалось загрузить итоги кассы" },
   });
-  const income = Number(totalsRow?.income ?? 0);
-  const expense = Number(totalsRow?.expense ?? 0);
+  const totalsLoading = studios === null || totalsQueryLoading;
+  const balanceOf = (id: string) => {
+    const row = totalsRows?.find((r) => r.studio_id === id);
+    return Number(row?.income ?? 0) - Number(row?.expense ?? 0);
+  };
 
-  // Сотрудники студии: выбор «кто проводит» и подпись операций в истории.
-  const { data: operators = [] } = useQuery({
-    queryKey: ["user_roles", studioId, "operators"],
+  // Сотрудники клубов: выбор «кто проводит» (только клуба формы) и подпись
+  // операций в истории.
+  const { data: staff } = useQuery({
+    queryKey: ["user_roles", idsKey, "operators"],
     queryFn: async () => {
-      const roles = await unwrap<{ user_id: string }[]>(
+      const roles = await unwrap<{ user_id: string; studio_id: string }[]>(
         supabase
           .from("user_roles")
-          .select("user_id")
-          .eq("studio_id", studioId!)
+          .select("user_id, studio_id")
+          .in("studio_id", ids)
           .in("role", STAFF_ROLES),
       );
-      const ids = Array.from(new Set(roles.map((r) => r.user_id)));
-      if (ids.length === 0) return [];
-      return unwrap<Operator[]>(
-        supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", ids),
+      const userIds = Array.from(new Set(roles.map((r) => r.user_id)));
+      if (userIds.length === 0) return { roles, profiles: [] };
+      const profiles = await unwrap<Operator[]>(
+        supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", userIds),
       );
+      return { roles, profiles };
     },
-    enabled: !!studioId,
+    enabled: ids.length > 0,
     meta: { errorMessage: "Не удалось загрузить сотрудников" },
   });
+  const allOperators = staff?.profiles ?? [];
+  const formOperators = allOperators.filter((o) =>
+    staff?.roles.some((r) => r.user_id === o.id && r.studio_id === formStudio),
+  );
 
   const operatorName = (id: string | null) => {
     if (!id) return "—";
-    const op = operators.find((o) => o.id === id);
+    const op = allOperators.find((o) => o.id === id);
     return op ? operatorLabel(op) : id.slice(0, 8);
   };
+  const columns = multi ? 7 : 6;
 
   const onSaved = () => {
     setFormKey((k) => k + 1);
@@ -194,40 +224,55 @@ function CashPage() {
     <AdminShell title="Касса">
       <div className="space-y-3">
         <RequireStudio studioId={studioId}>
-          {/* Баланс; приход и расход «за всё время» владелец убрал (2026-10-11). */}
+          {/* Баланс каждого клуба (2026-10-19; был один — клуба из шапки);
+              приход и расход «за всё время» владелец убрал (2026-10-11). */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border bg-background p-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Wallet className="h-4 w-4" />
-                Баланс кассы
-              </div>
-              {/* Пока баланс не пришёл — болванка, а не «0,00», который легко принять за правду. */}
-              {totalsLoading ? (
-                <Skeleton className="mt-2 h-8 w-32" />
-              ) : (
-                <div className="mt-2 text-2xl font-semibold tabular-nums">
-                  {formatMoneyPrecise(income - expense)}
+            {studios === null ? (
+              <CashBalanceSkeleton />
+            ) : (
+              studios.map((s) => (
+                <div key={s.id} className="rounded-lg border bg-background p-4">
+                  <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                    <Wallet className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Баланс · {s.name}</span>
+                  </div>
+                  {/* Пока баланс не пришёл — болванка, а не «0,00», который легко принять за правду. */}
+                  {totalsLoading ? (
+                    <Skeleton className="mt-2 h-8 w-32" />
+                  ) : (
+                    <div className="mt-2 text-2xl font-semibold tabular-nums">
+                      {formatMoneyPrecise(balanceOf(s.id))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              ))
+            )}
           </div>
 
           <CashOperationForm
             key={formKey}
-            studioId={studioId!}
-            operators={operators}
+            studioId={formStudio}
+            studios={studios ?? []}
+            onStudioChange={setPickedStudio}
+            operators={formOperators}
             onSaved={onSaved}
           />
 
           {/* History */}
           <div className="rounded-lg border bg-background">
-            <div className="border-b px-4 py-2 text-sm font-semibold">История операций</div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
+              <span className="text-sm font-semibold">История операций</span>
+              {multi && studios && (
+                <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
+              )}
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead tip={TIPS.occurredAt} {...sort.head("occurredAt")}>
                     Дата
                   </TableHead>
+                  {multi && <TableHead>Клуб</TableHead>}
                   <TableHead {...sort.head("kind")}>Тип</TableHead>
                   <TableHead tip={TIPS.category} {...sort.head("category")}>
                     Категория
@@ -243,11 +288,11 @@ function CashPage() {
               </TableHeader>
               <TableBody>
                 {table.loading ? (
-                  <TableSkeletonRows columns={6} />
+                  <TableSkeletonRows columns={columns} />
                 ) : table.rows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={columns}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Пока нет операций.
@@ -259,6 +304,11 @@ function CashPage() {
                       <TableCell className="whitespace-nowrap text-sm">
                         {formatDateTime(o.occurred_at)}
                       </TableCell>
+                      {multi && (
+                        <TableCell>
+                          <StudioLabel studio={studioOf(o.studio_id)} />
+                        </TableCell>
+                      )}
                       <TableCell>
                         {o.kind === "income" ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -303,12 +353,31 @@ function CashPage() {
   );
 }
 
+/** Плитка баланса, пока клубы раздела грузятся. */
+function CashBalanceSkeleton() {
+  return (
+    <div className="rounded-lg border bg-background p-4">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Wallet className="h-4 w-4" />
+        Баланс
+      </div>
+      <Skeleton className="mt-2 h-8 w-32" />
+    </div>
+  );
+}
+
 function CashOperationForm({
   studioId,
+  studios,
+  onStudioChange,
   operators,
   onSaved,
 }: {
+  /** Клуб операции; меняет его поле «Клуб» (первое в форме). */
   studioId: string;
+  studios: Studio[];
+  onStudioChange: (id: string) => void;
+  /** Сотрудники клуба операции. */
   operators: Operator[];
   onSaved: () => void;
 }) {
@@ -331,7 +400,17 @@ function CashOperationForm({
     setCategory(CATEGORIES[next][0].value);
   };
 
+  const changeStudio = (next: string) => {
+    onStudioChange(next);
+    // Выбранный вручную сотрудник может не работать в другом клубе.
+    setOperatorId("");
+  };
+
   const handleSave = async () => {
+    if (!studioId) {
+      toast.error("Выберите клуб");
+      return;
+    }
     const amt = Number(amount);
     if (!amt || amt <= 0) {
       toast.error("Укажите сумму больше нуля");
@@ -383,6 +462,9 @@ function CashOperationForm({
     >
       <h2 className="mb-3 text-sm font-semibold">Новая операция</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <FormField label="Клуб" tip={TIPS.studio} required className="sm:col-span-2">
+          <StudioSelect studios={studios} value={studioId} onChange={changeStudio} />
+        </FormField>
         <FormField label="Тип" required>
           <Select value={kind} onValueChange={(v) => changeKind(v as CashKind)}>
             <SelectTrigger>
@@ -446,7 +528,7 @@ function CashOperationForm({
           label="Комментарий"
           tip={TIPS.comment}
           required
-          className="sm:col-span-2 lg:col-span-6"
+          className="sm:col-span-2 lg:col-span-4"
         >
           <Textarea
             note
