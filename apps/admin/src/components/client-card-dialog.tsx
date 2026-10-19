@@ -1,7 +1,8 @@
 import type React from "react";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus } from "lucide-react";
+import { Loader2, Pencil, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { InfoNote } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -29,6 +31,7 @@ import { CardSkeleton, TableSkeletonRows } from "@/components/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditActiveMembershipDialog } from "@/components/edit-active-membership-dialog";
 import { SaleDialog } from "@/components/sale-dialog";
+import { SaleKindPickerDialog } from "@/components/sale-kind-picker";
 import { ClientDialog, type SavedClient } from "@/components/client-form-dialog";
 import { ClientAppTab } from "@/components/client-app-tab";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -51,10 +54,9 @@ import {
   initials,
   todayISO,
 } from "@/lib/format";
-import { saleSourceLabel } from "@/lib/payments";
+import { saleSourceLabel, type SaleKind } from "@/lib/payments";
 import { unwrap } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import { noteCardClass } from "@/components/comment-cell";
 
 type MemberProfile = {
   user_id: string;
@@ -252,10 +254,14 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickedKind, setPickedKind] = useState<SaleKind>("new");
   const [clientEditOpen, setClientEditOpen] = useState(false);
   // Сохранённая правка клиента — поверх переданной строки, без перезапроса.
   const [saved, setSaved] = useState<SavedClient | null>(null);
-  const client: ClientLike = saved ? { ...initial, ...saved } : initial;
+  // Комментарий, сохранённый в блоке над вкладками (правке клиента — свежий).
+  const [savedNotes, setSavedNotes] = useState<{ notes: string | null } | null>(null);
+  const client: ClientLike = { ...initial, ...saved, ...savedNotes };
   // Клуб, где работают с клиентом: продажа — в нём. У общей базы клиентов
   // (пакетные клубы, 2026-10-17) это активный клуб, где бы карточку ни
   // завели; клиент подписочного клуба из поиска «в другом клубе» — его клуб.
@@ -327,6 +333,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
   // Имя и контакты клиента видны в списках всех разделов.
   const onClientSaved = (row: SavedClient) => {
     setSaved(row);
+    setSavedNotes(null);
     for (const key of [
       "clients",
       "clients_with_status",
@@ -339,14 +346,31 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
     }
   };
 
-  // Пакетный клуб: у клиента уже были абонементы (не только пробное или
-  // разовое) — кнопка оформляет продление, оно встанет в очередь после
-  // текущего абонемента; иначе — новая продажа (решение владельца 2026-10-14).
-  const hadPackages = sales.some((s) => {
-    const kind = membershipKind(s.memberships);
-    return kind != null && kind !== "trial" && kind !== "single";
-  });
-  const saleKind = isPackages && hadPackages ? "renewal" : "new";
+  // Комментарий виден в «Клиентах», в окне занятия и в шапке поиска; правка
+  // клиента («Редактировать») берёт уже сохранённый текст.
+  const onNotesSaved = (notes: string | null) => {
+    setSavedNotes({ notes });
+    for (const key of ["clients", "clients_with_status", "schedule_bookings"]) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  };
+
+  // Пакетный клуб: сначала тот же выбор типа продажи, что в «Абонементах»
+  // («Новая», «Оплата пробного», «Допродажа», «Продление» — решение
+  // владельца 2026-10-19), потом форма продажи этого типа. У подписочного
+  // типов нет — форма сразу.
+  const startSale = () => {
+    if (isPackages) setPickerOpen(true);
+    else {
+      setPickedKind("new");
+      setSaleOpen(true);
+    }
+  };
+  const pickSaleKind = (k: SaleKind) => {
+    setPickerOpen(false);
+    setPickedKind(k);
+    setSaleOpen(true);
+  };
 
   // Локальная дата, как в computeClubStatus/effectiveStatus: UTC-дата
   // первые часы суток (Тбилиси, UTC+4) — ещё вчерашняя, и истёкший
@@ -393,6 +417,10 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
         </div>
       </DialogHeader>
       <DialogBody>
+        {/* Комментарий — над вкладками: виден, откуда бы карточку ни открыли
+            и какая вкладка ни выбрана, и дописывается на месте (решение
+            владельца 2026-10-19). */}
+        <ClientNotes clientId={client.id} initial={client.notes} onSaved={onNotesSaved} />
         <Tabs defaultValue="card" className="w-full">
           {/* На телефоне четыре вкладки не помещаются в строку — прокручиваются. */}
           <TabsList className="max-w-full justify-start overflow-x-auto">
@@ -470,15 +498,6 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
               )}
             </div>
 
-            {client.notes && (
-              <div>
-                <SectionLabel className="mb-2">Заметки</SectionLabel>
-                <div className={cn(noteCardClass, "whitespace-pre-wrap text-sm")}>
-                  {client.notes}
-                </div>
-              </div>
-            )}
-
             <div>
               <div className="mb-2 flex min-h-9 items-center justify-between">
                 <SectionLabel>История продаж</SectionLabel>
@@ -486,11 +505,11 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSaleOpen(true)}
+                  onClick={startSale}
                   disabled={!studioId || loadingSales}
                 >
                   <Plus />
-                  {saleKind === "renewal" ? "Добавить продление" : "Добавить продажу"}
+                  Добавить продажу
                 </Button>
               </div>
               {loadingSales ? (
@@ -589,12 +608,18 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
         isPackages={isPackages}
         onSaved={reloadMemberships}
       />
+      <SaleKindPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onPick={pickSaleKind}
+        clientName={name}
+      />
       <SaleDialog
         open={saleOpen}
         onOpenChange={setSaleOpen}
         studioId={studioId}
         initialClient={client}
-        kind={saleKind}
+        kind={pickedKind}
         onSaved={onSaleSaved}
       />
       <ClientDialog
@@ -605,6 +630,95 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
         onSaved={onClientSaved}
       />
     </>
+  );
+}
+
+/**
+ * Комментарий о клиенте (clients.notes) прямо в карточке: поле «бумажки»,
+ * «Сохранить» появляется, когда текст изменили (Ctrl/⌘+Enter — тоже). Текст
+ * берётся из базы: строка, из которой открыли карточку, могла устареть.
+ */
+function ClientNotes({
+  clientId,
+  initial,
+  onSaved,
+}: {
+  clientId: string;
+  initial: string | null;
+  onSaved: (notes: string | null) => void;
+}) {
+  const queryClient = useQueryClient();
+  const key = ["clients", "notes", clientId];
+  const { data: stored = initial, isPlaceholderData } = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const row = await unwrap<{ notes: string | null } | null>(
+        supabase.from("clients").select("notes").eq("id", clientId).maybeSingle(),
+      );
+      return row?.notes ?? null;
+    },
+    placeholderData: initial,
+    meta: { errorMessage: "Не удалось загрузить комментарий клиента" },
+  });
+  // null — поле не трогали, показываем сохранённый текст.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const text = draft ?? stored ?? "";
+  const dirty = draft != null && draft.trim() !== (stored ?? "").trim();
+
+  const save = async () => {
+    if (!dirty || saving) return;
+    const notes = text.trim() || null;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("clients").update({ notes }).eq("id", clientId);
+      if (error) {
+        toast.error("Не удалось сохранить комментарий: " + error.message);
+        return;
+      }
+      queryClient.setQueryData(key, notes);
+      setDraft(null);
+      toast.success("Комментарий сохранён");
+      onSaved(notes);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 space-y-2">
+      <div className="flex min-h-8 items-center justify-between gap-2">
+        <SectionLabel>Комментарий</SectionLabel>
+        {dirty && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setDraft(null)} disabled={saving}>
+              Отмена
+            </Button>
+            <Button size="sm" onClick={save} disabled={saving}>
+              {saving && <Loader2 className="animate-spin" />}
+              Сохранить
+            </Button>
+          </div>
+        )}
+      </div>
+      <Textarea
+        note
+        rows={2}
+        value={text}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            void save();
+          }
+        }}
+        // Пока свежий текст не пришёл, правка затёрлась бы им — ждём.
+        disabled={isPlaceholderData}
+        placeholder="Комментарий о клиенте — видно всем сотрудникам клуба"
+        aria-label="Комментарий о клиенте"
+        className="field-sizing-content max-h-48 min-h-16"
+      />
+    </div>
   );
 }
 

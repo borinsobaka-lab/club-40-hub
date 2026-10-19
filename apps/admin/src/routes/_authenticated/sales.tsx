@@ -38,6 +38,7 @@ import { useCrmLinks } from "@/hooks/use-crm-links";
 import { SaleDialog } from "@/components/sale-dialog";
 import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
 import { CommentCell } from "@/components/comment-cell";
+import { commentSaver } from "@/lib/comment-saver";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { clientName, formatMoney, formatDate } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -366,7 +367,11 @@ function SalesPage() {
                             {s.admin_name ?? "—"}
                           </TableCell>
                           <TableCell>
-                            <CommentCell text={s.comment} />
+                            <CommentCell
+                              text={s.comment}
+                              onSave={commentSaver("sales", s.id)}
+                              onSaved={reload}
+                            />
                           </TableCell>
                         </TableRow>
                       </RowContextMenu>

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
 import { CommentCell } from "@/components/comment-cell";
+import { commentSaver } from "@/lib/comment-saver";
 import { StaffOption } from "@/components/employee-photo";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
@@ -281,7 +282,13 @@ function CashPage() {
                       </TableCell>
                       <TableCell className="text-sm">{operatorName(o.user_id)}</TableCell>
                       <TableCell>
-                        <CommentCell text={o.comment} />
+                        <CommentCell
+                          text={o.comment}
+                          onSave={commentSaver("cash_operations", o.id)}
+                          onSaved={() =>
+                            queryClient.invalidateQueries({ queryKey: ["cash_operations"] })
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   ))

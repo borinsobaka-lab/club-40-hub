@@ -94,7 +94,8 @@ import { StaffOption } from "@/components/employee-photo";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
-import { CommentCell, noteChipClass } from "@/components/comment-cell";
+import { CommentCell } from "@/components/comment-cell";
+import { commentSaver } from "@/lib/comment-saver";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
@@ -817,10 +818,20 @@ function ClientMembershipsPage() {
                             {r.comment?.trim() && (
                               <div className="text-xs">
                                 <div className="text-muted-foreground/70">При продаже</div>
-                                <CommentCell text={r.comment} />
+                                <CommentCell
+                                  text={r.comment}
+                                  onSave={commentSaver("sales", r.id)}
+                                  onSaved={reload}
+                                />
                               </div>
                             )}
-                            <NoteCell saleId={r.id} note={r.membership_note} onSaved={reload} />
+                            {/* Комментарий раздела (sales.membership_note): договорённости
+                                об оплате, напоминания — правится прямо в строке. */}
+                            <CommentCell
+                              text={r.membership_note}
+                              onSave={commentSaver("sales", r.id, "membership_note")}
+                              onSaved={reload}
+                            />
                           </div>
                         </TableCell>
                         <TableCell>
@@ -947,102 +958,6 @@ function DaysLeft({
     <span title={`До ${formatDate(endsAt)} включительно`}>
       {days === 0 ? "Последний день" : `ещё ${days} дн.`}
     </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Комментарий раздела (sales.membership_note)
-// ---------------------------------------------------------------------------
-
-function NoteCell({
-  saleId,
-  note,
-  onSaved,
-}: {
-  saleId: string;
-  note: string | null;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const value = note?.trim();
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          title={value ? "Изменить комментарий" : "Добавить комментарий"}
-          className={cn(
-            "line-clamp-2 min-w-[140px] max-w-[200px] cursor-pointer whitespace-pre-wrap break-words text-left",
-            value
-              ? cn(noteChipClass, "hover:bg-note")
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {value || (
-            <span className="inline-flex items-center gap-1">
-              <Plus className="h-3.5 w-3.5" />
-              Комментарий
-            </span>
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)]">
-        {/* Содержимое монтируется при каждом открытии — поле сбрасывать не нужно. */}
-        <NoteForm
-          saleId={saleId}
-          note={note}
-          onDone={() => {
-            setOpen(false);
-            onSaved();
-          }}
-          onCancel={() => setOpen(false)}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function NoteForm({
-  saleId,
-  note,
-  onDone,
-  onCancel,
-}: {
-  saleId: string;
-  note: string | null;
-  onDone: () => void;
-  onCancel: () => void;
-}) {
-  const [text, setText] = useState(note ?? "");
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async (e: FormEvent) => {
-    e.preventDefault();
-    if (saving) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("sales")
-        .update({ membership_note: text.trim() || null })
-        .eq("id", saleId);
-      if (error) {
-        toast.error("Не удалось сохранить комментарий: " + error.message);
-        return;
-      }
-      toast.success("Комментарий сохранён");
-      onDone();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSave} className="space-y-3">
-      <FormField label="Комментарий" tip={TIPS.note}>
-        <Textarea note rows={4} value={text} onChange={(e) => setText(e.target.value)} autoFocus />
-      </FormField>
-      <PopoverButtons saving={saving} onCancel={onCancel} />
-    </form>
   );
 }
 

@@ -61,6 +61,7 @@ import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { CommentCell } from "@/components/comment-cell";
+import { commentSaver } from "@/lib/comment-saver";
 import { OtherSalesPageSkeleton } from "@/components/page-skeletons";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
@@ -393,7 +394,11 @@ function SalesTab({
                     <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
                     <TableCell className="text-muted-foreground">{s.admin_name ?? "—"}</TableCell>
                     <TableCell>
-                      <CommentCell text={s.comment} />
+                      <CommentCell
+                        text={s.comment}
+                        onSave={commentSaver("other_sales", s.id)}
+                        onSaved={reload}
+                      />
                     </TableCell>
                   </TableRow>
                 </RowContextMenu>
