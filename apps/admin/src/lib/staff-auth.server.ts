@@ -79,6 +79,8 @@ export type StaffContext = {
   supabase: SupabaseClient;
   userId: string;
   studioId: string;
+  /** Роли сотрудника в этой студии (не пустые). */
+  roles: StaffRole[];
 };
 
 export type StaffAuthResult =
@@ -111,6 +113,11 @@ export async function authenticateStaff(request: Request): Promise<StaffAuthResu
   }
   return {
     ok: true,
-    staff: { supabase: auth.supabase, userId: auth.user.id, studioId: staff.studioId },
+    staff: {
+      supabase: auth.supabase,
+      userId: auth.user.id,
+      studioId: staff.studioId,
+      roles: staff.roles,
+    },
   };
 }
