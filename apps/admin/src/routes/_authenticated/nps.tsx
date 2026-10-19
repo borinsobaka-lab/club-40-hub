@@ -20,6 +20,9 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
+import type { Studio } from "@/hooks/use-studios";
+import { StudioFilter, StudioLabel, StudioSelect } from "@/components/studio-label";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
@@ -82,6 +85,8 @@ type SurveyType = "first_lessons" | "first_month" | "before_renewal" | "after_re
 
 type NpsResponse = {
   id: string;
+  /** Клуб ответа; старые строки без привязки — null. */
+  studio_id: string | null;
   score: number;
   client_name: string | null;
   comment: string | null;
@@ -192,33 +197,77 @@ const tooltipStyle = {
 
 function NpsPage() {
   const studioId = useActiveStudioId();
+  // Ответы всех клубов сотрудника сразу, клуб — колонкой (решение владельца
+  // 2026-10-19: не переключать клуб в шапке).
+  const studios = useSectionStudios("nps");
+  const idsKey = studioIdsKey(studios);
+  const multi = (studios?.length ?? 0) > 1;
+  const studioOf = (id: string | null) => studios?.find((s) => s.id === id) ?? null;
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
   const [tab, setTab] = useState<"surveys" | "stats">("surveys");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [clientFilter, setClientFilter] = useState<string>("all");
+  const [studioFilter, setStudioFilter] = useState<string>("all");
   const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const queryKey = ["nps_responses", studioId];
-  const { data: responses = [], isLoading: loading } = useQuery({
+  const queryKey = ["nps_responses", idsKey];
+  const { data: allResponses = [], isLoading: queryLoading } = useQuery({
     queryKey,
     queryFn: () => {
       let q = supabase.from("nps_responses").select("*");
-      // Ответы своей студии + строки без привязки (см. db/feedback_nps_studio.sql).
-      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      // Ответы клубов раздела + строки без привязки (см. db/feedback_nps_studio.sql).
+      if (idsKey) q = q.or(`studio_id.in.(${idsKey}),studio_id.is.null`);
       return unwrap<NpsResponse[]>(q.order("created_at", { ascending: false }));
     },
+    enabled: studios !== null,
     meta: { errorMessage: "Не удалось загрузить ответы NPS" },
   });
+  const loading = studios === null || queryLoading;
   const reload = () => queryClient.invalidateQueries({ queryKey: ["nps_responses"] });
+  // Фильтр «Клуб» — для обеих вкладок: NPS и показы считаются по выбранным.
+  const responses = useMemo(
+    () =>
+      studioFilter === "all"
+        ? allResponses
+        : allResponses.filter((r) => r.studio_id === studioFilter),
+    [allResponses, studioFilter],
+  );
 
-  const { data: promptStats = [], isLoading: promptsLoading } = useQuery({
-    queryKey: ["nps_survey_prompts", studioId],
-    queryFn: () =>
-      unwrap<PromptStats[]>(supabase.rpc("nps_prompt_stats", { p_studio_id: studioId ?? null })),
+  // Показы опросов — по клубу (RPC nps_prompt_stats), складываются по типу.
+  const promptIds = studioFilter === "all" ? idsKey : studioFilter;
+  const { data: promptStats = [], isLoading: promptsQueryLoading } = useQuery({
+    queryKey: ["nps_survey_prompts", promptIds],
+    queryFn: async () => {
+      const parts = await Promise.all(
+        promptIds
+          .split(",")
+          .map((id) =>
+            unwrap<PromptStats[]>(supabase.rpc("nps_prompt_stats", { p_studio_id: id })),
+          ),
+      );
+      const byType = new Map<SurveyType, PromptStats>();
+      for (const row of parts.flat()) {
+        const cur = byType.get(row.survey_type);
+        byType.set(
+          row.survey_type,
+          cur
+            ? {
+                survey_type: row.survey_type,
+                shown: Number(cur.shown) + Number(row.shown),
+                answered: Number(cur.answered) + Number(row.answered),
+                closed: Number(cur.closed) + Number(row.closed),
+              }
+            : row,
+        );
+      }
+      return [...byType.values()];
+    },
+    enabled: !!promptIds,
     meta: { errorMessage: "Не удалось загрузить показы опросов" },
   });
+  const promptsLoading = studios === null || (!!promptIds && promptsQueryLoading);
 
   const toggleHandled = async (id: string, current: boolean) => {
     const { error } = await supabase
@@ -236,7 +285,7 @@ function NpsPage() {
 
   // «Прочитано» / «Отметить непрочитанным»: кто и когда — ставит база
   // (db/migrations/2026-10-15_zzz_nps_read_renewal.sql). Счётчик в меню —
-  // тот же ключ ["nps_responses", studioId, …].
+  // тот же ключ ["nps_responses", idsKey, …].
   const setRead = async (r: NpsResponse, read: boolean) => {
     setBusyId(r.id);
     try {
@@ -253,7 +302,7 @@ function NpsPage() {
       queryClient.setQueryData<NpsResponse[]>(queryKey, (prev) =>
         prev?.map((x) => (x.id === r.id ? { ...x, ...data } : x)),
       );
-      queryClient.invalidateQueries({ queryKey: ["nps_responses", studioId, "unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["nps_responses", idsKey, "unread-count"] });
     } finally {
       setBusyId(null);
     }
@@ -273,7 +322,7 @@ function NpsPage() {
       return;
     }
     queryClient.setQueryData<NpsResponse[]>(queryKey, (prev) => prev?.filter((r) => r.id !== id));
-    queryClient.invalidateQueries({ queryKey: ["nps_responses", studioId, "unread-count"] });
+    queryClient.invalidateQueries({ queryKey: ["nps_responses", idsKey, "unread-count"] });
     toast.success("Ответ удалён");
   };
 
@@ -326,9 +375,12 @@ function NpsPage() {
     [byType],
   );
 
-  const sort = useTableSort(SORT_GETTERS);
+  const sort = useTableSort({
+    ...SORT_GETTERS,
+    studio: (r: NpsResponse) => studioOf(r.studio_id)?.name,
+  });
   const pg = usePagination(sort.apply(tableData), undefined, sort.key);
-  const unreadCount = useMemo(() => responses.filter((r) => !r.read_at).length, [responses]);
+  const unreadCount = useMemo(() => allResponses.filter((r) => !r.read_at).length, [allResponses]);
   const crmLinkOf = useCrmLinks(studioId, "id", [
     ...pg.paged.map((r) => r.client_id),
     ...unhandled.map((r) => r.client_id),
@@ -356,6 +408,7 @@ function NpsPage() {
             {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
             <NewResponseForm
               studioId={studioId}
+              studios={studios ?? []}
               onClose={() => setAddOpen(false)}
               onSaved={reload}
             />
@@ -386,6 +439,9 @@ function NpsPage() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          {multi && studios && (
+            <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
+          )}
           {tab === "stats" && (
             <>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -413,10 +469,11 @@ function NpsPage() {
                 </SelectContent>
               </Select>
               <ToolbarReset
-                active={typeFilter !== "all" || clientFilter !== "all"}
+                active={typeFilter !== "all" || clientFilter !== "all" || studioFilter !== "all"}
                 onReset={() => {
                   setTypeFilter("all");
                   setClientFilter("all");
+                  setStudioFilter("all");
                 }}
               />
             </>
@@ -540,6 +597,12 @@ function NpsPage() {
                           <span className="text-xs text-muted-foreground">
                             {TYPE_LABEL[r.survey_type]}
                           </span>
+                          {multi && (
+                            <StudioLabel
+                              studio={studioOf(r.studio_id)}
+                              className="text-xs text-muted-foreground"
+                            />
+                          )}
                         </div>
                         <p className="truncate text-sm text-muted-foreground">{r.comment || "—"}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -565,6 +628,7 @@ function NpsPage() {
                   <TableRow>
                     <TableHead {...sort.head("date")}>Дата</TableHead>
                     <TableHead {...sort.head("client")}>Клиент</TableHead>
+                    {multi && <TableHead {...sort.head("studio")}>Клуб</TableHead>}
                     <TableHead className="w-[80px]" tip={TIPS.score} {...sort.head("score")}>
                       Оценка
                     </TableHead>
@@ -582,7 +646,7 @@ function NpsPage() {
                   {pg.total === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={multi ? 8 : 7}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         Нет ответов.
@@ -631,6 +695,11 @@ function NpsPage() {
                               {format(parseISO(r.created_at), "d MMM, HH:mm", { locale: ru })}
                             </TableCell>
                             <TableCell className="font-medium">{clientCell(r)}</TableCell>
+                            {multi && (
+                              <TableCell>
+                                <StudioLabel studio={studioOf(r.studio_id)} />
+                              </TableCell>
+                            )}
                             <TableCell className="text-center font-bold">{r.score}</TableCell>
                             <TableCell>
                               <span
@@ -683,13 +752,19 @@ function NpsPage() {
 
 function NewResponseForm({
   studioId,
+  studios,
   onClose,
   onSaved,
 }: {
   studioId: string | null;
+  /** Клубы раздела: при нескольких — поле «Клуб», по умолчанию клуб из шапки. */
+  studios: Studio[];
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [studio, setStudio] = useState(
+    () => studios.find((s) => s.id === studioId)?.id ?? studios[0]?.id ?? studioId ?? "",
+  );
   const [surveyType, setSurveyType] = useState<SurveyType>("general");
   // Строкой: поле можно очистить и набрать заново, проверка — при сохранении.
   const [score, setScore] = useState("9");
@@ -706,7 +781,7 @@ function NewResponseForm({
     setSaving(true);
     try {
       const { error } = await supabase.from("nps_responses").insert({
-        studio_id: studioId ?? null,
+        studio_id: studio || null,
         score: value,
         client_name: clientName.trim() || null,
         comment: comment.trim() || null,
@@ -734,6 +809,11 @@ function NewResponseForm({
       <DialogForm onSubmit={submit}>
         <DialogBody>
           <div className="space-y-4">
+            {studios.length > 1 && (
+              <FormField label="Клуб" required>
+                <StudioSelect studios={studios} value={studio} onChange={setStudio} />
+              </FormField>
+            )}
             <FormField label="Тип опроса" tip={TIPS.surveyType} required>
               <Select value={surveyType} onValueChange={(v) => setSurveyType(v as SurveyType)}>
                 <SelectTrigger>

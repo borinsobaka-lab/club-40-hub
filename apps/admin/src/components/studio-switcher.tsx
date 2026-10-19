@@ -21,7 +21,7 @@ export function StudioSwitcher({ triggerClassName }: { triggerClassName?: string
 
   // Пока список студий грузится — болванка поля той же ширины. Цвет поля
   // (на тёмном меню — bg-white/5) приходит из triggerClassName.
-  if (isLoading) return <Skeleton className={cn("h-10 w-44", triggerClassName)} />;
+  if (isLoading) return <Skeleton className={cn("h-10 w-60", triggerClassName)} />;
 
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -33,7 +33,7 @@ export function StudioSwitcher({ triggerClassName }: { triggerClassName?: string
         {/* Тип студии — только в выпадающем списке, в поле хватает названия. */}
         <SelectTrigger
           aria-label="Клуб"
-          className={cn("w-44 [&_.studio-format]:hidden", triggerClassName)}
+          className={cn("w-60 [&_.studio-format]:hidden", triggerClassName)}
         >
           <SelectValue placeholder={studios.length === 0 ? "Нет клубов" : "Выберите клуб"} />
         </SelectTrigger>

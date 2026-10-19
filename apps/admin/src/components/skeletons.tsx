@@ -139,7 +139,7 @@ export function ShellSkeleton({
           <Skeleton className="h-10 w-10 shrink-0 rounded-full sm:w-20" />
           {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
           <div className="hidden items-center gap-2 lg:flex">
-            <Skeleton className="h-10 w-44" />
+            <Skeleton className="h-10 w-60" />
           </div>
         </div>
       </header>

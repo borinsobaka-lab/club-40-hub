@@ -4,6 +4,7 @@ import {
   canOpenClubSection,
   canOpenRail,
   dashboardStudioIds,
+  sectionStudioIds,
   type AdminAccess,
 } from "./admin-access";
 import { canOpenPath, firstAllowedUrl, railSectionKey } from "./nav-sections";
@@ -118,5 +119,15 @@ describe("права в админке", () => {
     expect(firstAllowedUrl({ ...mixed, studios: { [A]: mixed.studios[A] } }, A)).toBe("/dashboard");
     // Без «Клуба» в рейке дашборд закрыт, как и разделы студий.
     expect(canOpenPath({ ...mixed, rail: ["app"] }, A, "/dashboard")).toBe(false);
+  });
+});
+
+describe("клубы раздела", () => {
+  test("только клубы, где раздел открыт", () => {
+    expect(sectionStudioIds(limited, "cash")).toEqual([B]);
+    expect(sectionStudioIds(limited, "clients")).toEqual([A]);
+    expect(sectionStudioIds(limited, "feedback")).toEqual([]);
+    expect(sectionStudioIds(legacy, "feedback")).toEqual([A]);
+    expect(sectionStudioIds(owner, "nps")).toEqual([A]);
   });
 });

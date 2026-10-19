@@ -82,9 +82,18 @@ export function canOpenClubSection(
 }
 
 /**
+ * Студии, где сотруднику открыт раздел клуба: роль в студии и раздел в ней.
+ * Разделы, собирающие данные всех клубов сразу (дашборд, «Обратная связь»,
+ * «Заявки», «NPS-опросы», «Касса»), показывают именно эти студии.
+ */
+export function sectionStudioIds(access: AdminAccess, key: ClubSectionKey): string[] {
+  return Object.keys(access.studios).filter((id) => canOpenClubSection(access, id, key));
+}
+
+/**
  * Студии, чьи показатели сотрудник видит на дашборде (раздел рейки над
  * студиями): роль в студии и открытый в ней раздел dashboard.
  */
 export function dashboardStudioIds(access: AdminAccess): string[] {
-  return Object.keys(access.studios).filter((id) => canOpenClubSection(access, id, "dashboard"));
+  return sectionStudioIds(access, "dashboard");
 }

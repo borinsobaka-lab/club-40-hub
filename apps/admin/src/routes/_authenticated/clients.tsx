@@ -346,6 +346,12 @@ function ClientsPage() {
                   <TableHead tip={TIPS.email} {...sort.head("email")}>
                     Email
                   </TableHead>
+                  <TableHead tip={TIPS.notes} {...sort.head("notes")}>
+                    Заметки
+                  </TableHead>
+                  <TableHead tip={TIPS.lastVisit} {...sort.head("lastVisit")}>
+                    Последний визит
+                  </TableHead>
                   <TableHead {...sort.head("gender")}>Пол</TableHead>
                   <TableHead {...sort.head("birthday")}>Дата рождения</TableHead>
                   <TableHead tip={TIPS.registration} {...sort.head("registration")}>
@@ -353,12 +359,6 @@ function ClientsPage() {
                   </TableHead>
                   <TableHead tip={TIPS.source} {...sort.head("source")}>
                     Добавлен
-                  </TableHead>
-                  <TableHead tip={TIPS.lastVisit} {...sort.head("lastVisit")}>
-                    Последний визит
-                  </TableHead>
-                  <TableHead tip={TIPS.notes} {...sort.head("notes")}>
-                    Заметки
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -416,19 +416,19 @@ function ClientsPage() {
                           )}
                         </TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
-                        <TableCell>{genderLabel(c.gender)}</TableCell>
-                        <TableCell>{formatDate(c.birthday)}</TableCell>
-                        <TableCell>{formatDate(c.registration_date)}</TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {clientSourceLabel(c.source)}
-                        </TableCell>
-                        <TableCell>{formatDate(c.last_visit_date)}</TableCell>
                         <TableCell>
                           <CommentCell
                             text={c.notes}
                             onSave={commentSaver("clients", c.id, "notes")}
                             onSaved={reload}
                           />
+                        </TableCell>
+                        <TableCell>{formatDate(c.last_visit_date)}</TableCell>
+                        <TableCell>{genderLabel(c.gender)}</TableCell>
+                        <TableCell>{formatDate(c.birthday)}</TableCell>
+                        <TableCell>{formatDate(c.registration_date)}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {clientSourceLabel(c.source)}
                         </TableCell>
                       </TableRow>
                     </RowContextMenu>

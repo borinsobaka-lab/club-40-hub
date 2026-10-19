@@ -719,12 +719,12 @@ export function ClientsPageSkeleton() {
         { label: "Статус", className: "w-[80px]" },
         "Телефон",
         "Email",
+        "Заметки",
+        "Последний визит",
         "Пол",
         "Дата рождения",
         "Регистрация",
         "Добавлен",
-        "Последний визит",
-        "Заметки",
       ]}
     />
   );
@@ -765,12 +765,12 @@ export function ClientMembershipsPageSkeleton() {
         { label: "Клиент", className: "min-w-[170px]" },
         "Абонемент",
         "Статус",
+        "Платежи",
+        "Комментарии",
         "Баланс",
         "Сумма",
         "Продал / тренер",
         "Добавлен",
-        "Комментарии",
-        "Платежи",
       ]}
     />
   );
@@ -943,20 +943,22 @@ export function CashPageSkeleton() {
           <div className="rounded-lg border bg-background p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Wallet className="h-4 w-4" />
-              Баланс кассы
+              Баланс
             </div>
             <Skeleton className="mt-2 h-8 w-32" />
           </div>
         </div>
         <div className="rounded-lg border bg-background p-4">
           <h2 className="mb-3 text-sm font-semibold">Новая операция</h2>
+          {/* Клуб, тип, категория, сумма, кто проводит; дата и комментарий. */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <FieldSkeleton className="sm:col-span-2" />
             <FieldSkeleton />
             <FieldSkeleton />
             <FieldSkeleton />
             <FieldSkeleton />
             <FieldSkeleton className="sm:col-span-2" />
-            <FieldSkeleton className="sm:col-span-2 lg:col-span-6" control="h-16" />
+            <FieldSkeleton className="sm:col-span-2 lg:col-span-4" control="h-16" />
           </div>
           <div className="mt-3 flex justify-end">
             <Skeleton className="h-10 w-32" />
@@ -965,7 +967,7 @@ export function CashPageSkeleton() {
         <TableCardSkeleton
           title="История операций"
           pagination
-          headers={["Дата", "Тип", "Категория", "Сумма", "Сотрудник", "Комментарий"]}
+          headers={["Дата", "Клуб", "Тип", "Категория", "Сумма", "Сотрудник", "Комментарий"]}
         />
       </div>
     </ShellSkeleton>
@@ -991,7 +993,7 @@ export function FeedbackPageSkeleton() {
     <ShellSkeleton title="Обратная связь" actions={[{ label: "Добавить" }]}>
       <div className="space-y-3">
         <FeedbackStatsSkeleton />
-        <ToolbarSkeleton search={false} controls={["w-48", "w-40", "w-40"]} />
+        <ToolbarSkeleton search={false} controls={["w-56", "w-48", "w-40", "w-40", "w-48"]} />
         <TableCardSkeleton
           pagination
           headers={[
@@ -1000,6 +1002,7 @@ export function FeedbackPageSkeleton() {
             "Сообщение",
             { label: "Оценка", className: "w-[80px] text-center" },
             "Имя",
+            "Клуб",
             "Контакт",
             "Статус",
             "Отработал",
@@ -1026,10 +1029,19 @@ export function RequestsPageSkeleton() {
     <ShellSkeleton title="Заявки">
       <div className="space-y-3">
         <RequestsStatsSkeleton />
-        <ToolbarSkeleton search={false} controls={["w-44", "w-52"]} />
+        <ToolbarSkeleton search={false} controls={["w-56", "w-44", "w-52"]} />
         <TableCardSkeleton
           pagination
-          headers={["Дата", "Клиент", "Заявка", "Цели", "Комментарий", "Абонемент", "Статус"]}
+          headers={[
+            "Дата",
+            "Клиент",
+            "Клуб",
+            "Заявка",
+            "Цели",
+            "Комментарий",
+            "Абонемент",
+            "Статус",
+          ]}
         />
       </div>
     </ShellSkeleton>
@@ -1088,6 +1100,7 @@ export function NpsStatsSkeleton() {
         headers={[
           "Дата",
           "Клиент",
+          "Клуб",
           { label: "Оценка", className: "w-[80px]" },
           "Категория",
           "Комментарий",
@@ -1105,6 +1118,8 @@ export function NpsPageSkeleton() {
       <div className="space-y-3">
         <ToolbarSkeleton search={false}>
           <TabsSkeleton labels={["Опросы", "Статистика"]} className="toolbar-full" />
+          {/* Фильтр «Клуб» — при нескольких клубах. */}
+          <Skeleton className="h-10 w-56" />
         </ToolbarSkeleton>
         {/* Плашка «как показываются опросы» над карточками. */}
         <Skeleton className="h-16 w-full rounded-md" />

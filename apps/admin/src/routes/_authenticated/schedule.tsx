@@ -1090,7 +1090,8 @@ function SchedulePage() {
                           {fullscreen ? (
                             <>
                               {d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{" "}
-                              <span className="font-semibold text-foreground/70">
+                              {/* День недели чуть мельче даты (решение владельца 2026-10-19). */}
+                              <span className="text-base font-semibold text-foreground/70">
                                 ({DAY_NAMES_EN[i]})
                               </span>
                             </>
