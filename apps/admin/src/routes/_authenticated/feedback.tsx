@@ -9,7 +9,9 @@ import QRCode from "qrcode";
 
 import { AdminShell } from "@/components/admin-shell";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
-import { useActiveStudio } from "@/hooks/use-studios";
+import { useActiveStudio, type Studio } from "@/hooks/use-studios";
+import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
+import { StudioFilter, StudioLabel, StudioSelect } from "@/components/studio-label";
 import { STUDIO_FORMAT_APP_URL } from "@/lib/studio-formats";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,36 +142,46 @@ function moodSelectItems() {
 
 function FeedbackPage() {
   const studioId = useActiveStudioId();
+  // Обращения всех клубов сотрудника сразу, клуб — колонкой (решение
+  // владельца 2026-10-19: не переключать клуб в шапке, чтобы увидеть отзыв).
+  const studios = useSectionStudios("feedback");
+  const idsKey = studioIdsKey(studios);
+  const multi = (studios?.length ?? 0) > 1;
+  const studioOf = (id: string | null) => studios?.find((s) => s.id === id) ?? null;
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
+  const [studioFilter, setStudioFilter] = useState("all");
   const [topicFilter, setTopicFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [moodFilter, setMoodFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [linksOpen, setLinksOpen] = useState(false);
 
-  const queryKey = ["feedback", studioId];
-  const { data: items = [], isLoading: loading } = useQuery({
+  const queryKey = ["feedback", idsKey];
+  const { data: items = [], isLoading: queryLoading } = useQuery({
     queryKey,
     queryFn: () => {
       let q = supabase.from("feedback").select("*");
-      // Отзывы своей студии + строки без привязки (созданные до миграции
+      // Отзывы клубов раздела + строки без привязки (созданные до миграции
       // db/feedback_nps_studio.sql при нескольких студиях) — чтобы ни один
       // отзыв не пропал из виду.
-      if (studioId) q = q.or(`studio_id.eq.${studioId},studio_id.is.null`);
+      if (idsKey) q = q.or(`studio_id.in.(${idsKey}),studio_id.is.null`);
       return unwrap<Feedback[]>(
         q.order("status", { ascending: true }).order("created_at", { ascending: false }),
       );
     },
+    enabled: studios !== null,
     meta: { errorMessage: "Не удалось загрузить обращения" },
   });
+  const loading = studios === null || queryLoading;
   const reload = () => queryClient.invalidateQueries({ queryKey: ["feedback"] });
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
+      if (studioFilter !== "all" && i.studio_id !== studioFilter) return false;
       if (topicFilter !== "all" && i.topic !== topicFilter) return false;
       if (statusFilter !== "all" && i.status !== statusFilter) return false;
       if (moodFilter !== "all") {
@@ -181,9 +193,12 @@ function FeedbackPage() {
       if (dateRange?.to && created > endOfDay(dateRange.to)) return false;
       return true;
     });
-  }, [items, topicFilter, statusFilter, moodFilter, dateRange]);
+  }, [items, studioFilter, topicFilter, statusFilter, moodFilter, dateRange]);
 
-  const sort = useTableSort(SORT_GETTERS);
+  const sort = useTableSort({
+    ...SORT_GETTERS,
+    studio: (i: Feedback) => studioOf(i.studio_id)?.name,
+  });
   const pg = usePagination(sort.apply(filtered), undefined, sort.key);
 
   const selected = items.find((i) => i.id === selectedId) || null;
@@ -214,7 +229,12 @@ function FeedbackPage() {
   };
 
   const hasFilters =
-    topicFilter !== "all" || statusFilter !== "all" || moodFilter !== "all" || !!dateRange;
+    studioFilter !== "all" ||
+    topicFilter !== "all" ||
+    statusFilter !== "all" ||
+    moodFilter !== "all" ||
+    !!dateRange;
+  const columns = multi ? 9 : 8;
 
   return (
     <AdminShell
@@ -234,6 +254,7 @@ function FeedbackPage() {
               {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
               <NewFeedbackForm
                 studioId={studioId}
+                studios={studios ?? []}
                 onClose={() => setAddOpen(false)}
                 onSaved={reload}
               />
@@ -271,6 +292,9 @@ function FeedbackPage() {
         )}
 
         <TableToolbar>
+          {multi && studios && (
+            <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
+          )}
           <Select value={topicFilter} onValueChange={setTopicFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Все темы" />
@@ -314,6 +338,7 @@ function FeedbackPage() {
           <ToolbarReset
             active={hasFilters}
             onReset={() => {
+              setStudioFilter("all");
               setTopicFilter("all");
               setStatusFilter("all");
               setMoodFilter("all");
@@ -333,6 +358,7 @@ function FeedbackPage() {
                   Оценка
                 </TableHead>
                 <TableHead {...sort.head("name")}>Имя</TableHead>
+                {multi && <TableHead {...sort.head("studio")}>Клуб</TableHead>}
                 <TableHead tip={TIPS.contact} {...sort.head("contact")}>
                   Контакт
                 </TableHead>
@@ -342,10 +368,13 @@ function FeedbackPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableSkeletonRows columns={8} />
+                <TableSkeletonRows columns={columns} />
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={columns}
+                    className="py-8 text-center text-sm text-muted-foreground"
+                  >
                     <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
                     Обращений нет.
                   </TableCell>
@@ -382,6 +411,11 @@ function FeedbackPage() {
                       <TableCell className="whitespace-nowrap font-medium">
                         {i.client_name || "—"}
                       </TableCell>
+                      {multi && (
+                        <TableCell>
+                          <StudioLabel studio={studioOf(i.studio_id)} />
+                        </TableCell>
+                      )}
                       <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">
                         {i.client_contact || "—"}
                       </TableCell>
@@ -428,6 +462,7 @@ function FeedbackPage() {
             <FeedbackDetails
               key={selected.id}
               item={selected}
+              studio={multi ? studioOf(selected.studio_id) : null}
               onClose={() => setSelectedId(null)}
               onDone={() => {
                 setSelectedId(null);
@@ -449,13 +484,19 @@ function FeedbackPage() {
 
 function NewFeedbackForm({
   studioId,
+  studios,
   onClose,
   onSaved,
 }: {
   studioId: string | null;
+  /** Клубы раздела: при нескольких — поле «Клуб», по умолчанию клуб из шапки. */
+  studios: Studio[];
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [studio, setStudio] = useState(
+    () => studios.find((s) => s.id === studioId)?.id ?? studios[0]?.id ?? studioId ?? "",
+  );
   const [topic, setTopic] = useState("other");
   const [message, setMessage] = useState("");
   const [mood, setMood] = useState("");
@@ -471,7 +512,7 @@ function NewFeedbackForm({
     setSaving(true);
     try {
       const { error } = await supabase.from("feedback").insert({
-        studio_id: studioId ?? null,
+        studio_id: studio || null,
         topic,
         message: message.trim(),
         mood: mood || null,
@@ -500,6 +541,11 @@ function NewFeedbackForm({
       <DialogForm onSubmit={submit}>
         <DialogBody>
           <div className="space-y-4">
+            {studios.length > 1 && (
+              <FormField label="Клуб" required>
+                <StudioSelect studios={studios} value={studio} onChange={setStudio} />
+              </FormField>
+            )}
             <FormField label="Тема" required>
               <Select value={topic} onValueChange={setTopic}>
                 <SelectTrigger>
@@ -555,10 +601,13 @@ function NewFeedbackForm({
 /** Окно обращения: отметить отработанным / вернуть в работу. */
 function FeedbackDetails({
   item,
+  studio,
   onClose,
   onDone,
 }: {
   item: Feedback;
+  /** Клуб обращения — когда в разделе несколько клубов. */
+  studio: Studio | null;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -614,6 +663,7 @@ function FeedbackDetails({
         <DialogDescription>
           {format(new Date(item.created_at), "d MMMM yyyy, HH:mm", { locale: ru })}
           {item.source && ` · ${SOURCES[item.source]}`}
+          {studio && ` · ${studio.name}`}
         </DialogDescription>
       </DialogHeader>
       <DialogBody className="space-y-4">
