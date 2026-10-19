@@ -318,7 +318,9 @@ export function WorkoutDrawer({
                     disabled={isPending}
                     className={cn(
                       buttonVariants(),
-                      "flex-1 bg-red-500 text-white hover:bg-red-500/90 disabled:opacity-60",
+                      // Не акцентная (решение владельца 2026-10-19): белая с
+                      // чёрной обводкой, красный текст; акцент — «В календарь».
+                      "flex-1 border border-foreground bg-white text-red-500 hover:bg-white/90 disabled:opacity-60",
                       cancelLocked && "opacity-60",
                     )}
                   >

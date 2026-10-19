@@ -33,6 +33,7 @@ import {
 } from "./entries";
 import { formatRating } from "./trainer-rating";
 import { PackWorkoutCard } from "./workout-card";
+import { StudioSwitcher } from "./studio-switcher";
 import { DiagnosticsTab, PersonalRequestTab } from "./schedule-requests";
 import {
   SCHEDULE_DAYS,
@@ -46,10 +47,12 @@ import {
 
 /**
  * «Расписание» пакетного приложения (до 2026-10-11 — «Бронь», общий экран с
- * подписочным). Студия — смотримая (переключатель на главной); записаться
- * можно только в своей. Вкладки «Персональные» и «Диагностика» — заявки
- * администратору и свои диагностики (schedule-requests.tsx). Фильтры — по тренировкам и по тренерам (у пакетных
- * тренировок нет типа, прежний фильтр по типу был пустым).
+ * подписочным). Студия — смотримая (переключатель на главной и под
+ * заголовком расписания); записаться можно в любую студию сети, в том числе
+ * без действующего абонемента (2026-10-19: абонемент выберут в студии).
+ * Вкладки «Персональные» и «Диагностика» — заявки администратору и свои
+ * диагностики (schedule-requests.tsx). Фильтры — по тренировкам и по тренерам
+ * (у пакетных тренировок нет типа, прежний фильтр по типу был пустым).
  */
 
 const TABS = [
@@ -214,11 +217,24 @@ export function PackagesSchedulePage() {
       reason?: string;
       waitlisted?: boolean;
       booked_count?: number;
+      /** false — записан без действующего абонемента (2026-10-19). */
+      has_membership?: boolean;
     } | null;
     const setCount = (count: (e: PackEntry) => number) =>
       queryClient.setQueryData(scheduleQuery.queryKey, (prev) =>
         prev?.map((e) => (e.id === entryId ? { ...e, booked_count: count(e) } : e)),
       );
+    // Без действующего абонемента запись проходит (решение владельца
+    // 2026-10-19), клиента предупреждаем: абонемент выберут в студии.
+    const noMembershipNote =
+      res?.ok && res.has_membership === false
+        ? {
+            description: t(
+              "Сейчас у вас нет действующего абонемента — выбрать его можно в студии.",
+            ),
+            duration: 8000,
+          }
+        : undefined;
     if (res?.ok) {
       // Записи на главной — из другого запроса: обновятся при возврате на неё.
       queryClient.invalidateQueries({ queryKey: ["home-bookings"] });
@@ -237,7 +253,7 @@ export function PackagesSchedulePage() {
         toast.success(wasWaitlisted ? t("Вы вышли из листа ожидания") : t("Запись отменена"));
       } else if (res.waitlisted) {
         addTo("waitlist", entryId);
-        toast.success(t("Мест нет — вы в листе ожидания"));
+        toast.success(t("Мест нет — вы в листе ожидания"), noMembershipNote);
       } else {
         addTo("booked", entryId);
         setCount((e) =>
@@ -249,6 +265,7 @@ export function PackagesSchedulePage() {
           !isHome && viewedStudioName
             ? t("Вы записаны на тренировку в студии «{name}»", { name: viewedStudioName })
             : t("Вы записаны на тренировку"),
+          noMembershipNote,
         );
       }
     } else if (res?.reason === "already_booked") {
@@ -332,6 +349,11 @@ export function PackagesSchedulePage() {
         <div className="pt-4 pb-8 px-4">
           <h1 className="text-3xl font-semibold">{t("Расписание")}</h1>
           <p className="text-sm text-white/70">{t("Выберите день и запишитесь на тренировку")}</p>
+          {/* Смена студии прямо из расписания — та же плашка, что на главной
+              (решение владельца 2026-10-19). */}
+          <div className="mt-4">
+            <StudioSwitcher />
+          </div>
         </div>
       }
     >

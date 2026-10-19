@@ -2350,7 +2350,7 @@ function EntryForm({
                     </Select>
                   </FormField>
                   {workoutId && (
-                    <FormField label="Вместимость" tip={TIPS.capacity} optional>
+                    <FormField label="Вместимость" tip={TIPS.capacity}>
                       <Input
                         type="number"
                         min={0}

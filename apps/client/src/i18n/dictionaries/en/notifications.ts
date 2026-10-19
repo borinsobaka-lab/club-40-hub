@@ -19,9 +19,11 @@ const dict: Dictionary = {
     "Couldn't turn on notifications. Please try again",
   "Уведомления выключены. Включить их можно в профиле":
     "Notifications are off. You can turn them on in your profile",
-  "Включите уведомления": "Turn on notifications",
-  "Чтобы получать новости студии": "To get studio news",
-  "Чтобы получать новости клуба": "To get club news",
+  "Включить уведомления": "Turn on notifications",
+  "Чтобы получать новости студии и информацию по своим тренировкам и прогрессу":
+    "To get studio news and updates on your workouts and progress",
+  "Чтобы получать новости клуба и информацию по своим тренировкам и прогрессу":
+    "To get club news and updates on your workouts and progress",
   "Push-уведомления": "Push notifications",
   Включены: "On",
   Выключены: "Off",
