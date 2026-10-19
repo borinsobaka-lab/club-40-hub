@@ -55,7 +55,7 @@ function useEnablePush() {
 }
 
 /**
- * Плашка «Включите уведомления» — пока клиент не разрешил и не запретил.
+ * Плашка «Включить уведомления» — пока клиент не разрешил и не запретил.
  * Светло-оранжевая, текст тёмно-оранжевый (решения владельца 2026-10-15:
  * фирменный цвет и красный были слишком агрессивными; заголовок 15px
  * средней жирности, подпись 13px, колокольчик бледный).
@@ -70,27 +70,26 @@ export function PushBanner({ className = "" }: { className?: string }) {
     <>
       {permission === "default" && (
         <div className={className}>
-          {/* Колокольчик и подписи сверху, под ними — оранжевая кнопка на всю
-              ширину плашки (решение владельца 2026-10-19: стрелки вправо было
-              мало, чтобы поняли, где включать). */}
-          <div className="rounded-2xl bg-orange-50 p-3 text-orange-700">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-400">
-                <Bell className="h-[18px] w-[18px]" weight="BoldDuotone" />
+          {/* Колокольчик, подписи и справа компактная оранжевая кнопка
+              «Включить» (решение владельца 2026-10-19: кнопка на всю ширину
+              была слишком большой). */}
+          <div className="flex items-center gap-3 rounded-2xl bg-orange-50 p-3 text-orange-700">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-400">
+              <Bell className="h-[18px] w-[18px]" weight="BoldDuotone" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium leading-snug">
+                {t("Включить уведомления")}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-medium leading-snug">
-                  {t("Включите уведомления")}
-                </span>
-                <span className="block text-[13px] leading-snug opacity-75">
-                  {IS_PACKAGES
-                    ? t("Чтобы получать новости студии")
-                    : t("Чтобы получать новости клуба")}
-                </span>
+              <span className="block text-[13px] leading-snug opacity-75">
+                {IS_PACKAGES
+                  ? t("Чтобы получать новости студии и информацию по своим тренировкам и прогрессу")
+                  : t("Чтобы получать новости клуба и информацию по своим тренировкам и прогрессу")}
               </span>
-            </div>
+            </span>
             <Button
-              className="mt-3 w-full bg-orange-500 text-white hover:bg-orange-500/90"
+              size="sm"
+              className="shrink-0 bg-orange-500 text-white hover:bg-orange-500/90"
               onClick={() => void enable()}
               disabled={busy}
             >

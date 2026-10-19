@@ -455,6 +455,47 @@ describe.skipIf(!url)("общая база клиентов пакетных к�
     });
   });
 
+  test("главная приложения: записи клиента во всех клубах сети видны, кто бы ни записал", async () => {
+    await scenario(async (tx) => {
+      const a = await studio(tx);
+      const b = await studio(tx);
+      const u = await user(tx);
+      const c = await client(tx, a, { userId: u });
+      await sell(tx, a, c, await pack(tx, a, { visits: 5 }));
+      const staffB = await staff(tx, b);
+      const ownA = await entry(tx, a, 1);
+      const ownB = await entry(tx, b, 2);
+      const byAdminB = await entry(tx, b, 3);
+      const [{ id: diagB }] = await tx`
+        insert into schedule_entries (studio_id, kind, starts_at, ends_at)
+        values (${b}, 'diagnostic', now() + interval '4 days', now() + interval '4 days 1 hour')
+        returning id`;
+
+      await as(tx, u);
+      for (const e of [ownA, ownB]) {
+        const [{ r }] = await tx`select book_schedule_entry(${e}) as r`;
+        expect(r).toMatchObject({ ok: true });
+      }
+      await as(tx, staffB);
+      const [{ r: byAdmin }] = await tx`select admin_book_client(${byAdminB}, ${c}) as r`;
+      expect(byAdmin).toMatchObject({ ok: true });
+      await book(tx, b, diagB, c);
+
+      // Запрос главной (homeBookingsQuery): свои записи с занятием через inner join.
+      await as(tx, u);
+      const rows = await tx`
+        select sb.entry_id from schedule_bookings sb
+          join schedule_entries e on e.id = sb.entry_id
+         where sb.user_id = ${u} and sb.status = 'booked'
+           and e.starts_at >= now() and e.kind in ('group', 'diagnostic')
+           and e.cancelled_at is null`;
+      expect(rows.map((r: { entry_id: string }) => r.entry_id).sort()).toEqual(
+        [ownA, ownB, byAdminB, diagB].sort(),
+      );
+      await asServer(tx);
+    });
+  });
+
   test("остаток на занятии: entry_bookings_ahead считает неотмеченные записи клиента во всех клубах сети", async () => {
     await scenario(async (tx) => {
       const a = await studio(tx);
