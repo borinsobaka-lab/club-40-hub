@@ -1,7 +1,8 @@
 import type { UIMessage } from "ai";
 
 /**
- * История переписки с Kate (таблицы assistant_threads / assistant_messages).
+ * История переписки с Kate (таблицы assistant_threads / assistant_messages;
+ * переписка у сотрудника одна).
  * Модуль без сервера и React: его читают /api/chat и окно Kate.
  */
 
@@ -9,8 +10,6 @@ import type { UIMessage } from "ai";
 export const HISTORY_FOR_MODEL = 40;
 /** Длина вопроса сотрудника. */
 export const MAX_QUESTION_CHARS = 8000;
-/** Длина заголовка диалога в списке. */
-const TITLE_CHARS = 80;
 
 export type StoredMessage = {
   id: string;
@@ -93,11 +92,4 @@ export function historyForModel(messages: UIMessage[], max = HISTORY_FOR_MODEL):
   const tail = withText.slice(-max);
   const firstUser = tail.findIndex((m) => m.role === "user");
   return firstUser < 0 ? [] : tail.slice(firstUser);
-}
-
-/** Заголовок диалога — начало первого вопроса одной строкой. */
-export function threadTitle(question: string): string {
-  const line = question.replace(/\s+/g, " ").trim();
-  if (!line) return "Новый чат";
-  return line.length > TITLE_CHARS ? `${line.slice(0, TITLE_CHARS - 1).trimEnd()}…` : line;
 }

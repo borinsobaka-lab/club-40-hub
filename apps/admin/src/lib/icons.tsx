@@ -59,7 +59,6 @@ import {
   DragDropVerticalIcon as GripVerticalArt,
   Heading2 as Heading2Art,
   HelpCircleIcon as HelpCircleArt,
-  History as HistoryArt,
   ImageIcon as ImageIconArt,
   Info as InfoArt,
   Italic as ItalicArt,
@@ -164,7 +163,6 @@ export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
 export const GripVertical = icon(GripVerticalArt, "GripVertical");
 export const Heading2 = icon(Heading2Art, "Heading2");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
-export const History = icon(HistoryArt, "History");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
 export const Info = icon(InfoArt, "Info");
 export const Italic = icon(ItalicArt, "Italic");

@@ -686,8 +686,11 @@ AUTH_SETUP.md.
   сразу с этой настройкой). Индексы: `clients_email_unlinked_idx` (первый
   вход), `bookings_log_studio_attended_idx` (`my_studio_visit_stats`).
   **AI-ассистент Kate** (2026-10-19): `db/migrations/2026-10-19_zz_assistant_kate.sql`
-  — переписка сотрудника с Kate: `assistant_threads` (диалог, заголовок,
-  клуб при первом вопросе) и `assistant_messages` (`parts` — только текст
+  — переписка сотрудника с Kate: `assistant_threads` (с 2026-10-20 — одна
+  на сотрудника, `db/migrations/2026-10-20_assistant_single_thread.sql`:
+  уникальный `assistant_threads_one_per_user`, прежние диалоги слиты в самый
+  ранний; решение владельца — новых чатов нет, вся хронология в одном) и
+  `assistant_messages` (`parts` — только текст
   ответа, `tools` — какие инструменты вызывала; строки данных из
   инструментов не хранятся). Видит и правит только автор (даже владелец
   чужие не видит), завести диалог — только сотрудник (`is_staff`); срока

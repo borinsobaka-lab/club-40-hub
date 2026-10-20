@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { UIMessage } from "ai";
 
-import { answerFromSteps, fromStored, historyForModel, threadTitle, toStored } from "./history";
+import { answerFromSteps, fromStored, historyForModel, toStored } from "./history";
 
 const msg = (id: string, role: "user" | "assistant", text: string): UIMessage => ({
   id,
@@ -76,14 +76,6 @@ describe("история переписки с Kate", () => {
     expect(historyForModel(all, 4).map((m) => m.id)).toEqual(["3", "4", "5"]);
     expect(historyForModel(all, 10).map((m) => m.id)).toEqual(["1", "2", "3", "4", "5"]);
     expect(historyForModel([msg("1", "assistant", "a")], 5)).toEqual([]);
-  });
-
-  test("заголовок — первая строка вопроса, длинный обрезается", () => {
-    expect(threadTitle("  Кто\n продлится?  ")).toBe("Кто продлится?");
-    expect(threadTitle("")).toBe("Новый чат");
-    const long = threadTitle("а".repeat(200));
-    expect(long.length).toBe(80);
-    expect(long.endsWith("…")).toBe(true);
   });
 });
 
