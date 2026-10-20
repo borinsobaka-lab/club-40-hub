@@ -1664,12 +1664,6 @@ export function AssistantPageSkeleton() {
     <ShellSkeleton title="KATE — AI АССИСТЕНТ">
       <div className="mx-auto h-[calc(100dvh-8rem)] w-full max-w-3xl">
         <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-background">
-          {/* Шапка окна Kate: «История», заголовок диалога, «Новый чат». */}
-          <div className="flex min-h-14 items-center gap-2 border-b px-3 py-2">
-            <Skeleton className="h-9 w-28 rounded-full" />
-            <Skeleton className="h-4 w-48 max-w-full flex-1" />
-            <Skeleton className="h-9 w-32 rounded-full" />
-          </div>
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
             <Skeleton className="size-14 rounded-full" />
             <Skeleton className="h-5 w-56" />

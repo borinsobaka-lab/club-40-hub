@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, safeValidateUIMessages, stepCountIs, streamText } from "ai";
 import type { UIMessage } from "ai";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { canOpenClubSection } from "@/lib/admin-access";
 import { createAiProvider } from "@/lib/ai-gateway.server";
@@ -14,7 +15,6 @@ import {
   fromStored,
   historyForModel,
   messageText,
-  threadTitle,
   toStored,
 } from "@/lib/assistant/history";
 import { buildSystemPrompt } from "@/lib/assistant/prompt";
@@ -29,10 +29,41 @@ const MAX_STEPS = 12;
 // Браузер присылает только новый вопрос — историю сервер берёт из базы
 // (assistant_messages), поэтому запрос маленький.
 const MAX_BODY_BYTES = 64 * 1024;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Тело запроса окна Kate: id диалога и новый вопрос (UIMessage). */
-type ChatRequest = { threadId?: unknown; message?: unknown };
+/** Тело запроса окна Kate: новый вопрос (UIMessage). */
+type ChatRequest = { message?: unknown };
+
+/**
+ * Переписка сотрудника с Kate (RLS — только своя). Одновременный первый
+ * вопрос из двух вкладок упрётся в уникальный индекс — тогда берём уже
+ * заведённую.
+ */
+async function ownThreadId(
+  supabase: SupabaseClient,
+  userId: string,
+  studioId: string,
+): Promise<string> {
+  const find = async () => {
+    const { data, error } = await supabase
+      .from("assistant_threads")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data?.id as string | undefined) ?? null;
+  };
+  const existing = await find();
+  if (existing) return existing;
+  const { data, error } = await supabase
+    .from("assistant_threads")
+    .insert({ studio_id: studioId, title: "Переписка с Kate" })
+    .select("id")
+    .single();
+  if (!error && data) return data.id as string;
+  const again = await find();
+  if (again) return again;
+  throw new Error(error?.message ?? "Не удалось завести переписку с Kate");
+}
 
 const text = (message: string, status: number) =>
   new Response(message, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
@@ -68,9 +99,8 @@ export const Route = createFileRoute("/api/chat")({
           } catch {
             body = null;
           }
-          const threadId = typeof body?.threadId === "string" ? body.threadId : "";
           const parsed = await safeValidateUIMessages({ messages: [body?.message] });
-          if (!UUID_RE.test(threadId) || !parsed.success) {
+          if (!parsed.success) {
             return text("Некорректный запрос к ассистенту", 400);
           }
           const question = parsed.data[0];
@@ -84,20 +114,9 @@ export const Route = createFileRoute("/api/chat")({
 
           const { supabase, userId, studioId, roles } = auth.staff;
 
-          // Диалог — свой (RLS): чужой id выглядит как несуществующий, а
-          // завести диалог с занятым id не даст первичный ключ.
-          const { data: thread, error: threadError } = await supabase
-            .from("assistant_threads")
-            .select("id")
-            .eq("id", threadId)
-            .maybeSingle();
-          if (threadError) throw new Error(threadError.message);
-          if (!thread) {
-            const { error } = await supabase
-              .from("assistant_threads")
-              .insert({ id: threadId, studio_id: studioId, title: threadTitle(questionText) });
-            if (error) return text("Не удалось начать диалог. Откройте новый чат.", 409);
-          }
+          // Переписка у сотрудника одна (assistant_threads_one_per_user):
+          // нет — заводится при первом вопросе.
+          const threadId = await ownThreadId(supabase, userId, studioId);
 
           const { data: past, error: pastError } = await supabase
             .from("assistant_messages")

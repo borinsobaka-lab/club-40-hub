@@ -1,6 +1,7 @@
 /**
- * Тесты AI-ассистента Kate в базе (db/migrations/2026-10-19_zz_assistant_kate.sql):
- * переписка — только своя и только у сотрудника; сводки для Kate
+ * Тесты AI-ассистента Kate в базе (db/migrations/2026-10-19_zz_assistant_kate.sql,
+ * 2026-10-20_assistant_single_thread.sql): переписка — только своя, только у
+ * сотрудника и одна на сотрудника; сводки для Kate
  * (приложение, давно не был, дни рождения) — только сотрудник клуба, клиенты
  * базы клуба (у пакетного — общая база пакетных клубов).
  *
@@ -103,7 +104,7 @@ describe.skipIf(!url)("AI-ассистент Kate (база)", () => {
     return v as Row[];
   }
 
-  test("переписка: своя у каждого, клиенту не завести, сообщение поднимает диалог", async () => {
+  test("переписка: одна и своя у каждого, клиенту не завести, сообщение поднимает диалог", async () => {
     await scenario(async (tx) => {
       const s = await studio(tx);
       const a = await staff(tx, s);
@@ -114,6 +115,10 @@ describe.skipIf(!url)("AI-ассистент Kate (база)", () => {
       const [t] = await tx`insert into assistant_threads (studio_id, title) values (${s}, 'Кто продлится?')
                            returning id, user_id, updated_at`;
       expect(t.user_id).toBe(a);
+      // Второй диалог не завести: переписка у сотрудника одна.
+      expect(
+        await failure(tx, () => tx`insert into assistant_threads (title) values ('Ещё')`),
+      ).toContain("assistant_threads_one_per_user");
       await tx`update assistant_threads set updated_at = now() - interval '1 day' where id = ${t.id}`;
       await tx`insert into assistant_messages (thread_id, id, role, parts)
                values (${t.id}, 'm1', 'user', ${[{ type: "text", text: "Привет" }]}::jsonb)`;

@@ -1,41 +1,48 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import {
-  Cat,
-  ChevronLeft,
-  History,
-  Loader2,
-  MessageCirclePlus,
-  Mic,
-  Send,
-  Square,
-  Trash2,
-} from "lucide-react";
+import { Cat, Loader2, Mic, Send, Square } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ChoiceCard } from "@/components/ui/choice-card";
-import { ListItemButton } from "@/components/ui/list-item-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientNameLink } from "@/components/client-name-link";
-import { useConfirm } from "@/components/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { activeStudioHeaders } from "@/hooks/use-active-studio";
 import { fromStored, MAX_QUESTION_CHARS } from "@/lib/assistant/history";
-import { formatDateTime } from "@/lib/format";
 import { unwrap } from "@/lib/query";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-type Thread = { id: string; title: string; updated_at: string };
-
 /**
- * Диалоги сотрудника с Kate (assistant_threads, RLS — только свои), новые
- * сверху. Сообщения пишет сервер (/api/chat), окно их только читает.
+ * Переписка сотрудника с Kate — одна на сотрудника (решение владельца
+ * 2026-10-20): вся хронология в одном чате, новых чатов нет. Сообщения
+ * (assistant_messages, RLS — только свои) пишет сервер (/api/chat), окно их
+ * только читает: последние PAGE при открытии, раньше — по «Показать более
+ * ранние».
  */
-const threadsQueryKey = ["assistant_threads"] as const;
+const PAGE = 100;
+
+type Page = { messages: UIMessage[]; oldest: string | null; hasMore: boolean };
+
+async function loadMessages(before?: string | null): Promise<Page> {
+  let q = supabase
+    .from("assistant_messages")
+    .select("id, role, parts, created_at")
+    .order("created_at", { ascending: false })
+    .limit(PAGE);
+  if (before) q = q.lt("created_at", before);
+  const rows = await unwrap<{ id: string; role: string; parts: unknown; created_at: string }[]>(q);
+  return {
+    messages: rows
+      .reverse()
+      .map(fromStored)
+      .filter((m): m is UIMessage => !!m),
+    oldest: rows[0]?.created_at ?? null,
+    hasMore: rows.length === PAGE,
+  };
+}
 
 const SUGGESTIONS = [
   "Кому позвонить сегодня, чтобы продать больше?",
@@ -52,87 +59,16 @@ export function KateChat({
   /** Окно во весь экран на телефоне: без скруглений и рамки, место под крестик. */
   fullscreenOnMobile?: boolean;
 }) {
-  const queryClient = useQueryClient();
-  const { confirm, confirmDialog } = useConfirm();
-  const [view, setView] = useState<"chat" | "history">("chat");
   const [busy, setBusy] = useState(false);
-  // Открытый диалог. fresh — ещё не сохранён (новый чат): сообщений в базе
-  // нет, загружать нечего. Выбирается один раз — после этого обновление
-  // списка диалогов не пересоздаёт идущий разговор.
-  const [active, setActive] = useState<{ id: string; fresh: boolean } | null>(null);
-
-  const threads = useQuery({
-    queryKey: threadsQueryKey,
-    queryFn: () =>
-      unwrap<Thread[]>(
-        supabase
-          .from("assistant_threads")
-          .select("id, title, updated_at")
-          .order("updated_at", { ascending: false })
-          .limit(100),
-      ),
-    meta: { errorMessage: "Не удалось загрузить историю переписки с Kate" },
-  });
-
-  // При открытии — последний диалог: переписка продолжается с того же места.
-  useEffect(() => {
-    if (active || !threads.data) return;
-    const last = threads.data[0];
-    setActive(last ? { id: last.id, fresh: false } : { id: crypto.randomUUID(), fresh: true });
-  }, [active, threads.data]);
-  // Историю не загрузить — всё равно можно начать новый чат.
-  useEffect(() => {
-    if (!active && threads.isError) setActive({ id: crypto.randomUUID(), fresh: true });
-  }, [active, threads.isError]);
-
-  const messages = useQuery({
-    queryKey: ["assistant_messages", active?.id],
-    queryFn: async () => {
-      const rows = await unwrap<{ id: string; role: string; parts: unknown }[]>(
-        supabase
-          .from("assistant_messages")
-          .select("id, role, parts")
-          .eq("thread_id", active!.id)
-          .order("created_at", { ascending: true })
-          .limit(500),
-      );
-      return rows.map(fromStored).filter((m): m is UIMessage => !!m);
-    },
-    enabled: !!active && !active.fresh,
-    // Сообщения живут в useChat; при каждом открытии диалога — свежие из базы.
+  const history = useQuery({
+    queryKey: ["assistant_messages"],
+    queryFn: () => loadMessages(),
+    // Сообщения живут в useChat; при каждом открытии окна — свежие из базы.
     gcTime: 0,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     meta: { errorMessage: "Не удалось загрузить переписку с Kate" },
   });
-
-  const startNew = () => {
-    setActive({ id: crypto.randomUUID(), fresh: true });
-    setView("chat");
-  };
-
-  const openThread = (id: string) => {
-    if (id !== active?.id) setActive({ id, fresh: false });
-    setView("chat");
-  };
-
-  const deleteThread = async (t: Thread) => {
-    if (
-      !(await confirm({ title: "Удалить диалог?", description: `«${t.title}» удалится насовсем.` }))
-    )
-      return;
-    const { error } = await supabase.from("assistant_threads").delete().eq("id", t.id);
-    if (error) {
-      toast.error("Не удалось удалить диалог: " + error.message);
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: threadsQueryKey });
-    if (t.id === active?.id) startNew();
-  };
-
-  const activeTitle =
-    active && !active.fresh ? threads.data?.find((t) => t.id === active.id)?.title : null;
-  const ready = !!active && (active.fresh || messages.isSuccess || messages.isError);
 
   return (
     <div
@@ -141,116 +77,17 @@ export function KateChat({
       <div
         className={`relative z-10 flex h-full flex-col overflow-hidden rounded-lg border bg-background ${fullscreenOnMobile ? "max-md:rounded-none max-md:border-0" : ""}`}
       >
-        <div
-          className={cn(
-            "flex min-h-14 items-center gap-2 border-b px-3 py-2",
-            // Справа на телефоне — крестик окна.
-            fullscreenOnMobile && "max-md:pr-14",
-          )}
-        >
-          {view === "history" ? (
-            <Button variant="ghost" size="sm" onClick={() => setView("chat")}>
-              <ChevronLeft /> К диалогу
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setView("history")}
-              aria-label="История диалогов"
-            >
-              <History /> История
-            </Button>
-          )}
-          <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-            {view === "history" ? "Диалоги с Kate" : (activeTitle ?? "Новый чат")}
-          </p>
-          <Button variant="ghost" size="sm" onClick={startNew} disabled={busy && view === "chat"}>
-            <MessageCirclePlus /> <span className="max-sm:hidden">Новый чат</span>
-          </Button>
-        </div>
-
-        {view === "history" ? (
-          <ThreadList
-            threads={threads.data}
-            loading={threads.isPending}
-            activeId={active?.id ?? null}
-            onOpen={openThread}
-            onDelete={deleteThread}
-          />
-        ) : ready && active ? (
-          <ChatSession
-            key={active.id}
-            threadId={active.id}
-            initialMessages={messages.data ?? []}
-            onBusyChange={setBusy}
-            onSaved={() => void queryClient.invalidateQueries({ queryKey: threadsQueryKey })}
-          />
-        ) : (
+        {history.isPending ? (
           <ChatSkeleton />
+        ) : (
+          // Историю не загрузить — всё равно можно спросить.
+          <ChatSession
+            initial={history.data ?? { messages: [], oldest: null, hasMore: false }}
+            onBusyChange={setBusy}
+            fullscreenOnMobile={fullscreenOnMobile}
+          />
         )}
       </div>
-      {confirmDialog}
-    </div>
-  );
-}
-
-function ThreadList({
-  threads,
-  loading,
-  activeId,
-  onOpen,
-  onDelete,
-}: {
-  threads: Thread[] | undefined;
-  loading: boolean;
-  activeId: string | null;
-  onOpen: (id: string) => void;
-  onDelete: (t: Thread) => void;
-}) {
-  if (loading) {
-    return (
-      <div className="flex-1 space-y-2 overflow-y-auto p-3">
-        {Array.from({ length: 6 }, (_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
-  if (!threads?.length) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-        Диалогов пока нет
-      </div>
-    );
-  }
-  return (
-    <div className="flex-1 space-y-1 overflow-y-auto p-3">
-      {threads.map((t) => (
-        <div key={t.id} className="group flex items-center gap-1">
-          <ListItemButton
-            active={t.id === activeId}
-            onClick={() => onOpen(t.id)}
-            className="flex-1"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate">{t.title}</span>
-              <span className="block text-xs font-normal text-muted-foreground">
-                {formatDateTime(t.updated_at)}
-              </span>
-            </span>
-          </ListItemButton>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onDelete(t)}
-            aria-label={`Удалить диалог «${t.title}»`}
-            title="Удалить диалог"
-          >
-            <Trash2 />
-          </Button>
-        </div>
-      ))}
     </div>
   );
 }
@@ -278,27 +115,29 @@ function ChatSkeleton() {
 }
 
 function ChatSession({
-  threadId,
-  initialMessages,
+  initial,
   onBusyChange,
-  onSaved,
+  fullscreenOnMobile,
 }: {
-  threadId: string;
-  initialMessages: UIMessage[];
+  initial: Page;
   onBusyChange: (busy: boolean) => void;
-  /** Ответ готов — сервер сохранил диалог (заголовок и порядок в списке). */
-  onSaved: () => void;
+  fullscreenOnMobile: boolean;
 }) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [older, setOlder] = useState({ oldest: initial.oldest, hasMore: initial.hasMore });
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  // Высота ленты до подгрузки ранних сообщений: после неё лента остаётся на
+  // том же месте, а не прыгает вниз.
+  const keepFromBottom = useRef<number | null>(null);
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
         // Историю сервер берёт из базы — отправляем только новый вопрос.
-        prepareSendMessagesRequest: ({ id, messages }) => ({
-          body: { threadId: id, message: messages[messages.length - 1] },
+        prepareSendMessagesRequest: ({ messages }) => ({
+          body: { message: messages[messages.length - 1] },
         }),
         fetch: async (url, init) => {
           const { data } = await supabase.auth.getSession();
@@ -325,21 +164,48 @@ function ChatSession({
     [],
   );
 
-  const { messages, sendMessage, status, error } = useChat({
-    id: threadId,
-    messages: initialMessages,
+  const { messages, setMessages, sendMessage, status, error } = useChat({
+    id: "kate",
+    messages: initial.messages,
     transport,
     onError: (err) => toast.error(formatAssistantError(err)),
-    onFinish: () => onSaved(),
   });
 
   const isLoading = status === "submitted" || status === "streaming";
   useEffect(() => onBusyChange(isLoading), [isLoading, onBusyChange]);
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (keepFromBottom.current !== null) {
+      el.scrollTop = el.scrollHeight - keepFromBottom.current;
+      keepFromBottom.current = null;
+      return;
+    }
+    // Далеко от низа (открыли окно, листали ранние) — сразу, рядом — плавно.
+    const far = el.scrollHeight - el.scrollTop - el.clientHeight > el.clientHeight * 2;
+    el.scrollTo({ top: el.scrollHeight, behavior: far ? "auto" : "smooth" });
   }, [messages, status]);
+
+  const loadOlder = async () => {
+    if (loadingOlder || !older.oldest) return;
+    setLoadingOlder(true);
+    try {
+      const page = await loadMessages(older.oldest);
+      const el = scrollRef.current;
+      if (el) keepFromBottom.current = el.scrollHeight - el.scrollTop;
+      setMessages((current) => [...page.messages, ...current]);
+      setOlder({ oldest: page.oldest, hasMore: page.hasMore });
+    } catch (err) {
+      toast.error(
+        "Не удалось загрузить ранние сообщения: " +
+          (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   const sendText = async (text: string) => {
     try {
@@ -362,8 +228,18 @@ function ChatSession({
 
   return (
     <>
-      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
-        {messages.length === 0 && (
+      <div
+        ref={scrollRef}
+        className={`flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 ${fullscreenOnMobile ? "max-md:pt-14" : ""}`}
+      >
+        {older.hasMore && (
+          <div className="flex justify-center">
+            <Button variant="ghost" size="sm" onClick={loadOlder} disabled={loadingOlder}>
+              {loadingOlder && <Loader2 className="animate-spin" />} Показать более ранние
+            </Button>
+          </div>
+        )}
+        {messages.length === 0 && !older.hasMore && (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
             <div className="ai-gradient flex h-14 w-14 items-center justify-center rounded-full text-white">
               <Cat className="h-7 w-7" />
