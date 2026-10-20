@@ -13,6 +13,7 @@ import { ClientNameLink } from "@/components/client-name-link";
 import { supabase } from "@/integrations/supabase/client";
 import { activeStudioHeaders } from "@/hooks/use-active-studio";
 import { fromStored, MAX_QUESTION_CHARS } from "@/lib/assistant/history";
+import { KATE_QUESTIONS } from "@/lib/assistant/questions";
 import { unwrap } from "@/lib/query";
 import { toast } from "sonner";
 /**
@@ -44,13 +45,6 @@ async function loadMessages(before?: string | null): Promise<Page> {
   };
 }
 
-const SUGGESTIONS = [
-  "Кому позвонить сегодня, чтобы продать больше?",
-  "У кого заканчивается абонемент в ближайшие 2 недели?",
-  "Кто был на пробном в этом месяце и не купил?",
-  "Кто недавно зарегистрировался в приложении?",
-];
-
 export function KateChat({
   heightClass = "h-[calc(100dvh-8rem)]",
   fullscreenOnMobile = false,
@@ -72,7 +66,7 @@ export function KateChat({
 
   return (
     <div
-      className={`relative isolate mx-auto ${heightClass} w-full max-w-3xl rounded-lg ${busy ? "ai-thinking-glow" : ""}`}
+      className={`relative isolate mx-auto ${heightClass} w-full max-w-3xl lg:max-w-5xl rounded-lg ${busy ? "ai-thinking-glow" : ""}`}
     >
       <div
         className={`relative z-10 flex h-full flex-col overflow-hidden rounded-lg border bg-background ${fullscreenOnMobile ? "max-md:rounded-none max-md:border-0" : ""}`}
@@ -94,23 +88,73 @@ export function KateChat({
 
 function ChatSkeleton() {
   return (
-    <>
-      <div className="flex-1 space-y-4 overflow-hidden p-4 sm:p-6">
-        <div className="flex justify-end">
-          <Skeleton className="h-10 w-2/5 rounded-lg" />
+    <div className="flex min-h-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex-1 space-y-4 overflow-hidden p-4 sm:p-6">
+          <div className="flex justify-end">
+            <Skeleton className="h-10 w-2/5 rounded-lg" />
+          </div>
+          <div className="flex justify-start">
+            <Skeleton className="h-24 w-3/4 rounded-lg" />
+          </div>
+          <div className="flex justify-end">
+            <Skeleton className="h-10 w-1/3 rounded-lg" />
+          </div>
         </div>
-        <div className="flex justify-start">
-          <Skeleton className="h-24 w-3/4 rounded-lg" />
-        </div>
-        <div className="flex justify-end">
-          <Skeleton className="h-10 w-1/3 rounded-lg" />
+        <div className="flex gap-2 border-t p-3">
+          <Skeleton className="h-20 flex-1" />
+          <Skeleton className="h-20 w-10" />
         </div>
       </div>
-      <div className="flex gap-2 border-t p-3">
-        <Skeleton className="h-20 flex-1" />
-        <Skeleton className="h-20 w-10" />
+      <div className="hidden w-64 shrink-0 space-y-2 border-l p-3 lg:block">
+        <Skeleton className="h-4 w-32" />
+        {KATE_QUESTIONS.map((q) => (
+          <Skeleton key={q} className="h-14 w-full rounded-lg" />
+        ))}
       </div>
-    </>
+    </div>
+  );
+}
+
+/**
+ * Готовые вопросы: колонка справа от переписки, на узком экране — лента над
+ * полем ввода. Пока Kate отвечает, не нажимаются.
+ */
+function QuickQuestions({
+  layout,
+  disabled,
+  onAsk,
+}: {
+  layout: "column" | "row";
+  disabled: boolean;
+  onAsk: (question: string) => void;
+}) {
+  if (layout === "row") {
+    return (
+      <div className="flex gap-2 overflow-x-auto border-t px-3 pt-3 lg:hidden">
+        {KATE_QUESTIONS.map((q) => (
+          <ChoiceCard
+            key={q}
+            compact
+            disabled={disabled}
+            onClick={() => onAsk(q)}
+            className="w-auto shrink-0 whitespace-nowrap"
+          >
+            {q}
+          </ChoiceCard>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <aside className="hidden w-64 shrink-0 flex-col gap-2 overflow-y-auto border-l p-3 lg:flex">
+      <p className="px-1 text-xs font-medium text-muted-foreground">Быстрые вопросы</p>
+      {KATE_QUESTIONS.map((q) => (
+        <ChoiceCard key={q} compact disabled={disabled} onClick={() => onAsk(q)}>
+          {q}
+        </ChoiceCard>
+      ))}
+    </aside>
   );
 }
 
@@ -226,92 +270,96 @@ function ChatSession({
     void sendText(text);
   };
 
+  const ask = (question: string) => {
+    if (!isLoading) void sendText(question);
+  };
+
   return (
-    <>
-      <div
-        ref={scrollRef}
-        className={`flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 ${fullscreenOnMobile ? "max-md:pt-14" : ""}`}
-      >
-        {older.hasMore && (
-          <div className="flex justify-center">
-            <Button variant="ghost" size="sm" onClick={loadOlder} disabled={loadingOlder}>
-              {loadingOlder && <Loader2 className="animate-spin" />} Показать более ранние
-            </Button>
-          </div>
-        )}
-        {messages.length === 0 && !older.hasMore && (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-            <div className="ai-gradient flex h-14 w-14 items-center justify-center rounded-full text-white">
-              <Cat className="h-7 w-7" />
+    <div className="flex min-h-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          ref={scrollRef}
+          className={`flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 ${fullscreenOnMobile ? "max-md:pt-14" : ""}`}
+        >
+          {older.hasMore && (
+            <div className="flex justify-center">
+              <Button variant="ghost" size="sm" onClick={loadOlder} disabled={loadingOlder}>
+                {loadingOlder && <Loader2 className="animate-spin" />} Показать более ранние
+              </Button>
             </div>
-            <div>
-              <p className="text-base font-medium text-foreground">Привет! Я Kate.</p>
-              <p className="mt-1 text-sm">
-                Подскажу, кому позвонить и что предложить: продления, пробные, должники, новые
-                клиенты в приложении.
-              </p>
+          )}
+          {messages.length === 0 && !older.hasMore && (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+              <div className="ai-gradient flex h-14 w-14 items-center justify-center rounded-full text-white">
+                <Cat className="h-7 w-7" />
+              </div>
+              <div>
+                <p className="text-base font-medium text-foreground">Привет! Я Kate.</p>
+                <p className="mt-1 text-sm">
+                  Подскажу, кому позвонить и что предложить: продления, пробные, должники, новые
+                  клиенты в приложении. Выберите готовый вопрос или напишите свой.
+                </p>
+              </div>
             </div>
-            <div className="mt-4 grid w-full max-w-md gap-2 text-left text-sm">
-              {SUGGESTIONS.map((s) => (
-                <ChoiceCard key={s} compact onClick={() => sendText(s)}>
-                  {s}
-                </ChoiceCard>
-              ))}
+          )}
+          {messages.map((m: UIMessage) => (
+            <MessageBubble key={m.id} message={m} />
+          ))}
+          {isLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Kate думает…
             </div>
-          </div>
-        )}
-        {messages.map((m: UIMessage) => (
-          <MessageBubble key={m.id} message={m} />
-        ))}
-        {isLoading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Kate думает…
-          </div>
-        )}
-        {error && (
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-            Ошибка: {error.message}
-          </div>
-        )}
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-        className="border-t p-3"
-      >
-        <div className="flex items-start gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            placeholder="Напишите вопрос Kate…"
-            rows={2}
-            className="min-h-[80px] resize-none flex-1"
-          />
-          <div className="flex h-[80px] items-center gap-2">
-            <VoiceInputButton
-              disabled={isLoading}
-              onTranscribed={(text) => setInput((prev) => (prev ? `${prev} ${text}` : text).trim())}
-            />
-            <Button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              size="icon"
-              aria-label="Отправить"
-            >
-              <Send />
-            </Button>
-          </div>
+          )}
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              Ошибка: {error.message}
+            </div>
+          )}
         </div>
-      </form>
-    </>
+        <QuickQuestions layout="row" disabled={isLoading} onAsk={ask} />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          // До lg над формой — лента вопросов со своей линией сверху.
+          className="border-t p-3 max-lg:border-t-0"
+        >
+          <div className="flex items-start gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder="Напишите вопрос Kate…"
+              rows={2}
+              className="min-h-[80px] resize-none flex-1"
+            />
+            <div className="flex h-[80px] items-center gap-2">
+              <VoiceInputButton
+                disabled={isLoading}
+                onTranscribed={(text) =>
+                  setInput((prev) => (prev ? `${prev} ${text}` : text).trim())
+                }
+              />
+              <Button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                size="icon"
+                aria-label="Отправить"
+              >
+                <Send />
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <QuickQuestions layout="column" disabled={isLoading} onAsk={ask} />
+    </div>
   );
 }
 

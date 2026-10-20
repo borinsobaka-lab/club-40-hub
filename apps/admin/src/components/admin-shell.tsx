@@ -146,14 +146,14 @@ export function AdminShell({
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/20 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           {/* На телефоне чат — во весь экран: в окне 80vh клавиатура съедала ленту. */}
-          <DialogPrimitive.Content className="fixed inset-0 z-50 outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 md:inset-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-w-3xl md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95">
+          <DialogPrimitive.Content className="fixed inset-0 z-50 outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 md:inset-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-w-3xl lg:max-w-5xl md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95">
             <DialogPrimitive.Title className="sr-only">Kate — AI ассистент</DialogPrimitive.Title>
             <DialogPrimitive.Description className="sr-only">
               Спросите Kate о клиентах, тренерах, расписании или абонементах.
             </DialogPrimitive.Description>
             <Suspense
               fallback={
-                <div className="mx-auto h-dvh w-full max-w-3xl rounded-lg border bg-background max-md:rounded-none max-md:border-0 md:h-[min(80vh,720px)]" />
+                <div className="mx-auto h-dvh w-full max-w-3xl lg:max-w-5xl rounded-lg border bg-background max-md:rounded-none max-md:border-0 md:h-[min(80vh,720px)]" />
               }
             >
               <KateChat heightClass="h-dvh md:h-[min(80vh,720px)]" fullscreenOnMobile />

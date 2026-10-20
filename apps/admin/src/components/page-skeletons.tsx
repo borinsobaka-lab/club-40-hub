@@ -1663,21 +1663,31 @@ export function StudiosPageSkeleton() {
 export function AssistantPageSkeleton() {
   return (
     <ShellSkeleton title="KATE — AI АССИСТЕНТ">
-      <div className="mx-auto h-[calc(100dvh-8rem)] w-full max-w-3xl">
-        <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-background">
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
-            <Skeleton className="size-14 rounded-full" />
-            <Skeleton className="h-5 w-56" />
-            <Skeleton className="h-4 w-72 max-w-full" />
-            <div className="mt-4 grid w-full max-w-md gap-2">
-              {Array.from({ length: 4 }, (_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+      <div className="mx-auto h-[calc(100dvh-8rem)] w-full max-w-3xl lg:max-w-5xl">
+        <div className="flex h-full overflow-hidden rounded-lg border bg-background">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
+              <Skeleton className="size-14 rounded-full" />
+              <Skeleton className="h-5 w-56" />
+              <Skeleton className="h-4 w-72 max-w-full" />
+            </div>
+            {/* Готовые вопросы лентой — до lg. */}
+            <div className="flex gap-2 overflow-hidden border-t px-3 pt-3 lg:hidden">
+              {Array.from({ length: 3 }, (_, i) => (
+                <Skeleton key={i} className="h-10 w-56 shrink-0 rounded-lg" />
               ))}
             </div>
+            <div className="flex gap-2 border-t p-3 max-lg:border-t-0">
+              <Skeleton className="h-20 flex-1" />
+              <Skeleton className="h-20 w-10" />
+            </div>
           </div>
-          <div className="flex gap-2 border-t p-3">
-            <Skeleton className="h-20 flex-1" />
-            <Skeleton className="h-20 w-10" />
+          {/* Готовые вопросы колонкой справа — с lg. */}
+          <div className="hidden w-64 shrink-0 space-y-2 border-l p-3 lg:block">
+            <Skeleton className="h-4 w-32" />
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            ))}
           </div>
         </div>
       </div>

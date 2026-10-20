@@ -43,6 +43,27 @@ describe("схемы инструментов для любых провайде
     });
   });
 
+  test("Responses API: parameters на верхнем уровне, строгий режим выключен", () => {
+    const body = JSON.stringify({
+      tools: [
+        {
+          type: "function",
+          name: "t",
+          parameters: { type: "object", additionalProperties: false, properties: {} },
+        },
+        { type: "web_search" },
+      ],
+    });
+    const out = JSON.parse(portableRequestBody(body));
+    expect(out.tools[0]).toEqual({
+      type: "function",
+      name: "t",
+      parameters: { type: "object", properties: {} },
+      strict: false,
+    });
+    expect(out.tools[1]).toEqual({ type: "web_search" });
+  });
+
   test("тело без инструментов и не JSON — как есть", () => {
     expect(portableRequestBody('{"model":"m"}')).toBe('{"model":"m"}');
     expect(portableRequestBody("x")).toBe("x");

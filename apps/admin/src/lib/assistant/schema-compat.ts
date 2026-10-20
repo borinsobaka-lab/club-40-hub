@@ -1,6 +1,5 @@
 /**
- * Схемы инструментов Kate — в виде, который принимают все OpenAI-совместимые
- * провайдеры. AI SDK кладёт в них `$schema`, `format: "uuid"`, `pattern`,
+ * Схемы инструментов Kate — в виде, который принимают все провайдеры. AI SDK кладёт в них `$schema`, `format: "uuid"`, `pattern`,
  * `default` и `additionalProperties`; OpenAI их принимает, но часть
  * провайдеров (Gemini и др.) отвечает на них 400. Значения всё равно
  * проверяет zod на нашем сервере перед вызовом инструмента (и подставляет
@@ -20,9 +19,22 @@ function clean(node: unknown, inProperties = false): unknown {
   return out;
 }
 
-/** Тело запроса /chat/completions: чистит parameters у каждого инструмента. */
+type ToolEntry = {
+  type?: string;
+  strict?: boolean;
+  parameters?: unknown;
+  function?: { parameters?: unknown };
+};
+
+/**
+ * Тело запроса к модели: чистит parameters у каждого инструмента.
+ * /chat/completions — `tools[].function.parameters`; Responses API OpenAI
+ * (/v1/responses) — `tools[].parameters`, и там строгий режим схем включён
+ * по умолчанию: под него все поля должны быть обязательными, а у Kate
+ * большинство необязательные, — поэтому `strict: false`.
+ */
 export function portableRequestBody(body: string): string {
-  let parsed: { tools?: { function?: { parameters?: unknown } }[] };
+  let parsed: { tools?: ToolEntry[] };
   try {
     parsed = JSON.parse(body) as typeof parsed;
   } catch {
@@ -31,6 +43,10 @@ export function portableRequestBody(body: string): string {
   if (!Array.isArray(parsed.tools)) return body;
   for (const tool of parsed.tools) {
     if (tool?.function?.parameters) tool.function.parameters = clean(tool.function.parameters);
+    if (tool?.type === "function" && tool.parameters) {
+      tool.parameters = clean(tool.parameters);
+      tool.strict = false;
+    }
   }
   return JSON.stringify(parsed);
 }
