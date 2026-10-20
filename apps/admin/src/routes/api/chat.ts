@@ -17,6 +17,7 @@ import {
   messageText,
   toStored,
 } from "@/lib/assistant/history";
+import { describeAiError } from "@/lib/assistant/errors";
 import { buildSystemPrompt } from "@/lib/assistant/prompt";
 import { createAssistantTools } from "@/lib/assistant/tools.server";
 import type { StudioFormat } from "@/lib/studio-formats";
@@ -63,6 +64,14 @@ async function ownThreadId(
   const again = await find();
   if (again) return again;
   throw new Error(error?.message ?? "Не удалось завести переписку с Kate");
+}
+
+/** Для лога: у ошибки провайдера главное — код, адрес и тело ответа. */
+function logError(error: unknown) {
+  const e = error as { statusCode?: unknown; url?: unknown; responseBody?: unknown } | null;
+  return e && typeof e === "object" && "statusCode" in e
+    ? { statusCode: e.statusCode, url: e.url, responseBody: e.responseBody, error }
+    : error;
 }
 
 const text = (message: string, status: number) =>
@@ -183,7 +192,7 @@ export const Route = createFileRoute("/api/chat")({
                 .upsert({ thread_id: threadId, ...stored }, { onConflict: "thread_id,id" });
               if (error) console.error("[api/chat] save answer failed", error.message);
             },
-            onError: ({ error }) => console.error("[api/chat] AI stream error", error),
+            onError: ({ error }) => console.error("[api/chat] AI stream error", logError(error)),
           });
           // Без этого обрыв связи с браузером остановил бы генерацию.
           void result.consumeStream();
@@ -191,10 +200,9 @@ export const Route = createFileRoute("/api/chat")({
           return result.toUIMessageStreamResponse({
             originalMessages: messages,
             generateMessageId: () => answerId,
-            onError: (error) => {
-              console.error("[api/chat] UI stream error", error);
-              return "Не удалось получить ответ ассистента. Попробуйте ещё раз.";
-            },
+            // Причину (ключ, модель, баланс) видно в окне — иначе её не найти
+            // без логов сервера.
+            onError: (error) => describeAiError(error),
           });
         } catch (error) {
           console.error("[api/chat] request failed", error);

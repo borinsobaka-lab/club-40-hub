@@ -1,5 +1,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
+import { portableRequestBody } from "@/lib/assistant/schema-compat";
+
 // AI-провайдер пока не подключён: Lovable AI Gateway отключён при переезде,
 // новый провайдер ещё не выбран. Пока переменные ниже не заданы, /api/chat и
 // /api/transcribe отвечают 503 «временно недоступно».
@@ -25,5 +27,12 @@ export function createAiProvider() {
     name: "ai-gateway",
     baseURL: config.baseURL,
     apiKey: config.apiKey,
+    // Схемы инструментов — без ключей, на которые часть провайдеров
+    // отвечает 400 (lib/assistant/schema-compat.ts).
+    fetch: (input, init) =>
+      fetch(
+        input,
+        typeof init?.body === "string" ? { ...init, body: portableRequestBody(init.body) } : init,
+      ),
   });
 }
