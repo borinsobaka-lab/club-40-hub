@@ -12,6 +12,7 @@
     "version:bump": "bun scripts/bump-version.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.130",
     "@ai-sdk/openai-compatible": "^2.0.51",
     "@ai-sdk/react": "^3.0.210",
     "@fontsource/roboto": "^5.3.0",

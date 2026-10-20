@@ -4,7 +4,7 @@ import type { UIMessage } from "ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { canOpenClubSection } from "@/lib/admin-access";
-import { createAiProvider } from "@/lib/ai-gateway.server";
+import { createChatModel } from "@/lib/ai-gateway.server";
 import { filterTools } from "@/lib/assistant/access";
 import { loadAdminAccess } from "@/lib/assistant/access.server";
 import { studioToday } from "@/lib/assistant/dates";
@@ -86,9 +86,8 @@ export const Route = createFileRoute("/api/chat")({
           const auth = await authenticateStaff(request);
           if (!auth.ok) return text(auth.message, auth.status);
 
-          const provider = createAiProvider();
-          const chatModel = process.env.AI_CHAT_MODEL;
-          if (!provider || !chatModel) {
+          const chat = createChatModel();
+          if (!chat) {
             return text(
               "AI-ассистент временно недоступен: модель ещё не подключена. История переписки сохранится, когда её подключат.",
               503,
@@ -167,7 +166,8 @@ export const Route = createFileRoute("/api/chat")({
           const messages = [...history, question];
           const answerId = crypto.randomUUID();
           const result = streamText({
-            model: provider(chatModel),
+            model: chat.model,
+            providerOptions: chat.providerOptions,
             system: buildSystemPrompt({
               today: studioToday(),
               studio: {
