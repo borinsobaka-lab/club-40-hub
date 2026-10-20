@@ -43,6 +43,7 @@ const MANUAL: Record<string, string> = {
   Minimize: "ArrowShrinkIcon",
   RefreshCwOff: "RefreshCwOffIcon", // псевдоним не перечёркнут, не отличить от RefreshCw
   Send: "SentIcon", // псевдоним — конверт, для кнопки отправки нужен самолётик
+  UserArrowLeftRight: "UserArrowLeftRightIcon", // «Переоформить» абонемент; в lucide такой нет
 };
 
 const rows = [...used].sort().map((name) => {

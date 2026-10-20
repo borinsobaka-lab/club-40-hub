@@ -23,6 +23,11 @@ export type ConfirmOptions = {
   cancelLabel?: string;
   /** Разрушающее действие красит кнопку в destructive. По умолчанию да. */
   destructive?: boolean;
+  /**
+   * Только сообщение, выбора нет («Переоформить нельзя…»): одна кнопка —
+   * confirmLabel («Понятно»), промис всё равно отдаёт true / false.
+   */
+  hideCancel?: boolean;
 };
 
 /**
@@ -68,9 +73,11 @@ export function useConfirm() {
           )}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => settle(false)}>
-            {options?.cancelLabel ?? "Отмена"}
-          </AlertDialogCancel>
+          {!options?.hideCancel && (
+            <AlertDialogCancel onClick={() => settle(false)}>
+              {options?.cancelLabel ?? "Отмена"}
+            </AlertDialogCancel>
+          )}
           <AlertDialogAction
             onClick={() => settle(true)}
             className={cn(destructive && buttonVariants({ variant: "destructive" }))}

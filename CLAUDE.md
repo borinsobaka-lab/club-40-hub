@@ -39,7 +39,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   обратной связи `db/feedback.test.ts`, NPS-опросов `db/nps.test.ts`,
   устройств и активности приложения `db/app-activity.test.ts`, общей базы
   клиентов пакетных клубов `db/shared-clients.test.ts`, переноса из 1С
-  `db/import-1c.test.ts` и AI-ассистента Kate `db/assistant.test.ts`
+  `db/import-1c.test.ts`, AI-ассистента Kate `db/assistant.test.ts` и
+  переоформления абонемента `db/membership-transfer.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -510,6 +511,19 @@ AUTH_SETUP.md.
   определение — здесь). Остаток на занятии с записями во всех клубах — RPC
   `entry_bookings_ahead`. Подписочные клубы — без изменений. Тесты —
   `db/shared-clients.test.ts`.
+  **«Абонементы» общие для пакетных клубов и «Переоформить»** (решения
+  владельца 2026-10-20): `db/migrations/2026-10-20_packages_membership_transfer.sql`
+  — раздел показывает продажи всех клубов сети (чтение — «sales network
+  read»), правит строку только клуб продажи; `client_packages_list.studio_name`
+  (колонка «Клуб продажи»; актуальное определение вью — здесь). RPC
+  `transfer_client_membership(p_sale_id, p_client_id)` — сотрудник клуба
+  продажи передаёт абонемент клиенту той же сети: меняются только
+  `sales.client_id` и `client_memberships.client_id` (статус, остаток,
+  срок, платежи — нет); только живой или ждущий, без прошедшего срока,
+  оплаченный полностью и без живого абонемента того же вида у нового
+  владельца; очередь — `packages_settle` у обоих; отметка —
+  `sales.transferred_from_client_id` / `transferred_from_name` /
+  `transferred_at` / `transferred_by`. Тесты — `db/membership-transfer.test.ts`.
   Вместимость тренировки по клубам:
   `db/migrations/2026-10-14_workout_studio_capacity.sql` —
   `workout_capacities` (тренировка × клуб, null — без лимита; нет строки —
