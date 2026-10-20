@@ -10,7 +10,9 @@ const cfg: Config = {
   clientId: "11111111-2222-3333-4444-555555555555",
   clientSecret: "secret",
   redirectUri: "https://rr.example.com/oauth/callback",
-  widgetCode: "rrwidget",
+  widgetCode: "",
+  configured: true,
+  widgetDir: new URL("../../widget", import.meta.url).pathname,
   dbPath: ":memory:",
   port: 0,
 };
@@ -44,6 +46,14 @@ beforeEach(() => {
       return new Response(amo.webhookStatus === 201 ? "{}" : "forbidden", {
         status: amo.webhookStatus,
       });
+    }
+    if (p === "/api/v4/widgets") {
+      const page = Number(url.searchParams.get("page"));
+      return Response.json(
+        page === 1
+          ? { _embedded: { widgets: [{ code: "other", client_uuid: "x" }] }, _links: { next: {} } }
+          : { _embedded: { widgets: [{ code: "rrwidget", client_uuid: cfg.clientId }] } },
+      );
     }
     if (p === "/api/v4/widgets/rrwidget")
       return Response.json({ code: "rrwidget", settings: amo.settings });
@@ -176,4 +186,22 @@ test("тариф без вебхуков API — ошибка видна в ок
     await app.fetch(req("/api/status", { headers: { "X-Auth-Token": authToken() } }))
   ).json()) as { webhookError: string; webhookUrl: string };
   expect(st.webhookUrl).toBe(`https://rr.example.com/webhook/${account.webhookSecret}`);
+});
+
+test("без ключей amoCRM: архив виджета отдаётся, остальное — 503", async () => {
+  const store = new Store(":memory:");
+  const app = createApp(
+    { ...cfg, clientId: "", clientSecret: "", widgetCode: "", configured: false },
+    store,
+    () => {},
+  );
+  const zip = await app.fetch(req("/widget.zip"));
+  expect(zip.status).toBe(200);
+  expect(zip.headers.get("content-type")).toBe("application/zip");
+  expect((await app.fetch(req("/health"))).status).toBe(200);
+  expect((await app.fetch(req("/logo.png"))).headers.get("content-type")).toBe("image/png");
+  expect(await (await app.fetch(req("/"))).text()).toContain("ещё не заданы");
+  expect((await app.fetch(req("/oauth/callback?code=a&referer=base40.amocrm.ru"))).status).toBe(
+    503,
+  );
 });

@@ -1,12 +1,15 @@
 # Сервер очереди ответственных amoCRM. Контекст сборки — корень монорепозитория
 # (Coolify: Base Directory «/», Dockerfile Location
 # «/integrations/amocrm-round-robin/server/Dockerfile»,
-# Watch Paths «integrations/amocrm-round-robin/server/**»).
+# Watch Paths «integrations/amocrm-round-robin/server/**» и
+# «integrations/amocrm-round-robin/widget/**»).
 FROM oven/bun:1.4.3-slim
 WORKDIR /app
-ENV NODE_ENV=production PORT=3000 DB_PATH=/data/round-robin.sqlite
+ENV NODE_ENV=production PORT=3000 DB_PATH=/data/round-robin.sqlite WIDGET_DIR=/app/widget
 
 COPY integrations/amocrm-round-robin/server/src ./src
+# Файлы виджета: сервер отдаёт из них готовый архив /widget.zip.
+COPY integrations/amocrm-round-robin/widget ./widget
 
 # Очередь, токены amoCRM и журнал — в SQLite на томе: в Coolify добавить
 # Persistent Storage с путём /data, иначе при деплое всё обнулится и

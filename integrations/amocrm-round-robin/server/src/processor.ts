@@ -5,7 +5,7 @@ import type { LeadEvent, WebhookPayload } from "./webhook";
 /** То, что обработчику нужно от amoCRM (в тестах — подделка). */
 export interface AmoApi {
   readonly id: number;
-  widgetSettings(code: string): Promise<Record<string, unknown>>;
+  widgetSettings(): Promise<Record<string, unknown>>;
   activeUserIds(): Promise<Set<number> | null>;
   unsortedStatusIds(): Promise<Set<number>>;
   setResponsible(leadId: number, userId: number): Promise<unknown>;
@@ -38,7 +38,6 @@ export class Processor {
 
   constructor(
     private store: Store,
-    private widgetCode: string,
     private log: (msg: string) => void = console.log,
     private retryDelays: number[] = [1000, 5000],
   ) {}
@@ -63,7 +62,7 @@ export class Processor {
 
   async queueSettings(api: AmoApi) {
     return this.cached(this.settings, api.id, SETTINGS_TTL, async () =>
-      parseSettings((await api.widgetSettings(this.widgetCode))[SETTINGS_FIELD]),
+      parseSettings((await api.widgetSettings())[SETTINGS_FIELD]),
     );
   }
 
