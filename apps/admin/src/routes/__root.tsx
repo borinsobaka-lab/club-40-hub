@@ -96,14 +96,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      // Фавикон подписочного клуба — жёлтый круг. В пакетном StudioBranding
-      // меняет его на розовый. png 32/180 — вкладка и HiDPI, ico — фолбэк (часть
+      // Фавикон — гимнастка в шпагате на круге-градиенте, один на всю админку
+      // (решение владельца 2026-10-20; раньше — жёлтый / розовый круг по
+      // формату клуба). png 32/180 — вкладка и HiDPI, ico — фолбэк (часть
       // браузеров дёргает /favicon.ico напрямую, минуя разметку). ?v= —
       // сбросить закэшированную браузерами прежнюю иконку.
-      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=4" },
-      { rel: "icon", type: "image/png", sizes: "180x180", href: "/apple-touch-icon.png?v=4" },
-      { rel: "icon", href: "/favicon.ico?v=4", sizes: "any" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=4" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=5" },
+      { rel: "icon", type: "image/png", sizes: "180x180", href: "/apple-touch-icon.png?v=5" },
+      { rel: "icon", href: "/favicon.ico?v=5", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=5" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
