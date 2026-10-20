@@ -4,6 +4,8 @@
  * продажи и абонемента меняется, остальное — нет; только оплаченный
  * полностью, живой или ждущий; без двух живых абонементов одного вида у
  * нового владельца; только сотрудник клуба продажи и клиент той же сети.
+ * Платежи и комментарии продажи — сотруднику любого клуба сети
+ * (db/migrations/2026-10-20_zz_packages_network_payments.sql).
  *
  * Нужна база с полной схемой — её собирает db/test/build-schema.sh:
  *   bash db/test/build-schema.sh postgres://postgres@localhost:5432/base40_test
@@ -298,6 +300,65 @@ describe.skipIf(!url)("переоформление абонемента (баз
       expect(await failure(tx, () => transfer(tx, sale, subClient))).toContain("не найден");
       // Клиент другого пакетного клуба — та же база: можно.
       expect(await failure(tx, () => transfer(tx, sale, olga))).toBeNull();
+    });
+  });
+  test("платежи и комментарии продажи другого клуба сети — можно, остальное — нет", async () => {
+    await scenario(async (tx) => {
+      const vake = await studio(tx, "packages", "Ваке");
+      const saburtalo = await studio(tx, "packages", "Сабуртало");
+      const sub = await studio(tx, "subscription", "Base40");
+      const saburtaloAdmin = await staff(tx, saburtalo);
+      const subAdmin = await staff(tx, sub);
+      const anna = await client(tx, vake);
+      const sale = await sell(tx, vake, anna, await pack(tx, vake), { unpaid: true });
+      const [{ id: unpaid }] = await tx`
+        select id from sale_installments where sale_id = ${sale} and not paid`;
+
+      // Сотрудник подписочного клуба продажи пакетного не видит и не правит.
+      await as(tx, subAdmin);
+      const subRows = await tx`
+        update sale_installments set paid = true where id = ${unpaid} returning id`;
+      expect(subRows.length).toBe(0);
+
+      await as(tx, saburtaloAdmin);
+      const marked = await tx`
+        update sale_installments set paid = true, payment_method = 'cash'
+         where id = ${unpaid} returning paid_at`;
+      expect(marked.length).toBe(1);
+      expect(marked[0].paid_at).not.toBeNull();
+      await tx`update sales set comment = 'внесла в Сабуртало', membership_note = 'ок'
+                where id = ${sale}`;
+      // «Редактировать платежи»: внесённым — новые суммы, плюс ещё платёж.
+      const paid = await tx`select id, amount from sale_installments where sale_id = ${sale}`;
+      await tx`select replace_sale_installments(${sale}, ${JSON.stringify([
+        ...paid.map((p: { id: string }) => ({ id: p.id, amount: 40 })),
+        { amount: 20, due_date: "2030-01-01" },
+      ])}::text::jsonb)`;
+
+      expect(
+        await failure(tx, () => tx`update sales set total_amount = 1 where id = ${sale}`),
+      ).toContain("только платежи и комментарии");
+      expect(
+        await failure(
+          tx,
+          () =>
+            tx`update sales set client_id = client_id, sold_at = sold_at - 1 where id = ${sale}`,
+        ),
+      ).toContain("только платежи и комментарии");
+      // Удалить продажу другого клуба нельзя (RLS — строка не видна для delete).
+      const deleted = await tx`delete from sales where id = ${sale} returning id`;
+      expect(deleted.length).toBe(0);
+
+      await asServer(tx);
+      const [row] = await tx`
+        select comment, membership_note, remaining_installments, total_amount
+          from sales where id = ${sale}`;
+      expect(row).toMatchObject({
+        comment: "внесла в Сабуртало",
+        membership_note: "ок",
+        remaining_installments: 2,
+      });
+      expect(Number(row.total_amount)).toBe(100);
     });
   });
 });

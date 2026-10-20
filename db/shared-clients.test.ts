@@ -294,7 +294,10 @@ describe.skipIf(!url)("общая база клиентов пакетных к�
     });
   });
 
-  test("продажа привязана к клубу продажи: другой клуб сети её видит, но не меняет и не удаляет", async () => {
+  // С 2026-10-20 платежи и комментарии продажи правит и другой клуб сети
+  // (2026-10-20_zz_packages_network_payments.sql; подробно —
+  // db/membership-transfer.test.ts).
+  test("продажа привязана к клубу продажи: другой клуб сети отмечает платежи и пишет комментарии, но не удаляет", async () => {
     await scenario(async (tx) => {
       const a = await studio(tx);
       const b = await studio(tx);
@@ -312,33 +315,26 @@ describe.skipIf(!url)("общая база клиентов пакетных к�
       await as(tx, staffA);
       expect(ids(await tx`select id from sales where client_id = ${c}`)).toEqual([sale]);
       expect((await tx`select id from sale_installments where sale_id = ${sale}`).length).toBe(2);
-      expect((await tx`update sales set comment = 'правка' where id = ${sale} returning id`).length).toBe(0);
+      expect((await tx`update sales set comment = 'правка' where id = ${sale} returning id`).length).toBe(1);
       expect(
         (await tx`update sale_installments set paid = true where sale_id = ${sale} returning id`).length,
-      ).toBe(0);
+      ).toBe(2);
       expect((await tx`delete from sales where id = ${sale} returning id`).length).toBe(0);
       expect((await tx`delete from client_memberships where sale_id = ${sale} returning id`).length).toBe(0);
       // Внести продажу за чужой клуб нельзя (не сотрудник клуба — как покупка
       // из приложения, её база не принимает).
       expect(await failure(tx, () => sell(tx, b, c, p))).not.toBeNull();
-      expect(
-        await failure(
-          tx,
-          () => tx`select replace_sale_installments(${sale},
-                     ${JSON.stringify([{ amount: 100, due_date: "2030-01-01" }])}::jsonb)`,
-        ),
-      ).not.toBeNull();
-      // Раздел «Абонементы» клуба — только его продажи.
+      // Продажи клуба — с его studio_id (раздел «Абонементы» общий, фильтр «Клуб»).
       expect((await tx`select id from client_packages_list where studio_id = ${a}`).length).toBe(0);
       expect(ids(await tx`select id from client_packages_list where studio_id = ${b}`)).toEqual([sale]);
       await asServer(tx);
 
       const [row] = await tx`select studio_id, comment from sales where id = ${sale}`;
-      expect(row).toEqual({ studio_id: b, comment: null });
+      expect(row).toEqual({ studio_id: b, comment: "правка" });
       expect((await tx`select id from sales where client_id = ${c}`).length).toBe(1);
       const [{ unpaid }] = await tx`
         select count(*)::int as unpaid from sale_installments where sale_id = ${sale} and not paid`;
-      expect(unpaid).toBe(1);
+      expect(unpaid).toBe(0);
     });
   });
 
