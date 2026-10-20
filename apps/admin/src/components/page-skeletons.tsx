@@ -760,7 +760,7 @@ export function ClientMembershipsPageSkeleton() {
     <TablePage
       title="Абонементы"
       actions={[{ label: "Продажа" }]}
-      toolbar={{ controls: ["w-48", "w-48", "w-40", "w-48", "w-48", "w-40", "w-48"] }}
+      toolbar={{ controls: ["w-44", "w-48", "w-48", "w-40", "w-48", "w-48", "w-40", "w-48"] }}
       headers={[
         { label: "Клиент", className: "min-w-[170px]" },
         "Абонемент",
@@ -770,6 +770,7 @@ export function ClientMembershipsPageSkeleton() {
         "Баланс",
         "Сумма",
         "Продал / тренер",
+        "Клуб продажи",
         "Добавлен",
       ]}
     />

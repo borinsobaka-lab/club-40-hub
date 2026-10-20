@@ -99,6 +99,7 @@ import {
   TrendingUp as TrendingUpArt,
   Undo2 as Undo2Art,
   Upload as UploadArt,
+  UserArrowLeftRightIcon as UserArrowLeftRightArt,
   UserMinus as UserMinusArt,
   UserPlus as UserPlusArt,
   UserRound as UserRoundArt,
@@ -203,6 +204,7 @@ export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
 export const TrendingUp = icon(TrendingUpArt, "TrendingUp");
 export const Undo2 = icon(Undo2Art, "Undo2");
 export const Upload = icon(UploadArt, "Upload");
+export const UserArrowLeftRight = icon(UserArrowLeftRightArt, "UserArrowLeftRight");
 export const UserMinus = icon(UserMinusArt, "UserMinus");
 export const UserPlus = icon(UserPlusArt, "UserPlus");
 export const UserRound = icon(UserRoundArt, "UserRound");

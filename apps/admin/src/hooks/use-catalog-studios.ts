@@ -14,13 +14,17 @@ import {
 /**
  * Все клубы базы с форматом (studios читается публично). Нужен, чтобы
  * собрать общий каталог пакетных клубов и там, где сотрудник работает не во
- * всех из них: тренировка могла быть заведена в чужом клубе. Ключ — под
+ * всех из них: тренировка могла быть заведена в чужом клубе, продажа в
+ * «Абонементах» — в клубе сети, где сотрудник не работает (название — для
+ * фильтра «Клуб»). Ключ — под
  * ["studios"]: правка клубов инвалидирует и его.
  */
 export const catalogStudiosQuery = queryOptions({
   queryKey: ["studios", "catalog"],
   queryFn: () =>
-    unwrap<CatalogStudio[]>(supabase.from("studios").select("id, format").order("created_at")),
+    unwrap<CatalogStudio[]>(
+      supabase.from("studios").select("id, format, name").order("created_at"),
+    ),
   staleTime: Infinity,
   meta: { errorMessage: "Не удалось загрузить клубы" },
 });

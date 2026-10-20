@@ -11,7 +11,12 @@ import type { StudioFormat } from "@/lib/studio-formats";
 /** Форматы, у которых каталог общий для всех клубов формата. */
 export const SHARED_CATALOG_FORMATS: readonly StudioFormat[] = ["packages"];
 
-export type CatalogStudio = { id: string; format: StudioFormat };
+export type CatalogStudio = {
+  id: string;
+  format: StudioFormat;
+  /** Название — где нужно показать клуб сети (фильтр «Клуб» в «Абонементах»). */
+  name?: string;
+};
 
 /**
  * Клубы, чьи тренировки и номенклатура видны в клубе studioId: все клубы

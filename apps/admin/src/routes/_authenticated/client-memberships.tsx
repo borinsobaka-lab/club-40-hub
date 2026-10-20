@@ -12,6 +12,7 @@ import {
   Receipt,
   Smartphone,
   Trash2,
+  UserArrowLeftRight,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,13 +21,15 @@ import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { RequireFormat } from "@/components/require-format";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { useStudios } from "@/hooks/use-studios";
+import { catalogStudiosQuery, useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { useServerTable } from "@/hooks/use-server-table";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { orderBy } from "@/lib/table-sort";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { isAdminRole } from "@/lib/staff-directory";
-import { useStudioStaff } from "@/lib/studio-staff";
+import { STUDIO_STAFF_COLS, type StudioStaffRow } from "@/lib/studio-staff";
 import { MEMBERSHIP_STATUS_DOT, MEMBERSHIP_STATUS_LABEL } from "@/lib/membership-status";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -94,6 +97,7 @@ import { StaffOption } from "@/components/employee-photo";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
+import { ClientCombobox, type ClientOption } from "@/components/client-combobox";
 import { CommentCell } from "@/components/comment-cell";
 import { commentSaver } from "@/lib/comment-saver";
 import { RowContextMenu } from "@/components/row-context-menu";
@@ -107,10 +111,15 @@ import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
 // «Абонементы» пакетной студии (STUDIO_FORMATS.md): проданные клиентам
 // абонементы, одна строка — одна продажа. С 2026-10-13 это и раздел продаж
 // пакетного клуба («Продаж» у него нет): кнопка «Продажа», возврат и удаление
-// — здесь. Администраторы собирают деньги по рассрочкам: отмечают внесённые
-// платежи, правят суммы и даты, пишут свой комментарий. Строки — вью
+// — здесь. С 2026-10-20 раздел общий для всех пакетных клубов сети (как база
+// клиентов): фильтр «Клуб» и колонка «Клуб продажи»; продажа по-прежнему
+// клуба, где её внесли (касса, зарплаты, дашборд — по нему), править её
+// строку (платежи, комментарии, возврат, удаление, «Переоформить») может
+// только сотрудник этого клуба — остальным строка только для чтения.
+// Администраторы собирают деньги по рассрочкам: отмечают внесённые платежи,
+// правят суммы и даты, пишут свой комментарий. Строки — вью
 // client_packages_list (последняя версия —
-// db/migrations/2026-10-13_packages_memberships_sales_merge.sql): платежи и
+// db/migrations/2026-10-20_packages_membership_transfer.sql): платежи и
 // состояние оплаты (полоска слева) считает база, фильтр по нему — на сервере.
 
 /** Подсказки «?» колонок и полей. */
@@ -124,6 +133,8 @@ const TIPS = {
   amount:
     "Стоимость продажи (со скидкой). Ниже — сколько из неё уже внесено, промокод и возвраты. Возврат — правый клик (касание) по строке.",
   soldBy: `Кто продал — администратор, оформивший продажу. Ниже — тренер при продаже. ${SALE_TIPS.trainer}`,
+  studio:
+    "Клуб, где продан абонемент: продажа идёт в его кассу, зарплаты и дашборд. Править строку (платежи, комментарии, возврат) может только сотрудник этого клуба.",
   addedVia:
     "Как абонемент попал в базу: внесён в админке, перенесён из 1С или куплен клиентом в приложении. Ставит база.",
   comments:
@@ -148,6 +159,8 @@ const TIPS = {
     "Абонементы, срок которых заканчивается в выбранные даты (последний день срока). Одна дата — заканчиваются в этот день. Абонементы без срока (ещё не было первого посещения) не попадают.",
   balanceRange:
     "Остаток баланса от и до (включительно): групповых тренировок, у пакета персональных — персональных. Одну границу можно оставить пустой.",
+  transferClient:
+    "Клиент, которому переходит абонемент. Если его ещё нет в базе — «Новый клиент» под полем.",
 };
 
 /**
@@ -278,13 +291,21 @@ type Row = {
   membership_started_at: string | null;
   /** Продление: срок считается от первого посещения. */
   starts_on_first_visit: boolean;
+  /** Клуб продажи (2026-10-20_packages_membership_transfer.sql). */
+  studio_name: string;
+  /** Переоформлен с клиента (имя на момент переоформления) и когда. */
+  transferred_from_name: string | null;
+  transferred_at: string | null;
+  /** Статус, как на бейдже: awaiting, expired и у active с прошедшим сроком. */
+  membership_state: string | null;
 };
 
 const COLUMNS =
   "id, studio_id, client_id, admin_name, trainer_name, sold_at, total_amount, paid_amount, " +
   "sale_kind, source, promo_code, comment, membership_note, clients, memberships, " +
   "membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
-  "membership_started_at, starts_on_first_visit, diagnostics_left, added_via";
+  "membership_started_at, starts_on_first_visit, diagnostics_left, added_via, " +
+  "studio_name, transferred_from_name, transferred_at, membership_state";
 // Фильтры по продавцу, остатку и статусу — колонки seller_id, balance_left и
 // membership_state (db/migrations/2026-10-18_zzzzz_client_packages_filters.sql).
 
@@ -300,6 +321,7 @@ const SORT_COLUMNS = {
   balance: "balance_left",
   amount: "total_amount",
   soldBy: ["admin_name", "trainer_name"],
+  studio: "studio_name",
   addedVia: "added_via",
   comments: ["comment", "membership_note"],
   payment: "next_due_date",
@@ -307,11 +329,14 @@ const SORT_COLUMNS = {
 
 /**
  * Колонки: клиент, абонемент, статус, баланс, сумма, продал / тренер,
- * «Добавлен» (2026-10-18), комментарии и платежи — с 2026-10-14 одной
- * колонкой (решение владельца):
+ * «Клуб продажи» (2026-10-20), «Добавлен» (2026-10-18), комментарии и
+ * платежи — с 2026-10-14 одной колонкой (решение владельца):
  * плашки по два в ряд, сколько бы платежей ни было.
  */
-const COLUMN_COUNT = 9;
+const COLUMN_COUNT = 10;
+
+/** «Переоформить» — только живой или ждущий абонемент (membership_state). */
+const TRANSFERABLE_STATES = new Set(["active", "awaiting", "frozen", "pending"]);
 
 export const Route = createFileRoute("/_authenticated/client-memberships")({
   head: () => ({ meta: [{ title: "Абонементы — Base40 Admin" }] }),
@@ -370,22 +395,54 @@ function ClientMembershipsPage() {
   const balanceMax = rangeBound(debouncedBalance.max);
   const [seller, setSeller] = useState<string>(ALL);
   const [status, setStatus] = useState<StatusFilter | typeof ALL>(ALL);
-  // Продавцы — администраторы клуба из «Сотрудников», как в форме продажи.
-  const { data: staffRows = [] } = useStudioStaff(studioId);
-  const sellers = staffRows.filter((r) => isAdminRole(r.role));
+  const [club, setClub] = useState<string>(ALL);
+  const [transferRow, setTransferRow] = useState<Row | null>(null);
+
+  // Клубы раздела — вся сеть пакетных клубов (как база клиентов); править
+  // строку можно только в своём клубе (RLS: «sales studio rw»).
+  const networkIds = useNetworkStudioIds(studioId);
+  const { data: allStudios } = useQuery(catalogStudiosQuery);
+  const networkStudios = (allStudios ?? []).filter((s) => networkIds?.includes(s.id));
+  const { data: myStudios } = useStudios();
+  const myPackagesIds = (myStudios ?? []).filter((s) => s.format === "packages").map((s) => s.id);
+  const canEdit = (r: Row) => myPackagesIds.includes(r.studio_id);
+
+  // Продавцы — администраторы клубов раздела (выбранного клуба) из
+  // «Сотрудников», как в форме продажи.
+  const sellerStudioIds = club !== ALL ? [club] : networkIds;
+  const { data: sellers = [] } = useQuery({
+    queryKey: ["trainers", "sellers", sellerStudioIds?.join(","), STUDIO_STAFF_COLS],
+    queryFn: () =>
+      unwrap<StudioStaffRow[]>(
+        supabase
+          .from("trainers")
+          .select(STUDIO_STAFF_COLS)
+          .in("trainer_studios.studio_id", sellerStudioIds!)
+          .order("full_name"),
+      ),
+    select: (rows) => rows.filter((r) => isAdminRole(r.role)),
+    enabled: !!sellerStudioIds,
+    meta: { errorMessage: "Не удалось загрузить сотрудников клуба" },
+  });
 
   // Досчитать очередь продлений: у кого срок текущего абонемента вышел без
   // записей, продление становится действующим (packages_settle_studio). Один
-  // раз на студию при открытии раздела (и по «Обновить»), а не на каждую
-  // страницу и фильтр; список его не ждёт — после досчёта перечитывается.
+  // раз при открытии раздела (и по «Обновить») по каждому своему пакетному
+  // клубу (досчитывать можно только свои), а не на каждую страницу и фильтр;
+  // список его не ждёт — после досчёта перечитывается.
+  const settleKey = myPackagesIds.join(",");
   useQuery({
-    queryKey: ["packages_settle_studio", studioId],
+    queryKey: ["packages_settle_studio", settleKey],
     queryFn: async () => {
-      await unwrap(supabase.rpc("packages_settle_studio", { p_studio_id: studioId! }));
-      void queryClient.invalidateQueries({ queryKey: ["client_packages_list", studioId] });
+      await Promise.all(
+        settleKey
+          .split(",")
+          .map((id) => unwrap(supabase.rpc("packages_settle_studio", { p_studio_id: id }))),
+      );
+      void queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
       return true;
     },
-    enabled: !!studioId,
+    enabled: !!settleKey,
     staleTime: Infinity,
     gcTime: 0,
     meta: { errorMessage: "Не удалось досчитать очередь продлений" },
@@ -395,7 +452,8 @@ function ClientMembershipsPage() {
   const table = useServerTable<Row>({
     queryKey: [
       "client_packages_list",
-      studioId,
+      networkIds?.join(","),
+      club,
       term,
       state,
       kind,
@@ -413,7 +471,8 @@ function ClientMembershipsPage() {
       let q = supabase
         .from("client_packages_list")
         .select(COLUMNS, { count: "exact" })
-        .eq("studio_id", studioId!);
+        .in("studio_id", networkIds!);
+      if (club !== ALL) q = q.eq("studio_id", club);
       if (term) q = q.ilike("search_text", `%${phoneSearchTerm(term)}%`);
       if (state !== ALL) q = q.eq("payment_state", state);
       if (kind !== ALL) q = q.eq("sale_kind", kind);
@@ -439,7 +498,7 @@ function ClientMembershipsPage() {
           .order("id");
       }).range(from, to);
     },
-    enabled: !!studioId,
+    enabled: !!networkIds,
     errorMessage: "Не удалось загрузить абонементы",
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["client_packages_list"] });
@@ -470,6 +529,28 @@ function ClientMembershipsPage() {
   const onSold = () => {
     for (const key of ["client_packages_list", "client_memberships", "clients_with_status"])
       queryClient.invalidateQueries({ queryKey: [key] });
+  };
+  // «Переоформить»: сначала проверки, понятные без окна (статус, долг), —
+  // их же повторит база (transfer_client_membership).
+  const openTransfer = async (r: Row) => {
+    const blocked = !TRANSFERABLE_STATES.has(r.membership_state ?? "")
+      ? {
+          title: "Этот абонемент нельзя переоформить",
+          description:
+            "Переоформить можно только действующий, замороженный или ожидающий абонемент. Истёкший, заменённый, отменённый и абонемент с возвратом передавать нечего.",
+        }
+      : r.payment_state !== "paid"
+        ? {
+            title: "Абонемент не оплачен полностью",
+            description:
+              "Нельзя передать абонемент, который не оплачен полностью. Сначала клиент вносит все платежи — отметьте их в колонке «Платежи», затем переоформите абонемент.",
+          }
+        : null;
+    if (blocked) {
+      await confirm({ ...blocked, confirmLabel: "Понятно", destructive: false, hideCancel: true });
+      return;
+    }
+    setTransferRow(r);
   };
   const openRefund = (r: Row) => {
     setRefundSale({
@@ -510,6 +591,16 @@ function ClientMembershipsPage() {
     ])
       queryClient.invalidateQueries({ queryKey: [key] });
   };
+  const onTransferred = () => {
+    setTransferRow(null);
+    for (const key of [
+      "client_packages_list",
+      "sales_list",
+      "client_memberships",
+      "clients_with_status",
+    ])
+      queryClient.invalidateQueries({ queryKey: [key] });
+  };
   const crmLinkOf = useCrmLinks(
     studioId,
     "id",
@@ -526,7 +617,8 @@ function ClientMembershipsPage() {
     !!balance.min.trim() ||
     !!balance.max.trim() ||
     seller !== ALL ||
-    status !== ALL;
+    status !== ALL ||
+    club !== ALL;
 
   return (
     <AdminShell
@@ -547,6 +639,28 @@ function ClientMembershipsPage() {
               onChange={setSearch}
               placeholder="Поиск по клиенту, абонементу, сотруднику"
             />
+            {networkStudios.length > 1 && (
+              <Select
+                value={club}
+                onValueChange={(v) => {
+                  setClub(v);
+                  // Продавцы другого клуба — другие.
+                  setSeller(ALL);
+                }}
+              >
+                <SelectTrigger className="w-44" aria-label="Клуб">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Все клубы</SelectItem>
+                  {networkStudios.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name ?? "Клуб"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={state} onValueChange={(v) => setState(v as PaymentState | typeof ALL)}>
               <SelectTrigger className="w-48" aria-label="Оплата">
                 <SelectValue />
@@ -646,6 +760,7 @@ function ClientMembershipsPage() {
                 setBalance(EMPTY_NUMBER_RANGE);
                 setSeller(ALL);
                 setStatus(ALL);
+                setClub(ALL);
               }}
             />
             <StripeLegend />
@@ -679,6 +794,9 @@ function ClientMembershipsPage() {
                   <TableHead tip={TIPS.soldBy} {...sort.head("soldBy")}>
                     Продал / тренер
                   </TableHead>
+                  <TableHead tip={TIPS.studio} {...sort.head("studio")}>
+                    Клуб продажи
+                  </TableHead>
                   <TableHead tip={TIPS.addedVia} {...sort.head("addedVia")}>
                     Добавлен
                   </TableHead>
@@ -702,19 +820,28 @@ function ClientMembershipsPage() {
                   table.rows.map((r) => (
                     <RowContextMenu
                       key={r.id}
-                      actions={[
-                        {
-                          label: "Оформить возврат",
-                          icon: Receipt,
-                          onSelect: () => openRefund(r),
-                        },
-                        {
-                          label: "Удалить",
-                          icon: Trash2,
-                          destructive: true,
-                          onSelect: () => handleDelete(r),
-                        },
-                      ]}
+                      actions={
+                        canEdit(r)
+                          ? [
+                              {
+                                label: "Переоформить",
+                                icon: UserArrowLeftRight,
+                                onSelect: () => openTransfer(r),
+                              },
+                              {
+                                label: "Оформить возврат",
+                                icon: Receipt,
+                                onSelect: () => openRefund(r),
+                              },
+                              {
+                                label: "Удалить",
+                                icon: Trash2,
+                                destructive: true,
+                                onSelect: () => handleDelete(r),
+                              },
+                            ]
+                          : []
+                      }
                     >
                       <TableRow className={cn(PAYMENT_STATES[r.payment_state].mobile)}>
                         <TableCell className="relative font-medium">
@@ -774,6 +901,12 @@ function ClientMembershipsPage() {
                                 ? "— с 1-го посещения"
                                 : "—"}
                           </div>
+                          {r.transferred_at && (
+                            <div className="text-xs text-muted-foreground">
+                              Переоформлен {formatDate(r.transferred_at.slice(0, 10))}
+                              {r.transferred_from_name && ` с ${r.transferred_from_name}`}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-col items-start gap-1">
@@ -799,7 +932,7 @@ function ClientMembershipsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <PaymentsCell row={r} onSaved={reload} />
+                          <PaymentsCell row={r} onSaved={reload} readOnly={!canEdit(r)} />
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] space-y-1">
@@ -808,7 +941,7 @@ function ClientMembershipsPage() {
                                 <div className="text-muted-foreground/70">При продаже</div>
                                 <CommentCell
                                   text={r.comment}
-                                  onSave={commentSaver("sales", r.id)}
+                                  onSave={canEdit(r) ? commentSaver("sales", r.id) : undefined}
                                   onSaved={reload}
                                 />
                               </div>
@@ -817,7 +950,11 @@ function ClientMembershipsPage() {
                                 об оплате, напоминания — правится прямо в строке. */}
                             <CommentCell
                               text={r.membership_note}
-                              onSave={commentSaver("sales", r.id, "membership_note")}
+                              onSave={
+                                canEdit(r)
+                                  ? commentSaver("sales", r.id, "membership_note")
+                                  : undefined
+                              }
                               onSaved={reload}
                             />
                           </div>
@@ -834,6 +971,7 @@ function ClientMembershipsPage() {
                             {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
                           </div>
                         </TableCell>
+                        <TableCell className="whitespace-nowrap">{r.studio_name}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           {SALE_ADDED_VIA_LABEL[r.added_via ?? "admin"]}
                         </TableCell>
@@ -862,6 +1000,18 @@ function ClientMembershipsPage() {
         sale={refundSale}
         onSaved={reload}
       />
+      <Dialog open={!!transferRow} onOpenChange={(o) => !o && setTransferRow(null)}>
+        <DialogContent className="max-w-lg">
+          {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+          {transferRow && (
+            <TransferForm
+              row={transferRow}
+              onClose={() => setTransferRow(null)}
+              onSaved={onTransferred}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       {confirmDialog}
     </AdminShell>
   );
@@ -962,6 +1112,166 @@ function DaysLeft({
 }
 
 // ---------------------------------------------------------------------------
+// Переоформить (transfer_client_membership)
+// ---------------------------------------------------------------------------
+
+/** Живой абонемент нового владельца того же вида (embed memberships — объект или массив). */
+type LiveMembership = {
+  status: string;
+  ends_at: string | null;
+  memberships: { name: string } | { name: string }[] | null;
+};
+
+/**
+ * «Переоформить» (решение владельца 2026-10-20): абонемент переходит другому
+ * клиенту как есть — статус, остаток, срок, платежи, продавец и тренер не
+ * меняются. Статус и оплату проверяет openTransfer до окна; живой абонемент
+ * того же вида у нового владельца — здесь, как только он выбран. Всё это ещё
+ * раз проверяет база (db/migrations/2026-10-20_packages_membership_transfer.sql).
+ */
+function TransferForm({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: Row;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [target, setTarget] = useState<ClientOption | null>(null);
+  const [saving, setSaving] = useState(false);
+  const targetId = target?.id ?? "";
+  const sameClient = targetId === row.client_id;
+  // Пакет персональных и пакет тренировок — разные балансы: живой абонемент
+  // у клиента один на вид (client_memberships_one_live_per_balance).
+  const balanceKind = row.memberships?.kind === "personal" ? "personal" : "group";
+  const isLive = row.membership_status === "active" || row.membership_status === "frozen";
+
+  const { data: current, isFetching: checking } = useQuery({
+    queryKey: ["client_memberships", "transfer-check", targetId, balanceKind],
+    queryFn: async () =>
+      (
+        await unwrap<LiveMembership[]>(
+          supabase
+            .from("client_memberships")
+            .select("status, ends_at, memberships(name)")
+            .eq("client_id", targetId)
+            .eq("balance_kind", balanceKind)
+            .in("status", ["active", "frozen"])
+            .limit(1),
+        )
+      )[0] ?? null,
+    enabled: !!targetId && !sameClient,
+    meta: { errorMessage: "Не удалось проверить абонементы клиента" },
+  });
+  const currentName =
+    (Array.isArray(current?.memberships) ? current?.memberships[0] : current?.memberships)?.name ??
+    "—";
+  const currentLabel = current
+    ? `${current.status === "frozen" ? "замороженный" : "действующий"} абонемент «${currentName}»${
+        current.ends_at ? ` до ${formatDate(current.ends_at)}` : ""
+      }`
+    : "";
+  const blocked = isLive && !!current;
+
+  const handleSave = async () => {
+    if (saving) return;
+    if (!target) {
+      toast.error("Выберите клиента, на которого переоформить абонемент");
+      return;
+    }
+    if (sameClient) {
+      toast.error("Абонемент уже оформлен на этого клиента");
+      return;
+    }
+    if (blocked) {
+      toast.error(`У клиента уже есть ${currentLabel}`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.rpc("transfer_client_membership", {
+        p_sale_id: row.id,
+        p_client_id: target.id,
+      });
+      if (error) {
+        toast.error("Не удалось переоформить: " + error.message);
+        return;
+      }
+      const status = (data as { status?: string } | null)?.status;
+      toast.success(
+        `Абонемент переоформлен на ${clientName(target)}` +
+          (status === "pending" ? " — встал в очередь за текущим" : ""),
+      );
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Переоформить абонемент</DialogTitle>
+        <DialogDescription>
+          {row.memberships?.name ?? "Абонемент"} · сейчас у{" "}
+          {row.clients ? clientName(row.clients) : "клиента"} · клуб «{row.studio_name}»
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField
+              label="Новый владелец"
+              tip={TIPS.transferClient}
+              required
+              hint={sameClient ? "Абонемент уже оформлен на этого клиента." : undefined}
+            >
+              <ClientCombobox
+                studioId={row.studio_id}
+                creatable
+                value={targetId}
+                onChange={(_, c) => setTarget(c)}
+              />
+            </FormField>
+            {blocked ? (
+              <InfoNote variant="warning">
+                У клиента уже есть {currentLabel}. Двух действующих абонементов одного вида у
+                клиента быть не может — переоформить на него можно, когда этот закончится.
+              </InfoNote>
+            ) : (
+              target &&
+              !sameClient &&
+              !checking &&
+              row.membership_status === "pending" && (
+                <InfoNote>
+                  {current
+                    ? `Абонемент встанет в очередь за текущим: у клиента ${currentLabel}.`
+                    : "У клиента нет действующего абонемента — этот станет текущим."}
+                </InfoNote>
+              )
+            )}
+            <InfoNote>
+              Переходит всё как есть: статус, остаток тренировок, срок, платежи, продавец и тренер.
+              Посещения, уже списанные с абонемента, остаются в истории прежнего клиента.
+            </InfoNote>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving || checking || blocked || sameClient}>
+            {saving && <Loader2 className="animate-spin" />}
+            Переоформить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Платёж рассрочки (sale_installments)
 // ---------------------------------------------------------------------------
 
@@ -980,7 +1290,16 @@ const PAYMENT_METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
  * Платежи продажи одной колонкой: плашки по два в ряд (внесённый — зелёная,
  * просроченный — красная), под ними — «Редактировать платежи».
  */
-function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
+function PaymentsCell({
+  row,
+  onSaved,
+  readOnly,
+}: {
+  row: Row;
+  onSaved: () => void;
+  /** Продажа другого клуба сети: платежи видны, но не правятся. */
+  readOnly: boolean;
+}) {
   const [editOpen, setEditOpen] = useState(false);
   const [marked, setMarked] = useState(false);
   const payments = row.payments ?? [];
@@ -988,6 +1307,7 @@ function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
   // Любой абонемент без возврата — и оплаченный полностью, и сразу при продаже
   // (решение владельца 2026-10-18); бесплатный без графика править нечего.
   const editable =
+    !readOnly &&
     (payments.some((p) => p.id) || Number(row.total_amount) > 0) &&
     !payments.some((p) => p.refunded) &&
     row.membership_status !== "refunded";
@@ -1006,7 +1326,13 @@ function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
     <div className="w-max space-y-1.5">
       <div className="grid grid-cols-[repeat(2,max-content)] gap-1.5">
         {payments.map((p, i) => (
-          <PaymentCell key={p.id ?? i} index={i} payment={p} onSaved={onSaved} />
+          <PaymentCell
+            key={p.id ?? i}
+            index={i}
+            payment={p}
+            onSaved={onSaved}
+            readOnly={readOnly}
+          />
         ))}
       </div>
       {editable && (
@@ -1043,10 +1369,12 @@ function PaymentCell({
   index,
   payment,
   onSaved,
+  readOnly,
 }: {
   index: number;
   payment: Payment;
   onSaved: () => void;
+  readOnly: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const overdue = !payment.paid && !payment.refunded && payment.due_date < todayISO();
@@ -1108,10 +1436,18 @@ function PaymentCell({
     </>
   );
 
-  // Оплата сразу при продаже — графика нет, отмечать нечего.
-  if (!payment.id)
+  // Оплата сразу при продаже — графика нет, отмечать нечего; продажа другого
+  // клуба — отмечает её клуб.
+  if (!payment.id || readOnly)
     return (
-      <div title="Оплачено полностью при продаже" className={box}>
+      <div
+        title={
+          !payment.id
+            ? "Оплачено полностью при продаже"
+            : "Платёж отмечает клуб, где продан абонемент"
+        }
+        className={box}
+      >
         {summary}
       </div>
     );

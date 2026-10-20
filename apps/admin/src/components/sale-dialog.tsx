@@ -77,6 +77,12 @@ import { useConfirm } from "@/components/confirm-dialog";
 // «Администратор» (оба формата) — выбирается из администраторов студии
 // (lib/studio-staff.ts, components/seller-select.tsx): sales.seller_id + снимок admin_name;
 // admin_id — тот, кто внёс продажу.
+//
+// «Клуб продажи» (пакетный формат, решение владельца 2026-10-20) —
+// обязательный выбор из пакетных клубов сотрудника, по умолчанию — клуб, в
+// котором открыта форма. По нему sales.studio_id: «Абонементы» общие для
+// клубов сети, а касса, зарплаты и дашборд считаются по клубу продажи.
+// Администраторы и тренеры в списках — этого клуба.
 /** Значение «Без тренера»: у пунктов Radix Select пустой строки быть не может. */
 const NO_TRAINER = "none";
 
@@ -188,6 +194,10 @@ export type SaleDialogProps = {
   kind?: SaleKind;
 };
 
+/** Подсказка поля «Клуб продажи». */
+const SALE_STUDIO_TIP =
+  "Клуб, где продан абонемент: продажа идёт в его кассу, зарплаты и дашборд. В «Абонементах» её видят все клубы сети. По умолчанию — клуб, открытый в шапке.";
+
 export function SaleDialog(props: SaleDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -213,6 +223,10 @@ function SaleForm({
   const isPackages = studios?.find((s) => s.id === studioId)?.format === "packages";
   const isTrial = isPackages && kind === "trial";
   const isRenewal = isPackages && kind === "renewal";
+  // Клуб продажи — из пакетных клубов сотрудника (вносить продажу можно только
+  // там, где он сотрудник); у подписочного — сам клуб формы.
+  const [saleStudioId, setSaleStudioId] = useState(studioId);
+  const saleStudios = isPackages ? (studios ?? []).filter((s) => s.format === "packages") : [];
   const [form, setForm] = useState<SaleFields>(() => ({
     clientId: initialClient?.id ?? "",
     clientLabel: initialClient ? clientName(initialClient) : "",
@@ -251,9 +265,10 @@ function SaleForm({
     meta: { errorMessage: "Не удалось загрузить абонементы" },
   });
 
-  // Сотрудники студии: администраторы — кто продал, тренеры (пакетный
-  // формат) — кто был с клиентом при продаже.
-  const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(studioId);
+  // Сотрудники клуба продажи: администраторы — кто продал, тренеры (пакетный
+  // формат) — кто был с клиентом при продаже. Выбранный, которого нет в
+  // другом клубе, сбрасывается сам: seller / trainer ищутся в новом списке.
+  const { data: staffRows = [], isLoading: staffLoading } = useStudioStaff(saleStudioId);
   const trainers = staffRows.filter((r) => r.role === "trainer");
   // У пробного тренера нет — клиент ещё не был на тренировке.
   const trainer = isTrial ? null : (trainers.find((r) => r.id === form.trainerId) ?? null);
@@ -305,8 +320,9 @@ function SaleForm({
   };
 
   const handleSave = async () => {
-    if (!studioId || saving) return;
+    if (saving) return;
     const invalid =
+      (!saleStudioId ? "Выберите клуб продажи" : null) ??
       (!seller ? "Выберите администратора, который продал" : null) ??
       saleFormError(form, t) ??
       (isPackages && form.paymentsCount > maxPayments
@@ -369,7 +385,7 @@ function SaleForm({
       const { data: sale, error } = await supabase
         .from("sales")
         .insert({
-          studio_id: studioId,
+          studio_id: saleStudioId,
           client_id: form.clientId,
           membership_id: form.membershipId,
           // admin_id — кто внёс, seller_id / admin_name — кто продал.
@@ -469,6 +485,23 @@ function SaleForm({
               />
             </FormField>
 
+            {isPackages && (
+              <FormField label="Клуб продажи" tip={SALE_STUDIO_TIP} required>
+                <Select value={saleStudioId ?? ""} onValueChange={setSaleStudioId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите клуб" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {saleStudios.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Дата продажи" tip={SALE_TIPS.soldAt} required>
                 <Input
@@ -490,7 +523,7 @@ function SaleForm({
                 <SellerSelect
                   admins={admins}
                   loading={staffLoading}
-                  value={form.sellerId}
+                  value={seller ? form.sellerId : ""}
                   onChange={(v) => set("sellerId", v)}
                 />
               </FormField>
@@ -687,7 +720,10 @@ function SaleForm({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {isPackages && !isTrial && (
                 <FormField label="Тренер" tip={SALE_TIPS.trainer} optional>
-                  <Select value={form.trainerId} onValueChange={(v) => set("trainerId", v)}>
+                  <Select
+                    value={trainer ? form.trainerId : NO_TRAINER}
+                    onValueChange={(v) => set("trainerId", v)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
