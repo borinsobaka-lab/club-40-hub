@@ -12,6 +12,11 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   — одна кодовая база, две сборки. Свой **CLAUDE.md**.
 - `db/` — схема БД, общая для обоих приложений: `db/migrations/` + мигратор
   `db/migrate.ts` (выполняется при старте контейнера админки).
+- `integrations/amocrm-round-robin/` — расширение amoCRM «Очередь
+  ответственных»: новые сделки — выбранным сотрудникам по очереди (виджет +
+  сервер на Bun/SQLite). С админкой и клиентом не связано; свой
+  **README.md** (устройство, установка в amoCRM и Coolify). Тесты —
+  `cd integrations/amocrm-round-robin/server && bun test`.
 - Документы проекта — в корне (см. «Документы»).
 
 До 2026-10-10 это были два репозитория: `club-40-hub` (админка) и
@@ -116,6 +121,10 @@ Coolify на Hetzner, все приложения — из этого репоз
 | `club40-admin`           | https://admin.base40.fit     | `/apps/admin/Dockerfile`  | `apps/admin/**`, `db/**` |
 | `club40-client`          | https://app.base40.fit       | `/apps/client/Dockerfile` | `apps/client/**`         |
 | `club40-client-packages` | https://app.lady-stretch.one | `/apps/client/Dockerfile` | `apps/client/**`         |
+
+Сервер очереди ответственных amoCRM (`integrations/amocrm-round-robin/server/Dockerfile`,
+Watch Paths `integrations/amocrm-round-robin/server/**`, том `/data`) в
+Coolify пока не заведён — шаги в его README.
 
 Watch Paths — чтобы правка одного приложения не пересобирала другие.
 Переменные окружения каждого приложения — в его CLAUDE.md; переключение
