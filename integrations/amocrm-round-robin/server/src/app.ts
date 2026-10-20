@@ -5,6 +5,7 @@ import { verifyDisableSignature, verifyDisposableToken } from "./jwt";
 import { Processor } from "./processor";
 import type { Account, Store } from "./store";
 import { parseWebhook } from "./webhook";
+import { buildWidgetZip } from "./widget-zip";
 
 const WEBHOOK_EVENTS = ["add_lead", "status_lead"];
 
@@ -15,7 +16,7 @@ const WEBHOOK_EVENTS = ["add_lead", "status_lead"];
 const ACCOUNT_HOST = /^([a-z0-9][a-z0-9-]*)\.(amocrm\.ru|amocrm\.com|kommo\.com)$/;
 
 export function createApp(cfg: Config, store: Store, log: (msg: string) => void = console.log) {
-  const processor = new Processor(store, cfg.widgetCode, log);
+  const processor = new Processor(store, log);
   const clients = new Map<number, AmoClient>();
   // Вебхуки одного аккаунта обрабатываем по одному, в порядке прихода.
   const queues = new Map<number, Promise<void>>();
@@ -178,6 +179,27 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
     const path = url.pathname;
     try {
       if (path === "/health") return new Response("ok");
+      if (path === "/widget.zip" && req.method === "GET") {
+        return new Response(buildWidgetZip(cfg.widgetDir, cfg.publicUrl), {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Disposition": 'attachment; filename="widget.zip"',
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+      if (path === "/logo.png" && req.method === "GET") {
+        // Логотип 400×272 для формы создания интеграции в amoCRM.
+        return new Response(Bun.file(`${cfg.widgetDir}/images/logo_main.png`), {
+          headers: { "Content-Type": "image/png" },
+        });
+      }
+      if (path === "/" && req.method === "GET") return home();
+      if (!cfg.configured) {
+        return new Response("Сервер не настроен: задайте AMO_CLIENT_ID и AMO_CLIENT_SECRET", {
+          status: 503,
+        });
+      }
       if (path === "/oauth/callback" && req.method === "GET") return await oauthCallback(url);
       if (path === "/disable" && req.method === "GET") return disable(url);
       const hook = /^\/webhook\/([a-f0-9]{48})$/.exec(path);
@@ -199,6 +221,26 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
         ? html("Ошибка", `Не удалось подключить интеграцию: ${(e as Error).message}`, 500)
         : json({ error: "internal" }, 500);
     }
+  }
+
+  /** Страница-проверка для того, кто настраивает: ключи заданы, архив виджета. */
+  function home() {
+    const accounts = (store.db.query("select count(*) as n from accounts").get() as { n: number })
+      .n;
+    const lines = cfg.configured
+      ? [
+          "Ключи amoCRM заданы.",
+          accounts > 0
+            ? `Подключено аккаунтов amoCRM: ${accounts}.`
+            : "Ни один аккаунт amoCRM ещё не подключён — установите виджет в amoCRM.",
+        ]
+      : [
+          "Ключи amoCRM ещё не заданы (AMO_CLIENT_ID, AMO_CLIENT_SECRET) — сделки не распределяются.",
+        ];
+    return html(
+      "Очередь ответственных amoCRM",
+      `${lines.join(" ")} Архив виджета для загрузки в amoCRM: ${cfg.publicUrl}/widget.zip`,
+    );
   }
 
   return { fetch, processor };

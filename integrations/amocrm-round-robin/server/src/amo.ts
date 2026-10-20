@@ -105,8 +105,33 @@ export class AmoClient {
     return this.request<{ id: number; subdomain: string }>("GET", "/api/v4/account");
   }
 
+  private widgetCode: string | null = null;
+
+  /**
+   * Код виджета: из AMO_WIDGET_CODE, иначе ищем в списке виджетов аккаунта
+   * свой по client_uuid (= ID интеграции) — один раз на запуск сервера.
+   */
+  async resolveWidgetCode(): Promise<string> {
+    if (this.cfg.widgetCode) return this.cfg.widgetCode;
+    if (this.widgetCode) return this.widgetCode;
+    for (let page = 1; page <= 40; page++) {
+      const r = await this.request<{
+        _embedded?: { widgets?: { code: string; client_uuid?: string }[] };
+        _links?: { next?: unknown };
+      }>("GET", `/api/v4/widgets?limit=250&page=${page}`);
+      const own = r?._embedded?.widgets?.find((w) => w.client_uuid === this.cfg.clientId);
+      if (own) {
+        this.widgetCode = own.code;
+        return own.code;
+      }
+      if (!r?._links?.next) break;
+    }
+    throw new Error("виджет интеграции не найден в аккаунте — загружен ли архив виджета?");
+  }
+
   /** Сохранённые настройки виджета (поле settings отдаётся только токену своей интеграции). */
-  async widgetSettings(code: string): Promise<Record<string, unknown>> {
+  async widgetSettings(): Promise<Record<string, unknown>> {
+    const code = await this.resolveWidgetCode();
     const r = await this.request<{ settings?: Record<string, unknown> | unknown[] }>(
       "GET",
       `/api/v4/widgets/${encodeURIComponent(code)}`,

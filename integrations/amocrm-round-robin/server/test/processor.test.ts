@@ -49,7 +49,7 @@ describe("Processor", () => {
   beforeEach(() => {
     store = new Store(":memory:");
     amo = new FakeAmo();
-    proc = new Processor(store, "rr", () => {}, [0, 0]);
+    proc = new Processor(store, () => {}, [0, 0]);
   });
 
   test("по очереди между выбранными", async () => {

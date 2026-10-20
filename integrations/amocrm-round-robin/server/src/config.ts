@@ -1,3 +1,5 @@
+import { join } from "node:path";
+
 /** Настройки сервера — переменные окружения (в Coolify — Environment Variables). */
 export interface Config {
   /** Адрес сервера снаружи, без слэша в конце: https://rr.base40.fit */
@@ -8,26 +10,38 @@ export interface Config {
   clientSecret: string;
   /** Ссылка для перенаправления — как указана в интеграции. */
   redirectUri: string;
-  /** Код виджета (там же, после загрузки архива). */
+  /** Код виджета; пусто — сервер найдёт свой виджет в аккаунте по ID интеграции. */
   widgetCode: string;
+  /**
+   * Ключи amoCRM заданы. Без них сервер всё равно стартует и отдаёт архив
+   * виджета (/widget.zip): ключи появляются только после загрузки архива в
+   * интеграцию amoCRM.
+   */
+  configured: boolean;
+  /** Папка с файлами виджета (manifest.json, script.js, …). */
+  widgetDir: string;
   dbPath: string;
   port: number;
 }
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
-  const need = (name: string) => {
-    const v = env[name]?.trim();
-    if (!v) throw new Error(`Не задана переменная окружения ${name}`);
-    return v;
-  };
-  const publicUrl = need("PUBLIC_URL").replace(/\/+$/, "");
+  const get = (name: string) => env[name]?.trim() ?? "";
+  const publicUrl = get("PUBLIC_URL").replace(/\/+$/, "");
+  if (!/^https:\/\/[^/]+$/.test(publicUrl)) {
+    throw new Error("PUBLIC_URL — адрес сервера вида https://rr.example.com");
+  }
+  const clientId = get("AMO_CLIENT_ID");
+  const clientSecret = get("AMO_CLIENT_SECRET");
+  const widgetCode = get("AMO_WIDGET_CODE");
   return {
     publicUrl,
-    clientId: need("AMO_CLIENT_ID"),
-    clientSecret: need("AMO_CLIENT_SECRET"),
-    redirectUri: env.AMO_REDIRECT_URI?.trim() || `${publicUrl}/oauth/callback`,
-    widgetCode: need("AMO_WIDGET_CODE"),
-    dbPath: env.DB_PATH?.trim() || "./data/round-robin.sqlite",
+    clientId,
+    clientSecret,
+    redirectUri: get("AMO_REDIRECT_URI") || `${publicUrl}/oauth/callback`,
+    widgetCode,
+    configured: Boolean(clientId && clientSecret),
+    widgetDir: get("WIDGET_DIR") || join(import.meta.dir, "../../widget"),
+    dbPath: get("DB_PATH") || "./data/round-robin.sqlite",
     port: Number(env.PORT) || 3000,
   };
 }
