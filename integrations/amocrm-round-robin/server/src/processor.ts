@@ -101,7 +101,12 @@ export class Processor {
     if (prev.status !== "assigned" || !prev.userId) return;
     if (lead.responsibleUserId === prev.userId) return;
     try {
-      await this.setResponsible(api, lead, prev.userId, "возвращён после принятия из Неразобранного");
+      await this.setResponsible(
+        api,
+        lead,
+        prev.userId,
+        "возвращён после принятия из Неразобранного",
+      );
     } catch (e) {
       this.log(`[${api.id}] сделка ${lead.id}: ${(e as Error).message}`);
     }

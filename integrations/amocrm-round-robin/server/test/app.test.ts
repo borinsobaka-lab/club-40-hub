@@ -41,9 +41,12 @@ beforeEach(() => {
     if (p === "/api/v4/account") return Response.json({ id: 777, subdomain: "base40" });
     if (p === "/api/v4/webhooks") {
       amo.webhooks.push(body);
-      return new Response(amo.webhookStatus === 201 ? "{}" : "forbidden", { status: amo.webhookStatus });
+      return new Response(amo.webhookStatus === 201 ? "{}" : "forbidden", {
+        status: amo.webhookStatus,
+      });
     }
-    if (p === "/api/v4/widgets/rrwidget") return Response.json({ code: "rrwidget", settings: amo.settings });
+    if (p === "/api/v4/widgets/rrwidget")
+      return Response.json({ code: "rrwidget", settings: amo.settings });
     if (p.startsWith("/api/v4/users")) {
       return Response.json({
         _embedded: {
@@ -66,18 +69,28 @@ afterEach(() => {
   globalThis.fetch = realFetch;
 });
 
-const req = (path: string, init?: RequestInit) => new Request(`https://rr.example.com${path}`, init);
+const req = (path: string, init?: RequestInit) =>
+  new Request(`https://rr.example.com${path}`, init);
 const tick = () => new Promise((r) => setTimeout(r, 20));
 const authToken = (accountId = 777) => {
   const now = Math.floor(Date.now() / 1000);
   return signToken(
-    { account_id: accountId, user_id: 10, client_uuid: cfg.clientId, iat: now, nbf: now, exp: now + 600 },
+    {
+      account_id: accountId,
+      user_id: 10,
+      client_uuid: cfg.clientId,
+      iat: now,
+      nbf: now,
+      exp: now + 600,
+    },
     cfg.clientSecret,
   );
 };
 
 async function install(app: ReturnType<typeof createApp>, store: Store) {
-  const res = await app.fetch(req("/oauth/callback?code=abc&referer=base40.amocrm.ru&from_widget=1"));
+  const res = await app.fetch(
+    req("/oauth/callback?code=abc&referer=base40.amocrm.ru&from_widget=1"),
+  );
   expect(res.status).toBe(200);
   return store.getAccount(777)!;
 }
@@ -111,7 +124,9 @@ test("установка, вебхук, очередь, окно виджета,
 
   // Окно виджета
   const st = await app.fetch(
-    req("/api/status", { headers: { "X-Auth-Token": authToken(), Origin: "https://base40.amocrm.ru" } }),
+    req("/api/status", {
+      headers: { "X-Auth-Token": authToken(), Origin: "https://base40.amocrm.ru" },
+    }),
   );
   expect(st.headers.get("access-control-allow-origin")).toBe("https://base40.amocrm.ru");
   const body = (await st.json()) as { connected: boolean; nextUserId: number; recent: unknown[] };
@@ -132,8 +147,14 @@ test("установка, вебхук, очередь, окно виджета,
 
   // Отключение интеграции
   const sig = createHmac("sha256", cfg.clientSecret).update(`${cfg.clientId}|777`).digest("hex");
-  expect((await app.fetch(req(`/disable?account_id=777&client_uuid=${cfg.clientId}&signature=bad`))).status).toBe(403);
-  expect((await app.fetch(req(`/disable?account_id=777&client_uuid=${cfg.clientId}&signature=${sig}`))).status).toBe(200);
+  expect(
+    (await app.fetch(req(`/disable?account_id=777&client_uuid=${cfg.clientId}&signature=bad`)))
+      .status,
+  ).toBe(403);
+  expect(
+    (await app.fetch(req(`/disable?account_id=777&client_uuid=${cfg.clientId}&signature=${sig}`)))
+      .status,
+  ).toBe(200);
   expect(store.getAccount(777)).toBeNull();
   expect((await hook(4)).status).toBe(404);
 });

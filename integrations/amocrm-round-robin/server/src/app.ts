@@ -49,7 +49,9 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
       return html("Доступ не выдан", "Установка отменена в amoCRM.", 400);
     }
     const code = url.searchParams.get("code");
-    const referer = (url.searchParams.get("referer") ?? "").toLowerCase().replace(/^https?:\/\//, "");
+    const referer = (url.searchParams.get("referer") ?? "")
+      .toLowerCase()
+      .replace(/^https?:\/\//, "");
     const m = ACCOUNT_HOST.exec(referer);
     if (!code || !m) return html("Ошибка", "Нет кода авторизации или адреса аккаунта.", 400);
     const origin = `https://${referer}`;
@@ -104,9 +106,13 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
 
   function disable(url: URL) {
     const accountId = url.searchParams.get("account_id") ?? "";
-    const clientUuid = url.searchParams.get("client_uuid") ?? url.searchParams.get("client_id") ?? "";
+    const clientUuid =
+      url.searchParams.get("client_uuid") ?? url.searchParams.get("client_id") ?? "";
     const sig = url.searchParams.get("signature") ?? "";
-    if (clientUuid !== cfg.clientId || !verifyDisableSignature(clientUuid, accountId, sig, cfg.clientSecret)) {
+    if (
+      clientUuid !== cfg.clientId ||
+      !verifyDisableSignature(clientUuid, accountId, sig, cfg.clientSecret)
+    ) {
       return new Response("bad signature", { status: 403 });
     }
     store.deleteAccount(Number(accountId));
@@ -179,7 +185,10 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
       if (path.startsWith("/api/")) {
         const origin = req.headers.get("origin");
         const cors = corsHeaders(origin);
-        const res = req.method === "OPTIONS" ? new Response(null, { status: 204 }) : await widgetApi(req, path);
+        const res =
+          req.method === "OPTIONS"
+            ? new Response(null, { status: 204 })
+            : await widgetApi(req, path);
         for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
         return res;
       }

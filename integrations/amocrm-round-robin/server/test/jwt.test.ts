@@ -5,7 +5,14 @@ import { signToken, verifyDisableSignature, verifyDisposableToken } from "../src
 const secret = "s3cret";
 const clientId = "0b0832f6-0000-0000-0000-000000000000";
 const now = 1_800_000_000;
-const good = { account_id: 1, user_id: 2, client_uuid: clientId, iat: now, nbf: now, exp: now + 1800 };
+const good = {
+  account_id: 1,
+  user_id: 2,
+  client_uuid: clientId,
+  iat: now,
+  nbf: now,
+  exp: now + 1800,
+};
 
 test("свой токен принимается", () => {
   expect(verifyDisposableToken(signToken(good, secret), secret, clientId, now)?.user_id).toBe(2);

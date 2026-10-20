@@ -139,7 +139,9 @@ describe("Processor", () => {
   test("обычная смена этапа — не наше дело", async () => {
     await proc.handle(
       amo,
-      parseWebhook("leads[status][0][id]=7&leads[status][0][old_status_id]=70&leads[status][0][status_id]=71"),
+      parseWebhook(
+        "leads[status][0][id]=7&leads[status][0][old_status_id]=70&leads[status][0][status_id]=71",
+      ),
     );
     expect(amo.calls).toEqual([]);
   });

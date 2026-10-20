@@ -195,7 +195,13 @@ export class Store {
       )
       .get(accountId, leadId) as Record<string, never> | null;
     return r
-      ? { leadId: r.lead_id, userId: r.user_id, status: r.status, note: r.note, createdAt: r.created_at }
+      ? {
+          leadId: r.lead_id,
+          userId: r.user_id,
+          status: r.status,
+          note: r.note,
+          createdAt: r.created_at,
+        }
       : null;
   }
 
