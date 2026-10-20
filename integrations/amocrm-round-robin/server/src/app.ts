@@ -4,10 +4,11 @@ import type { Config } from "./config";
 import { verifyDisableSignature, verifyDisposableToken } from "./jwt";
 import { Processor } from "./processor";
 import type { Account, Store } from "./store";
-import { parseWebhook } from "./webhook";
+import { parseDpEvent } from "./dp";
 import { buildWidgetZip } from "./widget-zip";
 
-const WEBHOOK_EVENTS = ["add_lead", "status_lead"];
+/** Сколько первых запросов цифровой воронки писать в лог целиком. */
+const DP_LOG_FULL = 20;
 
 /**
  * Домены аккаунтов amoCRM. Код из OAuth обмениваем только на них: иначе
@@ -18,8 +19,9 @@ const ACCOUNT_HOST = /^([a-z0-9][a-z0-9-]*)\.(amocrm\.ru|amocrm\.com|kommo\.com)
 export function createApp(cfg: Config, store: Store, log: (msg: string) => void = console.log) {
   const processor = new Processor(store, log);
   const clients = new Map<number, AmoClient>();
-  // Вебхуки одного аккаунта обрабатываем по одному, в порядке прихода.
+  // События одного аккаунта обрабатываем по одному, в порядке прихода.
   const queues = new Map<number, Promise<void>>();
+  let dpLogged = 0;
 
   const clientFor = (account: Account) => {
     let c = clients.get(account.id);
@@ -29,21 +31,6 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
     }
     return c;
   };
-
-  const webhookUrl = (a: Account) => `${cfg.publicUrl}/webhook/${a.webhookSecret}`;
-
-  async function subscribe(account: Account) {
-    try {
-      await clientFor(account).subscribeWebhook(webhookUrl(account), WEBHOOK_EVENTS);
-      store.setWebhookError(account.id, null);
-      return null;
-    } catch (e) {
-      const msg = String((e as Error).message ?? e);
-      store.setWebhookError(account.id, msg);
-      log(`[${account.id}] подписка на вебхук не удалась: ${msg}`);
-      return msg;
-    }
-  }
 
   async function oauthCallback(url: URL) {
     if (url.searchParams.get("error")) {
@@ -65,7 +52,6 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
       refreshToken: t.refresh_token,
       expiresAt: Math.floor(Date.now() / 1000) + t.expires_in,
       webhookSecret: "",
-      webhookError: null,
     };
     const info = await new AmoClient(draft, store, cfg).accountInfo();
     const prev = store.getAccount(info.id);
@@ -77,31 +63,36 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
     store.saveAccount(account);
     clients.delete(account.id);
     processor.forgetSettings(account.id);
-    const err = await subscribe(account);
     log(`[${account.id}] интеграция установлена (${referer})`);
-    return err
-      ? html(
-          "Интеграция подключена, но вебхук не создан",
-          `amoCRM не дал подписаться на новые сделки: ${err}. Подробности и что делать — в окне настроек виджета.`,
-        )
-      : html("Готово", "Очередь ответственных подключена. Окно можно закрыть.");
+    return html(
+      "Готово",
+      "Очередь ответственных подключена. Добавьте триггер «Очередь ответственных» в нужный этап воронки. Окно можно закрыть.",
+    );
   }
 
-  function webhook(secret: string, body: string) {
-    const account = store.getAccountBySecret(secret);
-    if (!account) return new Response("unknown", { status: 404 });
-    const payload = parseWebhook(body);
-    if (payload.accountId != null && payload.accountId !== account.id) {
-      return new Response("account mismatch", { status: 403 });
+  /**
+   * Триггер цифровой воронки. Подписи у запроса нет: принимаем только
+   * подключённые аккаунты, а сделку обработчик сначала читает через API.
+   * amoCRM ждёт ответа быстро и повторяет запрос — отвечаем 200 сразу,
+   * работаем после.
+   */
+  function dp(body: string, contentType: string) {
+    if (dpLogged < DP_LOG_FULL) {
+      dpLogged++;
+      log(`POST /dp (${contentType || "без Content-Type"}): ${body.slice(0, 4000)}`);
     }
-    if (payload.added.length || payload.statusChanged.length) {
-      // amoCRM ждёт ответа не дольше 2 секунд — отвечаем сразу, работаем после.
-      const prev = queues.get(account.id) ?? Promise.resolve();
-      const next = prev
-        .then(() => processor.handle(clientFor(account), payload))
-        .catch((e) => log(`[${account.id}] ошибка обработки: ${(e as Error).stack ?? e}`));
-      queues.set(account.id, next);
+    const ev = parseDpEvent(body, contentType);
+    if (!ev) return new Response("bad request", { status: 400 });
+    const account = ev.accountId > 0 ? store.getAccount(ev.accountId) : null;
+    if (!account) {
+      log(`POST /dp: аккаунт ${ev.accountId} не подключён — пропуск`);
+      return new Response("ok");
     }
+    const prev = queues.get(account.id) ?? Promise.resolve();
+    const next = prev
+      .then(() => processor.handle(clientFor(account), ev))
+      .catch((e) => log(`[${account.id}] ошибка обработки: ${(e as Error).stack ?? e}`));
+    queues.set(account.id, next);
     return new Response("ok");
   }
 
@@ -139,8 +130,6 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
     }
     return {
       connected: true,
-      webhookError: account.webhookError,
-      webhookUrl: account.webhookError ? webhookUrl(account) : null,
       settingsError,
       queue,
       inactive: selected.filter((u) => !queue.includes(u)),
@@ -165,11 +154,6 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
       processor.forgetSettings(id);
       setTimeout(() => processor.forgetSettings(id), 5000);
       return json({ ok: true });
-    }
-    if (path === "/api/resubscribe" && req.method === "POST") {
-      const account = store.getAccount(token.account_id);
-      if (account) await subscribe(account);
-      return json(await status(token.account_id));
     }
     return json({ error: "not found" }, 404);
   }
@@ -202,8 +186,9 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
       }
       if (path === "/oauth/callback" && req.method === "GET") return await oauthCallback(url);
       if (path === "/disable" && req.method === "GET") return disable(url);
-      const hook = /^\/webhook\/([a-f0-9]{48})$/.exec(path);
-      if (hook && req.method === "POST") return webhook(hook[1], await req.text());
+      if (path === "/dp" && req.method === "POST") {
+        return dp(await req.text(), req.headers.get("content-type") ?? "");
+      }
       if (path.startsWith("/api/")) {
         const origin = req.headers.get("origin");
         const cors = corsHeaders(origin);
@@ -231,7 +216,7 @@ export function createApp(cfg: Config, store: Store, log: (msg: string) => void 
       ? [
           "Ключи amoCRM заданы.",
           accounts > 0
-            ? `Подключено аккаунтов amoCRM: ${accounts}.`
+            ? `Подключено аккаунтов amoCRM: ${accounts}. Сделки распределяются в этапах воронки, где стоит триггер «Очередь ответственных».`
             : "Ни один аккаунт amoCRM ещё не подключён — установите виджет в amoCRM.",
         ]
       : [

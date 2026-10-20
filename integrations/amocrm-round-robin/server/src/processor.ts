@@ -1,13 +1,14 @@
+import type { AmoLead } from "./amo";
 import type { Store } from "./store";
 import { parseSettings, SETTINGS_FIELD, type QueueSettings } from "./settings";
-import type { LeadEvent, WebhookPayload } from "./webhook";
+import { ELEMENT_LEAD, type DpEvent } from "./dp";
 
 /** То, что обработчику нужно от amoCRM (в тестах — подделка). */
 export interface AmoApi {
   readonly id: number;
   widgetSettings(): Promise<Record<string, unknown>>;
   activeUserIds(): Promise<Set<number> | null>;
-  unsortedStatusIds(): Promise<Set<number>>;
+  getLead(leadId: number): Promise<AmoLead | null>;
   setResponsible(leadId: number, userId: number): Promise<unknown>;
 }
 
@@ -18,23 +19,20 @@ interface Cached<T> {
 
 const SETTINGS_TTL = 10_000;
 const USERS_TTL = 10 * 60_000;
-const PIPELINES_TTL = 10 * 60_000;
 
 /**
- * Назначение ответственного по очереди.
+ * Назначение ответственного по очереди — по событию цифровой воронки: на
+ * этапе стоит триггер «Очередь ответственных», условие сработало.
  *
- * - Новая сделка (add_lead) — следующий по очереди из выбранных в виджете.
- * - Сделка из «Неразобранного»: попадает ли она в add_lead при поступлении,
- *   amoCRM не документирует, поэтому ловим и её принятие (status_lead со
- *   старым этапом «Неразобранное»). Не видели раньше — назначаем по очереди;
- *   уже назначили, а при принятии ответственный сменился — возвращаем
- *   назначенного (очередь не двигается).
- * - Повтор того же вебхука ничего не меняет: сделка помечается в журнале.
+ * - Только сделки (element_type = 2) и только существующие в аккаунте:
+ *   подписи у запроса нет, поэтому сделку сначала читаем через API.
+ * - Повтор события (amoCRM повторяет до 4 раз в час) очередь не двигает:
+ *   сделка в одном этапе назначается один раз. Тот же триггер в другом
+ *   этапе — новое назначение.
  */
 export class Processor {
   private settings = new Map<number, Cached<QueueSettings>>();
   private users = new Map<number, Cached<Set<number> | null>>();
-  private unsorted = new Map<number, Cached<Set<number>>>();
 
   constructor(
     private store: Store,
@@ -42,16 +40,53 @@ export class Processor {
     private retryDelays: number[] = [1000, 5000],
   ) {}
 
-  async handle(api: AmoApi, payload: WebhookPayload) {
-    for (const lead of payload.added) await this.assignNew(api, lead, false);
-    if (payload.statusChanged.length > 0) {
-      const unsorted = await this.cached(this.unsorted, api.id, PIPELINES_TTL, () =>
-        api.unsortedStatusIds(),
+  async handle(api: AmoApi, ev: DpEvent) {
+    const tag = `[${api.id}] сделка ${ev.leadId}, этап ${ev.statusId}`;
+    if (ev.elementType !== ELEMENT_LEAD || ev.leadId <= 0) {
+      this.log(
+        `[${api.id}] событие воронки не по сделке (element_type ${ev.elementType}) — пропуск`,
       );
-      for (const lead of payload.statusChanged) {
-        if (!unsorted.has(lead.oldStatusId) || unsorted.has(lead.statusId)) continue;
-        await this.onAccepted(api, lead);
+      return;
+    }
+    if (this.store.hasDpEvent(api.id, ev.leadId, ev.statusId)) {
+      this.log(`${tag}: повтор события — пропуск`);
+      return;
+    }
+    let lead: AmoLead | null;
+    try {
+      lead = await api.getLead(ev.leadId);
+    } catch (e) {
+      this.log(`${tag}: не удалось прочитать сделку — ${(e as Error).message ?? e}`);
+      return;
+    }
+    // Чужие или выдуманные сделки в журнал не пишем — только в лог.
+    if (!lead) {
+      this.log(`${tag}: сделки нет в аккаунте — пропуск`);
+      return;
+    }
+    if (ev.pipelineId > 0 && lead.pipeline_id !== ev.pipelineId) {
+      this.log(`${tag}: сделка в другой воронке (${lead.pipeline_id}) — пропуск`);
+      return;
+    }
+    if (!this.store.claimDpEvent(api.id, ev.leadId, ev.statusId)) return;
+
+    try {
+      const settings = await this.queueSettings(api);
+      const users = await this.queueUsers(api, settings);
+      if (users.length === 0) {
+        this.finish(api, ev.leadId, "skipped", null, "очередь пуста — в виджете никто не выбран");
+        return;
       }
+      // Сделки из источников (формы, чаты, «Неразобранное») — входящие,
+      // даже если created_by — сотрудник, который принял заявку.
+      if (settings.skipManual && lead.created_by > 0 && !lead.source_id) {
+        this.finish(api, ev.leadId, "skipped", null, "создана сотрудником вручную");
+        return;
+      }
+      const userId = this.store.takeNext(api.id, users)!;
+      await this.setResponsible(api, ev.leadId, userId);
+    } catch (e) {
+      this.finish(api, ev.leadId, "failed", null, String((e as Error).message ?? e));
     }
   }
 
@@ -72,56 +107,17 @@ export class Processor {
     return active ? settings.users.filter((u) => active.has(u)) : settings.users;
   }
 
-  private async assignNew(api: AmoApi, lead: LeadEvent, accepted: boolean) {
-    if (!this.store.claimLead(api.id, lead.id)) return;
-    try {
-      const settings = await this.queueSettings(api);
-      const users = await this.queueUsers(api, settings);
-      if (users.length === 0) {
-        this.finish(api, lead, "skipped", null, "очередь пуста — в виджете никто не выбран");
-        return;
-      }
-      // Принятая из «Неразобранного» — всегда входящая заявка, даже если
-      // created_user_id — сотрудник, который её принял.
-      if (settings.skipManual && !accepted && lead.createdUserId > 0) {
-        this.finish(api, lead, "skipped", null, "создана сотрудником вручную");
-        return;
-      }
-      const userId = this.store.takeNext(api.id, users)!;
-      await this.setResponsible(api, lead, userId);
-    } catch (e) {
-      this.finish(api, lead, "failed", null, String((e as Error).message ?? e));
-    }
-  }
-
-  private async onAccepted(api: AmoApi, lead: LeadEvent) {
-    const prev = this.store.getAssignment(api.id, lead.id);
-    if (!prev) return this.assignNew(api, lead, true);
-    if (prev.status !== "assigned" || !prev.userId) return;
-    if (lead.responsibleUserId === prev.userId) return;
-    try {
-      await this.setResponsible(
-        api,
-        lead,
-        prev.userId,
-        "возвращён после принятия из Неразобранного",
-      );
-    } catch (e) {
-      this.log(`[${api.id}] сделка ${lead.id}: ${(e as Error).message}`);
-    }
-  }
-
-  private async setResponsible(api: AmoApi, lead: LeadEvent, userId: number, note?: string) {
+  private async setResponsible(api: AmoApi, leadId: number, userId: number) {
     for (let attempt = 0; ; attempt++) {
       try {
-        await api.setResponsible(lead.id, userId);
-        this.finish(api, lead, "assigned", userId, note ?? null);
+        await api.setResponsible(leadId, userId);
+        this.finish(api, leadId, "assigned", userId, null);
         return;
       } catch (e) {
         if (attempt >= this.retryDelays.length) {
           // Очередь уже сдвинута: этот человек пропускает ход, но сделка
           // в журнале — видно в окне виджета.
-          this.finish(api, lead, "failed", userId, String((e as Error).message ?? e));
+          this.finish(api, leadId, "failed", userId, String((e as Error).message ?? e));
           return;
         }
         await Bun.sleep(this.retryDelays[attempt]);
@@ -131,14 +127,14 @@ export class Processor {
 
   private finish(
     api: AmoApi,
-    lead: LeadEvent,
+    leadId: number,
     status: "assigned" | "skipped" | "failed",
     userId: number | null,
     note: string | null,
   ) {
-    this.store.finishLead(api.id, lead.id, status, userId, note);
+    this.store.finishLead(api.id, leadId, status, userId, note);
     this.log(
-      `[${api.id}] сделка ${lead.id}: ${status}${userId ? ` → ${userId}` : ""}${note ? ` (${note})` : ""}`,
+      `[${api.id}] сделка ${leadId}: ${status}${userId ? ` → ${userId}` : ""}${note ? ` (${note})` : ""}`,
     );
   }
 

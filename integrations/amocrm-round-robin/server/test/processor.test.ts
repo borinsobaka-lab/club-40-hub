@@ -1,24 +1,40 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import type { AmoLead } from "../src/amo";
+import type { DpEvent } from "../src/dp";
 import { Processor, type AmoApi } from "../src/processor";
 import { Store } from "../src/store";
-import { parseWebhook } from "../src/webhook";
 
-const UNSORTED = 69;
+const PIPELINE = 5;
+const STAGE = 70;
 
 class FakeAmo implements AmoApi {
   id = 1;
   config: unknown = JSON.stringify({ users: [10, 20, 30], skip_manual: false });
   active: Set<number> | null = new Set([10, 20, 30, 40]);
   calls: [number, number][] = [];
+  reads = 0;
   failTimes = 0;
+  /** Сделки аккаунта; нет в списке — 404. */
+  leads = new Map<number, Partial<AmoLead>>();
   async widgetSettings() {
     return { rr_config: this.config };
   }
   async activeUserIds() {
     return this.active;
   }
-  async unsortedStatusIds() {
-    return new Set([UNSORTED]);
+  async getLead(id: number): Promise<AmoLead | null> {
+    this.reads++;
+    const l = this.leads.get(id);
+    return l
+      ? {
+          id,
+          pipeline_id: PIPELINE,
+          status_id: STAGE,
+          responsible_user_id: 1,
+          created_by: 0,
+          ...l,
+        }
+      : null;
   }
   async setResponsible(leadId: number, userId: number) {
     if (this.failTimes-- > 0) throw new Error("amoCRM ответил 500");
@@ -26,21 +42,16 @@ class FakeAmo implements AmoApi {
   }
 }
 
-const added = (...leads: { id: number; created?: number }[]) =>
-  parseWebhook(
-    leads
-      .flatMap((l, i) => [
-        `leads[add][${i}][id]=${l.id}`,
-        `leads[add][${i}][created_user_id]=${l.created ?? 0}`,
-      ])
-      .join("&") + "&account[id]=1",
-  );
-
-const accepted = (id: number, responsible: number) =>
-  parseWebhook(
-    `leads[status][0][id]=${id}&leads[status][0][old_status_id]=${UNSORTED}` +
-      `&leads[status][0][status_id]=70&leads[status][0][responsible_user_id]=${responsible}`,
-  );
+const ev = (leadId: number, over: Partial<DpEvent> = {}): DpEvent => ({
+  accountId: 1,
+  subdomain: "base40",
+  type: "lead_added",
+  elementType: 2,
+  leadId,
+  statusId: STAGE,
+  pipelineId: PIPELINE,
+  ...over,
+});
 
 describe("Processor", () => {
   let store: Store;
@@ -49,12 +60,12 @@ describe("Processor", () => {
   beforeEach(() => {
     store = new Store(":memory:");
     amo = new FakeAmo();
+    for (const id of [1, 2, 3, 4, 5]) amo.leads.set(id, {});
     proc = new Processor(store, () => {}, [0, 0]);
   });
 
   test("по очереди между выбранными", async () => {
-    await proc.handle(amo, added({ id: 1 }, { id: 2 }));
-    await proc.handle(amo, added({ id: 3 }, { id: 4 }));
+    for (const id of [1, 2, 3, 4]) await proc.handle(amo, ev(id));
     expect(amo.calls).toEqual([
       [1, 10],
       [2, 20],
@@ -63,86 +74,90 @@ describe("Processor", () => {
     ]);
   });
 
-  test("повтор вебхука не двигает очередь", async () => {
-    await proc.handle(amo, added({ id: 1 }));
-    await proc.handle(amo, added({ id: 1 }));
-    await proc.handle(amo, added({ id: 2 }));
+  test("повтор события не двигает очередь и не читает сделку", async () => {
+    await proc.handle(amo, ev(1));
+    await proc.handle(amo, ev(1));
+    await proc.handle(amo, ev(2));
     expect(amo.calls).toEqual([
       [1, 10],
       [2, 20],
     ]);
+    expect(amo.reads).toBe(2);
+  });
+
+  test("та же сделка в другом этапе с триггером — новое назначение", async () => {
+    await proc.handle(amo, ev(1));
+    await proc.handle(amo, ev(1, { statusId: STAGE + 1 }));
+    expect(amo.calls).toEqual([
+      [1, 10],
+      [1, 20],
+    ]);
+  });
+
+  test("не сделка — ничего", async () => {
+    await proc.handle(amo, ev(1, { elementType: 1 }));
+    expect(amo.calls).toEqual([]);
+    expect(amo.reads).toBe(0);
+  });
+
+  test("сделки нет в аккаунте — ничего, в журнал не пишем", async () => {
+    await proc.handle(amo, ev(99));
+    expect(amo.calls).toEqual([]);
+    expect(store.getAssignment(1, 99)).toBeNull();
+    // и событие не занято: настоящее с тем же id потом пройдёт
+    amo.leads.set(99, {});
+    await proc.handle(amo, ev(99));
+    expect(amo.calls).toEqual([[99, 10]]);
+  });
+
+  test("сделка в другой воронке — ничего", async () => {
+    await proc.handle(amo, ev(1, { pipelineId: PIPELINE + 1 }));
+    expect(amo.calls).toEqual([]);
   });
 
   test("неактивный пользователь пропускается", async () => {
     amo.active = new Set([10, 30]);
-    await proc.handle(amo, added({ id: 1 }, { id: 2 }, { id: 3 }));
+    for (const id of [1, 2, 3]) await proc.handle(amo, ev(id));
     expect(amo.calls.map((c) => c[1])).toEqual([10, 30, 10]);
   });
 
   test("список пользователей недоступен — очередь как выбрана", async () => {
     amo.active = null;
-    await proc.handle(amo, added({ id: 1 }, { id: 2 }));
+    for (const id of [1, 2]) await proc.handle(amo, ev(id));
     expect(amo.calls.map((c) => c[1])).toEqual([10, 20]);
   });
 
   test("пустая очередь — сделку не трогаем", async () => {
     amo.config = undefined;
-    await proc.handle(amo, added({ id: 1 }));
+    await proc.handle(amo, ev(1));
     expect(amo.calls).toEqual([]);
     expect(store.getAssignment(1, 1)?.status).toBe("skipped");
   });
 
-  test("созданные вручную — по настройке", async () => {
+  test("созданные вручную — по настройке; из источника — распределяем", async () => {
     amo.config = { users: [10, 20], skip_manual: true };
-    await proc.handle(amo, added({ id: 1, created: 40 }, { id: 2 }));
-    expect(amo.calls).toEqual([[2, 10]]);
+    amo.leads.set(1, { created_by: 40 });
+    amo.leads.set(3, { created_by: 40, source_id: 7 });
+    for (const id of [1, 2, 3]) await proc.handle(amo, ev(id));
+    expect(amo.calls).toEqual([
+      [2, 10],
+      [3, 20],
+    ]);
     expect(store.getAssignment(1, 1)?.note).toBe("создана сотрудником вручную");
   });
 
   test("ошибка amoCRM — повтор, потом успех", async () => {
     amo.failTimes = 2;
-    await proc.handle(amo, added({ id: 1 }));
+    await proc.handle(amo, ev(1));
     expect(amo.calls).toEqual([[1, 10]]);
     expect(store.getAssignment(1, 1)?.status).toBe("assigned");
   });
 
   test("ошибка amoCRM каждый раз — в журнал, очередь идёт дальше", async () => {
     amo.failTimes = 3;
-    await proc.handle(amo, added({ id: 1 }));
-    await proc.handle(amo, added({ id: 2 }));
+    await proc.handle(amo, ev(1));
+    await proc.handle(amo, ev(2));
     expect(store.getAssignment(1, 1)?.status).toBe("failed");
     expect(amo.calls).toEqual([[2, 20]]);
-  });
-
-  test("принятие из «Неразобранного» без add_lead — назначаем по очереди", async () => {
-    await proc.handle(amo, accepted(5, 40));
-    expect(amo.calls).toEqual([[5, 10]]);
-  });
-
-  test("принятие из «Неразобранного» сменило ответственного — возвращаем", async () => {
-    await proc.handle(amo, added({ id: 5 }));
-    await proc.handle(amo, accepted(5, 40));
-    await proc.handle(amo, added({ id: 6 }));
-    expect(amo.calls).toEqual([
-      [5, 10],
-      [5, 10],
-      [6, 20],
-    ]);
-  });
-
-  test("принятие с тем же ответственным — ничего", async () => {
-    await proc.handle(amo, added({ id: 5 }));
-    await proc.handle(amo, accepted(5, 10));
-    expect(amo.calls).toEqual([[5, 10]]);
-  });
-
-  test("обычная смена этапа — не наше дело", async () => {
-    await proc.handle(
-      amo,
-      parseWebhook(
-        "leads[status][0][id]=7&leads[status][0][old_status_id]=70&leads[status][0][status_id]=71",
-      ),
-    );
-    expect(amo.calls).toEqual([]);
   });
 });

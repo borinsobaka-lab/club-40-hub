@@ -8,6 +8,17 @@ interface TokenResponse {
   expires_in: number;
 }
 
+/** Поля сделки из GET /api/v4/leads/{id}, которые нужны серверу. */
+export interface AmoLead {
+  id: number;
+  pipeline_id: number;
+  status_id: number;
+  responsible_user_id: number;
+  /** 0 — сделку создала не пользователь (интеграция, форма, робот). */
+  created_by: number;
+  source_id?: number | null;
+}
+
 export class AmoError extends Error {
   constructor(
     readonly status: number,
@@ -96,6 +107,24 @@ export class AmoClient {
     return (text ? JSON.parse(text) : undefined) as T;
   }
 
+  /**
+   * Сделка из события воронки — проверка, что она есть в этом аккаунте.
+   * null — нет такой (204/404). source_id — у сделок из источников
+   * (формы, чаты, «Неразобранное»).
+   */
+  async getLead(leadId: number): Promise<AmoLead | null> {
+    try {
+      const r = await this.request<AmoLead | undefined>(
+        "GET",
+        `/api/v4/leads/${leadId}?with=source_id`,
+      );
+      return r?.id ? r : null;
+    } catch (e) {
+      if (e instanceof AmoError && e.status === 404) return null;
+      throw e;
+    }
+  }
+
   setResponsible(leadId: number, userId: number) {
     return this.request("PATCH", `/api/v4/leads/${leadId}`, { responsible_user_id: userId });
   }
@@ -139,20 +168,6 @@ export class AmoClient {
     return r?.settings && !Array.isArray(r.settings) ? r.settings : {};
   }
 
-  /** id этапов «Неразобранное» всех воронок (системный этап type = 1). */
-  async unsortedStatusIds(): Promise<Set<number>> {
-    const r = await this.request<{
-      _embedded?: {
-        pipelines?: { _embedded?: { statuses?: { id: number; type: number }[] } }[];
-      };
-    }>("GET", "/api/v4/leads/pipelines");
-    const ids = new Set<number>();
-    for (const p of r?._embedded?.pipelines ?? []) {
-      for (const st of p._embedded?.statuses ?? []) if (st.type === 1) ids.add(st.id);
-    }
-    return ids;
-  }
-
   /**
    * Активные пользователи аккаунта: уволенному сделку не отдаём. Список
    * пользователей API отдаёт только администратору — если интеграцию
@@ -175,13 +190,5 @@ export class AmoClient {
       if (!r?._links?.next) break;
     }
     return ids;
-  }
-
-  subscribeWebhook(destination: string, events: string[]) {
-    return this.request("POST", "/api/v4/webhooks", { destination, settings: events });
-  }
-
-  unsubscribeWebhook(destination: string) {
-    return this.request("DELETE", "/api/v4/webhooks", { destination });
   }
 }
