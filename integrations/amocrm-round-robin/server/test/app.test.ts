@@ -21,15 +21,15 @@ const cfg: Config = {
 const amo = {
   patches: [] as [number, number][],
   webhooks: [] as unknown[],
+  leadReads: 0,
   settings: { rr_config: '{"users":[10,20],"skip_manual":false}' } as Record<string, unknown>,
-  webhookStatus: 201,
 };
 const realFetch = globalThis.fetch;
 
 beforeEach(() => {
   amo.patches = [];
   amo.webhooks = [];
-  amo.webhookStatus = 201;
+  amo.leadReads = 0;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
     expect(url.host).toBe("base40.amocrm.ru");
@@ -43,9 +43,7 @@ beforeEach(() => {
     if (p === "/api/v4/account") return Response.json({ id: 777, subdomain: "base40" });
     if (p === "/api/v4/webhooks") {
       amo.webhooks.push(body);
-      return new Response(amo.webhookStatus === 201 ? "{}" : "forbidden", {
-        status: amo.webhookStatus,
-      });
+      return Response.json({});
     }
     if (p === "/api/v4/widgets") {
       const page = Number(url.searchParams.get("page"));
@@ -68,6 +66,19 @@ beforeEach(() => {
       });
     }
     const m = /^\/api\/v4\/leads\/(\d+)$/.exec(p);
+    // Сделки 1–9 есть в аккаунте, остальных нет.
+    if (m && method === "GET") {
+      amo.leadReads++;
+      const id = Number(m[1]);
+      if (id >= 10) return new Response("", { status: 204 });
+      return Response.json({
+        id,
+        pipeline_id: 5,
+        status_id: 70,
+        responsible_user_id: 1,
+        created_by: 0,
+      });
+    }
     if (m && method === "PATCH") {
       amo.patches.push([Number(m[1]), body.responsible_user_id]);
       return Response.json({ id: Number(m[1]) });
@@ -105,26 +116,46 @@ async function install(app: ReturnType<typeof createApp>, store: Store) {
   return store.getAccount(777)!;
 }
 
-test("установка, вебхук, очередь, окно виджета, отключение", async () => {
+const dpJson = (leadId: number, accountId = 777, elementType = 2) =>
+  JSON.stringify({
+    event: {
+      type: 1,
+      type_code: "lead_added",
+      data: { id: leadId, element_type: elementType, status_id: 70, pipeline_id: 5 },
+    },
+    action: { settings: { widget: { settings: {} } } },
+    subdomain: "base40",
+    account_id: accountId,
+  });
+
+const dpForm = (leadId: number) =>
+  `event[type]=1&event[type_code]=lead_added&event[data][id]=${leadId}` +
+  `&event[data][element_type]=2&event[data][status_id]=70&event[data][pipeline_id]=5` +
+  `&subdomain=base40&account_id=777`;
+
+test("установка, триггер воронки, очередь, окно виджета, отключение", async () => {
   const store = new Store(":memory:");
   const app = createApp(cfg, store, () => {});
   const account = await install(app, store);
   expect(account.subdomain).toBe("base40");
-  expect(amo.webhooks).toEqual([
-    {
-      destination: `https://rr.example.com/webhook/${account.webhookSecret}`,
-      settings: ["add_lead", "status_lead"],
-    },
-  ]);
+  // Вебхук аккаунта больше не создаётся: сделки приходят только из триггера.
+  expect(amo.webhooks).toEqual([]);
 
-  const hook = (id: number) =>
+  const json = (body: string) =>
     app.fetch(
-      req(`/webhook/${account.webhookSecret}`, {
+      req("/dp", { method: "POST", headers: { "Content-Type": "application/json" }, body }),
+    );
+  const form = (body: string) =>
+    app.fetch(
+      req("/dp", {
         method: "POST",
-        body: `leads[add][0][id]=${id}&leads[add][0][created_user_id]=0&account[id]=777`,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
       }),
     );
-  for (const id of [1, 2, 3]) expect((await hook(id)).status).toBe(200);
+  expect((await json(dpJson(1))).status).toBe(200);
+  expect((await form(dpForm(2))).status).toBe(200);
+  expect((await json(dpJson(3))).status).toBe(200);
   await tick();
   expect(amo.patches).toEqual([
     [1, 10],
@@ -151,10 +182,6 @@ test("установка, вебхук, очередь, окно виджета,
   );
   expect(evil.headers.get("access-control-allow-origin")).toBeNull();
 
-  // Чужой секрет в адресе вебхука
-  const wrong = await app.fetch(req(`/webhook/${"0".repeat(48)}`, { method: "POST", body: "" }));
-  expect(wrong.status).toBe(404);
-
   // Отключение интеграции
   const sig = createHmac("sha256", cfg.clientSecret).update(`${cfg.clientId}|777`).digest("hex");
   expect(
@@ -166,7 +193,45 @@ test("установка, вебхук, очередь, окно виджета,
       .status,
   ).toBe(200);
   expect(store.getAccount(777)).toBeNull();
-  expect((await hook(4)).status).toBe(404);
+  expect((await json(dpJson(4))).status).toBe(200);
+  await tick();
+  expect(amo.patches).toHaveLength(3);
+});
+
+test("/dp: повтор, чужой аккаунт, не сделка, нет сделки, мусор", async () => {
+  const store = new Store(":memory:");
+  const logs: string[] = [];
+  const app = createApp(cfg, store, (m) => logs.push(m));
+  await install(app, store);
+  const post = (body: string, type = "application/json") =>
+    app.fetch(req("/dp", { method: "POST", headers: { "Content-Type": type }, body }));
+
+  // Повтор того же события (amoCRM повторяет до 4 раз в час) — одно назначение
+  for (let i = 0; i < 4; i++) expect((await post(dpJson(1))).status).toBe(200);
+  expect((await post(dpForm(1), "application/x-www-form-urlencoded")).status).toBe(200);
+  await tick();
+  expect(amo.patches).toEqual([[1, 10]]);
+
+  // Чужой (не подключённый) аккаунт — 200, но amoCRM не трогаем
+  const reads = amo.leadReads;
+  expect((await post(dpJson(2, 999))).status).toBe(200);
+  // Не сделка (element_type 1 — контакт)
+  expect((await post(dpJson(2, 777, 1))).status).toBe(200);
+  await tick();
+  expect(amo.leadReads).toBe(reads);
+  expect(amo.patches).toEqual([[1, 10]]);
+
+  // Сделки нет в аккаунте — прочитали, не назначили
+  expect((await post(dpJson(42))).status).toBe(200);
+  await tick();
+  expect(amo.leadReads).toBe(reads + 1);
+  expect(amo.patches).toEqual([[1, 10]]);
+
+  // Мусор вместо JSON
+  expect((await post("{oops")).status).toBe(400);
+
+  // Первые запросы — в лог целиком
+  expect(logs.some((l) => l.startsWith("POST /dp (application/json): {"))).toBe(true);
 });
 
 test("referer не amoCRM — код не обмениваем", async () => {
@@ -174,18 +239,6 @@ test("referer не amoCRM — код не обмениваем", async () => {
   const app = createApp(cfg, store, () => {});
   const res = await app.fetch(req("/oauth/callback?code=abc&referer=evil.com"));
   expect(res.status).toBe(400);
-});
-
-test("тариф без вебхуков API — ошибка видна в окне виджета", async () => {
-  amo.webhookStatus = 403;
-  const store = new Store(":memory:");
-  const app = createApp(cfg, store, () => {});
-  const account = await install(app, store);
-  expect(account.webhookError).toContain("403");
-  const st = (await (
-    await app.fetch(req("/api/status", { headers: { "X-Auth-Token": authToken() } }))
-  ).json()) as { webhookError: string; webhookUrl: string };
-  expect(st.webhookUrl).toBe(`https://rr.example.com/webhook/${account.webhookSecret}`);
 });
 
 test("без ключей amoCRM: архив виджета отдаётся, остальное — 503", async () => {

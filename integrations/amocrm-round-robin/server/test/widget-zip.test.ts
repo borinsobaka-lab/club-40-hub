@@ -28,4 +28,6 @@ test("архив виджета: файлы в корне, адрес серве
     Bun.spawnSync(["unzip", "-p", file, "manifest.json"]).stdout.toString(),
   );
   expect(manifest.widget.support.link).toBe("https://rr.example.com");
+  expect(manifest.locations).toContain("digital_pipeline");
+  expect(manifest.dp.webhook_url).toBe("https://rr.example.com/dp");
 });

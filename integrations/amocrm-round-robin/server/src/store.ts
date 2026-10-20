@@ -16,10 +16,12 @@ export interface Account {
   refreshToken: string;
   /** Unix-время (с), когда истекает access token. */
   expiresAt: number;
-  /** Часть адреса вебхука: без неё чужой запрос не назначит ответственного. */
+  /**
+   * Секрет адреса вебхука аккаунта. С 2026-10-20 вебхук аккаунта не
+   * создаётся (сделки приходят из цифровой воронки, POST /dp), но колонка
+   * в базе осталась — not null unique, поэтому пишем случайное значение.
+   */
   webhookSecret: string;
-  /** Не удалось подписаться на вебхук — текст ошибки для окна виджета. */
-  webhookError: string | null;
 }
 
 export type AssignmentStatus = "pending" | "assigned" | "skipped" | "failed";
@@ -64,6 +66,16 @@ export class Store {
         created_at integer not null,
         primary key (account_id, lead_id)
       );
+      -- События цифровой воронки, уже взятые в работу: amoCRM повторяет
+      -- запрос (до 4 раз в час), а одна сделка может пройти несколько этапов
+      -- с триггером — ключ «сделка × этап».
+      create table if not exists dp_events (
+        account_id integer not null,
+        lead_id integer not null,
+        status_id integer not null,
+        created_at integer not null,
+        primary key (account_id, lead_id, status_id)
+      );
     `);
   }
 
@@ -71,11 +83,11 @@ export class Store {
     this.db
       .query(
         `insert into accounts (id, subdomain, base_domain, access_token, refresh_token,
-           expires_at, webhook_secret, webhook_error, updated_at)
-         values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch())
+           expires_at, webhook_secret, updated_at)
+         values (?1, ?2, ?3, ?4, ?5, ?6, ?7, unixepoch())
          on conflict (id) do update set subdomain = ?2, base_domain = ?3,
            access_token = ?4, refresh_token = ?5, expires_at = ?6,
-           webhook_secret = ?7, webhook_error = ?8, updated_at = unixepoch()`,
+           webhook_secret = ?7, updated_at = unixepoch()`,
       )
       .run(
         a.id,
@@ -85,7 +97,6 @@ export class Store {
         a.refreshToken,
         a.expiresAt,
         a.webhookSecret,
-        a.webhookError,
       );
   }
 
@@ -103,41 +114,48 @@ export class Store {
           refreshToken: r.refresh_token,
           expiresAt: r.expires_at,
           webhookSecret: r.webhook_secret,
-          webhookError: r.webhook_error,
         }
       : null;
-  }
-
-  getAccountBySecret(secret: string): Account | null {
-    const r = this.db.query("select id from accounts where webhook_secret = ?").get(secret) as {
-      id: number;
-    } | null;
-    return r ? this.getAccount(r.id) : null;
-  }
-
-  setWebhookError(accountId: number, error: string | null) {
-    this.db.query("update accounts set webhook_error = ? where id = ?").run(error, accountId);
   }
 
   deleteAccount(id: number) {
     this.db.transaction(() => {
       this.db.query("delete from accounts where id = ?").run(id);
       this.db.query("delete from queue where account_id = ?").run(id);
+      this.db.query("delete from dp_events where account_id = ?").run(id);
     })();
   }
 
+  /** Событие «сделка × этап» уже обрабатывали — повтор от amoCRM. */
+  hasDpEvent(accountId: number, leadId: number, statusId: number): boolean {
+    return !!this.db
+      .query("select 1 from dp_events where account_id = ? and lead_id = ? and status_id = ?")
+      .get(accountId, leadId, statusId);
+  }
+
   /**
-   * Занять сделку: true — сделку видим впервые (amoCRM повторяет вебхук,
-   * если ответ не пришёл быстро, — второй раз ответственного не меняем).
+   * Занять событие: true — видим впервые. Сделка встаёт в журнал «Последние
+   * сделки» заново (pending), даже если раньше её назначали в другом этапе.
    */
-  claimLead(accountId: number, leadId: number): boolean {
-    const r = this.db
-      .query(
-        `insert into assignments (account_id, lead_id, status, created_at)
-         values (?, ?, 'pending', unixepoch()) on conflict do nothing`,
-      )
-      .run(accountId, leadId);
-    return r.changes > 0;
+  claimDpEvent(accountId: number, leadId: number, statusId: number): boolean {
+    return this.db.transaction(() => {
+      const r = this.db
+        .query(
+          `insert into dp_events (account_id, lead_id, status_id, created_at)
+           values (?, ?, ?, unixepoch()) on conflict do nothing`,
+        )
+        .run(accountId, leadId, statusId);
+      if (r.changes === 0) return false;
+      this.db
+        .query(
+          `insert into assignments (account_id, lead_id, status, created_at)
+           values (?1, ?2, 'pending', unixepoch())
+           on conflict (account_id, lead_id) do update set status = 'pending',
+             user_id = null, note = null, created_at = unixepoch()`,
+        )
+        .run(accountId, leadId);
+      return true;
+    })();
   }
 
   /** Следующий по очереди из списка; очередь сдвигается сразу. */
@@ -223,10 +241,12 @@ export class Store {
     }));
   }
 
-  /** Журнал не растёт бесконечно: дубли вебхуков приходят в первые минуты. */
+  /** Журнал не растёт бесконечно: повторы amoCRM приходят в первый час. */
   pruneAssignments(olderThanDays = 90) {
-    this.db
-      .query("delete from assignments where created_at < unixepoch() - ? * 86400")
-      .run(olderThanDays);
+    for (const table of ["assignments", "dp_events"]) {
+      this.db
+        .query(`delete from ${table} where created_at < unixepoch() - ? * 86400`)
+        .run(olderThanDays);
+    }
   }
 }

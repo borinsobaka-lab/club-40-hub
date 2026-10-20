@@ -3,7 +3,7 @@
     "name": "widget.name",
     "description": "widget.description",
     "short_description": "widget.short_description",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "interface_version": 2,
     "init_once": false,
     "locale": ["ru"],
@@ -12,13 +12,18 @@
       "link": "__SERVER_URL__"
     }
   },
-  "locations": ["settings"],
+  "locations": ["settings", "digital_pipeline"],
   "tour": {
     "is_tour": true,
     "tour_images": {
       "ru": ["/images/tour_1_ru.png"]
     },
     "tour_description": "widget.tour_description"
+  },
+  "dp": {
+    "settings": {},
+    "action_multiple": false,
+    "webhook_url": "__SERVER_URL__/dp"
   },
   "settings": {
     "rr_config": {
