@@ -113,9 +113,10 @@ import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
 // пакетного клуба («Продаж» у него нет): кнопка «Продажа», возврат и удаление
 // — здесь. С 2026-10-20 раздел общий для всех пакетных клубов сети (как база
 // клиентов): фильтр «Клуб» и колонка «Клуб продажи»; продажа по-прежнему
-// клуба, где её внесли (касса, зарплаты, дашборд — по нему), править её
-// строку (платежи, комментарии, возврат, удаление, «Переоформить») может
-// только сотрудник этого клуба — остальным строка только для чтения.
+// клуба, где её внесли (касса, зарплаты, дашборд — по нему). Платежи и
+// комментарии любой строки правит сотрудник любого клуба сети (решение
+// владельца 2026-10-20: администраторы помогают друг другу), возврат,
+// удаление и «Переоформить» — только сотрудник клуба продажи.
 // Администраторы собирают деньги по рассрочкам: отмечают внесённые платежи,
 // правят суммы и даты, пишут свой комментарий. Строки — вью
 // client_packages_list (последняя версия —
@@ -134,7 +135,7 @@ const TIPS = {
     "Стоимость продажи (со скидкой). Ниже — сколько из неё уже внесено, промокод и возвраты. Возврат — правый клик (касание) по строке.",
   soldBy: `Кто продал — администратор, оформивший продажу. Ниже — тренер при продаже. ${SALE_TIPS.trainer}`,
   studio:
-    "Клуб, где продан абонемент: продажа идёт в его кассу, зарплаты и дашборд. Править строку (платежи, комментарии, возврат) может только сотрудник этого клуба.",
+    "Клуб, где продан абонемент: продажа идёт в его кассу, зарплаты и дашборд. Платежи и комментарии отмечает любой клуб, возврат, удаление и переоформление — только этот клуб.",
   addedVia:
     "Как абонемент попал в базу: внесён в админке, перенесён из 1С или куплен клиентом в приложении. Ставит база.",
   comments:
@@ -398,8 +399,10 @@ function ClientMembershipsPage() {
   const [club, setClub] = useState<string>(ALL);
   const [transferRow, setTransferRow] = useState<Row | null>(null);
 
-  // Клубы раздела — вся сеть пакетных клубов (как база клиентов); править
-  // строку можно только в своём клубе (RLS: «sales studio rw»).
+  // Клубы раздела — вся сеть пакетных клубов (как база клиентов). Платежи и
+  // комментарии правит любой клуб сети, меню строки (возврат, удаление,
+  // «Переоформить») — только клуб продажи (RLS: «sales studio rw»;
+  // db/migrations/2026-10-20_zz_packages_network_payments.sql).
   const networkIds = useNetworkStudioIds(studioId);
   const { data: allStudios } = useQuery(catalogStudiosQuery);
   const networkStudios = (allStudios ?? []).filter((s) => networkIds?.includes(s.id));
@@ -932,7 +935,7 @@ function ClientMembershipsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <PaymentsCell row={r} onSaved={reload} readOnly={!canEdit(r)} />
+                          <PaymentsCell row={r} onSaved={reload} />
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] space-y-1">
@@ -941,7 +944,7 @@ function ClientMembershipsPage() {
                                 <div className="text-muted-foreground/70">При продаже</div>
                                 <CommentCell
                                   text={r.comment}
-                                  onSave={canEdit(r) ? commentSaver("sales", r.id) : undefined}
+                                  onSave={commentSaver("sales", r.id)}
                                   onSaved={reload}
                                 />
                               </div>
@@ -950,11 +953,7 @@ function ClientMembershipsPage() {
                                 об оплате, напоминания — правится прямо в строке. */}
                             <CommentCell
                               text={r.membership_note}
-                              onSave={
-                                canEdit(r)
-                                  ? commentSaver("sales", r.id, "membership_note")
-                                  : undefined
-                              }
+                              onSave={commentSaver("sales", r.id, "membership_note")}
                               onSaved={reload}
                             />
                           </div>
@@ -1290,16 +1289,7 @@ const PAYMENT_METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
  * Платежи продажи одной колонкой: плашки по два в ряд (внесённый — зелёная,
  * просроченный — красная), под ними — «Редактировать платежи».
  */
-function PaymentsCell({
-  row,
-  onSaved,
-  readOnly,
-}: {
-  row: Row;
-  onSaved: () => void;
-  /** Продажа другого клуба сети: платежи видны, но не правятся. */
-  readOnly: boolean;
-}) {
+function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
   const [marked, setMarked] = useState(false);
   const payments = row.payments ?? [];
@@ -1307,7 +1297,6 @@ function PaymentsCell({
   // Любой абонемент без возврата — и оплаченный полностью, и сразу при продаже
   // (решение владельца 2026-10-18); бесплатный без графика править нечего.
   const editable =
-    !readOnly &&
     (payments.some((p) => p.id) || Number(row.total_amount) > 0) &&
     !payments.some((p) => p.refunded) &&
     row.membership_status !== "refunded";
@@ -1326,13 +1315,7 @@ function PaymentsCell({
     <div className="w-max space-y-1.5">
       <div className="grid grid-cols-[repeat(2,max-content)] gap-1.5">
         {payments.map((p, i) => (
-          <PaymentCell
-            key={p.id ?? i}
-            index={i}
-            payment={p}
-            onSaved={onSaved}
-            readOnly={readOnly}
-          />
+          <PaymentCell key={p.id ?? i} index={i} payment={p} onSaved={onSaved} />
         ))}
       </div>
       {editable && (
@@ -1369,12 +1352,10 @@ function PaymentCell({
   index,
   payment,
   onSaved,
-  readOnly,
 }: {
   index: number;
   payment: Payment;
   onSaved: () => void;
-  readOnly: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const overdue = !payment.paid && !payment.refunded && payment.due_date < todayISO();
@@ -1436,18 +1417,10 @@ function PaymentCell({
     </>
   );
 
-  // Оплата сразу при продаже — графика нет, отмечать нечего; продажа другого
-  // клуба — отмечает её клуб.
-  if (!payment.id || readOnly)
+  // Оплата сразу при продаже — графика нет, отмечать нечего.
+  if (!payment.id)
     return (
-      <div
-        title={
-          !payment.id
-            ? "Оплачено полностью при продаже"
-            : "Платёж отмечает клуб, где продан абонемент"
-        }
-        className={box}
-      >
+      <div title="Оплачено полностью при продаже" className={box}>
         {summary}
       </div>
     );

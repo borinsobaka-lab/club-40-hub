@@ -497,8 +497,9 @@ AUTH_SETUP.md.
   `clients`, `clients_guard_self_update`); абонементы — читает и правит
   остаток, срок, заморозку (`client_memberships network update`,
   `freeze_membership`/`unfreeze_membership`), выдаёт и удаляет — только клуб
-  абонемента; продажи и платежи других клубов — только читает
-  (`sales network read`, `sale_installments network read`); журнал
+  абонемента; продажи других клубов — читает (`sales network read`), с
+  2026-10-20 отмечает их платежи и пишет комментарии (см. «Абонементы» общие
+  ниже); журнал
   посещений, анкета, вес, `client_app_overview` — по карточке сети. Одна
   карточка на человека: почта (без регистра и пробелов) и учётная запись
   приложения — у одной карточки пакетных клубов (`clients_network_unique_guard`,
@@ -514,7 +515,7 @@ AUTH_SETUP.md.
   **«Абонементы» общие для пакетных клубов и «Переоформить»** (решения
   владельца 2026-10-20): `db/migrations/2026-10-20_packages_membership_transfer.sql`
   — раздел показывает продажи всех клубов сети (чтение — «sales network
-  read»), правит строку только клуб продажи; `client_packages_list.studio_name`
+  read»); `client_packages_list.studio_name`
   (колонка «Клуб продажи»; актуальное определение вью — здесь). RPC
   `transfer_client_membership(p_sale_id, p_client_id)` — сотрудник клуба
   продажи передаёт абонемент клиенту той же сети: меняются только
@@ -523,7 +524,13 @@ AUTH_SETUP.md.
   оплаченный полностью и без живого абонемента того же вида у нового
   владельца; очередь — `packages_settle` у обоих; отметка —
   `sales.transferred_from_client_id` / `transferred_from_name` /
-  `transferred_at` / `transferred_by`. Тесты — `db/membership-transfer.test.ts`.
+  `transferred_at` / `transferred_by`. Платежи и комментарии продажи —
+  сотруднику любого клуба сети (решение владельца 2026-10-20):
+  `db/migrations/2026-10-20_zz_packages_network_payments.sql` — политики
+  «sale_installments network write», «sales network update» и триггер
+  `sales_network_update_guard` (не клубу продажи — только `comment`,
+  `membership_note`, `remaining_installments`); продать, удалить, возврат,
+  переоформить — только клуб продажи. Тесты — `db/membership-transfer.test.ts`.
   Вместимость тренировки по клубам:
   `db/migrations/2026-10-14_workout_studio_capacity.sql` —
   `workout_capacities` (тренировка × клуб, null — без лимита; нет строки —
