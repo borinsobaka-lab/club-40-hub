@@ -100,14 +100,50 @@ export class AmoClient {
     return this.request("PATCH", `/api/v4/leads/${leadId}`, { responsible_user_id: userId });
   }
 
-  /** Активные пользователи аккаунта: уволенному сделку не отдаём. */
-  async activeUserIds(): Promise<Set<number>> {
+  /** Аккаунт, к которому выдан токен (после установки — узнать его id). */
+  accountInfo() {
+    return this.request<{ id: number; subdomain: string }>("GET", "/api/v4/account");
+  }
+
+  /** Сохранённые настройки виджета (поле settings отдаётся только токену своей интеграции). */
+  async widgetSettings(code: string): Promise<Record<string, unknown>> {
+    const r = await this.request<{ settings?: Record<string, unknown> | unknown[] }>(
+      "GET",
+      `/api/v4/widgets/${encodeURIComponent(code)}`,
+    );
+    return r?.settings && !Array.isArray(r.settings) ? r.settings : {};
+  }
+
+  /** id этапов «Неразобранное» всех воронок (системный этап type = 1). */
+  async unsortedStatusIds(): Promise<Set<number>> {
+    const r = await this.request<{
+      _embedded?: {
+        pipelines?: { _embedded?: { statuses?: { id: number; type: number }[] } }[];
+      };
+    }>("GET", "/api/v4/leads/pipelines");
+    const ids = new Set<number>();
+    for (const p of r?._embedded?.pipelines ?? []) {
+      for (const st of p._embedded?.statuses ?? []) if (st.type === 1) ids.add(st.id);
+    }
+    return ids;
+  }
+
+  /**
+   * Активные пользователи аккаунта: уволенному сделку не отдаём. Список
+   * пользователей API отдаёт только администратору — если интеграцию
+   * установил не администратор, null (проверку пропускаем).
+   */
+  async activeUserIds(): Promise<Set<number> | null> {
     const ids = new Set<number>();
     for (let page = 1; ; page++) {
       const r = await this.request<{
         _embedded?: { users?: { id: number; rights?: { is_active?: boolean } }[] };
         _links?: { next?: unknown };
-      }>("GET", `/api/v4/users?limit=250&page=${page}`);
+      }>("GET", `/api/v4/users?limit=250&page=${page}`).catch((e) => {
+        if (e instanceof AmoError && e.status === 403) return null;
+        throw e;
+      });
+      if (r === null) return null;
       for (const u of r?._embedded?.users ?? []) {
         if (u.rights?.is_active !== false) ids.add(u.id);
       }

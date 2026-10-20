@@ -1,0 +1,30 @@
+{
+  "widget": {
+    "name": "widget.name",
+    "description": "widget.description",
+    "short_description": "widget.short_description",
+    "version": "1.0.0",
+    "interface_version": 2,
+    "init_once": false,
+    "locale": ["ru"],
+    "installation": true,
+    "support": {
+      "link": "__SERVER_URL__"
+    }
+  },
+  "locations": ["settings"],
+  "tour": {
+    "is_tour": true,
+    "tour_images": {
+      "ru": ["/images/tour_1_ru.png"]
+    },
+    "tour_description": "widget.tour_description"
+  },
+  "settings": {
+    "rr_config": {
+      "name": "settings.rr_config",
+      "type": "custom",
+      "required": false
+    }
+  }
+}

@@ -18,9 +18,11 @@ export interface Account {
   expiresAt: number;
   /** Часть адреса вебхука: без неё чужой запрос не назначит ответственного. */
   webhookSecret: string;
+  /** Не удалось подписаться на вебхук — текст ошибки для окна виджета. */
+  webhookError: string | null;
 }
 
-export type AssignmentStatus = "assigned" | "skipped" | "failed";
+export type AssignmentStatus = "pending" | "assigned" | "skipped" | "failed";
 
 export interface Assignment {
   leadId: number;
@@ -44,7 +46,8 @@ export class Store {
         access_token text not null,
         refresh_token text not null,
         expires_at integer not null,
-        webhook_secret text not null,
+        webhook_secret text not null unique,
+        webhook_error text,
         updated_at integer not null
       );
       create table if not exists queue (
@@ -68,11 +71,11 @@ export class Store {
     this.db
       .query(
         `insert into accounts (id, subdomain, base_domain, access_token, refresh_token,
-           expires_at, webhook_secret, updated_at)
-         values (?1, ?2, ?3, ?4, ?5, ?6, ?7, unixepoch())
+           expires_at, webhook_secret, webhook_error, updated_at)
+         values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch())
          on conflict (id) do update set subdomain = ?2, base_domain = ?3,
            access_token = ?4, refresh_token = ?5, expires_at = ?6,
-           webhook_secret = ?7, updated_at = unixepoch()`,
+           webhook_secret = ?7, webhook_error = ?8, updated_at = unixepoch()`,
       )
       .run(
         a.id,
@@ -82,6 +85,7 @@ export class Store {
         a.refreshToken,
         a.expiresAt,
         a.webhookSecret,
+        a.webhookError,
       );
   }
 
@@ -99,15 +103,20 @@ export class Store {
           refreshToken: r.refresh_token,
           expiresAt: r.expires_at,
           webhookSecret: r.webhook_secret,
+          webhookError: r.webhook_error,
         }
       : null;
   }
 
-  getAccountBySubdomain(subdomain: string): Account | null {
-    const r = this.db.query("select id from accounts where subdomain = ?").get(subdomain) as {
+  getAccountBySecret(secret: string): Account | null {
+    const r = this.db.query("select id from accounts where webhook_secret = ?").get(secret) as {
       id: number;
     } | null;
     return r ? this.getAccount(r.id) : null;
+  }
+
+  setWebhookError(accountId: number, error: string | null) {
+    this.db.query("update accounts set webhook_error = ? where id = ?").run(error, accountId);
   }
 
   deleteAccount(id: number) {
@@ -176,6 +185,18 @@ export class Store {
          where account_id = ? and lead_id = ?`,
       )
       .run(status, userId, note, accountId, leadId);
+  }
+
+  getAssignment(accountId: number, leadId: number): Assignment | null {
+    const r = this.db
+      .query(
+        `select lead_id, user_id, status, note, created_at from assignments
+         where account_id = ? and lead_id = ?`,
+      )
+      .get(accountId, leadId) as Record<string, never> | null;
+    return r
+      ? { leadId: r.lead_id, userId: r.user_id, status: r.status, note: r.note, createdAt: r.created_at }
+      : null;
   }
 
   recentAssignments(accountId: number, limit = 20): Assignment[] {
