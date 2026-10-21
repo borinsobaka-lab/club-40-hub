@@ -496,21 +496,15 @@ export function DashboardFunnelSkeleton({ rows = 5 }: { rows?: number }) {
   );
 }
 
-/** «Занятия»: плитки, загрузка расписания и причины отмен, тренеры, тренировки, слоты. */
+/** «Занятия»: плитки, загрузка расписания, тренеры, тренировки, слоты. */
 export function DashboardClassesSkeleton() {
   return (
     <>
       <DashboardStatsSkeleton labels={CLASSES_STATS.map((s) => s.label)} className={CLASSES_GRID} />
-      <div className="grid gap-3 lg:grid-cols-3">
-        <DashboardChartSkeleton
-          title={CLASSES_CHARTS.heatmap.title}
-          height={DASHBOARD_HEATMAP_HEIGHT}
-          className="lg:col-span-2"
-        />
-        <DashboardChartSkeleton title={CLASSES_CHARTS.reasons.title}>
-          <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} rows={4} />
-        </DashboardChartSkeleton>
-      </div>
+      <DashboardChartSkeleton
+        title={CLASSES_CHARTS.heatmap.title}
+        height={DASHBOARD_HEATMAP_HEIGHT}
+      />
       <DashboardChartSkeleton title={CLASSES_CHARTS.trainers.title}>
         <DashboardTableSkeleton
           name="Тренер"

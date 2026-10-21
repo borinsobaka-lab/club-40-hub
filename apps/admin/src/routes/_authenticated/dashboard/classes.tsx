@@ -2,16 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  ChartArea,
-  ChartPanel,
-  PieLegend,
-  PiePlot,
-  RankList,
-  type RankItem,
-  type Slice,
-} from "@/components/dashboard/chart-panel";
-import { OTHER_COLOR, SERIES_COLORS } from "@/components/dashboard/colors";
+import { ChartArea, ChartPanel, RankList, type RankItem } from "@/components/dashboard/chart-panel";
+import { OTHER_COLOR } from "@/components/dashboard/colors";
 import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { ScheduleHeatmap } from "@/components/dashboard/heatmap";
 import { MetricTable, ShareCell, type MetricRow } from "@/components/dashboard/metric-table";
@@ -19,7 +11,6 @@ import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
 import {
   DashboardClassesPageSkeleton,
   DashboardClassesSkeleton,
-  DashboardPieSkeleton,
 } from "@/components/page-skeletons";
 import { InfoNote } from "@/components/ui/form-field";
 import {
@@ -30,12 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  CANCEL_NONE,
-  CANCEL_OTHER,
-  CANCEL_REASONS,
   WEEKDAYS,
   avgPerClass,
-  cancelReasons,
   classesMetrics,
   classesText,
   classesSeries,
@@ -48,7 +35,7 @@ import {
   type ClassTally,
   type ClassesKey,
 } from "@/lib/dashboard-classes";
-import { loadCancelledBookings, loadClassEntries, type SeriesDef } from "@/lib/dashboard-data";
+import { loadClassEntries, type SeriesDef } from "@/lib/dashboard-data";
 import type { DetailsSpec } from "@/lib/dashboard-details";
 import {
   CLASSES_CHARTS,
@@ -56,7 +43,6 @@ import {
   CLASSES_GRID,
   CLASSES_STATS,
   DASHBOARD_HEATMAP_HEIGHT,
-  DASHBOARD_PIE_HEIGHT,
   DASHBOARD_TITLES,
   TRAINER_COLUMNS,
   WORKOUT_COLUMNS,
@@ -221,13 +207,6 @@ function ClassesBody(view: DashboardView) {
     enabled: !!period,
     meta: { errorMessage: `${view.name}: не удалось загрузить занятия` },
   });
-  // Причины отмен — отдельно: без них остальная страница работает.
-  const cancelledQuery = useQuery({
-    queryKey: ["dashboard", view.scope, "classes-cancelled", period?.from, period?.to],
-    queryFn: () => loadCancelledBookings(view.clubIds, period!.from, period!.to),
-    enabled: !!period,
-    meta: { errorMessage: `${view.name}: не удалось загрузить причины отмен записей` },
-  });
   // «Сейчас» — момент загрузки: прошедшие занятия не меняются от перерисовок.
   const now = query.dataUpdatedAt;
   const entries = query.data?.current;
@@ -238,27 +217,6 @@ function ClassesBody(view: DashboardView) {
   const previous = useMemo(
     () => query.data && classesMetrics(query.data.previous, now),
     [query.data, now],
-  );
-
-  // Причины отмен: цвет закреплён за причиной, а не за местом по числу.
-  const cancelled = cancelledQuery.data;
-  const reasons = useMemo<Slice[] | null>(
-    () =>
-      entries && cancelled
-        ? cancelReasons(entries, now, cancelled).map((r) => {
-            const idx = (CANCEL_REASONS as readonly string[]).indexOf(r.key);
-            return {
-              ...r,
-              color:
-                r.key === CANCEL_NONE.key
-                  ? OTHER_COLOR
-                  : r.key === CANCEL_OTHER.key
-                    ? SERIES_COLORS[CANCEL_REASONS.length]
-                    : SERIES_COLORS[idx],
-            };
-          })
-        : null,
-    [entries, cancelled, now],
   );
 
   const data = useMemo(() => {
@@ -360,8 +318,6 @@ function ClassesBody(view: DashboardView) {
   }, [data, workoutSort, color]);
 
   const unmarked = current?.unmarked ?? 0;
-  const reasonsTotal = reasons?.reduce((s, r) => s + r.value, 0) ?? 0;
-  const reasonsLoading = loading || cancelledQuery.isLoading;
 
   return (
     <>
@@ -383,51 +339,25 @@ function ClassesBody(view: DashboardView) {
         </InfoNote>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-3">
-        <ChartPanel
-          title={CLASSES_CHARTS.heatmap.title}
-          tip={CLASSES_CHARTS.heatmap.tip}
-          className="lg:col-span-2"
-          summary={data && data.heat.cells.length > 0 && "человек на занятии в среднем"}
-        >
-          {loading || error || !data || data.heat.cells.length === 0 ? (
-            <ChartArea
-              height={DASHBOARD_HEATMAP_HEIGHT}
-              loading={loading}
-              error={error}
-              empty
-              emptyText="Нет проведённых занятий за период"
-            >
-              {null}
-            </ChartArea>
-          ) : (
-            <ScheduleHeatmap {...data.heat} color={color} />
-          )}
-        </ChartPanel>
-
-        <ChartPanel
-          title={CLASSES_CHARTS.reasons.title}
-          tip={CLASSES_CHARTS.reasons.tip}
-          summary={reasonsTotal > 0 && `Всего ${formatNumber(reasonsTotal)}`}
-        >
-          {reasonsLoading ? (
-            <DashboardPieSkeleton height={DASHBOARD_PIE_HEIGHT} rows={4} />
-          ) : (
-            <>
-              <ChartArea
-                height={DASHBOARD_PIE_HEIGHT}
-                loading={false}
-                error={error || cancelledQuery.isError}
-              >
-                <PiePlot slices={reasons ?? []} format={formatNumber} />
-              </ChartArea>
-              {reasons && reasons.length > 0 && (
-                <PieLegend slices={reasons} format={formatNumber} />
-              )}
-            </>
-          )}
-        </ChartPanel>
-      </div>
+      <ChartPanel
+        title={CLASSES_CHARTS.heatmap.title}
+        tip={CLASSES_CHARTS.heatmap.tip}
+        summary={data && data.heat.cells.length > 0 && "человек на занятии в среднем"}
+      >
+        {loading || error || !data || data.heat.cells.length === 0 ? (
+          <ChartArea
+            height={DASHBOARD_HEATMAP_HEIGHT}
+            loading={loading}
+            error={error}
+            empty
+            emptyText="Нет проведённых занятий за период"
+          >
+            {null}
+          </ChartArea>
+        ) : (
+          <ScheduleHeatmap {...data.heat} color={color} />
+        )}
+      </ChartPanel>
 
       <ChartPanel
         title={CLASSES_CHARTS.trainers.title}

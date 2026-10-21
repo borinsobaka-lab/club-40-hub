@@ -65,7 +65,6 @@ type LogRow = {
   booked_at: string;
   cancelled_at: string | null;
   completed_at: string | null;
-  cancel_reason: string | null;
   cancelled_lead_minutes: number | null;
   met_value: number | null;
   weight_at_time: number | null;
@@ -87,7 +86,6 @@ const SORT_COLUMNS = {
   duration: "duration_min",
   calories: "calories",
   cancelledAt: "cancelled_at",
-  reason: "cancel_reason",
 };
 
 // Срок отмены: >0 — за сколько до начала, <=0 — после начала занятия.
@@ -234,18 +232,15 @@ function BookingsLogPage() {
                   <TableHead className="w-[160px]" {...sort.head("cancelledAt")}>
                     Отменена
                   </TableHead>
-                  <TableHead className="min-w-[180px]" {...sort.head("reason")}>
-                    Причина отмены
-                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {table.loading ? (
-                  <TableSkeletonRows columns={11} />
+                  <TableSkeletonRows columns={10} />
                 ) : table.rows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={11}
+                      colSpan={10}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Записей не найдено.
@@ -311,15 +306,6 @@ function BookingsLogPage() {
                             </div>
                           ) : (
                             "—"
-                          )}
-                        </TableCell>
-                        {/* Готовая причина из приложения или текст клиента («Другое»),
-                            решение владельца 2026-10-14. */}
-                        <TableCell className="max-w-[260px] whitespace-pre-wrap break-words text-sm">
-                          {r.cancelled_at && r.cancel_reason ? (
-                            r.cancel_reason
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
                       </TableRow>

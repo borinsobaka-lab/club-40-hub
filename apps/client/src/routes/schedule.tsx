@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { settlePackageMemberships } from "@/lib/packages-memberships";
 import { PageShell } from "@/components/page-shell";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
+import { RescheduleOfferDialog } from "@/components/reschedule-offer-dialog";
 import { entryToDrawerData, workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useClientStudioId } from "@/hooks/use-client-studio";
@@ -115,6 +116,7 @@ function SchedulePage() {
   const [waitlistedIds, setWaitlistedIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const clubSettings = useClubSettings();
   const { user } = useAuth();
   const { studioId, studioReady } = useClientStudioId();
@@ -249,7 +251,7 @@ function SchedulePage() {
     return () => el.removeEventListener("wheel", onWheel);
   }, [loading, error, activeTab, shiftDay]);
 
-  async function toggleBooking(entryId: string, reason?: string) {
+  async function toggleBooking(entryId: string) {
     if (pendingId) return;
     setPendingId(entryId);
     const wasBooked = bookedIds.has(entryId);
@@ -261,7 +263,9 @@ function SchedulePage() {
     if (!isActive) await settlePackageMemberships();
     const { data, error } = await supabase.rpc(
       fn,
-      isActive ? { p_entry_id: entryId, p_reason: reason ?? null } : { p_entry_id: entryId },
+      // Причину отмены не спрашиваем (2026-10-21); p_reason — явно: та же
+      // перегрузка функции в базе, что и раньше.
+      isActive ? { p_entry_id: entryId, p_reason: null } : { p_entry_id: entryId },
     );
     setPendingId(null);
     if (error) {
@@ -317,7 +321,9 @@ function SchedulePage() {
             ),
           );
         }
-        toast.success(wasWaitlisted ? t("Вы вышли из листа ожидания") : t("Запись отменена"));
+        // Отменил запись — предложить другое время; вышел из очереди — тост.
+        if (wasWaitlisted) toast.success(t("Вы вышли из листа ожидания"));
+        else setRescheduleOpen(true);
       } else if (res.waitlisted) {
         setWaitlistedIds((prev) => new Set(prev).add(entryId));
         toast.success(t("Мест нет — вы в листе ожидания"));
@@ -709,9 +715,15 @@ function SchedulePage() {
         })()}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
-        onBook={(reason) => {
-          if (openEntry) toggleBooking(openEntry.id, reason);
+        onBook={() => {
+          if (openEntry) toggleBooking(openEntry.id);
         }}
+      />
+      {/* Уже в расписании: «Выбрать время» закрывает шторку тренировки. */}
+      <RescheduleOfferDialog
+        open={rescheduleOpen}
+        onOpenChange={setRescheduleOpen}
+        onPick={() => setOpenEntry(null)}
       />
     </PageShell>
   );

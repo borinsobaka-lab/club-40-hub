@@ -12,7 +12,7 @@ import {
   type RefundRecord,
   type SaleRecord,
 } from "@/lib/dashboard-analytics";
-import type { CancelledBooking, ClassEntry } from "@/lib/dashboard-classes";
+import type { ClassEntry } from "@/lib/dashboard-classes";
 import { dueBadge, type DetailRow, type DetailsSpec } from "@/lib/dashboard-details";
 import type { NpsAnswer } from "@/lib/dashboard-marketing";
 
@@ -1092,8 +1092,7 @@ type EntryRow = {
 /**
  * Групповые и персональные занятия клубов, начавшиеся в from–to, с тренерами
  * и записями (прочая активность дашборду не нужна). Записи — живые
- * schedule_bookings: статус каждой записи занятия; причины отмен — из
- * журнала (loadCancelledBookings).
+ * schedule_bookings: статус каждой записи занятия.
  * `light` — только статусы записей (графики плиток за 12 месяцев).
  */
 export async function loadClassEntries(
@@ -1159,33 +1158,6 @@ export async function loadClassEntries(
       })),
     };
   });
-}
-
-/**
- * Отменённые записи на занятия клубов в from–to с причиной — из журнала:
- * колонку cancel_reason у журнала гарантирует миграция
- * (2026-10-10_schedule_entry_delete.sql), а запрос причин отдельно, чтобы
- * без них работала остальная страница.
- */
-export async function loadCancelledBookings(
-  studioIds: string[],
-  from: string,
-  to: string,
-): Promise<CancelledBooking[]> {
-  const rows = await loadAllRows({
-    page: (lo, hi) =>
-      select("bookings_log", "entry_id, cancel_reason", lo)
-        .in("studio_id", studioIds)
-        .eq("status", "cancelled")
-        .gte("starts_at", dayStartISO(from))
-        .lt("starts_at", nextDayStartISO(to))
-        .order("id")
-        .range(lo, hi),
-  });
-  return rows.map((r) => ({
-    entryId: (r.entry_id as string | null) ?? null,
-    reason: (r.cancel_reason as string | null) ?? null,
-  }));
 }
 
 // ---------------------------------------------------------------------------
