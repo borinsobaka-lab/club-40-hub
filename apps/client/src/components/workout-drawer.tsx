@@ -28,7 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -41,7 +40,7 @@ import { SubstitutionChip } from "@/formats/packages/workout-card";
 import { FormattedText } from "@/lib/formatted-text";
 import { TrainerDrawer } from "@/formats/packages/trainer-drawer";
 import { formatRating } from "@/formats/packages/trainer-rating";
-import { msg, useLocalize, useT, type Translator } from "@/i18n";
+import { useLocalize, useT, type Translator } from "@/i18n";
 
 export type WorkoutDrawerData = {
   id: string;
@@ -96,21 +95,6 @@ function whenLabel(startsAt: string, endsAt: string | null | undefined, t: Trans
   return `${day} · ${time(start)}–${time(end)}${minutes > 0 ? ` · ${t("{n} мин", { n: minutes })}` : ""}`;
 }
 
-// Причины отмены (решение владельца 2026-10-14): выбираются в окне после
-// «Отменить запись», без причины не отменить. Готовая причина уходит в базу
-// по-русски (её читают в «Истории записей» админки) — показывается перевод;
-// «Другое» — текст клиента как есть.
-const CANCEL_REASONS = [
-  msg("Плохое самочувствие или болезнь"),
-  msg("Работа или учёба"),
-  msg("Семейные обстоятельства"),
-  msg("Не успеваю к началу"),
-  msg("Хочу перенести на другое время"),
-  msg("Записался(-ась) по ошибке"),
-];
-const OTHER_REASON = "other";
-const OTHER_REASON_MAX = 300;
-
 export function WorkoutDrawer({
   data,
   open,
@@ -126,7 +110,7 @@ export function WorkoutDrawer({
   data: WorkoutDrawerData | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onBook: (reason?: string) => void;
+  onBook: () => void;
   isBooked: boolean;
   isWaitlisted?: boolean;
   isFull?: boolean;
@@ -144,17 +128,13 @@ export function WorkoutDrawer({
   const studio =
     isPack && data?.studioId ? loc(studios?.find((s) => s.id === data.studioId)) : null;
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
-  // Окно «Почему отменяете?»: выбранная причина (или OTHER_REASON) и свой текст.
+  // Окно «Отменить запись?» — подтверждение, чтобы не отменить случайным касанием.
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState<string>("");
-  const [otherReason, setOtherReason] = useState("");
   // Карточка тренера (пакетное) — вложенной шторкой поверх окна тренировки.
   const [trainerId, setTrainerId] = useState<string | null>(null);
 
   useEffect(() => {
     setCancelOpen(false);
-    setCancelReason("");
-    setOtherReason("");
     setTrainerId(null);
   }, [data?.id, open]);
 
@@ -282,8 +262,8 @@ export function WorkoutDrawer({
                 {/* Подсказки — в прокрутке; кнопки — ниже, закреплены (решение
                     владельца 2026-10-12: «Записаться» не должна уезжать за край
                     длинного описания); размер — общий у кнопок действий
-                    (`buttonVariants`, 2026-10-13). Причина отмены — в окне
-                    после «Отменить запись» (2026-10-14). */}
+                    (`buttonVariants`, 2026-10-13). «Отменить запись» —
+                    через окно подтверждения (2026-10-21). */}
                 {isBooked ? null : isWaitlisted ? (
                   <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                     {t(
@@ -365,40 +345,22 @@ export function WorkoutDrawer({
 
       {isPack && <TrainerDrawer nested trainerId={trainerId} onClose={() => setTrainerId(null)} />}
 
+      {/* Отмена записи (решение владельца 2026-10-21): только подтверждение,
+          без вопроса о причине; после отмены экран предлагает выбрать другое
+          время (RescheduleOfferDialog). */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{t("Почему отменяете запись?")}</DialogTitle>
-            <DialogDescription>{t("Выберите причину — так мы станем удобнее.")}</DialogDescription>
-          </DialogHeader>
-          <div className="mt-1 flex flex-col gap-2">
-            {[...CANCEL_REASONS, OTHER_REASON].map((r) => {
-              const selected = cancelReason === r;
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setCancelReason(r)}
-                  className={cn(
-                    "w-full rounded-2xl px-4 py-3 text-left text-[15px] font-medium transition",
-                    selected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                  )}
-                >
-                  {r === OTHER_REASON ? t("Другое") : t(r)}
-                </button>
-              );
-            })}
-            {cancelReason === OTHER_REASON && (
-              <Textarea
-                autoFocus
-                rows={3}
-                maxLength={OTHER_REASON_MAX}
-                value={otherReason}
-                onChange={(e) => setOtherReason(e.target.value)}
-                placeholder={t("Напишите причину")}
-              />
+            <DialogTitle>{t("Отменить запись?")}</DialogTitle>
+            {data && (
+              <DialogDescription>
+                <span className="block font-medium text-foreground">{data.name}</span>
+                {data.startsAt && (
+                  <span className="block">{whenLabel(data.startsAt, data.endsAt, t)}</span>
+                )}
+              </DialogDescription>
             )}
-          </div>
+          </DialogHeader>
           <div className="mt-2 flex gap-2">
             <button
               type="button"
@@ -409,14 +371,10 @@ export function WorkoutDrawer({
             </button>
             <button
               type="button"
-              disabled={
-                isPending || !cancelReason || (cancelReason === OTHER_REASON && !otherReason.trim())
-              }
+              disabled={isPending}
               onClick={() => {
-                const reason = cancelReason === OTHER_REASON ? otherReason.trim() : cancelReason;
-                if (!reason) return;
                 setCancelOpen(false);
-                onBook(reason);
+                onBook();
               }}
               className={cn(
                 buttonVariants(),

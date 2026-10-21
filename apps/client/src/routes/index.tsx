@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -31,13 +31,14 @@ import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { useNotifications } from "@/lib/notifications";
 import { PushBanner } from "@/components/push-prompt";
 import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
-import { packEntryToDrawerData, type PackEntry } from "@/formats/packages/entries";
+import { isDiagnostic, packEntryToDrawerData, type PackEntry } from "@/formats/packages/entries";
 import { PackWorkoutCard } from "@/formats/packages/workout-card";
 import { StudioSwitcher } from "@/formats/packages/studio-switcher";
 
 import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
+import { RescheduleOfferDialog } from "@/components/reschedule-offer-dialog";
 import { VisitHistoryButton, VisitHistoryDrawer } from "@/components/visit-history-drawer";
 import { FeedbackDrawer } from "@/components/feedback-form";
 import { entryToDrawerData, workoutTypeMeta } from "@/lib/workout-types";
@@ -121,10 +122,12 @@ function HomePage() {
   const t = useT();
   const loc = useLocalize();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [openNewsId, setOpenNewsId] = useState<string | null>(null);
   const [openServiceId, setOpenServiceId] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<WorkoutDrawerData | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   // Кнопки «Написать/Позвонить/Фидбэк» — смотримой студии; срок отмены записи
@@ -183,14 +186,14 @@ function HomePage() {
       .map(([ts, items]) => ({ ts, items }));
   }, [myBookings]);
 
-  async function cancelBooking(entryId: string, reason?: string) {
+  async function cancelBooking(entryId: string) {
     if (pendingId) return;
     setPendingId(entryId);
     const { data, error } = await (supabase as any).rpc("cancel_schedule_booking", {
       p_entry_id: entryId,
-      // Причину шторка передаёт и здесь: раньше параметр терялся, и отмена с
-      // главной сохранялась без причины, а из расписания — с причиной.
-      p_reason: reason ?? null,
+      // Причину не спрашиваем (2026-10-21); p_reason — явно, как раньше:
+      // вызов остаётся на той же перегрузке функции в базе.
+      p_reason: null,
     });
     setPendingId(null);
     if (error) {
@@ -199,6 +202,9 @@ function HomePage() {
     }
     const res = data as { ok: boolean; reason?: string } | null;
     if (res?.ok) {
+      // Диагностику назначает студия — другое время в расписании не выбрать.
+      const entry = myBookings?.find((b) => b.entry_id === entryId)?.entry;
+      const diagnostic = IS_PACKAGES && !!entry && isDiagnostic(entry as unknown as PackEntry);
       queryClient.setQueryData<MyBooking[]>(["home-bookings", userId], (prev) =>
         prev?.filter((b) => b.entry_id !== entryId),
       );
@@ -206,7 +212,8 @@ function HomePage() {
       queryClient.invalidateQueries({ queryKey: ["pack-schedule"] });
       queryClient.invalidateQueries({ queryKey: ["pack-my-bookings"] });
       setOpenEntry(null);
-      toast.success(t("Запись отменена"));
+      if (diagnostic) toast.success(t("Диагностика отменена"));
+      else setRescheduleOpen(true);
     } else if (res?.reason) {
       toast.error(t("Не удалось отменить запись: {error}", { error: res.reason }));
     }
@@ -623,9 +630,15 @@ function HomePage() {
         isBooked={true}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={homeSettings.cancel_booking_minutes}
-        onBook={(reason) => {
-          if (openEntry) cancelBooking(openEntry.id, reason);
+        onBook={() => {
+          if (openEntry) cancelBooking(openEntry.id);
         }}
+      />
+
+      <RescheduleOfferDialog
+        open={rescheduleOpen}
+        onOpenChange={setRescheduleOpen}
+        onPick={() => navigate({ to: "/schedule" })}
       />
     </PageShell>
   );

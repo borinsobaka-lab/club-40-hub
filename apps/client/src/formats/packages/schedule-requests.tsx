@@ -288,12 +288,12 @@ export function DiagnosticsTab() {
       .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   }, [bookings.data]);
 
-  async function cancel(entryId: string, reason?: string) {
+  async function cancel(entryId: string) {
     if (pendingId) return;
     setPendingId(entryId);
     const { data, error } = await supabase.rpc("cancel_schedule_booking", {
       p_entry_id: entryId,
-      p_reason: reason ?? null,
+      p_reason: null,
     });
     setPendingId(null);
     if (error) {
@@ -395,8 +395,8 @@ export function DiagnosticsTab() {
         isBooked
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={homeSettings.cancel_booking_minutes}
-        onBook={(reason) => {
-          if (openEntry) cancel(openEntry.id, reason);
+        onBook={() => {
+          if (openEntry) cancel(openEntry.id);
         }}
       />
     </div>

@@ -337,57 +337,6 @@ export function heatmap(entries: ClassEntry[], now: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Причины отмен записей
-
-/**
- * Готовые причины отмены записи из приложения (решение владельца
- * 2026-10-14, apps/client/src/components/workout-drawer.tsx, CANCEL_REASONS):
- * хранятся по-русски, «Другое» — текстом клиента.
- */
-export const CANCEL_REASONS = [
-  "Плохое самочувствие или болезнь",
-  "Работа или учёба",
-  "Семейные обстоятельства",
-  "Не успеваю к началу",
-  "Хочу перенести на другое время",
-  "Записался(-ась) по ошибке",
-] as const;
-
-export const CANCEL_OTHER = { key: "__other", label: "Другое" } as const;
-export const CANCEL_NONE = { key: "__none", label: "Без причины" } as const;
-
-/** Отменённая запись из журнала (bookings_log): занятие и причина. */
-export type CancelledBooking = { entryId: string | null; reason: string | null };
-
-/**
- * Отменённые записи на проведённые занятия по причине; по убыванию. Причины
- * — из журнала: отменённые записи удалённого или отменённого клубом занятия
- * сюда не попадают (занятия нет среди проведённых).
- */
-export function cancelReasons(entries: ClassEntry[], now: number, cancelled: CancelledBooking[]) {
-  const held = new Set(entries.filter((e) => isHeld(e, now)).map((e) => e.id));
-  const counts = new Map<string, number>();
-  for (const b of cancelled) {
-    if (!b.entryId || !held.has(b.entryId)) continue;
-    const reason = b.reason?.trim();
-    const key = !reason
-      ? CANCEL_NONE.key
-      : (CANCEL_REASONS as readonly string[]).includes(reason)
-        ? reason
-        : CANCEL_OTHER.key;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  const label = (key: string) =>
-    key === CANCEL_NONE.key
-      ? CANCEL_NONE.label
-      : key === CANCEL_OTHER.key
-        ? CANCEL_OTHER.label
-        : key;
-  return [...counts.entries()]
-    .map(([key, value]) => ({ key, label: label(key), value }))
-    .sort((a, b) => b.value - a.value);
-}
-
 /** «3 занятия», «5 занятий». */
 export function classesText(n: number) {
   const mod10 = n % 10;

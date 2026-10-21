@@ -3,7 +3,6 @@ import type { Dictionary } from "../types";
 /** Раздел: шторка тренировки (запись, отмена, календарь), типы тренировок. */
 const dict: Dictionary = {
   "{n} мин": "{n} min",
-  Другое: "Other",
   "Google Календарь": "Google Calendar",
   "Apple Календарь": "Apple Calendar",
   "Другой (.ics файл)": "Other (.ics file)",
@@ -25,16 +24,12 @@ const dict: Dictionary = {
   Гибрид: "Hybrid",
   Восстановление: "Recovery",
   Тренировка: "Workout",
-  "Плохое самочувствие или болезнь": "Feeling unwell or sick",
-  "Работа или учёба": "Work or studies",
-  "Семейные обстоятельства": "Family matters",
-  "Не успеваю к началу": "Can't make it in time",
-  "Хочу перенести на другое время": "Want to move to another time",
-  "Записался(-ась) по ошибке": "Booked by mistake",
-  "Почему отменяете запись?": "Why are you cancelling?",
-  "Выберите причину — так мы станем удобнее.": "Pick a reason — it helps us get better.",
-  "Напишите причину": "Write the reason",
+  "Отменить запись?": "Cancel this booking?",
   "Не отменять": "Keep booking",
+  "Хотите выбрать другое время для тренировки?":
+    "Would you like to pick another time for your workout?",
+  "Не сейчас": "Not now",
+  "Выбрать время": "Pick a time",
 };
 
 export default dict;

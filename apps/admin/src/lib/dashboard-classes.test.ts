@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  cancelReasons,
   classesMetrics,
   classesSeries,
   heatmap,
@@ -122,27 +121,6 @@ describe("heatmap", () => {
       fill: 10,
     });
     expect(h.max).toBe(1);
-  });
-});
-
-describe("cancelReasons", () => {
-  test("готовые причины — как есть, свой текст — «Другое», пусто — «Без причины»", () => {
-    const held = entry({ id: "held" });
-    const cancelled = entry({ id: "off", cancelled: true });
-    const log = [
-      { entryId: "held", reason: "Работа или учёба" },
-      { entryId: "held", reason: "Работа или учёба" },
-      { entryId: "held", reason: "Уехала в отпуск" },
-      { entryId: "held", reason: null },
-      // Занятие отменено клубом или удалено — не причина клиента.
-      { entryId: "off", reason: "Занятие отменено студией" },
-      { entryId: null, reason: "Занятие удалено" },
-    ];
-    expect(cancelReasons([held, cancelled], NOW, log)).toEqual([
-      { key: "Работа или учёба", label: "Работа или учёба", value: 2 },
-      { key: "__other", label: "Другое", value: 1 },
-      { key: "__none", label: "Без причины", value: 1 },
-    ]);
   });
 });
 
