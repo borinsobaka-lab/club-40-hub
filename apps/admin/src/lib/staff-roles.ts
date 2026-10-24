@@ -11,21 +11,18 @@ export type TrainerRole = "trainer" | "admin" | "senior_admin" | "masseur";
  * студии — тот же администратор (смены, продажи, вкладка «Админы» в
  * приложении — первым в списке), только подпись своя.
  */
-export const TRAINER_ROLES: Record<TrainerRole, { label: string; plural: string; badge: string }> =
-  {
-    trainer: { label: "Тренер", plural: "Тренеры", badge: "bg-sky-100 text-sky-700" },
-    admin: {
-      label: "Администратор",
-      plural: "Администраторы",
-      badge: "bg-violet-100 text-violet-700",
-    },
-    senior_admin: {
-      label: "Руководитель студии",
-      plural: "Руководители студий",
-      badge: "bg-indigo-100 text-indigo-700",
-    },
-    masseur: { label: "Массажист", plural: "Массажисты", badge: "bg-emerald-100 text-emerald-700" },
-  };
+export const TRAINER_ROLES: Record<TrainerRole, { label: string; plural: string }> = {
+  trainer: { label: "Тренер", plural: "Тренеры" },
+  admin: {
+    label: "Администратор",
+    plural: "Администраторы",
+  },
+  senior_admin: {
+    label: "Руководитель студии",
+    plural: "Руководители студий",
+  },
+  masseur: { label: "Массажист", plural: "Массажисты" },
+};
 
 /** Администратор или руководитель студии: продают, выходят на смены. */
 export const isAdminRole = (role: string | null | undefined) =>

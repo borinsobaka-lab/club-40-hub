@@ -309,7 +309,9 @@ function PayrollPage() {
               {loading ? (
                 <Skeleton className="h-4 w-16" />
               ) : (
-                <b className="text-emerald-600 tabular-nums">{formatPay(paidTotal)}</b>
+                <b className={cn("tabular-nums", paidTotal > 0 && "text-emerald-600")}>
+                  {formatPay(paidTotal)}
+                </b>
               )}
             </span>
             <span className="flex items-center gap-1">
@@ -317,7 +319,9 @@ function PayrollPage() {
               {loading ? (
                 <Skeleton className="h-4 w-16" />
               ) : (
-                <b className="text-amber-600 tabular-nums">{formatPay(leftTotal)}</b>
+                <b className={cn("tabular-nums", leftTotal > 0 && "text-amber-600")}>
+                  {formatPay(leftTotal)}
+                </b>
               )}
             </span>
           </div>

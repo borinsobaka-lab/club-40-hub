@@ -439,6 +439,7 @@ function NpsPage() {
                 {unreadCount > 0 && (
                   <CountBadge
                     count={unreadCount}
+                    tone="quiet"
                     aria-label={`Непрочитанных: ${unreadCount}`}
                     className="ml-1.5"
                   />
@@ -860,11 +861,19 @@ function NewResponseForm({
   );
 }
 
+/**
+ * Цвет у числа — только когда оно есть: красный «0» у «Критиков» и зелёный
+ * «0» у «Промо» сигналили о том, чего нет.
+ */
+function toneIfAny(value: number | string, cls: string) {
+  return typeof value === "number" && value <= 0 ? "" : cls;
+}
+
 function Stat({ label, value, cls = "" }: { label: string; value: number | string; cls?: string }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-xl font-semibold tabular-nums", cls)}>{value}</p>
+      <p className={cn("text-xl font-semibold tabular-nums", toneIfAny(value, cls))}>{value}</p>
     </div>
   );
 }
@@ -873,7 +882,9 @@ function KPI({ label, value, cls = "" }: { label: string; value: number | string
   return (
     <div className="rounded-lg border bg-background p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("mt-1 text-2xl font-semibold tabular-nums", cls)}>{value}</p>
+      <p className={cn("mt-1 text-2xl font-semibold tabular-nums", toneIfAny(value, cls))}>
+        {value}
+      </p>
     </div>
   );
 }

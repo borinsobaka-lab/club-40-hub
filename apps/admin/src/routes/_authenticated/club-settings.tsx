@@ -9,6 +9,8 @@ import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
+import { FieldHint } from "@/components/ui/field-hint";
+import { TableToolbar } from "@/components/table-toolbar";
 import {
   Select,
   SelectContent,
@@ -92,9 +94,11 @@ function ClubSettingsPage() {
         {studiosLoading ? (
           <ClubPickerSkeleton />
         ) : studioId ? (
-          <FormField label="Клуб" tip={TIPS.club}>
+          // Выбор клуба — на плашке, как фильтр в остальных разделах (подписи
+          // над контролами в плашке нет — system.md, «Страницы»).
+          <TableToolbar>
             <Select value={studioId} onValueChange={setPickedId}>
-              <SelectTrigger className="w-48 max-w-full">
+              <SelectTrigger className="w-48 max-w-full" aria-label="Клуб">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -105,7 +109,8 @@ function ClubSettingsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </FormField>
+            <FieldHint>{TIPS.club}</FieldHint>
+          </TableToolbar>
         ) : (
           <InfoNote variant="empty">У вас нет клубов — настраивать нечего.</InfoNote>
         )}

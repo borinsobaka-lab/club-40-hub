@@ -91,6 +91,7 @@ import {
   SentIcon as SendArt,
   Shapes as ShapesArt,
   ShoppingBag as ShoppingBagArt,
+  SlidersHorizontal as SlidersHorizontalArt,
   Smartphone as SmartphoneArt,
   Square as SquareArt,
   Ticket as TicketArt,
@@ -196,6 +197,7 @@ export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
 export const Shapes = icon(ShapesArt, "Shapes");
 export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
+export const SlidersHorizontal = icon(SlidersHorizontalArt, "SlidersHorizontal");
 export const Smartphone = icon(SmartphoneArt, "Smartphone");
 export const Square = icon(SquareArt, "Square");
 export const Ticket = icon(TicketArt, "Ticket");

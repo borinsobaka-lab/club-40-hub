@@ -25,6 +25,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatusChip } from "@/components/ui/status-chip";
+import { StatTile } from "@/components/ui/stat-tile";
 import {
   Select,
   SelectContent,
@@ -43,7 +44,6 @@ import {
 import { toast } from "sonner";
 import { DataPagination } from "@/components/data-pagination";
 import { TableSkeletonRows } from "@/components/skeletons";
-import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime, formatMoneyPrecise, toDateTimeLocalValue } from "@/lib/format";
 import { CashPageSkeleton } from "@/components/page-skeletons";
 
@@ -246,20 +246,14 @@ function CashPage() {
               <CashBalanceSkeleton />
             ) : (
               studios.map((s) => (
-                <div key={s.id} className="rounded-lg border bg-background p-4">
-                  <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                    <Wallet className="h-4 w-4 shrink-0" />
-                    <span className="truncate">Баланс · {s.name}</span>
-                  </div>
-                  {/* Пока баланс не пришёл — болванка, а не «0,00», который легко принять за правду. */}
-                  {totalsLoading ? (
-                    <Skeleton className="mt-2 h-8 w-32" />
-                  ) : (
-                    <div className="mt-2 text-2xl font-semibold tabular-nums">
-                      {formatMoneyPrecise(balanceOf(s.id))}
-                    </div>
-                  )}
-                </div>
+                <StatTile
+                  key={s.id}
+                  icon={<Wallet />}
+                  label={`Баланс · ${s.name}`}
+                  // Пока баланс не пришёл — болванка, а не «0,00», который легко принять за правду.
+                  loading={totalsLoading}
+                  value={formatMoneyPrecise(balanceOf(s.id))}
+                />
               ))
             )}
           </div>
@@ -276,7 +270,7 @@ function CashPage() {
           {/* History */}
           <div className="rounded-lg border bg-background">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
-              <span className="text-sm font-semibold">История операций</span>
+              <span className="text-lg font-semibold">История операций</span>
               {multi && studios && (
                 <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
               )}
@@ -362,15 +356,7 @@ function CashPage() {
 
 /** Плитка баланса, пока клубы раздела грузятся. */
 function CashBalanceSkeleton() {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Wallet className="h-4 w-4" />
-        Баланс
-      </div>
-      <Skeleton className="mt-2 h-8 w-32" />
-    </div>
-  );
+  return <StatTile icon={<Wallet />} label="Баланс" loading />;
 }
 
 function CashOperationForm({
@@ -467,7 +453,7 @@ function CashOperationForm({
         if (!saving) void handleSave();
       }}
     >
-      <h2 className="mb-3 text-sm font-semibold">Новая операция</h2>
+      <h2 className="mb-3 text-lg font-semibold">Новая операция</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <FormField label="Клуб" tip={TIPS.studio} required className="sm:col-span-2">
           <StudioSelect studios={studios} value={studioId} onChange={changeStudio} />

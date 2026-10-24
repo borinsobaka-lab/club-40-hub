@@ -164,7 +164,9 @@ function EmployeesPage() {
         {/* Ошибка — текстом вместо таблицы: иначе после неудачной загрузки (и
             повтора) осталась бы пустая таблица, неотличимая от «нет сотрудников». */}
         {error && !data ? (
-          <div className="text-sm text-destructive">{error.message}</div>
+          // Вид — как у предупреждения «Рассылка не настроена» в «Пушах»:
+          // страничная ошибка везде одной плашкой, не голым красным текстом.
+          <InfoNote variant="warning">{error.message}</InfoNote>
         ) : (
           <div className="rounded-lg border bg-background">
             <Table>

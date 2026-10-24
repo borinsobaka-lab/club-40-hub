@@ -558,7 +558,7 @@ function ShiftStats({
 
   return (
     <section className="rounded-lg border bg-background p-4">
-      <h2 className="font-semibold">Смены за {monthName(month).toLowerCase()}</h2>
+      <h2 className="text-lg font-semibold">Смены за {monthName(month).toLowerCase()}</h2>
       <p className="mt-0.5 text-xs text-muted-foreground">{TIPS.stats}</p>
       {loading ? (
         <ul className="mt-3 divide-y">
@@ -707,7 +707,7 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
   return (
     <section className="rounded-lg border bg-background">
       <div className="p-4 pb-0">
-        <h2 className="font-semibold">Корректировки оклада</h2>
+        <h2 className="text-lg font-semibold">Корректировки оклада</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">{TIPS.adjustment}</p>
       </div>
       <form onSubmit={handleSubmit} className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">

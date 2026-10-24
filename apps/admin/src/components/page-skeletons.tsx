@@ -11,6 +11,7 @@ import {
   type HeaderSkeleton,
 } from "@/components/skeletons";
 import { FieldHint } from "@/components/ui/field-hint";
+import { StatTile } from "@/components/ui/stat-tile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
@@ -149,15 +150,7 @@ function IconButtonSkeleton({ children }: { children: ReactNode }) {
 
 /** Плитка с настоящей подписью и болванкой значения. */
 function StatTileSkeleton({ label, icon }: { label: string; icon?: ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <p className="flex items-center gap-2 text-xs text-muted-foreground">
-        {icon}
-        {label}
-      </p>
-      <Skeleton className="mt-1 h-8 w-16" />
-    </div>
-  );
+  return <StatTile label={label} icon={icon} loading />;
 }
 
 /** Поле формы: подпись + контрол 40px (или своя высота). */
@@ -242,10 +235,14 @@ export function DashboardStatsSkeleton({
   return (
     <div className={cn("grid grid-cols-2 gap-2 sm:gap-3", className)}>
       {labels.map((label) => (
-        <div key={label} className="rounded-lg border bg-background px-3 py-2.5 sm:px-4 sm:py-3">
+        // Та же сетка, что у плиток (stat-cards.tsx): строки — subgrid.
+        <div
+          key={label}
+          className="row-span-3 grid grid-rows-subgrid content-start gap-y-1 rounded-lg border bg-background px-3 py-2.5 sm:px-4 sm:py-3"
+        >
           <p className="text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
-          <Skeleton className="mt-1.5 h-6 w-24" />
-          <Skeleton className="mt-1.5 h-3 w-20" />
+          <Skeleton className="mt-0.5 h-6 w-24" />
+          <Skeleton className="mt-0.5 h-3 w-20" />
         </div>
       ))}
     </div>
@@ -935,16 +932,10 @@ export function CashPageSkeleton() {
     <ShellSkeleton title="Касса">
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border bg-background p-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Wallet className="h-4 w-4" />
-              Баланс
-            </div>
-            <Skeleton className="mt-2 h-8 w-32" />
-          </div>
+          <StatTileSkeleton icon={<Wallet />} label="Баланс" />
         </div>
         <div className="rounded-lg border bg-background p-4">
-          <h2 className="mb-3 text-sm font-semibold">Новая операция</h2>
+          <h2 className="mb-3 text-lg font-semibold">Новая операция</h2>
           {/* Клуб, тип, категория, сумма, кто проводит; дата и комментарий. */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <FieldSkeleton className="sm:col-span-2" />
@@ -1241,12 +1232,7 @@ export function ClubSettingsFormSkeleton() {
 
 /** Выбор клуба над формой «Контактов и правил». */
 export function ClubPickerSkeleton() {
-  return (
-    <div className="space-y-2">
-      <Skeleton className="h-4 w-12" />
-      <Skeleton className="h-10 w-48 max-w-full" />
-    </div>
-  );
+  return <ToolbarSkeleton search={false} controls={["w-48"]} />;
 }
 
 export function ClubSettingsPageSkeleton() {
@@ -1768,7 +1754,7 @@ function ScriptsToolbarSkeleton() {
 function ScriptsPageSkeleton({ grouped }: { grouped: boolean }) {
   return (
     <ShellSkeleton title={grouped ? "Все скрипты" : "Скрипты LS"}>
-      <div className="mx-auto max-w-4xl space-y-3">
+      <div className="max-w-4xl space-y-3">
         <ScriptsToolbarSkeleton />
         <Skeleton className="h-4 w-48" />
         <ScriptsListSkeleton grouped={grouped} />

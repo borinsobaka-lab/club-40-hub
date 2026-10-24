@@ -410,6 +410,20 @@ input[type="number"]::-webkit-outer-spin-button {
   .table-toolbar > [role="radiogroup"] {
     flex-basis: 100%;
   }
+  /* Фильтры за кнопкой (TableToolbar, data-collapsible): поиск и кнопка
+     «Фильтры» — одной строкой, остальное — по нажатию. Табы (toolbar-full)
+     видны всегда. */
+  .table-toolbar[data-collapsible] > .toolbar-search {
+    flex-basis: calc(100% - 3rem);
+  }
+  .table-toolbar[data-collapsible] > .toolbar-filters-toggle {
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+  }
+  .table-toolbar[data-collapsible]:not([data-open])
+    > :not(.toolbar-search, .toolbar-filters-toggle, .toolbar-full) {
+    display: none;
+  }
   /* Сегменты (SegmentedControl) на всю строку делят её поровну. */
   .table-toolbar > [role="radiogroup"] {
     display: grid;
@@ -455,6 +469,15 @@ input[type="number"]::-webkit-outer-spin-button {
    конец таблицы и пагинация прокручиваются из-под кнопок. */
 .admin-main:has(.fab-actions) {
   padding-bottom: 6.5rem;
+}
+/* Стрелки пагинации — левее плавающих кнопок: пока таблица не докручена до
+   конца, кнопки лежали прямо на них. --fab-width ставит FloatingActions.
+   На телефоне пагинация — одна узкая строка, а кнопки переносятся: там
+   остаётся запас снизу. */
+@media (min-width: 640px) {
+  .admin-main:has(.fab-actions) .data-pagination {
+    padding-right: calc(var(--fab-width, 0px) + 1.25rem);
+  }
 }
 
 /* Полоса прокрутки бокового меню. Системная на тёмной панели выглядит как

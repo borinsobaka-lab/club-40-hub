@@ -239,7 +239,10 @@ function StatCard({
   return (
     <div
       className={cn(
-        "relative flex min-w-0 flex-col rounded-lg border bg-background px-3 py-2.5 sm:px-4 sm:py-3",
+        // Подпись, число и сравнение — строки общей сетки плиток (subgrid):
+        // число у всех плиток ряда на одной высоте, даже если чья-то подпись
+        // заняла две строки.
+        "relative row-span-3 grid min-w-0 grid-rows-subgrid content-start gap-y-1 rounded-lg border bg-background px-3 py-2.5 sm:px-4 sm:py-3",
         chartable &&
           "group transition-colors hover:border-foreground/20 has-[button[data-card]:focus-visible]:ring-2 has-[button[data-card]:focus-visible]:ring-ring",
       )}
@@ -270,17 +273,35 @@ function StatCard({
           chartable && "pr-5",
         )}
       >
-        {stat.label}
-        <FieldHint className="pointer-events-auto relative z-10 ml-1 align-[-2px]">
-          {stat.tip}
-        </FieldHint>
+        <LabelWithHint label={stat.label}>
+          <FieldHint className="pointer-events-auto relative z-10 ml-1 align-[-2px]">
+            {stat.tip}
+          </FieldHint>
+        </LabelWithHint>
       </span>
-      <span className="pointer-events-none mt-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+      <span className="pointer-events-none flex min-w-0 flex-wrap items-baseline gap-x-1.5">
         <span className="text-lg font-semibold tabular-nums sm:text-xl">{value}</span>
         {stat.hint && <span className="text-xs text-muted-foreground">{stat.hint}</span>}
       </span>
-      {delta && <span className="pointer-events-none mt-1 block">{delta}</span>}
+      {delta ? <span className="pointer-events-none block">{delta}</span> : <span />}
     </div>
+  );
+}
+
+/**
+ * «?» — вместе с последним словом подписи: иначе на узкой плитке он один
+ * уезжал на следующую строку («Средний чек за услуги» / «?»).
+ */
+function LabelWithHint({ label, children }: { label: string; children: ReactNode }) {
+  const cut = label.lastIndexOf(" ");
+  return (
+    <>
+      {cut > 0 && `${label.slice(0, cut)} `}
+      <span className="whitespace-nowrap">
+        {label.slice(cut + 1)}
+        {children}
+      </span>
+    </>
   );
 }
 
