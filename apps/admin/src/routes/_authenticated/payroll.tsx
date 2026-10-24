@@ -309,7 +309,7 @@ function PayrollPage() {
               {loading ? (
                 <Skeleton className="h-4 w-16" />
               ) : (
-                <b className={cn("tabular-nums", paidTotal > 0 && "text-emerald-600")}>
+                <b className={cn("tabular-nums", paidTotal > 0 && "text-emerald-700")}>
                   {formatPay(paidTotal)}
                 </b>
               )}
@@ -319,7 +319,7 @@ function PayrollPage() {
               {loading ? (
                 <Skeleton className="h-4 w-16" />
               ) : (
-                <b className={cn("tabular-nums", leftTotal > 0 && "text-amber-600")}>
+                <b className={cn("tabular-nums", leftTotal > 0 && "text-amber-700")}>
                   {formatPay(leftTotal)}
                 </b>
               )}
@@ -347,7 +347,7 @@ function PayrollPage() {
                 value={roleFilter}
                 onValueChange={(v) => setRoleFilter(v as typeof ALL | TrainerRole)}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger aria-label="Роль" className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -363,7 +363,7 @@ function PayrollPage() {
                 value={statusFilter}
                 onValueChange={(v) => setStatusFilter(v as StatusFilter)}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger aria-label="Статус выплаты" className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -475,7 +475,7 @@ function PayrollPage() {
                             className={cn(
                               "text-right tabular-nums whitespace-nowrap",
                               s.adjustments < 0 && "text-rose-600",
-                              s.adjustments > 0 && "text-emerald-600",
+                              s.adjustments > 0 && "text-emerald-700",
                             )}
                           >
                             {s.adjustments ? signedMoney(s.adjustments) : "—"}
@@ -855,7 +855,7 @@ function EmployeePayroll({
                       <span
                         className={cn(
                           "shrink-0 tabular-nums",
-                          sign < 0 ? "text-rose-600" : "text-emerald-600",
+                          sign < 0 ? "text-rose-600" : "text-emerald-700",
                         )}
                       >
                         {signedMoney(sign * Number(a.amount))}

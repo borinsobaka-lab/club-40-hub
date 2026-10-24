@@ -248,7 +248,7 @@ function MembershipsPage() {
                   <TableHead tip={TIPS.installment} {...sort.head("installment")}>
                     Рассрочка
                   </TableHead>
-                  <TableHead tip={TIPS.price} {...sort.head("price")}>
+                  <TableHead className="text-right" tip={TIPS.price} {...sort.head("price")}>
                     Цена
                   </TableHead>
                   <TableHead {...sort.head("status")}>Статус</TableHead>
@@ -320,7 +320,7 @@ function MembershipsPage() {
                         </TableCell>
                         <TableCell>{m.auto_renew ? "Да" : "Нет"}</TableCell>
                         <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
-                        <TableCell className="font-medium tabular-nums">
+                        <TableCell className="text-right font-medium tabular-nums">
                           {formatMoney(Number(m.price))}
                         </TableCell>
                         <TableCell>

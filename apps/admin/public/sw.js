@@ -5,7 +5,7 @@
  * версия. Перехватываются только переходы по страницам: нет сети — отдаём
  * offline.html из кэша. Меняя offline.html, подними VERSION.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `offline-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 

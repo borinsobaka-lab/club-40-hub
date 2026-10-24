@@ -94,14 +94,16 @@ const SOURCES: Record<string, string> = {
   portal: "Добавлено в портале",
 };
 
+// Подписи без эмодзи: эмодзи вместо иконок скринридер читал названием
+// («грустное лицо»), а в списке и сортировке они мешали тексту.
 const TOPICS: Record<string, string> = {
-  training: "🏋️ Тренировка",
-  staff: "👩‍💼 Сотрудник",
-  cleanliness: "🧹 Чистота",
-  app: "📱 Приложение",
-  idea: "💡 Идея",
-  thanks: "😊 Спасибо",
-  other: "❓ Другое",
+  training: "Тренировка",
+  staff: "Сотрудник",
+  cleanliness: "Чистота",
+  app: "Приложение",
+  idea: "Идея",
+  thanks: "Спасибо",
+  other: "Другое",
 };
 
 const MOOD_OPTIONS = [
@@ -110,9 +112,16 @@ const MOOD_OPTIONS = [
   { value: "positive", emoji: "😊", label: "Хорошо" },
 ];
 
-const MOOD: Record<string, string> = Object.fromEntries(
-  MOOD_OPTIONS.map((m) => [m.value, m.emoji]),
-);
+/** Настроение в строке — смайлик с подписью для скринридера и подсказкой. */
+function MoodMark({ mood }: { mood: string }) {
+  const m = MOOD_OPTIONS.find((o) => o.value === mood);
+  if (!m) return <>{mood}</>;
+  return (
+    <span role="img" aria-label={m.label} title={m.label}>
+      {m.emoji}
+    </span>
+  );
+}
 
 /** Оценка для сортировки: от «Плохо» к «Хорошо». */
 const MOOD_RANK: Record<string, number> = Object.fromEntries(
@@ -137,7 +146,7 @@ const SORT_GETTERS = {
 function moodSelectItems() {
   return MOOD_OPTIONS.map((m) => (
     <SelectItem key={m.value} value={m.value}>
-      {m.emoji} {m.label}
+      <span aria-hidden>{m.emoji}</span> {m.label}
     </SelectItem>
   ));
 }
@@ -286,7 +295,7 @@ function FeedbackPage() {
             <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
           )}
           <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger aria-label="Тема" className="w-48">
               <SelectValue placeholder="Все темы" />
             </SelectTrigger>
             <SelectContent>
@@ -299,7 +308,7 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger aria-label="Статус" className="w-40">
               <SelectValue placeholder="Все статусы" />
             </SelectTrigger>
             <SelectContent>
@@ -309,7 +318,7 @@ function FeedbackPage() {
             </SelectContent>
           </Select>
           <Select value={moodFilter} onValueChange={setMoodFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger aria-label="Настроение" className="w-40">
               <SelectValue placeholder="Все оценки" />
             </SelectTrigger>
             <SelectContent>
@@ -396,7 +405,7 @@ function FeedbackPage() {
                       </TableCell>
                       <TableCell className="max-w-[280px] truncate">{i.message}</TableCell>
                       <TableCell className="text-center text-lg">
-                        {i.mood ? MOOD[i.mood] : "—"}
+                        {i.mood ? <MoodMark mood={i.mood} /> : "—"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap font-medium">
                         {i.client_name || "—"}
@@ -658,7 +667,12 @@ function FeedbackDetails({
         </ReadOnlyValue>
         {item.mood && (
           <ReadOnlyValue label="Оценка">
-            <span className="text-lg">{MOOD[item.mood]}</span>
+            <span>
+              <span className="text-lg">
+                <MoodMark mood={item.mood} />
+              </span>{" "}
+              {MOOD_OPTIONS.find((o) => o.value === item.mood)?.label}
+            </span>
           </ReadOnlyValue>
         )}
         {(item.client_name || item.client_contact) && (
@@ -730,7 +744,9 @@ function FeedbackLinks() {
     return (
       <DialogHeader>
         <DialogTitle>Ссылка и QR-код</DialogTitle>
-        <DialogDescription>Выберите клуб в шапке.</DialogDescription>
+        <DialogDescription>
+          Выберите клуб: справа в шапке, на телефоне — внизу меню.
+        </DialogDescription>
       </DialogHeader>
     );
   }

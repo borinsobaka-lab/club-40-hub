@@ -321,7 +321,7 @@ function ShiftGrid({
                   <div
                     className={cn(
                       "mx-auto flex size-7 items-center justify-center rounded-full text-sm font-semibold tabular-nums",
-                      isToday && "bg-brand text-white",
+                      isToday && "bg-brand text-brand-foreground",
                     )}
                   >
                     {d.day}
@@ -819,7 +819,7 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
                       <TableCell
                         className={cn(
                           "text-right font-medium whitespace-nowrap tabular-nums",
-                          sign < 0 ? "text-rose-600" : "text-emerald-600",
+                          sign < 0 ? "text-rose-600" : "text-emerald-700",
                         )}
                       >
                         {sign < 0 ? "−" : "+"}

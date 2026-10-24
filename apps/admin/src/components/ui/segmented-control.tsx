@@ -100,7 +100,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(o.value)}
             className={cn(
               // relative z-10 — поверх плашки; фон рисует ActiveIndicator.
-              "relative z-10 inline-flex h-full cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-sm font-medium transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:size-4 [&_svg]:shrink-0",
+              "relative z-10 inline-flex h-full cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:size-4 [&_svg]:shrink-0",
               iconOnly ? "aspect-square" : "px-3.5",
               checked ? "text-primary-foreground" : "hover:text-foreground",
             )}

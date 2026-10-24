@@ -94,7 +94,7 @@ export function PhoneInput({
           {check.suggestion ? (
             <button
               type="button"
-              className="cursor-pointer text-left text-foreground underline underline-offset-2 hover:text-brand"
+              className="cursor-pointer text-left text-foreground underline underline-offset-2 hover:text-link-hover"
               onClick={() => onChange(phoneForEditing(check.suggestion!.e164))}
             >
               Это номер {check.suggestion.country ? countryName(check.suggestion.country) : ""}{" "}
@@ -210,7 +210,7 @@ export function EmailInput({
       {suggestion && (
         <button
           type="button"
-          className="cursor-pointer text-left text-xs text-foreground underline underline-offset-2 hover:text-brand"
+          className="cursor-pointer text-left text-xs text-foreground underline underline-offset-2 hover:text-link-hover"
           onClick={() => onChange(suggestion)}
         >
           Возможно, {suggestion}? Исправить

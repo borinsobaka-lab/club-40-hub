@@ -29,7 +29,7 @@ import { DataPagination, usePagination } from "@/components/data-pagination";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/skeletons";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatPhone } from "@/lib/format";
 import { AutorenewPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/autorenew-cancellations")({
@@ -150,7 +150,7 @@ function AutorenewCancellationsPage() {
               placeholder="Поиск: имя, телефон, почта, абонемент"
             />
             <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger aria-label="Причина" className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -215,7 +215,7 @@ function AutorenewCancellationsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          <div>{r.client?.phone ?? "—"}</div>
+                          <div>{formatPhone(r.client?.phone) || "—"}</div>
                           <div className="text-xs">{r.client?.email ?? "—"}</div>
                         </TableCell>
                         <TableCell>{r.membership?.name ?? "—"}</TableCell>

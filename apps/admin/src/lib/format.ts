@@ -127,3 +127,18 @@ export function phoneSearchTerm(term: string) {
   const digits = term.replace(/[\s-]/g, "");
   return /^\+?\d+$/.test(digits) ? digits : term;
 }
+
+/**
+ * Телефон из базы для таблиц, без libphonenumber-js (она тяжёлая — грузится
+ * только с «Клиентами» и карточкой, там `formatPhoneDisplay` из
+ * lib/contacts.ts): грузинский мобильный и российский номер — с пробелами,
+ * как у `formatPhoneDisplay`; прочее — как записано.
+ */
+export function formatPhone(stored: string | null | undefined): string {
+  const v = (stored ?? "").trim();
+  let m = /^\+995(5\d{2})(\d{2})(\d{2})(\d{2})$/.exec(v);
+  if (m) return `+995 ${m[1]} ${m[2]} ${m[3]} ${m[4]}`;
+  m = /^\+7(\d{3})(\d{3})(\d{2})(\d{2})$/.exec(v);
+  if (m) return `+7 ${m[1]} ${m[2]} ${m[3]} ${m[4]}`;
+  return v;
+}

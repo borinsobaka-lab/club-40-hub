@@ -78,7 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Админ-панель фитнес-клуба Base40." },
       { property: "og:type", content: "website" },
       // Цвет плашки иконки — им же браузеры красят интерфейс на мобильных.
-      { name: "theme-color", content: "#1B1C1F" },
+      { name: "theme-color", content: "#1A2027" },
       // Установка на телефон и ноутбук (PWA): манифест + public/sw.js. Для
       // iPhone — свои мета-теги: Safari берёт имя и иконку отсюда, а не из манифеста.
       { name: "mobile-web-app-capable", content: "yes" },

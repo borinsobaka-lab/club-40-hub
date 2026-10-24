@@ -56,6 +56,7 @@ import {
   phoneSearchTerm,
   sanitizeSearch,
   todayISO,
+  formatPhone,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -792,7 +793,7 @@ function ClientMembershipsPage() {
                   <TableHead tip={TIPS.balance} {...sort.head("balance")}>
                     Баланс
                   </TableHead>
-                  <TableHead tip={TIPS.amount} {...sort.head("amount")}>
+                  <TableHead className="text-right" tip={TIPS.amount} {...sort.head("amount")}>
                     Сумма
                   </TableHead>
                   <TableHead tip={TIPS.soldBy} {...sort.head("soldBy")}>
@@ -868,7 +869,7 @@ function ClientMembershipsPage() {
                           )}
                           {r.clients?.phone && (
                             <div className="text-xs font-normal text-muted-foreground">
-                              {r.clients.phone}
+                              {formatPhone(r.clients.phone)}
                             </div>
                           )}
                           {r.clients?.email && (
@@ -962,7 +963,7 @@ function ClientMembershipsPage() {
                         <TableCell className="whitespace-nowrap tabular-nums">
                           <Balance row={r} />
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
+                        <TableCell className="whitespace-nowrap text-right">
                           <Amount row={r} refunded={refundedBySale?.[r.id] ?? 0} />
                         </TableCell>
                         <TableCell>

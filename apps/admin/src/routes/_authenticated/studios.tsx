@@ -182,7 +182,7 @@ function StudiosPage() {
                         {s.name}
                         {s.id === activeId && (
                           <Badge variant="secondary" className="ml-2">
-                            Открыта
+                            Открыт
                           </Badge>
                         )}
                       </TableCell>

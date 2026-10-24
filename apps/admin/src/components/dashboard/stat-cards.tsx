@@ -104,7 +104,7 @@ function Delta({
   const up = diff > 0;
   const flat = diff === 0;
   const good = flat ? null : up === goodWhenUp;
-  const color = flat ? "text-muted-foreground" : good ? "text-emerald-600" : "text-rose-600";
+  const color = flat ? "text-muted-foreground" : good ? "text-emerald-700" : "text-rose-600";
   const Icon = flat ? Minus : up ? ArrowUp : ArrowDown;
   const sign = flat ? "" : up ? "+" : "−";
   // Доли и индексы сравниваем разницей в пунктах: «+50% · 5%» у
@@ -119,7 +119,7 @@ function Delta({
         : pct === null
           ? diffText
           : `${sign}${Math.abs(pct).toFixed(0)}% · ${diffText}`}
-      <span className="text-muted-foreground max-sm:hidden">vs пред. период</span>
+      <span className="text-muted-foreground max-sm:hidden">к пред. периоду</span>
     </span>
   );
 }

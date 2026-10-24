@@ -44,10 +44,17 @@ export function DateRangeFilter({
   placeholder,
   title,
   className,
+  showLabel = true,
 }: {
   value: DateRange | undefined;
   onChange: (value: DateRange | undefined) => void;
   placeholder: string;
+  /**
+   * Подпись перед выбранными датами («Регистрация: 01.10–31.10.26»), как у
+   * NumberRangeFilter: в плашке с двумя фильтрами дат иначе не понять, какой
+   * какой. false — когда подпись уже есть над полем (дашборд).
+   */
+  showLabel?: boolean;
   /** Всплывающая подсказка: что именно фильтрует период. */
   title?: string;
   className?: string;
@@ -66,10 +73,21 @@ export function DateRangeFilter({
           className={cn(fieldTriggerClass, "w-48 tabular-nums", className)}
         >
           <span className="flex min-w-0 items-center gap-2">
-            <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className={cn("truncate", !text && "text-muted-foreground")}>
-              {text ?? placeholder}
-            </span>
+            {/* С подписью место отдаём ей: значок — только у пустого поля. */}
+            {!(text && showLabel) && (
+              <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+            {text ? (
+              <span className="flex min-w-0 items-baseline gap-1">
+                {/* Сжимается подпись, даты — нет. */}
+                {showLabel && (
+                  <span className="truncate text-muted-foreground">{placeholder}:</span>
+                )}
+                <span className="shrink-0">{text}</span>
+              </span>
+            ) : (
+              <span className="truncate text-muted-foreground">{placeholder}</span>
+            )}
           </span>
           {/* На телефоне фильтр в полстроки — место отдаём датам. */}
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50 max-sm:hidden" />

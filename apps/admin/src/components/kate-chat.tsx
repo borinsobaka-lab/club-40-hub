@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Cat, Loader2, Mic, Send, Square } from "lucide-react";
+import { Cat, Database, Loader2, Mic, Send, Square } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
@@ -212,10 +212,19 @@ function ChatSession({
     id: "kate",
     messages: initial.messages,
     transport,
-    onError: (err) => toast.error(formatAssistantError(err)),
+    // Ошибку показывает строка в ленте (ниже) — тост дублировал её.
   });
 
   const isLoading = status === "submitted" || status === "streaming";
+  // Для скринридера — одна фраза о готовом ответе. Живой областью была вся
+  // лента, и потоковый ответ зачитывался заново на каждом кусочке.
+  const [announce, setAnnounce] = useState("");
+  const wasLoading = useRef(false);
+  useEffect(() => {
+    if (isLoading) setAnnounce("Kate отвечает…");
+    else if (wasLoading.current) setAnnounce(error ? "Kate не ответила" : "Kate ответила");
+    wasLoading.current = isLoading;
+  }, [isLoading, error]);
   useEffect(() => onBusyChange(isLoading), [isLoading, onBusyChange]);
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
 
@@ -279,8 +288,7 @@ function ChatSession({
       <div className="flex min-w-0 flex-1 flex-col">
         <div
           ref={scrollRef}
-          role="log"
-          aria-live="polite"
+          role="region"
           aria-label="Переписка с Kate"
           className={`flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 ${fullscreenOnMobile ? "max-md:pt-14" : ""}`}
         >
@@ -308,16 +316,20 @@ function ChatSession({
           {messages.map((m: UIMessage) => (
             <MessageBubble key={m.id} message={m} />
           ))}
-          {isLoading && (
+          {/* Пока ответ уже печатается, «думает» лишнее. */}
+          {status === "submitted" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Kate думает…
             </div>
           )}
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              Ошибка: {error.message}
+              {formatAssistantError(error)}
             </div>
           )}
+          <div aria-live="polite" className="sr-only">
+            {announce}
+          </div>
         </div>
         <QuickQuestions layout="row" disabled={isLoading} onAsk={ask} />
         <form
@@ -392,7 +404,11 @@ function MessageBubble({ message }: { message: UIMessage }) {
               "max-w-full bg-muted text-foreground md:max-w-[85%]"
         }`}
       >
-        {fetching && <div className="mb-2 text-xs text-muted-foreground">🔧 запрос к данным…</div>}
+        {fetching && (
+          <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Database className="size-3.5" /> запрос к данным…
+          </div>
+        )}
         {isUser ? (
           <div className="whitespace-pre-wrap">{text}</div>
         ) : (

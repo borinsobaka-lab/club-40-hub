@@ -386,7 +386,7 @@ export function AppSidebar() {
                                   className={cn(
                                     "relative isolate inline-flex shrink-0 before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-current before:opacity-0 before:blur-[6px] before:transition-opacity before:duration-200",
                                     itemActive(item)
-                                      ? "text-brand before:opacity-45 group-hover/nav:before:opacity-70"
+                                      ? "text-brand-on-dark before:opacity-45 group-hover/nav:before:opacity-70"
                                       : "text-white group-hover/nav:before:opacity-45",
                                   )}
                                 >

@@ -33,17 +33,19 @@ export const MEMBERSHIP_STATUS_LABEL: Record<string, string> = {
 
 /**
  * Цветная точка статуса в фильтре «Статус» «Абонементов» — тот же оттенок,
- * что у бейджа (components/membership-status-badge.tsx), насыщенней.
+ * что у бейджа (tone в components/membership-status-badge.tsx), насыщенней.
+ * Раньше у пяти статусов точка была своего цвета, а чип в строке — другого:
+ * цвет из фильтра в таблице было не найти. Меняешь tone бейджа — меняй и здесь.
  */
 export const MEMBERSHIP_STATUS_DOT: Record<string, string> = {
   active: "bg-emerald-500",
   frozen: "bg-blue-500",
-  pending: "bg-violet-500",
-  replaced: "bg-amber-500",
+  pending: "bg-blue-500",
+  replaced: "bg-muted-foreground/50",
   expired: "bg-muted-foreground/50",
   cancelled: "bg-rose-500",
-  refunded: "bg-orange-500",
-  awaiting: "bg-yellow-400",
+  refunded: "bg-rose-500",
+  awaiting: "bg-blue-500",
 };
 
 export type MembershipStatusInput = {

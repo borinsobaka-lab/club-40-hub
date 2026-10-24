@@ -37,6 +37,9 @@ function AuthPage() {
   const [code, setCode] = useState("");
   const [step, setStep] = useState<Step>("email");
   const [loading, setLoading] = useState(false);
+  // Ошибка шага — под полем (FormField error), а не тостом: тост исчезает
+  // и не связан с полем для скринридера. Сбрасывается при правке поля.
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -56,7 +59,7 @@ function AuthPage() {
       });
       return true;
     } catch (err) {
-      toast.error((err as Error).message);
+      setError((err as Error).message);
       return false;
     } finally {
       setLoading(false);
@@ -65,20 +68,23 @@ function AuthPage() {
 
   const submitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!email.trim().includes("@")) {
-      toast.error("Укажите рабочую почту");
+      setError("Укажите рабочую почту");
       return;
     }
     if (await sendCode()) {
       setCode("");
+      setError(null);
       setStep("code");
     }
   };
 
   const submitCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (code.length !== CODE_LENGTH) {
-      toast.error(`Введите ${CODE_LENGTH} цифр из письма`);
+      setError(`Введите ${CODE_LENGTH} цифр из письма`);
       return;
     }
     setLoading(true);
@@ -91,7 +97,7 @@ function AuthPage() {
       // Успех ловит onAuthStateChange выше: переход на главную, а guard
       // проверит роль сотрудника.
       if (error) {
-        toast.error(
+        setError(
           /rate limit|too many/i.test(error.message)
             ? "Слишком много попыток. Подождите несколько минут."
             : "Неверный или устаревший код. Проверьте письмо или запросите новый код.",
@@ -105,6 +111,7 @@ function AuthPage() {
   };
 
   const resend = async () => {
+    setError(null);
     if (await sendCode()) {
       setCode("");
       // Ответ одинаковый и при лимите отправки (auth.functions.ts) — не обещаем,
@@ -118,7 +125,9 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Base40</CardTitle>
+          <CardTitle className="text-2xl">
+            <h1>Base40</h1>
+          </CardTitle>
           <CardDescription>
             {step === "email"
               ? "Вход для сотрудников клуба — по коду из письма на рабочую почту"
@@ -128,12 +137,15 @@ function AuthPage() {
         <CardContent>
           {step === "email" ? (
             <form noValidate onSubmit={submitEmail} className="space-y-4">
-              <FormField label="Электронная почта" required>
+              <FormField label="Электронная почта" required error={error}>
                 <Input
                   type="email"
                   autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                  }}
                 />
               </FormField>
               <Button type="submit" className="w-full" disabled={loading}>
@@ -151,7 +163,7 @@ function AuthPage() {
                 сотрудника, мы отправили на неё {CODE_LENGTH}-значный код. Код действует 1 час и
                 работает один раз.
               </p>
-              <FormField label="Код из письма" required>
+              <FormField label="Код из письма" required error={error}>
                 <Input
                   // type="text", а не number: у number браузер теряет ведущие нули.
                   inputMode="numeric"
@@ -160,7 +172,10 @@ function AuthPage() {
                   maxLength={CODE_LENGTH}
                   className="text-center text-lg tracking-[0.5em] tabular-nums"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))}
+                  onChange={(e) => {
+                    setCode(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH));
+                    setError(null);
+                  }}
                 />
               </FormField>
               <Button type="submit" className="w-full" disabled={loading}>
@@ -173,6 +188,7 @@ function AuthPage() {
                   size="inline"
                   onClick={() => {
                     setCode("");
+                    setError(null);
                     setStep("email");
                   }}
                 >

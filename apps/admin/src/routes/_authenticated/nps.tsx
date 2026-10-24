@@ -453,7 +453,7 @@ function NpsPage() {
           {tab === "stats" && (
             <>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger aria-label="Опрос" className="w-48">
                   <SelectValue placeholder="Все опросы" />
                 </SelectTrigger>
                 <SelectContent>
@@ -466,7 +466,7 @@ function NpsPage() {
                 </SelectContent>
               </Select>
               <Select value={clientFilter} onValueChange={setClientFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger aria-label="Категория" className="w-40">
                   <SelectValue placeholder="Все категории" />
                 </SelectTrigger>
                 <SelectContent>
@@ -518,7 +518,7 @@ function NpsPage() {
                   <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                     <Stat label="NPS" value={st.nps ?? "—"} />
                     <Stat label="Ответов" value={st.total} />
-                    <Stat label="Промо" value={st.promoters} cls="text-emerald-600" />
+                    <Stat label="Промо" value={st.promoters} cls="text-emerald-700" />
                     <Stat label="Критики" value={st.detractors} cls="text-destructive" />
                   </div>
                   {s.inApp ? (
@@ -541,8 +541,8 @@ function NpsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               <KPI label="NPS" value={global.nps ?? "—"} />
               <KPI label="Ответов" value={global.total} />
-              <KPI label="Промоутеры" value={global.promoters} cls="text-emerald-600" />
-              <KPI label="Пассивные" value={global.passives} cls="text-amber-600" />
+              <KPI label="Промоутеры" value={global.promoters} cls="text-emerald-700" />
+              <KPI label="Пассивные" value={global.passives} cls="text-amber-700" />
               <KPI label="Критики" value={global.detractors} cls="text-destructive" />
             </div>
 
