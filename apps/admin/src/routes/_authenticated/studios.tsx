@@ -204,10 +204,10 @@ function StudiosPage() {
                           href={STUDIO_FORMAT_APP_URL[s.format]}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
+                          className="inline-flex items-center gap-1 text-sm text-link underline-offset-4 hover:text-link-hover hover:underline"
                         >
                           {STUDIO_FORMAT_APP_URL[s.format].replace(/^https?:\/\//, "")}
-                          <ExternalLink className="h-3.5 w-3.5" />
+                          <ExternalLink className="size-3.5" />
                         </a>
                       </TableCell>
                     </TableRow>
@@ -370,7 +370,7 @@ function DeleteStudioForm({
           <div className="space-y-4">
             {counts?.heir ? (
               // Пакетный клуб: база клиентов и каталог общие для пакетных клубов.
-              <InfoNote>
+              <InfoNote variant="warning">
                 Карточки клиентов, заведённые здесь ({counts.clients}), их заявки, тренировки и
                 номенклатура перейдут в клуб «{counts.heir}» — у пакетных клубов они общие. Удалятся
                 продажи этого клуба ({counts.sales}) и абонементы по ним, касса, расписание и записи
@@ -378,7 +378,7 @@ function DeleteStudioForm({
                 записи людей, справочник сотрудников, новости, услуги и пуши приложения.
               </InfoNote>
             ) : (
-              <InfoNote>
+              <InfoNote variant="warning">
                 Удалятся карточки клиентов
                 {counts ? ` (${counts.clients})` : ""}, продажи
                 {counts ? ` (${counts.sales})` : ""}, абонементы, касса, расписание и записи,
@@ -601,7 +601,7 @@ function StudioForm({
                     bucket="studios"
                     value={photo}
                     alt={name || "Клуб"}
-                    className="h-16 w-16 rounded-xl"
+                    className="size-16 rounded-lg"
                   />
                 }
               />

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Select,
   SelectContent,
@@ -398,7 +399,7 @@ function FeedbackPage() {
                     ]}
                   >
                     <TableRow onClick={() => setSelectedId(i.id)} className="cursor-pointer">
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
                         {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
@@ -421,16 +422,12 @@ function FeedbackPage() {
                       </TableCell>
                       <TableCell>
                         {i.status === "pending" ? (
-                          <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                            Не отработано
-                          </span>
+                          <StatusChip tone="warning">Не отработано</StatusChip>
                         ) : (
-                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                            Отработано
-                          </span>
+                          <StatusChip tone="positive">Отработано</StatusChip>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                         {i.resolved_by_name ? (
                           <>
                             {i.resolved_by_name}

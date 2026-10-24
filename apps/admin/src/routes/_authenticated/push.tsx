@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckboxOption, FormField, InfoNote } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import {
   Table,
   TableBody,
@@ -115,12 +116,17 @@ const STATUS_LABEL: Record<PushStatus, string> = {
   sent: "Отправлено",
 };
 
-const STATUS_VARIANT: Record<PushStatus, "default" | "secondary" | "outline"> = {
-  draft: "outline",
-  scheduled: "secondary",
-  sending: "secondary",
-  sent: "default",
+const STATUS_TONE: Record<PushStatus, StatusTone> = {
+  draft: "neutral",
+  scheduled: "info",
+  sending: "info",
+  sent: "positive",
 };
+
+const SEND_MODES = [
+  { value: "now" as const, label: "Отправить сейчас" },
+  { value: "schedule" as const, label: "Запланировать" },
+];
 
 /** Ушло ли уведомление в рассылку (тогда его не правят, а копируют). */
 const isSent = (p: PushNotification) => p.status === "sending" || p.status === "sent";
@@ -337,7 +343,7 @@ function PushPage() {
                         <StudioNamesCell ids={p.studio_ids} />
                       </TableCell>
                       <TableCell>{renderSegments(p.segments)}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
+                      <TableCell className="whitespace-nowrap text-sm tabular-nums">
                         {isSent(p)
                           ? formatDateTime(p.sent_at)
                           : p.status === "scheduled"
@@ -345,10 +351,10 @@ function PushPage() {
                             : "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={STATUS_VARIANT[p.status]} className="gap-1">
+                        <StatusChip tone={STATUS_TONE[p.status]}>
                           {p.status === "sending" ? <Loader2 className="animate-spin" /> : null}
                           {STATUS_LABEL[p.status]}
-                        </Badge>
+                        </StatusChip>
                       </TableCell>
                       <TableCell>
                         <StatCell
@@ -644,20 +650,13 @@ function PushForm({
             ) : null}
 
             <FormField label="Время отправки" htmlFor={null} required>
-              <RadioGroup
+              <SegmentedControl
+                aria-label="Время отправки"
+                fullWidth
                 value={sendMode}
-                onValueChange={(v) => setSendMode(v as typeof sendMode)}
-                className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
-              >
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <RadioGroupItem value="now" />
-                  <span>Отправить сейчас</span>
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <RadioGroupItem value="schedule" />
-                  <span>Запланировать</span>
-                </label>
-              </RadioGroup>
+                onChange={setSendMode}
+                options={SEND_MODES}
+              />
             </FormField>
 
             {sendMode === "schedule" && (

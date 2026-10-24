@@ -279,6 +279,9 @@ function ChatSession({
       <div className="flex min-w-0 flex-1 flex-col">
         <div
           ref={scrollRef}
+          role="log"
+          aria-live="polite"
+          aria-label="Переписка с Kate"
           className={`flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 ${fullscreenOnMobile ? "max-md:pt-14" : ""}`}
         >
           {older.hasMore && (

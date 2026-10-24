@@ -241,7 +241,7 @@ function StatCard({
       className={cn(
         "relative flex min-w-0 flex-col rounded-lg border bg-background px-3 py-2.5 sm:px-4 sm:py-3",
         chartable &&
-          "group transition-[border-color,box-shadow] hover:border-foreground/20 hover:shadow-sm has-[button[data-card]:focus-visible]:ring-2 has-[button[data-card]:focus-visible]:ring-ring",
+          "group transition-colors hover:border-foreground/20 has-[button[data-card]:focus-visible]:ring-2 has-[button[data-card]:focus-visible]:ring-ring",
       )}
     >
       {/* Вся плитка — кнопка графика, но «?» внутри неё нельзя (кнопка в
@@ -470,7 +470,7 @@ function MetricChart({
           >
             <div className="text-xs text-muted-foreground">{s.label}</div>
             {values ? (
-              <div className="whitespace-nowrap text-base font-semibold tabular-nums max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1 sm:truncate sm:text-lg">
+              <div className="whitespace-nowrap text-sm font-semibold tabular-nums max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 sm:mt-1 sm:truncate sm:text-lg">
                 {s.value}
               </div>
             ) : (

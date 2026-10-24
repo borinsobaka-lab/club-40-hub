@@ -1,42 +1,9 @@
-/** Общие кусочки вкладок «Настроек скриптов»: чипы, полосы, плитки, подгрузка. */
+/** Общие кусочки вкладок «Настроек скриптов»: полосы, плитки, подгрузка. */
 import type { ReactNode, RefObject } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const CHIP_TONES = {
-  emerald: "bg-emerald-100 text-emerald-700",
-  blue: "bg-blue-100 text-blue-700",
-  rose: "bg-rose-100 text-rose-700",
-  amber: "bg-amber-100 text-amber-800",
-  muted: "bg-muted text-muted-foreground",
-} as const;
-
-export type ChipTone = keyof typeof CHIP_TONES;
-
-/** Пилюля статуса — та же геометрия, что у Badge и статусов в разделах клуба. */
-export function Chip({
-  tone,
-  children,
-  className,
-}: {
-  tone: ChipTone;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
-        CHIP_TONES[tone],
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
 
 /** Полоса доли: числа рядом всегда видны текстом — полоса только помогает глазу. */
 export function Bar({
@@ -83,16 +50,6 @@ export function StatTile({
       <p className="text-xs text-muted-foreground">{label}</p>
       {/* div, а не p: на время загрузки здесь болванка (тоже div). */}
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
-    </div>
-  );
-}
-
-/** Пустое состояние вкладки: что здесь будет и откуда оно берётся. */
-export function EmptyCard({ title, children }: { title: string; children?: ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-background p-8 text-center">
-      <p className="text-sm font-medium">{title}</p>
-      {children && <p className="mt-1 text-sm text-muted-foreground">{children}</p>}
     </div>
   );
 }
@@ -146,7 +103,7 @@ export function ScriptTitle({
         onOpen();
       }}
       className={cn(
-        "cursor-pointer text-left font-medium underline-offset-4 hover:underline",
+        "cursor-pointer rounded-sm text-left font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         className,
       )}
     >

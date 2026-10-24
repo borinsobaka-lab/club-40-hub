@@ -31,7 +31,7 @@ import { clientName, formatDate, formatMoney, formatMoneyPrecise, todayISO } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -678,18 +678,16 @@ function SaleForm({
                     htmlFor={null}
                     required
                   >
-                    <RadioGroup
-                      value={String(form.remainingCount)}
-                      onValueChange={(v) => set("remainingCount", v === "3" ? 3 : 2)}
-                      className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
-                    >
-                      {([2, 3] as const).map((n) => (
-                        <label key={n} className="flex cursor-pointer items-center gap-2 text-sm">
-                          <RadioGroupItem value={String(n)} />
-                          <span>{n} мес.</span>
-                        </label>
-                      ))}
-                    </RadioGroup>
+                    <SegmentedControl<"2" | "3">
+                      fullWidth
+                      aria-label="Ещё платежей"
+                      value={form.remainingCount === 3 ? "3" : "2"}
+                      onChange={(v) => set("remainingCount", v === "3" ? 3 : 2)}
+                      options={[
+                        { value: "2", label: "2 мес." },
+                        { value: "3", label: "3 мес." },
+                      ]}
+                    />
                   </FormField>
                 </div>
 

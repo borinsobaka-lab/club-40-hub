@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { FieldIdContext } from "@/components/ui/field-context";
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Select,
   SelectContent,
@@ -326,12 +327,12 @@ export function CallEditor({
                     )}
                     <span className="min-w-0 flex-1">{n.title || "Без названия"}</span>
                     {orphan && (
-                      <span
-                        className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                      <StatusChip
+                        tone="warning"
                         title="Ни один ответ сюда не ведёт — попасть можно только из панели этапов"
                       >
                         нет входа
-                      </span>
+                      </StatusChip>
                     )}
                     <span className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums">
                       {n.answers.length || "конец"}

@@ -94,7 +94,7 @@ function ClubSettingsPage() {
         ) : studioId ? (
           <FormField label="Клуб" tip={TIPS.club}>
             <Select value={studioId} onValueChange={setPickedId}>
-              <SelectTrigger className="w-64 max-w-full">
+              <SelectTrigger className="w-48 max-w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

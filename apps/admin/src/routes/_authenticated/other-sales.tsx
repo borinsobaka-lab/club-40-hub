@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TableToolbar } from "@/components/table-toolbar";
@@ -391,7 +392,9 @@ function SalesTab({
                     <TableCell className="text-muted-foreground">
                       {s.payment_method ? PAYMENT_METHOD_LABEL[s.payment_method] : "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(s.sold_at)}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {formatDate(s.sold_at)}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{s.admin_name ?? "—"}</TableCell>
                     <TableCell>
                       <CommentCell
@@ -770,7 +773,11 @@ function CatalogTab({
                       {formatMoneyPrecise(Number(i.price))}
                     </TableCell>
                     <TableCell>
-                      <Switch checked={i.is_active} onCheckedChange={(v) => toggleActive(i, v)} />
+                      <Switch
+                        aria-label={`Активна: ${i.name}`}
+                        checked={i.is_active}
+                        onCheckedChange={(v) => toggleActive(i, v)}
+                      />
                     </TableCell>
                   </TableRow>
                 </RowContextMenu>
@@ -863,16 +870,17 @@ function CatalogForm({ onOpenChange, studioId, item, onSaved }: CatalogDialogPro
       <DialogForm onSubmit={handleSave}>
         <DialogBody>
           <div className="space-y-4">
-            <FormField label="Тип" required>
-              <Select value={kind} onValueChange={(v) => setKind(v as ItemKind)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="service">Услуга</SelectItem>
-                  <SelectItem value="product">Товар</SelectItem>
-                </SelectContent>
-              </Select>
+            <FormField label="Тип" htmlFor={null} required>
+              <SegmentedControl<ItemKind>
+                fullWidth
+                aria-label="Тип"
+                value={kind}
+                onChange={setKind}
+                options={[
+                  { value: "service", label: "Услуга" },
+                  { value: "product", label: "Товар" },
+                ]}
+              />
             </FormField>
 
             <FormField label="Название" required>

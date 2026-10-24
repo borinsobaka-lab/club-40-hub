@@ -30,6 +30,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Table,
   TableBody,
@@ -436,7 +437,7 @@ function PackagesPage() {
                           p.is_active ? "" : "opacity-60",
                           dragId === p.id ? "opacity-40" : "",
                           overId === p.id && dragId !== p.id
-                            ? "outline-2 -outline-offset-2 outline-brand"
+                            ? "outline-2 -outline-offset-2 outline-ring"
                             : "",
                         ].join(" ")}
                       >
@@ -464,11 +465,15 @@ function PackagesPage() {
                         <TableCell className="whitespace-nowrap tabular-nums">
                           {trainingsLabel(p)}
                         </TableCell>
-                        <TableCell>{formatDuration(p.duration_days)}</TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="tabular-nums">
+                          {formatDuration(p.duration_days)}
+                        </TableCell>
+                        <TableCell className="font-medium tabular-nums">
                           {formatMoney(Number(p.price))}
                         </TableCell>
-                        <TableCell>{p.max_payments > 1 ? `до ${p.max_payments}` : "1"}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {p.max_payments > 1 ? `до ${p.max_payments}` : "1"}
+                        </TableCell>
                         <TableCell className="max-w-[300px] truncate text-muted-foreground">
                           {p.description ? stripFormatting(p.description) : "—"}
                         </TableCell>
@@ -479,13 +484,14 @@ function PackagesPage() {
                           ) : (
                             <div className="flex items-center gap-2">
                               <Switch
+                                aria-label={`В приложении: ${p.name}`}
                                 checked={p.is_active}
                                 onCheckedChange={(v) => handleToggleActive(p, v)}
                               />
                               {p.is_active ? (
-                                <Badge variant="secondary">Активен</Badge>
+                                <StatusChip tone="positive">Активен</StatusChip>
                               ) : (
-                                <Badge variant="outline">Скрыт</Badge>
+                                <StatusChip tone="neutral">Скрыт</StatusChip>
                               )}
                             </div>
                           )}

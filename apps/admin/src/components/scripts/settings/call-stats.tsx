@@ -12,12 +12,14 @@
  *
  * Все числа видны текстом — полосы только помогают глазу.
  */
+import { StatusChip } from "@/components/ui/status-chip";
+import { EmptyCard } from "@/components/scripts/empty-card";
 import { Fragment, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { TableCardSkeleton, TableSkeletonRows } from "@/components/skeletons";
 import { CallStatsSummarySkeleton } from "@/components/page-skeletons";
-import { TableToolbar } from "@/components/table-toolbar";
+import { TableToolbar, ToolbarReset } from "@/components/table-toolbar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -54,7 +56,7 @@ import { cn } from "@/lib/utils";
 import { useTableSort } from "@/hooks/use-table-sort";
 import type { SortGetters } from "@/lib/table-sort";
 import { PeriodFilter } from "./period-filter";
-import { Bar, Chip, EmptyCard, LoadMore, StatTile } from "./shared";
+import { Bar, LoadMore, StatTile } from "./shared";
 import { afterCursor, PAGE_SIZE, usePaged, type Cursor } from "./use-paged";
 
 const ALL = "all";
@@ -130,6 +132,13 @@ export function CallStatsTab() {
             </SelectContent>
           </Select>
         )}
+        <ToolbarReset
+          active={!!section || !!user}
+          onReset={() => {
+            setSection("");
+            setUser("");
+          }}
+        />
         {/* «Сводка / Звонки» — на той же плашке, не прямо на канве. */}
         <Tabs
           value={view}
@@ -287,8 +296,8 @@ function Funnel({ data }: { data: CallStats }) {
                   <TableCell className="text-right tabular-nums">
                     {s.ended_here ? (
                       <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
-                        {isWorst && <Chip tone="rose">больше всего обрывов</Chip>}
-                        {isEnd && <Chip tone="emerald">конец сценария</Chip>}
+                        {isWorst && <StatusChip tone="negative">больше всего обрывов</StatusChip>}
+                        {isEnd && <StatusChip tone="positive">конец сценария</StatusChip>}
                         <span className={cn(isWorst && "font-semibold text-rose-700")}>
                           {s.ended_here}
                         </span>
@@ -339,9 +348,9 @@ function Ends({ data }: { data: CallStats }) {
                   <span className="inline-flex flex-wrap items-center gap-2">
                     <span className="font-medium">{e.title}</span>
                     {e.script_end ? (
-                      <Chip tone="emerald">конец сценария</Chip>
+                      <StatusChip tone="positive">конец сценария</StatusChip>
                     ) : (
-                      e.group === "objection" && <Chip tone="amber">возражение</Chip>
+                      e.group === "objection" && <StatusChip tone="warning">возражение</StatusChip>
                     )}
                   </span>
                 </TableCell>
@@ -464,11 +473,13 @@ function CallHistory({
                           </span>
                           <span>{p.last_title || "—"}</span>
                           {p.live ? (
-                            <Chip tone="blue">идёт сейчас</Chip>
+                            <StatusChip tone="info">идёт сейчас</StatusChip>
                           ) : p.script_end ? (
-                            <Chip tone="emerald">конец сценария</Chip>
+                            <StatusChip tone="positive">конец сценария</StatusChip>
                           ) : (
-                            p.last_group === "objection" && <Chip tone="amber">возражение</Chip>
+                            p.last_group === "objection" && (
+                              <StatusChip tone="warning">возражение</StatusChip>
+                            )
                           )}
                         </span>
                       </TableCell>
@@ -508,7 +519,7 @@ function RunPath({ run }: { run: CallRunRow }) {
           <span className="min-w-0 space-y-0.5">
             <span className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{step.title || "—"}</span>
-              {step.group === "objection" && <Chip tone="amber">возражение</Chip>}
+              {step.group === "objection" && <StatusChip tone="warning">возражение</StatusChip>}
             </span>
             {step.answer && (
               <span className="block text-muted-foreground">Клиент: {step.answer}</span>

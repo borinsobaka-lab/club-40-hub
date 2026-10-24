@@ -8,13 +8,13 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Select,
   SelectContent,
@@ -182,7 +182,7 @@ function PushTriggersPage() {
 
   return (
     <AdminShell title="Триггерные уведомления">
-      <div className="max-w-4xl space-y-6">
+      <div className="max-w-3xl space-y-6">
         {service && !service.ready ? (
           <InfoNote variant="warning">
             Рассылка не настроена на сервере: не задан сервис-ключ Supabase
@@ -230,7 +230,7 @@ function PushTriggersPage() {
             if (items.length === 0) return null;
             return (
               <section key={g.key} className="space-y-3">
-                <h2 className="text-base font-semibold">{g.title}</h2>
+                <h2 className="text-lg font-semibold">{g.title}</h2>
                 {items.map(({ def, row }) => (
                   <TriggerCard
                     key={def.key}
@@ -271,7 +271,7 @@ function TemplateText({ text }: { text: string }) {
     <>
       {parts.map((p, i) =>
         /^\{[^{}\s]+\}$/.test(p) ? (
-          <span key={i} className="rounded bg-brand/10 px-0.5 text-brand">
+          <span key={i} className="rounded-sm bg-muted px-0.5 font-medium text-foreground">
             {p}
           </span>
         ) : (
@@ -311,14 +311,14 @@ function TriggerCard({
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{def.name}</span>
-          {!row.enabled ? <Badge variant="outline">Выключен</Badge> : null}
+          {!row.enabled ? <StatusChip tone="neutral">Выключен</StatusChip> : null}
           {langs.map((l) => (
             <ContentLangFlag key={l} lang={l} className="size-3.5" />
           ))}
         </div>
         <p className="text-xs text-muted-foreground">{def.describe(row.params)}</p>
-        <div className={cn("rounded-md bg-muted/40 p-3 text-sm", !row.enabled && "opacity-60")}>
-          <div className="font-medium">
+        <InfoNote className={cn("text-sm", !row.enabled && "opacity-60")}>
+          <div className="font-medium text-foreground">
             <TemplateText text={row.title} />
           </div>
           {row.message ? (
@@ -326,7 +326,7 @@ function TriggerCard({
               <TemplateText text={row.message} />
             </div>
           ) : null}
-        </div>
+        </InfoNote>
         <p className="text-xs text-muted-foreground">{statsLine(stats)}</p>
       </div>
       <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
@@ -646,7 +646,7 @@ function PreviewBox({ title, message }: { title: string; message: string }): Rea
   return (
     <div className="space-y-1">
       <div className="text-xs font-medium text-muted-foreground">Как увидит клиент (пример)</div>
-      <div className="rounded-xl border bg-muted/40 p-3 text-sm shadow-sm">
+      <div className="rounded-lg border bg-muted/40 p-3 text-sm">
         <div className="font-semibold">{title}</div>
         {message ? <div className="mt-0.5 text-muted-foreground">{message}</div> : null}
       </div>

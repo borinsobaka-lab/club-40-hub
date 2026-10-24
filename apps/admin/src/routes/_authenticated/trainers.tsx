@@ -323,9 +323,9 @@ function EmployeesTable({
                           href={telegramHref(e.telegram)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm hover:underline"
+                          className="inline-flex items-center gap-1.5 text-sm text-link hover:text-link-hover hover:underline"
                         >
-                          <MessageCircle className="h-3.5 w-3.5 text-[#0088cc]" />
+                          <MessageCircle className="h-3.5 w-3.5 shrink-0" />
                           {e.telegram}
                         </a>
                       ) : (

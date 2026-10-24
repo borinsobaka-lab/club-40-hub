@@ -52,15 +52,16 @@ export function ScheduleHeatmap({
               const ratio = max ? cell.avg / max : 0;
               const active = picked === cell;
               return (
-                <div
+                <button
+                  type="button"
                   key={weekday}
-                  role="img"
                   aria-label={cellText(cell)}
                   title={cellText(cell)}
                   onPointerEnter={() => setPicked(cell)}
+                  onFocus={() => setPicked(cell)}
                   onClick={() => setPicked(cell)}
                   className={cn(
-                    "flex h-7 cursor-default items-center justify-center rounded-md text-xs font-medium tabular-nums transition-shadow",
+                    "flex h-7 cursor-pointer items-center justify-center rounded-md text-xs font-medium tabular-nums transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                     ratio > 0.55 ? "text-white" : "text-foreground",
                     active && "ring-2 ring-foreground/40",
                   )}
@@ -69,7 +70,7 @@ export function ScheduleHeatmap({
                   }}
                 >
                   {formatStat("decimal", cell.avg)}
-                </div>
+                </button>
               );
             })}
           </Fragment>

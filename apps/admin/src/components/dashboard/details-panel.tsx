@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Phone, X } from "lucide-react";
 
 import { ClientNameLink } from "@/components/client-name-link";
+import { Button } from "@/components/ui/button";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,11 +96,11 @@ function usePeople(rows: DetailRow[] | undefined) {
   });
 }
 
-const TONE_CLASS: Record<DetailTone, string> = {
-  good: "bg-emerald-100 text-emerald-700",
-  bad: "bg-rose-100 text-rose-700",
-  warn: "bg-amber-100 text-amber-800",
-  muted: "bg-muted text-muted-foreground",
+const DETAIL_TONE: Record<DetailTone, StatusTone> = {
+  good: "positive",
+  bad: "negative",
+  warn: "warning",
+  muted: "neutral",
 };
 
 /** Сколько строк рисуем сразу: длинный список — «Показать ещё». */
@@ -181,13 +183,9 @@ export default function DetailsPanel({
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span className="first-letter:uppercase">{range.label}</span>
             {range.onReset && (
-              <button
-                type="button"
-                onClick={range.onReset}
-                className="inline-flex cursor-pointer items-center gap-0.5 rounded-full px-1.5 py-0.5 text-foreground hover:bg-muted"
-              >
-                <X className="size-3" /> весь период
-              </button>
+              <Button variant="ghost" size="xs" onClick={range.onReset}>
+                <X /> весь период
+              </Button>
             )}
           </div>
         )}
@@ -251,14 +249,7 @@ export default function DetailsPanel({
                     </span>
                   )}
                   {row.badge && (
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
-                        TONE_CLASS[row.badge.tone],
-                      )}
-                    >
-                      {row.badge.text}
-                    </span>
+                    <StatusChip tone={DETAIL_TONE[row.badge.tone]}>{row.badge.text}</StatusChip>
                   )}
                 </div>
               </li>
@@ -267,13 +258,14 @@ export default function DetailsPanel({
         )}
         {shown.length > limit && (
           <div className="border-t p-2 text-center">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
               onClick={() => setLimit((l) => l + PAGE)}
-              className="cursor-pointer rounded-full px-3 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               Показать ещё {formatNumber(Math.min(PAGE, shown.length - limit))}
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -170,7 +170,7 @@ function AuthPage() {
               <div className="flex items-center justify-between">
                 <Button
                   variant="link"
-                  className="h-auto p-0 text-xs text-muted-foreground"
+                  size="inline"
                   onClick={() => {
                     setCode("");
                     setStep("email");
@@ -178,12 +178,7 @@ function AuthPage() {
                 >
                   Другая почта
                 </Button>
-                <Button
-                  variant="link"
-                  className="h-auto p-0 text-xs text-muted-foreground"
-                  onClick={resend}
-                  disabled={loading}
-                >
+                <Button variant="link" size="inline" onClick={resend} disabled={loading}>
                   Отправить код ещё раз
                 </Button>
               </div>

@@ -135,7 +135,7 @@ function ColorSwatch({ value }: { value: string | null }) {
 function CapacityCell({ workout, studios }: { workout: Workout; studios: Studio[] }) {
   if (studios.length <= 1) {
     const c = studios[0] ? capacityIn(workout, studios[0].id) : workout.capacity;
-    return <>{c || "—"}</>;
+    return <span className="tabular-nums">{c || "—"}</span>;
   }
   return (
     <div className="space-y-0.5">

@@ -13,6 +13,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { InfoNote } from "@/components/ui/form-field";
+import { StatusChip } from "@/components/ui/status-chip";
+import {
+  STATUS_TONE_CLASS,
+  statusChipBase,
+  statusChipSize,
+  type StatusTone,
+} from "@/components/ui/status-chip-styles";
 import {
   Select,
   SelectContent,
@@ -112,11 +119,11 @@ const ALL = "all";
 type StatusFilter = typeof ALL | "unpaid" | "paid";
 type RowStatus = "paid" | "partial" | "unpaid" | "none";
 
-const STATUS_VIEW: Record<RowStatus, { label: string; className: string }> = {
-  paid: { label: "Выплачено", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  partial: { label: "Частично", className: "border-sky-200 bg-sky-50 text-sky-700" },
-  unpaid: { label: "Не выплачено", className: "border-amber-200 bg-amber-50 text-amber-700" },
-  none: { label: "—", className: "border-transparent text-muted-foreground" },
+const STATUS_VIEW: Record<RowStatus, { label: string; tone: StatusTone }> = {
+  paid: { label: "Выплачено", tone: "positive" },
+  partial: { label: "Частично", tone: "info" },
+  unpaid: { label: "Не выплачено", tone: "warning" },
+  none: { label: "—", tone: "neutral" },
 };
 
 /** Порядок статусов при сортировке колонки «Статус»: сначала к выплате. */
@@ -562,11 +569,13 @@ function StatusButton({
             : "Отметить как выплачено"
       }
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-opacity hover:opacity-80",
-        view.className,
+        statusChipBase,
+        statusChipSize.default,
+        STATUS_TONE_CLASS[view.tone],
+        "cursor-pointer transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
       )}
     >
-      {status === "paid" && <Check className="size-3.5" />}
+      {status === "paid" && <Check />}
       {view.label}
     </button>
   );
@@ -584,7 +593,7 @@ function EmployeeCell({ employee, onOpen }: { employee: Employee; onOpen: () => 
             e.stopPropagation();
             onOpen();
           }}
-          className="cursor-pointer text-left font-medium hover:underline"
+          className="cursor-pointer rounded-sm text-left font-medium hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           {employee.full_name}
         </button>
@@ -603,8 +612,7 @@ function BankLine({ employee, wrap }: { employee: Employee; wrap?: boolean }) {
   return (
     <div
       className={cn(
-        "mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground",
-        wrap ? "text-xs" : "text-[11px]",
+        "mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground",
       )}
     >
       {bank.account_number && (
@@ -614,9 +622,9 @@ function BankLine({ employee, wrap }: { employee: Employee; wrap?: boolean }) {
       )}
       {bank.account_holder && <CopyChip text={bank.account_holder}>{bank.account_holder}</CopyChip>}
       {short && (
-        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground">
+        <StatusChip tone="neutral" size="sm">
           {short}
-        </span>
+        </StatusChip>
       )}
     </div>
   );
@@ -640,7 +648,7 @@ function CopyChip({
         copy(text);
       }}
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1 whitespace-nowrap hover:text-foreground",
+        "inline-flex cursor-pointer items-center gap-1 rounded-sm whitespace-nowrap hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         className,
       )}
     >
@@ -718,7 +726,7 @@ function EmployeePayroll({
       </SheetHeader>
 
       <div className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
-        <div className="rounded-lg bg-muted/60 px-3 py-2 text-sm">
+        <div className="rounded-md border px-3 py-2 text-sm">
           <div>Период: {periodTitle(month, period)}</div>
           {payOn && (
             <div className="text-xs text-muted-foreground">Выплата {formatDate(payOn)}</div>
@@ -730,11 +738,11 @@ function EmployeePayroll({
         {shifts.length > 0 && (
           <section>
             <h3 className="mb-2 text-sm font-semibold">Выходы администратора</h3>
-            <ul className="space-y-1">
+            <ul className="divide-y rounded-md border">
               {shifts.map((l) => (
                 <li
                   key={`${l.work_date}|${l.studio_id}`}
-                  className="grid grid-cols-[72px_1fr_auto] items-center gap-2 rounded-md bg-muted/50 px-3 py-1.5 text-sm"
+                  className="grid grid-cols-[72px_1fr_auto] items-center gap-2 px-3 py-1.5 text-sm"
                 >
                   <span>{dayLabel(l.work_date)}</span>
                   <span className="truncate text-muted-foreground">{l.studio_name}</span>
@@ -754,13 +762,13 @@ function EmployeePayroll({
         {lessons.length > 0 && (
           <section>
             <h3 className="mb-2 text-sm font-semibold">Тренировки</h3>
-            <ul className="space-y-1">
+            <ul className="divide-y rounded-md border">
               {lessonDays.map((day) => {
                 const items = lessons.filter((l) => l.work_date === day);
                 return (
                   <li
                     key={day}
-                    className="grid grid-cols-[72px_1fr_auto] items-center gap-2 rounded-md bg-muted/50 px-3 py-1.5 text-sm"
+                    className="grid grid-cols-[72px_1fr_auto] items-center gap-2 px-3 py-1.5 text-sm"
                   >
                     <span>{dayLabel(day)}</span>
                     <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
@@ -807,10 +815,10 @@ function EmployeePayroll({
           <InfoNote variant="empty">За период нет смен и проведённых занятий.</InfoNote>
         )}
 
-        <section className="space-y-3 rounded-xl border p-4">
+        <section className="space-y-3 rounded-lg border p-4">
           <div>
             <div className="text-sm text-muted-foreground">Поступило по абонементам</div>
-            <div className="mt-1 flex items-baseline justify-between rounded-md bg-muted/60 px-3 py-2">
+            <div className="mt-1 flex items-baseline justify-between rounded-md border px-3 py-2">
               <span className="font-semibold tabular-nums">{formatPay(summary.sales)}</span>
               <span className="text-xs text-muted-foreground">
                 {summary.salesCount} {plural(summary.salesCount, ["платёж", "платежа", "платежей"])}
@@ -856,9 +864,7 @@ function EmployeePayroll({
           </div>
           <div className="flex items-baseline justify-between border-t pt-3">
             <span className="font-semibold">Итого к выплате</span>
-            <span className="text-lg font-bold text-brand tabular-nums">
-              {formatPay(summary.total)}
-            </span>
+            <span className="text-lg font-semibold tabular-nums">{formatPay(summary.total)}</span>
           </div>
         </section>
       </div>
@@ -880,8 +886,13 @@ function EmployeePayroll({
               )}
               {h.payout ? (
                 <>
-                  <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 py-3 font-semibold text-emerald-700">
-                    <Check className="size-4" />
+                  <div
+                    className={cn(
+                      "flex h-12 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold [&_svg]:size-4",
+                      STATUS_TONE_CLASS.positive,
+                    )}
+                  >
+                    <Check />
                     Выплачено
                   </div>
                   <div className="text-center text-xs text-muted-foreground">

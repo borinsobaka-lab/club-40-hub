@@ -75,7 +75,7 @@ export function SaleKindPickerDialog({
                   media={
                     <span
                       className={cn(
-                        "flex size-11 shrink-0 items-center justify-center rounded-xl text-white",
+                        "flex size-11 shrink-0 items-center justify-center rounded-lg text-white",
                         SALE_KIND_DOT[k],
                       )}
                     >

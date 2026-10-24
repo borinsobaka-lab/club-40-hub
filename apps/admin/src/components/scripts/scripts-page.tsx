@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { ListItemButton } from "@/components/ui/list-item-button";
 import { SearchInput } from "@/components/ui/search-input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { StatusChip } from "@/components/ui/status-chip";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TableToolbar } from "@/components/table-toolbar";
@@ -32,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
+import { EmptyCard } from "@/components/scripts/empty-card";
 import { ScriptCard } from "@/components/scripts/script-card";
 import { ScriptEditor } from "@/components/scripts/script-editor";
 import { SectionDialogContent, type SectionFormValue } from "@/components/scripts/section-dialog";
@@ -463,7 +465,7 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
     content = (
       <EmptyCard>
         Раздел не найден — его могли удалить. Откройте{" "}
-        <Link to="/scripts" className="font-medium text-foreground underline">
+        <Link to="/scripts" className="text-link underline hover:text-link-hover">
           «Все скрипты»
         </Link>
         .
@@ -484,9 +486,7 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
             </Link>
           </h2>
           {sec.kind !== "call" && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
-              {sec.items.length}
-            </span>
+            <StatusChip className="tabular-nums">{sec.items.length}</StatusChip>
           )}
           <span className="ml-auto">{sectionMenu(sec)}</span>
         </div>
@@ -622,14 +622,6 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
       </Dialog>
       {confirmDialog}
     </AdminShell>
-  );
-}
-
-function EmptyCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-      {children}
-    </div>
   );
 }
 

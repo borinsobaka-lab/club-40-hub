@@ -1,7 +1,9 @@
 import type * as React from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { statusChipBase, statusChipSize } from "@/components/ui/status-chip-styles";
 import { initials } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { TRAINER_ROLES, type TrainerRole } from "@/lib/staff-directory";
 import { useStorageUrl } from "@/lib/storage";
 
@@ -65,9 +67,9 @@ export function StaffOption({
   return (
     <span className="flex min-w-0 items-center gap-2">
       {avatar !== undefined ? (
-        <StaffAvatar value={avatar} name={name} className="size-5 shrink-0 text-[9px]" />
+        <StaffAvatar value={avatar} name={name} className="size-5 shrink-0 text-xs" />
       ) : (
-        <EmployeePhoto value={photo ?? null} name={name} className="size-5 shrink-0 text-[9px]" />
+        <EmployeePhoto value={photo ?? null} name={name} className="size-5 shrink-0 text-xs" />
       )}
       <span className="truncate">{children ?? name}</span>
     </span>
@@ -77,10 +79,7 @@ export function StaffOption({
 export function TrainerRoleBadge({ role }: { role: TrainerRole }) {
   const r = TRAINER_ROLES[role] ?? TRAINER_ROLES.trainer;
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${r.badge}`}
-    >
-      {r.label}
-    </span>
+    // Роль — не статус: цвета свои (staff-roles.ts), от чипа — только геометрия.
+    <span className={cn(statusChipBase, statusChipSize.default, r.badge)}>{r.label}</span>
   );
 }

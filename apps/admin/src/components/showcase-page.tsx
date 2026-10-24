@@ -296,7 +296,7 @@ export function ShowcasePage({ config }: { config: ShowcaseConfig }) {
                             >
                               <ArrowDown />
                             </Button>
-                            <span className="ml-1 w-5 text-xs text-muted-foreground">
+                            <span className="ml-1 w-5 text-xs text-muted-foreground tabular-nums">
                               {idx + 1}
                             </span>
                           </div>

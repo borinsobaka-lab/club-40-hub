@@ -42,6 +42,8 @@ import { Formatted } from "@/components/scripts/rich-text";
 import { Button } from "@/components/ui/button";
 import { InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { StatusChip } from "@/components/ui/status-chip";
+import { TableToolbar } from "@/components/table-toolbar";
 import { supabase } from "@/integrations/supabase/client";
 import { newRunId, useCallRun, type CallStep } from "@/lib/scripts/call-run";
 import { langInfo, type VarResolver } from "@/lib/scripts/logic";
@@ -288,9 +290,10 @@ function Runner({
   return (
     <div className="space-y-3">
       {state.test && (
-        <div
+        <InfoNote
+          variant="warning"
           role="status"
-          className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-amber-200 bg-amber-100 px-4 py-2 text-sm text-amber-900"
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm"
         >
           <span>
             <span className="font-semibold">Тестовый прогон</span> — в статистику звонков не
@@ -299,12 +302,12 @@ function Runner({
           <Button variant="outline" size="sm" className="ml-auto" onClick={endTest}>
             Закончить тест
           </Button>
-        </div>
+        </InfoNote>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-background p-3">
+      <TableToolbar>
         <Input
-          className="w-full sm:w-72"
+          className="toolbar-full w-full sm:w-72"
           value={name}
           aria-label="Имя клиента"
           placeholder="Имя клиента — подставится в {имя}"
@@ -313,7 +316,7 @@ function Runner({
         <span className="text-xs text-muted-foreground max-lg:hidden">
           1–9 — ответ клиента · Backspace — назад
         </span>
-        <div className="flex flex-wrap gap-2 sm:ml-auto max-sm:w-full max-sm:[&>*]:flex-1">
+        <div className="toolbar-full flex flex-wrap gap-2 sm:ml-auto max-sm:[&>*]:flex-1">
           <Button variant="outline" onClick={restart}>
             <RotateCcw />
             {state.test ? "Заново" : "Новый звонок"}
@@ -337,7 +340,7 @@ function Runner({
             </Button>
           )}
         </div>
-      </div>
+      </TableToolbar>
 
       <div className="grid items-start gap-3 lg:grid-cols-[14rem_minmax(0,1fr)_14rem]">
         <aside
@@ -398,11 +401,7 @@ function Runner({
           <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-3">
             <span className="text-xs text-muted-foreground tabular-nums">Шаг {path.length}</span>
             <h2 className="text-lg leading-tight font-semibold">{current.title}</h2>
-            {isObjection && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                Возражение
-              </span>
-            )}
+            {isObjection && <StatusChip tone="warning">Возражение</StatusChip>}
           </header>
 
           <div className="space-y-4 p-4">
@@ -418,10 +417,10 @@ function Runner({
               </div>
             </div>
             {current.hint && (
-              <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
-                <p className="font-medium">Подсказка</p>
+              <InfoNote className="space-y-1 text-sm">
+                <p className="font-medium text-foreground">Подсказка</p>
                 <Formatted text={current.hint} className="text-muted-foreground" {...fmt} />
-              </div>
+              </InfoNote>
             )}
             {current.client && (
               <p className="text-sm">
