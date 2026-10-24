@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FieldHint } from "@/components/ui/field-hint";
 import { InfoNote } from "@/components/ui/form-field";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CardSkeleton } from "@/components/skeletons";
 import {
@@ -97,8 +98,9 @@ export function ClientAppTab({ clientId, hasUser }: { clientId: string; hasUser:
           {insights.map((tip) => (
             <li key={tip.text}>
               <InfoNote
-                variant={tip.tone === "warning" ? "warning" : "muted"}
-                className={cn(tip.tone === "info" && "border-blue-200 bg-blue-50 text-blue-900")}
+                variant={
+                  tip.tone === "warning" ? "warning" : tip.tone === "info" ? "info" : "muted"
+                }
               >
                 {tip.text}
               </InfoNote>
@@ -243,36 +245,39 @@ function Value({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-const PERMISSION_CHIP: Record<PushPermission, string> = {
-  granted: "bg-emerald-100 text-emerald-700",
-  denied: "bg-rose-100 text-rose-700",
-  default: "bg-amber-100 text-amber-700",
-  unsupported: "bg-muted text-muted-foreground",
+const PERMISSION_TONE: Record<PushPermission, StatusTone> = {
+  granted: "positive",
+  denied: "negative",
+  default: "warning",
+  unsupported: "neutral",
 };
 
 function PermissionBadge({ permission }: { permission: PushPermission | null }) {
   if (!permission) return <>—</>;
   return (
-    <span
-      className={cn(
-        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-        PERMISSION_CHIP[permission],
-      )}
-    >
-      {PUSH_PERMISSION_LABEL[permission]}
-    </span>
+    <StatusChip tone={PERMISSION_TONE[permission]}>{PUSH_PERMISSION_LABEL[permission]}</StatusChip>
   );
 }
 
 /** 30 дней активности: день — квадрат, ярче — больше открытий. */
 function ActivityStrip({ strip }: { strip: { day: string; sessions: number }[] }) {
+  // Полоса передаёт смысл только цветом — для скринридера то же числом.
+  const activeDays = strip.filter((d) => d.sessions > 0).length;
+  const totalSessions = strip.reduce((sum, d) => sum + d.sessions, 0);
+  const summary = activeDays
+    ? `Открывал приложение ${activeDays} ${plural(activeDays, ["день", "дня", "дней"])} из ${strip.length}, всего ${totalSessions} ${plural(totalSessions, ["открытие", "открытия", "открытий"])}`
+    : `Не открывал приложение ${strip.length} ${plural(strip.length, ["день", "дня", "дней"])}`;
   return (
     <div className="mt-1 border-t pt-3">
       <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">
         <span>{formatDate(strip[0]?.day)}</span>
         <span>сегодня</span>
       </div>
-      <div className="grid grid-cols-[repeat(30,minmax(0,1fr))] gap-0.5">
+      <div
+        role="img"
+        aria-label={summary}
+        className="grid grid-cols-[repeat(30,minmax(0,1fr))] gap-0.5"
+      >
         {strip.map((d) => (
           <div
             key={d.day}

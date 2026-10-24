@@ -325,7 +325,7 @@ function ClientsPage() {
             <DateRangeFilter
               placeholder="Последний раз в приложении"
               title="Когда клиент последний раз открывал приложение клуба"
-              className="w-64"
+              className="w-48"
               value={appRange}
               onChange={setAppRange}
             />
@@ -423,10 +423,14 @@ function ClientsPage() {
                             onSaved={reload}
                           />
                         </TableCell>
-                        <TableCell>{formatDate(c.last_visit_date)}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatDate(c.last_visit_date)}
+                        </TableCell>
                         <TableCell>{genderLabel(c.gender)}</TableCell>
-                        <TableCell>{formatDate(c.birthday)}</TableCell>
-                        <TableCell>{formatDate(c.registration_date)}</TableCell>
+                        <TableCell className="tabular-nums">{formatDate(c.birthday)}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatDate(c.registration_date)}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {clientSourceLabel(c.source)}
                         </TableCell>

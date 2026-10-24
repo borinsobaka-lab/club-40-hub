@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { clientName } from "@/lib/format";
 import { GOAL_LABELS } from "@/lib/client-profile";
 import { Button } from "@/components/ui/button";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Select,
   SelectContent,
@@ -284,7 +285,7 @@ function RequestsPage() {
                 <p
                   className={cn(
                     "mt-1 text-2xl font-semibold tabular-nums",
-                    openCount > 0 && "text-destructive",
+                    openCount > 0 && "text-amber-700",
                   )}
                 >
                   {openCount}
@@ -306,7 +307,7 @@ function RequestsPage() {
               <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
             )}
             <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -316,7 +317,7 @@ function RequestsPage() {
               </SelectContent>
             </Select>
             <Select value={kind} onValueChange={(v) => setKind(v as "all" | ClientRequestKind)}>
-              <SelectTrigger className="w-52">
+              <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -399,15 +400,15 @@ function RequestsPage() {
                       >
                         <TableRow
                           className={cn(
-                            !i.processed_at && "max-md:border-l-4 max-md:border-l-rose-500",
+                            !i.processed_at && "max-md:border-l-4 max-md:border-l-amber-500",
                           )}
                         >
-                          <TableCell className="relative whitespace-nowrap text-muted-foreground">
-                            {/* Неотработанная — красная полоска слева, как в «Абонементах». */}
+                          <TableCell className="relative whitespace-nowrap text-muted-foreground tabular-nums">
+                            {/* Неотработанная — полоска «внимание» слева, как в «Абонементах». */}
                             {!i.processed_at && (
                               <span
                                 aria-hidden
-                                className="absolute inset-y-0 left-0 w-1 bg-rose-500 max-md:hidden"
+                                className="absolute inset-y-0 left-0 w-1 bg-amber-500 max-md:hidden"
                               />
                             )}
                             {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
@@ -446,17 +447,15 @@ function RequestsPage() {
                           <TableCell className="whitespace-nowrap">
                             {i.processed_at ? (
                               <div className="text-xs text-muted-foreground">
-                                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                  Отработано
-                                </span>
-                                <div className="mt-1">
+                                <StatusChip tone="positive">Отработано</StatusChip>
+                                <div className="mt-1 tabular-nums">
                                   {i.processed_by_name ? `${i.processed_by_name} · ` : ""}
                                   {format(new Date(i.processed_at), "dd.MM.yy", { locale: ru })}
                                 </div>
                               </div>
                             ) : (
                               <Button
-                                size="sm"
+                                size="xs"
                                 onClick={() => setProcessed(i, true)}
                                 disabled={busy}
                               >
@@ -492,14 +491,9 @@ function goalsText(i: RequestRow) {
 
 function KindBadge({ kind }: { kind: ClientRequestKind }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        kind === "diagnostic" ? "bg-slate-900 text-white" : "bg-violet-100 text-violet-700",
-      )}
-    >
+    <StatusChip tone={kind === "diagnostic" ? "strong" : "info"}>
       {REQUEST_KIND_LABEL[kind] ?? kind}
-    </span>
+    </StatusChip>
   );
 }
 

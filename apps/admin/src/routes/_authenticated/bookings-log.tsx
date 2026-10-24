@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataPagination } from "@/components/data-pagination";
-import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
+import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { toast } from "sonner";
 import { dayTypeLabel, dayTypeColor, type DayType } from "@/lib/workout-types";
@@ -200,6 +200,13 @@ function BookingsLogPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ToolbarReset
+              active={Boolean(search.trim()) || status !== STATUS_ALL}
+              onReset={() => {
+                setSearch("");
+                setStatus(STATUS_ALL);
+              }}
+            />
           </TableToolbar>
 
           <div className="rounded-lg border bg-background">
@@ -280,7 +287,9 @@ function BookingsLogPage() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm">{formatDateTime(r.starts_at)}</TableCell>
+                        <TableCell className="text-sm tabular-nums">
+                          {formatDateTime(r.starts_at)}
+                        </TableCell>
                         <TableCell>
                           <BookingStatusBadge status={r.status} />
                         </TableCell>
@@ -296,7 +305,7 @@ function BookingsLogPage() {
                         <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
                           {r.calories ?? "—"}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
+                        <TableCell className="text-xs text-muted-foreground tabular-nums">
                           {r.cancelled_at ? (
                             <div className="space-y-0.5">
                               <div>{formatDateTime(r.cancelled_at)}</div>
