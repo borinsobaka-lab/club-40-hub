@@ -147,6 +147,11 @@ const Sidebar = React.forwardRef<
     side?: "left" | "right";
     variant?: "sidebar" | "floating" | "inset";
     collapsible?: "offcanvas" | "icon" | "none";
+    /**
+     * Своя ширина панели с рейкой на широком экране (CSS-длина) вместо
+     * SIDEBAR_WIDTH: база знаний — шире, дереву с вложенностью тесно.
+     */
+    width?: string;
   }
 >(
   (
@@ -154,6 +159,7 @@ const Sidebar = React.forwardRef<
       side = "left",
       variant = "sidebar",
       collapsible = "offcanvas",
+      width,
       className,
       children,
       ...props
@@ -205,6 +211,7 @@ const Sidebar = React.forwardRef<
       <div
         ref={ref}
         className="group peer hidden text-sidebar-foreground md:block"
+        style={width ? ({ "--sidebar-width": width } as React.CSSProperties) : undefined}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}

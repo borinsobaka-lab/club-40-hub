@@ -1,5 +1,8 @@
 @import "tailwindcss" source(none);
 @source "../src";
+/* Редактор базы знаний (@blocknote/shadcn) размечен классами Tailwind —
+   без этой строки его меню и панели остались бы без стилей. */
+@source "../node_modules/@blocknote/shadcn/dist";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
@@ -523,6 +526,61 @@ input[type="number"]::-webkit-outer-spin-button {
   &::-webkit-scrollbar-thumb:hover {
     background-color: rgb(255 255 255 / 0.2);
   }
+}
+
+/* Документ статьи базы знаний (BlockNote, components/kb/kb-document.tsx):
+   лежит на белой карточке статьи — свой фон и шрифт редактора не нужны;
+   вертикальное видео и большие картинки не выше экрана (боль брифа:
+   вертикальное видео занимало полстраницы). */
+.kb-document .bn-editor {
+  background: transparent;
+  font-family: inherit;
+}
+.kb-document .bn-container {
+  font-family: inherit;
+}
+.kb-document video.bn-visual-media,
+.kb-document img.bn-visual-media {
+  max-height: 75vh;
+  object-fit: contain;
+}
+.kb-document-read .bn-editor {
+  padding-bottom: 0;
+}
+/* На телефоне ручки блоков слева не помещаются — текст вровень с названием
+   статьи (обёртка документа сдвинута на -0.75rem, kb-node-page.tsx). */
+@media (max-width: 639px) {
+  .kb-document .bn-editor {
+    padding-inline: 0.75rem;
+  }
+}
+/* PDF и галерея — на всю ширину текста, а не по размеру превью файла. */
+.kb-document [data-content-type="pdf"] .bn-file-block-content-wrapper,
+.kb-document [data-content-type="gallery"] {
+  width: 100%;
+}
+/* Заголовки внутри статьи — мельче её названия (text-3xl в шапке):
+   BlockNote берёт размер из --level (у первого уровня было 3em). */
+.kb-document [data-content-type="heading"],
+.kb-document [data-content-type="heading"][data-level="1"] {
+  --level: 1.6em;
+}
+.kb-document [data-content-type="heading"][data-level="2"] {
+  --level: 1.3em;
+}
+.kb-document [data-content-type="heading"][data-level="3"] {
+  --level: 1.12em;
+}
+
+/* Пока тянут край меню базы знаний (KbSidebarResize) — без анимации
+   ширины, иначе панель отстаёт от мыши. */
+body[data-sidebar-resizing] .peer *,
+body[data-sidebar-resizing] .peer {
+  transition: none !important;
+}
+body[data-sidebar-resizing] {
+  cursor: col-resize;
+  user-select: none;
 }
 
 /* Уважаем системную настройку «меньше движения»: цвет и прозрачность

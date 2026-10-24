@@ -1,0 +1,92 @@
+import { describe, expect, test } from "bun:test";
+
+import {
+  ancestorsOf,
+  applyMove,
+  articleCount,
+  childrenOf,
+  dropPlacement,
+  indexTree,
+  readerNodes,
+} from "./tree";
+import type { KbTreeNode } from "./types";
+
+let order = 0;
+function n(id: string, parent: string | null, kind: "folder" | "article" = "article"): KbTreeNode {
+  order += 1;
+  return {
+    id,
+    base_id: "b",
+    parent_id: parent,
+    kind,
+    title: id,
+    description: "",
+    sort_order: order,
+    status: "published",
+    reader_visible: true,
+    created_at: "2026-10-24T00:00:00Z",
+    updated_at: "2026-10-24T00:00:00Z",
+    published_at: null,
+    published_by: null,
+  };
+}
+
+// LS ─┬─ Админ ─┬─ open
+//     │         └─ close
+//     └─ empty (пустая папка)
+// office
+const nodes = [
+  n("LS", null, "folder"),
+  n("admin", "LS", "folder"),
+  n("open", "admin"),
+  n("close", "admin"),
+  n("empty", "LS", "folder"),
+  n("office", null),
+];
+const index = indexTree(nodes);
+
+describe("дерево базы знаний", () => {
+  test("дети по порядку и предки", () => {
+    expect(childrenOf(index, null).map((x) => x.id)).toEqual(["LS", "office"]);
+    expect(ancestorsOf(index, "open").map((x) => x.id)).toEqual(["LS", "admin"]);
+    expect(articleCount(index, "LS")).toBe(2);
+    expect(articleCount(index, "empty")).toBe(0);
+  });
+
+  test("читателю пустые папки не показываются", () => {
+    expect(readerNodes(nodes).map((x) => x.id)).toEqual(["LS", "admin", "open", "close", "office"]);
+  });
+
+  test("перенос: выше, ниже, внутрь папки", () => {
+    expect(dropPlacement(index, "close", "open", "reorder-before")).toEqual({
+      parentId: "admin",
+      position: 0,
+    });
+    expect(dropPlacement(index, "office", "open", "reorder-after")).toEqual({
+      parentId: "admin",
+      position: 1,
+    });
+    expect(dropPlacement(index, "office", "empty", "combine")).toEqual({
+      parentId: "empty",
+      position: 0,
+    });
+    expect(dropPlacement(index, "office", "admin", "combine")).toEqual({
+      parentId: "admin",
+      position: 2,
+    });
+  });
+
+  test("папку нельзя в саму себя, в свою вложенную и внутрь статьи", () => {
+    expect(dropPlacement(index, "LS", "admin", "combine")).toBeNull();
+    expect(dropPlacement(index, "LS", "open", "reorder-after")).toBeNull();
+    expect(dropPlacement(index, "office", "open", "combine")).toBeNull();
+    expect(dropPlacement(index, "LS", "LS", "reorder-after")).toBeNull();
+  });
+
+  test("порядок после переноса показывается сразу", () => {
+    const moved = applyMove(nodes, "office", "admin", 1);
+    const i = indexTree(moved);
+    expect(childrenOf(i, "admin").map((x) => x.id)).toEqual(["open", "office", "close"]);
+    expect(childrenOf(i, null).map((x) => x.id)).toEqual(["LS"]);
+  });
+});

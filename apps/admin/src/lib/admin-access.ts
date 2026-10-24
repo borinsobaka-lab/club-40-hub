@@ -13,6 +13,7 @@
  * разделов). Владелец видит все разделы рейки, а в своей студии — все разделы
  * клуба. Модуль без React и иконок: его читает и сервер.
  */
+import type { KbLevel } from "@/lib/kb/access";
 
 export const RAIL_ACCESS_KEYS = ["club", "staff", "app", "scripts"] as const;
 export type RailAccessKey = (typeof RAIL_ACCESS_KEYS)[number];
@@ -53,6 +54,11 @@ export type ClubSectionKey = (typeof CLUB_SECTION_KEYS)[number];
 
 /** Права одного сотрудника — как их читает меню и guard. */
 export type AdminAccess = {
+  /**
+   * Базы знаний, доступные сотруднику, и уровень (lib/kb/access.ts); нет
+   * поля — баз нет. Владельцу открыты все, в том числе ещё не загруженные.
+   */
+  kb?: Record<string, KbLevel>;
   /** Владелец хоть одной студии: все разделы рейки, «Доступы». */
   isOwner: boolean;
   /** Разделы рейки (и 'scripts-edit'); null — все. */

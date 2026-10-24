@@ -6,8 +6,12 @@ const walk = (d: string): string[] =>
     e.isDirectory() ? walk(`${d}/${e.name}`) : /\.tsx?$/.test(e.name) ? [`${d}/${e.name}`] : [],
   );
 
+// Редактор базы знаний (@blocknote/shadcn) тоже импортирует lucide-react —
+// alias подменяет и его импорты, поэтому его иконки нужны в шиме.
+const VENDOR = ["node_modules/@blocknote/shadcn/dist/blocknote-shadcn.js"];
+
 const used = new Set<string>();
-for (const f of walk("src")) {
+for (const f of [...walk("src"), ...VENDOR]) {
   if (f.endsWith("src/lib/icons.tsx")) continue;
   for (const m of readFileSync(f, "utf8").matchAll(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g))
     for (const raw of m[1].split(","))
@@ -34,6 +38,7 @@ const MANUAL: Record<string, string> = {
   ChartLine: "ChartLineIcon",
   CheckCircle2: "CheckCircle",
   ChevronsUpDown: "UnfoldMoreIcon", // псевдоним — стрелки ↑↓, нужен «раскрыть»
+  FolderInput: "FolderTransferIcon", // «Переместить…» в базе знаний; псевдонима нет
   GripVertical: "DragDropVerticalIcon", // псевдоним — рука, нужны точки-ручка
   HelpCircle: "HelpCircleIcon", // псевдонима под именем lucide нет
   Loader2: "LoaderCircle",

@@ -15,6 +15,7 @@ import { hasStaffRole } from "@/lib/roles";
 import { studiosQuery } from "@/hooks/use-studios";
 import { staffProfileQuery } from "@/hooks/use-staff-profile";
 import { adminPermissionsQuery, useAdminAccess } from "@/hooks/use-admin-access";
+import { kbBasesQuery, kbOwnGrantsQuery } from "@/lib/kb/data";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenPath, firstAllowedUrl } from "@/lib/nav-sections";
 import { usePreloadSections } from "@/hooks/use-preload-sections";
@@ -44,6 +45,8 @@ export const Route = createFileRoute("/_authenticated")({
     void queryClient.prefetchQuery(studiosQuery);
     void queryClient.prefetchQuery(adminPermissionsQuery);
     void queryClient.prefetchQuery(staffProfileQuery);
+    void queryClient.prefetchQuery(kbBasesQuery);
+    void queryClient.prefetchQuery(kbOwnGrantsQuery);
 
     if (verifiedUserId === sessionUser.id) return { user: sessionUser };
 

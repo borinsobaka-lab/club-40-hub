@@ -1,0 +1,916 @@
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+  Archive,
+  ArchiveRestore,
+  Check,
+  ChevronRight,
+  CloudOff,
+  Copy,
+  Ellipsis,
+  FilePlus,
+  FolderInput,
+  FolderPlus,
+  Loader2,
+  Pencil,
+  Send,
+  Trash2,
+  Undo2,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { AdminShell } from "@/components/admin-shell";
+import { DocumentText, Folder } from "@/components/nav-icons";
+import { KbArticleBodySkeleton, KbFolderBodySkeleton } from "@/components/page-skeletons";
+import { KbArticlePickerForm, KbMoveForm, KbNodeTitleForm } from "@/components/kb/node-dialogs";
+import { KbDraftBadge, KbStatusBadge } from "@/components/kb/kb-status-badge";
+import { useDraftAutosave, type AutosaveState } from "@/components/kb/use-draft-autosave";
+import { useKbActions } from "@/components/kb/use-kb-actions";
+import { useConfirm } from "@/components/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { InfoNote } from "@/components/ui/form-field";
+import { ListItemButton } from "@/components/ui/list-item-button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { supabase } from "@/integrations/supabase/client";
+import { canEditKb } from "@/lib/kb/access";
+import {
+  invalidateKb,
+  kbBasesQuery,
+  kbErrorText,
+  useKbAuthors,
+  useKbDraft,
+  useKbDrafts,
+  useKbNode,
+  useKbTree,
+} from "@/lib/kb/data";
+import { documentIsEmpty, type KbHeading } from "@/lib/kb/document";
+import { kbIcon } from "@/lib/kb/icons";
+import {
+  ancestorsOf,
+  articleCount,
+  childrenOf,
+  indexTree,
+  readerNodes,
+  type KbTreeIndex,
+} from "@/lib/kb/tree";
+import type { KbTreeNode } from "@/lib/kb/types";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type { KbArticleLink } from "@/components/kb/kb-document";
+
+// Редактор (BlockNote, ProseMirror) — отдельным чанком: остальным разделам
+// админки он не нужен, а читателю грузится вместе со статьёй.
+const KbDocument = lazy(() =>
+  import("@/components/kb/kb-document").then((m) => ({ default: m.KbDocument })),
+);
+
+/**
+ * Страница базы знаний: главная базы (nodeId — null), папка или статья.
+ * Главная и папка — описание и список вложенного (ссылка на папку открывает
+ * её содержимое — боль брифа). Статья — текст, оглавление и «Обновлено»; у
+ * редактора — правка на месте (автосохранение черновика) и публикация.
+ */
+export function KbNodePage({
+  baseId,
+  nodeId,
+  edit,
+}: {
+  baseId: string;
+  nodeId: string | null;
+  edit?: boolean;
+}) {
+  const access = useAdminAccess();
+  const level = access?.isOwner ? "manage" : access?.kb?.[baseId];
+  const canEdit = canEditKb(level);
+  const { data: bases } = useQuery(kbBasesQuery);
+  const base = bases?.find((b) => b.id === baseId);
+  const { data: allNodes, isLoading, error } = useKbTree(baseId);
+  const nodes = useMemo(
+    () => (canEdit ? (allNodes ?? []) : readerNodes(allNodes ?? [])),
+    [allNodes, canEdit],
+  );
+  const index = useMemo(() => indexTree(nodes), [nodes]);
+  const node = nodeId ? index.byId.get(nodeId) : undefined;
+  const title = base?.title ?? "База знаний";
+
+  if (error && !allNodes) {
+    return (
+      <AdminShell title={title}>
+        <InfoNote variant="warning">{error.message}</InfoNote>
+      </AdminShell>
+    );
+  }
+  if (isLoading || !access) {
+    return (
+      <AdminShell title={title}>
+        {nodeId ? <KbArticleBodySkeleton /> : <KbFolderBodySkeleton />}
+      </AdminShell>
+    );
+  }
+  if (nodeId && !node) {
+    return (
+      <AdminShell title={title}>
+        <div className="mx-auto max-w-3xl rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+          Статья не найдена: её удалили, перенесли в архив или сняли с публикации.{" "}
+          <Link
+            to="/kb/$baseId"
+            params={{ baseId }}
+            className="font-medium text-foreground underline"
+          >
+            К содержанию базы
+          </Link>
+        </div>
+      </AdminShell>
+    );
+  }
+  if (node?.kind === "article") {
+    return (
+      <ArticleView
+        key={node.id}
+        baseId={baseId}
+        baseTitle={title}
+        node={node}
+        nodes={nodes}
+        index={index}
+        canEdit={canEdit}
+        initialEdit={!!edit && canEdit}
+      />
+    );
+  }
+  return (
+    <FolderView
+      baseId={baseId}
+      baseTitle={title}
+      baseDescription={base?.description ?? ""}
+      baseIcon={base?.icon ?? null}
+      folder={node ?? null}
+      nodes={nodes}
+      index={index}
+      canEdit={canEdit}
+    />
+  );
+}
+
+function Crumbs({
+  baseId,
+  baseTitle,
+  index,
+  nodeId,
+}: {
+  baseId: string;
+  baseTitle: string;
+  index: KbTreeIndex;
+  nodeId: string;
+}) {
+  const path = ancestorsOf(index, nodeId);
+  return (
+    <nav
+      aria-label="Где статья"
+      className="mb-3 flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground"
+    >
+      <Link to="/kb/$baseId" params={{ baseId }} className="hover:text-foreground">
+        {baseTitle}
+      </Link>
+      {path.map((p) => (
+        <span key={p.id} className="flex min-w-0 items-center gap-1">
+          <ChevronRight className="size-3.5 shrink-0" />
+          <Link
+            to="/kb/$baseId/$nodeId"
+            params={{ baseId, nodeId: p.id }}
+            className="truncate hover:text-foreground"
+          >
+            {p.title || "Без названия"}
+          </Link>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+// --- Папка и главная базы ------------------------------------------------------------
+
+function FolderView({
+  baseId,
+  baseTitle,
+  baseDescription,
+  baseIcon,
+  folder,
+  nodes,
+  index,
+  canEdit,
+}: {
+  baseId: string;
+  baseTitle: string;
+  baseDescription: string;
+  baseIcon: string | null;
+  folder: KbTreeNode | null;
+  nodes: KbTreeNode[];
+  index: KbTreeIndex;
+  canEdit: boolean;
+}) {
+  const actions = useKbActions(baseId);
+  const { data: drafts } = useKbDrafts(baseId, canEdit);
+  const draftIds = new Set((drafts ?? []).map((d) => d.node_id));
+  const [dialog, setDialog] = useState<"article" | "folder" | "rename" | "move" | null>(null);
+  const items = childrenOf(index, folder?.id ?? null);
+  const Icon = folder ? Folder : kbIcon(baseIcon);
+  const description = folder ? folder.description : baseDescription;
+
+  return (
+    <AdminShell
+      title={baseTitle}
+      actions={
+        canEdit ? (
+          <>
+            <Button variant="outline" onClick={() => setDialog("folder")}>
+              <FolderPlus />
+              Папка
+            </Button>
+            <Button onClick={() => setDialog("article")}>
+              <FilePlus />
+              Статья
+            </Button>
+          </>
+        ) : null
+      }
+    >
+      <div className="mx-auto max-w-3xl">
+        {folder && (
+          <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={folder.id} />
+        )}
+        <header className="flex items-start gap-4 rounded-lg border bg-background px-5 py-5 sm:px-8 sm:py-6">
+          <span
+            className={cn(
+              "flex size-11 shrink-0 items-center justify-center rounded-lg",
+              folder ? "bg-muted text-muted-foreground" : "bg-sidebar text-white",
+            )}
+          >
+            <Icon className="size-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl leading-tight font-semibold">
+                {folder ? folder.title || "Без названия" : baseTitle}
+              </h2>
+              {canEdit && folder && folder.status !== "published" && (
+                <KbStatusBadge status={folder.status} />
+              )}
+            </div>
+            {description && (
+              <p className="mt-1.5 text-sm whitespace-pre-line text-muted-foreground">
+                {description}
+              </p>
+            )}
+            {!folder && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Статей: {articleCount(index, null)}
+              </p>
+            )}
+          </div>
+          {canEdit && folder && (
+            <NodeMenu
+              baseId={baseId}
+              node={folder}
+              hasChildren={items.length > 0}
+              onRename={() => setDialog("rename")}
+              onMove={() => setDialog("move")}
+            />
+          )}
+        </header>
+
+        {items.length === 0 ? (
+          <div className="mt-3 rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+            {canEdit
+              ? "Здесь пока пусто. Добавьте папку-раздел или статью — кнопки справа внизу."
+              : "Здесь пока ничего не опубликовано."}
+          </div>
+        ) : (
+          <ul className="mt-3 divide-y rounded-lg border bg-background">
+            {items.map((n) => (
+              <li key={n.id}>
+                <Link
+                  to="/kb/$baseId/$nodeId"
+                  params={{ baseId, nodeId: n.id }}
+                  className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                >
+                  {n.kind === "folder" ? (
+                    <Folder className="size-5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <DocumentText className="size-5 shrink-0 text-muted-foreground" />
+                  )}
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate font-medium",
+                      n.status !== "published" && "text-muted-foreground",
+                    )}
+                  >
+                    {n.title || "Без названия"}
+                  </span>
+                  {canEdit && n.status !== "published" && (
+                    <KbStatusBadge status={n.status} size="sm" />
+                  )}
+                  {canEdit && draftIds.has(n.id) && n.status === "published" && (
+                    <KbDraftBadge size="sm" />
+                  )}
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {n.kind === "folder"
+                      ? `${articleCount(index, n.id)} ст.`
+                      : n.published_at
+                        ? formatDate(n.published_at)
+                        : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <Dialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)}>
+        <DialogContent className="max-w-lg">
+          {(dialog === "article" || dialog === "folder") && (
+            <KbNodeTitleForm
+              kind={dialog}
+              node={null}
+              onSave={(t, d) => actions.create(dialog, folder?.id ?? null, t, d)}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "rename" && folder && (
+            <KbNodeTitleForm
+              kind="folder"
+              node={folder}
+              onSave={(t, d) => actions.update(folder.id, { title: t, description: d })}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "move" && folder && (
+            <KbMoveForm
+              node={folder}
+              nodes={nodes}
+              baseTitle={baseTitle}
+              onMove={(p, pos) => actions.move(folder.id, p, pos)}
+              onDone={() => setDialog(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </AdminShell>
+  );
+}
+
+// --- Меню «⋯» папки и статьи ------------------------------------------------------------
+
+function NodeMenu({
+  baseId,
+  node,
+  hasChildren,
+  hasDraft,
+  onRename,
+  onMove,
+  onDiscardDraft,
+}: {
+  baseId: string;
+  node: KbTreeNode;
+  hasChildren?: boolean;
+  hasDraft?: boolean;
+  onRename: () => void;
+  onMove: () => void;
+  onDiscardDraft?: () => void;
+}) {
+  const actions = useKbActions(baseId);
+  const navigate = useNavigate();
+  const { confirm, confirmDialog } = useConfirm();
+  const [open, setOpen] = useState(false);
+  const isFolder = node.kind === "folder";
+  const item = (
+    label: string,
+    Icon: React.ComponentType<{ className?: string }>,
+    run: () => void,
+    destructive = false,
+  ) => (
+    <ListItemButton
+      key={label}
+      className={cn(destructive && "text-destructive hover:text-destructive")}
+      onClick={() => {
+        setOpen(false);
+        run();
+      }}
+    >
+      <Icon className={cn(!destructive && "text-muted-foreground")} />
+      {label}
+    </ListItemButton>
+  );
+
+  const remove = async () => {
+    const ok = await confirm({
+      title: isFolder ? `Удалить папку «${node.title}»?` : `Удалить статью «${node.title}»?`,
+      description:
+        "Удаляется насовсем, вместе с историей и отметками о прочтении. Если может пригодиться — лучше в архив.",
+    });
+    if (ok && (await actions.remove(node))) {
+      await navigate(
+        node.parent_id
+          ? { to: "/kb/$baseId/$nodeId", params: { baseId, nodeId: node.parent_id } }
+          : { to: "/kb/$baseId", params: { baseId } },
+      );
+    }
+  };
+
+  return (
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="-mr-2 shrink-0" aria-label="Действия">
+            <Ellipsis />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-60 p-1">
+          {item(isFolder ? "Название и описание" : "Переименовать", Pencil, onRename)}
+          {item("Переместить…", FolderInput, onMove)}
+          {!isFolder && item("Сделать копию", Copy, () => actions.copy(node.id))}
+          {hasDraft &&
+            onDiscardDraft &&
+            item("Отменить неопубликованные правки", Undo2, onDiscardDraft)}
+          {isFolder &&
+            node.status === "draft" &&
+            item("Опубликовать папку", Send, () => actions.setStatus(node, "published"))}
+          {node.status === "published" &&
+            item("Снять с публикации", Undo2, () => actions.setStatus(node, "draft"))}
+          {node.status === "archived"
+            ? item("Вернуть из архива", ArchiveRestore, () =>
+                actions.setStatus(node, isFolder ? "published" : "draft"),
+              )
+            : item("В архив", Archive, () => actions.setStatus(node, "archived"))}
+          {node.status !== "published" && !hasChildren && item("Удалить", Trash2, remove, true)}
+        </PopoverContent>
+      </Popover>
+      {confirmDialog}
+    </>
+  );
+}
+
+// --- Статья -------------------------------------------------------------------------------
+
+function ArticleView({
+  baseId,
+  baseTitle,
+  node,
+  nodes,
+  index,
+  canEdit,
+  initialEdit,
+}: {
+  baseId: string;
+  baseTitle: string;
+  node: KbTreeNode;
+  nodes: KbTreeNode[];
+  index: KbTreeIndex;
+  canEdit: boolean;
+  initialEdit: boolean;
+}) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const actions = useKbActions(baseId);
+  const { confirm, confirmDialog } = useConfirm();
+  const { data: full, isLoading } = useKbNode(node.id);
+  const {
+    data: draft,
+    isLoading: draftLoading,
+    refetch: refetchDraft,
+  } = useKbDraft(node.id, canEdit);
+  const { data: authors } = useKbAuthors(baseId);
+  const [editing, setEditing] = useState(initialEdit);
+  // Номер открытия редактора: редактор и автосохранение заводятся заново только
+  // при новом открытии, а не на каждое сохранение черновика.
+  const [session, setSession] = useState(0);
+  const startEdit = async () => {
+    await refetchDraft();
+    setSession((n) => n + 1);
+    setEditing(true);
+  };
+  const [headings, setHeadings] = useState<KbHeading[]>([]);
+  const [dialog, setDialog] = useState<"rename" | "move" | "link" | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const linkResolver = useRef<((link: KbArticleLink | null) => void) | null>(null);
+  const name = (id: string | null | undefined) => (id ? authors?.get(id) || "сотрудник" : "");
+
+  // «Открыл статью» — в отчёт по чтению (повтор чаще раза в 30 минут база не считает).
+  // Запрос PostgREST ленивый: без then он не уходит.
+  useEffect(() => {
+    void supabase.rpc("kb_mark_read", { p_node: node.id }).then(() => undefined);
+  }, [node.id]);
+
+  // Убрать ?edit=1 из адреса: обновление страницы не должно снова открывать правку.
+  useEffect(() => {
+    if (initialEdit)
+      void navigate({
+        to: "/kb/$baseId/$nodeId",
+        params: { baseId, nodeId: node.id },
+        search: {},
+        replace: true,
+      });
+  }, [initialEdit, baseId, node.id, navigate]);
+
+  const published = (full?.content ?? null) as unknown[] | null;
+  // Черновик статьи-черновика редактор видит и без режима правки — это и есть статья.
+  const showDraft = canEdit && !!draft && (editing || node.status !== "published");
+  const doc = showDraft ? draft!.content : published;
+
+  const discardDraft = async () => {
+    const ok = await confirm({
+      title: "Отменить неопубликованные правки?",
+      description:
+        node.status === "published"
+          ? "Черновик правок удалится, статья останется такой, как её видят читатели."
+          : "Текст черновика удалится — статья станет пустой.",
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("kb_drafts").delete().eq("node_id", node.id);
+    if (error) {
+      toast.error(kbErrorText(error.message));
+      return;
+    }
+    setEditing(false);
+    await invalidateKb(qc, baseId);
+    toast.success("Правки отменены");
+  };
+
+  const publish = async (flush: () => Promise<boolean>) => {
+    setPublishing(true);
+    try {
+      if (!(await flush())) {
+        toast.error(
+          "Правки не сохранились — опубликовать нельзя. Проверьте связь и попробуйте ещё раз.",
+        );
+        return;
+      }
+      const { error } = await supabase.rpc("kb_publish", { p_node: node.id });
+      if (error) {
+        toast.error(kbErrorText(error.message));
+        return;
+      }
+      await invalidateKb(qc, baseId);
+      setEditing(false);
+      toast.success("Опубликовано — читатели видят новый текст");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const pickArticle = () =>
+    new Promise<KbArticleLink | null>((resolve) => {
+      linkResolver.current = resolve;
+      setDialog("link");
+    });
+
+  const loading = isLoading || (canEdit && draftLoading);
+  const hasDraft = !!draft;
+  const updatedBy = node.published_by ? name(node.published_by) : "";
+
+  return (
+    <EditorShell
+      key={editing ? `edit:${session}` : "read"}
+      title={baseTitle}
+      editing={editing}
+      nodeId={node.id}
+      expected={draft?.updated_at ?? null}
+      publishing={publishing}
+      onStartEdit={canEdit ? () => void startEdit() : undefined}
+      onDone={() => setEditing(false)}
+      onPublish={publish}
+      render={(autosave) => (
+        <div className="mx-auto flex max-w-6xl gap-8">
+          <article className="min-w-0 max-w-3xl flex-1">
+            <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={node.id} />
+            <div className="rounded-lg border bg-background px-5 py-5 sm:px-10 sm:py-8">
+              <header className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  {editing ? (
+                    <TitleInput
+                      value={node.title}
+                      onSave={(title) => actions.update(node.id, { title })}
+                    />
+                  ) : (
+                    <h2 className="text-3xl leading-tight font-semibold break-words">
+                      {node.title || "Без названия"}
+                    </h2>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    {canEdit && <KbStatusBadge status={node.status} />}
+                    {canEdit && hasDraft && node.status === "published" && <KbDraftBadge />}
+                    {node.published_at ? (
+                      <span>
+                        Обновлено {formatDate(node.published_at)}
+                        {updatedBy && ` · ${updatedBy}`}
+                      </span>
+                    ) : (
+                      <span>Ещё не опубликована</span>
+                    )}
+                    {editing && <AutosaveLabel state={autosave.state} savedAt={autosave.savedAt} />}
+                  </div>
+                </div>
+                {canEdit && (
+                  <NodeMenu
+                    baseId={baseId}
+                    node={node}
+                    hasDraft={hasDraft}
+                    onRename={() => setDialog("rename")}
+                    onMove={() => setDialog("move")}
+                    onDiscardDraft={discardDraft}
+                  />
+                )}
+              </header>
+
+              {canEdit && !editing && hasDraft && node.status === "published" && (
+                <InfoNote
+                  variant="info"
+                  className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm"
+                >
+                  <span>
+                    Есть неопубликованные правки
+                    {draft?.updated_by
+                      ? ` — ${name(draft.updated_by)}, ${formatDateTime(draft.updated_at)}`
+                      : ""}
+                    . Читатели видят текст ниже.
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => void startEdit()}>
+                    Продолжить правку
+                  </Button>
+                </InfoNote>
+              )}
+              {autosave.state === "conflict" && (
+                <InfoNote
+                  variant="warning"
+                  className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm"
+                >
+                  <span>
+                    Статью только что сохранил другой редактор. Ваши последние правки не сохранены —
+                    скопируйте их, обновите статью и внесите заново.
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => void startEdit()}>
+                    Обновить
+                  </Button>
+                </InfoNote>
+              )}
+
+              <div className="mt-6 -mx-3 sm:-mx-[54px]">
+                {loading ? (
+                  <div className="space-y-3 px-3 sm:px-[54px]">
+                    {["w-full", "w-11/12", "w-4/5", "w-2/3"].map((w) => (
+                      <div key={w} className={cn("h-4 animate-pulse rounded bg-muted", w)} />
+                    ))}
+                  </div>
+                ) : !editing && documentIsEmpty(doc) ? (
+                  <p className="px-3 text-sm text-muted-foreground sm:px-[54px]">
+                    {canEdit
+                      ? "Статья пока пустая — нажмите «Редактировать»."
+                      : "Статья пока пустая."}
+                  </p>
+                ) : (
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center gap-2 px-3 text-sm text-muted-foreground sm:px-[54px]">
+                        <Loader2 className="size-4 animate-spin" /> Открываем статью…
+                      </div>
+                    }
+                  >
+                    <KbDocument
+                      key={
+                        editing
+                          ? `edit:${session}`
+                          : showDraft
+                            ? `draft:${draft?.updated_at}`
+                            : `pub:${full?.published_at ?? ""}`
+                      }
+                      baseId={baseId}
+                      nodeId={node.id}
+                      initial={doc}
+                      editable={editing}
+                      onChange={editing ? autosave.schedule : undefined}
+                      onReady={editing ? autosave.setBaseline : undefined}
+                      onHeadings={setHeadings}
+                      onPickArticle={pickArticle}
+                    />
+                  </Suspense>
+                )}
+              </div>
+            </div>
+          </article>
+          <Toc headings={headings} />
+        </div>
+      )}
+    >
+      <Dialog
+        open={!!dialog}
+        onOpenChange={(o) => {
+          if (o) return;
+          if (dialog === "link") {
+            linkResolver.current?.(null);
+            linkResolver.current = null;
+          }
+          setDialog(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          {dialog === "rename" && (
+            <KbNodeTitleForm
+              kind="article"
+              node={node}
+              onSave={(t) => actions.update(node.id, { title: t })}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "move" && (
+            <KbMoveForm
+              node={node}
+              nodes={nodes}
+              baseTitle={baseTitle}
+              onMove={(p, pos) => actions.move(node.id, p, pos)}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "link" && (
+            <KbArticlePickerForm
+              baseId={baseId}
+              nodes={nodes}
+              excludeId={node.id}
+              onPick={(link) => {
+                linkResolver.current?.(link);
+                linkResolver.current = null;
+                setDialog(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      {confirmDialog}
+    </EditorShell>
+  );
+}
+
+/**
+ * Шапка страницы статьи и плавающие кнопки: «Редактировать» — или, в режиме
+ * правки, «Готово» и «Опубликовать». Здесь же живёт автосохранение: оно
+ * заводится заново на каждое открытие редактора (метка черновика — его).
+ */
+function EditorShell({
+  title,
+  editing,
+  nodeId,
+  expected,
+  publishing,
+  onStartEdit,
+  onDone,
+  onPublish,
+  render,
+  children,
+}: {
+  title: string;
+  editing: boolean;
+  nodeId: string;
+  expected: string | null;
+  publishing: boolean;
+  onStartEdit?: () => void;
+  onDone: () => void;
+  onPublish: (flush: () => Promise<boolean>) => void;
+  render: (autosave: ReturnType<typeof useDraftAutosave>) => React.ReactNode;
+  /** Окна и подтверждения страницы. */
+  children?: React.ReactNode;
+}) {
+  const autosave = useDraftAutosave(nodeId, expected);
+  const busy = autosave.state === "saving" || autosave.state === "pending";
+
+  return (
+    <AdminShell
+      title={title}
+      actions={
+        editing ? (
+          <>
+            <Button
+              variant="outline"
+              disabled={publishing}
+              onClick={async () => {
+                await autosave.flush();
+                onDone();
+              }}
+            >
+              <Check />
+              Готово
+            </Button>
+            <Button
+              disabled={publishing || autosave.state === "conflict"}
+              onClick={() => onPublish(autosave.flush)}
+            >
+              {publishing || busy ? <Loader2 className="animate-spin" /> : <Send />}
+              Опубликовать
+            </Button>
+          </>
+        ) : onStartEdit ? (
+          <Button onClick={onStartEdit}>
+            <Pencil />
+            Редактировать
+          </Button>
+        ) : null
+      }
+    >
+      {render(autosave)}
+      {children}
+    </AdminShell>
+  );
+}
+
+function AutosaveLabel({ state, savedAt }: { state: AutosaveState; savedAt: Date | null }) {
+  if (state === "pending" || state === "saving")
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Loader2 className="size-3.5 animate-spin" /> Сохраняем…
+      </span>
+    );
+  if (state === "error")
+    return (
+      <span className="inline-flex items-center gap-1 text-destructive">
+        <CloudOff className="size-3.5" /> Нет связи — правки сохранятся, когда она вернётся
+      </span>
+    );
+  if (state === "saved" && savedAt)
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Check className="size-3.5" /> Черновик сохранён в{" "}
+        {savedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+      </span>
+    );
+  return <span>Правки сохраняются сами — читатели их увидят после «Опубликовать»</span>;
+}
+
+/** Название статьи в режиме правки: крупное поле, сохраняется при уходе из поля. */
+function TitleInput({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (title: string) => Promise<boolean>;
+}) {
+  const [title, setTitle] = useState(value);
+  const save = () => {
+    const t = title.trim();
+    if (!t) {
+      setTitle(value);
+      return;
+    }
+    if (t !== value) void onSave(t);
+  };
+  return (
+    <textarea
+      aria-label="Название статьи"
+      value={title}
+      rows={1}
+      maxLength={200}
+      placeholder="Название статьи"
+      onChange={(e) => setTitle(e.target.value.replace(/\n/g, " "))}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          (e.target as HTMLTextAreaElement).blur();
+        }
+      }}
+      className="field-sizing-content w-full resize-none rounded-md bg-transparent text-3xl leading-tight font-semibold outline-none placeholder:text-muted-foreground/60 focus-visible:bg-muted/40"
+    />
+  );
+}
+
+/** Оглавление статьи — справа на широком экране (боль брифа: длинные статьи без оглавления). */
+function Toc({ headings }: { headings: KbHeading[] }) {
+  if (headings.length < 2) return <div className="hidden w-56 shrink-0 xl:block" />;
+  const go = (id: string) => {
+    const el = document.querySelector(`[data-id="${CSS.escape(id)}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  return (
+    <aside className="hidden w-56 shrink-0 xl:block">
+      <nav aria-label="Оглавление" className="sticky top-0 pt-9">
+        <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Содержание
+        </p>
+        <ul className="space-y-1 border-l">
+          {headings.map((h) => (
+            <li key={h.id}>
+              <button
+                type="button"
+                onClick={() => go(h.id)}
+                className="-ml-px block w-full cursor-pointer border-l border-transparent py-0.5 text-left text-sm text-muted-foreground hover:border-foreground hover:text-foreground"
+                style={{ paddingLeft: 12 + (Math.min(h.level, 3) - 1) * 12 }}
+              >
+                {h.text}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </aside>
+  );
+}

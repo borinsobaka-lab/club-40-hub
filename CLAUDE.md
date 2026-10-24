@@ -45,8 +45,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   обратной связи `db/feedback.test.ts`, NPS-опросов `db/nps.test.ts`,
   устройств и активности приложения `db/app-activity.test.ts`, общей базы
   клиентов пакетных клубов `db/shared-clients.test.ts`, переноса из 1С
-  `db/import-1c.test.ts`, AI-ассистента Kate `db/assistant.test.ts` и
-  переоформления абонемента `db/membership-transfer.test.ts`
+  `db/import-1c.test.ts`, AI-ассистента Kate `db/assistant.test.ts`,
+  переоформления абонемента `db/membership-transfer.test.ts` и базы знаний
+  `db/knowledge-base.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -735,6 +736,27 @@ AUTH_SETUP.md.
   `assistant_inactive_members` (действующий абонемент, давно не был или
   ни разу), `assistant_birthdays`. Медицинское из анкеты Kate не получает.
   Тесты — `db/assistant.test.ts`.
+  **База знаний** (решение владельца 2026-10-24; план, решения и что вошло —
+  KNOWLEDGE_BASE.md): `db/migrations/2026-10-24_knowledge_base.sql` — базы
+  `kb_bases` (без `studio_id`, общие для сети, как «Скрипты LS»), дерево
+  папок и статей `kb_nodes` (`kind` folder/article, `path` — папки выше,
+  `reader_visible` — опубликован сам и все папки выше; ставят триггеры),
+  опубликованный текст — `kb_nodes.content` (документ BlockNote, jsonb;
+  `content_text` и `search` для поиска считает база), черновик правок —
+  `kb_drafts` (только редакторам; RPC `kb_save_draft` с проверкой метки —
+  `kb_draft_conflict`), публикация — `kb_publish` (снимок в `kb_revisions`),
+  доступы — `kb_grants` (сотрудник → база → `view`/`edit`; `node_id` и
+  `subject_type` — задел под ветки и должности сети, политики их пока не
+  читают), чтение — `kb_reads` (`kb_mark_read`, повтор не чаще раза в 30
+  минут). Владелец (owner хоть в одной студии) — всё (`kb_is_admin`), прочим
+  по умолчанию не видно ничего; без роли сотрудника выданное не действует.
+  Политики — массивами (`auth_kb_view_base_ids` / `auth_kb_edit_base_ids`).
+  RPC: `kb_move_node` (перенос и порядок), `kb_copy_node`,
+  `kb_reorder_bases`, `kb_search` (русская морфология + начало слова, в
+  папке), `kb_report` / `kb_article_readers` (отчёт по чтению, папки не
+  считаются), `kb_authors` (имена авторов — профили других клубов RLS не
+  отдаёт). Файлы — закрытый бакет `kb-media` (`{база}/{статья}/{файл}`,
+  50 МБ на файл, читать — подписанные ссылки). Тесты — `db/knowledge-base.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
@@ -886,6 +908,9 @@ own"` оставить). Альтернатива — выдача абонем�
   шаги в веб-панелях: миграции, ключи, хуки, Coolify). Держать в актуальном
   состоянии.
 - `STUDIO_FORMATS.md` — форматы студий, журнал решений по пакетному формату.
+- `KNOWLEDGE_BASE.md` — база знаний: бриф сотрудников, решения владельца
+  (всё на своём сервере, маленький лимит видео, перенос из Платрума вручную),
+  что вошло в первую версию, архитектура, Этап 2 и бэклог.
 - `MASSAGE_BOOKING.md` — запись на массаж NEBA в приложении Lady Stretch:
   API системы записи NEBA (репозиторий `booking-system`), экраны шаг за
   шагом, тексты, готовый модуль API.

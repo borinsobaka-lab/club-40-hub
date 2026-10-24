@@ -12,7 +12,10 @@ import {
   updateEmployee,
   deleteEmployee,
   type EmployeeRow,
+  type KbBaseOption,
 } from "@/lib/employees.functions";
+import { KB_LEVEL_LABEL, type KbGrant, type KbGrantLevel } from "@/lib/kb/access";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { StaffRole } from "@/lib/roles";
 import {
   CLUB_SECTION_KEYS,
@@ -71,6 +74,7 @@ const TIPS = {
   role: "Владельцу открыто всё, и только он управляет «Доступами». Администратору и тренеру — разделы, отмеченные ниже.",
   sections:
     "Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех клубов. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения.",
+  kb: "Базы знаний общие для всех клубов. «Просмотр» — читать опубликованные статьи, «Правка» — ещё и писать, править и публиковать статьи и папки. Без доступа базы не видно.",
 };
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -283,6 +287,7 @@ function EmployeesPage() {
             key={editing?.user_id ?? "new"}
             employee={editing}
             studios={studios}
+            kbBases={data?.kbBases ?? []}
             isSelf={!!editing && editing.user_id === data?.currentUserId}
             onDone={() => setOpen(false)}
           />
@@ -294,8 +299,10 @@ function EmployeesPage() {
 }
 
 function railSummary(e: EmployeeRow) {
-  if (e.role === "owner" || e.rail === null) return "Все";
-  return e.rail.map((k) => RAIL_ACCESS_LABEL[k]).join(", ") || "—";
+  if (e.role === "owner") return "Все";
+  const kb = e.kb.length ? `Базы знаний: ${e.kb.length}` : null;
+  if (e.rail === null) return kb ? `Все, ${kb}` : "Все";
+  return [...e.rail.map((k) => RAIL_ACCESS_LABEL[k]), ...(kb ? [kb] : [])].join(", ") || "—";
 }
 
 const ALL_CLUB_SECTIONS = [...CLUB_SECTION_KEYS];
@@ -303,11 +310,13 @@ const ALL_CLUB_SECTIONS = [...CLUB_SECTION_KEYS];
 function AccessForm({
   employee,
   studios,
+  kbBases,
   isSelf,
   onDone,
 }: {
   employee: EmployeeRow | null;
   studios: StudioOption[];
+  kbBases: KbBaseOption[];
   /** Своя запись владельца: данные меняются, доступ — нет. */
   isSelf: boolean;
   onDone: () => void;
@@ -336,6 +345,9 @@ function AccessForm({
     const initial = studios.find((s) => s.id === activeStudioId) ?? studios[0];
     return initial ? { [initial.id]: ALL_CLUB_SECTIONS } : {};
   });
+  const [kb, setKb] = useState<Record<string, KbGrantLevel>>(() =>
+    Object.fromEntries((employee?.kb ?? []).map((g) => [g.base_id, g.level])),
+  );
   const [saving, setSaving] = useState(false);
 
   const isOwnerRole = role === "owner";
@@ -408,6 +420,7 @@ function AccessForm({
       role,
       rail,
       studios: selected.map((s) => ({ studio_id: s.id, sections: studioSections[s.id] })),
+      kb: Object.entries(kb).map(([base_id, level]): KbGrant => ({ base_id, level })),
     };
     setSaving(true);
     try {
@@ -514,8 +527,8 @@ function AccessForm({
 
                 {isOwnerRole ? (
                   <InfoNote>
-                    Владельцу открыты все разделы админки и все разделы клуба в отмеченных клубах, а
-                    также «Доступы» и «Клубы».
+                    Владельцу открыты все разделы админки и все разделы клуба в отмеченных клубах,
+                    «Доступы», «Клубы» и все базы знаний.
                   </InfoNote>
                 ) : (
                   <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections} required>
@@ -537,6 +550,38 @@ function AccessForm({
                           Правка скриптов
                         </CheckboxOption>
                       )}
+                    </div>
+                  </FormField>
+                )}
+
+                {!isOwnerRole && kbBases.length > 0 && (
+                  <FormField label="Базы знаний" htmlFor={null} tip={TIPS.kb}>
+                    <div className="divide-y rounded-md border">
+                      {kbBases.map((b) => (
+                        <div
+                          key={b.id}
+                          className="flex flex-wrap items-center justify-between gap-2 p-3"
+                        >
+                          <span className="min-w-0 text-sm font-medium">{b.title}</span>
+                          <SegmentedControl
+                            aria-label={`Доступ к базе «${b.title}»`}
+                            value={kb[b.id] ?? "none"}
+                            onChange={(v) =>
+                              setKb((prev) => {
+                                const next = { ...prev };
+                                if (v === "none") delete next[b.id];
+                                else next[b.id] = v;
+                                return next;
+                              })
+                            }
+                            options={[
+                              { value: "none", label: "Нет" },
+                              { value: "view", label: KB_LEVEL_LABEL.view },
+                              { value: "edit", label: KB_LEVEL_LABEL.edit },
+                            ]}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </FormField>
                 )}

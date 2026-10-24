@@ -46,6 +46,7 @@ import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppAboutRouteImport } from './routes/_authenticated/app-about'
 import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenticated/admin-shifts'
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
+import { Route as AuthenticatedKbIndexRouteImport } from './routes/_authenticated/kb/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
 import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
@@ -53,6 +54,9 @@ import { Route as AuthenticatedDashboardSalesRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_authenticated/dashboard/marketing'
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
+import { Route as AuthenticatedKbBaseIdIndexRouteImport } from './routes/_authenticated/kb/$baseId/index'
+import { Route as AuthenticatedKbBaseIdReportRouteImport } from './routes/_authenticated/kb/$baseId/report'
+import { Route as AuthenticatedKbBaseIdNodeIdRouteImport } from './routes/_authenticated/kb/$baseId/$nodeId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -247,6 +251,11 @@ const AuthenticatedScriptsIndexRoute =
     path: '/scripts/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedKbIndexRoute = AuthenticatedKbIndexRouteImport.update({
+  id: '/kb/',
+  path: '/kb/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardIndexRoute =
   AuthenticatedDashboardIndexRouteImport.update({
     id: '/dashboard/',
@@ -287,6 +296,24 @@ const AuthenticatedDashboardClassesRoute =
   AuthenticatedDashboardClassesRouteImport.update({
     id: '/dashboard/classes',
     path: '/dashboard/classes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedKbBaseIdIndexRoute =
+  AuthenticatedKbBaseIdIndexRouteImport.update({
+    id: '/kb/$baseId/',
+    path: '/kb/$baseId/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedKbBaseIdReportRoute =
+  AuthenticatedKbBaseIdReportRouteImport.update({
+    id: '/kb/$baseId/report',
+    path: '/kb/$baseId/report',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedKbBaseIdNodeIdRoute =
+  AuthenticatedKbBaseIdNodeIdRouteImport.update({
+    id: '/kb/$baseId/$nodeId',
+    path: '/kb/$baseId/$nodeId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
@@ -333,7 +360,11 @@ export interface FileRoutesByFullPath {
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/kb/': typeof AuthenticatedKbIndexRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
+  '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
+  '/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -378,7 +409,11 @@ export interface FileRoutesByTo {
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
+  '/kb': typeof AuthenticatedKbIndexRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
+  '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
+  '/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/kb/$baseId': typeof AuthenticatedKbBaseIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -425,7 +460,11 @@ export interface FileRoutesById {
   '/_authenticated/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/_authenticated/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/_authenticated/kb/': typeof AuthenticatedKbIndexRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
+  '/_authenticated/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
+  '/_authenticated/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/_authenticated/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -472,7 +511,11 @@ export interface FileRouteTypes {
     | '/scripts/$sectionId'
     | '/scripts/settings'
     | '/dashboard/'
+    | '/kb/'
     | '/scripts/'
+    | '/kb/$baseId/$nodeId'
+    | '/kb/$baseId/report'
+    | '/kb/$baseId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -517,7 +560,11 @@ export interface FileRouteTypes {
     | '/scripts/$sectionId'
     | '/scripts/settings'
     | '/dashboard'
+    | '/kb'
     | '/scripts'
+    | '/kb/$baseId/$nodeId'
+    | '/kb/$baseId/report'
+    | '/kb/$baseId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -563,7 +610,11 @@ export interface FileRouteTypes {
     | '/_authenticated/scripts/$sectionId'
     | '/_authenticated/scripts/settings'
     | '/_authenticated/dashboard/'
+    | '/_authenticated/kb/'
     | '/_authenticated/scripts/'
+    | '/_authenticated/kb/$baseId/$nodeId'
+    | '/_authenticated/kb/$baseId/report'
+    | '/_authenticated/kb/$baseId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -835,6 +886,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScriptsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kb/': {
+      id: '/_authenticated/kb/'
+      path: '/kb'
+      fullPath: '/kb/'
+      preLoaderRoute: typeof AuthenticatedKbIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard/': {
       id: '/_authenticated/dashboard/'
       path: '/dashboard'
@@ -884,6 +942,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardClassesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kb/$baseId/': {
+      id: '/_authenticated/kb/$baseId/'
+      path: '/kb/$baseId'
+      fullPath: '/kb/$baseId/'
+      preLoaderRoute: typeof AuthenticatedKbBaseIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kb/$baseId/report': {
+      id: '/_authenticated/kb/$baseId/report'
+      path: '/kb/$baseId/report'
+      fullPath: '/kb/$baseId/report'
+      preLoaderRoute: typeof AuthenticatedKbBaseIdReportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kb/$baseId/$nodeId': {
+      id: '/_authenticated/kb/$baseId/$nodeId'
+      path: '/kb/$baseId/$nodeId'
+      fullPath: '/kb/$baseId/$nodeId'
+      preLoaderRoute: typeof AuthenticatedKbBaseIdNodeIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -926,7 +1005,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScriptsSectionIdRoute: typeof AuthenticatedScriptsSectionIdRoute
   AuthenticatedScriptsSettingsRoute: typeof AuthenticatedScriptsSettingsRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
+  AuthenticatedKbIndexRoute: typeof AuthenticatedKbIndexRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
+  AuthenticatedKbBaseIdNodeIdRoute: typeof AuthenticatedKbBaseIdNodeIdRoute
+  AuthenticatedKbBaseIdReportRoute: typeof AuthenticatedKbBaseIdReportRoute
+  AuthenticatedKbBaseIdIndexRoute: typeof AuthenticatedKbBaseIdIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -969,7 +1052,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScriptsSectionIdRoute: AuthenticatedScriptsSectionIdRoute,
   AuthenticatedScriptsSettingsRoute: AuthenticatedScriptsSettingsRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
+  AuthenticatedKbIndexRoute: AuthenticatedKbIndexRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,
+  AuthenticatedKbBaseIdNodeIdRoute: AuthenticatedKbBaseIdNodeIdRoute,
+  AuthenticatedKbBaseIdReportRoute: AuthenticatedKbBaseIdReportRoute,
+  AuthenticatedKbBaseIdIndexRoute: AuthenticatedKbBaseIdIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
