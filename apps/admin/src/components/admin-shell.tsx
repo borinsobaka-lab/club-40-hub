@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -24,8 +24,27 @@ const KateChat = lazy(() => loadKateChat().then((m) => ({ default: m.KateChat })
  * Рендерить один раз: внутри бывают диалоги со своим состоянием.
  */
 export function FloatingActions({ children }: { children: ReactNode }) {
+  // Ширина кнопок — в --fab-width у рабочей области: по ней пагинация
+  // отодвигает свои стрелки левее кнопок (styles.css, .data-pagination).
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const main = el?.closest<HTMLElement>(".admin-main");
+    if (!el || !main) return;
+    const observer = new ResizeObserver(() =>
+      main.style.setProperty("--fab-width", `${el.offsetWidth}px`),
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      main.style.removeProperty("--fab-width");
+    };
+  }, []);
   return (
-    <div className="fab-actions fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-end gap-3 sm:right-6 sm:bottom-6 lg:right-8 lg:bottom-8">
+    <div
+      ref={ref}
+      className="fab-actions fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-end gap-3 sm:right-6 sm:bottom-6 lg:right-8 lg:bottom-8"
+    >
       {children}
     </div>
   );
@@ -80,7 +99,10 @@ export function AdminShell({
         нижнем углу (FloatingActions).
       */}
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
-        <div className="flex min-w-0 flex-1 items-center gap-2 lg:basis-0">
+        {/* Заголовок берёт ширину по тексту, сжимается поиск (до min-w-56):
+            при равных колонках по краям «График администраторов» и
+            «Контакты и правила» обрезались на 1440px. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 lg:shrink-[0.1] lg:basis-auto">
           {/*
             На узком экране боковое меню уходит в шторку и кнопка сворачивания
             внутри него недоступна — открыть меню больше нечем.

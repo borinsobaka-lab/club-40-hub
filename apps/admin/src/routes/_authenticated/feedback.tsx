@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { cn } from "@/lib/utils";
+import { StatTile } from "@/components/ui/stat-tile";
 import { noteBoxClass } from "@/components/comment-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -270,25 +271,13 @@ function FeedbackPage() {
           <FeedbackStatsSkeleton />
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border bg-background p-4">
-              <p className="text-xs text-muted-foreground">В этом месяце</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{thisMonth.length}</p>
-            </div>
-            <div className="rounded-lg border bg-background p-4">
-              <p className="text-xs text-muted-foreground">Не отработано</p>
-              <p
-                className={cn(
-                  "mt-1 text-2xl font-semibold tabular-nums",
-                  pendingCount > 0 && "text-destructive",
-                )}
-              >
-                {pendingCount}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-background p-4">
-              <p className="text-xs text-muted-foreground">Отработано в этом месяце</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{resolvedThisMonth}</p>
-            </div>
+            <StatTile label="В этом месяце" value={thisMonth.length} />
+            <StatTile
+              label="Не отработано"
+              value={pendingCount}
+              tone={pendingCount > 0 ? "negative" : "default"}
+            />
+            <StatTile label="Отработано в этом месяце" value={resolvedThisMonth} />
           </div>
         )}
 

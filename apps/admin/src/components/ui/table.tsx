@@ -62,13 +62,52 @@ const Table = React.forwardRef<
     return () => observer.disconnect();
   }, [mobileCards]);
 
+  // Колонки, ушедшие за край: прокрутка вбок есть, но без подсказки её не
+  // видно — у края, за которым ещё есть колонки, лежит мягкая тень.
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = React.useState({ left: false, right: false });
+  React.useEffect(() => {
+    const box = scrollRef.current;
+    if (!box) return;
+    const update = () => {
+      const left = box.scrollLeft > 1;
+      const right = box.scrollLeft + box.clientWidth < box.scrollWidth - 1;
+      setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+    };
+    update();
+    box.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    if (innerRef.current) observer.observe(innerRef.current);
+    return () => {
+      box.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
+
   return (
-    <div className="relative w-full overflow-auto">
-      <table
-        ref={innerRef}
-        data-mobile-cards={mobileCards ? "" : undefined}
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
+    <div className="relative w-full">
+      <div ref={scrollRef} className="w-full overflow-auto">
+        <table
+          ref={innerRef}
+          data-mobile-cards={mobileCards ? "" : undefined}
+          className={cn("w-full caption-bottom text-sm", className)}
+          {...props}
+        />
+      </div>
+      <div
+        aria-hidden
+        className={cn(
+          "table-edge-shadow pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-foreground/[0.12] to-transparent transition-opacity duration-150",
+          edges.left ? "opacity-100" : "opacity-0",
+        )}
+      />
+      <div
+        aria-hidden
+        className={cn(
+          "table-edge-shadow pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-foreground/[0.12] to-transparent transition-opacity duration-150",
+          edges.right ? "opacity-100" : "opacity-0",
+        )}
       />
     </div>
   );
@@ -154,11 +193,15 @@ const TableHead = React.forwardRef<
       )}
     >
       {children}
+      {/* Бледные ↑↓ у каждой колонки рябили в шапке: у неактивной колонки
+          они видны, только когда мышь над шапкой (место под них занято
+          всегда — подписи не прыгают). */}
       <SortIcon
         aria-hidden
         className={cn(
           "size-3.5 shrink-0",
-          !sortDir && "opacity-30 transition-opacity group-hover/sort:opacity-70",
+          !sortDir &&
+            "opacity-0 transition-opacity [thead:hover_&]:opacity-30 group-hover/sort:opacity-70 group-focus-visible/sort:opacity-70",
         )}
       />
     </button>

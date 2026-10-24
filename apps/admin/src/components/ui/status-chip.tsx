@@ -53,13 +53,25 @@ export function StatusChip({
  */
 export function CountBadge({
   count,
+  tone = "urgent",
   className,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement> & { count: number }) {
+}: React.HTMLAttributes<HTMLSpanElement> & {
+  count: number;
+  /**
+   * urgent — ждёт действия (неотработанные заявки и обращения): красный.
+   * quiet — просто новое (непрочитанные ответы NPS): серый. Когда красным
+   * горит всё сразу, красный перестаёт значить «срочно». Серый
+   * `muted-foreground` с белым текстом читается и на тёмном меню, и на белом,
+   * и на активном (тёмном) табе.
+   */
+  tone?: "urgent" | "quiet";
+}) {
   return (
     <span
       className={cn(
-        "inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs leading-5 font-semibold text-white tabular-nums",
+        "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs leading-5 font-semibold text-white tabular-nums",
+        tone === "urgent" ? "bg-destructive" : "bg-muted-foreground",
         className,
       )}
       {...props}

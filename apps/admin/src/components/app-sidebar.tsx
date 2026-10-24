@@ -51,6 +51,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+/** Пункты меню, чей счётчик — «новое», а не «ждёт действия»: серый CountBadge. */
+const QUIET_BADGES = new Set(["/nps"]);
+
 /**
  * Разделы рейки со своим меню вместо меню клуба: оно общее для всех студий,
  * поэтому в шапке меню — название раздела, а не логотип студии. Название
@@ -253,6 +256,7 @@ export function AppSidebar() {
   // Счётчики меню клуба: неотработанные заявки клиентов — на «Заявках»,
   // неотработанная обратная связь — на «Обратной связи», непрочитанные
   // ответы NPS — на «NPS-опросах».
+  // Красные — то, что ждёт действия; NPS — просто непрочитанное (QUIET_BADGES).
   const badges: Record<string, number> = {
     [REQUESTS_URL]: openRequests,
     "/feedback": pendingFeedback,
@@ -389,7 +393,12 @@ export function AppSidebar() {
                                   <item.icon active={itemActive(item)} className="size-[18px]" />
                                 </span>
                                 <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                                {!!item.badge && <CountBadge count={item.badge} />}
+                                {!!item.badge && (
+                                  <CountBadge
+                                    count={item.badge}
+                                    tone={QUIET_BADGES.has(item.url) ? "quiet" : "urgent"}
+                                  />
+                                )}
                               </Link>
                             </SidebarMenuButton>
                           </SidebarMenuItem>

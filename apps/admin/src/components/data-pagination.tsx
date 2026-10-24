@@ -85,7 +85,7 @@ export function DataPagination({
     // подписи у селекта и без кнопок «первая/последняя», иначе подвал
     // разъезжался на две строки и съедал экран под таблицей.
     <div
-      className={`flex items-center justify-between gap-2 rounded-b-lg border-t bg-background px-2 py-2 sm:gap-3 sm:px-3 ${className ?? ""}`}
+      className={`data-pagination flex items-center justify-between gap-2 rounded-b-lg border-t bg-background px-2 py-2 sm:gap-3 sm:px-3 ${className ?? ""}`}
     >
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span className="max-sm:hidden">Строк на странице</span>

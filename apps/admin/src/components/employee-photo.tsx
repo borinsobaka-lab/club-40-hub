@@ -1,7 +1,7 @@
 import type * as React from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { statusChipBase, statusChipSize } from "@/components/ui/status-chip-styles";
+import { StatusChip } from "@/components/ui/status-chip";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TRAINER_ROLES, type TrainerRole } from "@/lib/staff-directory";
@@ -79,7 +79,9 @@ export function StaffOption({
 export function TrainerRoleBadge({ role }: { role: TrainerRole }) {
   const r = TRAINER_ROLES[role] ?? TRAINER_ROLES.trainer;
   return (
-    // Роль — не статус: цвета свои (staff-roles.ts), от чипа — только геометрия.
-    <span className={cn(statusChipBase, statusChipSize.default, r.badge)}>{r.label}</span>
+    // Роль — не статус и не оценка: нейтральная метка (system.md, «Чипы и
+    // бейджи»). Свои цвета ролей (голубой, фиолетовый, зелёный) спорили со
+    // статусами в той же строке — зелёный «Массажист» читался как «Активен».
+    <StatusChip tone="neutral">{r.label}</StatusChip>
   );
 }

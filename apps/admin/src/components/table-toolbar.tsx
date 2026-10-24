@@ -1,5 +1,5 @@
-import { type ReactNode } from "react";
-import { X } from "lucide-react";
+import { Children, Fragment, isValidElement, useState, type ReactNode } from "react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
 
@@ -14,10 +14,48 @@ import { SearchInput } from "@/components/ui/search-input";
 //  - на телефоне (до sm) поиск — на всю ширину, фильтры — по два в строку
 //    (правило .table-toolbar в styles.css: фиксированные w-40/w-48 там не
 //    помещались парой и вставали по одному в неровную колонку).
+//  - на телефоне при поиске и двух и больше фильтрах фильтры прячутся за
+//    кнопку «Фильтры» рядом с поиском (точка на ней — фильтр применён):
+//    в «Абонементах» восемь фильтров занимали весь первый экран.
 export function TableToolbar({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const items = Children.toArray(children);
+  const isSearch = (c: ReactNode) => isValidElement(c) && c.type === ToolbarSearch;
+  const collapsible = items.some(isSearch) && items.filter((c) => !isSearch(c)).length >= 2;
+  const applied = items.some(
+    (c) => isValidElement<{ active?: boolean }>(c) && c.type === ToolbarReset && !!c.props.active,
+  );
   return (
-    <div className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3">
-      {children}
+    <div
+      className="table-toolbar flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 sm:px-3"
+      data-collapsible={collapsible ? "" : undefined}
+      data-open={open ? "" : undefined}
+    >
+      {items.map((c) =>
+        isSearch(c) && collapsible ? (
+          <Fragment key="search">
+            {c}
+            <Button
+              variant={open ? "default" : "outline"}
+              size="icon"
+              className="toolbar-filters-toggle relative sm:hidden"
+              aria-label={applied ? "Фильтры (применены)" : "Фильтры"}
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+            >
+              <SlidersHorizontal />
+              {applied && (
+                <span
+                  aria-hidden
+                  className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive ring-2 ring-background"
+                />
+              )}
+            </Button>
+          </Fragment>
+        ) : (
+          c
+        ),
+      )}
     </div>
   );
 }

@@ -58,7 +58,10 @@ export function CommentCell({
             "line-clamp-2 min-w-[140px] max-w-[260px] cursor-pointer whitespace-pre-wrap break-words rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             value
               ? cn(noteChipClass, "hover:bg-note")
-              : "text-muted-foreground hover:text-foreground",
+              : // Пустой «+ Комментарий» в таблице — по наведению на строку:
+                // одинаковая серая надпись в каждой строке рябила. На тач-экране
+                // и с клавиатуры виден всегда.
+                "text-muted-foreground transition-opacity hover:text-foreground pointer-fine:[tr_&]:opacity-0 pointer-fine:[tr:hover_&]:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100",
           )}
         >
           {value || (

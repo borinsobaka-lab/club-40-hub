@@ -400,16 +400,21 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
         ? `${section.items.length} ${plural(section.items.length, "скрипт", "скрипта", "скриптов")}`
         : `${total} ${plural(total, "скрипт", "скрипта", "скриптов")} в ${sections.length} ${plural(sections.length, "разделе", "разделах", "разделах")}`;
 
+  const canAddScript = !isCall && textSections.length > 0;
   const actions = canEdit && (
     <div className="flex flex-wrap gap-2">
       {!searching && section && sectionMenu(section)}
       {!sectionId && (
-        <Button variant="outline" onClick={() => setSectionForm({ section: null })}>
+        // Второстепенная (outline) — только рядом с «Скрипт»; одна — главная.
+        <Button
+          variant={canAddScript ? "outline" : "default"}
+          onClick={() => setSectionForm({ section: null })}
+        >
           <Plus />
           Раздел
         </Button>
       )}
-      {!isCall && textSections.length > 0 && (
+      {canAddScript && (
         <Button onClick={startNewScript}>
           <Plus />
           Скрипт
@@ -525,7 +530,10 @@ export function ScriptsPage({ sectionId, focusId }: { sectionId?: string; focusI
 
   return (
     <AdminShell title={title} actions={actions || undefined}>
-      <div className={isCall && !searching ? "space-y-3" : "mx-auto max-w-4xl space-y-3"}>
+      {/* Колонка чтения — по левому краю, как у остальных разделов с
+          ограниченной шириной: по центру плашка поиска стояла не там, где в
+          соседних разделах. */}
+      <div className={isCall && !searching ? "space-y-3" : "max-w-4xl space-y-3"}>
         {/* Поиск, язык и студия закреплены над прокруткой: нашли скрипт в
             длинном списке — язык меняется здесь же, без пути наверх.
             Липкость считается от паддинга main: отрицательные top и отступ

@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { cn } from "@/lib/utils";
+import { StatTile } from "@/components/ui/stat-tile";
 import { clientName } from "@/lib/format";
 import { GOAL_LABELS } from "@/lib/client-profile";
 import { Button } from "@/components/ui/button";
@@ -280,25 +281,13 @@ function RequestsPage() {
             <RequestsStatsSkeleton />
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border bg-background p-4">
-                <p className="text-xs text-muted-foreground">Не отработано</p>
-                <p
-                  className={cn(
-                    "mt-1 text-2xl font-semibold tabular-nums",
-                    openCount > 0 && "text-amber-700",
-                  )}
-                >
-                  {openCount}
-                </p>
-              </div>
-              <div className="rounded-lg border bg-background p-4">
-                <p className="text-xs text-muted-foreground">Пришло в этом месяце</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">{thisMonth}</p>
-              </div>
-              <div className="rounded-lg border bg-background p-4">
-                <p className="text-xs text-muted-foreground">Отработано в этом месяце</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">{doneThisMonth}</p>
-              </div>
+              <StatTile
+                label="Не отработано"
+                value={openCount}
+                tone={openCount > 0 ? "warning" : "default"}
+              />
+              <StatTile label="Пришло в этом месяце" value={thisMonth} />
+              <StatTile label="Отработано в этом месяце" value={doneThisMonth} />
             </div>
           )}
 
@@ -454,8 +443,11 @@ function RequestsPage() {
                                 </div>
                               </div>
                             ) : (
+                              // outline: тёмная пилюля с галочкой читалась как
+                              // готовый статус, а заявка ещё в работе.
                               <Button
                                 size="xs"
+                                variant="outline"
                                 onClick={() => setProcessed(i, true)}
                                 disabled={busy}
                               >
@@ -491,7 +483,7 @@ function goalsText(i: RequestRow) {
 
 function KindBadge({ kind }: { kind: ClientRequestKind }) {
   return (
-    <StatusChip tone={kind === "diagnostic" ? "strong" : "info"}>
+    <StatusChip tone={kind === "diagnostic" ? "neutral" : "info"}>
       {REQUEST_KIND_LABEL[kind] ?? kind}
     </StatusChip>
   );
