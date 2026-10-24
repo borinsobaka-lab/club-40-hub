@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStudios } from "@/hooks/use-studios";
 import { unwrap } from "@/lib/query";
 import type { AdminAccess, AdminSectionKey, ClubSectionKey } from "@/lib/admin-access";
+import { kbLevelOf, type KbLevel } from "@/lib/kb/access";
+import { kbBasesQuery, kbOwnGrantsQuery } from "@/lib/kb/data";
 
 type OwnPermissions = {
   rail: AdminSectionKey[] | null;
@@ -49,11 +51,20 @@ export const adminPermissionsQuery = queryOptions({
 export function useAdminAccess(): AdminAccess | null {
   const { data: studios, isLoading: studiosLoading } = useStudios();
   const { data: own, isLoading } = useQuery(adminPermissionsQuery);
+  const { data: kbBases, isLoading: kbLoading } = useQuery(kbBasesQuery);
+  const { data: kbGrants, isLoading: kbGrantsLoading } = useQuery(kbOwnGrantsQuery);
 
-  if (studiosLoading || isLoading) return null;
+  if (studiosLoading || isLoading || kbLoading || kbGrantsLoading) return null;
   const list = studios ?? [];
+  const isOwner = list.some((s) => s.roles.includes("owner"));
+  const kb: Record<string, KbLevel> = {};
+  for (const base of kbBases ?? []) {
+    const level = kbLevelOf(isOwner, kbGrants ?? [], base.id);
+    if (level) kb[base.id] = level;
+  }
   return {
-    isOwner: list.some((s) => s.roles.includes("owner")),
+    isOwner,
+    kb,
     rail: own?.rail ?? null,
     studios: Object.fromEntries(
       list.map((s) => [

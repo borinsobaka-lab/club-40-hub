@@ -11,11 +11,14 @@ import {
   type AdminSectionKey,
 } from "@/lib/admin-access";
 import { STAFF_ROLES, type StaffRole } from "@/lib/roles";
+import { KB_GRANT_LEVELS, type KbGrant } from "@/lib/kb/access";
 
 /**
  * Раздел «Доступы»: учётные записи админки и их права — студии (роль в
  * user_roles), разделы рейки (admin_permissions) и разделы клуба в каждой
  * студии (admin_studio_permissions); схема — db/migrations/…_admin_permissions.sql.
+ * Доступ к базам знаний — kb_grants (db/migrations/2026-10-24_knowledge_base.sql):
+ * базы общие для сети, владельцу открыты все.
  * Создание/удаление auth-пользователей и запись прав возможны только
  * service-ключом, поэтому это серверные функции; вызывать их может владелец
  * (requireAccessManager), и только в своих студиях.
@@ -42,7 +45,11 @@ export type EmployeeRow = {
   otherStudios: number;
   /** Разделы рейки; null — все. */
   rail: AdminSectionKey[] | null;
+  /** Базы знаний: просмотр или правка (владельцу — все без строк). */
+  kb: KbGrant[];
 };
+
+export type KbBaseOption = { id: string; title: string };
 
 const ROLE_PRIORITY: Record<StaffRole, number> = { owner: 3, admin: 2, trainer: 1 };
 
@@ -59,6 +66,13 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
       .order("created_at");
     if (studiosErr) throw new Error(studiosErr.message);
 
+    const { data: kbBases, error: kbBasesErr } = await admin
+      .from("kb_bases")
+      .select("id, title")
+      .order("sort_order")
+      .order("created_at");
+    if (kbBasesErr) throw new Error(kbBasesErr.message);
+
     const { data: managedRoles, error: rolesErr } = await admin
       .from("user_roles")
       .select("user_id")
@@ -67,10 +81,15 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
     if (rolesErr) throw new Error(rolesErr.message);
     const userIds = [...new Set((managedRoles ?? []).map((r) => r.user_id as string))];
     if (userIds.length === 0) {
-      return { employees: [], studios: studios ?? [], currentUserId: context.userId };
+      return {
+        employees: [],
+        studios: studios ?? [],
+        kbBases: (kbBases ?? []) as KbBaseOption[],
+        currentUserId: context.userId,
+      };
     }
 
-    const [roles, profiles, rail, perStudio] = await Promise.all([
+    const [roles, profiles, rail, perStudio, kbGrants] = await Promise.all([
       admin
         .from("user_roles")
         .select("user_id, studio_id, role")
@@ -82,8 +101,14 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
         .from("admin_studio_permissions")
         .select("user_id, studio_id, sections")
         .in("user_id", userIds),
+      admin
+        .from("kb_grants")
+        .select("subject_id, base_id, level")
+        .eq("subject_type", "user")
+        .is("node_id", null)
+        .in("subject_id", userIds),
     ]);
-    for (const res of [roles, profiles, rail, perStudio]) {
+    for (const res of [roles, profiles, rail, perStudio, kbGrants]) {
       if (res.error) throw new Error(res.error.message);
     }
 
@@ -114,6 +139,18 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
       ).map((r) => [`${r.user_id}:${r.studio_id}`, r.sections]),
     );
 
+    const kbOf = new Map<string, KbGrant[]>();
+    for (const g of (kbGrants.data ?? []) as {
+      subject_id: string;
+      base_id: string;
+      level: KbGrant["level"];
+    }[]) {
+      kbOf.set(g.subject_id, [
+        ...(kbOf.get(g.subject_id) ?? []),
+        { base_id: g.base_id, level: g.level },
+      ]);
+    }
+
     const byUser = new Map<string, EmployeeRow>();
     for (const r of (roles.data ?? []) as {
       user_id: string;
@@ -132,6 +169,7 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
           studios: [],
           otherStudios: 0,
           rail: railOf.get(r.user_id) ?? null,
+          kb: kbOf.get(r.user_id) ?? [],
         };
         byUser.set(r.user_id, row);
       }
@@ -164,7 +202,12 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
       (a.full_name ?? a.email ?? "").localeCompare(b.full_name ?? b.email ?? ""),
     );
 
-    return { employees, studios: studios ?? [], currentUserId: context.userId };
+    return {
+      employees,
+      studios: studios ?? [],
+      kbBases: (kbBases ?? []) as KbBaseOption[],
+      currentUserId: context.userId,
+    };
   });
 
 /** Правка скриптов без самого раздела не имеет смысла — снимаем. */
@@ -184,6 +227,10 @@ const accessSchema = z
         }),
       )
       .min(1, "Отметьте хотя бы один клуб"),
+    // Нет поля (старая вкладка до обновления админки) — доступы к базам не трогаем.
+    kb: z
+      .array(z.object({ base_id: z.string().uuid(), level: z.enum(KB_GRANT_LEVELS) }))
+      .optional(),
   })
   .superRefine((v, ctx) => {
     if (v.role === "owner") return;
@@ -298,6 +345,50 @@ async function applyAccess(
   }
   if (isOwnerRole) {
     check(await admin.from("admin_permissions").delete().eq("user_id", userId));
+  }
+
+  // 4. Базы знаний. Строки только открывают доступ (нет строки — не видно),
+  // поэтому порядок с ролями не важен. Владельцу открыто всё — строки не нужны.
+  if (isOwnerRole) await applyKbGrants(admin, userId, []);
+  else if (input.kb) await applyKbGrants(admin, userId, input.kb);
+}
+
+/** Доступы к базам знаний: лишние — убрать, новые — добавить, уровень — поправить. */
+async function applyKbGrants(admin: SupabaseClient, userId: string, wanted: KbGrant[]) {
+  const check = ({ error }: { error: { message: string } | null }) => {
+    if (error) throw new Error(error.message);
+  };
+  const desired = new Map(wanted.map((g) => [g.base_id, g.level]));
+  const { data, error } = await admin
+    .from("kb_grants")
+    .select("id, base_id, level")
+    .eq("subject_type", "user")
+    .eq("subject_id", userId)
+    .is("node_id", null);
+  if (error) throw new Error(error.message);
+  const existing = (data ?? []) as { id: string; base_id: string; level: KbGrant["level"] }[];
+
+  const drop = existing.filter((g) => !desired.has(g.base_id)).map((g) => g.id);
+  if (drop.length) check(await admin.from("kb_grants").delete().in("id", drop));
+  for (const g of existing) {
+    const level = desired.get(g.base_id);
+    if (level && level !== g.level) {
+      check(await admin.from("kb_grants").update({ level }).eq("id", g.id));
+    }
+  }
+  const have = new Set(existing.map((g) => g.base_id));
+  const add = [...desired].filter(([baseId]) => !have.has(baseId));
+  if (add.length) {
+    check(
+      await admin.from("kb_grants").insert(
+        add.map(([base_id, level]) => ({
+          base_id,
+          level,
+          subject_type: "user",
+          subject_id: userId,
+        })),
+      ),
+    );
   }
 }
 
@@ -623,6 +714,13 @@ export const deleteEmployee = createServerFn({ method: "POST" })
         .delete()
         .eq("user_id", data.user_id);
       if (railErr) throw new Error(railErr.message);
+      // Базы знаний общие для сети — тоже.
+      const { error: kbErr } = await admin
+        .from("kb_grants")
+        .delete()
+        .eq("subject_type", "user")
+        .eq("subject_id", data.user_id);
+      if (kbErr) throw new Error(kbErr.message);
     }
     if (keepAccount) return { ok: true, accountKept: true };
 

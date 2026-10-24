@@ -20,6 +20,8 @@ import { forwardRef, type SVGProps } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   Alert02Icon as AlertTriangleArt,
+  Archive as ArchiveArt,
+  ArchiveRestore as ArchiveRestoreArt,
   ArrowDown as ArrowDownArt,
   ArrowLeft as ArrowLeftArt,
   ArrowLeftRight as ArrowLeftRightArt,
@@ -37,6 +39,7 @@ import {
   ChartLineIcon as ChartLineArt,
   Check as CheckArt,
   CheckCircle as CheckCircle2Art,
+  CheckIcon as CheckIconArt,
   ChevronDown as ChevronDownArt,
   ChevronDownIcon as ChevronDownIconArt,
   ChevronLeft as ChevronLeftArt,
@@ -44,10 +47,12 @@ import {
   ChevronRight as ChevronRightArt,
   ChevronRightIcon as ChevronRightIconArt,
   ChevronUp as ChevronUpArt,
+  ChevronUpIcon as ChevronUpIconArt,
   ChevronsLeft as ChevronsLeftArt,
   ChevronsRight as ChevronsRightArt,
   Circle as CircleArt,
   ClipboardList as ClipboardListArt,
+  CloudOff as CloudOffArt,
   Copy as CopyArt,
   CreditCard as CreditCardArt,
   Database as DatabaseArt,
@@ -55,12 +60,17 @@ import {
   Ellipsis as EllipsisArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
+  FilePlus as FilePlusArt,
+  FileText as FileTextArt,
   FileUp as FileUpArt,
   FlaskConical as FlaskConicalArt,
+  FolderTransferIcon as FolderInputArt,
+  FolderPlus as FolderPlusArt,
   DragDropVerticalIcon as GripVerticalArt,
   Heading2 as Heading2Art,
   HelpCircleIcon as HelpCircleArt,
   ImageIcon as ImageIconArt,
+  Images as ImagesArt,
   Info as InfoArt,
   Italic as ItalicArt,
   Link as LinkArt,
@@ -127,6 +137,8 @@ function icon(art: IconSvgElement, displayName: string) {
 }
 
 export const AlertTriangle = icon(AlertTriangleArt, "AlertTriangle");
+export const Archive = icon(ArchiveArt, "Archive");
+export const ArchiveRestore = icon(ArchiveRestoreArt, "ArchiveRestore");
 export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
 export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowLeftRight = icon(ArrowLeftRightArt, "ArrowLeftRight");
@@ -144,6 +156,7 @@ export const ChartColumn = icon(ChartColumnArt, "ChartColumn");
 export const ChartLine = icon(ChartLineArt, "ChartLine");
 export const Check = icon(CheckArt, "Check");
 export const CheckCircle2 = icon(CheckCircle2Art, "CheckCircle2");
+export const CheckIcon = icon(CheckIconArt, "CheckIcon");
 export const ChevronDown = icon(ChevronDownArt, "ChevronDown");
 export const ChevronDownIcon = icon(ChevronDownIconArt, "ChevronDownIcon");
 export const ChevronLeft = icon(ChevronLeftArt, "ChevronLeft");
@@ -151,10 +164,12 @@ export const ChevronLeftIcon = icon(ChevronLeftIconArt, "ChevronLeftIcon");
 export const ChevronRight = icon(ChevronRightArt, "ChevronRight");
 export const ChevronRightIcon = icon(ChevronRightIconArt, "ChevronRightIcon");
 export const ChevronUp = icon(ChevronUpArt, "ChevronUp");
+export const ChevronUpIcon = icon(ChevronUpIconArt, "ChevronUpIcon");
 export const ChevronsLeft = icon(ChevronsLeftArt, "ChevronsLeft");
 export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
 export const Circle = icon(CircleArt, "Circle");
 export const ClipboardList = icon(ClipboardListArt, "ClipboardList");
+export const CloudOff = icon(CloudOffArt, "CloudOff");
 export const Copy = icon(CopyArt, "Copy");
 export const CreditCard = icon(CreditCardArt, "CreditCard");
 export const Database = icon(DatabaseArt, "Database");
@@ -162,12 +177,17 @@ export const Download = icon(DownloadArt, "Download");
 export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
+export const FilePlus = icon(FilePlusArt, "FilePlus");
+export const FileText = icon(FileTextArt, "FileText");
 export const FileUp = icon(FileUpArt, "FileUp");
 export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
+export const FolderInput = icon(FolderInputArt, "FolderInput");
+export const FolderPlus = icon(FolderPlusArt, "FolderPlus");
 export const GripVertical = icon(GripVerticalArt, "GripVertical");
 export const Heading2 = icon(Heading2Art, "Heading2");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
+export const Images = icon(ImagesArt, "Images");
 export const Info = icon(InfoArt, "Info");
 export const Italic = icon(ItalicArt, "Italic");
 export const Link = icon(LinkArt, "Link");

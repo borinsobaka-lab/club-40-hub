@@ -1961,3 +1961,104 @@ export function ScriptsSettingsPageSkeleton() {
     </ShellSkeleton>
   );
 }
+
+// ---------------------------------------------------------------------------
+// База знаний
+
+/** «Базы знаний» (/kb): список баз. */
+export function KbBasesPageSkeleton() {
+  return (
+    <ShellSkeleton title="Базы знаний">
+      <div className="mx-auto max-w-3xl space-y-3">
+        <ul className="divide-y rounded-lg border bg-background">
+          {Array.from({ length: 3 }, (_, i) => (
+            <li key={i} className="flex items-center gap-3 p-3">
+              <Skeleton className="size-10 rounded-lg" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-48 max-w-[60%]" />
+                <Skeleton className="h-3.5 w-72 max-w-[80%]" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+/** Шапка папки или статьи: крошки, заголовок, строка «Обновлено». */
+function KbHeadSkeleton({ meta = true }: { meta?: boolean }) {
+  return (
+    <>
+      <Skeleton className="mb-3 h-4 w-56 max-w-[70%]" />
+      <div className="rounded-lg border bg-background px-5 py-5 sm:px-8 sm:py-6">
+        <Skeleton className="h-8 w-80 max-w-[85%]" />
+        {meta && <Skeleton className="mt-3 h-4 w-60 max-w-[70%]" />}
+      </div>
+    </>
+  );
+}
+
+/** Главная базы и папка: шапка и список вложенного. */
+export function KbFolderBodySkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl">
+      <KbHeadSkeleton meta={false} />
+      <ul className="mt-3 divide-y rounded-lg border bg-background">
+        {Array.from({ length: 5 }, (_, i) => (
+          <li key={i} className="flex items-center gap-3 px-4 py-3">
+            <Skeleton className="size-5 rounded" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-3.5 w-20" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Статья: шапка, текст и оглавление справа (с xl). */
+export function KbArticleBodySkeleton() {
+  return (
+    <div className="mx-auto flex max-w-6xl gap-8">
+      <div className="min-w-0 max-w-3xl flex-1">
+        <Skeleton className="mb-3 h-4 w-56 max-w-[70%]" />
+        <div className="rounded-lg border bg-background px-5 py-5 sm:px-10 sm:py-8">
+          <Skeleton className="h-8 w-96 max-w-[85%]" />
+          <Skeleton className="mt-3 h-4 w-64 max-w-[70%]" />
+          <div className="mt-8 space-y-3">
+            {["w-full", "w-11/12", "w-4/5", "w-full", "w-2/3", "w-10/12", "w-3/4"].map((w, i) => (
+              <Skeleton key={i} className={cn("h-4", w)} />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="hidden w-56 shrink-0 space-y-2 pt-9 xl:block">
+        <Skeleton className="h-4 w-24" />
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-3.5 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Страница базы, папки или статьи: что именно — станет ясно из дерева. */
+export function KbNodePageSkeleton() {
+  return (
+    <ShellSkeleton title="База знаний">
+      <KbFolderBodySkeleton />
+    </ShellSkeleton>
+  );
+}
+
+export function KbReportPageSkeleton() {
+  return (
+    <TablePage
+      title="Отчёт по чтению"
+      toolbar={{ search: true, controls: ["w-48"] }}
+      pagination={false}
+      headers={["Статья", "Статус", "Создал", "Обновлено", "Доступ", "Открыли", "Прочитали"]}
+    />
+  );
+}

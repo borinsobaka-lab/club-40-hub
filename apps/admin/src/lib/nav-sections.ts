@@ -6,6 +6,7 @@
 // Те же Solar-иконки, что у пунктов меню: Outline, у активного раздела BoldDuotone.
 import {
   Bag3,
+  Book,
   BellBing,
   BillList,
   Bolt,
@@ -49,7 +50,7 @@ import {
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
-export type RailSectionKey = "dashboard" | "club" | "app" | "scripts" | "access" | "studios";
+export type RailSectionKey = "dashboard" | "club" | "app" | "scripts" | "kb" | "access" | "studios";
 
 export type RailSection = {
   key: RailSectionKey;
@@ -60,6 +61,11 @@ export type RailSection = {
   title: string;
   /** Полное название — подсказка при наведении и для скринридера. */
   fullTitle?: string;
+  /**
+   * Переносить подпись по слогам автоматически: у баз знаний её пишет
+   * владелец, мягких дефисов там нет («Стандар-ты», а не «Стандарт-ы»).
+   */
+  autoHyphens?: boolean;
   url?: string;
   icon: NavIcon;
   /** Страницы раздела, кроме самого url (у раздела со своим меню). */
@@ -315,8 +321,24 @@ export const ACCESS_ITEMS: NavItem[] = [
 ];
 export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Settings }];
 
+/**
+ * Базы знаний (db/migrations/2026-10-24_knowledge_base.sql): /kb — все базы
+ * (и их настройки у владельца), /kb/<база>/… — база. Базы с «Показывать в
+ * рейке» — свои пункты рейки (AppRail), меню базы — её дерево (AppSidebar).
+ */
+export const KB_URL = "/kb";
+
+/** База знаний страницы (/kb/<id>/…); null — не страница базы. */
+export function kbBaseIdOf(pathname: string): string | null {
+  const m = /^\/kb\/([0-9a-f-]{36})(?:\/|$)/.exec(pathname);
+  return m ? m[1] : null;
+}
+
 /** Настройки над студиями — внизу рейки. */
 export const ADMIN_SECTIONS: RailSection[] = [
+  // Все базы знаний: владельцу — и их настройки; остальным виден, только
+  // если есть база не в рейке (AppRail).
+  { key: "kb", title: "Знания", fullTitle: "Базы знаний", url: KB_URL, icon: Book },
   {
     key: "access",
     title: "Доступы",
@@ -366,6 +388,11 @@ export function canOpenPath(
 ): boolean {
   const section = railSectionKey(pathname);
   if (section === "access") return access.isOwner;
+  if (section === "kb") {
+    const baseId = kbBaseIdOf(pathname);
+    if (!baseId) return access.isOwner || Object.keys(access.kb ?? {}).length > 0;
+    return access.isOwner || !!access.kb?.[baseId];
+  }
   // Дашборд над студиями: открыт, если открыт хоть в одной студии.
   if (section === "dashboard") return dashboardStudioIds(access).length > 0;
   if (section === "app" || section === "scripts") return canOpenRail(access, section);

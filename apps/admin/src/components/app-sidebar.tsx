@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronUp } from "lucide-react";
@@ -15,12 +15,18 @@ import {
   STAFF_CLUB_GROUP,
   STAFF_NAV_ITEM,
   STUDIOS_ITEMS,
+  KB_URL,
+  kbBaseIdOf,
   railSectionKey,
   type NavGroup,
   type NavItem,
   type RailSectionKey,
 } from "@/lib/nav-sections";
 import { usePlaybook, useScriptAccess, useUnreadSuggestions } from "@/lib/scripts/data";
+import { kbBasesQuery } from "@/lib/kb/data";
+import { kbIcon } from "@/lib/kb/icons";
+import { KbSidebarResize } from "@/components/kb/kb-sidebar-resize";
+import { useKbSidebarWidth } from "@/components/kb/use-kb-sidebar-width";
 import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -102,6 +108,38 @@ function visibleGroups(
       ...(g.key === STAFF_CLUB_GROUP && canOpenRail(access, "staff") ? [STAFF_NAV_ITEM] : []),
     ],
   })).filter((g) => g.items.length > 0);
+}
+
+// Дерево базы знаний (перетаскивание, поиск) — отдельным чанком: остальным
+// разделам меню оно не нужно.
+const KbSidebarMenu = lazy(() =>
+  import("@/components/kb/kb-sidebar-menu").then((m) => ({ default: m.KbSidebarMenu })),
+);
+
+/**
+ * Меню «Знаний» (/kb): все доступные базы — как пункты меню. В самой базе
+ * меню — её дерево (KbSidebarMenu).
+ */
+function useKbMenu(
+  enabled: boolean,
+  access: AdminAccess | null,
+): { groups: NavGroup[]; loading: boolean } {
+  const { data: bases, isLoading } = useQuery({ ...kbBasesQuery, enabled });
+  if (!enabled) return { groups: [], loading: false };
+  if (!access || isLoading) return { groups: [], loading: true };
+  const items: NavItem[] = (bases ?? [])
+    .filter((b) => access.isOwner || !!access.kb?.[b.id])
+    .map((b) => ({ title: b.title, url: `${KB_URL}/${b.id}`, icon: kbIcon(b.icon) }));
+  return {
+    groups: [
+      {
+        key: "kb",
+        label: "Базы",
+        items: [{ title: "Все базы знаний", url: KB_URL, icon: Notebook, exact: true }, ...items],
+      },
+    ],
+    loading: false,
+  };
 }
 
 /**
@@ -235,10 +273,18 @@ export function AppSidebar() {
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
   const railKey = railSectionKey(currentPath);
   const scriptsMenu = useScriptsMenu(railKey === "scripts");
+  // База знаний: в меню — её дерево, панель шире; «Знания» — список баз.
+  const kbBaseId = railKey === "kb" ? kbBaseIdOf(currentPath) : null;
+  const kbMenu = useKbMenu(railKey === "kb" && !kbBaseId, access);
+  const { data: kbBases } = useQuery({ ...kbBasesQuery, enabled: !!kbBaseId });
+  const kbBaseTitle = kbBases?.find((b) => b.id === kbBaseId)?.title ?? "База знаний";
+  const kbWidth = useKbSidebarWidth();
   const sectionMenu =
     railKey === "scripts"
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
-      : SECTION_MENUS[railKey];
+      : railKey === "kb"
+        ? { title: kbBaseId ? kbBaseTitle : "Базы знаний", groups: kbMenu.groups }
+        : SECTION_MENUS[railKey];
   const feedbackStudios = useSectionStudios("feedback");
   const npsStudios = useSectionStudios("nps");
   const pendingFeedback = usePendingFeedback(
@@ -269,7 +315,12 @@ export function AppSidebar() {
       items: g.items.map((i) => (i.url in badges ? { ...i, badge: badges[i.url] } : i)),
     }));
   // Меню клуба собирается по правам сотрудника: пока их нет, оно пустое.
-  const menuLoading = railKey === "scripts" ? scriptsMenu.loading : !sectionMenu && !access;
+  const menuLoading =
+    railKey === "scripts"
+      ? scriptsMenu.loading
+      : railKey === "kb" && !kbBaseId
+        ? kbMenu.loading
+        : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
   const setGroupOpen = useCallback((key: string, open: boolean) => {
@@ -307,7 +358,10 @@ export function AppSidebar() {
       голый border-r-0 её не перекрывал — между меню и рабочей областью
       оставалась светлая полоса, тёмный каркас разрывался.
     */
-    <Sidebar className="border-r-0 group-data-[side=left]:border-r-0">
+    <Sidebar
+      className="border-r-0 group-data-[side=left]:border-r-0"
+      width={kbBaseId ? kbWidth.cssWidth : undefined}
+    >
       {/*
         Слева — рейка разделов (AppRail; там же «Мобильное приложение»,
         «Доступы» и «Клубы»), справа — меню клуба или меню раздела
@@ -317,7 +371,8 @@ export function AppSidebar() {
       */}
       <div className="flex h-full min-h-0">
         <AppRail />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          {kbBaseId && !isMobile && <KbSidebarResize {...kbWidth} />}
           <SidebarHeader className="px-3 py-4">
             <Link
               to="/"
@@ -340,7 +395,12 @@ export function AppSidebar() {
             p-2 сверху + высокая строка заголовка h-8). Теперь gap-1, py-1 и
             заголовок h-7 — в меню по высоте помещается больше пунктов.
           */}
-          <SidebarContent className="sidebar-scroll gap-1">
+          {kbBaseId && (
+            <Suspense fallback={<MenuSkeleton />}>
+              <KbSidebarMenu key={kbBaseId} baseId={kbBaseId} onNavigate={closeMobile} />
+            </Suspense>
+          )}
+          <SidebarContent className={cn("sidebar-scroll gap-1", kbBaseId && "hidden")}>
             {menuLoading && <MenuSkeleton />}
             {groups.map((group) => (
               <Collapsible
