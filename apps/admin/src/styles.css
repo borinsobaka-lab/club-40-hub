@@ -105,6 +105,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-brand: var(--brand);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --color-rail: var(--rail);
   --color-canvas: var(--canvas);
   --color-field: var(--field);
@@ -129,14 +131,18 @@
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
+  /* Подписи и мета. Темнее slate-500 из shadcn (было 0.554): на канве
+     (--canvas) тот давал ~4,4:1 — ниже AA; теперь ≥ 4,5:1 и на канве. */
+  --muted-foreground: oklch(0.5 0.046 257.417);
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  /* Кольцо фокуса с клавиатуры. Было slate-400 (~2,6:1 к белому) — фокус
+     в поле почти не читался; теперь slate-600, ≥ 3:1 и на белом, и на канве. */
+  --ring: oklch(0.446 0.043 257.281);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -159,6 +165,12 @@
   /* Фирменный цвет: иконка активного пункта меню и её свечение, отметка
      «сегодня» в расписании. Кнопки и ссылки — на --primary. */
   --brand: #f763fc;
+
+  /* Ссылка в тексте и таблицах: имя клиента (ClientNameLink), внешние ссылки.
+     Синий — «нейтрально-информационное» палитры статусов; розовый --brand
+     для ссылок не берём (он только у активного пункта меню и «сегодня»). */
+  --link: #2563eb;
+  --link-hover: #1d4ed8;
 
   /* Подложка рабочей области справа от меню. Белые карточки, таблицы и шапка
      лежат на ней и должны читаться как отдельные поверхности — с muted/30

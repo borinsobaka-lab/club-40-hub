@@ -1,19 +1,23 @@
-import { Badge } from "@/components/ui/badge";
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
 
+function toneOf(status: BookingStatus): StatusTone {
+  switch (status) {
+    case "attended":
+    case "completed":
+      return "positive";
+    case "cancelled":
+      return "negative";
+    case "rejected":
+      return "warning";
+    case "no_show":
+      return "neutral";
+    default:
+      // booked, waitlist
+      return "info";
+  }
+}
+
 export function BookingStatusBadge({ status }: { status: BookingStatus }) {
-  const label = BOOKING_STATUS_LABEL[status] ?? status;
-  if (status === "attended" || status === "completed") {
-    return <Badge variant="default">{label}</Badge>;
-  }
-  if (status === "cancelled") return <Badge variant="destructive">{label}</Badge>;
-  if (status === "rejected") {
-    return (
-      <Badge variant="outline" className="border-orange-600 text-orange-600">
-        {label}
-      </Badge>
-    );
-  }
-  if (status === "no_show") return <Badge variant="outline">{label}</Badge>;
-  return <Badge variant="secondary">{label}</Badge>;
+  return <StatusChip tone={toneOf(status)}>{BOOKING_STATUS_LABEL[status] ?? status}</StatusChip>;
 }

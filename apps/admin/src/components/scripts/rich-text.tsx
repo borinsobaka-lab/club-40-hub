@@ -39,8 +39,9 @@ export const VAR_CLASS = "rounded-sm bg-blue-100 px-0.5 text-blue-700";
 export const VAR_MISSING_CLASS =
   "cursor-help rounded-sm bg-amber-100 px-0.5 font-medium text-amber-800";
 export const PLACEHOLDER_CLASS = "rounded-sm bg-muted px-0.5 font-medium text-foreground";
+/** Ссылка в тексте скрипта — на другой скрипт и на сайт, один вид (токен --link). */
 const LINK_CLASS =
-  "cursor-pointer font-medium text-foreground underline decoration-brand decoration-2 underline-offset-2 hover:text-brand";
+  "cursor-pointer text-link underline underline-offset-2 hover:text-link-hover focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
 type Piece =
   | { kind: "text"; value: string }
@@ -118,7 +119,7 @@ export function Highlight({ text, terms }: { text: string; terms: string[] }) {
   merged.forEach(([start, end], i) => {
     if (start > last) nodes.push(text.slice(last, start));
     nodes.push(
-      <mark key={i} className="rounded-sm bg-brand/25 text-inherit">
+      <mark key={i} className="rounded-sm bg-amber-100 text-inherit">
         {text.slice(start, end)}
       </mark>,
     );
@@ -166,7 +167,7 @@ export function RichText({
                 href={piece.value}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="break-all text-blue-700 underline underline-offset-2"
+                className={cn(LINK_CLASS, "break-all")}
               >
                 <Highlight text={piece.value} terms={terms} />
               </a>

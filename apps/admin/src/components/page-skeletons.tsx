@@ -754,7 +754,7 @@ export function ClientMembershipsPageSkeleton() {
     <TablePage
       title="Абонементы"
       actions={[{ label: "Продажа" }]}
-      toolbar={{ controls: ["w-44", "w-48", "w-48", "w-40", "w-48", "w-48", "w-40", "w-48"] }}
+      toolbar={{ controls: ["w-48", "w-48", "w-48", "w-40", "w-48", "w-48", "w-40", "w-48"] }}
       headers={[
         { label: "Клиент", className: "min-w-[170px]" },
         "Абонемент",
@@ -988,7 +988,7 @@ export function FeedbackPageSkeleton() {
     <ShellSkeleton title="Обратная связь" actions={[{ label: "Добавить" }]}>
       <div className="space-y-3">
         <FeedbackStatsSkeleton />
-        <ToolbarSkeleton search={false} controls={["w-56", "w-48", "w-40", "w-40", "w-48"]} />
+        <ToolbarSkeleton search={false} controls={["w-48", "w-48", "w-40", "w-40", "w-48"]} />
         <TableCardSkeleton
           pagination
           headers={[
@@ -1024,7 +1024,7 @@ export function RequestsPageSkeleton() {
     <ShellSkeleton title="Заявки">
       <div className="space-y-3">
         <RequestsStatsSkeleton />
-        <ToolbarSkeleton search={false} controls={["w-56", "w-44", "w-52"]} />
+        <ToolbarSkeleton search={false} controls={["w-48", "w-48", "w-48"]} />
         <TableCardSkeleton
           pagination
           headers={[
@@ -1179,7 +1179,7 @@ export function PushPageSkeleton() {
 export function PushTriggersPageSkeleton() {
   return (
     <ShellSkeleton title="Триггерные уведомления">
-      <div className="max-w-4xl space-y-6">
+      <div className="max-w-3xl space-y-6">
         <Skeleton className="h-14 w-full rounded-md" />
         <PushTriggersListSkeleton />
       </div>
@@ -1244,7 +1244,7 @@ export function ClubPickerSkeleton() {
   return (
     <div className="space-y-2">
       <Skeleton className="h-4 w-12" />
-      <Skeleton className="h-10 w-64 max-w-full" />
+      <Skeleton className="h-10 w-48 max-w-full" />
     </div>
   );
 }
@@ -1533,15 +1533,15 @@ export function AdminShiftsPageSkeleton() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {["Дата", "Сотрудник", "Сумма", "Причина", "Добавил", ""].map((h, i) => (
-                      <TableHead key={i} className={cn(i === 2 && "text-right", i === 5 && "w-10")}>
+                    {["Дата", "Сотрудник", "Сумма", "Причина", "Добавил"].map((h, i) => (
+                      <TableHead key={i} className={cn(i === 2 && "text-right")}>
                         {h}
                       </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableSkeletonRows columns={6} rows={3} />
+                  <TableSkeletonRows columns={5} rows={3} />
                 </TableBody>
               </Table>
             </div>

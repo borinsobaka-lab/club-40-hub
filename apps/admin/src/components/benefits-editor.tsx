@@ -50,13 +50,15 @@ export function BenefitsEditor({
           {value.map((b, i) => (
             <li
               key={i}
-              className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2 py-1 text-sm"
+              className="flex items-center justify-between gap-2 rounded-md border bg-background px-2 py-1 text-sm"
             >
-              <span className="truncate">{b}</span>
+              <span className="truncate" title={b}>
+                {b}
+              </span>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Удалить"
+                aria-label={`Удалить: ${b}`}
                 onClick={() => onChange(value.filter((_, idx) => idx !== i))}
               >
                 <X />

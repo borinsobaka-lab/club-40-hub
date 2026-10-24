@@ -5,6 +5,8 @@
  * что изменились: «было → стало», удалённые слова подсвечены в «было», новые —
  * в «стало». Подгружается порциями по мере прокрутки.
  */
+import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
+import { EmptyCard } from "@/components/scripts/empty-card";
 import { ScriptsFeedSkeleton } from "@/components/page-skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -12,16 +14,16 @@ import { usePlaybook } from "@/lib/scripts/data";
 import { fieldChanges, wordDiff, type Piece } from "@/lib/scripts/diff";
 import { formatWhen } from "@/lib/scripts/logic";
 import type { ScriptChange } from "@/lib/scripts/types";
-import { Chip, EmptyCard, LoadMore, ScriptTitle, type ChipTone } from "./shared";
+import { LoadMore, ScriptTitle } from "./shared";
 import { afterCursor, PAGE_SIZE, usePaged, type Cursor } from "./use-paged";
 import { useOpenScript } from "./use-open-script";
 
 export const HISTORY_KEY = "scripts_changes";
 
-const ACTIONS: Record<ScriptChange["action"], { label: string; tone: ChipTone }> = {
-  created: { label: "Создан", tone: "emerald" },
-  updated: { label: "Изменён", tone: "blue" },
-  deleted: { label: "Удалён", tone: "rose" },
+const ACTIONS: Record<ScriptChange["action"], { label: string; tone: StatusTone }> = {
+  created: { label: "Создан", tone: "positive" },
+  updated: { label: "Изменён", tone: "info" },
+  deleted: { label: "Удалён", tone: "negative" },
 };
 
 async function loadChanges(cursor: Cursor | null) {
@@ -116,7 +118,7 @@ function ChangeEntry({ change }: { change: ScriptChange }) {
             ) : (
               <span className="font-medium">{title}</span>
             )}
-            <Chip tone={action.tone}>{action.label}</Chip>
+            <StatusChip tone={action.tone}>{action.label}</StatusChip>
           </>
         )}
         <span className="ml-auto flex flex-wrap gap-x-3 text-xs text-muted-foreground">

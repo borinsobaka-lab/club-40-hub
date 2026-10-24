@@ -11,6 +11,12 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ListItemButton } from "@/components/ui/list-item-button";
+import {
+  STATUS_TONE_CLASS,
+  statusChipBase,
+  statusChipSize,
+} from "@/components/ui/status-chip-styles";
+import { cn } from "@/lib/utils";
 import { normalize } from "@/lib/scripts/logic";
 import type { ScriptSection } from "@/lib/scripts/types";
 
@@ -241,7 +247,12 @@ export function VariableChips({
         <button
           key={v.key}
           type="button"
-          className="cursor-pointer rounded-full bg-blue-100 px-2.5 py-1 font-mono text-xs font-medium text-blue-700 hover:bg-blue-200"
+          className={cn(
+            statusChipBase,
+            statusChipSize.default,
+            STATUS_TONE_CLASS.info,
+            "cursor-pointer font-mono hover:bg-blue-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+          )}
           title={v.description || undefined}
           onMouseDown={keepFocus}
           onClick={() => insert(v.key)}

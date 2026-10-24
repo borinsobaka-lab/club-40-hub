@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { StaffTabs } from "@/components/staff-tabs";
 import { useConfirm } from "@/components/confirm-dialog";
-import { EmployeePhoto } from "@/components/employee-photo";
+import { EmployeePhoto, StaffOption } from "@/components/employee-photo";
+import { RowContextMenu } from "@/components/row-context-menu";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import {
@@ -311,8 +312,8 @@ function ShiftGrid({
                 >
                   <div
                     className={cn(
-                      "text-[11px] uppercase",
-                      weekend ? "font-medium text-rose-500" : "text-muted-foreground",
+                      "text-xs text-muted-foreground uppercase",
+                      weekend && "font-medium",
                     )}
                   >
                     {WEEKDAYS[d.weekday]}
@@ -401,12 +402,12 @@ function ShiftGrid({
                                   type="button"
                                   title={name}
                                   aria-label={`${dayLabel}: ${name}. Заменить или убрать`}
-                                  className="flex w-full cursor-pointer items-center gap-1 rounded-md border bg-background px-1 py-0.5 text-left text-xs shadow-xs transition-colors hover:border-brand/60"
+                                  className="flex w-full cursor-pointer items-center gap-1 rounded-md border bg-background px-1 py-0.5 text-left text-xs transition-colors hover:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                                 >
                                   <EmployeePhoto
                                     value={e?.photo_url ?? null}
                                     name={name}
-                                    className="size-5 text-[9px]"
+                                    className="size-5 text-xs"
                                   />
                                   <span className="min-w-0 truncate">{shortName(name)}</span>
                                 </button>
@@ -423,7 +424,7 @@ function ShiftGrid({
                               type="button"
                               aria-label={`${dayLabel}: добавить администратора`}
                               className={cn(
-                                "flex h-6 w-full cursor-pointer items-center justify-center rounded-md border border-dashed text-muted-foreground transition-colors hover:border-brand hover:text-brand",
+                                "flex h-6 w-full cursor-pointer items-center justify-center rounded-md border border-dashed text-muted-foreground transition-colors hover:border-ring hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                                 cell.length > 0 && "border-transparent",
                               )}
                             >
@@ -488,7 +489,7 @@ function AdminPicker({
                   >
                     <EmployeePhoto value={c.photo_url} name={c.full_name} className="size-6" />
                     <span className="min-w-0 flex-1 truncate">{c.full_name}</span>
-                    {c.id === current && <Check className="text-brand" />}
+                    {c.id === current && <Check />}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -594,7 +595,7 @@ function ShiftStats({
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-semibold tabular-nums">{r.total}</div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {plural(r.total, ["смена", "смены", "смен"])}
                   </div>
                 </div>
@@ -717,11 +718,8 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
             </SelectTrigger>
             <SelectContent>
               {sortedEmployees.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  <span className="flex items-center gap-2">
-                    <EmployeePhoto value={e.photo_url} name={e.full_name} className="size-5" />
-                    {e.full_name}
-                  </span>
+                <SelectItem key={e.id} value={e.id} textValue={e.full_name}>
+                  <StaffOption name={e.full_name} photo={e.photo_url} />
                 </SelectItem>
               ))}
             </SelectContent>
@@ -777,17 +775,14 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
               </TableHead>
               <TableHead {...sort.head("reason")}>Причина</TableHead>
               <TableHead {...sort.head("author")}>Добавил</TableHead>
-              <TableHead className="w-10">
-                <span className="sr-only">Действия</span>
-              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableSkeletonRows columns={6} rows={3} />
+              <TableSkeletonRows columns={5} rows={3} />
             ) : adjustments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
                   За {monthLabel(month).toLowerCase()} корректировок нет.
                 </TableCell>
               </TableRow>
@@ -796,42 +791,46 @@ function Adjustments({ month, employees }: { month: MonthKey; employees: Employe
                 const e = employeeById.get(a.trainer_id);
                 const sign = ADJUSTMENT_KINDS[a.kind].sign;
                 return (
-                  <TableRow key={a.id}>
-                    <TableCell className="whitespace-nowrap">{formatDate(a.adjusted_on)}</TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-2">
-                        <EmployeePhoto
-                          value={e?.photo_url ?? null}
-                          name={e?.full_name ?? "?"}
-                          className="size-6"
-                        />
-                        <span className="font-medium">{e?.full_name ?? "—"}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-right font-medium whitespace-nowrap tabular-nums",
-                        sign < 0 ? "text-rose-600" : "text-emerald-600",
-                      )}
-                    >
-                      {sign < 0 ? "−" : "+"}
-                      {formatPay(Number(a.amount))}
-                    </TableCell>
-                    <TableCell className="max-w-[280px]">{a.reason}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {a.created_by_name ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Удалить корректировку"
-                        onClick={() => handleDelete(a.id)}
+                  <RowContextMenu
+                    key={a.id}
+                    actions={[
+                      {
+                        label: "Удалить корректировку",
+                        icon: Trash2,
+                        destructive: true,
+                        onSelect: () => handleDelete(a.id),
+                      },
+                    ]}
+                  >
+                    <TableRow>
+                      <TableCell className="whitespace-nowrap tabular-nums">
+                        {formatDate(a.adjusted_on)}
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-2">
+                          <EmployeePhoto
+                            value={e?.photo_url ?? null}
+                            name={e?.full_name ?? "?"}
+                            className="size-6"
+                          />
+                          <span className="font-medium">{e?.full_name ?? "—"}</span>
+                        </span>
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right font-medium whitespace-nowrap tabular-nums",
+                          sign < 0 ? "text-rose-600" : "text-emerald-600",
+                        )}
                       >
-                        <Trash2 />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                        {sign < 0 ? "−" : "+"}
+                        {formatPay(Number(a.amount))}
+                      </TableCell>
+                      <TableCell className="max-w-[280px]">{a.reason}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {a.created_by_name ?? "—"}
+                      </TableCell>
+                    </TableRow>
+                  </RowContextMenu>
                 );
               })
             )}

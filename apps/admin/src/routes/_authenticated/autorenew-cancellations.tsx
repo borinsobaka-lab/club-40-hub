@@ -24,9 +24,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { StatusChip } from "@/components/ui/status-chip";
 import { DataPagination, usePagination } from "@/components/data-pagination";
-import { TableToolbar, ToolbarSearch } from "@/components/table-toolbar";
+import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-toolbar";
 import { ClientNameLink } from "@/components/client-name-link";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -93,14 +93,15 @@ const SORT_GETTERS = {
   cancelledAt: (r: Row) => r.auto_renew_cancelled_at,
 };
 
+/** Причина отмены: сама — нейтрально, автоматическая — внимание; без причины — прочерк. */
 function ReasonBadge({ value }: { value: Row["auto_renew_cancel_reason"] }) {
   if (value === "self") {
-    return <Badge variant="secondary">Самостоятельная</Badge>;
+    return <StatusChip tone="neutral">Самостоятельная</StatusChip>;
   }
   if (value === "auto") {
-    return <Badge variant="destructive">Автоматическая</Badge>;
+    return <StatusChip tone="warning">Автоматическая</StatusChip>;
   }
-  return <Badge variant="outline">—</Badge>;
+  return <span className="text-muted-foreground">—</span>;
 }
 
 function AutorenewCancellationsPage() {
@@ -158,6 +159,13 @@ function AutorenewCancellationsPage() {
                 <SelectItem value="auto">Автоматическая</SelectItem>
               </SelectContent>
             </Select>
+            <ToolbarReset
+              active={search.trim() !== "" || reason !== REASON_ALL}
+              onReset={() => {
+                setSearch("");
+                setReason(REASON_ALL);
+              }}
+            />
           </TableToolbar>
 
           <div className="rounded-lg border bg-background">
@@ -211,11 +219,13 @@ function AutorenewCancellationsPage() {
                           <div className="text-xs">{r.client?.email ?? "—"}</div>
                         </TableCell>
                         <TableCell>{r.membership?.name ?? "—"}</TableCell>
-                        <TableCell className="text-sm">{formatDate(r.ends_at)}</TableCell>
+                        <TableCell className="text-sm tabular-nums">
+                          {formatDate(r.ends_at)}
+                        </TableCell>
                         <TableCell>
                           <ReasonBadge value={r.auto_renew_cancel_reason} />
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
+                        <TableCell className="text-xs text-muted-foreground tabular-nums">
                           {formatDateTime(r.auto_renew_cancelled_at)}
                         </TableCell>
                       </TableRow>

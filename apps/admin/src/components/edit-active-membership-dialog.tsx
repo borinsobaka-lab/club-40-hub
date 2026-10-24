@@ -313,7 +313,11 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
                       disabled={remaining <= 0}
                       className="flex-1"
                     />
-                    <Button onClick={handleFreeze} disabled={busy || remaining <= 0}>
+                    <Button
+                      variant="outline"
+                      onClick={handleFreeze}
+                      disabled={busy || remaining <= 0}
+                    >
                       {freezing && <Loader2 className="animate-spin" />}
                       Заморозить
                     </Button>

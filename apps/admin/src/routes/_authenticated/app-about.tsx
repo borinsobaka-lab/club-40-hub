@@ -426,7 +426,7 @@ function GalleryField({
                 <Button
                   variant="secondary"
                   size="icon-sm"
-                  className="absolute -right-2 -top-2 shadow"
+                  className="absolute -right-2 -top-2 border"
                   aria-label="Убрать фото"
                   onClick={() => onChange(value.filter((_, j) => j !== i))}
                 >
@@ -514,13 +514,14 @@ function InstagramSlot({
           />
         }
       />
-      <Input
-        placeholder="Ссылка на пост (необязательно)"
-        aria-label={`Ссылка на пост ${index + 1}`}
-        value={post.url}
-        disabled={!post.path}
-        onChange={(e) => onChange({ ...post, url: e.target.value })}
-      />
+      <FormField label="Ссылка на пост" optional>
+        <Input
+          aria-label={`Ссылка на пост ${index + 1}`}
+          value={post.url}
+          disabled={!post.path}
+          onChange={(e) => onChange({ ...post, url: e.target.value })}
+        />
+      </FormField>
     </div>
   );
 }

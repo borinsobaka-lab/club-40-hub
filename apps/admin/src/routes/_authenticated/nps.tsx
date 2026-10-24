@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
+import { CountBadge, StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -149,12 +150,18 @@ function npsBucket(score: number): NpsBucket {
   return "detractor";
 }
 
-const BUCKET: Record<NpsBucket, { label: string; cls: string; order: number }> = {
+const BUCKET: Record<NpsBucket, { label: string; tone: StatusTone; order: number }> = {
   // order — порядок в таблице: сначала критики, им нужно ответить первыми.
-  detractor: { label: "Критик", cls: "bg-destructive/10 text-destructive", order: 0 },
-  passive: { label: "Пассивный", cls: "bg-amber-500/10 text-amber-700", order: 1 },
-  promoter: { label: "Промоутер", cls: "bg-emerald-500/10 text-emerald-700", order: 2 },
+  detractor: { label: "Критик", tone: "negative", order: 0 },
+  passive: { label: "Пассивный", tone: "warning", order: 1 },
+  promoter: { label: "Промоутер", tone: "positive", order: 2 },
 };
+
+/** Категория ответа NPS — чип статуса по оценке. */
+function NpsBucketBadge({ score }: { score: number }) {
+  const b = BUCKET[npsBucket(score)];
+  return <StatusChip tone={b.tone}>{b.label}</StatusChip>;
+}
 
 /** Сортировка колонок (lib/table-sort.ts); «Прочитано» по возрастанию — новые первыми. */
 const SORT_GETTERS: SortGetters<NpsResponse> = {
@@ -352,9 +359,10 @@ function NpsPage() {
   const global = useMemo(() => npsStats(byType), [byType]);
 
   const distribution = [
-    { name: "Промоутеры", count: global.promoters, color: "hsl(142, 71%, 45%)" },
-    { name: "Пассивные", count: global.passives, color: "hsl(45, 93%, 47%)" },
-    { name: "Критики", count: global.detractors, color: "hsl(0, 84%, 60%)" },
+    // Цвета статусов (emerald / amber / rose -500), как у чипов категорий.
+    { name: "Промоутеры", count: global.promoters, color: "#10b981" },
+    { name: "Пассивные", count: global.passives, color: "#f59e0b" },
+    { name: "Критики", count: global.detractors, color: "#f43f5e" },
   ];
 
   const tableData = useMemo(() => {
@@ -429,12 +437,11 @@ function NpsPage() {
               <TabsTrigger value="stats">
                 Статистика
                 {unreadCount > 0 && (
-                  <span
+                  <CountBadge
+                    count={unreadCount}
                     aria-label={`Непрочитанных: ${unreadCount}`}
-                    className="ml-1.5 rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums"
-                  >
-                    {unreadCount}
-                  </span>
+                    className="ml-1.5"
+                  />
                 )}
               </TabsTrigger>
             </TabsList>
@@ -505,7 +512,7 @@ function NpsPage() {
               const shows = promptStats.find((p) => p.survey_type === s.type);
               return (
                 <div key={s.type} className="rounded-lg border bg-background p-5">
-                  <h3 className="text-base font-semibold">{s.label}</h3>
+                  <h3 className="text-sm font-semibold">{s.label}</h3>
                   <p className="mb-4 text-xs text-muted-foreground">{s.hint}</p>
                   <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                     <Stat label="NPS" value={st.nps ?? "—"} />
@@ -584,16 +591,13 @@ function NpsPage() {
                 </div>
                 <div className="space-y-2">
                   {unhandled.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex items-start gap-3 rounded-md border bg-muted/30 p-3"
-                    >
+                    <div key={r.id} className="flex items-start gap-3 rounded-md border p-3">
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">{clientCell(r)}</span>
-                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                          <StatusChip tone="negative" className="tabular-nums">
                             {r.score}
-                          </span>
+                          </StatusChip>
                           <span className="text-xs text-muted-foreground">
                             {TYPE_LABEL[r.survey_type]}
                           </span>
@@ -654,7 +658,6 @@ function NpsPage() {
                     </TableRow>
                   ) : (
                     pg.paged.map((r) => {
-                      const c = BUCKET[npsBucket(r.score)];
                       const busy = busyId === r.id;
                       return (
                         <RowContextMenu
@@ -684,7 +687,7 @@ function NpsPage() {
                               !r.read_at && "max-md:border-l-4 max-md:border-l-rose-500",
                             )}
                           >
-                            <TableCell className="relative whitespace-nowrap text-muted-foreground">
+                            <TableCell className="relative whitespace-nowrap text-muted-foreground tabular-nums">
                               {/* Непрочитанный — красная полоска слева, как у «Заявок». */}
                               {!r.read_at && (
                                 <span
@@ -700,13 +703,11 @@ function NpsPage() {
                                 <StudioLabel studio={studioOf(r.studio_id)} />
                               </TableCell>
                             )}
-                            <TableCell className="text-center font-bold">{r.score}</TableCell>
+                            <TableCell className="text-center font-semibold tabular-nums">
+                              {r.score}
+                            </TableCell>
                             <TableCell>
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c.cls}`}
-                              >
-                                {c.label}
-                              </span>
+                              <NpsBucketBadge score={r.score} />
                             </TableCell>
                             <TableCell>
                               <CommentCell text={r.comment} />
@@ -714,12 +715,10 @@ function NpsPage() {
                             <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                               {TYPE_LABEL[r.survey_type]}
                             </TableCell>
-                            <TableCell className="whitespace-nowrap">
+                            <TableCell className="whitespace-nowrap tabular-nums">
                               {r.read_at ? (
                                 <div className="text-xs text-muted-foreground">
-                                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                    Прочитано
-                                  </span>
+                                  <StatusChip tone="positive">Прочитано</StatusChip>
                                   <div className="mt-1">
                                     {r.read_by_name ? `${r.read_by_name} · ` : ""}
                                     {format(parseISO(r.read_at), "dd.MM.yy", { locale: ru })}

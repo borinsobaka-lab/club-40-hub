@@ -13,13 +13,7 @@ import { Input } from "@/components/ui/input";
 import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Table,
   TableBody,
@@ -231,8 +225,10 @@ function PromoCodesPage() {
                             {p.code}
                           </Badge>
                         </TableCell>
-                        <TableCell>{formatDiscount(p.discount_type, p.discount_value)}</TableCell>
-                        <TableCell>{formatDate(p.expires_at)}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatDiscount(p.discount_type, p.discount_value)}
+                        </TableCell>
+                        <TableCell className="tabular-nums">{formatDate(p.expires_at)}</TableCell>
                         <TableCell>
                           <span className="tabular-nums">
                             {p.usage_count}
@@ -244,6 +240,7 @@ function PromoCodesPage() {
                         </TableCell>
                         <TableCell>
                           <Switch
+                            aria-label={`Активен: ${p.name}`}
                             checked={p.is_active}
                             onCheckedChange={(v) => toggleActive(p, v)}
                           />
@@ -394,19 +391,17 @@ function PromoCodeForm({ onOpenChange, studioId, item, onSaved }: DialogProps) {
             </FormField>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Тип скидки" required>
-                <Select
+              <FormField label="Тип скидки" htmlFor={null} required>
+                <SegmentedControl<DiscountType>
+                  fullWidth
+                  aria-label="Тип скидки"
                   value={discountType}
-                  onValueChange={(v) => setDiscountType(v as DiscountType)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="amount">В лари (₾)</SelectItem>
-                    <SelectItem value="percent">В процентах (%)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onChange={setDiscountType}
+                  options={[
+                    { value: "amount", label: "₾", title: "В лари (₾)" },
+                    { value: "percent", label: "%", title: "В процентах (%)" },
+                  ]}
+                />
               </FormField>
               <FormField label="Размер скидки" tip={TIPS.discount} required>
                 <Input

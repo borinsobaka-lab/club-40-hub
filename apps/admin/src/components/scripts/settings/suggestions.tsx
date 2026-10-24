@@ -5,6 +5,8 @@
  * подсвечены; открыть вкладку — значит прочитать, и значок в меню гаснет.
  * Сделанное отмечают кнопкой — оно остаётся в списке, приглушённым.
  */
+import { StatusChip } from "@/components/ui/status-chip";
+import { EmptyCard } from "@/components/scripts/empty-card";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, RotateCcw } from "lucide-react";
@@ -18,7 +20,7 @@ import { usePlaybook } from "@/lib/scripts/data";
 import { findById, formatWhen } from "@/lib/scripts/logic";
 import type { ScriptSuggestion } from "@/lib/scripts/types";
 import { cn } from "@/lib/utils";
-import { Chip, EmptyCard, LoadMore, ScriptTitle } from "./shared";
+import { LoadMore, ScriptTitle } from "./shared";
 import { afterCursor, PAGE_SIZE, usePaged, type Cursor, type PagedData } from "./use-paged";
 import { useOpenScript } from "./use-open-script";
 
@@ -129,7 +131,7 @@ function SuggestionCard({
       )}
     >
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {unread && <Chip tone="blue">Новое</Chip>}
+        {unread && <StatusChip tone="info">Новое</StatusChip>}
         <span className="font-medium">{item.author_name || "—"}</span>
         <span className="text-xs text-muted-foreground tabular-nums">
           {formatWhen(item.created_at)}

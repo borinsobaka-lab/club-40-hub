@@ -14,6 +14,7 @@ import { ArrowDown, ArrowUp, Check, Copy, Link2, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { InfoNote } from "@/components/ui/form-field";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Formatted, Highlight, RichText } from "@/components/scripts/rich-text";
 import { logCopy } from "@/lib/scripts/data";
@@ -49,11 +50,12 @@ const KIND_CHIP: Record<ScriptKind, string> = {
 const LABEL = "text-sm font-semibold text-foreground";
 
 /**
- * Поле с текстом скрипта — «вдавленное» (как в «Аудиоаналитике»): цвет
- * канвы и тень внутрь, чтобы то, что уйдёт клиенту, сразу бросалось в глаза.
+ * Поле с текстом скрипта — на подложке цвета канвы и в рамке, чтобы то, что
+ * уйдёт клиенту, сразу бросалось в глаза. Тени нет: глубина — только граница
+ * (.interface-design/system.md, «Пространство и глубина»).
  */
 const TEXT_WELL =
-  "rounded-md bg-canvas px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap shadow-[inset_0_0_0_1px_rgba(11,13,22,0.05),inset_0_0_8px_rgba(11,13,22,0.11),inset_0_1px_3px_rgba(11,13,22,0.06)]";
+  "rounded-md border bg-canvas px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap";
 
 /** Кнопка, которая на пару секунд отвечает на себе: «Скопировано». */
 function useFlash() {
@@ -154,9 +156,9 @@ function MessageBlock({
         </span>
       </div>
       {shown.fallback && (
-        <p className="text-xs font-medium text-amber-800">
+        <InfoNote variant="warning">
           Текста на {langInfo(lang).inName} нет — показан {langInfo(shown.lang).name}.
-        </p>
+        </InfoNote>
       )}
       <div className={TEXT_WELL} lang={shown.lang}>
         <RichText text={shown.text} terms={terms} resolveVar={resolveVar} />
@@ -215,7 +217,7 @@ export function ScriptCard({
       className={cn(
         // Отступ при прокрутке к карточке — под закреплённой панелью поиска.
         "scroll-mt-36 sm:scroll-mt-28 overflow-hidden rounded-lg border bg-background transition-shadow duration-700",
-        flash && "ring-2 ring-brand",
+        flash && "ring-2 ring-ring",
       )}
     >
       {/* Тёмная шапка цвета меню — видно, где начинается следующий скрипт. */}
@@ -253,10 +255,10 @@ export function ScriptCard({
 
       <div className="space-y-4 px-4 py-3">
         {item.note && (
-          <div className="space-y-1 rounded-md border bg-muted/30 px-3 py-2.5 text-sm">
+          <InfoNote className="space-y-1 text-sm">
             <span className={LABEL}>Как использовать</span>
             <Formatted text={item.note} {...format} />
-          </div>
+          </InfoNote>
         )}
 
         {item.variants.length > 1 && (
@@ -286,10 +288,10 @@ export function ScriptCard({
         ))}
 
         {item.follow_up && (
-          <div className="space-y-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm">
+          <InfoNote variant="info" className="space-y-1 text-sm">
             <span className={LABEL}>❗ Дальше</span>
             <Formatted text={item.follow_up} {...format} />
-          </div>
+          </InfoNote>
         )}
       </div>
 

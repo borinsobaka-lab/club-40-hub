@@ -119,13 +119,7 @@ export function ImageUploadField({
           )}
         </Button>
         {value && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => onChange(null)}
-          >
+          <Button type="button" variant="destructive" size="sm" onClick={() => onChange(null)}>
             Удалить
           </Button>
         )}

@@ -255,12 +255,7 @@ function Import1cPage() {
                   и абонементы по одной.
                 </InfoNote>
               ) : (
-                <Button
-                  variant="outline"
-                  className="text-destructive"
-                  disabled={removing || running}
-                  onClick={remove}
-                >
+                <Button variant="destructive" disabled={removing || running} onClick={remove}>
                   {removing && <Loader2 className="animate-spin" />} Удалить перенесённое
                 </Button>
               )}
@@ -279,8 +274,15 @@ function RunProgress({ run }: { run: Run }) {
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <div className="h-2 overflow-hidden rounded-full bg-muted">
-          <div className="h-full bg-brand transition-[width]" style={{ width: `${pct}%` }} />
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={pct}
+          aria-label="Перенос клиентов"
+          className="h-2 overflow-hidden rounded-full bg-muted"
+        >
+          <div className="h-full bg-primary transition-[width]" style={{ width: `${pct}%` }} />
         </div>
         <p className="text-sm text-muted-foreground">
           {run.running ? "Переносим" : run.error ? "Остановлено" : "Готово"}: {nf.format(run.done)}{" "}

@@ -63,6 +63,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { fieldTriggerClass } from "@/components/ui/field-styles";
+import { STATUS_TONE_CLASS } from "@/components/ui/status-chip-styles";
 import {
   Dialog,
   DialogBody,
@@ -651,7 +652,7 @@ function ClientMembershipsPage() {
                   setSeller(ALL);
                 }}
               >
-                <SelectTrigger className="w-44" aria-label="Клуб">
+                <SelectTrigger className="w-48" aria-label="Клуб">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -905,7 +906,7 @@ function ClientMembershipsPage() {
                                 : "—"}
                           </div>
                           {r.transferred_at && (
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground tabular-nums">
                               Переоформлен {formatDate(r.transferred_at.slice(0, 10))}
                               {r.transferred_from_name && ` с ${r.transferred_from_name}`}
                             </div>
@@ -941,7 +942,7 @@ function ClientMembershipsPage() {
                           <div className="max-w-[200px] space-y-1">
                             {r.comment?.trim() && (
                               <div className="text-xs">
-                                <div className="text-muted-foreground/70">При продаже</div>
+                                <div className="text-muted-foreground">При продаже</div>
                                 <CommentCell
                                   text={r.comment}
                                   onSave={commentSaver("sales", r.id)}
@@ -1363,16 +1364,16 @@ function PaymentCell({
   // ближайшие 3 дня» (payment_state = 'soon', решение владельца 2026-10-14).
   const soon = !payment.paid && !payment.refunded && !overdue && daysUntil(payment.due_date) <= 2;
   const box = cn(
-    "block w-full rounded-md border px-2 py-1.5 text-left",
+    "block w-full rounded-md px-2 py-1.5 text-left",
     payment.refunded
-      ? "border-orange-200 bg-orange-50"
+      ? STATUS_TONE_CLASS.negative
       : payment.paid
-        ? "border-emerald-200 bg-emerald-50"
+        ? STATUS_TONE_CLASS.positive
         : overdue
-          ? "border-rose-200 bg-rose-50"
+          ? STATUS_TONE_CLASS.negative
           : soon
-            ? "border-blue-200 bg-blue-50"
-            : "bg-muted/40",
+            ? STATUS_TONE_CLASS.info
+            : STATUS_TONE_CLASS.neutral,
   );
   const number = <span className="font-normal text-muted-foreground">{index + 1}. </span>;
 
@@ -1380,7 +1381,7 @@ function PaymentCell({
   if (payment.refunded)
     return (
       <div title="По продаже оформлен возврат — платёж больше не ждём" className={box}>
-        <div className="text-xs font-medium text-orange-700">
+        <div className="text-xs font-medium">
           {number}
           Возврат
         </div>
@@ -1395,13 +1396,13 @@ function PaymentCell({
       </div>
       <div
         className={cn(
-          "flex items-center gap-1 whitespace-nowrap text-xs",
+          "flex items-center gap-1 whitespace-nowrap text-xs tabular-nums",
           payment.paid
             ? "text-emerald-700"
             : soon
               ? "text-blue-700"
               : overdue
-                ? "text-rose-600"
+                ? "text-rose-700"
                 : "text-muted-foreground",
         )}
       >
@@ -1431,7 +1432,10 @@ function PaymentCell({
         <button
           type="button"
           title={payment.paid ? "Изменить платёж" : "Отметить оплату"}
-          className={cn(box, "cursor-pointer transition-opacity hover:opacity-80")}
+          className={cn(
+            box,
+            "cursor-pointer transition-opacity outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          )}
         >
           {summary}
         </button>
@@ -1602,7 +1606,7 @@ function PaymentsEditForm({
                   key={d.key}
                   className={cn(
                     "flex items-end gap-2 rounded-md border px-3 py-2",
-                    d.paid && "border-emerald-200 bg-emerald-50",
+                    d.paid && "border-emerald-200 bg-emerald-100",
                   )}
                 >
                   <span className="w-5 shrink-0 pb-2.5 text-sm text-muted-foreground">

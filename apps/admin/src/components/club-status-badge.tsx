@@ -1,3 +1,4 @@
+import { statusChipBase, statusChipSize } from "@/components/ui/status-chip-styles";
 import { cn } from "@/lib/utils";
 import { CLUB_STATUS_FULL, CLUB_STATUS_LABEL, type ClubStatus } from "@/lib/client-status";
 
@@ -22,17 +23,10 @@ export function ClubStatusBadge({
   return (
     <span
       title={CLUB_STATUS_FULL[status]}
-      className={cn(
-        "inline-flex items-center rounded-full border font-medium",
-        size === "sm" ? "px-1.5 text-[10px] leading-4" : "px-2 py-0.5 text-xs",
-        STYLES[status],
-        className,
-      )}
+      className={cn(statusChipBase, "border", statusChipSize[size], STYLES[status], className)}
     >
       {CLUB_STATUS_LABEL[status]}
-      {withFull && (
-        <span className="ml-1 font-normal opacity-80">· {CLUB_STATUS_FULL[status]}</span>
-      )}
+      {withFull && <span className="font-normal opacity-80">· {CLUB_STATUS_FULL[status]}</span>}
     </span>
   );
 }

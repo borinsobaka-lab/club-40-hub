@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FormField } from "@/components/ui/form-field";
+import { FormField, InfoNote } from "@/components/ui/form-field";
 import {
   DialogBody,
   DialogDescription,
@@ -69,13 +69,13 @@ export function SuggestDialogContent({
       <DialogForm onSubmit={send}>
         <DialogBody>
           <div className="space-y-4">
-            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <InfoNote className="text-sm">
               <span className="block text-xs font-medium text-muted-foreground uppercase">
                 Скрипт
               </span>
-              <span className="font-medium">{target.title}</span>
+              <span className="font-medium text-foreground">{target.title}</span>
               {target.section && <span className="text-muted-foreground"> · {target.section}</span>}
-            </div>
+            </InfoNote>
             {sent ? (
               <p className="text-sm">
                 <span className="font-medium">Спасибо, отправлено.</span>{" "}

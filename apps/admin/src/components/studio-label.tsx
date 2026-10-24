@@ -45,7 +45,7 @@ export function StudioFilter({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-56" aria-label="Клуб">
+      <SelectTrigger className="w-48" aria-label="Клуб">
         <SelectValue placeholder="Все клубы" />
       </SelectTrigger>
       <SelectContent>

@@ -23,6 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Select,
   SelectContent,
@@ -113,6 +115,19 @@ const SORT_COLUMNS = {
 };
 
 const ALL_CATEGORIES = [...CATEGORIES.income, ...CATEGORIES.expense];
+
+/** Тип операции кассы: приход — positive, расход — negative. */
+function CashKindBadge({ kind }: { kind: CashKind }) {
+  return kind === "income" ? (
+    <StatusChip tone="positive">
+      <TrendingUp /> Приход
+    </StatusChip>
+  ) : (
+    <StatusChip tone="negative">
+      <TrendingDown /> Расход
+    </StatusChip>
+  );
+}
 
 function categoryLabel(v: string) {
   return ALL_CATEGORIES.find((c) => c.value === v)?.label ?? v;
@@ -310,15 +325,7 @@ function CashPage() {
                         </TableCell>
                       )}
                       <TableCell>
-                        {o.kind === "income" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                            <TrendingUp className="h-3 w-3" /> Приход
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
-                            <TrendingDown className="h-3 w-3" /> Расход
-                          </span>
-                        )}
+                        <CashKindBadge kind={o.kind} />
                       </TableCell>
                       <TableCell className="text-sm">{categoryLabel(o.category)}</TableCell>
                       <TableCell
@@ -465,16 +472,17 @@ function CashOperationForm({
         <FormField label="Клуб" tip={TIPS.studio} required className="sm:col-span-2">
           <StudioSelect studios={studios} value={studioId} onChange={changeStudio} />
         </FormField>
-        <FormField label="Тип" required>
-          <Select value={kind} onValueChange={(v) => changeKind(v as CashKind)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="income">Приход</SelectItem>
-              <SelectItem value="expense">Расход</SelectItem>
-            </SelectContent>
-          </Select>
+        <FormField label="Тип" htmlFor={null} required>
+          <SegmentedControl<CashKind>
+            fullWidth
+            aria-label="Тип"
+            value={kind}
+            onChange={changeKind}
+            options={[
+              { value: "income", label: "Приход" },
+              { value: "expense", label: "Расход" },
+            ]}
+          />
         </FormField>
         <FormField label="Категория" tip={TIPS.category} required>
           <Select value={category} onValueChange={setCategory}>

@@ -25,7 +25,8 @@ import { useActiveStudio } from "@/hooks/use-studios";
 import { useCatalogStudioIds, useNetworkStudioIds } from "@/hooks/use-catalog-studios";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { fieldTriggerClass } from "@/components/ui/field-styles";
+import { fieldClass, fieldTriggerClass } from "@/components/ui/field-styles";
+import { StatusChip } from "@/components/ui/status-chip";
 import { PeriodStepper } from "@/components/period-stepper";
 import { ChoiceCard } from "@/components/ui/choice-card";
 import { supabase } from "@/integrations/supabase/client";
@@ -948,7 +949,10 @@ function SchedulePage() {
           </TableToolbar>
 
           {copySource && !fullscreen && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
+            <InfoNote
+              variant="info"
+              className="flex items-center justify-between gap-3 py-2 text-sm"
+            >
               <div className="flex items-center gap-2">
                 {pasting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -969,7 +973,7 @@ function SchedulePage() {
                 <X />
                 Отмена
               </Button>
-            </div>
+            </InfoNote>
           )}
 
           {/*
@@ -1209,10 +1213,10 @@ function SchedulePage() {
                               day.toDateString() === now.toDateString() && (
                                 <div
                                   aria-hidden
-                                  className="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-red-500"
+                                  className="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-destructive"
                                   style={{ top: `${(now.getMinutes() / 60) * 100}%` }}
                                 >
-                                  <span className="absolute -left-1 top-1/2 size-2.5 -translate-y-1/2 rounded-full bg-red-500" />
+                                  <span className="absolute -left-1 top-1/2 size-2.5 -translate-y-1/2 rounded-full bg-destructive" />
                                 </div>
                               )}
                           </div>
@@ -1288,7 +1292,10 @@ function KindFilter({
     <div
       role="group"
       aria-label="Какие занятия показывать"
-      className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-input px-3 py-1.5 max-sm:w-full"
+      className={cn(
+        fieldClass,
+        "flex h-auto min-h-10 w-auto flex-wrap items-center gap-x-4 gap-y-1 py-1.5 max-sm:w-full",
+      )}
     >
       {kinds.map((k) => {
         const checked = value.includes(k.value);
@@ -1437,7 +1444,7 @@ function KindPickerDialog({
                   onClick={() => onPick(k.value)}
                   media={
                     <span
-                      className="flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-12"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-lg sm:size-12"
                       style={{ backgroundColor: `${k.color}1f`, color: k.color }}
                     >
                       <k.icon className="size-6" />
@@ -1458,31 +1465,26 @@ function KindPickerDialog({
 }
 
 /** Бейдж «записано/мест» и очередь листа ожидания на карточке занятия. */
-function CapacityBadge({ entry, light }: { entry: Entry; light?: boolean }) {
+function CapacityBadge({ entry }: { entry: Entry }) {
   const cap = entryCapacity(entry);
   if (!cap) return null;
   const left = Math.max(0, cap - entry.booked_count);
   const waiting = entry.waitlist_count ?? 0;
-  const tone =
-    left === 0
-      ? "bg-red-500/90 text-white"
-      : left <= 5
-        ? "bg-amber-500/90 text-white"
-        : light
-          ? "bg-muted text-foreground"
-          : "bg-black/25 text-white";
+  const tone = left === 0 ? "negative" : left <= 5 ? "warning" : "neutral";
   return (
     <span className="flex shrink-0 items-center gap-1">
-      <span className={`rounded px-1 py-px text-[10px] font-semibold tabular-nums ${tone}`}>
+      <StatusChip tone={tone} size="sm" className="tabular-nums">
         {entry.booked_count}/{cap}
-      </span>
+      </StatusChip>
       {waiting > 0 && (
-        <span
+        <StatusChip
+          tone="info"
+          size="sm"
           title="Люди в листе ожидания — записались, когда мест уже не было"
-          className="rounded bg-blue-500/90 px-1 py-px text-[10px] font-semibold tabular-nums text-white"
+          className="tabular-nums"
         >
           +{waiting}
-        </span>
+        </StatusChip>
       )}
     </span>
   );
@@ -1502,13 +1504,15 @@ function UnmarkedBadge({ entry }: { entry: Entry }) {
   const n = (entry.participants ?? []).filter((p) => p.status === "booked").length;
   if (!n) return null;
   return (
-    <span
+    <StatusChip
+      tone="negative"
+      size="sm"
       title={`Не отмечены посещения: ${n}. Откройте занятие и отметьте «Посетил» или «Не посетил».`}
       aria-label="Не отмечены посещения"
-      className="flex size-3.5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white"
+      className="font-semibold"
     >
       !
-    </span>
+    </StatusChip>
   );
 }
 
@@ -1516,12 +1520,14 @@ function NewcomersBadge({ entry }: { entry: Entry }) {
   const n = newcomerIds(entry).size;
   if (!n) return null;
   return (
-    <span
+    <StatusChip
+      tone="info"
+      size="sm"
       title={`Новеньких: ${n} — до занятия не было абонементов, кроме пробного`}
-      className="shrink-0 rounded bg-blue-100 px-1 py-px text-[10px] font-semibold tabular-nums text-blue-700"
+      className="tabular-nums"
     >
       {n}
-    </span>
+    </StatusChip>
   );
 }
 
@@ -1560,10 +1566,10 @@ function EntryCard({
     return (
       <div
         className={cn(
-          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background text-foreground shadow-xs",
+          "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md border border-l-4 bg-background text-foreground",
           // Полный экран: строки времени, названия и тренера плотнее —
           // карточка ниже, в экран помещается больше занятий.
-          clean ? "text-[15px] leading-[1.1]" : "text-[11px] leading-tight",
+          clean ? "text-base leading-[1.1]" : "text-xs leading-tight",
           cancelled && "schedule-cancelled",
         )}
         title={
@@ -1605,14 +1611,14 @@ function EntryCard({
               <span className="flex items-center gap-1">
                 <UnmarkedBadge entry={entry} />
                 <NewcomersBadge entry={entry} />
-                <CapacityBadge entry={entry} light />
+                <CapacityBadge entry={entry} />
               </span>
             )}
           </span>
           <span
             className={cn(
               "font-semibold",
-              clean ? "text-lg leading-[1.05]" : "text-[13px] leading-[1.15]",
+              clean ? "text-lg leading-[1.05]" : "text-sm leading-[1.15]",
               // Персональному название в одну строку — место под клиента.
               clients ? "truncate" : "line-clamp-2",
             )}
@@ -1655,7 +1661,7 @@ function EntryCard({
     <div
       className={cn(
         "pointer-events-auto relative h-full min-w-0 flex-1 overflow-hidden rounded-md",
-        clean ? "text-[15px] leading-[1.1]" : "text-[11px] leading-tight",
+        clean ? "text-base leading-[1.1]" : "text-xs leading-tight",
         colorClasses,
       )}
     >
@@ -1684,7 +1690,7 @@ function EntryCard({
         <span
           className={cn(
             "font-semibold line-clamp-2",
-            clean ? "text-lg leading-[1.05]" : "text-[13px] leading-[1.15]",
+            clean ? "text-lg leading-[1.05]" : "text-sm leading-[1.15]",
           )}
         >
           {entryTitle(entry, clean)}
@@ -1802,9 +1808,7 @@ function EntryDialog({ open, ...formProps }: EntryDialogProps) {
       {/* Заведённое занятие — широкое окно: записанные справа от настроек,
           их видно больше без прокрутки (решение владельца 2026-10-19, как в
           подробном отчёте дашборда). Новое и прочая активность — узкое. */}
-      <DialogContent
-        className={hasBookingsPanel(formProps.entry) ? "max-w-6xl sm:max-h-[92vh]" : "max-w-2xl"}
-      >
+      <DialogContent className={hasBookingsPanel(formProps.entry) ? "max-w-6xl" : "max-w-2xl"}>
         {/*
           Форма монтируется при каждом открытии и сбрасывать её не нужно. Раньше
           поля сбрасывал эффект по списку тренировок, и любая перезагрузка
@@ -2532,7 +2536,7 @@ function EntryForm({
                               onClick={() =>
                                 setPending((prev) => prev.filter((x) => x.id !== c.id))
                               }
-                              className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -3206,15 +3210,15 @@ function BookingClientName({ client }: { client: ClientRow | undefined }) {
 function NoShowBadge({ booking }: { booking: BookingRow }) {
   if (booking.no_show_excused === true)
     return (
-      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+      <StatusChip tone="warning" size="sm">
         Не посетил · уважительная
-      </span>
+      </StatusChip>
     );
   if (booking.no_show_excused === false)
     return (
-      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+      <StatusChip tone="negative" size="sm">
         Не посетил · списано
-      </span>
+      </StatusChip>
     );
   return null;
 }
@@ -3446,12 +3450,13 @@ function BookingsPanel({
                       <BookingClientName client={c} />
                       {c?.club_status && <ClubStatusBadge status={c.club_status} size="sm" />}
                       {c && newcomers.has(c.id) && (
-                        <span
+                        <StatusChip
+                          tone="info"
+                          size="sm"
                           title="До занятия не было абонементов, кроме пробного"
-                          className="rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
                         >
                           Новенький
-                        </span>
+                        </StatusChip>
                       )}
                       {/* «Посетил» и «Пропущено» плашками не пишем — состояние
                           видно по кнопкам справа (решение владельца 2026-10-13). */}
@@ -3515,17 +3520,13 @@ function BookingsPanel({
                             : undefined
                         }
                       >
-                        {busy ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <Check className="text-emerald-600" />
-                        )}
+                        {busy ? <Loader2 className="animate-spin" /> : <Check />}
                         Посетил
                       </Button>
                     )}
                     {packages && b.status === "booked" && (
                       <Button variant="outline" size="xs" onClick={() => askNoShow(b)}>
-                        <X className="text-rose-600" />
+                        <X />
                         Не посетил
                       </Button>
                     )}
@@ -3536,7 +3537,7 @@ function BookingsPanel({
                         title="Изменить причину или комментарий"
                         onClick={() => askNoShow(b)}
                       >
-                        <X className="text-rose-600" />
+                        <X />
                         Причина
                       </Button>
                     )}
@@ -3590,7 +3591,7 @@ function BookingsPanel({
               {waitlisted.length} ждут места
             </span>
           </div>
-          <ul className="divide-y divide-blue-200 rounded-md border border-blue-200 bg-blue-50/60">
+          <ul className="divide-y rounded-md border">
             {waitlisted.map((b) => {
               const c = bookingClient(data, b);
               return (

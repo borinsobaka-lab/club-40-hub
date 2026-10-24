@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InfoNote } from "@/components/ui/form-field";
+import { StatusChip } from "@/components/ui/status-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -456,9 +457,7 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                 <div className="rounded-lg border bg-background p-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div className="font-medium">{membershipName(active.memberships)}</div>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      {saleSourceLabel(active.source)}
-                    </span>
+                    <StatusChip tone="neutral">{saleSourceLabel(active.source)}</StatusChip>
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {active.started_at ? (
@@ -946,11 +945,13 @@ function VisitsTab({
                 {showStudio && (
                   <TableCell className="whitespace-nowrap">{r.studio?.name ?? "—"}</TableCell>
                 )}
-                <TableCell className="whitespace-nowrap">{formatDateTime(r.starts_at)}</TableCell>
+                <TableCell className="whitespace-nowrap tabular-nums">
+                  {formatDateTime(r.starts_at)}
+                </TableCell>
                 <TableCell>
                   <BookingStatusBadge status={r.status} />
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                <TableCell className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                   {formatDateTime(r.cancelled_at)}
                 </TableCell>
               </TableRow>

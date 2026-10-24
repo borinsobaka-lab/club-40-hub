@@ -55,7 +55,7 @@ export function CommentCell({
               : "Показать комментарий целиком"
           }
           className={cn(
-            "line-clamp-2 min-w-[140px] max-w-[260px] cursor-pointer whitespace-pre-wrap break-words text-left",
+            "line-clamp-2 min-w-[140px] max-w-[260px] cursor-pointer whitespace-pre-wrap break-words rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             value
               ? cn(noteChipClass, "hover:bg-note")
               : "text-muted-foreground hover:text-foreground",

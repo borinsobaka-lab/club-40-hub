@@ -2,7 +2,7 @@
  * Раздел скриптов: название, иконка в меню и — при создании — тип
  * (текстовые скрипты или звонок; у готового раздела тип не меняется).
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { CALL_SECTION_ICON, DEFAULT_SECTION_ICON, SECTION_ICONS } from "@/lib/scripts/icons";
 import { cn } from "@/lib/utils";
+
+/** Колонок в сетке иконок — для стрелок ↑/↓. */
+const ICON_COLUMNS = 7;
 
 export type SectionFormValue = { title: string; icon: string; kind: "text" | "call" };
 
@@ -51,6 +54,36 @@ export function SectionDialogContent({
   const [icon, setIcon] = useState(initial?.icon || DEFAULT_SECTION_ICON);
   const [kind, setKind] = useState<"text" | "call">("text");
   const [saving, setSaving] = useState(false);
+  const iconRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const iconIndex = Math.max(
+    SECTION_ICONS.findIndex((i) => i.key === icon),
+    0,
+  );
+
+  // Сетка иконок — radiogroup: в неё попадают Tab-ом на выбранную, дальше
+  // стрелками (←/→ — соседняя, ↑/↓ — строка выше/ниже, Home/End — края).
+  function onIconKeyDown(e: React.KeyboardEvent) {
+    const last = SECTION_ICONS.length - 1;
+    const next =
+      e.key === "ArrowRight"
+        ? iconIndex + 1
+        : e.key === "ArrowLeft"
+          ? iconIndex - 1
+          : e.key === "ArrowDown"
+            ? iconIndex + ICON_COLUMNS
+            : e.key === "ArrowUp"
+              ? iconIndex - ICON_COLUMNS
+              : e.key === "Home"
+                ? 0
+                : e.key === "End"
+                  ? last
+                  : null;
+    if (next === null) return;
+    e.preventDefault();
+    const to = Math.min(Math.max(next, 0), last);
+    setIcon(SECTION_ICONS[to].key);
+    iconRefs.current[to]?.focus();
+  }
 
   async function handleSave() {
     if (!title.trim()) {
@@ -114,17 +147,22 @@ export function SectionDialogContent({
                 className="grid grid-cols-7 gap-1 rounded-md border p-2"
                 role="radiogroup"
                 aria-label="Иконка в меню"
+                onKeyDown={onIconKeyDown}
               >
-                {SECTION_ICONS.map(({ key, label, Icon }) => (
+                {SECTION_ICONS.map(({ key, label, Icon }, i) => (
                   <button
                     key={key}
+                    ref={(el) => {
+                      iconRefs.current[i] = el;
+                    }}
                     type="button"
+                    tabIndex={i === iconIndex ? 0 : -1}
                     role="radio"
                     aria-checked={icon === key}
                     aria-label={label}
                     title={label}
                     className={cn(
-                      "flex aspect-square cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground",
+                      "flex aspect-square cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
                       icon === key &&
                         "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
                     )}

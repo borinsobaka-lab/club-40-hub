@@ -39,7 +39,7 @@ function useCrmLink(opts: {
 }
 
 /**
- * Единый вид имени клиента: `font-medium` + фирменный синий.
+ * Единый вид имени клиента: `font-medium` + цвет ссылки (`--link`).
  *
  * Вынесено отдельной константой, потому что раздел «Клиенты» рисует имя своей
  * кнопкой (у него карточка уже загружена — перезапрашивать её незачем), и без
@@ -47,7 +47,7 @@ function useCrmLink(opts: {
  * Любое новое место с именем клиента берёт этот класс, а не копию.
  */
 export const clientNameClass =
-  "cursor-pointer text-left font-medium whitespace-nowrap text-blue-600 underline-offset-2 hover:underline hover:text-blue-700";
+  "cursor-pointer rounded-sm text-left font-medium whitespace-nowrap text-link underline-offset-2 hover:underline hover:text-link-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * Кликабельное имя клиента — при нажатии открывает модальное окно

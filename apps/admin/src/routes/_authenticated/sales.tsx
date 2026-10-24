@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Receipt } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 import { AdminShell } from "@/components/admin-shell";
 import { SELLER_TIP } from "@/lib/studio-staff";
@@ -43,6 +42,7 @@ import { TableSkeletonRows } from "@/components/skeletons";
 import { clientName, formatMoney, formatDate } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
+import { StatusChip } from "@/components/ui/status-chip";
 import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-status-badge";
 import { effectiveStatus, isLiveStatus } from "@/lib/membership-status";
 import { SalesPageSkeleton } from "@/components/page-skeletons";
@@ -136,14 +136,9 @@ type Sale = {
 
 function SourceBadge({ source }: { source: Sale["source"] | null }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        source === "mobile" ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground",
-      )}
-    >
+    <StatusChip tone={source === "mobile" ? "info" : "neutral"}>
       {saleSourceLabel(source)}
-    </span>
+    </StatusChip>
   );
 }
 
@@ -329,7 +324,7 @@ function SalesPage() {
                             <div>{s.clients?.phone ?? "—"}</div>
                             <div className="text-xs">{s.clients?.email ?? "—"}</div>
                           </TableCell>
-                          <TableCell>{formatDate(s.sold_at)}</TableCell>
+                          <TableCell className="tabular-nums">{formatDate(s.sold_at)}</TableCell>
                           <TableCell>
                             <SourceBadge source={s.source} />
                           </TableCell>
@@ -360,7 +355,7 @@ function SalesPage() {
                               ? formatMoney(Number(s.down_payment_amount))
                               : "—"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="tabular-nums">
                             {s.remaining_installments > 0 ? `1 + ${s.remaining_installments}` : "—"}
                           </TableCell>
                           <TableCell className="text-muted-foreground">

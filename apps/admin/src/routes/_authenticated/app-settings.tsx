@@ -332,12 +332,7 @@ function AppIconField({
           )}
         </Button>
         {value && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => onChange(null)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => onChange(null)}>
             Вернуть иконку Base40
           </Button>
         )}

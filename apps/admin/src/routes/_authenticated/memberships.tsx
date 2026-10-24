@@ -22,6 +22,7 @@ import type { ContentTranslations } from "@/lib/content-i18n";
 import { CheckboxOption, FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Table,
   TableBody,
@@ -311,25 +312,28 @@ function MembershipsPage() {
                             "—"
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="tabular-nums">
                           {m.visits_count == null ? "Безлимит" : m.visits_count}
                         </TableCell>
-                        <TableCell>{formatDuration(m.duration_days)}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatDuration(m.duration_days)}
+                        </TableCell>
                         <TableCell>{m.auto_renew ? "Да" : "Нет"}</TableCell>
                         <TableCell>{m.installment_enabled ? "Да" : "Нет"}</TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium tabular-nums">
                           {formatMoney(Number(m.price))}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Switch
+                              aria-label={`В приложении: ${m.name}`}
                               checked={m.is_active}
                               onCheckedChange={(v) => handleToggleActive(m, v)}
                             />
                             {m.is_active ? (
-                              <Badge variant="secondary">Активен</Badge>
+                              <StatusChip tone="positive">Активен</StatusChip>
                             ) : (
-                              <Badge variant="outline">Скрыт</Badge>
+                              <StatusChip tone="neutral">Скрыт</StatusChip>
                             )}
                           </div>
                         </TableCell>
