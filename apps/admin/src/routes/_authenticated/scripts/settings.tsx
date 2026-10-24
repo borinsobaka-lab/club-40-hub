@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CountBadge } from "@/components/ui/status-chip";
 import { TableToolbar } from "@/components/table-toolbar";
 import { CallStatsTab } from "@/components/scripts/settings/call-stats";
 import { CopyStatsTab } from "@/components/scripts/settings/copy-stats";
@@ -119,11 +120,7 @@ function SettingsTabs({ canEdit }: { canEdit: boolean }) {
             {tabs.map((t) => (
               <TabsTrigger key={t.key} value={t.key} className="gap-1.5">
                 {t.label}
-                {!!t.badge && (
-                  <span className="rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums">
-                    {t.badge}
-                  </span>
-                )}
+                {!!t.badge && <CountBadge count={t.badge} />}
               </TabsTrigger>
             ))}
           </TabsList>

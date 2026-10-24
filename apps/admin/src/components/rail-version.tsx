@@ -7,7 +7,7 @@ import { ADMIN_VERSION } from "@/lib/app-version";
 export function RailVersion() {
   return (
     <span
-      className="pb-1 text-[10px] leading-none text-white/40 tabular-nums"
+      className="pb-1 text-[11px] leading-none text-white/55 tabular-nums"
       title={`Версия админки ${ADMIN_VERSION}`}
     >
       v{ADMIN_VERSION}

@@ -159,7 +159,7 @@ export function AdminShell({
               <KateChat heightClass="h-dvh md:h-[min(80vh,720px)]" fullscreenOnMobile />
             </Suspense>
             {/* Во весь экран подложки не видно — закрыть окно иначе нечем. */}
-            <DialogPrimitive.Close className="absolute right-2 top-2 z-20 inline-flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden">
+            <DialogPrimitive.Close className="absolute right-2 top-2 z-20 inline-flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden">
               <X className="h-5 w-5" />
               <span className="sr-only">Закрыть</span>
             </DialogPrimitive.Close>

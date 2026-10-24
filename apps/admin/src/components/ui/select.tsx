@@ -4,7 +4,7 @@ import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
-import { useFieldId } from "@/components/ui/field-context";
+import { useFieldAria, useFieldId } from "@/components/ui/field-context";
 import { fieldTriggerClass } from "@/components/ui/field-styles";
 import { cn } from "@/lib/utils";
 
@@ -17,24 +17,29 @@ const SelectValue = SelectPrimitive.Value;
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, id, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    id={useFieldId(id)}
-    data-field=""
-    className={cn(
-      fieldTriggerClass,
-      "data-[placeholder]:text-muted-foreground [&>span]:line-clamp-1",
-      className,
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-));
+>(({ className, children, id, ...props }, ref) => {
+  const fieldId = useFieldId(id);
+  const aria = useFieldAria(fieldId);
+  return (
+    <SelectPrimitive.Trigger
+      ref={ref}
+      id={fieldId}
+      {...aria}
+      data-field=""
+      className={cn(
+        fieldTriggerClass,
+        "data-[placeholder]:text-muted-foreground [&>span]:line-clamp-1",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <SelectPrimitive.Icon asChild>
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </SelectPrimitive.Icon>
+    </SelectPrimitive.Trigger>
+  );
+});
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
 const SelectScrollUpButton = React.forwardRef<

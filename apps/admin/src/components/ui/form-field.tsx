@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
-import { FieldIdContext } from "@/components/ui/field-context";
+import { FieldAriaContext, FieldIdContext } from "@/components/ui/field-context";
 import { FieldHint } from "@/components/ui/field-hint";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -51,28 +51,36 @@ export function FormField({
 }) {
   const autoId = React.useId();
   const id = htmlFor === null ? undefined : (htmlFor ?? autoId);
+  const hintId = hint && id ? `${id}-hint` : undefined;
+  const aria = React.useMemo(() => ({ id, required, describedBy: hintId }), [id, required, hintId]);
   return (
     <FieldIdContext.Provider value={id}>
-      <div className={cn("space-y-2", className)}>
-        {label && (
-          <div className="flex items-center gap-1">
-            <Label htmlFor={id}>
-              {label}
-              {required && (
-                <span aria-hidden="true" className="ml-0.5 text-destructive">
-                  *
-                </span>
-              )}
-              {optional && (
-                <span className="ml-1 font-normal text-muted-foreground">(необязательно)</span>
-              )}
-            </Label>
-            {tip && <FieldHint>{tip}</FieldHint>}
-          </div>
-        )}
-        {children}
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      </div>
+      <FieldAriaContext.Provider value={aria}>
+        <div className={cn("space-y-2", className)}>
+          {label && (
+            <div className="flex items-center gap-1">
+              <Label htmlFor={id}>
+                {label}
+                {required && (
+                  <span aria-hidden="true" className="ml-0.5 text-destructive">
+                    *
+                  </span>
+                )}
+                {optional && (
+                  <span className="ml-1 font-normal text-muted-foreground">(необязательно)</span>
+                )}
+              </Label>
+              {tip && <FieldHint>{tip}</FieldHint>}
+            </div>
+          )}
+          {children}
+          {hint && (
+            <p id={hintId} className="text-xs text-muted-foreground">
+              {hint}
+            </p>
+          )}
+        </div>
+      </FieldAriaContext.Provider>
     </FieldIdContext.Provider>
   );
 }
@@ -81,6 +89,10 @@ export function FormField({
  * Включатель с подписью — строка в рамке, переключатель справа. Вся строка
  * кликабельна (label вокруг Switch). Для да/нет-настроек в формах вместо
  * голых чекбоксов.
+ *
+ * label связан со Switch через htmlFor: без него «подписанным» контролом
+ * становился первый нажимаемый потомок — кнопка «?» подсказки (`tip`), и
+ * клик по тексту строки открывал подсказку вместо переключения.
  */
 export function SwitchRow({
   title,
@@ -100,8 +112,10 @@ export function SwitchRow({
   disabled?: boolean;
   className?: string;
 }) {
+  const switchId = React.useId();
   return (
     <label
+      htmlFor={switchId}
       className={cn(
         "flex cursor-pointer items-center justify-between gap-4 rounded-md border p-3",
         disabled && "cursor-not-allowed opacity-60",
@@ -115,7 +129,12 @@ export function SwitchRow({
         </span>
         {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
       </span>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
+      <Switch
+        id={switchId}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        disabled={disabled}
+      />
     </label>
   );
 }
@@ -154,18 +173,21 @@ export function CheckboxOption({
 
 /**
  * Пояснение внутри формы или над таблицей. muted — справка, итог, подсказка;
- * warning — предупреждение о последствиях; empty — пустой список внутри формы.
+ * info — нейтральное сообщение, которое важно не пропустить (синий
+ * «информационный» палитры статусов); warning — предупреждение о
+ * последствиях; empty — пустой список внутри формы.
  */
 export function InfoNote({
   variant = "muted",
   className,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { variant?: "muted" | "warning" | "empty" }) {
+}: React.HTMLAttributes<HTMLDivElement> & { variant?: "muted" | "info" | "warning" | "empty" }) {
   return (
     <div
       className={cn(
         "rounded-md border p-3 text-xs",
         variant === "muted" && "bg-muted/40 text-muted-foreground",
+        variant === "info" && "border-blue-200 bg-blue-50 text-blue-900",
         variant === "warning" && "border-amber-200 bg-amber-50 text-amber-900",
         variant === "empty" && "border-dashed text-center text-muted-foreground",
         className,

@@ -4,7 +4,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fieldTriggerClass } from "@/components/ui/field-styles";
 import { InputClearButton } from "@/components/ui/search-input";
-import { useFieldId } from "@/components/ui/field-context";
+import { useFieldAria, useFieldId } from "@/components/ui/field-context";
 import {
   Command,
   CommandEmpty,
@@ -54,6 +54,7 @@ export function SearchableCombobox({
   id?: string;
 }) {
   const fieldId = useFieldId(id);
+  const aria = useFieldAria(fieldId);
   const [open, setOpenState] = useState(false);
   // Поле поиска при закрытии очищается (Command размонтируется) — и строку
   // серверного поиска сбрасываем вместе с ним.
@@ -78,6 +79,7 @@ export function SearchableCombobox({
           <button
             type="button"
             id={fieldId}
+            {...aria}
             role="combobox"
             aria-expanded={open}
             disabled={disabled}

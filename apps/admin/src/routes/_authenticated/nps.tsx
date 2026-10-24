@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
+import { CountBadge } from "@/components/ui/status-chip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -429,12 +430,11 @@ function NpsPage() {
               <TabsTrigger value="stats">
                 Статистика
                 {unreadCount > 0 && (
-                  <span
+                  <CountBadge
+                    count={unreadCount}
                     aria-label={`Непрочитанных: ${unreadCount}`}
-                    className="ml-1.5 rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums"
-                  >
-                    {unreadCount}
-                  </span>
+                    className="ml-1.5"
+                  />
                 )}
               </TabsTrigger>
             </TabsList>

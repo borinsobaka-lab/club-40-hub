@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/assistant")({
 
 function AssistantPage() {
   return (
-    <AdminShell title="KATE — AI АССИСТЕНТ">
+    <AdminShell title="Kate — AI ассистент">
       <KateChat />
     </AdminShell>
   );

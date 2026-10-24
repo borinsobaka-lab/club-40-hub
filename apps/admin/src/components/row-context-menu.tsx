@@ -1,4 +1,10 @@
-import { cloneElement, type ComponentType, type MouseEvent, type ReactElement } from "react";
+import {
+  cloneElement,
+  type ComponentType,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactElement,
+} from "react";
 
 import {
   ContextMenu,
@@ -44,6 +50,26 @@ function openMenuOnTap(e: MouseEvent<HTMLElement>) {
 }
 
 /**
+ * С клавиатуры меню строки открывается клавишей меню или Shift+F10 — как
+ * системное контекстное меню. Тем же событием contextmenu, у левого края
+ * строки: Radix ставит меню туда.
+ */
+function openMenuOnKey(e: KeyboardEvent<HTMLElement>) {
+  if (e.defaultPrevented || e.target !== e.currentTarget) return;
+  if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+  e.preventDefault();
+  const rect = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.dispatchEvent(
+    new window.MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: rect.left + 16,
+      clientY: rect.top + rect.height / 2,
+    }),
+  );
+}
+
+/**
  * Контекстное меню строки таблицы (правый клик / долгое нажатие / касание
  * на телефоне).
  *
@@ -57,6 +83,10 @@ function openMenuOnTap(e: MouseEvent<HTMLElement>) {
  * первым, поэтому собственный курсор строки его перебивает: twMerge оставляет
  * последний из конфликтующих.
  *
+ * Строка с действиями попадает в Tab-порядок (видимое кольцо фокуса внутри
+ * строки), меню — клавишей меню или Shift+F10 (`openMenuOnKey`): иначе все
+ * действия со строками были доступны только мышью и касанием.
+ *
  * Если действий нет, компонент отдаёт строку как есть — без курсора и без
  * меню, правый клик тогда работает как обычно в браузере.
  */
@@ -68,6 +98,8 @@ export function RowContextMenu({
   children: ReactElement<{
     className?: string;
     onClick?: (e: MouseEvent<HTMLElement>) => void;
+    onKeyDown?: (e: KeyboardEvent<HTMLElement>) => void;
+    tabIndex?: number;
     "data-row-actions"?: string;
   }>;
 }) {
@@ -77,11 +109,20 @@ export function RowContextMenu({
   // У строки бывает своё действие по клику («Открыть обращение») — тогда
   // касание делает его, а меню остаётся на долгом нажатии.
   const ownClick = children.props.onClick;
+  const ownKeyDown = children.props.onKeyDown;
   const row = cloneElement(children, {
-    className: cn("cursor-pointer", children.props.className),
+    className: cn(
+      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+      children.props.className,
+    ),
     // Метка для «⋯» в углу карточки на телефоне (styles.css).
     "data-row-actions": "",
+    tabIndex: children.props.tabIndex ?? 0,
     onClick: ownClick ?? openMenuOnTap,
+    onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+      ownKeyDown?.(e);
+      openMenuOnKey(e);
+    },
   });
 
   const regular = items.filter((a) => !a.destructive);

@@ -37,7 +37,7 @@ export function StaffAvatar({
   const src = useStorageUrl("avatars", value);
   return (
     <Avatar className={className}>
-      {src && <AvatarImage src={src} alt={name} className="object-cover" />}
+      {src && <AvatarImage src={src} alt={name} />}
       <AvatarFallback>{initials(name)}</AvatarFallback>
     </Avatar>
   );

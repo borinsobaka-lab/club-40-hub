@@ -32,6 +32,7 @@ import { useActiveStudio, useStudios } from "@/hooks/use-studios";
 import { MenuSkeleton } from "@/components/skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CountBadge } from "@/components/ui/status-chip";
 import { useStorageUrl } from "@/lib/storage";
 import type { StudioFormat } from "@/lib/studio-formats";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -388,11 +389,7 @@ export function AppSidebar() {
                                   <item.icon active={itemActive(item)} className="size-[18px]" />
                                 </span>
                                 <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                                {!!item.badge && (
-                                  <span className="rounded-full bg-brand px-1.5 text-xs font-semibold text-white tabular-nums">
-                                    {item.badge}
-                                  </span>
-                                )}
+                                {!!item.badge && <CountBadge count={item.badge} />}
                               </Link>
                             </SidebarMenuButton>
                           </SidebarMenuItem>

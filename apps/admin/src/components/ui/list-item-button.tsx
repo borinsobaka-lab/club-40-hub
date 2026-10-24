@@ -22,10 +22,13 @@ const ListItemButton = React.forwardRef<
   <button
     ref={ref}
     type={type ?? "button"}
+    aria-current={active ? "true" : undefined}
     className={cn(
       "flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
       variant === "outline" && "border border-input bg-background",
-      active && "bg-muted font-semibold",
+      // Текущий пункт темнее наведения (bg-accent = bg-muted): иначе их
+      // различал только вес шрифта.
+      active && "bg-foreground/[0.07] font-semibold hover:bg-foreground/[0.07]",
       className,
     )}
     {...props}

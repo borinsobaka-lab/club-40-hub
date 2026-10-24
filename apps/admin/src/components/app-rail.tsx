@@ -13,6 +13,7 @@ import { canOpenRail } from "@/lib/admin-access";
 import { cn } from "@/lib/utils";
 import { RailSkeleton } from "@/components/skeletons";
 import { RailAccount } from "@/components/rail-account";
+import { CountBadge } from "@/components/ui/status-chip";
 
 function RailItem({
   section,
@@ -43,12 +44,11 @@ function RailItem({
       >
         <section.icon active={active} className="size-5" />
         {!!badge && (
-          <span
-            aria-label={`Новых заявок: ${badge}`}
-            className="absolute -top-1.5 -right-2.5 min-w-4 rounded-full bg-brand px-1 text-center text-[10px] leading-4 font-semibold text-white tabular-nums"
-          >
-            {badge}
-          </span>
+          <CountBadge
+            count={badge}
+            aria-hidden
+            className="absolute -top-2 -right-3 min-w-4 px-1 leading-4 ring-2 ring-rail"
+          />
         )}
       </span>
       <span
@@ -79,7 +79,8 @@ function RailItem({
     <Link
       to={section.url}
       title={section.fullTitle}
-      aria-label={section.fullTitle}
+      // Счётчик внутри ссылки aria-label глушит — число добавляем сюда.
+      aria-label={badge ? `${section.fullTitle}, новых заявок: ${badge}` : section.fullTitle}
       aria-current={active ? "page" : undefined}
       className={cn(itemClass, "group/rail")}
       onClick={onNavigate}
