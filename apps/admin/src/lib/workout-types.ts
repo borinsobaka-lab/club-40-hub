@@ -7,36 +7,39 @@ export const DAY_TYPES: { value: DayType; label: string }[] = [
   { value: "recovery", label: "Восстановление" },
 ];
 
+// Заливка карточки занятия — оттенок 700: белый текст на 500-х давал
+// 2,5–4,2:1 (зелёный хуже всех), на 700-х — от 5,5:1. Точка и hex (полоска,
+// графики) — прежние 500-е: это не фон под текстом.
 export const DAY_TYPE_COLORS: Record<
   DayType,
   { dot: string; bg: string; text: string; border: string; hex: string }
 > = {
   strength: {
     dot: "bg-blue-500",
-    bg: "bg-blue-500",
+    bg: "bg-blue-700",
     text: "text-white",
-    border: "border-blue-600",
+    border: "border-blue-800",
     hex: "#3b82f6",
   },
   cardio: {
     dot: "bg-red-500",
-    bg: "bg-red-500",
+    bg: "bg-red-700",
     text: "text-white",
-    border: "border-red-600",
+    border: "border-red-800",
     hex: "#ef4444",
   },
   hybrid: {
     dot: "bg-violet-500",
-    bg: "bg-violet-500",
+    bg: "bg-violet-700",
     text: "text-white",
-    border: "border-violet-600",
+    border: "border-violet-800",
     hex: "#8b5cf6",
   },
   recovery: {
     dot: "bg-emerald-500",
-    bg: "bg-emerald-500",
+    bg: "bg-emerald-700",
     text: "text-white",
-    border: "border-emerald-600",
+    border: "border-emerald-800",
     hex: "#10b981",
   },
 };

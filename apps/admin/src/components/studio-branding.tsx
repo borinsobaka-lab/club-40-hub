@@ -2,7 +2,11 @@ import { useEffect } from "react";
 
 import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
+import { readableOn, textOnTint } from "@/lib/color-contrast";
 import { rememberStudioFormat } from "@/lib/page-skeleton-layout";
+
+/** Фон меню (`--sidebar` в styles.css). */
+const SIDEBAR_HEX = "#1a2027";
 
 /**
  * Живёт в layout админки, ничего не рисует:
@@ -33,11 +37,28 @@ export function StudioBranding() {
   useEffect(() => {
     if (!color) return;
     const root = document.documentElement;
-    root.style.setProperty("--brand", color);
+    const vars = brandVars(color);
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     return () => {
-      root.style.removeProperty("--brand");
+      for (const k of Object.keys(vars)) root.style.removeProperty(k);
     };
   }, [color]);
 
   return null;
+}
+
+/**
+ * Цвет клуба выбирает владелец, поэтому производные считаем от него: значок
+ * активного пункта на тёмном меню (≥ 3:1), «сегодня» текстом на белом
+ * (≥ 4.5:1) и текст на заливке цветом клуба — белый или тёмный, что
+ * читается. Без этого тёмно-красный бренд терялся в меню, а белая цифра на
+ * светлом бренде пропадала.
+ */
+function brandVars(color: string): Record<string, string> {
+  return {
+    "--brand": color,
+    "--brand-on-dark": readableOn(color, SIDEBAR_HEX),
+    "--brand-on-light": readableOn(color, "#ffffff", 4.5),
+    "--brand-foreground": textOnTint(color, 1) === "light" ? "#ffffff" : "var(--foreground)",
+  };
 }

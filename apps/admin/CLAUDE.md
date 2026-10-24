@@ -23,7 +23,9 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
   вкладка «Приложение» карточки клиента —
   `lib/client-app.test.ts`; версия админки — `lib/app-version.test.ts`;
   подробные отчёты плиток дашборда — `lib/dashboard-details.test.ts`;
-  файл переноса из 1С — `lib/import-1c.test.ts`; Kate — инструменты,
+  файл переноса из 1С — `lib/import-1c.test.ts`; контраст цвета клуба —
+  `lib/color-contrast.test.ts`, телефон в таблицах — `lib/format-phone.test.ts`;
+  Kate — инструменты,
   права, история и промпт `lib/assistant/*.test.ts`).
 - `bun run version:bump` — повысить версию админки (`ADMIN_VERSION` в
   `src/lib/app-version.ts`: 1.0 → 1.1 … 1.99 → 2.0; из корня —
@@ -140,7 +142,9 @@ GoTrue и видит только хук писем — в браузер он �
   генератор округляет до сотых — минус треть файла).
 - Цвета: основной цвет — токен `--brand` (`text-brand`, `border-b-brand`);
   в styles.css — розовый по умолчанию, при открытой студии его подменяет
-  `studios.brand_color` (`components/studio-branding.tsx`),
+  `studios.brand_color` (`components/studio-branding.tsx`; там же
+  производные для контраста — `--brand-on-dark` / `--brand-on-light` /
+  `--brand-foreground`, правило — `.interface-design/system.md`, «Цвет»),
   подложка рабочей области — `--canvas`, меню — `--sidebar`; всё в
   `src/styles.css`. `--primary` (тёмные кнопки, активный таб) — тот же цвет,
   что меню. Табы (`ui/tabs.tsx`) — общая плашка, переезжающая к активному

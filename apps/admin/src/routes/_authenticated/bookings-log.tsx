@@ -38,7 +38,7 @@ import { useCrmLinks } from "@/hooks/use-crm-links";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { BOOKING_STATUS_FILTER, BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatPhone } from "@/lib/format";
 import { BookingsLogPageSkeleton } from "@/components/page-skeletons";
 
 export const Route = createFileRoute("/_authenticated/bookings-log")({
@@ -188,7 +188,7 @@ function BookingsLogPage() {
               placeholder="Поиск: имя, телефон, почта, тренировка"
             />
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger aria-label="Статус записи" className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -275,7 +275,7 @@ function BookingsLogPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          <div>{r.client_phone ?? "—"}</div>
+                          <div>{formatPhone(r.client_phone) || "—"}</div>
                           <div className="text-xs">{r.client_email ?? "—"}</div>
                         </TableCell>
                         <TableCell>

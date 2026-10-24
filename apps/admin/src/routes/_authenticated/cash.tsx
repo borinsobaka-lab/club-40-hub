@@ -286,7 +286,7 @@ function CashPage() {
                   <TableHead tip={TIPS.category} {...sort.head("category")}>
                     Категория
                   </TableHead>
-                  <TableHead tip={TIPS.amount} {...sort.head("amount")}>
+                  <TableHead className="text-right" tip={TIPS.amount} {...sort.head("amount")}>
                     Сумма
                   </TableHead>
                   <TableHead tip={TIPS.operator}>Сотрудник</TableHead>
@@ -324,8 +324,8 @@ function CashPage() {
                       <TableCell className="text-sm">{categoryLabel(o.category)}</TableCell>
                       <TableCell
                         className={
-                          "whitespace-nowrap font-medium tabular-nums " +
-                          (o.kind === "income" ? "text-emerald-600" : "text-rose-600")
+                          "whitespace-nowrap text-right font-medium tabular-nums " +
+                          (o.kind === "income" ? "text-emerald-700" : "text-rose-600")
                         }
                       >
                         {o.kind === "income" ? "+" : "−"}

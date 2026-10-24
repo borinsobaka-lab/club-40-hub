@@ -293,7 +293,7 @@ function ClientsPage() {
               placeholder="Поиск по имени, телефону, email"
             />
             <Select value={goalFilter} onValueChange={setGoalFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger aria-label="Цель клиента" className="w-48">
                 <SelectValue placeholder="Цель клиента" />
               </SelectTrigger>
               <SelectContent>
@@ -305,7 +305,7 @@ function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger aria-label="Статус клиента" className="w-48">
                 <SelectValue placeholder="Статус" />
               </SelectTrigger>
               <SelectContent>

@@ -23,14 +23,16 @@ export const FieldAriaContext = createContext<{
   id?: string;
   required?: boolean;
   describedBy?: string;
+  invalid?: boolean;
 }>({});
 
-/** aria-required / aria-describedby для контрола с id `fieldId`. */
+/** aria-required / aria-describedby / aria-invalid для контрола с id `fieldId`. */
 export function useFieldAria(fieldId: string | undefined) {
   const ctx = useContext(FieldAriaContext);
   if (!fieldId || ctx.id !== fieldId) return {};
   return {
     "aria-required": ctx.required || undefined,
     "aria-describedby": ctx.describedBy,
+    "aria-invalid": ctx.invalid || undefined,
   };
 }

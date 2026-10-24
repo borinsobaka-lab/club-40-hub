@@ -50,6 +50,7 @@ import {
   ClipboardList as ClipboardListArt,
   Copy as CopyArt,
   CreditCard as CreditCardArt,
+  Database as DatabaseArt,
   Download as DownloadArt,
   Ellipsis as EllipsisArt,
   ExternalLink as ExternalLinkArt,
@@ -156,6 +157,7 @@ export const Circle = icon(CircleArt, "Circle");
 export const ClipboardList = icon(ClipboardListArt, "ClipboardList");
 export const Copy = icon(CopyArt, "Copy");
 export const CreditCard = icon(CreditCardArt, "CreditCard");
+export const Database = icon(DatabaseArt, "Database");
 export const Download = icon(DownloadArt, "Download");
 export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");

@@ -24,6 +24,7 @@ export function FormField({
   tip,
   optional,
   required,
+  error,
   htmlFor,
   className,
   children,
@@ -44,6 +45,12 @@ export function FormField({
    * обработчик сохранения.
    */
   required?: boolean;
+  /**
+   * Ошибка поля — красным под полем, у контрола красная рамка и
+   * aria-invalid. Показывать рядом с полем, а не только тостом: тост
+   * исчезает и не говорит, какое поле поправить.
+   */
+  error?: React.ReactNode;
   /** Свой id контрола; null — не связывать подпись (несколько контролов). */
   htmlFor?: string | null;
   className?: string;
@@ -52,7 +59,13 @@ export function FormField({
   const autoId = React.useId();
   const id = htmlFor === null ? undefined : (htmlFor ?? autoId);
   const hintId = hint && id ? `${id}-hint` : undefined;
-  const aria = React.useMemo(() => ({ id, required, describedBy: hintId }), [id, required, hintId]);
+  const errorId = error && id ? `${id}-error` : undefined;
+  const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
+  const invalid = Boolean(error);
+  const aria = React.useMemo(
+    () => ({ id, required, describedBy, invalid }),
+    [id, required, describedBy, invalid],
+  );
   return (
     <FieldIdContext.Provider value={id}>
       <FieldAriaContext.Provider value={aria}>
@@ -74,6 +87,11 @@ export function FormField({
             </div>
           )}
           {children}
+          {error && (
+            <p id={errorId} role="alert" className="text-xs text-destructive">
+              {error}
+            </p>
+          )}
           {hint && (
             <p id={hintId} className="text-xs text-muted-foreground">
               {hint}

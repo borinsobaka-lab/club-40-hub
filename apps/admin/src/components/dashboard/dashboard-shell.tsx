@@ -108,6 +108,7 @@ export function DashboardShell({
           <DashboardFilterField {...DASHBOARD_FILTERS.period}>
             <DateRangeFilter
               placeholder="Выберите период"
+              showLabel={false}
               value={filters.range}
               onChange={setRange}
               className="w-full"

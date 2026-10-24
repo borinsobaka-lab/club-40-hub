@@ -22,7 +22,7 @@ import { unwrap } from "@/lib/query";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { cn } from "@/lib/utils";
 import { StatTile } from "@/components/ui/stat-tile";
-import { clientName } from "@/lib/format";
+import { clientName, formatPhone } from "@/lib/format";
 import { GOAL_LABELS } from "@/lib/client-profile";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -296,7 +296,7 @@ function RequestsPage() {
               <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
             )}
             <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger aria-label="Статус заявки" className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -306,7 +306,7 @@ function RequestsPage() {
               </SelectContent>
             </Select>
             <Select value={kind} onValueChange={(v) => setKind(v as "all" | ClientRequestKind)}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger aria-label="Вид заявки" className="w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -412,7 +412,9 @@ function RequestsPage() {
                             )}
                             {(i.client?.phone || i.client?.email) && (
                               <div className="text-xs text-muted-foreground">
-                                {[i.client?.phone, i.client?.email].filter(Boolean).join(" · ")}
+                                {[formatPhone(i.client?.phone), i.client?.email]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                               </div>
                             )}
                           </TableCell>

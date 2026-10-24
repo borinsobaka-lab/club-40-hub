@@ -39,7 +39,7 @@ import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
 import { CommentCell } from "@/components/comment-cell";
 import { commentSaver } from "@/lib/comment-saver";
 import { TableSkeletonRows } from "@/components/skeletons";
-import { clientName, formatMoney, formatDate } from "@/lib/format";
+import { clientName, formatMoney, formatDate, formatPhone } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -260,10 +260,14 @@ function SalesPage() {
                   <TableHead tip={TIPS.promo} {...sort.head("promo")}>
                     Промо-код
                   </TableHead>
-                  <TableHead tip={TIPS.amount} {...sort.head("amount")}>
+                  <TableHead className="text-right" tip={TIPS.amount} {...sort.head("amount")}>
                     Сумма
                   </TableHead>
-                  <TableHead tip={TIPS.downPayment} {...sort.head("downPayment")}>
+                  <TableHead
+                    className="text-right"
+                    tip={TIPS.downPayment}
+                    {...sort.head("downPayment")}
+                  >
                     Первый взнос
                   </TableHead>
                   <TableHead tip={TIPS.installments} {...sort.head("installments")}>
@@ -321,7 +325,7 @@ function SalesPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            <div>{s.clients?.phone ?? "—"}</div>
+                            <div>{formatPhone(s.clients?.phone) || "—"}</div>
                             <div className="text-xs">{s.clients?.email ?? "—"}</div>
                           </TableCell>
                           <TableCell className="tabular-nums">{formatDate(s.sold_at)}</TableCell>
@@ -347,10 +351,10 @@ function SalesPage() {
                           <TableCell className="text-sm text-muted-foreground">
                             {s.promo_code ?? "—"}
                           </TableCell>
-                          <TableCell className="font-medium tabular-nums">
+                          <TableCell className="text-right font-medium tabular-nums">
                             {formatMoney(Number(s.total_amount))}
                           </TableCell>
-                          <TableCell className="tabular-nums">
+                          <TableCell className="text-right tabular-nums">
                             {s.remaining_installments > 0
                               ? formatMoney(Number(s.down_payment_amount))
                               : "—"}

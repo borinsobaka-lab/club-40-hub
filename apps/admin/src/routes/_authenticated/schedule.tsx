@@ -13,6 +13,7 @@ import {
   Undo2,
   Check,
   UserMinus,
+  UserPlus,
   X,
   Maximize,
   Minimize,
@@ -880,7 +881,10 @@ function SchedulePage() {
               </Button>
               {!packages && (
                 <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
+                  <SelectTrigger
+                    aria-label="Тип тренировки"
+                    className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
+                  >
                     <SelectValue placeholder="Все типы" />
                   </SelectTrigger>
                   <SelectContent>
@@ -904,7 +908,10 @@ function SchedulePage() {
                 <KindFilter value={kindFilter} onChange={setKindFilter} />
               )}
               <Select value={workoutFilter} onValueChange={setFilterWorkoutId}>
-                <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
+                <SelectTrigger
+                  aria-label="Тренировка"
+                  className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
+                >
                   {/* Пакетные клубы: тренировка — «Направление» (2026-10-13). */}
                   <SelectValue>
                     {packages && workoutFilter === ALL_FILTER_VALUE ? "Направление" : undefined}
@@ -922,7 +929,10 @@ function SchedulePage() {
                 </SelectContent>
               </Select>
               <Select value={filterTrainerId} onValueChange={setFilterTrainerId}>
-                <SelectTrigger className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
+                <SelectTrigger
+                  aria-label="Сотрудник"
+                  className="w-48 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
+                >
                   <SelectValue placeholder="Все сотрудники" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1032,7 +1042,7 @@ function SchedulePage() {
                       className={cn(
                         "flex flex-col items-center rounded-md py-1.5 text-xs transition-colors",
                         selected ? "bg-primary text-primary-foreground" : "hover:bg-muted",
-                        today && !selected && "text-brand",
+                        today && !selected && "text-brand-on-light",
                       )}
                     >
                       <span
@@ -1173,7 +1183,7 @@ function SchedulePage() {
                                 aria-label={`${copySource ? "Вставить" : "Добавить"} занятие: ${DAY_NAMES[di]}, ${pad(hour)}:00`}
                                 onClick={() => openSlot(day, hour)}
                                 className={cn(
-                                  "absolute inset-0 transition",
+                                  "absolute inset-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                                   packages ? "hover:bg-black/5" : "hover:bg-accent/40",
                                 )}
                               />
@@ -1526,7 +1536,11 @@ function NewcomersBadge({ entry }: { entry: Entry }) {
       title={`Новеньких: ${n} — до занятия не было абонементов, кроме пробного`}
       className="tabular-nums"
     >
+      {/* Значок — чтобы «3» рядом с «5/12» не читалась загадкой без подсказки
+          (на тач-экране title не всплывает). */}
+      <UserPlus aria-hidden />
       {n}
+      <span className="sr-only"> новеньких</span>
     </StatusChip>
   );
 }
@@ -1647,7 +1661,7 @@ function EntryCard({
             aria-label="Копировать занятие"
             title="Копировать занятие"
             onClick={onCopy}
-            className="absolute bottom-1 right-1.5 rounded-full bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="absolute bottom-1 right-1.5 rounded-full bg-muted p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground after:absolute after:-inset-1.5 after:rounded-full"
           >
             <Copy className="h-3 w-3" />
           </button>
@@ -1675,7 +1689,7 @@ function EntryCard({
       >
         <span className="flex w-full items-start justify-between gap-1">
           <span
-            className={cn("whitespace-nowrap", clean ? "font-semibold tabular-nums" : "opacity-80")}
+            className={cn("whitespace-nowrap", clean ? "font-semibold tabular-nums" : "opacity-90")}
           >
             {fmtTime(entry.starts_at)}–{fmtTime(entry.ends_at)}
           </span>
@@ -1697,7 +1711,7 @@ function EntryCard({
         </span>
         {/* pr-5 — место под «Копировать» в углу. */}
         {names && (
-          <span className={cn("block truncate opacity-80", clean ? "font-medium" : "pr-5")}>
+          <span className={cn("block truncate opacity-90", clean ? "font-medium" : "pr-5")}>
             {names}
           </span>
         )}
@@ -1709,7 +1723,7 @@ function EntryCard({
           aria-label="Копировать занятие"
           title="Копировать занятие"
           onClick={onCopy}
-          className="absolute bottom-1 right-2 rounded-full bg-black/25 p-0.5 text-white hover:bg-black/40"
+          className="absolute bottom-1 right-2 rounded-full bg-black/25 p-0.5 text-white hover:bg-black/40 after:absolute after:-inset-1.5 after:rounded-full"
         >
           <Copy className="h-3 w-3" />
         </button>
@@ -2578,8 +2592,10 @@ function EntryForm({
               disabled={busy}
             />
           )}
+          {/* У открытого занятия — «Закрыть»: рядом «Действия» с «Отменить
+              тренировку», два «отменить» в одном подвале путались. */}
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Отмена
+            {entry ? "Закрыть" : "Отмена"}
           </Button>
           <Button type="submit" disabled={busy}>
             {saving && <Loader2 className="animate-spin" />}
@@ -3485,7 +3501,7 @@ function BookingsPanel({
                       </div>
                     )}
                     {uncovered && (
-                      <div className="text-xs text-rose-600/80">
+                      <div className="text-xs text-rose-700">
                         {noBalance
                           ? "Чтобы отметить посещение, сначала оформите продажу"
                           : "На это занятие абонемента не хватит: остаток уйдёт на более ранние записи"}

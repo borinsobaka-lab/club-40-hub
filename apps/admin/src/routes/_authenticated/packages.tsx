@@ -385,7 +385,7 @@ function PackagesPage() {
                   <TableHead tip={TIPS.duration} {...sort.head("duration")}>
                     Срок действия
                   </TableHead>
-                  <TableHead tip={TIPS.price} {...sort.head("price")}>
+                  <TableHead className="text-right" tip={TIPS.price} {...sort.head("price")}>
                     Стоимость
                   </TableHead>
                   <TableHead tip={TIPS.payments} {...sort.head("payments")}>
@@ -468,7 +468,7 @@ function PackagesPage() {
                         <TableCell className="tabular-nums">
                           {formatDuration(p.duration_days)}
                         </TableCell>
-                        <TableCell className="font-medium tabular-nums">
+                        <TableCell className="text-right font-medium tabular-nums">
                           {formatMoney(Number(p.price))}
                         </TableCell>
                         <TableCell className="tabular-nums">
