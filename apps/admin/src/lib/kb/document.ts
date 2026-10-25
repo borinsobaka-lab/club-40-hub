@@ -132,3 +132,35 @@ export function documentIsEmpty(doc: unknown[] | null | undefined): boolean {
     });
   return walk((Array.isArray(doc) ? doc : []) as Block[]);
 }
+
+// `kbfile:<путь>` — и целым полем блока, и внутри строки-JSON (у галереи
+// картинки — строка `[{"url":"kbfile:…"}]`).
+const FILE_RE = /kbfile:([A-Za-z0-9._/-]+)/g;
+
+/** Пути всех своих файлов документа (в любом поле блока), без повторов. */
+export function documentFilePaths(doc: unknown): string[] {
+  const out = new Set<string>();
+  const walk = (v: unknown) => {
+    if (typeof v === "string") for (const m of v.matchAll(FILE_RE)) out.add(m[1]);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  walk(doc);
+  return [...out];
+}
+
+/** Документ с заменой путей файлов (`kbfile:<старый>` → `kbfile:<новый>`). */
+export function replaceDocumentFiles<T>(doc: T, paths: Map<string, string>): T {
+  const walk = (v: unknown): unknown => {
+    if (typeof v === "string")
+      return v.replace(FILE_RE, (all, path: string) => {
+        const to = paths.get(path);
+        return to ? `kbfile:${to}` : all;
+      });
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object")
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(doc) as T;
+}

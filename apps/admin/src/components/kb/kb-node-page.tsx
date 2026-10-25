@@ -1093,7 +1093,6 @@ function ArticleView({
           )}
           {dialog === "template" && (
             <KbSaveTemplateForm
-              baseId={baseId}
               content={(draft?.content ?? published ?? []) as unknown[]}
               defaultTitle={node.title}
               onDone={() => setDialog(null)}

@@ -256,10 +256,9 @@ export function useKbRevisionContents(ids: string[]) {
   });
 }
 
-/** Шаблон статьи базы (kb_templates), без текста. */
+/** Шаблон статьи (kb_templates), без текста. Шаблоны общие для всех баз. */
 export type KbTemplate = {
   id: string;
-  base_id: string;
   title: string;
   description: string;
   created_by: string | null;
@@ -269,19 +268,18 @@ export type KbTemplate = {
 
 export const KB_TEMPLATES_KEY = "kb_templates";
 
-/** Шаблоны базы — редакторам (RLS). */
-export function useKbTemplates(baseId: string | null, enabled = true) {
+/** Все шаблоны — редакторам любой базы и владельцам (RLS). */
+export function useKbTemplates(enabled = true) {
   return useQuery({
-    queryKey: [KB_TEMPLATES_KEY, baseId],
+    queryKey: [KB_TEMPLATES_KEY],
     queryFn: () =>
       unwrap<KbTemplate[]>(
         supabase
           .from("kb_templates")
-          .select("id, base_id, title, description, created_by, updated_by, updated_at")
-          .eq("base_id", baseId!)
+          .select("id, title, description, created_by, updated_by, updated_at")
           .order("title"),
       ),
-    enabled: !!baseId && enabled,
+    enabled,
     meta: { errorMessage: "Не удалось загрузить шаблоны" },
   });
 }

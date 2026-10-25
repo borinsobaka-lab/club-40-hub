@@ -1,7 +1,7 @@
 /**
  * Очистка корзины базы знаний — фоновый цикл сервера админки (раз в час,
  * сервис-ключ). Истёкшее (30 дней) — kb_trash_purge_due; файлы статей,
- * удалённых навсегда, и удалённых баз — из очереди kb_file_purge: Storage
+ * удалённых навсегда, удалённых баз и шаблонов — из очереди kb_file_purge: Storage
  * удаляет файлы только своим API (строки storage.objects без файлов на
  * диске остались бы мусором). Ошибка — в лог, следующий проход повторит.
  */
@@ -49,12 +49,19 @@ export async function runKbTrashPurge(): Promise<void> {
 
     const { data: queue, error } = await admin
       .from("kb_file_purge")
-      .select("id, base_id, node_id")
+      .select("id, base_id, node_id, folder")
       .order("id")
       .limit(BATCH);
     if (error) throw new Error(error.message);
-    for (const row of (queue ?? []) as { id: number; base_id: string; node_id: string | null }[]) {
-      const prefix = row.node_id ? `${row.base_id}/${row.node_id}` : row.base_id;
+    for (const row of (queue ?? []) as {
+      id: number;
+      base_id: string | null;
+      node_id: string | null;
+      folder: string | null;
+    }[]) {
+      // Папка шаблона (templates/<id>) — своей строкой, у статьи и базы — base_id.
+      const prefix = row.folder ?? (row.node_id ? `${row.base_id}/${row.node_id}` : row.base_id);
+      if (!prefix) continue;
       const files = await listFiles(prefix);
       for (let i = 0; i < files.length; i += 100) {
         const { error: removeError } = await admin.storage

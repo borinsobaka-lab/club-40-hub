@@ -94,10 +94,7 @@ export function KbNodeTitleForm({
   const [description, setDescription] = useState(node?.description ?? "");
   const [icon, setIcon] = useState(node?.icon ?? KB_SECTION_DEFAULT_ICON);
   const [templateId, setTemplateId] = useState(place?.templateId ?? NO_TEMPLATE);
-  const { data: templates } = useKbTemplates(
-    place?.baseId ?? null,
-    !node && kind === "article" && !!place?.baseId,
-  );
+  const { data: templates } = useKbTemplates(!node && kind === "article" && !!place?.baseId);
   const template = templates?.find((t) => t.id === templateId);
   const [saving, setSaving] = useState(false);
   const isFolder = kind === "folder";

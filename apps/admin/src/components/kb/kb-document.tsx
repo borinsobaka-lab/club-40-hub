@@ -70,6 +70,7 @@ import {
   KbFileTooLarge,
   resolveKbDownloadUrl,
   resolveKbFileUrl,
+  kbArticleFolder,
   uploadKbFile,
 } from "@/lib/kb/files";
 import { documentHeadings, type KbHeading } from "@/lib/kb/document";
@@ -1031,9 +1032,12 @@ export function KbDocument({
   onPickHeading,
   onReady,
   checks,
+  filesFolder,
 }: {
   baseId: string;
   nodeId: string;
+  /** Куда грузить новые файлы; по умолчанию — папка статьи (у шаблона — kbTemplateFolder). */
+  filesFolder?: string;
   /** Документ BlockNote (массив блоков); null или пусто — пустая статья. */
   initial: unknown[] | null;
   editable: boolean;
@@ -1071,8 +1075,7 @@ export function KbDocument({
       try {
         // Прогресс — по блоку: его показывает панель файла или галерея.
         return await uploadKbFile(
-          baseId,
-          nodeId,
+          filesFolder ?? kbArticleFolder(baseId, nodeId),
           file,
           blockId ? (share) => setUploadProgress(blockId, share) : undefined,
         );
@@ -1087,7 +1090,7 @@ export function KbDocument({
         if (blockId) setUploadProgress(blockId, null);
       }
     },
-    [baseId, nodeId],
+    [baseId, nodeId, filesFolder],
   );
 
   const editor = useCreateBlockNote(
