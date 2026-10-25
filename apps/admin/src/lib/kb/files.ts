@@ -69,3 +69,13 @@ export async function resolveKbFileUrl(url: string): Promise<string> {
   cache.set(path, { url: data.signedUrl, expires: Date.now() + SIGNED_TTL_S * 1000 });
   return data.signedUrl;
 }
+
+/** Ссылка «Скачать»: браузер сохранит файл под его именем, а не откроет. */
+export async function resolveKbDownloadUrl(url: string, name: string): Promise<string> {
+  if (!isKbFile(url)) return url;
+  const { data, error } = await supabase.storage
+    .from(KB_BUCKET)
+    .createSignedUrl(kbFilePath(url), SIGNED_TTL_S, { download: name });
+  if (error || !data) throw new Error(error?.message ?? "Файл недоступен");
+  return data.signedUrl;
+}

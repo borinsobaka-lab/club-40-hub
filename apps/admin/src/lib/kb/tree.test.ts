@@ -90,3 +90,11 @@ describe("дерево базы знаний", () => {
     expect(childrenOf(i, null).map((x) => x.id)).toEqual(["LS"]);
   });
 });
+
+test("счётчик читателя — без черновиков и архива", () => {
+  const hiddenDraft = { ...n("draft", "admin"), status: "draft" as const, reader_visible: false };
+  const i = indexTree([...nodes, hiddenDraft]);
+  expect(articleCount(i, "LS")).toBe(3);
+  expect(articleCount(i, "LS", true)).toBe(2);
+  expect(articleCount(i, null, true)).toBe(3);
+});

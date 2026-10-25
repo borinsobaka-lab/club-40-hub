@@ -331,8 +331,9 @@ describe.skipIf(!url)("база знаний (база)", () => {
       expect(await failure(tx, () => tx`select * from kb_base_audience(${t.b})`)).toContain(
         "permission denied",
       );
+      // Аудитория — читатель и редактор (владелец не в счёт): 1 из 2.
       expect(report[0].readers_count).toBe(1);
-      expect(report[0].access_count as number).toBeGreaterThanOrEqual(3);
+      expect(report[0].access_count).toBe(2);
 
       await tx`insert into kb_nodes (base_id, kind, title) values (${t.b}, 'article', 'Своя')`;
       const authors = (await tx`select * from kb_authors(${t.b})`) as Row[];
@@ -344,6 +345,17 @@ describe.skipIf(!url)("база знаний (база)", () => {
       expect(readers.find((r) => r.user_id === t.reader)?.read_count).toBe(1);
       expect(readers.find((r) => r.user_id === t.editor)?.read_count).toBe(0);
       expect(readers.some((r) => r.user_id === t.stranger)).toBe(false);
+      expect(readers.some((r) => r.user_id === t.owner)).toBe(false);
+
+      // Кто правил статью — её автор, а не читатель: из аудитории выпадает,
+      // его собственные открытия в отчёт не идут.
+      await tx`select kb_save_draft(${t.pub}, ${JSON.stringify(doc("правка"))}::text::jsonb, null)`;
+      await tx`select kb_mark_read(${t.pub})`;
+      const [after] = (await tx`select * from kb_report(${t.b}) where id = ${t.pub}`) as Row[];
+      expect(after.access_count).toBe(1);
+      expect(after.readers_count).toBe(1);
+      const left = (await tx`select * from kb_article_readers(${t.pub})`) as Row[];
+      expect(left.map((r) => r.user_id)).toEqual([t.reader]);
       await asServer(tx);
     }));
 

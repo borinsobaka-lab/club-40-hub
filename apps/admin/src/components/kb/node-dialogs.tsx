@@ -4,11 +4,19 @@ import { toast } from "sonner";
 
 import { DocumentText, Folder, Notebook } from "@/components/nav-icons";
 import { SearchInput } from "@/components/ui/search-input";
+import { KbStatusBadge } from "@/components/kb/kb-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
 import { ListItemButton } from "@/components/ui/list-item-button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DialogBody,
   DialogDescription,
@@ -20,19 +28,50 @@ import {
 import { ancestorsOf, childrenOf, indexTree, isWithin } from "@/lib/kb/tree";
 import type { KbKind, KbTreeNode } from "@/lib/kb/types";
 
-/** Новая папка или статья (название), правка названия и описания папки. */
+/** Папки дерева по порядку с глубиной — для выбора «куда»; `skip` — без этой ветки. */
+function folderOptions(nodes: KbTreeNode[], skip?: string): { node: KbTreeNode; depth: number }[] {
+  const index = indexTree(nodes);
+  const out: { node: KbTreeNode; depth: number }[] = [];
+  const walk = (parent: string | null, depth: number) => {
+    for (const n of childrenOf(index, parent)) {
+      if (n.kind !== "folder" || (skip && isWithin(index, n.id, skip))) continue;
+      out.push({ node: n, depth });
+      walk(n.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return out;
+}
+
+const ROOT = "__root__";
+
+/**
+ * Новая папка или статья (название и где создать), правка названия и
+ * описания папки. «Где создать» видно всегда: кнопки «Папка» / «Статья» в
+ * меню и на странице папки создают в разных местах — окно показывает, где
+ * именно, и даёт поменять.
+ */
 export function KbNodeTitleForm({
   kind,
   node,
+  place,
   onSave,
   onDone,
 }: {
   kind: KbKind;
   /** null — новая. */
   node: KbTreeNode | null;
-  onSave: (title: string, description: string) => Promise<boolean | string | null>;
+  /** Для новой: дерево базы и папка по умолчанию (null — верхний уровень). */
+  place?: { nodes: KbTreeNode[]; baseTitle: string; parentId: string | null };
+  onSave: (
+    title: string,
+    description: string,
+    parentId: string | null,
+  ) => Promise<boolean | string | null>;
   onDone: () => void;
 }) {
+  const [parentId, setParentId] = useState<string | null>(place?.parentId ?? null);
+  const folders = useMemo(() => (place ? folderOptions(place.nodes) : []), [place]);
   const [title, setTitle] = useState(node?.title ?? "");
   const [description, setDescription] = useState(node?.description ?? "");
   const [saving, setSaving] = useState(false);
@@ -46,7 +85,7 @@ export function KbNodeTitleForm({
     }
     setSaving(true);
     try {
-      if (await onSave(t, description.trim())) onDone();
+      if (await onSave(t, description.trim(), parentId)) onDone();
     } finally {
       setSaving(false);
     }
@@ -73,6 +112,35 @@ export function KbNodeTitleForm({
       <DialogForm onSubmit={save}>
         <DialogBody>
           <div className="space-y-4">
+            {place && !node && (
+              <FormField
+                label="Где создать"
+                tip="Папка, в которой появится новая папка или статья. Потом её можно перенести перетаскиванием в меню."
+              >
+                <Select
+                  value={parentId ?? ROOT}
+                  onValueChange={(v) => setParentId(v === ROOT ? null : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ROOT}>{place.baseTitle} — верхний уровень</SelectItem>
+                    {folders.map(({ node: f, depth }) => (
+                      <SelectItem key={f.id} value={f.id} textValue={f.title}>
+                        <span
+                          style={{ paddingLeft: depth * 14 }}
+                          className="flex items-center gap-2"
+                        >
+                          <Folder className="size-4 text-muted-foreground" />
+                          {f.title || "Без названия"}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
             <FormField label="Название" required>
               <Input
                 autoFocus
@@ -132,15 +200,7 @@ export function KbMoveForm({
   const [saving, setSaving] = useState(false);
 
   // Папки дерева с отступом по глубине, без самого узла и его вложенных.
-  const folders: { node: KbTreeNode; depth: number }[] = [];
-  const walk = (parent: string | null, depth: number) => {
-    for (const n of childrenOf(index, parent)) {
-      if (n.kind !== "folder" || isWithin(index, n.id, node.id)) continue;
-      folders.push({ node: n, depth });
-      walk(n.id, depth + 1);
-    }
-  };
-  walk(null, 0);
+  const folders = folderOptions(nodes, node.id);
 
   const save = async () => {
     if (target === node.parent_id) {
@@ -221,6 +281,8 @@ export function KbArticlePickerForm({
   const articles = nodes
     .filter((n) => n.kind === "article" && n.id !== excludeId && n.status !== "archived")
     .filter((n) => !term || n.title.toLowerCase().includes(term))
+    // Опубликованные — первыми: ссылку на черновик читатель не откроет.
+    .sort((a, b) => Number(!a.reader_visible) - Number(!b.reader_visible))
     .slice(0, 50);
 
   return (
@@ -228,7 +290,8 @@ export function KbArticlePickerForm({
       <DialogHeader>
         <DialogTitle>Ссылка на статью</DialogTitle>
         <DialogDescription>
-          Ссылка встанет на место курсора. Переименование статьи её не сломает.
+          Ссылка встанет на место курсора. Переименование статьи её не сломает. Статью-черновик
+          читатели по ссылке не откроют, пока её не опубликуют.
         </DialogDescription>
       </DialogHeader>
       <DialogBody>
@@ -244,8 +307,16 @@ export function KbArticlePickerForm({
                   onClick={() => onPick({ title: a.title, href: `/kb/${baseId}/${a.id}` })}
                 >
                   <DocumentText className="text-muted-foreground" />
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{a.title || "Без названия"}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate font-medium">{a.title || "Без названия"}</span>
+                      {!a.reader_visible && (
+                        <KbStatusBadge
+                          status={a.status === "published" ? "draft" : a.status}
+                          size="sm"
+                        />
+                      )}
+                    </span>
                     <span className="block truncate text-xs text-muted-foreground">
                       {ancestorsOf(index, a.id)
                         .map((p) => p.title)

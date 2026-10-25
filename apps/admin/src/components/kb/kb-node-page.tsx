@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin-shell";
 import { DocumentText, Folder } from "@/components/nav-icons";
 import { KbArticleBodySkeleton, KbFolderBodySkeleton } from "@/components/page-skeletons";
+import { KbBaseForm } from "@/components/kb/base-dialog";
 import { KbArticlePickerForm, KbMoveForm, KbNodeTitleForm } from "@/components/kb/node-dialogs";
 import { KbDraftBadge, KbStatusBadge } from "@/components/kb/kb-status-badge";
 import { useDraftAutosave, type AutosaveState } from "@/components/kb/use-draft-autosave";
@@ -56,7 +57,7 @@ import {
   readerNodes,
   type KbTreeIndex,
 } from "@/lib/kb/tree";
-import type { KbTreeNode } from "@/lib/kb/types";
+import type { KbBase, KbTreeNode } from "@/lib/kb/types";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { KbArticleLink } from "@/components/kb/kb-document";
@@ -146,12 +147,34 @@ export function KbNodePage({
       baseTitle={title}
       baseDescription={base?.description ?? ""}
       baseIcon={base?.icon ?? null}
+      base={access?.isOwner ? base : undefined}
       folder={node ?? null}
       nodes={nodes}
       index={index}
       canEdit={canEdit}
     />
   );
+}
+
+/**
+ * Сколько статей видят читатели; редактору — ещё и сколько не опубликовано
+ * (замечание тестирования: черновики попадали в счётчик).
+ */
+function ArticleCounter({
+  index,
+  folderId,
+  canEdit,
+  long,
+}: {
+  index: KbTreeIndex;
+  folderId: string | null;
+  canEdit: boolean;
+  long?: boolean;
+}) {
+  const visible = articleCount(index, folderId, true);
+  const hidden = canEdit ? articleCount(index, folderId) - visible : 0;
+  const tail = hidden > 0 ? ` + ${hidden} не опубл.` : "";
+  return <>{long ? `Опубликовано статей: ${visible}${tail}` : `${visible} ст.${tail}`}</>;
 }
 
 function Crumbs({
@@ -197,6 +220,7 @@ function FolderView({
   baseTitle,
   baseDescription,
   baseIcon,
+  base,
   folder,
   nodes,
   index,
@@ -206,6 +230,8 @@ function FolderView({
   baseTitle: string;
   baseDescription: string;
   baseIcon: string | null;
+  /** Есть — владельцу на главной базы «Настройки базы» (название, иконка, рейка). */
+  base?: KbBase;
   folder: KbTreeNode | null;
   nodes: KbTreeNode[];
   index: KbTreeIndex;
@@ -214,7 +240,9 @@ function FolderView({
   const actions = useKbActions(baseId);
   const { data: drafts } = useKbDrafts(baseId, canEdit);
   const draftIds = new Set((drafts ?? []).map((d) => d.node_id));
-  const [dialog, setDialog] = useState<"article" | "folder" | "rename" | "move" | null>(null);
+  const [dialog, setDialog] = useState<"article" | "folder" | "rename" | "move" | "base" | null>(
+    null,
+  );
   const items = childrenOf(index, folder?.id ?? null);
   const Icon = folder ? Folder : kbIcon(baseIcon);
   const description = folder ? folder.description : baseDescription;
@@ -266,7 +294,7 @@ function FolderView({
             )}
             {!folder && (
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Статей: {articleCount(index, null)}
+                <ArticleCounter index={index} folderId={null} canEdit={canEdit} long />
               </p>
             )}
           </div>
@@ -278,6 +306,18 @@ function FolderView({
               onRename={() => setDialog("rename")}
               onMove={() => setDialog("move")}
             />
+          )}
+          {!folder && base && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              aria-label="Настройки базы"
+              title="Настройки базы: название, описание, иконка, рейка"
+              onClick={() => setDialog("base")}
+            >
+              <Pencil />
+            </Button>
           )}
         </header>
 
@@ -316,11 +356,13 @@ function FolderView({
                     <KbDraftBadge size="sm" />
                   )}
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {n.kind === "folder"
-                      ? `${articleCount(index, n.id)} ст.`
-                      : n.published_at
-                        ? formatDate(n.published_at)
-                        : ""}
+                    {n.kind === "folder" ? (
+                      <ArticleCounter index={index} folderId={n.id} canEdit={canEdit} />
+                    ) : n.published_at ? (
+                      formatDate(n.published_at)
+                    ) : (
+                      ""
+                    )}
                   </span>
                 </Link>
               </li>
@@ -335,7 +377,8 @@ function FolderView({
             <KbNodeTitleForm
               kind={dialog}
               node={null}
-              onSave={(t, d) => actions.create(dialog, folder?.id ?? null, t, d)}
+              place={{ nodes, baseTitle, parentId: folder?.id ?? null }}
+              onSave={(t, d, p) => actions.create(dialog, p, t, d)}
               onDone={() => setDialog(null)}
             />
           )}
@@ -347,6 +390,7 @@ function FolderView({
               onDone={() => setDialog(null)}
             />
           )}
+          {dialog === "base" && base && <KbBaseForm base={base} onDone={() => setDialog(null)} />}
           {dialog === "move" && folder && (
             <KbMoveForm
               node={folder}
@@ -539,7 +583,18 @@ function ArticleView({
     toast.success("Правки отменены");
   };
 
+  // Публикация — только через подтверждение: «Опубликовать» не должно
+  // срабатывать от случайного (двойного) нажатия.
   const publish = async (flush: () => Promise<boolean>) => {
+    const ok = await confirm({
+      title: node.published_at ? "Опубликовать правки?" : "Опубликовать статью?",
+      description: node.published_at
+        ? `Читатели сразу увидят новый текст «${node.title || "Без названия"}».`
+        : `Статья «${node.title || "Без названия"}» появится у всех, у кого есть доступ к базе.`,
+      destructive: false,
+      confirmLabel: "Опубликовать",
+    });
+    if (!ok) return;
     setPublishing(true);
     try {
       if (!(await flush())) {
@@ -556,6 +611,19 @@ function ArticleView({
       await invalidateKb(qc, baseId);
       setEditing(false);
       toast.success("Опубликовано — читатели видят новый текст");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  // «Закрыть редактор»: правки уже в черновике — читатели их не видят.
+  const closeEditor = async (flush: () => Promise<boolean>, saved: boolean) => {
+    setPublishing(true);
+    try {
+      await flush();
+      setEditing(false);
+      if (saved || draft)
+        toast.info("Правки сохранены черновиком. Читатели увидят их после «Опубликовать».");
     } finally {
       setPublishing(false);
     }
@@ -578,13 +646,18 @@ function ArticleView({
       editing={editing}
       nodeId={node.id}
       expected={draft?.updated_at ?? null}
-      publishing={publishing}
       onStartEdit={canEdit ? () => void startEdit() : undefined}
-      onDone={() => setEditing(false)}
-      onPublish={publish}
       render={(autosave) => (
-        <div className="mx-auto flex max-w-6xl gap-8">
+        <div className="mx-auto flex max-w-6xl gap-8 pb-24">
           <article className="min-w-0 max-w-3xl flex-1">
+            {editing && (
+              <EditBar
+                autosave={autosave}
+                publishing={publishing}
+                onClose={() => void closeEditor(autosave.flush, !!autosave.savedAt)}
+                onPublish={() => void publish(autosave.flush)}
+              />
+            )}
             <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={node.id} />
             <div className="rounded-lg border bg-background px-5 py-5 sm:px-10 sm:py-8">
               <header className="flex items-start gap-3">
@@ -610,7 +683,6 @@ function ArticleView({
                     ) : (
                       <span>Ещё не опубликована</span>
                     )}
-                    {editing && <AutosaveLabel state={autosave.state} savedAt={autosave.savedAt} />}
                   </div>
                 </div>
                 {canEdit && (
@@ -625,21 +697,37 @@ function ArticleView({
                 )}
               </header>
 
-              {canEdit && !editing && hasDraft && node.status === "published" && (
+              {canEdit && !editing && (hasDraft || node.status !== "published") && (
                 <InfoNote
-                  variant="info"
+                  variant={node.status === "archived" ? "muted" : "info"}
                   className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm"
                 >
                   <span>
-                    Есть неопубликованные правки
-                    {draft?.updated_by
-                      ? ` — ${name(draft.updated_by)}, ${formatDateTime(draft.updated_at)}`
-                      : ""}
-                    . Читатели видят текст ниже.
+                    {node.status === "archived"
+                      ? "Статья в архиве — читатели её не видят."
+                      : node.status === "draft"
+                        ? "Черновик — читатели его не видят, пока вы не опубликуете."
+                        : `Есть неопубликованные правки${
+                            draft?.updated_by
+                              ? ` — ${name(draft.updated_by)}, ${formatDateTime(draft.updated_at)}`
+                              : ""
+                          }. Читатели видят прежний текст.`}
                   </span>
-                  <Button size="sm" variant="outline" onClick={() => void startEdit()}>
-                    Продолжить правку
-                  </Button>
+                  <span className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => void startEdit()}>
+                      {hasDraft ? "Продолжить правку" : "Редактировать"}
+                    </Button>
+                    {node.status !== "archived" && (
+                      <Button
+                        size="sm"
+                        disabled={publishing}
+                        onClick={() => void publish(async () => true)}
+                      >
+                        <Send />
+                        Опубликовать…
+                      </Button>
+                    )}
+                  </span>
                 </InfoNote>
               )}
               {autosave.state === "conflict" && (
@@ -753,19 +841,17 @@ function ArticleView({
 }
 
 /**
- * Шапка страницы статьи и плавающие кнопки: «Редактировать» — или, в режиме
- * правки, «Готово» и «Опубликовать». Здесь же живёт автосохранение: оно
- * заводится заново на каждое открытие редактора (метка черновика — его).
+ * Шапка страницы статьи: в режиме чтения — плавающая «Редактировать», в
+ * режиме правки плавающих кнопок нет (панель правки — сверху статьи,
+ * `EditBar`). Здесь же живёт автосохранение: оно заводится заново на каждое
+ * открытие редактора (метка черновика — его).
  */
 function EditorShell({
   title,
   editing,
   nodeId,
   expected,
-  publishing,
   onStartEdit,
-  onDone,
-  onPublish,
   render,
   children,
 }: {
@@ -773,43 +859,17 @@ function EditorShell({
   editing: boolean;
   nodeId: string;
   expected: string | null;
-  publishing: boolean;
   onStartEdit?: () => void;
-  onDone: () => void;
-  onPublish: (flush: () => Promise<boolean>) => void;
   render: (autosave: ReturnType<typeof useDraftAutosave>) => React.ReactNode;
   /** Окна и подтверждения страницы. */
   children?: React.ReactNode;
 }) {
   const autosave = useDraftAutosave(nodeId, expected);
-  const busy = autosave.state === "saving" || autosave.state === "pending";
-
   return (
     <AdminShell
       title={title}
       actions={
-        editing ? (
-          <>
-            <Button
-              variant="outline"
-              disabled={publishing}
-              onClick={async () => {
-                await autosave.flush();
-                onDone();
-              }}
-            >
-              <Check />
-              Готово
-            </Button>
-            <Button
-              disabled={publishing || autosave.state === "conflict"}
-              onClick={() => onPublish(autosave.flush)}
-            >
-              {publishing || busy ? <Loader2 className="animate-spin" /> : <Send />}
-              Опубликовать
-            </Button>
-          </>
-        ) : onStartEdit ? (
+        !editing && onStartEdit ? (
           <Button onClick={onStartEdit}>
             <Pencil />
             Редактировать
@@ -823,27 +883,89 @@ function EditorShell({
   );
 }
 
+/**
+ * Панель правки — закреплена сверху статьи, пока идёт правка: что
+ * происходит с правками и два разных действия. «Закрыть редактор» оставляет
+ * правки черновиком (читатели их не видят), «Опубликовать…» — с
+ * подтверждением. Раньше «Готово» и «Опубликовать» плавали внизу рядом и
+ * путались (замечание тестирования 2026-10-25).
+ */
+function EditBar({
+  autosave,
+  publishing,
+  onClose,
+  onPublish,
+}: {
+  autosave: ReturnType<typeof useDraftAutosave>;
+  publishing: boolean;
+  onClose: () => void;
+  onPublish: () => void;
+}) {
+  return (
+    <div className="sticky top-0 z-30 mb-3 flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 shadow-sm sm:px-3">
+      <div className="min-w-0 basis-full text-sm sm:basis-0 sm:flex-1">
+        <span className="font-medium">Редактирование</span>
+        <span className="block text-xs text-muted-foreground">
+          <AutosaveLabel state={autosave.state} savedAt={autosave.savedAt} />
+        </span>
+      </div>
+      <Button
+        variant="outline"
+        className="flex-1 sm:flex-none"
+        disabled={publishing}
+        onClick={onClose}
+      >
+        Закрыть редактор
+      </Button>
+      <Button
+        className="flex-1 sm:flex-none"
+        disabled={publishing || autosave.state === "conflict"}
+        onClick={onPublish}
+      >
+        {publishing ? <Loader2 className="animate-spin" /> : <Send />}
+        Опубликовать…
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Что с правками: «Сохраняем…» — только если сохранение идёт дольше
+ * полсекунды (иначе крутилка мигала бы на каждом слове), в остальное
+ * время — когда сохранён черновик.
+ */
 function AutosaveLabel({ state, savedAt }: { state: AutosaveState; savedAt: Date | null }) {
-  if (state === "pending" || state === "saving")
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (state !== "saving") {
+      setSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setSlow(true), 500);
+    return () => clearTimeout(t);
+  }, [state]);
+
+  if (state === "saving" && slow)
     return (
       <span className="inline-flex items-center gap-1">
-        <Loader2 className="size-3.5 animate-spin" /> Сохраняем…
+        <Loader2 className="size-3 animate-spin" /> Сохраняем черновик…
       </span>
     );
   if (state === "error")
     return (
       <span className="inline-flex items-center gap-1 text-destructive">
-        <CloudOff className="size-3.5" /> Нет связи — правки сохранятся, когда она вернётся
+        <CloudOff className="size-3" /> Нет связи — правки сохранятся, когда она вернётся
       </span>
     );
-  if (state === "saved" && savedAt)
+  if (savedAt)
     return (
-      <span className="inline-flex items-center gap-1">
-        <Check className="size-3.5" /> Черновик сохранён в{" "}
-        {savedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+      <span>
+        Черновик сохранён в{" "}
+        {savedAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} — читатели
+        увидят правки после «Опубликовать»
       </span>
     );
-  return <span>Правки сохраняются сами — читатели их увидят после «Опубликовать»</span>;
+  return <span>Правки сохраняются сами черновиком — читатели увидят их после «Опубликовать»</span>;
 }
 
 /** Название статьи в режиме правки: крупное поле, сохраняется при уходе из поля. */

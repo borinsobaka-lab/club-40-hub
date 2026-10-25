@@ -340,7 +340,9 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
               variant="ghost"
               size="sm"
               className="flex-1 text-white hover:bg-white/10 hover:text-white"
-              onClick={() => setDialog({ kind: "create", nodeKind: "folder", parentId: null })}
+              onClick={() =>
+                setDialog({ kind: "create", nodeKind: "folder", parentId: scopeFolder?.id ?? null })
+              }
             >
               <FolderPlus />
               Папка
@@ -349,7 +351,13 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
               variant="ghost"
               size="sm"
               className="flex-1 text-white hover:bg-white/10 hover:text-white"
-              onClick={() => setDialog({ kind: "create", nodeKind: "article", parentId: null })}
+              onClick={() =>
+                setDialog({
+                  kind: "create",
+                  nodeKind: "article",
+                  parentId: scopeFolder?.id ?? null,
+                })
+              }
             >
               <FilePlus />
               Статья
@@ -378,14 +386,10 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
             <KbNodeTitleForm
               kind={dialog.nodeKind}
               node={null}
-              onSave={async (title, description) => {
-                const id = await actions.create(
-                  dialog.nodeKind,
-                  dialog.parentId,
-                  title,
-                  description,
-                );
-                if (id && dialog.parentId) folders.toggle(dialog.parentId, true);
+              place={{ nodes, baseTitle: base?.title ?? "База", parentId: dialog.parentId }}
+              onSave={async (title, description, parentId) => {
+                const id = await actions.create(dialog.nodeKind, parentId, title, description);
+                if (id && parentId) folders.toggle(parentId, true);
                 if (id) onNavigate();
                 return id;
               }}
