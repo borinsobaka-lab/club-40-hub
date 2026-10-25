@@ -8,6 +8,7 @@
  * по первой папке Storage проверяет доступ к базе.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/integrations/supabase/env";
 
 export const KB_BUCKET = "kb-media";
 export const KB_FILE_PREFIX = "kbfile:";
@@ -40,20 +41,56 @@ function storageName(file: File): string {
 
 export class KbFileTooLarge extends Error {}
 
-/** Загрузить файл статьи; вернуть ссылку для документа (`kbfile:…`). */
-export async function uploadKbFile(baseId: string, nodeId: string, file: File): Promise<string> {
+/**
+ * Загрузить файл статьи; вернуть ссылку для документа (`kbfile:…`).
+ * `onProgress` — доля отправленного (0…1): видео до 50 МБ грузится заметно
+ * долго, без полосы казалось, что всё зависло. supabase-js прогресс не
+ * отдаёт (fetch), поэтому тот же запрос к Storage — через XMLHttpRequest.
+ */
+export async function uploadKbFile(
+  baseId: string,
+  nodeId: string,
+  file: File,
+  onProgress?: (share: number) => void,
+): Promise<string> {
   if (file.size > KB_MAX_FILE_BYTES) {
     throw new KbFileTooLarge(
       `Файл «${file.name}» — ${formatFileSize(file.size)}, а можно до ${formatFileSize(KB_MAX_FILE_BYTES)}. Сожмите его или разделите.`,
     );
   }
   const path = `${baseId}/${nodeId}/${storageName(file)}`;
-  const { error } = await supabase.storage.from(KB_BUCKET).upload(path, file, {
-    contentType: file.type || undefined,
-    upsert: false,
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token ?? SUPABASE_ANON_KEY;
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${SUPABASE_URL}/storage/v1/object/${KB_BUCKET}/${path}`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.setRequestHeader("apikey", SUPABASE_ANON_KEY);
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.setRequestHeader("Cache-Control", "max-age=3600");
+    xhr.setRequestHeader("x-upsert", "false");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) return resolve();
+      reject(new Error(storageError(xhr)));
+    };
+    xhr.onerror = () => reject(new Error("нет связи с сервером"));
+    xhr.send(file);
   });
-  if (error) throw new Error(error.message);
   return `${KB_FILE_PREFIX}${path}`;
+}
+
+/** Текст ошибки Storage из ответа ({message} / {error}) или код. */
+function storageError(xhr: XMLHttpRequest): string {
+  if (xhr.status === 413) return "файл больше, чем разрешено";
+  try {
+    const body = JSON.parse(xhr.responseText) as { message?: string; error?: string };
+    return body.message || body.error || `ошибка ${xhr.status}`;
+  } catch {
+    return `ошибка ${xhr.status}`;
+  }
 }
 
 /** Адрес для показа: у своих файлов — подписанная ссылка на час. */

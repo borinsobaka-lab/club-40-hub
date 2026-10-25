@@ -58,6 +58,7 @@ import {
   Database as DatabaseArt,
   Download as DownloadArt,
   Ellipsis as EllipsisArt,
+  Eraser as EraserArt,
   ExternalLink as ExternalLinkArt,
   Eye as EyeArt,
   FilePlus as FilePlusArt,
@@ -67,6 +68,7 @@ import {
   FolderTransferIcon as FolderInputArt,
   FolderPlus as FolderPlusArt,
   DragDropVerticalIcon as GripVerticalArt,
+  Hash as HashArt,
   Heading2 as Heading2Art,
   HelpCircleIcon as HelpCircleArt,
   ImageIcon as ImageIconArt,
@@ -176,6 +178,7 @@ export const CreditCard = icon(CreditCardArt, "CreditCard");
 export const Database = icon(DatabaseArt, "Database");
 export const Download = icon(DownloadArt, "Download");
 export const Ellipsis = icon(EllipsisArt, "Ellipsis");
+export const Eraser = icon(EraserArt, "Eraser");
 export const ExternalLink = icon(ExternalLinkArt, "ExternalLink");
 export const Eye = icon(EyeArt, "Eye");
 export const FilePlus = icon(FilePlusArt, "FilePlus");
@@ -185,6 +188,7 @@ export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
 export const FolderInput = icon(FolderInputArt, "FolderInput");
 export const FolderPlus = icon(FolderPlusArt, "FolderPlus");
 export const GripVertical = icon(GripVerticalArt, "GripVertical");
+export const Hash = icon(HashArt, "Hash");
 export const Heading2 = icon(Heading2Art, "Heading2");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");

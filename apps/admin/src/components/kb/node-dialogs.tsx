@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Hash, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { DocumentText, Folder, Notebook } from "@/components/nav-icons";
@@ -27,7 +27,9 @@ import {
 } from "@/components/ui/dialog";
 import { KB_SECTION_DEFAULT_ICON, KB_SECTION_ICONS, kbSectionIcon } from "@/lib/kb/icons";
 import { ancestorsOf, childrenOf, indexTree, isWithin } from "@/lib/kb/tree";
+import type { KbHeading } from "@/lib/kb/document";
 import type { KbKind, KbTreeNode } from "@/lib/kb/types";
+import { cn } from "@/lib/utils";
 
 /** Папки дерева по порядку с глубиной — для выбора «куда»; `skip` — без этой ветки. */
 function folderOptions(nodes: KbTreeNode[], skip?: string): { node: KbTreeNode; depth: number }[] {
@@ -381,6 +383,45 @@ export function KbArticlePickerForm({
           Отмена
         </Button>
       </DialogFooter>
+    </>
+  );
+}
+
+/**
+ * «Ссылка на заголовок» — раздел этой же статьи. Ссылка — `#<id блока>`:
+ * id заголовка не меняется при правке текста, так что ссылка не ломается.
+ */
+export function KbHeadingPickerForm({
+  headings,
+  onPick,
+}: {
+  headings: KbHeading[];
+  onPick: (link: { title: string; href: string } | null) => void;
+}) {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Ссылка на заголовок</DialogTitle>
+        <DialogDescription>
+          Ссылка встанет на место курсора; по ней читатель перейдёт к этому разделу статьи.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <div className="space-y-0.5">
+          {headings.map((h) => (
+            <ListItemButton
+              key={h.id}
+              onClick={() => onPick({ title: h.text, href: `#${h.id}` })}
+              style={{ paddingLeft: 12 + (Math.min(h.level, 3) - 1) * 16 }}
+            >
+              <Hash className="text-muted-foreground" />
+              <span className={cn("min-w-0 truncate", h.level === 1 && "font-medium")}>
+                {h.text}
+              </span>
+            </ListItemButton>
+          ))}
+        </div>
+      </DialogBody>
     </>
   );
 }
