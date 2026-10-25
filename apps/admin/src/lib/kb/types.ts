@@ -10,6 +10,8 @@ export type KbBase = {
   sort_order: number;
   /** Защита содержимого статей базы по умолчанию (запрет копирования, водяной знак). */
   protect_content: boolean;
+  /** Фирменный цвет базы (#rrggbb); null — цвет клуба. */
+  brand_color: string | null;
 };
 
 /** База с уровнем доступа вошедшего. */
@@ -32,6 +34,10 @@ export type KbTreeNode = {
   icon: string | null;
   /** Защита содержимого статьи: как в базе / включена / выключена. */
   protect: KbProtect;
+  /** Оценка статьи в её конце (три смайлика). */
+  feedback_enabled: boolean;
+  /** «Предыдущая / Следующая» в конце статьи. */
+  pager_enabled: boolean;
   sort_order: number;
   status: KbStatus;
   reader_visible: boolean;
