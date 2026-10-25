@@ -762,6 +762,76 @@ describe.skipIf(!url)("база знаний (база)", () => {
       expect(await tx`select 1 from kb_ratings where node_id = ${copy}`).toHaveLength(0);
     }));
 
+  test("теги: свои у базы, ставит редактор, читатель видит теги видимого, поиск и корзина", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.editor);
+      // «#» и лишние пробелы срезаются; регистр не делает новый тег.
+      const [{ id: cash, name }] = await tx`insert into kb_tags (base_id, name) values (${t.b}, '  #Касса   смены ') returning id, name`;
+      expect(name).toBe("Касса смены");
+      expect(
+        await failure(tx, () => tx`insert into kb_tags (base_id, name) values (${t.b}, 'касса СМЕНЫ')`),
+      ).toContain("kb_tags_base_name_key");
+      expect(await failure(tx, () => tx`insert into kb_tags (base_id, name) values (${t.b}, ' # ')`)).toContain(
+        "kb_tag_empty",
+      );
+      const [{ id: hidden }] = await tx`insert into kb_tags (base_id, name) values (${t.b}, 'Скрытое') returning id`;
+      await tx`insert into kb_node_tags (node_id, tag_id) values (${t.pub}, ${cash})`;
+      await tx`insert into kb_node_tags (node_id, tag_id) values (${t.draft}, ${hidden})`;
+      // Только статьи; тег — той же базы.
+      expect(
+        await failure(tx, () => tx`insert into kb_node_tags (node_id, tag_id) values (${t.folder}, ${cash})`),
+      ).toContain("kb_tag_not_article");
+      await asServer(tx);
+      const other = await base(tx, "Другая");
+      const [{ id: foreign }] = await tx`insert into kb_tags (base_id, name) values (${other}, 'Чужой') returning id`;
+      await as(tx, t.editor);
+      expect(
+        await failure(tx, () => tx`insert into kb_node_tags (node_id, tag_id) values (${t.pub}, ${foreign})`),
+      ).toContain("kb_tag_other_base");
+
+      // Читатель: видит теги базы, но на статьях — только у видимых; ставить не может.
+      await as(tx, t.reader);
+      expect((await tx`select name from kb_tags where base_id = ${t.b} order by name`).map((r: Row) => r.name)).toEqual([
+        "Касса смены",
+        "Скрытое",
+      ]);
+      expect((await tx`select node_id from kb_node_tags`).map((r: Row) => r.node_id)).toEqual([t.pub]);
+      expect(
+        await failure(tx, () => tx`insert into kb_node_tags (node_id, tag_id) values (${t.pub}, ${hidden})`),
+      ).toContain("row-level security");
+      expect(await failure(tx, () => tx`insert into kb_tags (base_id, name) values (${t.b}, 'Мой')`)).toContain(
+        "row-level security",
+      );
+      await as(tx, t.stranger);
+      expect(await tx`select id from kb_tags`).toHaveLength(0);
+
+      // Поиск: «#касса» и «касса смены» находят статью по тегу, хотя в тексте этого нет.
+      await asServer(tx);
+      const plain = await node(tx, t.b, { parent: t.folder, title: "Без тега", text: "про другое" });
+      await as(tx, t.reader);
+      const byTag = (await tx`select id from kb_search('#касса', ${t.b})`).map((r: Row) => r.id);
+      expect(byTag).toEqual([t.pub]);
+      expect((await tx`select id from kb_search('касса смены', ${t.b})`).map((r: Row) => r.id)).toContain(t.pub);
+      expect((await tx`select id from kb_search('скрытое', ${t.b})`).map((r: Row) => r.id)).toEqual([]);
+      expect((await tx`select id from kb_search('другое', ${t.b})`).map((r: Row) => r.id)).toEqual([plain]);
+
+      // Корзина: удалили статью — теги ушли с ней, вернули — теги на месте.
+      await as(tx, t.editor);
+      const [{ id: trashId }] = await tx`select kb_trash_node(${t.pub}) as id`;
+      await asServer(tx);
+      expect(await tx`select 1 from kb_node_tags where node_id = ${t.pub}`).toHaveLength(0);
+      await as(tx, t.editor);
+      await tx`select kb_trash_restore(${trashId})`;
+      await asServer(tx);
+      expect((await tx`select tag_id from kb_node_tags where node_id = ${t.pub}`).map((r: Row) => r.tag_id)).toEqual([
+        cash,
+      ]);
+      // Удалили тег — снят со всех статей.
+      await tx`delete from kb_tags where id = ${cash}`;
+      expect(await tx`select 1 from kb_node_tags where node_id = ${t.pub}`).toHaveLength(0);
+    }));
+
   test("цвет базы: #rrggbb или пусто; ставит владелец", () =>
     scenario(async (tx) => {
       const t = await setup(tx);
