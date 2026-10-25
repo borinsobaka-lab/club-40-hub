@@ -246,7 +246,8 @@ function BaseHomeLists({ baseId, index }: { baseId: string; index: KbTreeIndex }
     <div className="grid gap-3 md:grid-cols-3">
       {blocks.map((b) => (
         <section key={b.title} className="min-w-0 rounded-lg border bg-background p-3">
-          <h3 className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold">
+          {/* Заголовок отделён от списка линией во всю ширину плашки (решение владельца 2026-10-25). */}
+          <h3 className="-mx-3 mb-2 flex items-center gap-1.5 border-b px-4 pb-2.5 text-sm font-semibold">
             <b.icon className="size-4 text-muted-foreground" />
             {b.title}
           </h3>
