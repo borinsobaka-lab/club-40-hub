@@ -74,7 +74,11 @@ export function KbBaseTabs() {
                 router.preloadRoute({ to: "/kb/$baseId", params: { baseId: b.id } }).catch(() => {})
               }
             >
-              <Icon active={b.id === baseId} className="size-4 shrink-0" />
+              {/* Иконка открытой базы — её цвет (--brand внутри базы — цвет базы). */}
+              <Icon
+                active={b.id === baseId}
+                className={cn("size-4 shrink-0", b.id === baseId && "text-brand-on-dark")}
+              />
               {b.rail_title || b.title}
             </TabsTrigger>
           );

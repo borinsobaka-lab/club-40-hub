@@ -86,7 +86,18 @@ export function useKbActions(baseId: string) {
   const update = useCallback(
     async (
       id: string,
-      patch: Partial<Pick<KbTreeNode, "title" | "description" | "icon" | "protect" | "status">>,
+      patch: Partial<
+        Pick<
+          KbTreeNode,
+          | "title"
+          | "description"
+          | "icon"
+          | "protect"
+          | "status"
+          | "feedback_enabled"
+          | "pager_enabled"
+        >
+      >,
     ) => {
       const { error } = await supabase.from("kb_nodes").update(patch).eq("id", id);
       if (error) {

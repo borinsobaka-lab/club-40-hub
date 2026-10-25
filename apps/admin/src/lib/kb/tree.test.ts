@@ -4,6 +4,7 @@ import {
   ancestorsOf,
   applyMove,
   articleCount,
+  articleNeighbors,
   childrenOf,
   dropPlacement,
   indexTree,
@@ -98,4 +99,21 @@ test("счётчик читателя — без черновиков и арх�
   expect(articleCount(i, "LS")).toBe(3);
   expect(articleCount(i, "LS", true)).toBe(2);
   expect(articleCount(i, null, true)).toBe(3);
+});
+
+describe("articleNeighbors", () => {
+  test("по порядку дерева через папки, без архива", () => {
+    const idx = indexTree(nodes);
+    expect(articleNeighbors(idx, "open")).toMatchObject({ prev: null, next: { id: "close" } });
+    expect(articleNeighbors(idx, "close")).toMatchObject({
+      prev: { id: "open" },
+      next: { id: "office" },
+    });
+    expect(articleNeighbors(idx, "office")).toMatchObject({ prev: { id: "close" }, next: null });
+    const archived = nodes.map((x) =>
+      x.id === "close" ? { ...x, status: "archived" as const } : x,
+    );
+    expect(articleNeighbors(indexTree(archived), "open").next?.id).toBe("office");
+    expect(articleNeighbors(idx, "nope")).toEqual({ prev: null, next: null });
+  });
 });

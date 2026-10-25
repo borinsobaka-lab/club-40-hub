@@ -133,3 +133,26 @@ export function applyMove(
       : n,
   );
 }
+
+/**
+ * Соседи статьи для «Предыдущая / Следующая» внизу статьи: статьи базы по
+ * порядку дерева (папки — вглубь, как в меню), без архива. `nodes` — уже
+ * то, что видит этот человек (читателю — readerNodes).
+ */
+export function articleNeighbors(
+  index: KbTreeIndex,
+  articleId: string,
+): { prev: KbTreeNode | null; next: KbTreeNode | null } {
+  const order: KbTreeNode[] = [];
+  const walk = (parentId: string | null) => {
+    for (const n of childrenOf(index, parentId)) {
+      if (n.status === "archived") continue;
+      if (n.kind === "article") order.push(n);
+      else walk(n.id);
+    }
+  };
+  walk(null);
+  const at = order.findIndex((n) => n.id === articleId);
+  if (at < 0) return { prev: null, next: null };
+  return { prev: order[at - 1] ?? null, next: order[at + 1] ?? null };
+}

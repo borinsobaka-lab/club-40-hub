@@ -21,7 +21,7 @@ export const KB_NODE_KEY = "kb_node";
 export const KB_DRAFTS_KEY = "kb_drafts";
 
 const TREE_COLUMNS =
-  "id, base_id, parent_id, kind, title, description, icon, protect, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
+  "id, base_id, parent_id, kind, title, description, icon, protect, feedback_enabled, pager_enabled, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
 
 /** Доступные базы — для вкладок в шапке и прав; заранее грузит проверка входа. */
 export const kbBasesQuery = queryOptions({
@@ -30,7 +30,9 @@ export const kbBasesQuery = queryOptions({
     unwrap<KbBase[]>(
       supabase
         .from("kb_bases")
-        .select("id, title, rail_title, icon, description, sort_order, protect_content")
+        .select(
+          "id, title, rail_title, icon, description, sort_order, protect_content, brand_color",
+        )
         .order("sort_order")
         .order("created_at"),
     ),
