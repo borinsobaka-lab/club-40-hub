@@ -359,6 +359,97 @@ describe.skipIf(!url)("база знаний (база)", () => {
       await asServer(tx);
     }));
 
+  test("учёт чтения: время, прокрутка, версия, дни, поиск и аналитика", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      // Статья опубликована редактором — у неё есть версия (published_at).
+      await as(tx, t.editor);
+      await tx`select kb_save_draft(${t.pub}, ${JSON.stringify(doc("Версия 1"))}::text::jsonb, null)`;
+      await tx`select kb_publish(${t.pub})`;
+
+      await as(tx, t.reader);
+      await tx`select kb_mark_read(${t.pub})`;
+      await tx`select kb_mark_read(${t.pub})`; // повтор в течение 30 минут не считается
+      await tx`select kb_track_reading(${t.pub}, 500, 95)`; // больше 60 секунд за раз не бывает
+      await tx`select kb_track_reading(${t.pub}, 20, 40)`;
+      await asServer(tx);
+      const [read] = (await tx`select * from kb_reads where node_id = ${t.pub} and user_id = ${t.reader}`) as Row[];
+      expect(read.read_count).toBe(1);
+      expect(read.seconds).toBe(80);
+      expect(read.max_scroll).toBe(95);
+      expect(read.completed_at).not.toBeNull();
+      const days = (await tx`select views, seconds from kb_read_days where user_id = ${t.reader}`) as Row[];
+      expect(days).toEqual([{ views: 1, seconds: 80 }]);
+      // Писать напрямую нельзя — только RPC.
+      await as(tx, t.reader);
+      expect(
+        await failure(tx, () => tx`insert into kb_read_days (node_id, user_id, base_id, day) values (${t.pub}, ${t.reader}, ${t.b}, current_date)`),
+      ).toContain("permission denied");
+
+      // Поиск: набор по буквам — одна строка, клик запоминается, «ничего» — отдельно.
+      const [{ id: s1 }] = (await tx`select kb_log_search(${t.b}, 'адм', 2) as id`) as Row[];
+      const [{ id: s2 }] = (await tx`select kb_log_search(${t.b}, 'Админ  ', 1) as id`) as Row[];
+      expect(s2).toBe(s1);
+      await tx`select kb_log_search_click(${s1}, ${t.pub})`;
+      await tx`select kb_log_search(${t.b}, 'сейф', 0)`;
+      expect(await tx`select 1 from kb_search_log`).toHaveLength(0); // читатель журнал не видит
+
+      // Новая версия: прочитанное становится «прежней версией». В транзакции
+      // теста now() один — читали «минуту назад».
+      await asServer(tx);
+      await tx`update kb_reads set read_published_at = read_published_at - interval '1 minute' where user_id = ${t.reader}`;
+      await tx`update kb_nodes set published_at = published_at - interval '1 minute' where id = ${t.pub}`;
+      await as(tx, t.editor);
+      await tx`select kb_save_draft(${t.pub}, ${JSON.stringify(doc("Версия 2"))}::text::jsonb, null)`;
+      await tx`select kb_publish(${t.pub})`;
+      const readers = (await tx`select * from kb_article_readers(${t.pub})`) as Row[];
+      expect(readers.find((r) => r.user_id === t.reader)?.state).toBe("outdated");
+
+      const ov = ((await tx`select kb_analytics_overview(${t.b}, 30) as o`) as Row[])[0].o;
+      expect(ov.people).toBe(2); // читатель и редактор; владелец не в счёт
+      expect(ov.read_outdated).toBe(1);
+      expect(ov.current.views).toBe(1);
+      expect(ov.current.readers).toBe(1);
+      expect(ov.current.seconds).toBe(80);
+      expect(ov.current.searches).toBe(2);
+      expect(ov.current.zero_searches).toBe(1);
+      expect(ov.daily).toHaveLength(30);
+      expect(ov.zero_queries.map((q: Row) => q.query)).toEqual(["сейф"]);
+      expect(ov.top_queries.find((q: Row) => q.query === "админ")?.clicks).toBe(1);
+      expect(ov.sections.map((x: Row) => x.title)).toEqual(["Администратор"]);
+
+      const people = (await tx`select * from kb_analytics_people(${t.b}, 30)`) as Row[];
+      const me = people.find((r) => r.user_id === t.reader)!;
+      expect(me.read_outdated).toBe(1);
+      expect(me.seconds_total).toBe(80);
+      expect(me.last_node_title).toBe("Открытие смены");
+      const person = ((await tx`select kb_analytics_person(${t.b}, ${t.reader}) as p`) as Row[])[0].p;
+      expect(person.articles.find((a: Row) => a.id === t.pub)?.state).toBe("outdated");
+      expect(person.daily).toHaveLength(30);
+
+      // Открыл новую версию — снова актуальная, прокрутка и «дочитал» заново.
+      await asServer(tx);
+      await tx`update kb_reads set last_read_at = now() - interval '1 hour' where user_id = ${t.reader}`;
+      await as(tx, t.reader);
+      await tx`select kb_mark_read(${t.pub})`;
+      await asServer(tx);
+      const [again] = (await tx`select * from kb_reads where node_id = ${t.pub} and user_id = ${t.reader}`) as Row[];
+      expect(again.read_count).toBe(2);
+      expect(again.max_scroll).toBe(0);
+      expect(again.completed_at).toBeNull();
+
+      // Аналитика — только редакторам и владельцам.
+      await as(tx, t.reader);
+      expect(await failure(tx, () => tx`select kb_analytics_overview(${t.b}, 30)`)).toContain("kb_forbidden");
+      expect(await failure(tx, () => tx`select * from kb_analytics_people(${t.b}, 30)`)).toContain("kb_forbidden");
+      expect(await failure(tx, () => tx`select kb_analytics_person(${t.b}, ${t.reader})`)).toContain("kb_forbidden");
+      await as(tx, t.owner);
+      const report = (await tx`select * from kb_report(${t.b}) where id = ${t.pub}`) as Row[];
+      expect(report[0].readers_count).toBe(1);
+      expect(report[0].avg_seconds).toBe(80);
+      await asServer(tx);
+    }));
+
   test("иконка раздела: пишет редактор, только у папки и ключом из набора", () =>
     scenario(async (tx) => {
       const t = await setup(tx);
