@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Frown, Meh, Smile } from "lucide-react";
+import { ArrowLeft, ArrowRight, Frown, Meh, Smile } from "lucide-react";
 import { toast } from "sonner";
 
 import { useStaffProfile } from "@/hooks/use-staff-profile";
@@ -111,7 +111,8 @@ export function KbArticleRating({ node }: { node: KbTreeNode }) {
 }
 
 /**
- * «Предыдущая / Следующая» внизу статьи (решение владельца 2026-10-25):
+ * «Назад / Дальше» внизу статьи (решение владельца 2026-10-25): сверху
+ * подпись со стрелкой, под ней — название соседней статьи;
  * соседние статьи по порядку дерева базы, через папки (articleNeighbors).
  */
 export function KbArticlePager({
@@ -131,12 +132,12 @@ export function KbArticlePager({
     <nav aria-label="Соседние статьи" className="mt-6 grid gap-3 sm:grid-cols-2">
       {prev && (
         <Link to="/kb/$baseId/$nodeId" params={{ baseId, nodeId: prev.id }} className={card}>
-          <span className="truncate font-medium group-hover:text-brand-on-light">
-            {prev.title || "Без названия"}
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <ArrowLeft className="size-3.5" />
+            Назад
           </span>
-          <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-            <ChevronLeft className="size-3.5" />
-            Предыдущая
+          <span className="truncate font-semibold group-hover:text-brand-on-light">
+            {prev.title || "Без названия"}
           </span>
         </Link>
       )}
@@ -146,12 +147,12 @@ export function KbArticlePager({
           params={{ baseId, nodeId: next.id }}
           className={cn(card, "items-end text-right", !prev && "sm:col-start-2")}
         >
-          <span className="max-w-full truncate font-medium group-hover:text-brand-on-light">
-            {next.title || "Без названия"}
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            Дальше
+            <ArrowRight className="size-3.5" />
           </span>
-          <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-            Следующая
-            <ChevronRight className="size-3.5" />
+          <span className="max-w-full truncate font-semibold group-hover:text-brand-on-light">
+            {next.title || "Без названия"}
           </span>
         </Link>
       )}
