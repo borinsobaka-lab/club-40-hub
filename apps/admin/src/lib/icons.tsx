@@ -100,6 +100,7 @@ import {
   Mic as MicArt,
   ArrowShrinkIcon as MinimizeArt,
   Minus as MinusArt,
+  Moon as MoonArt,
   Music as MusicArt,
   PanelLeft as PanelLeftArt,
   Paperclip as PaperclipArt,
@@ -125,6 +126,7 @@ import {
   Smile as SmileArt,
   Square as SquareArt,
   Star as StarArt,
+  Sun as SunArt,
   Ticket as TicketArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
@@ -238,6 +240,7 @@ export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
 export const Mic = icon(MicArt, "Mic");
 export const Minimize = icon(MinimizeArt, "Minimize");
 export const Minus = icon(MinusArt, "Minus");
+export const Moon = icon(MoonArt, "Moon");
 export const Music = icon(MusicArt, "Music");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Paperclip = icon(PaperclipArt, "Paperclip");
@@ -263,6 +266,7 @@ export const Smartphone = icon(SmartphoneArt, "Smartphone");
 export const Smile = icon(SmileArt, "Smile");
 export const Square = icon(SquareArt, "Square");
 export const Star = icon(StarArt, "Star");
+export const Sun = icon(SunArt, "Sun");
 export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");

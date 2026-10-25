@@ -45,7 +45,7 @@ import { flip, offset, shift } from "@floating-ui/react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Download,
   Eraser,
@@ -77,6 +77,8 @@ import { documentHeadings, type KbHeading } from "@/lib/kb/document";
 import { revealKbBlock } from "@/lib/kb/reveal-block";
 import { setUploadProgress, useUploadProgress } from "@/lib/kb/upload-progress";
 import { cn } from "@/lib/utils";
+import { useKbDarkTheme } from "@/lib/kb/theme";
+import { railSectionKey } from "@/lib/nav-sections";
 
 // --- Тексты ----------------------------------------------------------------------
 
@@ -1059,6 +1061,10 @@ export function KbDocument({
   checks?: { checked: Set<string>; onToggle: (blockId: string) => void };
 }) {
   const navigate = useNavigate();
+  // Тёмная тема базы знаний — только в самой базе (редактор берёт и «Академия»).
+  const [kbDark] = useKbDarkTheme();
+  const inKb = useRouterState({ select: (st) => railSectionKey(st.location.pathname) === "kb" });
+  const dark = kbDark && inKb;
   // Кого можно упомянуть через «@» — только в режиме правки.
   const { data: candidates } = useQuery({
     queryKey: ["kb_mention_candidates", baseId],
@@ -1203,7 +1209,7 @@ export function KbDocument({
       <BlockNoteView
         editor={editor}
         editable={editable}
-        theme="light"
+        theme={dark ? "dark" : "light"}
         filePanel={false}
         slashMenu={false}
         formattingToolbar={false}
