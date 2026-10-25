@@ -1076,7 +1076,7 @@ function ArticleView({
                 )}
               </div>
               {!editing && !loading && node.status === "published" && node.feedback_enabled && (
-                <KbArticleRating baseId={baseId} node={node} canEdit={canEdit} />
+                <KbArticleRating node={node} />
               )}
               {!editing && node.pager_enabled && (
                 <KbArticlePager baseId={baseId} index={index} nodeId={node.id} />

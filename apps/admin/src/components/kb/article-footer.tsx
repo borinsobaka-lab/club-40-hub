@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { kbErrorText } from "@/lib/kb/data";
-import { countScores, KB_SCORES, type KbScore } from "@/lib/kb/ratings";
+import { KB_SCORES, type KbScore } from "@/lib/kb/ratings";
 import { articleNeighbors, type KbTreeIndex } from "@/lib/kb/tree";
 import type { KbTreeNode } from "@/lib/kb/types";
 import { unwrap } from "@/lib/query";
@@ -25,35 +25,28 @@ const sameTime = (a: string, b: string) => Date.parse(a) === Date.parse(b);
  * «Была ли статья полезной?» — в конце статьи (решение владельца
  * 2026-10-25): три смайлика, при наведении — красный, жёлтый, зелёный.
  * Оценка — своя на каждую опубликованную версию (RPC kb_rate), её можно
- * поменять. Редактору ниже — сводка оценок статьи со ссылкой в аналитику.
+ * поменять. Сколько и как оценили — только в аналитике базы (вкладка
+ * «Оценки»), под статьёй этого нет (решение владельца 2026-10-25).
  */
-export function KbArticleRating({
-  baseId,
-  node,
-  canEdit,
-}: {
-  baseId: string;
-  node: KbTreeNode;
-  canEdit: boolean;
-}) {
+export function KbArticleRating({ node }: { node: KbTreeNode }) {
   const qc = useQueryClient();
   const { data: me } = useStaffProfile();
-  // Свои оценки статьи; редактору RLS отдаёт и чужие — для сводки.
+  // Своя оценка текущей версии (редактору RLS отдал бы и чужие — берём свою).
   const { data: rows } = useQuery({
     queryKey: [KB_RATINGS_KEY, node.id],
     queryFn: () =>
-      unwrap<{ user_id: string; score: KbScore; version_at: string; rated_at: string }[]>(
+      unwrap<{ score: KbScore; version_at: string; rated_at: string }[]>(
         supabase
           .from("kb_ratings")
-          .select("user_id, score, version_at, rated_at")
+          .select("score, version_at, rated_at")
           .eq("node_id", node.id)
+          .eq("user_id", me!.id)
           .order("rated_at", { ascending: false }),
       ),
+    enabled: !!me?.id,
     meta: { errorMessage: "Не удалось загрузить оценку статьи" },
   });
-  const mine = rows?.find(
-    (r) => r.user_id === me?.id && sameTime(r.version_at, versionOf(node)),
-  )?.score;
+  const mine = rows?.find((r) => sameTime(r.version_at, versionOf(node)))?.score;
   const [picked, setPicked] = useState<KbScore | null>(null);
   const [busy, setBusy] = useState(false);
   const current = picked ?? mine ?? null;
@@ -79,19 +72,11 @@ export function KbArticleRating({
     }
   };
 
-  // Сводка редактору — по текущей версии и всего.
-  const all = canEdit ? countScores((rows ?? []).map((r) => r.score)) : null;
-
   return (
-    <section aria-label="Оценка статьи" className="mt-10 space-y-2">
+    <section aria-label="Оценка статьи" className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-4 py-3 sm:px-5">
         <p className="text-sm font-medium">
           {current ? "Спасибо за оценку!" : "Была ли статья полезной?"}
-          {current && (
-            <span className="block text-xs font-normal text-muted-foreground">
-              Оценку можно поменять, её видят редакторы базы.
-            </span>
-          )}
         </p>
         <div className="flex items-center gap-2" role="radiogroup" aria-label="Оценка статьи">
           {KB_SCORES.map((s) => {
@@ -121,30 +106,6 @@ export function KbArticleRating({
           })}
         </div>
       </div>
-      {all && all.count > 0 && (
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-muted-foreground">
-          <span>Оценки статьи:</span>
-          {KB_SCORES.slice()
-            .reverse()
-            .map((s) => {
-              const Icon = SCORE_ICON[s.score];
-              return (
-                <span key={s.score} className="inline-flex items-center gap-1" title={s.label}>
-                  <Icon className="size-3.5" style={{ color: s.color }} />
-                  <span className="font-medium text-foreground tabular-nums">{all[s.key]}</span>
-                </span>
-              );
-            })}
-          <Link
-            to="/kb/$baseId/analytics"
-            params={{ baseId }}
-            search={{ tab: "ratings", node: node.id }}
-            className="font-medium text-brand-on-light hover:underline"
-          >
-            Кто и как оценил
-          </Link>
-        </p>
-      )}
     </section>
   );
 }
