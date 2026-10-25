@@ -253,6 +253,14 @@
   --field: oklch(0.26 0.03 264);
 }
 
+/* Тёмная тема базы знаний (lib/kb/theme.ts): цвет базы на тёмном —
+   вариант для тёмного фона, иначе надзаголовки и ссылки темнели бы на
+   тёмном. */
+.kb-dark {
+  --brand-on-light: var(--brand-on-dark);
+  color-scheme: dark;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
