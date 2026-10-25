@@ -394,7 +394,7 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
                 parentId: dialog.parentId,
                 baseId,
               }}
-              onSave={async (title, description, parentId, icon, templateId) => {
+              onSave={async (title, description, parentId, icon, templateId, tags) => {
                 const id = await actions.create(
                   dialog.nodeKind,
                   parentId,
@@ -402,6 +402,7 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
                   description,
                   icon,
                   templateId,
+                  tags,
                 );
                 if (id && parentId) folders.toggle(parentId, true);
                 if (id) onNavigate();

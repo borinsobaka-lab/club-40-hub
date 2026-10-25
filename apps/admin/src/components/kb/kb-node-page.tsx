@@ -13,6 +13,7 @@ import {
   FilePlus,
   FolderInput,
   FolderPlus,
+  Hash,
   History,
   LayoutTemplate,
   Link2,
@@ -24,6 +25,7 @@ import {
   Star,
   Trash2,
   Undo2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +48,12 @@ import {
   KbNodeTitleForm,
 } from "@/components/kb/node-dialogs";
 import { KbDraftBadge, KbStatusBadge } from "@/components/kb/kb-status-badge";
+import {
+  KbArticleTags,
+  KbArticleTagsEditor,
+  KbTagChip,
+  KbTagsManageForm,
+} from "@/components/kb/tags";
 import { useDraftAutosave, type AutosaveState } from "@/components/kb/use-draft-autosave";
 import { useKbActions } from "@/components/kb/use-kb-actions";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -70,6 +78,7 @@ import {
   useKbDrafts,
   useKbFavorites,
   useKbNode,
+  useKbNodeTags,
   useKbRecentReads,
   useKbTree,
   type KbRevision,
@@ -87,6 +96,7 @@ import {
 } from "@/lib/kb/tree";
 import type { KbBase, KbTreeNode } from "@/lib/kb/types";
 import { formatUpdatedAgo } from "@/lib/kb/analytics";
+import { nodesWithTag, tagArticleCounts } from "@/lib/kb/tags";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { KbArticleLink } from "@/components/kb/kb-document";
@@ -107,10 +117,13 @@ export function KbNodePage({
   baseId,
   nodeId,
   edit,
+  tagId,
 }: {
   baseId: string;
   nodeId: string | null;
   edit?: boolean;
+  /** Главная базы: статьи с этим тегом. */
+  tagId?: string;
 }) {
   const access = useAdminAccess();
   const level = access?.isOwner ? "manage" : access?.kb?.[baseId];
@@ -182,6 +195,7 @@ export function KbNodePage({
       nodes={nodes}
       index={index}
       canEdit={canEdit}
+      tagId={nodeId ? undefined : tagId}
     />
   );
 }
@@ -277,6 +291,167 @@ function BaseHomeLists({ baseId, index }: { baseId: string; index: KbTreeIndex }
         </section>
       ))}
     </div>
+  );
+}
+
+/**
+ * Теги базы на её главной (решение владельца 2026-10-25): пилюли с числом
+ * статей, нажатие — статьи с тегом (`?tag=`), повторное — снять выбор.
+ * Читателю — только теги видимых ему статей; редактору — все теги базы и
+ * «Настроить» (переименовать, удалить).
+ */
+function BaseTags({
+  baseId,
+  index,
+  canEdit,
+  tagId,
+  onManage,
+}: {
+  baseId: string;
+  index: KbTreeIndex;
+  canEdit: boolean;
+  tagId?: string;
+  onManage: () => void;
+}) {
+  const { data: nodeTags, tags } = useKbNodeTags(baseId);
+  const counts = useMemo(
+    () =>
+      nodeTags
+        ? tagArticleCounts(nodeTags, (id) => {
+            const n = index.byId.get(id);
+            return !!n && n.kind === "article" && n.status !== "archived";
+          })
+        : new Map<string, number>(),
+    [nodeTags, index],
+  );
+  const list = (tags ?? []).filter((t) => canEdit || (counts.get(t.id) ?? 0) > 0 || t.id === tagId);
+  if (list.length === 0) return null;
+  return (
+    <section className="mb-3 rounded-lg border bg-background p-3">
+      <h3 className="-mx-3 mb-2.5 flex items-center gap-1.5 border-b px-4 pb-2.5 text-sm font-semibold">
+        <Hash className="size-4 text-muted-foreground" />
+        Теги
+        {canEdit && (
+          <Button
+            variant="link"
+            size="inline"
+            className="ml-auto text-xs font-normal text-muted-foreground"
+            onClick={onManage}
+          >
+            Настроить
+          </Button>
+        )}
+      </h3>
+      <ul aria-label="Теги базы" className="flex flex-wrap gap-1.5">
+        {list.map((t) => (
+          <li key={t.id}>
+            <KbTagChip
+              baseId={baseId}
+              tag={t}
+              count={counts.get(t.id) ?? 0}
+              active={t.id === tagId}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Статьи с выбранным тегом — на главной базы вместо разделов. */
+function TaggedArticles({
+  baseId,
+  index,
+  tagId,
+  canEdit,
+}: {
+  baseId: string;
+  index: KbTreeIndex;
+  tagId: string;
+  canEdit: boolean;
+}) {
+  const { data: nodeTags, tags } = useKbNodeTags(baseId);
+  const tag = tags?.find((t) => t.id === tagId);
+  const items = nodeTags
+    ? nodesWithTag(nodeTags, tagId)
+        .map((id) => index.byId.get(id))
+        .filter((n): n is KbTreeNode => !!n && n.status !== "archived")
+        .sort((a, b) => a.title.localeCompare(b.title, "ru"))
+    : [];
+  return (
+    <section>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <h3 className="min-w-0 text-base font-semibold">
+          {tag ? (
+            <>
+              Статьи с тегом <span className="text-brand-on-light">#{tag.name}</span>
+            </>
+          ) : tags ? (
+            "Такого тега больше нет"
+          ) : (
+            "Статьи с тегом"
+          )}
+        </h3>
+        {nodeTags && <span className="text-sm text-muted-foreground">{items.length}</span>}
+        <Button variant="attention" asChild className="ml-auto">
+          <Link to="/kb/$baseId" params={{ baseId }} search={{}}>
+            <X />
+            Сбросить
+          </Link>
+        </Button>
+      </div>
+      {!nodeTags ? (
+        <div className="space-y-2 rounded-lg border bg-background p-4">
+          {["w-2/3", "w-1/2", "w-3/5"].map((w) => (
+            <div key={w} className={cn("h-4 animate-pulse rounded bg-muted", w)} />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+          Статей с этим тегом пока нет.
+        </div>
+      ) : (
+        <ul className="divide-y rounded-lg border bg-background">
+          {items.map((n) => {
+            const path = ancestorsOf(index, n.id)
+              .map((a) => a.title || "Без названия")
+              .join(" › ");
+            return (
+              <li key={n.id}>
+                <Link
+                  to="/kb/$baseId/$nodeId"
+                  params={{ baseId, nodeId: n.id }}
+                  className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                >
+                  <DocumentText className="size-5 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "block truncate font-medium",
+                        n.status !== "published" && "text-muted-foreground",
+                      )}
+                    >
+                      {n.title || "Без названия"}
+                    </span>
+                    {path && (
+                      <span className="block truncate text-xs text-muted-foreground">{path}</span>
+                    )}
+                  </span>
+                  {canEdit && n.status !== "published" && (
+                    <KbStatusBadge status={n.status} size="sm" />
+                  )}
+                  {n.published_at && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatDate(n.published_at)}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -423,6 +598,7 @@ function FolderView({
   nodes,
   index,
   canEdit,
+  tagId,
 }: {
   baseId: string;
   baseTitle: string;
@@ -434,13 +610,14 @@ function FolderView({
   nodes: KbTreeNode[];
   index: KbTreeIndex;
   canEdit: boolean;
+  tagId?: string;
 }) {
   const actions = useKbActions(baseId);
   const { data: drafts } = useKbDrafts(baseId, canEdit);
   const draftIds = new Set((drafts ?? []).map((d) => d.node_id));
-  const [dialog, setDialog] = useState<"article" | "folder" | "rename" | "move" | "base" | null>(
-    null,
-  );
+  const [dialog, setDialog] = useState<
+    "article" | "folder" | "rename" | "move" | "base" | "tags" | null
+  >(null);
   const items = childrenOf(index, folder?.id ?? null);
   // Раздел (папка верхнего уровня) — со своей иконкой, как в меню.
   const Icon = folder
@@ -526,55 +703,28 @@ function FolderView({
           )}
         </header>
 
-        {!folder && <BaseHomeLists baseId={baseId} index={index} />}
-
-        {items.length === 0 ? (
-          <div className="mt-3 rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            {canEdit
-              ? "Здесь пока пусто. Добавьте папку-раздел или статью — кнопки справа внизу."
-              : "Здесь пока ничего не опубликовано."}
-          </div>
+        {!folder && (
+          <BaseTags
+            baseId={baseId}
+            index={index}
+            canEdit={canEdit}
+            tagId={tagId}
+            onManage={() => setDialog("tags")}
+          />
+        )}
+        {!folder && tagId ? (
+          <TaggedArticles baseId={baseId} index={index} tagId={tagId} canEdit={canEdit} />
         ) : (
-          <ul className="mt-3 divide-y rounded-lg border bg-background">
-            {items.map((n) => (
-              <li key={n.id}>
-                <Link
-                  to="/kb/$baseId/$nodeId"
-                  params={{ baseId, nodeId: n.id }}
-                  className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                >
-                  {n.kind === "folder" ? (
-                    <ItemFolderIcon node={n} />
-                  ) : (
-                    <DocumentText className="size-5 shrink-0 text-muted-foreground" />
-                  )}
-                  <span
-                    className={cn(
-                      "min-w-0 flex-1 truncate font-medium",
-                      n.status !== "published" && "text-muted-foreground",
-                    )}
-                  >
-                    {n.title || "Без названия"}
-                  </span>
-                  {canEdit && n.status !== "published" && (
-                    <KbStatusBadge status={n.status} size="sm" />
-                  )}
-                  {canEdit && draftIds.has(n.id) && n.status === "published" && (
-                    <KbDraftBadge size="sm" />
-                  )}
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {n.kind === "folder" ? (
-                      <ArticleCounter index={index} folderId={n.id} canEdit={canEdit} />
-                    ) : n.published_at ? (
-                      formatDate(n.published_at)
-                    ) : (
-                      ""
-                    )}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <>
+            {!folder && <BaseHomeLists baseId={baseId} index={index} />}
+            <FolderItems
+              baseId={baseId}
+              items={items}
+              index={index}
+              canEdit={canEdit}
+              draftIds={draftIds}
+            />
+          </>
         )}
       </div>
 
@@ -585,7 +735,7 @@ function FolderView({
               kind={dialog}
               node={null}
               place={{ nodes, baseTitle, parentId: folder?.id ?? null, baseId }}
-              onSave={(t, d, p, i, tpl) => actions.create(dialog, p, t, d, i, tpl)}
+              onSave={(t, d, p, i, tpl, tags) => actions.create(dialog, p, t, d, i, tpl, tags)}
               onDone={() => setDialog(null)}
             />
           )}
@@ -600,6 +750,7 @@ function FolderView({
             />
           )}
           {dialog === "base" && base && <KbBaseForm base={base} onDone={() => setDialog(null)} />}
+          {dialog === "tags" && <KbTagsManageForm baseId={baseId} onDone={() => setDialog(null)} />}
           {dialog === "move" && folder && (
             <KbMoveForm
               node={folder}
@@ -612,6 +763,68 @@ function FolderView({
         </DialogContent>
       </Dialog>
     </AdminShell>
+  );
+}
+
+/** Содержимое папки или разделы главной — списком. */
+function FolderItems({
+  baseId,
+  items,
+  index,
+  canEdit,
+  draftIds,
+}: {
+  baseId: string;
+  items: KbTreeNode[];
+  index: KbTreeIndex;
+  canEdit: boolean;
+  draftIds: Set<string>;
+}) {
+  return items.length === 0 ? (
+    <div className="mt-3 rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
+      {canEdit
+        ? "Здесь пока пусто. Добавьте папку-раздел или статью — кнопки справа внизу."
+        : "Здесь пока ничего не опубликовано."}
+    </div>
+  ) : (
+    <ul className="mt-3 divide-y rounded-lg border bg-background">
+      {items.map((n) => (
+        <li key={n.id}>
+          <Link
+            to="/kb/$baseId/$nodeId"
+            params={{ baseId, nodeId: n.id }}
+            className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          >
+            {n.kind === "folder" ? (
+              <ItemFolderIcon node={n} />
+            ) : (
+              <DocumentText className="size-5 shrink-0 text-muted-foreground" />
+            )}
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate font-medium",
+                n.status !== "published" && "text-muted-foreground",
+              )}
+            >
+              {n.title || "Без названия"}
+            </span>
+            {canEdit && n.status !== "published" && <KbStatusBadge status={n.status} size="sm" />}
+            {canEdit && draftIds.has(n.id) && n.status === "published" && (
+              <KbDraftBadge size="sm" />
+            )}
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {n.kind === "folder" ? (
+                <ArticleCounter index={index} folderId={n.id} canEdit={canEdit} />
+              ) : n.published_at ? (
+                formatDate(n.published_at)
+              ) : (
+                ""
+              )}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -1072,6 +1285,11 @@ function ArticleView({
                     {canEdit && hasDraft && node.status === "published" && <KbDraftBadge />}
                     {!node.published_at && <span>Ещё не опубликована</span>}
                   </div>
+                  {editing ? (
+                    <KbArticleTagsEditor baseId={baseId} nodeId={node.id} />
+                  ) : (
+                    <KbArticleTags baseId={baseId} nodeId={node.id} />
+                  )}
                   {node.published_at && (
                     <ArticleAuthor
                       baseId={baseId}
@@ -1240,7 +1458,7 @@ function ArticleView({
               kind="article"
               node={null}
               place={{ nodes, baseTitle, parentId: node.id, baseId }}
-              onSave={(t, d, p, i, tpl) => actions.create("article", p, t, d, i, tpl)}
+              onSave={(t, d, p, i, tpl, tags) => actions.create("article", p, t, d, i, tpl, tags)}
               onDone={() => setDialog(null)}
             />
           )}
