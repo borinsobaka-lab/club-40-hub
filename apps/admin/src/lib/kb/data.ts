@@ -21,7 +21,7 @@ export const KB_NODE_KEY = "kb_node";
 export const KB_DRAFTS_KEY = "kb_drafts";
 
 const TREE_COLUMNS =
-  "id, base_id, parent_id, kind, title, description, icon, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
+  "id, base_id, parent_id, kind, title, description, icon, protect, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
 
 /** Доступные базы — для рейки и прав; заранее грузит проверка входа. */
 export const kbBasesQuery = queryOptions({
@@ -30,7 +30,9 @@ export const kbBasesQuery = queryOptions({
     unwrap<KbBase[]>(
       supabase
         .from("kb_bases")
-        .select("id, title, rail_title, icon, description, sort_order, show_in_rail")
+        .select(
+          "id, title, rail_title, icon, description, sort_order, show_in_rail, protect_content",
+        )
         .order("sort_order")
         .order("created_at"),
     ),
@@ -134,6 +136,8 @@ export function kbErrorText(error: unknown, fallback = "Не удалось со
     return "Статью только что сохранил другой редактор. Обновите страницу, чтобы не затереть его правки.";
   if (message.includes("kb_move_into_self")) return "Папку нельзя перенести внутрь неё самой";
   if (message.includes("kb_parent_not_folder")) return "Переносить можно только в папку";
+  if (message.includes("kb_already_restored")) return "Это уже вернули из корзины";
+  if (message.includes("kb_not_found")) return "Не нашлось — возможно, уже удалили";
   if (message.includes("kb_forbidden") || message.includes("row-level security"))
     return "Нет права на правку этой базы знаний";
   if (message.includes("foreign key") || message.includes("kb_nodes_parent_id_fkey"))
@@ -209,5 +213,140 @@ export function useKbDraft(nodeId: string | null, enabled: boolean) {
     queryFn: () => loadKbDraft(nodeId!),
     enabled: !!nodeId && enabled,
     meta: { errorMessage: "Не удалось загрузить черновик статьи" },
+  });
+}
+
+/** Версия статьи — снимок при публикации (kb_revisions). */
+export type KbRevision = {
+  id: string;
+  title: string;
+  published_by: string | null;
+  published_at: string;
+};
+
+/** Версии статьи, новые сверху (редакторам). */
+export function useKbRevisions(nodeId: string | null) {
+  return useQuery({
+    queryKey: ["kb_revisions", nodeId],
+    queryFn: () =>
+      unwrap<KbRevision[]>(
+        supabase
+          .from("kb_revisions")
+          .select("id, title, published_by, published_at")
+          .eq("node_id", nodeId!)
+          .order("published_at", { ascending: false }),
+      ),
+    enabled: !!nodeId,
+    meta: { errorMessage: "Не удалось загрузить версии статьи" },
+  });
+}
+
+/** Текст версий — по выбору (список грузится без текста). */
+export function useKbRevisionContents(ids: string[]) {
+  const key = ids.join(",");
+  return useQuery({
+    queryKey: ["kb_revisions", "content", key],
+    queryFn: async () => {
+      const rows = await unwrap<{ id: string; content: unknown[] | null }[]>(
+        supabase.from("kb_revisions").select("id, content").in("id", ids),
+      );
+      return new Map(rows.map((r) => [r.id, r.content ?? []]));
+    },
+    enabled: ids.length > 0,
+    staleTime: Infinity,
+    meta: { errorMessage: "Не удалось загрузить текст версии" },
+  });
+}
+
+/** Шаблон статьи базы (kb_templates), без текста. */
+export type KbTemplate = {
+  id: string;
+  base_id: string;
+  title: string;
+  description: string;
+  created_by: string | null;
+  updated_by: string | null;
+  updated_at: string;
+};
+
+export const KB_TEMPLATES_KEY = "kb_templates";
+
+/** Шаблоны базы — редакторам (RLS). */
+export function useKbTemplates(baseId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [KB_TEMPLATES_KEY, baseId],
+    queryFn: () =>
+      unwrap<KbTemplate[]>(
+        supabase
+          .from("kb_templates")
+          .select("id, base_id, title, description, created_by, updated_by, updated_at")
+          .eq("base_id", baseId!)
+          .order("title"),
+      ),
+    enabled: !!baseId && enabled,
+    meta: { errorMessage: "Не удалось загрузить шаблоны" },
+  });
+}
+
+/** Текст шаблона (документ BlockNote). */
+export async function loadKbTemplateContent(id: string): Promise<unknown[]> {
+  const rows = await unwrap<{ content: unknown[] }[]>(
+    supabase.from("kb_templates").select("content").eq("id", id),
+  );
+  return rows[0]?.content ?? [];
+}
+
+export const KB_FAVORITES_KEY = "kb_favorites";
+
+/** Избранное вошедшего в базе: id статей и папок (свои строки — RLS). */
+export function useKbFavorites(baseId: string | null) {
+  return useQuery({
+    queryKey: [KB_FAVORITES_KEY, baseId],
+    queryFn: async () => {
+      const rows = await unwrap<{ node_id: string; created_at: string }[]>(
+        supabase
+          .from("kb_favorites")
+          .select("node_id, created_at")
+          .eq("base_id", baseId!)
+          .order("created_at", { ascending: false }),
+      );
+      return rows.map((r) => r.node_id);
+    },
+    enabled: !!baseId,
+    meta: { errorMessage: "Не удалось загрузить избранное" },
+  });
+}
+
+/** Недавно открытые вошедшим статьи базы (его kb_reads), новые сверху. */
+export function useKbRecentReads(baseId: string | null, userId: string | undefined) {
+  return useQuery({
+    queryKey: ["kb_reads", "recent", baseId, userId],
+    queryFn: () =>
+      unwrap<{ node_id: string; last_read_at: string }[]>(
+        supabase
+          .from("kb_reads")
+          .select("node_id, last_read_at")
+          .eq("base_id", baseId!)
+          .eq("user_id", userId!)
+          .order("last_read_at", { ascending: false })
+          .limit(12),
+      ),
+    enabled: !!baseId && !!userId,
+    meta: { errorMessage: "Не удалось загрузить недавние статьи" },
+  });
+}
+
+/** Свои отметки чек-листов статьи (kb_checks): id пунктов. */
+export function useKbChecks(nodeId: string | null) {
+  return useQuery({
+    queryKey: ["kb_checks", nodeId],
+    queryFn: async () => {
+      const rows = await unwrap<{ block_id: string }[]>(
+        supabase.from("kb_checks").select("block_id").eq("node_id", nodeId!),
+      );
+      return new Set(rows.map((r) => r.block_id));
+    },
+    enabled: !!nodeId,
+    meta: { errorMessage: "Не удалось загрузить отметки чек-листа" },
   });
 }

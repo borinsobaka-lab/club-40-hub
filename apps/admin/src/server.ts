@@ -1,4 +1,5 @@
 import { errorResponse } from "./lib/error-page";
+import { startKbTrashPurge } from "./lib/kb/trash-purge.server";
 import { startPushWorker } from "./lib/push/push-worker.server";
 
 // Серверная точка входа (vite.config: tanstackStart({ server: { entry: "server" } })).
@@ -7,6 +8,8 @@ import { startPushWorker } from "./lib/push/push-worker.server";
 // Рассылка пуш-уведомлений — фоновый цикл этого же процесса (без сервис-ключа
 // Supabase не запускается).
 startPushWorker();
+// Корзина базы знаний: истёкшее — навсегда, файлы удалённого — из бакета.
+startKbTrashPurge();
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;

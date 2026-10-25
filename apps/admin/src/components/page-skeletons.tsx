@@ -2062,3 +2062,27 @@ export function KbReportPageSkeleton() {
     />
   );
 }
+
+export function KbTemplatesPageSkeleton() {
+  return (
+    <TablePage
+      title="Шаблоны"
+      toolbar={null}
+      pagination={false}
+      headers={["Шаблон", "Обновлён", ""]}
+      rows={4}
+    />
+  );
+}
+
+export function KbTrashPageSkeleton() {
+  return (
+    <TablePage
+      title="Корзина"
+      toolbar={null}
+      pagination={false}
+      headers={["Что удалено", "Удалил", "Удалится навсегда", ""]}
+      rows={4}
+    />
+  );
+}

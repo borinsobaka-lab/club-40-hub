@@ -9,10 +9,14 @@ export type KbBase = {
   description: string;
   sort_order: number;
   show_in_rail: boolean;
+  /** Защита содержимого статей базы по умолчанию (запрет копирования, водяной знак). */
+  protect_content: boolean;
 };
 
 /** База с уровнем доступа вошедшего. */
 export type KbBaseWithLevel = KbBase & { level: KbLevel };
+
+export type KbProtect = "inherit" | "on" | "off";
 
 export type KbStatus = "draft" | "published" | "archived";
 export type KbKind = "folder" | "article";
@@ -27,6 +31,8 @@ export type KbTreeNode = {
   description: string;
   /** Иконка раздела (папки верхнего уровня), ключ KB_SECTION_ICONS; null — папка. */
   icon: string | null;
+  /** Защита содержимого статьи: как в базе / включена / выключена. */
+  protect: KbProtect;
   sort_order: number;
   status: KbStatus;
   reader_visible: boolean;

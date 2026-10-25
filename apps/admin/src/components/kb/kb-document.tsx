@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BlockNoteSchema,
   defaultBlockSpecs,
+  defaultInlineContentSpecs,
   filterSuggestionItems,
   type PartialBlock,
 } from "@blocknote/core";
@@ -24,6 +25,7 @@ import { FilePanelExtension } from "@blocknote/core/extensions";
 import { ru } from "@blocknote/core/locales";
 import {
   createReactBlockSpec,
+  createReactInlineContentSpec,
   FileBlockWrapper,
   FilePanelController,
   FormattingToolbar,
@@ -40,6 +42,9 @@ import {
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import { flip, offset, shift } from "@floating-ui/react";
+
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Download,
@@ -47,6 +52,8 @@ import {
   ExternalLink,
   FileText,
   Hash,
+  Columns2,
+  Columns3,
   Images,
   Link2,
   Loader2,
@@ -82,6 +89,23 @@ const dictionary = {
     ...ru.placeholders,
     default: "Начните писать или нажмите «/»",
     toggleListItem: "Сворачиваемый пункт",
+  },
+  slash_menu: {
+    ...ru.slash_menu,
+    // Спойлер (№18) — сворачиваемый блок: заголовок, по нажатию — текст.
+    toggle_list: {
+      ...ru.slash_menu.toggle_list,
+      title: "Спойлер (сворачиваемый блок)",
+      subtext: "Заголовок, по нажатию раскрывается текст внутри",
+      aliases: [...ru.slash_menu.toggle_list.aliases, "спойлер", "скрытый", "раскрыть", "spoiler"],
+    },
+    // Чек-лист (№19): читатель отмечает пункты у себя.
+    check_list: {
+      ...ru.slash_menu.check_list,
+      title: "Чек-лист",
+      subtext: "Пункты, которые читатель отмечает у себя",
+      aliases: [...ru.slash_menu.check_list.aliases, "чек-лист", "чеклист", "задачи"],
+    },
   },
   file_blocks: {
     ...ru.file_blocks,
@@ -516,6 +540,85 @@ function GalleryItem({
   );
 }
 
+// --- Колонки -----------------------------------------------------------------------
+
+/**
+ * Колонки (№17) — свои блоки, без платного пакета BlockNote: «Колонки» —
+ * ряд, его вложенные блоки «Колонка» встают рядом (CSS-сетка в styles.css),
+ * внутри колонки — обычные блоки. Сами блоки-обёртки невидимы; на
+ * телефоне колонки идут друг под другом.
+ */
+const ColumnsBlock = createReactBlockSpec(
+  { type: "columns", propSchema: {}, content: "none" },
+  {
+    // В правке — подпись над рядом (за неё ряд перетаскивают и удаляют
+    // целиком), у читателя её нет.
+    render: ({ editor }) => (
+      <div className="kb-columns-anchor" contentEditable={false}>
+        {editor.isEditable ? "Колонки" : null}
+      </div>
+    ),
+  },
+);
+const ColumnBlock = createReactBlockSpec(
+  { type: "column", propSchema: {}, content: "none" },
+  { render: () => <div className="kb-column-anchor" contentEditable={false} /> },
+);
+
+/** Новый ряд колонок: в каждой — пустой абзац, куда сразу писать. */
+function columnsBlock(count: number) {
+  return {
+    type: "columns" as const,
+    children: Array.from({ length: count }, () => ({
+      type: "column" as const,
+      children: [{ type: "paragraph" as const }],
+    })),
+  };
+}
+
+/** Курсор — в первую колонку нового ряда (иначе текст уходил мимо). */
+function focusFirstColumn(editor: KbEditor, columnsId: string | undefined) {
+  const first = columnsId ? editor.getBlock(columnsId)?.children[0]?.children[0] : undefined;
+  if (first) editor.setTextCursorPosition(first, "start");
+}
+
+/**
+ * Колонка без содержимого — пустой абзац в неё (иначе в неё не поставить
+ * курсор); ряд без колонок удаляется.
+ */
+function normalizeColumns(editor: KbEditor) {
+  for (const b of walkBlocks(editor.document as unknown as AnyBlock[])) {
+    if (b.type === "columns" && !b.children?.length) {
+      editor.removeBlocks([b.id]);
+      return;
+    }
+    if (b.type === "column" && !b.children?.length) {
+      editor.updateBlock(b.id, { children: [{ type: "paragraph" }] } as never);
+      return;
+    }
+  }
+}
+
+// --- Упоминания ----------------------------------------------------------------------
+
+/** Упоминание сотрудника (№28): «@Имя» в тексте — меню по «@» в редакторе. */
+const Mention = createReactInlineContentSpec(
+  {
+    type: "mention",
+    propSchema: { userId: { default: "" }, name: { default: "" } },
+    content: "none",
+  },
+  {
+    render: ({ inlineContent }) => (
+      <span className="kb-mention" data-user-id={inlineContent.props.userId}>
+        @{inlineContent.props.name}
+      </span>
+    ),
+  },
+);
+
+type MentionCandidate = { user_id: string; full_name: string; avatar_url: string | null };
+
 // --- Схема ----------------------------------------------------------------------
 
 // Блок кода по брифу не нужен — из схемы и меню «/» его убираем.
@@ -528,6 +631,12 @@ const kbSchema = BlockNoteSchema.create({
     audio: KbAudioBlock(),
     pdf: PdfBlock(),
     gallery: GalleryBlock(),
+    columns: ColumnsBlock(),
+    column: ColumnBlock(),
+  },
+  inlineContentSpecs: {
+    ...defaultInlineContentSpecs,
+    mention: Mention,
   },
 });
 
@@ -589,6 +698,22 @@ function slashItems(
         const id = insertBlock({ type: "pdf" });
         if (id) editor.getExtension(FilePanelExtension)?.showMenu(id);
       },
+    },
+    {
+      title: "Две колонки",
+      subtext: "Текст, картинки и списки рядом — в две колонки",
+      aliases: ["колонки", "столбцы", "columns", "две"],
+      group: basic,
+      icon: <Columns2 className="size-[18px]" />,
+      onItemClick: () => focusFirstColumn(editor, insertBlock(columnsBlock(2))),
+    },
+    {
+      title: "Три колонки",
+      subtext: "Три колонки рядом",
+      aliases: ["колонки", "столбцы", "columns", "три"],
+      group: basic,
+      icon: <Columns3 className="size-[18px]" />,
+      onItemClick: () => focusFirstColumn(editor, insertBlock(columnsBlock(3))),
     },
     {
       title: "Картинки в ряд",
@@ -819,6 +944,21 @@ function UploadOnlyFilePanel({ blockId }: FilePanelProps) {
   );
 }
 
+/** Кружок с инициалами в меню «@». */
+function MentionAvatar({ name }: { name: string }) {
+  const letters = name
+    .split(/\s+/)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
+      {letters}
+    </span>
+  );
+}
+
 /** Полоса загрузки: имя, сколько отправлено из скольких, проценты. */
 function UploadProgress({ file, share }: { file: File; share: number | null }) {
   const pct = Math.round((share ?? 0) * 100);
@@ -890,6 +1030,7 @@ export function KbDocument({
   onPickArticle,
   onPickHeading,
   onReady,
+  checks,
 }: {
   baseId: string;
   nodeId: string;
@@ -905,8 +1046,25 @@ export function KbDocument({
   onPickHeading?: (headings: KbHeading[]) => Promise<KbArticleLink | null>;
   /** Документ, каким его открыли (уже с id блоков) — точка отсчёта правок. */
   onReady?: (doc: unknown[]) => void;
+  /**
+   * Чек-лист у читателя: свои отметки (kb_checks), а не те, что в тексте
+   * у автора. Без него — пункты как в документе.
+   */
+  checks?: { checked: Set<string>; onToggle: (blockId: string) => void };
 }) {
   const navigate = useNavigate();
+  // Кого можно упомянуть через «@» — только в режиме правки.
+  const { data: candidates } = useQuery({
+    queryKey: ["kb_mention_candidates", baseId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("kb_mention_candidates", { p_base: baseId });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as MentionCandidate[];
+    },
+    enabled: editable,
+    staleTime: 5 * 60_000,
+    meta: { errorMessage: "Не удалось загрузить сотрудников для упоминаний" },
+  });
   const pending = useRef(new Set<string>());
   const upload = useMemo(
     () => async (file: File, blockId?: string) => {
@@ -986,7 +1144,11 @@ export function KbDocument({
   return (
     <div
       ref={setBox}
-      className={cn("kb-document", !editable && "kb-document-read")}
+      className={cn(
+        "kb-document",
+        !editable && "kb-document-read",
+        !editable && checks && "kb-own-checks",
+      )}
       onKeyDownCapture={(e) => {
         if (editable && e.key === "Tab" && !e.shiftKey && addTableRowAtEnd(editor)) {
           e.preventDefault();
@@ -998,6 +1160,16 @@ export function KbDocument({
         // на заголовок этой статьи — прокруткой к нему (адрес с #id можно
         // скопировать и прислать).
         if (editable) return;
+        if (checks) {
+          const item = (e.target as HTMLElement).closest<HTMLElement>(
+            '[data-content-type="checkListItem"] > div:has(> input)',
+          );
+          const id = item?.closest("[data-id]")?.getAttribute("data-id");
+          if (id) {
+            checks.onToggle(id);
+            return;
+          }
+        }
         const a = (e.target as HTMLElement).closest("a");
         const href = a?.getAttribute("href");
         if (href?.startsWith("#") && !e.metaKey && !e.ctrlKey) {
@@ -1011,6 +1183,18 @@ export function KbDocument({
         void navigate({ to: href });
       }}
     >
+      {checks && !editable && (
+        // Галочка и зачёркивание — у своих отметок читателя, а не у
+        // отмеченного автором (флажок BlockNote скрыт, рисует styles.css).
+        <style>
+          {[...checks.checked]
+            .map((id) => {
+              const item = `.kb-own-checks [data-id="${CSS.escape(id)}"] > .bn-block > [data-content-type="checkListItem"]`;
+              return `${item} .bn-inline-content{text-decoration:line-through;opacity:.6}${item} > div:has(> input)::before{background-color:var(--primary);border-color:var(--primary);background-image:var(--kb-check-mark)}`;
+            })
+            .join("")}
+        </style>
+      )}
       <BlockNoteView
         editor={editor}
         editable={editable}
@@ -1023,6 +1207,7 @@ export function KbDocument({
           onChange?.(doc);
           onHeadings?.(documentHeadings(doc));
           if (editable) {
+            normalizeColumns(editor);
             ensureTrailingParagraph(editor);
             void reuploadForeignImages(editor, pending.current, upload);
           }
@@ -1032,6 +1217,25 @@ export function KbDocument({
           triggerCharacter="/"
           getItems={async (query) =>
             filterSuggestionItems(slashItems(editor, onPickArticle, onPickHeading), query)
+          }
+        />
+        <SuggestionMenuController
+          triggerCharacter="@"
+          getItems={async (query) =>
+            filterSuggestionItems(
+              (candidates ?? []).map((c) => ({
+                title: c.full_name,
+                aliases: c.full_name.split(/\s+/),
+                group: "Сотрудники с доступом к базе",
+                icon: <MentionAvatar name={c.full_name} />,
+                onItemClick: () =>
+                  editor.insertInlineContent([
+                    { type: "mention", props: { userId: c.user_id, name: c.full_name } },
+                    " ",
+                  ]),
+              })),
+              query,
+            )
           }
         />
         <FilePanelController filePanel={UploadOnlyFilePanel} />

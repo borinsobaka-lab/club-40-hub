@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Copy,
   Ellipsis,
+  LayoutTemplate,
   FilePlus,
   FolderInput,
   FolderPlus,
@@ -166,14 +167,17 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
     toast.success("Статья опубликована");
   };
 
-  const remove = async (node: KbTreeNode) => {
+  const remove = async (node: KbTreeNode, hasChildren: boolean) => {
     const ok = await confirm({
       title:
         node.kind === "folder"
           ? `Удалить папку «${node.title}»?`
           : `Удалить статью «${node.title}»?`,
       description:
-        "Удаляется насовсем, вместе с историей и отметками о прочтении. Если может пригодиться — лучше в архив.",
+        node.kind === "folder" && hasChildren
+          ? "Папка уйдёт в корзину вместе со всем, что в ней. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда."
+          : "Уйдёт в корзину. 30 дней можно вернуть — с версиями и отметками о прочтении, потом удалится навсегда.",
+      confirmLabel: "В корзину",
     });
     if (ok) await actions.remove(node);
   };
@@ -236,14 +240,13 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
           }
         : { label: "В архив", icon: Archive, onSelect: () => actions.setStatus(node, "archived") },
     );
-    // Опубликованное и папку с содержимым не удаляем: сначала архив или перенос.
-    if (node.status !== "published" && !hasChildren)
-      items.push({
-        label: "Удалить",
-        icon: Trash2,
-        destructive: true,
-        onSelect: () => remove(node),
-      });
+    // Удалённое уходит в корзину со всем вложенным — 30 дней можно вернуть.
+    items.push({
+      label: "Удалить",
+      icon: Trash2,
+      destructive: true,
+      onSelect: () => remove(node, hasChildren),
+    });
     return items;
   };
 
@@ -370,18 +373,39 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
           </div>
         )}
         {canEdit && (
-          <Link
-            to="/kb/$baseId/report"
-            params={{ baseId }}
-            onClick={onNavigate}
-            className={cn(
-              "flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-white hover:bg-white/10",
-              pathname.endsWith("/report") && "bg-white/10 font-semibold",
-            )}
-          >
-            <ChartSquare active={pathname.endsWith("/report")} className="size-[18px]" />
-            Отчёт по чтению
-          </Link>
+          <div className="grid grid-cols-3 gap-1">
+            {(
+              [
+                { to: "/kb/$baseId/report", label: "Отчёт", icon: "report" },
+                { to: "/kb/$baseId/templates", label: "Шаблоны", icon: "templates" },
+                { to: "/kb/$baseId/trash", label: "Корзина", icon: "trash" },
+              ] as const
+            ).map((l) => {
+              const here = pathname.endsWith(`/${l.icon}`);
+              return (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  params={{ baseId }}
+                  onClick={onNavigate}
+                  title={l.icon === "report" ? "Отчёт по чтению" : undefined}
+                  className={cn(
+                    "flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-1 text-xs font-medium text-white/85 hover:bg-white/10 hover:text-white",
+                    here && "bg-white/10 text-white",
+                  )}
+                >
+                  {l.icon === "report" ? (
+                    <ChartSquare active={here} className="size-4 shrink-0" />
+                  ) : l.icon === "templates" ? (
+                    <LayoutTemplate className="size-4 shrink-0" />
+                  ) : (
+                    <Trash2 className="size-4 shrink-0" />
+                  )}
+                  <span className="truncate">{l.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -391,14 +415,20 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
             <KbNodeTitleForm
               kind={dialog.nodeKind}
               node={null}
-              place={{ nodes, baseTitle: base?.title ?? "База", parentId: dialog.parentId }}
-              onSave={async (title, description, parentId, icon) => {
+              place={{
+                nodes,
+                baseTitle: base?.title ?? "База",
+                parentId: dialog.parentId,
+                baseId,
+              }}
+              onSave={async (title, description, parentId, icon, templateId) => {
                 const id = await actions.create(
                   dialog.nodeKind,
                   parentId,
                   title,
                   description,
                   icon,
+                  templateId,
                 );
                 if (id && parentId) folders.toggle(parentId, true);
                 if (id) onNavigate();
