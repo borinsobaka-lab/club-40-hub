@@ -8,6 +8,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminAccess } from "@/hooks/use-admin-access";
+import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { canEditKb } from "@/lib/kb/access";
 import { kbBasesQuery, snippetParts, useKbSearch, useKbTree } from "@/lib/kb/data";
@@ -110,7 +111,35 @@ export function KbHeaderSearch({ baseId, className }: { baseId: string; classNam
   const [open, setOpen] = useState(false);
   const [inFolder, setInFolder] = useState(false);
   const debounced = useDebouncedValue(query, 300);
-  const search = useKbSearch(baseId, debounced, inFolder && scopeFolder ? scopeFolder.id : null);
+  const folderId = inFolder && scopeFolder ? scopeFolder.id : null;
+  const search = useKbSearch(baseId, debounced, folderId);
+
+  // Что ищут — в аналитику базы (kb_log_search): запрос, сколько нашлось,
+  // перешёл ли по результату. Пишем, когда пришёл ответ на этот запрос.
+  const logged = useRef<{ key: string; id: number | null }>({ key: "", id: null });
+  const hits = search.data;
+  useEffect(() => {
+    const q = debounced.trim();
+    if (!hits || q.length < 2) return;
+    const key = `${q}|${folderId ?? ""}`;
+    if (logged.current.key === key) return;
+    logged.current = { key, id: null };
+    void supabase
+      .rpc("kb_log_search", {
+        p_base: baseId,
+        p_query: q,
+        p_results: hits.length,
+        p_in_folder: !!folderId,
+      })
+      .then(({ data }) => {
+        if (logged.current.key === key) logged.current.id = (data as number | null) ?? null;
+      });
+  }, [hits, debounced, folderId, baseId]);
+  const onPick = (nodeId: string) => {
+    setOpen(false);
+    const id = logged.current.id;
+    if (id) void supabase.rpc("kb_log_search_click", { p_id: id, p_node: nodeId }).then(() => {});
+  };
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const shown = open && query.trim().length >= 2;
@@ -174,7 +203,7 @@ export function KbHeaderSearch({ baseId, className }: { baseId: string; classNam
             index={index}
             hits={search.data}
             loading={search.isLoading || debounced !== query}
-            onNavigate={() => setOpen(false)}
+            onPick={onPick}
           />
         </div>
       )}
@@ -187,13 +216,13 @@ function SearchResults({
   index,
   hits,
   loading,
-  onNavigate,
+  onPick,
 }: {
   baseId: string;
   index: KbTreeIndex;
   hits: ReturnType<typeof useKbSearch>["data"];
   loading: boolean;
-  onNavigate: () => void;
+  onPick: (nodeId: string) => void;
 }) {
   if (loading && !hits?.length)
     return (
@@ -216,7 +245,7 @@ function SearchResults({
             <Link
               to="/kb/$baseId/$nodeId"
               params={{ baseId, nodeId: h.id }}
-              onClick={onNavigate}
+              onClick={() => onPick(h.id)}
               className="block rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent focus-visible:bg-accent"
             >
               <span className="flex items-center gap-1.5 font-medium">

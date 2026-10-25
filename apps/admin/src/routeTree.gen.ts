@@ -58,7 +58,7 @@ import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_aut
 import { Route as AuthenticatedKbBaseIdIndexRouteImport } from './routes/_authenticated/kb/$baseId/index'
 import { Route as AuthenticatedKbBaseIdTrashRouteImport } from './routes/_authenticated/kb/$baseId/trash'
 import { Route as AuthenticatedKbBaseIdTemplatesRouteImport } from './routes/_authenticated/kb/$baseId/templates'
-import { Route as AuthenticatedKbBaseIdReportRouteImport } from './routes/_authenticated/kb/$baseId/report'
+import { Route as AuthenticatedKbBaseIdAnalyticsRouteImport } from './routes/_authenticated/kb/$baseId/analytics'
 import { Route as AuthenticatedKbBaseIdNodeIdRouteImport } from './routes/_authenticated/kb/$baseId/$nodeId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -324,10 +324,10 @@ const AuthenticatedKbBaseIdTemplatesRoute =
     path: '/kb/$baseId/templates',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedKbBaseIdReportRoute =
-  AuthenticatedKbBaseIdReportRouteImport.update({
-    id: '/kb/$baseId/report',
-    path: '/kb/$baseId/report',
+const AuthenticatedKbBaseIdAnalyticsRoute =
+  AuthenticatedKbBaseIdAnalyticsRouteImport.update({
+    id: '/kb/$baseId/analytics',
+    path: '/kb/$baseId/analytics',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedKbBaseIdNodeIdRoute =
@@ -384,7 +384,7 @@ export interface FileRoutesByFullPath {
   '/kb/': typeof AuthenticatedKbIndexRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
   '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
-  '/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
@@ -436,7 +436,7 @@ export interface FileRoutesByTo {
   '/kb': typeof AuthenticatedKbIndexRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
   '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
-  '/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/kb/$baseId': typeof AuthenticatedKbBaseIdIndexRoute
@@ -490,7 +490,7 @@ export interface FileRoutesById {
   '/_authenticated/kb/': typeof AuthenticatedKbIndexRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
   '/_authenticated/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
-  '/_authenticated/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/_authenticated/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/_authenticated/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/_authenticated/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/_authenticated/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
@@ -544,7 +544,7 @@ export interface FileRouteTypes {
     | '/kb/'
     | '/scripts/'
     | '/kb/$baseId/$nodeId'
-    | '/kb/$baseId/report'
+    | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
     | '/kb/$baseId/'
@@ -596,7 +596,7 @@ export interface FileRouteTypes {
     | '/kb'
     | '/scripts'
     | '/kb/$baseId/$nodeId'
-    | '/kb/$baseId/report'
+    | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
     | '/kb/$baseId'
@@ -649,7 +649,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kb/'
     | '/_authenticated/scripts/'
     | '/_authenticated/kb/$baseId/$nodeId'
-    | '/_authenticated/kb/$baseId/report'
+    | '/_authenticated/kb/$baseId/analytics'
     | '/_authenticated/kb/$baseId/templates'
     | '/_authenticated/kb/$baseId/trash'
     | '/_authenticated/kb/$baseId/'
@@ -1008,11 +1008,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKbBaseIdTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/kb/$baseId/report': {
-      id: '/_authenticated/kb/$baseId/report'
-      path: '/kb/$baseId/report'
-      fullPath: '/kb/$baseId/report'
-      preLoaderRoute: typeof AuthenticatedKbBaseIdReportRouteImport
+    '/_authenticated/kb/$baseId/analytics': {
+      id: '/_authenticated/kb/$baseId/analytics'
+      path: '/kb/$baseId/analytics'
+      fullPath: '/kb/$baseId/analytics'
+      preLoaderRoute: typeof AuthenticatedKbBaseIdAnalyticsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/kb/$baseId/$nodeId': {
@@ -1068,7 +1068,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKbIndexRoute: typeof AuthenticatedKbIndexRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
   AuthenticatedKbBaseIdNodeIdRoute: typeof AuthenticatedKbBaseIdNodeIdRoute
-  AuthenticatedKbBaseIdReportRoute: typeof AuthenticatedKbBaseIdReportRoute
+  AuthenticatedKbBaseIdAnalyticsRoute: typeof AuthenticatedKbBaseIdAnalyticsRoute
   AuthenticatedKbBaseIdTemplatesRoute: typeof AuthenticatedKbBaseIdTemplatesRoute
   AuthenticatedKbBaseIdTrashRoute: typeof AuthenticatedKbBaseIdTrashRoute
   AuthenticatedKbBaseIdIndexRoute: typeof AuthenticatedKbBaseIdIndexRoute
@@ -1118,7 +1118,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKbIndexRoute: AuthenticatedKbIndexRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,
   AuthenticatedKbBaseIdNodeIdRoute: AuthenticatedKbBaseIdNodeIdRoute,
-  AuthenticatedKbBaseIdReportRoute: AuthenticatedKbBaseIdReportRoute,
+  AuthenticatedKbBaseIdAnalyticsRoute: AuthenticatedKbBaseIdAnalyticsRoute,
   AuthenticatedKbBaseIdTemplatesRoute: AuthenticatedKbBaseIdTemplatesRoute,
   AuthenticatedKbBaseIdTrashRoute: AuthenticatedKbBaseIdTrashRoute,
   AuthenticatedKbBaseIdIndexRoute: AuthenticatedKbBaseIdIndexRoute,

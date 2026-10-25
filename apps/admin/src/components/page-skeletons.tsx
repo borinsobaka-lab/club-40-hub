@@ -2053,15 +2053,34 @@ export function KbNodePageSkeleton() {
   );
 }
 
-export function KbReportPageSkeleton() {
+/** Аналитика базы: заголовок, вкладки и период, плитки, полоса чтения, график. */
+export function KbAnalyticsPageSkeleton() {
   return (
-    <TablePage
-      kb
-      title="Отчёт по чтению"
-      toolbar={{ search: true, controls: ["w-48"] }}
-      pagination={false}
-      headers={["Статья", "Статус", "Создал", "Обновлено", "Прочитали", "Открывали"]}
-    />
+    <ShellSkeleton title="Аналитика" kb>
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="px-1 pb-1">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="mt-1.5 h-7 w-44" />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Skeleton className="h-10 w-80 max-w-full rounded-full" />
+          <Skeleton className="h-10 w-64 rounded-full" />
+        </div>
+        <DashboardStatsSkeleton
+          labels={[
+            "Прочитано",
+            "Читатели",
+            "Открытия статей",
+            "Время чтения",
+            "Дочитали до конца",
+            "Поиск без ответа",
+          ]}
+          className="lg:grid-cols-3 2xl:grid-cols-6"
+        />
+        <DashboardChartSkeleton title="Прочитано по базе" height={40} />
+        <DashboardChartSkeleton title="Активность по дням" height={260} />
+      </div>
+    </ShellSkeleton>
   );
 }
 

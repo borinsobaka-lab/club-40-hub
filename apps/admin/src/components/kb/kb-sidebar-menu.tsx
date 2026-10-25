@@ -332,7 +332,7 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
           <div className="grid grid-cols-3 gap-1">
             {(
               [
-                { to: "/kb/$baseId/report", label: "Отчёт", icon: "report" },
+                { to: "/kb/$baseId/analytics", label: "Аналитика", icon: "analytics" },
                 { to: "/kb/$baseId/templates", label: "Шаблоны", icon: "templates" },
                 { to: "/kb/$baseId/trash", label: "Корзина", icon: "trash" },
               ] as const
@@ -344,20 +344,20 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
                   to={l.to}
                   params={{ baseId }}
                   onClick={onNavigate}
-                  title={l.icon === "report" ? "Отчёт по чтению" : undefined}
+                  title={l.icon === "analytics" ? "Кто что прочитал, время, поиск" : undefined}
                   className={cn(
-                    "flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-1 text-xs font-medium text-white/85 hover:bg-white/10 hover:text-white",
+                    "flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[11px] font-medium text-white/85 hover:bg-white/10 hover:text-white",
                     here && "bg-white/10 text-white",
                   )}
                 >
-                  {l.icon === "report" ? (
+                  {l.icon === "analytics" ? (
                     <ChartSquare active={here} className="size-4 shrink-0" />
                   ) : l.icon === "templates" ? (
                     <LayoutTemplate className="size-4 shrink-0" />
                   ) : (
                     <Trash2 className="size-4 shrink-0" />
                   )}
-                  <span className="truncate">{l.label}</span>
+                  <span className="max-w-full truncate">{l.label}</span>
                 </Link>
               );
             })}
