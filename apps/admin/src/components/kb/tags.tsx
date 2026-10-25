@@ -24,11 +24,7 @@ import {
 import { fieldClass } from "@/components/ui/field-styles";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  STATUS_TONE_CLASS,
-  statusChipBase,
-  statusChipSize,
-} from "@/components/ui/status-chip-styles";
+import { statusChipBase, statusChipSize } from "@/components/ui/status-chip-styles";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createKbTag,
@@ -41,13 +37,16 @@ import {
 } from "@/lib/kb/data";
 import {
   findTagByName,
+  KB_TAG_COLORS,
   KB_TAG_MAX_LENGTH,
+  kbTagColor,
   KB_TAGS_PER_ARTICLE,
   matchTags,
   normalizeTagName,
   sortTags,
   tagArticleCounts,
   type KbTag,
+  type KbTagColor,
 } from "@/lib/kb/tags";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +56,44 @@ import { cn } from "@/lib/utils";
  * (`?tag=` — статьи с тегом), в поиске шапки — найденные теги и статьи с ними.
  */
 
-const chipClass = cn(statusChipBase, statusChipSize.default, STATUS_TONE_CLASS.neutral);
+const chipBase = cn(statusChipBase, statusChipSize.default);
+
+/**
+ * Выбор цвета тега (решение владельца 2026-10-25): кружки готового набора
+ * (KB_TAG_COLORS) — текст тега этим цветом, подложка светлее.
+ */
+export function KbTagColorPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: KbTagColor | null | undefined;
+  onChange: (color: KbTagColor) => void;
+  disabled?: boolean;
+}) {
+  const current = kbTagColor(value).key;
+  return (
+    <div role="radiogroup" aria-label="Цвет тега" className="flex flex-wrap gap-1.5">
+      {KB_TAG_COLORS.map((c) => (
+        <button
+          key={c.key}
+          type="button"
+          role="radio"
+          aria-checked={current === c.key}
+          aria-label={c.label}
+          title={c.label}
+          disabled={disabled}
+          onClick={() => onChange(c.key)}
+          className={cn(
+            "size-6 cursor-pointer rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-default motion-reduce:hover:scale-100",
+            c.dot,
+            current === c.key && "ring-2 ring-ring ring-offset-2 ring-offset-background",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
 
 /** Тег-пилюля: «#Касса»; со ссылкой — на главную базы со статьями этого тега. */
 export function KbTagChip({
@@ -84,10 +120,12 @@ export function KbTagChip({
       {count !== undefined && <span className="tabular-nums opacity-60">{count}</span>}
     </>
   );
-  const tone = active ? "bg-brand/15 text-brand-on-light" : "";
+  // Цвет тега — текст и светлая подложка; выбранный на главной — с обводкой.
+  const chipClass = cn(chipBase, kbTagColor(tag.color).chip);
+  const tone = active ? "ring-2 ring-current/50" : "";
   if (onRemove)
     return (
-      <span className={cn(chipClass, "pr-1 text-foreground")}>
+      <span className={cn(chipClass, "pr-1")}>
         {body}
         <button
           type="button"
@@ -107,11 +145,7 @@ export function KbTagChip({
       // Выбранный тег — повторное нажатие снимает выбор.
       search={active ? {} : { tag: tag.id }}
       aria-current={active ? "true" : undefined}
-      className={cn(
-        chipClass,
-        "transition-colors hover:bg-muted-foreground/15 hover:text-foreground",
-        tone,
-      )}
+      className={cn(chipClass, "transition-opacity hover:opacity-80", tone)}
     >
       {body}
     </Link>
@@ -157,6 +191,8 @@ export function KbTagsField({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  // Цвет нового тега — выбирается в списке перед «Создать тег».
+  const [newColor, setNewColor] = useState<KbTagColor>("gray");
   const byId = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
   const selected = value.map((id) => byId.get(id)).filter((t): t is KbTag => !!t);
   const name = normalizeTagName(search);
@@ -173,7 +209,7 @@ export function KbTagsField({
     if (!name || creating) return;
     setCreating(true);
     try {
-      const tag = await createKbTag(baseId, name);
+      const tag = await createKbTag(baseId, name, newColor);
       qc.setQueryData<KbTag[]>([KB_TAGS_KEY, baseId], (prev) => sortTags([...(prev ?? []), tag]));
       void qc.invalidateQueries({ queryKey: [KB_TAGS_KEY, baseId] });
       add(tag.id);
@@ -210,7 +246,10 @@ export function KbTagsField({
           open={open}
           onOpenChange={(o) => {
             setOpen(o);
-            if (!o) setSearch("");
+            if (!o) {
+              setSearch("");
+              setNewColor("gray");
+            }
           }}
           modal
         >
@@ -243,13 +282,22 @@ export function KbTagsField({
                     </CommandItem>
                   ))}
                   {name && !existing && (
+                    <div className="flex items-center gap-2 px-2 pt-2 pb-1">
+                      <span className="text-xs text-muted-foreground">Цвет</span>
+                      <KbTagColorPicker value={newColor} onChange={setNewColor} />
+                    </div>
+                  )}
+                  {name && !existing && (
                     <CommandItem
                       value="__create"
                       onSelect={() => void create()}
                       disabled={creating}
                     >
                       {creating ? <Loader2 className="animate-spin" /> : <Plus />}
-                      <span className="truncate">Создать тег «{name}»</span>
+                      <span className="truncate">
+                        Создать тег{" "}
+                        <span className={cn(chipBase, kbTagColor(newColor).chip)}>#{name}</span>
+                      </span>
                     </CommandItem>
                   )}
                 </CommandGroup>
@@ -330,6 +378,16 @@ export function KbTagsManageForm({ baseId, onDone }: { baseId: string; onDone: (
     toast.success("Тег переименован");
     return true;
   };
+  const recolor = async (tag: KbTag, color: KbTagColor) => {
+    if (color === kbTagColor(tag.color).key) return;
+    // Сразу в списке, база — следом; не вышло — назад.
+    qc.setQueryData<KbTag[]>([KB_TAGS_KEY, baseId], (prev) =>
+      prev?.map((t) => (t.id === tag.id ? { ...t, color } : t)),
+    );
+    const { error } = await supabase.from("kb_tags").update({ color }).eq("id", tag.id);
+    if (error) toast.error(kbErrorText(error.message));
+    await refresh();
+  };
   const remove = async (tag: KbTag) => {
     const n = counts.get(tag.id) ?? 0;
     const ok = await confirm({
@@ -354,7 +412,7 @@ export function KbTagsManageForm({ baseId, onDone }: { baseId: string; onDone: (
         <DialogTitle>Теги базы</DialogTitle>
         <DialogDescription>
           Новые теги заводятся у статьи — в окне новой статьи или в режиме правки. Здесь — исправить
-          название или удалить лишний.
+          название, поменять цвет или удалить лишний.
         </DialogDescription>
       </DialogHeader>
       <DialogBody>
@@ -368,6 +426,7 @@ export function KbTagsManageForm({ baseId, onDone }: { baseId: string; onDone: (
                 tag={t}
                 count={counts.get(t.id) ?? 0}
                 onRename={(name) => rename(t, name)}
+                onRecolor={(color) => void recolor(t, color)}
                 onRemove={() => void remove(t)}
               />
             ))}
@@ -388,16 +447,45 @@ function TagRow({
   tag,
   count,
   onRename,
+  onRecolor,
   onRemove,
 }: {
   tag: KbTag;
   count: number;
   onRename: (name: string) => Promise<boolean>;
+  onRecolor: (color: KbTagColor) => void;
   onRemove: () => void;
 }) {
   const [name, setName] = useState(tag.name);
+  const [colorOpen, setColorOpen] = useState(false);
+  const color = kbTagColor(tag.color);
   return (
     <li className="flex items-center gap-2">
+      <Popover open={colorOpen} onOpenChange={setColorOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Цвет тега «${tag.name}»: ${color.label.toLowerCase()}`}
+            title="Цвет тега"
+            className={cn(
+              chipBase,
+              color.chip,
+              "h-10 shrink-0 cursor-pointer rounded-md px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            )}
+          >
+            #
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-3">
+          <KbTagColorPicker
+            value={tag.color}
+            onChange={(c) => {
+              onRecolor(c);
+              setColorOpen(false);
+            }}
+          />
+        </PopoverContent>
+      </Popover>
       <Input
         aria-label={`Название тега «${tag.name}»`}
         value={name}

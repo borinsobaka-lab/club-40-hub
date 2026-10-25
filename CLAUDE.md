@@ -834,6 +834,8 @@ AUTH_SETUP.md.
   и статьи с тегом под запрос («#касса» = «касса»), точное имя тега — выше;
   корзина уносит и возвращает теги триггерами на `kb_trash`
   (`kb_trash_tags_bi` / `kb_trash_tags_ad`), функции корзины не тронуты.
+  Цвет тега — `kb_tags.color` (ключ готового набора админки, null — серый;
+  `db/migrations/2026-10-25_zzzzzzzzzzz_kb_tag_colors.sql`).
   Правки по код-ревью 2026-10-25:
   `db/migrations/2026-10-25_zzzzzzzzzz_kb_academy_code_review.sql` —
   `kb_reads.read_published_at` разово заполнена (прочитанное до учёта

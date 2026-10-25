@@ -261,8 +261,8 @@ function BaseHomeLists({ baseId, index }: { baseId: string; index: KbTreeIndex }
     <div className="grid gap-3 md:grid-cols-3">
       {blocks.map((b) => (
         <section key={b.title} className="min-w-0 rounded-lg border bg-background p-3">
-          {/* Заголовок отделён от списка линией во всю ширину плашки (решение владельца 2026-10-25). */}
-          <h3 className="-mx-3 mb-2 flex items-center gap-1.5 border-b px-4 pb-2.5 text-sm font-semibold">
+          {/* Шапка плашки — светло-серой полосой с линией во всю ширину (решения владельца 2026-10-25). */}
+          <h3 className="-mx-3 -mt-3 mb-2 flex items-center gap-1.5 rounded-t-lg border-b bg-muted/50 px-4 py-2.5 text-sm font-semibold">
             <b.icon className="size-4 text-muted-foreground" />
             {b.title}
           </h3>
@@ -328,7 +328,7 @@ function BaseTags({
   if (list.length === 0) return null;
   return (
     <section className="mb-3 rounded-lg border bg-background p-3">
-      <h3 className="-mx-3 mb-2.5 flex items-center gap-1.5 border-b px-4 pb-2.5 text-sm font-semibold">
+      <h3 className="-mx-3 -mt-3 mb-2.5 flex items-center gap-1.5 rounded-t-lg border-b bg-muted/50 px-4 py-2.5 text-sm font-semibold">
         <Hash className="size-4 text-muted-foreground" />
         Теги
         {canEdit && (

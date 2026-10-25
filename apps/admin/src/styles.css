@@ -694,6 +694,12 @@ input[type="number"]::-webkit-outer-spin-button {
   --level: 1.05em;
   padding-top: 0.5em;
 }
+/* Заголовки статьи — цветом её названия (решение владельца 2026-10-25): у
+   BlockNote текст редактора светлее (#3f3f3f), заголовки выглядели серыми.
+   Цвет, выбранный автором у блока (data-text-color), не перебиваем. */
+.kb-document .bn-block-content[data-content-type="heading"]:not([data-text-color]) {
+  color: var(--foreground);
+}
 .kb-document .bn-block-content[data-content-type="heading"][data-level="2"] h2,
 .kb-document .bn-block-content[data-content-type="heading"][data-level="3"] h3 {
   font-weight: 600;

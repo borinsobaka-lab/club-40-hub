@@ -13,7 +13,14 @@ import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query"
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import type { KbGrant } from "./access";
-import { groupNodeTags, sortTags, tagDiff, type KbNodeTags, type KbTag } from "./tags";
+import {
+  groupNodeTags,
+  sortTags,
+  tagDiff,
+  type KbNodeTags,
+  type KbTag,
+  type KbTagColor,
+} from "./tags";
 import type { KbBase, KbDraft, KbNodeFull, KbTreeNode } from "./types";
 
 export const KB_BASES_KEY = "kb_bases";
@@ -383,7 +390,9 @@ export function useKbTags(baseId: string | null) {
     queryKey: [KB_TAGS_KEY, baseId],
     queryFn: async () =>
       sortTags(
-        await unwrap<KbTag[]>(supabase.from("kb_tags").select("id, name").eq("base_id", baseId!)),
+        await unwrap<KbTag[]>(
+          supabase.from("kb_tags").select("id, name, color").eq("base_id", baseId!),
+        ),
       ),
     enabled: !!baseId,
     meta: { errorMessage: "Не удалось загрузить теги базы" },
@@ -413,11 +422,15 @@ export function useKbNodeTags(baseId: string | null) {
 }
 
 /** Новый тег базы; имя чистит база («#», пробелы). */
-export async function createKbTag(baseId: string, name: string): Promise<KbTag> {
+export async function createKbTag(
+  baseId: string,
+  name: string,
+  color: KbTagColor = "gray",
+): Promise<KbTag> {
   const { data, error } = await supabase
     .from("kb_tags")
-    .insert({ base_id: baseId, name })
-    .select("id, name")
+    .insert({ base_id: baseId, name, color })
+    .select("id, name, color")
     .single();
   if (error) throw new Error(error.message);
   return data as KbTag;
