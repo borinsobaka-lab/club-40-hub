@@ -161,7 +161,7 @@ export function AcadCourseForm({
       <DialogHeader>
         <DialogTitle>{course ? "Настройки курса" : "Новый курс"}</DialogTitle>
         <DialogDescription>
-          Курс — уроки и тесты по порядку. Ученики увидят его после публикации и назначения.
+          Курс собирается из уроков и тестов. Ученики увидят его после публикации и назначения.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={save}>
@@ -206,7 +206,10 @@ export function AcadCourseForm({
                         </SelectItem>
                       ))}
                       <SelectItem value={NEW_FOLDER} className="font-medium text-brand-on-light">
-                        <Plus /> Новая папка
+                        {/* ItemText — блочный: без своей строки плюс встаёт над подписью. */}
+                        <span className="inline-flex items-center gap-1.5">
+                          <Plus className="size-4" /> Новая папка
+                        </span>
                       </SelectItem>
                     </SelectContent>
                   </Select>

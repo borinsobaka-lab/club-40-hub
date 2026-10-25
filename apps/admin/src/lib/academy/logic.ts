@@ -173,16 +173,20 @@ export function staleLessons(steps: AcadStep[], sources: AcadSource[]): Set<stri
   return out;
 }
 
+/** Урок перед тестом, появившийся или изменившийся после правки его вопросов. */
+export type RecheckLesson = { title: string; added: boolean };
+
 /**
- * Тесты, после правки вопросов которых изменились уроки перед ними (до
- * предыдущего теста) — напомнить «проверьте вопросы» (№65: напоминание, без
- * запрета). Тест без вопросов не напоминает — его и так нужно заполнить.
+ * Тесты, после правки вопросов которых перед ними (до предыдущего теста)
+ * добавили или изменили уроки — напомнить «проверьте вопросы» (№65:
+ * напоминание, без запрета; снимает «Вопросы проверены»). Тест без вопросов
+ * не напоминает — его и так нужно заполнить.
  */
 export function quizzesToRecheck(
   steps: AcadStep[],
   questionCount: Record<string, number>,
-): Map<string, string[]> {
-  const out = new Map<string, string[]>();
+): Map<string, RecheckLesson[]> {
+  const out = new Map<string, RecheckLesson[]>();
   let lessons: AcadStep[] = [];
   for (const step of steps) {
     if (step.kind === "lesson") {
@@ -196,12 +200,31 @@ export function quizzesToRecheck(
     if ((questionCount[step.id] ?? 0) > 0 && changed.length) {
       out.set(
         step.id,
-        changed.map((l) => l.title),
+        changed.map((l) => ({ title: l.title, added: Date.parse(l.created_at) > checked })),
       );
     }
     lessons = [];
   }
   return out;
+}
+
+/** «После правки вопросов добавлен урок «А», изменился урок «Б»» — без хвоста. */
+export function recheckText(list: RecheckLesson[]): string {
+  const part = (items: RecheckLesson[], one: string, many: string) =>
+    items.length
+      ? `${items.length === 1 ? one : many} ${items.map((l) => `«${l.title}»`).join(", ")}`
+      : "";
+  const added = part(
+    list.filter((l) => l.added),
+    "добавлен урок",
+    "добавлены уроки",
+  );
+  const changed = part(
+    list.filter((l) => !l.added),
+    "изменился урок",
+    "изменились уроки",
+  );
+  return `После правки вопросов ${[added, changed].filter(Boolean).join(", ")}`;
 }
 
 /**
