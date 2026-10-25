@@ -279,7 +279,6 @@ export function AppSidebar() {
   const { data: kbBases } = useQuery({ ...kbBasesQuery, enabled: !!kbBaseId });
   const kbBase = kbBases?.find((b) => b.id === kbBaseId);
   const kbBaseTitle = kbBase?.title ?? "База знаний";
-  const KbBaseIcon = kbIcon(kbBase?.icon ?? null);
   const kbWidth = useKbSidebarWidth();
   const sectionMenu =
     railKey === "scripts"
@@ -377,15 +376,13 @@ export function AppSidebar() {
           {kbBaseId && !isMobile && <KbSidebarResize {...kbWidth} />}
           <SidebarHeader className="px-3 py-4">
             {kbBaseId ? (
-              // В базе знаний шапка — корень дерева: иконка базы и название
-              // (полужирное; пункты дерева ниже — обычные и без иконок).
+              // В базе знаний шапка ведёт на главную базы.
               <Link
                 to="/kb/$baseId"
                 params={{ baseId: kbBaseId }}
-                className="flex min-w-0 items-center gap-2.5 px-2 text-white"
+                className="flex min-w-0 items-center px-2 text-white"
                 onClick={closeMobile}
               >
-                <KbBaseIcon className="size-5 shrink-0" />
                 <span className="min-w-0 text-lg leading-tight font-semibold">{kbBaseTitle}</span>
               </Link>
             ) : (

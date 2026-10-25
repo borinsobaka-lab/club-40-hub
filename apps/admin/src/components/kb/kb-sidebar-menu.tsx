@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ChartSquare, DocumentText, Folder } from "@/components/nav-icons";
+import { ChartSquare, DocumentText, Folder, FolderOpen } from "@/components/nav-icons";
 import { DropIndicator } from "@/components/kb/drop-indicator";
 import { KbMoveForm, KbNodeTitleForm } from "@/components/kb/node-dialogs";
 import { useKbActions } from "@/components/kb/use-kb-actions";
@@ -472,15 +472,19 @@ function TreeRow({
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const muted = node.status !== "published";
+  // Раздел — папка верхнего уровня: с иконкой и полужирный.
+  const section = isFolder && depth === 0;
+  const SectionIcon = open ? FolderOpen : Folder;
   const statusHint =
     node.status === "archived" ? "В архиве" : node.status === "draft" ? "Черновик" : undefined;
 
   return (
     <li role="treeitem" aria-expanded={isFolder ? open : undefined} aria-selected={active}>
       {/*
-        Строка без иконок, обычным начертанием (решение владельца 2026-10-25,
-        по образцу справочных центров): иконка и полужирный — только у корня,
-        названия базы в шапке меню. Папку отличает шеврон после названия.
+        По образцу справочных центров (решение владельца 2026-10-25): разделы
+        базы — папки верхнего уровня — с иконкой и полужирные, всё внутри них
+        обычным начертанием и без иконок; вложенное начинается вровень с
+        названием раздела. Папку отличает шеврон после названия.
       */}
       <div
         ref={drag.ref}
@@ -508,11 +512,22 @@ function TreeRow({
             }
           }}
           className="flex h-full min-w-0 flex-1 items-center gap-1 rounded-md pr-1 outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          style={{ paddingLeft: 8 + depth * 14 }}
+          style={{ paddingLeft: depth === 0 ? 8 : 32 + (depth - 1) * 14 }}
         >
+          {section && (
+            <SectionIcon
+              active={active}
+              className={cn(
+                "mr-1 size-4 shrink-0",
+                active ? "text-brand-on-dark" : "text-white/80",
+                muted && "opacity-50",
+              )}
+            />
+          )}
           <span
             className={cn(
               "min-w-0 truncate",
+              section && "font-semibold text-white",
               muted && "text-white/45",
               node.status === "archived" && "italic",
             )}
