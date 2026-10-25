@@ -45,18 +45,15 @@ export function StudioBranding() {
   const { data: kbBases } = useQuery({ ...kbBasesQuery, enabled: !!kbBaseId });
   const kbColor = kbBaseId ? kbBases?.find((b) => b.id === kbBaseId)?.brand_color : null;
   const color = kbColor || active?.brand_color;
-  // Цвет базы — как задан (решение владельца 2026-10-25): на белом не
-  // темнеет; подстраивается только иконка на тёмном (меню, плашка вкладок).
-  const exact = !!kbColor;
   useEffect(() => {
     if (!color) return;
     const root = document.documentElement;
-    const vars = brandVars(color, exact);
+    const vars = brandVars(color);
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     return () => {
       for (const k of Object.keys(vars)) root.style.removeProperty(k);
     };
-  }, [color, exact]);
+  }, [color]);
 
   return null;
 }
@@ -68,11 +65,11 @@ export function StudioBranding() {
  * читается. Без этого тёмно-красный бренд терялся в меню, а белая цифра на
  * светлом бренде пропадала.
  */
-function brandVars(color: string, exact = false): Record<string, string> {
+function brandVars(color: string): Record<string, string> {
   return {
     "--brand": color,
     "--brand-on-dark": readableOn(color, SIDEBAR_HEX),
-    "--brand-on-light": exact ? color : readableOn(color, "#ffffff", 4.5),
+    "--brand-on-light": readableOn(color, "#ffffff", 4.5),
     "--brand-foreground": textOnTint(color, 1) === "light" ? "#ffffff" : "var(--foreground)",
   };
 }
