@@ -79,6 +79,11 @@ import { setUploadProgress, useUploadProgress } from "@/lib/kb/upload-progress";
 import { cn } from "@/lib/utils";
 import { useKbDarkTheme } from "@/lib/kb/theme";
 import { railSectionKey } from "@/lib/nav-sections";
+import {
+  KbImageLightbox,
+  ZOOMABLE_IMAGES,
+  type LightboxImage,
+} from "@/components/kb/image-lightbox";
 
 // --- Тексты ----------------------------------------------------------------------
 
@@ -515,18 +520,12 @@ function GalleryItem({
   return (
     <figure className="group/gi relative overflow-hidden rounded-md bg-muted/40">
       {resolved.loadingState === "loaded" ? (
-        <a
-          href={resolved.downloadUrl}
-          target="_blank"
-          rel="noreferrer"
-          tabIndex={editable ? -1 : 0}
-        >
-          <img
-            src={resolved.downloadUrl}
-            alt={image.name}
-            className="h-full max-h-[420px] w-full object-cover"
-          />
-        </a>
+        // У читателя нажатие открывает картинку в окне (KbImageLightbox).
+        <img
+          src={resolved.downloadUrl}
+          alt={image.name}
+          className="h-full max-h-[420px] w-full object-cover"
+        />
       ) : (
         <div className="aspect-[4/3] animate-pulse" />
       )}
@@ -1152,109 +1151,144 @@ export function KbDocument({
     return () => window.clearTimeout(t);
   }, [box, nodeId]);
 
+  // Картинка статьи по нажатию — в окне на весь экран, а не в новой вкладке.
+  const [lightbox, setLightbox] = useState<{
+    images: LightboxImage[];
+    index: number;
+    protect: boolean;
+  } | null>(null);
+  const openImage = (img: HTMLImageElement) => {
+    const all = [...(box?.querySelectorAll<HTMLImageElement>(ZOOMABLE_IMAGES) ?? [])].filter(
+      (el) => el.currentSrc || el.src,
+    );
+    const index = Math.max(all.indexOf(img), 0);
+    setLightbox({
+      images: all.map((el) => ({ src: el.currentSrc || el.src, name: el.alt })),
+      index,
+      protect: !!img.closest(".kb-no-copy"),
+    });
+  };
+
   return (
-    <div
-      ref={setBox}
-      className={cn(
-        "kb-document",
-        !editable && "kb-document-read",
-        !editable && checks && "kb-own-checks",
-      )}
-      onKeyDownCapture={(e) => {
-        if (editable && e.key === "Tab" && !e.shiftKey && addTableRowAtEnd(editor)) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }}
-      onClick={(e) => {
-        // Ссылки на статьи базы — переходом внутри админки, без перезагрузки;
-        // на заголовок этой статьи — прокруткой к нему (адрес с #id можно
-        // скопировать и прислать).
-        if (editable) return;
-        if (checks) {
-          const item = (e.target as HTMLElement).closest<HTMLElement>(
-            '[data-content-type="checkListItem"] > div:has(> input)',
-          );
-          const id = item?.closest("[data-id]")?.getAttribute("data-id");
-          if (id) {
-            checks.onToggle(id);
-            return;
-          }
-        }
-        const a = (e.target as HTMLElement).closest("a");
-        const href = a?.getAttribute("href");
-        if (href?.startsWith("#") && !e.metaKey && !e.ctrlKey) {
-          e.preventDefault();
-          const id = decodeURIComponent(href.slice(1));
-          if (scrollToBlock(box, id, true)) window.history.replaceState(null, "", `#${id}`);
-          return;
-        }
-        if (!href || !href.startsWith("/kb/") || e.metaKey || e.ctrlKey) return;
-        e.preventDefault();
-        void navigate({ to: href });
-      }}
-    >
-      {checks && !editable && (
-        // Галочка и зачёркивание — у своих отметок читателя, а не у
-        // отмеченного автором (флажок BlockNote скрыт, рисует styles.css).
-        <style>
-          {[...checks.checked]
-            .map((id) => {
-              const item = `.kb-own-checks [data-id="${CSS.escape(id)}"] > .bn-block > [data-content-type="checkListItem"]`;
-              return `${item} .bn-inline-content{text-decoration:line-through;opacity:.6}${item} > div:has(> input)::before{background-color:var(--primary);border-color:var(--primary);background-image:var(--kb-check-mark)}`;
-            })
-            .join("")}
-        </style>
-      )}
-      <BlockNoteView
-        editor={editor}
-        editable={editable}
-        theme={dark ? "dark" : "light"}
-        filePanel={false}
-        slashMenu={false}
-        formattingToolbar={false}
-        onChange={() => {
-          const doc = editor.document as unknown[];
-          onChange?.(doc);
-          onHeadings?.(documentHeadings(doc));
-          if (editable) {
-            normalizeColumns(editor);
-            ensureTrailingParagraph(editor);
-            void reuploadForeignImages(editor, pending.current, upload);
+    <>
+      <div
+        ref={setBox}
+        className={cn(
+          "kb-document",
+          !editable && "kb-document-read",
+          !editable && checks && "kb-own-checks",
+        )}
+        onKeyDownCapture={(e) => {
+          if (editable && e.key === "Tab" && !e.shiftKey && addTableRowAtEnd(editor)) {
+            e.preventDefault();
+            e.stopPropagation();
           }
         }}
+        onClick={(e) => {
+          // Ссылки на статьи базы — переходом внутри админки, без перезагрузки;
+          // на заголовок этой статьи — прокруткой к нему (адрес с #id можно
+          // скопировать и прислать).
+          if (editable) return;
+          const img = (e.target as HTMLElement).closest<HTMLImageElement>(ZOOMABLE_IMAGES);
+          if (img) {
+            e.preventDefault();
+            openImage(img);
+            return;
+          }
+          if (checks) {
+            const item = (e.target as HTMLElement).closest<HTMLElement>(
+              '[data-content-type="checkListItem"] > div:has(> input)',
+            );
+            const id = item?.closest("[data-id]")?.getAttribute("data-id");
+            if (id) {
+              checks.onToggle(id);
+              return;
+            }
+          }
+          const a = (e.target as HTMLElement).closest("a");
+          const href = a?.getAttribute("href");
+          if (href?.startsWith("#") && !e.metaKey && !e.ctrlKey) {
+            e.preventDefault();
+            const id = decodeURIComponent(href.slice(1));
+            if (scrollToBlock(box, id, true)) window.history.replaceState(null, "", `#${id}`);
+            return;
+          }
+          if (!href || !href.startsWith("/kb/") || e.metaKey || e.ctrlKey) return;
+          e.preventDefault();
+          void navigate({ to: href });
+        }}
       >
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={async (query) =>
-            filterSuggestionItems(slashItems(editor, onPickArticle, onPickHeading), query)
-          }
+        {checks && !editable && (
+          // Галочка и зачёркивание — у своих отметок читателя, а не у
+          // отмеченного автором (флажок BlockNote скрыт, рисует styles.css).
+          <style>
+            {[...checks.checked]
+              .map((id) => {
+                const item = `.kb-own-checks [data-id="${CSS.escape(id)}"] > .bn-block > [data-content-type="checkListItem"]`;
+                return `${item} .bn-inline-content{text-decoration:line-through;opacity:.6}${item} > div:has(> input)::before{background-color:var(--primary);border-color:var(--primary);background-image:var(--kb-check-mark)}`;
+              })
+              .join("")}
+          </style>
+        )}
+        <BlockNoteView
+          editor={editor}
+          editable={editable}
+          theme={dark ? "dark" : "light"}
+          filePanel={false}
+          slashMenu={false}
+          formattingToolbar={false}
+          onChange={() => {
+            const doc = editor.document as unknown[];
+            onChange?.(doc);
+            onHeadings?.(documentHeadings(doc));
+            if (editable) {
+              normalizeColumns(editor);
+              ensureTrailingParagraph(editor);
+              void reuploadForeignImages(editor, pending.current, upload);
+            }
+          }}
+        >
+          <SuggestionMenuController
+            triggerCharacter="/"
+            getItems={async (query) =>
+              filterSuggestionItems(slashItems(editor, onPickArticle, onPickHeading), query)
+            }
+          />
+          <SuggestionMenuController
+            triggerCharacter="@"
+            getItems={async (query) =>
+              filterSuggestionItems(
+                (candidates ?? []).map((c) => ({
+                  title: c.full_name,
+                  aliases: c.full_name.split(/\s+/),
+                  group: "Сотрудники с доступом к базе",
+                  icon: <MentionAvatar name={c.full_name} />,
+                  onItemClick: () =>
+                    editor.insertInlineContent([
+                      { type: "mention", props: { userId: c.user_id, name: c.full_name } },
+                      " ",
+                    ]),
+                })),
+                query,
+              )
+            }
+          />
+          <FilePanelController filePanel={UploadOnlyFilePanel} />
+          <FormattingToolbarController
+            formattingToolbar={KbFormattingToolbar}
+            floatingUIOptions={toolbarFloating}
+          />
+        </BlockNoteView>
+      </div>
+      {lightbox && (
+        <KbImageLightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          protect={lightbox.protect}
+          onIndex={(index) => setLightbox((l) => (l ? { ...l, index } : l))}
+          onClose={() => setLightbox(null)}
         />
-        <SuggestionMenuController
-          triggerCharacter="@"
-          getItems={async (query) =>
-            filterSuggestionItems(
-              (candidates ?? []).map((c) => ({
-                title: c.full_name,
-                aliases: c.full_name.split(/\s+/),
-                group: "Сотрудники с доступом к базе",
-                icon: <MentionAvatar name={c.full_name} />,
-                onItemClick: () =>
-                  editor.insertInlineContent([
-                    { type: "mention", props: { userId: c.user_id, name: c.full_name } },
-                    " ",
-                  ]),
-              })),
-              query,
-            )
-          }
-        />
-        <FilePanelController filePanel={UploadOnlyFilePanel} />
-        <FormattingToolbarController
-          formattingToolbar={KbFormattingToolbar}
-          floatingUIOptions={toolbarFloating}
-        />
-      </BlockNoteView>
-    </div>
+      )}
+    </>
   );
 }
