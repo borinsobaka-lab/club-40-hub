@@ -73,6 +73,7 @@ import {
 } from "@/lib/kb/data";
 import { documentCheckItems, documentIsEmpty, type KbHeading } from "@/lib/kb/document";
 import { kbIcon, kbSectionIcon } from "@/lib/kb/icons";
+import { kbBlockShown, revealKbBlock } from "@/lib/kb/reveal-block";
 import {
   ancestorsOf,
   articleCount,
@@ -1365,7 +1366,8 @@ function useActiveHeading(ids: string[], anchor: React.RefObject<HTMLElement | n
       let current: string | null = null;
       for (const id of ids) {
         const el = scroller.querySelector(`[data-id="${CSS.escape(id)}"]`);
-        if (!el) continue;
+        // Свёрнутый (внутри спойлера) — не на экране, подсвечивать нечего.
+        if (!el || !kbBlockShown(el)) continue;
         if (el.getBoundingClientRect().top <= top) current = id;
         else break;
       }
@@ -1395,7 +1397,8 @@ function Toc({ headings }: { headings: KbHeading[] }) {
   );
   if (headings.length < 2) return <div className="hidden w-56 shrink-0 xl:block" />;
   const go = (id: string) => {
-    const el = document.querySelector(`[data-id="${CSS.escape(id)}"]`);
+    // Заголовок внутри свёрнутого спойлера — сначала раскрыть.
+    const el = revealKbBlock(document, id);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
     setActive(id);
     // Адрес раздела — в строке браузера: его можно скопировать и прислать.

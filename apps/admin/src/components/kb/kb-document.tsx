@@ -74,6 +74,7 @@ import {
   uploadKbFile,
 } from "@/lib/kb/files";
 import { documentHeadings, type KbHeading } from "@/lib/kb/document";
+import { revealKbBlock } from "@/lib/kb/reveal-block";
 import { setUploadProgress, useUploadProgress } from "@/lib/kb/upload-progress";
 import { cn } from "@/lib/utils";
 
@@ -803,7 +804,7 @@ function KbFormattingToolbar() {
 
 /** Прокрутить к блоку статьи (ссылка на заголовок, `#<id блока>` в адресе). */
 function scrollToBlock(root: HTMLElement | null, id: string, smooth: boolean): boolean {
-  const el = root?.querySelector(`[data-id="${CSS.escape(id)}"]`);
+  const el = revealKbBlock(root, id);
   if (!el) return false;
   el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
   return true;
