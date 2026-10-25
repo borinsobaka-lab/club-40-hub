@@ -816,7 +816,9 @@ AUTH_SETUP.md.
   `kb_ratings_report` (редакторам и владельцам), `kb_bases.brand_color`
   (#rrggbb, null — цвет клуба). Корзина возвращает оценки и настройки,
   копия — настройки: актуальные определения `kb_trash_node`,
-  `kb_trash_restore`, `kb_copy_node` — здесь.
+  `kb_trash_restore`, `kb_copy_node` — здесь. `kb_authors` отдаёт и
+  аватарку (`db/migrations/2026-10-25_zzzzzzzz_kb_authors_avatar.sql`,
+  актуальное определение — здесь): автор в шапке статьи.
   Вложенные статьи (решение владельца 2026-10-25, бриф №2):
   `db/migrations/2026-10-25_zzzzzzzz_kb_nested_articles.sql` — у статьи могут
   быть вложенные статьи на любую глубину (папка в статье — нет:

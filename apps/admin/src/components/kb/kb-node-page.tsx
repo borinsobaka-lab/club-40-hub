@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { StaffAvatar } from "@/components/employee-photo";
 import { DocumentText, Folder } from "@/components/nav-icons";
 import { KbArticleBodySkeleton, KbFolderBodySkeleton } from "@/components/page-skeletons";
 import { KbBaseForm } from "@/components/kb/base-dialog";
@@ -64,6 +65,7 @@ import {
   KB_FAVORITES_KEY,
   kbBasesQuery,
   kbErrorText,
+  useKbAuthorProfiles,
   useKbAuthors,
   useKbChecks,
   useKbDraft,
@@ -86,6 +88,7 @@ import {
   type KbTreeIndex,
 } from "@/lib/kb/tree";
 import type { KbBase, KbTreeNode } from "@/lib/kb/types";
+import { formatUpdatedAgo } from "@/lib/kb/analytics";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { KbArticleLink } from "@/components/kb/kb-document";
@@ -246,7 +249,8 @@ function BaseHomeLists({ baseId, index }: { baseId: string; index: KbTreeIndex }
     <div className="grid gap-3 md:grid-cols-3">
       {blocks.map((b) => (
         <section key={b.title} className="min-w-0 rounded-lg border bg-background p-3">
-          <h3 className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold">
+          {/* Заголовок отделён от списка линией во всю ширину плашки (решение владельца 2026-10-25). */}
+          <h3 className="-mx-3 mb-2 flex items-center gap-1.5 border-b px-4 pb-2.5 text-sm font-semibold">
             <b.icon className="size-4 text-muted-foreground" />
             {b.title}
           </h3>
@@ -960,7 +964,6 @@ function ArticleView({
   // Время чтения и докуда дочитал — в аналитику базы (не в режиме правки).
   const articleRef = useRef<HTMLElement>(null);
   useReadingTracker(node.id, articleRef, !editing && !loading);
-  const updatedBy = node.published_by ? name(node.published_by) : "";
 
   return (
     <EditorShell
@@ -1021,15 +1024,15 @@ function ArticleView({
                     {canEdit && node.status === "published" && !editing && (
                       <ReadersChip nodeId={node.id} onOpen={() => setDialog("readers")} />
                     )}
-                    {node.published_at ? (
-                      <span>
-                        Обновлено {formatDate(node.published_at)}
-                        {updatedBy && ` · ${updatedBy}`}
-                      </span>
-                    ) : (
-                      <span>Ещё не опубликована</span>
-                    )}
+                    {!node.published_at && <span>Ещё не опубликована</span>}
                   </div>
+                  {node.published_at && (
+                    <ArticleAuthor
+                      baseId={baseId}
+                      userId={node.published_by}
+                      publishedAt={node.published_at}
+                    />
+                  )}
                 </div>
                 <FavoriteButton baseId={baseId} nodeId={node.id} />
                 {canEdit && (
@@ -1252,6 +1255,43 @@ function ArticleView({
       </Dialog>
       {confirmDialog}
     </EditorShell>
+  );
+}
+
+/**
+ * Автор статьи под названием (решение владельца 2026-10-25, по образцу
+ * справочных центров): аватарка, «Автор: Имя» — кто опубликовал последнюю
+ * версию, ниже — «Обновлено 11 дней назад» (точная дата — в подсказке).
+ */
+function ArticleAuthor({
+  baseId,
+  userId,
+  publishedAt,
+}: {
+  baseId: string;
+  userId: string | null;
+  publishedAt: string;
+}) {
+  const { data: authors } = useKbAuthorProfiles(baseId);
+  const author = userId ? authors?.get(userId) : undefined;
+  const fullName = author?.full_name || (userId ? "Сотрудник" : "");
+  return (
+    <div className="mt-4 flex items-center gap-3 text-sm">
+      {fullName && (
+        <StaffAvatar value={author?.avatar_url} name={fullName} className="size-10 text-sm" />
+      )}
+      <div className="min-w-0 leading-snug text-muted-foreground">
+        {fullName && (
+          <p className="truncate">
+            Автор: <span className="font-medium text-foreground">{fullName}</span>
+          </p>
+        )}
+        <p title={formatDateTime(publishedAt)}>
+          Обновлено{" "}
+          <span className="font-medium text-foreground">{formatUpdatedAgo(publishedAt)}</span>
+        </p>
+      </div>
+    </div>
   );
 }
 
