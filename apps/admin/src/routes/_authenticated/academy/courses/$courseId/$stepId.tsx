@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -18,13 +19,26 @@ export const Route = createFileRoute("/_authenticated/academy/courses/$courseId/
 
 function StepPage() {
   const { courseId, stepId } = Route.useParams();
-  const { new: isNew } = Route.useSearch();
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  // «Только что создан» — один раз: метку из адреса убираем, иначе любое
+  // повторное открытие страницы снова выделило бы название под замену.
+  const [isNew] = useState(!!search.new);
+  useEffect(() => {
+    if (search.new)
+      void navigate({
+        to: "/academy/courses/$courseId/$stepId",
+        params: { courseId, stepId },
+        search: {},
+        replace: true,
+      });
+  }, [search.new, navigate, courseId, stepId]);
   // Шапка — название шага, а не безликое «Шаг курса».
   const { data: steps } = useQuery(acadStepsQuery(courseId));
   const step = steps?.find((s) => s.id === stepId);
   return (
     <AdminShell title={step?.title ?? "Шаг курса"}>
-      <StepEditor key={stepId} courseId={courseId} stepId={stepId} isNew={!!isNew} />
+      <StepEditor key={stepId} courseId={courseId} stepId={stepId} isNew={isNew} />
     </AdminShell>
   );
 }
