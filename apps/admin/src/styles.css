@@ -269,8 +269,12 @@
    сплошные приглушённые, не белые полупрозрачные. Текст — не чистый белый
    (меньше «свечения» на длинном чтении), второстепенный ≥ 7:1 к фону.
    Акцент на тёмном — светлые кнопки; цвет клуба/базы — вариант для тёмного
-   фона (--brand-on-light пересчитывает StudioBranding). */
-html.dark.kb-dark {
+   фона (--brand-on-light пересчитывает StudioBranding).
+   `html.kb-dark .dark` — редактор BlockNote с theme="dark" сам вешает
+   .dark на свой контейнер, и без этого внутри статьи брались токены .dark
+   по умолчанию (синевато-чёрные). */
+html.dark.kb-dark,
+html.kb-dark .dark {
   color-scheme: dark;
   --background: #15191e;
   --foreground: #e6e9ed;
@@ -322,6 +326,43 @@ html.dark.kb-dark .bn-container[data-color-scheme="dark"] {
   --bn-colors-shadow: rgb(0 0 0 / 0.4);
   --bn-colors-border: var(--border);
   --bn-colors-side-menu: var(--muted-foreground);
+  /* Цвета текста и подложек, выбранные автором: у BlockNote в тёмной теме
+     подложки насыщенные (розовая — #ad1a72), текст на них не читается, а
+     часть цветов текста — темнее фона. Здесь подложки — приглушённый тон
+     того же цвета, текст — светлый оттенок (≥ 4.5:1 и на фоне, и на своей
+     подложке). */
+  --bn-colors-highlights-gray-text: #b4bcc6;
+  --bn-colors-highlights-gray-background: #2e353e;
+  --bn-colors-highlights-brown-text: #d8b49a;
+  --bn-colors-highlights-brown-background: #3a2e27;
+  --bn-colors-highlights-red-text: #f5a3a0;
+  --bn-colors-highlights-red-background: #43262a;
+  --bn-colors-highlights-orange-text: #f6bf86;
+  --bn-colors-highlights-orange-background: #42301f;
+  --bn-colors-highlights-yellow-text: #ecd27a;
+  --bn-colors-highlights-yellow-background: #3d3720;
+  --bn-colors-highlights-green-text: #96d7a8;
+  --bn-colors-highlights-green-background: #213a2c;
+  --bn-colors-highlights-blue-text: #9cc2fb;
+  --bn-colors-highlights-blue-background: #1f3150;
+  --bn-colors-highlights-purple-text: #cdb4f7;
+  --bn-colors-highlights-purple-background: #33284d;
+  --bn-colors-highlights-pink-text: #f5a8cf;
+  --bn-colors-highlights-pink-background: #46263a;
+}
+/* Цитата: у BlockNote текст и черта — серые #7d797a, на тёмном (и тем более
+   на цветной подложке) не читаются. Ссылки — светло-синие, таблица — линии
+   палитры, а не белые #ddd. */
+html.dark.kb-dark .kb-document [data-content-type="quote"] blockquote {
+  color: #c9d0d8;
+  border-left-color: #5b6673;
+}
+html.dark.kb-dark .kb-document .bn-editor a:not(.kb-file a, .kb-pdf a) {
+  color: var(--link);
+}
+html.dark.kb-dark .kb-document [data-content-type="table"] th,
+html.dark.kb-dark .kb-document [data-content-type="table"] td {
+  border-color: var(--input);
 }
 /* Флажок своего чек-листа: заливка — светлый --primary, галочка — тёмная. */
 html.dark.kb-dark .kb-own-checks {
