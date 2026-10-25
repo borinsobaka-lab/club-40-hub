@@ -10,7 +10,6 @@ import {
   CloudOff,
   Copy,
   Ellipsis,
-  Eye,
   FilePlus,
   FolderInput,
   FolderPlus,
@@ -38,8 +37,6 @@ import { KbProtectForm } from "@/components/kb/protect-dialog";
 import { KbProtectedArea } from "@/components/kb/protected-area";
 import { KbSaveTemplateForm } from "@/components/kb/template-dialogs";
 import { useReadingTracker } from "@/components/kb/use-reading-tracker";
-import { useKbReaders } from "@/components/kb/analytics/queries";
-import { KbReadersDialogBody } from "@/components/kb/readers-dialog";
 import { KbVersionsForm } from "@/components/kb/versions-dialog";
 import {
   KbArticlePickerForm,
@@ -794,7 +791,6 @@ function ArticleView({
     | "template"
     | "protect"
     | "settings"
-    | "readers"
     | "child"
     | null
   >(null);
@@ -1021,9 +1017,6 @@ function ArticleView({
                       </span>
                     )}
                     {canEdit && hasDraft && node.status === "published" && <KbDraftBadge />}
-                    {canEdit && node.status === "published" && !editing && (
-                      <ReadersChip nodeId={node.id} onOpen={() => setDialog("readers")} />
-                    )}
                     {!node.published_at && <span>Ещё не опубликована</span>}
                   </div>
                   {node.published_at && (
@@ -1197,7 +1190,6 @@ function ArticleView({
               onDone={() => setDialog(null)}
             />
           )}
-          {dialog === "readers" && <KbReadersDialogBody nodeId={node.id} title={node.title} />}
           {dialog === "versions" && (
             <KbVersionsForm
               baseId={baseId}
@@ -1301,30 +1293,6 @@ function ArticleAuthor({
  * `EditBar`). Здесь же живёт автосохранение: оно заводится заново на каждое
  * открытие редактора (метка черновика — его).
  */
-/**
- * «Прочитали N из M» в шапке статьи — редактору (кто должен прочитать:
- * сотрудники с доступом к базе без владельцев и авторов). Нажатие — кто
- * именно (KbReadersDialogBody). Читателей нет — не показываем.
- */
-function ReadersChip({ nodeId, onOpen }: { nodeId: string; onOpen: () => void }) {
-  const { data } = useKbReaders(nodeId);
-  if (!data?.length) return null;
-  const current = data.filter((r) => r.state === "current").length;
-  const outdated = data.filter((r) => r.state === "outdated").length;
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      title="Кто прочитал статью"
-      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-muted"
-    >
-      <Eye className="size-3.5 text-muted-foreground" />
-      Прочитали {current} из {data.length}
-      {outdated > 0 && <span className="text-amber-700">· {outdated} прежнюю версию</span>}
-    </button>
-  );
-}
-
 function EditorShell({
   title,
   editing,
