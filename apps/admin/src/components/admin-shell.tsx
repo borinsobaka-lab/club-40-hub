@@ -1,5 +1,5 @@
 import { lazy, Suspense, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { useRouter, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cat, RefreshCw, X } from "lucide-react";
@@ -7,6 +7,9 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
 import { HeaderClientSearch } from "@/components/header-client-search";
+import { KbBaseTabs, KbHeaderSearch } from "@/components/kb/kb-header";
+import { kbBaseIdOf, railSectionKey } from "@/lib/nav-sections";
+import { cn } from "@/lib/utils";
 
 // Kate (AI SDK, markdown) — отдельным чанком: в общем каркасе он прибавлял к
 // первой загрузке любой страницы ~80 kB, а открывают его редко. Наведение на
@@ -63,6 +66,12 @@ export function AdminShell({
   const queryClient = useQueryClient();
   const [kateOpen, setKateOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // База знаний — своя шапка (решение владельца 2026-10-25): вкладки баз и
+  // поиск по базе вместо заголовка и поиска клиента, без Kate и выбора
+  // клуба (базы общие для сети); весь раздел — на белом.
+  const kb = railSectionKey(pathname) === "kb";
+  const kbBaseId = kb ? kbBaseIdOf(pathname) : null;
 
   // «Обновить»: иконка крутится, пока перезагружаются лоадеры роута и
   // активные запросы, но не короче MIN_SPIN_MS — иначе быстрый ответ мигал бы
@@ -82,9 +91,42 @@ export function AdminShell({
     }
   };
 
+  const refreshButton = (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={refreshing ? "Обновляется…" : "Обновить"}
+      aria-busy={refreshing}
+      className="shrink-0 disabled:opacity-100"
+      disabled={refreshing}
+      onClick={() => void refresh()}
+    >
+      <RefreshCw className={refreshing ? "h-5 w-5 animate-spin" : "h-5 w-5"} />
+    </Button>
+  );
+
   return (
     <>
-      {/*
+      {kb ? (
+        // Узкий экран: первая строка — меню, вкладки, «Обновить»; поиск —
+        // второй строкой на всю ширину. Заголовок страницы — для скринридера:
+        // название статьи и так крупно над текстом.
+        <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
+          <SidebarTrigger className="-ml-1 size-10 md:hidden" />
+          <h1 className="sr-only">{title}</h1>
+          <KbBaseTabs />
+          {kbBaseId && (
+            <KbHeaderSearch
+              key={kbBaseId}
+              baseId={kbBaseId}
+              className="order-last w-full lg:order-none lg:w-80 lg:shrink-0"
+            />
+          )}
+          {refreshButton}
+        </header>
+      ) : (
+        <>
+          {/*
         Шапка сплошная белая: она не перекрывает прокручиваемый контент (main —
         соседний блок), поэтому полупрозрачность только подмешивала подложку и
         размывала границу между шапкой и рабочей областью.
@@ -98,17 +140,17 @@ export function AdminShell({
         Действия страницы в шапку больше не ставим — они плавают в правом
         нижнем углу (FloatingActions).
       */}
-      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
-        {/* Заголовок берёт ширину по тексту, сжимается поиск (до min-w-56):
+          <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
+            {/* Заголовок берёт ширину по тексту, сжимается поиск (до min-w-56):
             при равных колонках по краям «График администраторов» и
             «Контакты и правила» обрезались на 1440px. */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 lg:shrink-[0.1] lg:basis-auto">
-          {/*
+            <div className="flex min-w-0 flex-1 items-center gap-2 lg:shrink-[0.1] lg:basis-auto">
+              {/*
             На узком экране боковое меню уходит в шторку и кнопка сворачивания
             внутри него недоступна — открыть меню больше нечем.
           */}
-          <SidebarTrigger className="-ml-1 size-10 md:hidden" />
-          {/*
+              <SidebarTrigger className="-ml-1 size-10 md:hidden" />
+              {/*
             Заголовок раздела: font-semibold — тот же вес, что у заголовков
             диалогов и карточек, и он же прописан в дизайн-системе как вес
             ведущего элемента. Трекинг не задаём руками: он зашит в токен
@@ -117,53 +159,47 @@ export function AdminShell({
             элементы (р, у), их бы срезало. На телефоне ступенью меньше (xl):
             в 2xl «Отмены автопродления» не помещались рядом с кнопками.
           */}
-          {/* Длинное название (база знаний, клуб) обрезается — целиком в подсказке. */}
-          <h1
-            title={title}
-            className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl"
-          >
-            {title}
-          </h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={refreshing ? "Обновляется…" : "Обновить"}
-            aria-busy={refreshing}
-            className="shrink-0 disabled:opacity-100"
-            disabled={refreshing}
-            onClick={() => void refresh()}
-          >
-            <RefreshCw className={refreshing ? "h-5 w-5 animate-spin" : "h-5 w-5"} />
-          </Button>
-        </div>
+              {/* Длинное название (база знаний, клуб) обрезается — целиком в подсказке. */}
+              <h1
+                title={title}
+                className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl"
+              >
+                {title}
+              </h1>
+              {refreshButton}
+            </div>
 
-        <HeaderClientSearch className="order-last w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+            <HeaderClientSearch className="order-last w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
 
-        <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
-          <button
-            type="button"
-            onClick={() => setKateOpen(true)}
-            onPointerEnter={() => void loadKateChat()}
-            onFocus={() => void loadKateChat()}
-            aria-label="Kate — AI ассистент"
-            className="ai-gradient group relative inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full px-4 text-sm font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-sm:w-10 max-sm:justify-center max-sm:px-0"
-          >
-            <Cat className="h-4 w-4" />
-            <span className="max-sm:hidden">Kate</span>
-          </button>
-          {/* «Выход» — в рейке слева, под аватаркой сотрудника (RailAccount). */}
-          <div className="hidden items-center gap-2 lg:flex">
-            <StudioSwitcher />
-          </div>
-        </div>
-      </header>
+            <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
+              <button
+                type="button"
+                onClick={() => setKateOpen(true)}
+                onPointerEnter={() => void loadKateChat()}
+                onFocus={() => void loadKateChat()}
+                aria-label="Kate — AI ассистент"
+                className="ai-gradient group relative inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full px-4 text-sm font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-sm:w-10 max-sm:justify-center max-sm:px-0"
+              >
+                <Cat className="h-4 w-4" />
+                <span className="max-sm:hidden">Kate</span>
+              </button>
+              {/* «Выход» — в рейке слева, под аватаркой сотрудника (RailAccount). */}
+              <div className="hidden items-center gap-2 lg:flex">
+                <StudioSwitcher />
+              </div>
+            </div>
+          </header>
+        </>
+      )}
       {/*
         На телефоне поля рабочей области уже: p-6 съедал 48px из 390.
         admin-main: пока на странице есть плавающие действия, снизу добавляется
         запас (styles.css) — последняя строка таблицы и пагинация
         прокручиваются из-под кнопок.
       */}
-      <main className="admin-main flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
+      <main
+        className={cn("admin-main flex-1 overflow-auto p-3 sm:p-4 lg:p-6", kb && "bg-background")}
+      >
         {children}
         {actions && <FloatingActions>{actions}</FloatingActions>}
       </main>

@@ -18,33 +18,22 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ChartSquare, DocumentText, Folder } from "@/components/nav-icons";
+import { ChartSquare } from "@/components/nav-icons";
 import { kbSectionIcon } from "@/lib/kb/icons";
 import { DropIndicator } from "@/components/kb/drop-indicator";
 import { KbMoveForm, KbNodeTitleForm } from "@/components/kb/node-dialogs";
 import { useKbActions } from "@/components/kb/use-kb-actions";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ListItemButton } from "@/components/ui/list-item-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminAccess } from "@/hooks/use-admin-access";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useDragRow } from "@/hooks/use-drag-row";
 import { supabase } from "@/integrations/supabase/client";
 import { canEditKb } from "@/lib/kb/access";
-import {
-  invalidateKb,
-  kbBasesQuery,
-  kbErrorText,
-  snippetParts,
-  useKbDrafts,
-  useKbSearch,
-  useKbTree,
-} from "@/lib/kb/data";
+import { invalidateKb, kbBasesQuery, kbErrorText, useKbDrafts, useKbTree } from "@/lib/kb/data";
 import {
   ancestorsOf,
   childrenOf,
@@ -107,7 +96,8 @@ type Dialogs =
   | null;
 
 /**
- * Меню базы знаний в боковой панели: поиск по базе и дерево папок и статей.
+ * Меню базы знаний в боковой панели: дерево папок и статей (поиск по базе —
+ * в шапке, components/kb/kb-header.tsx).
  * Редактор перетаскивает строки (линия — куда встанет, рамка — внутрь
  * папки), создаёт и правит из «⋯» у строки; черновики и архив у него серые.
  * Читатель видит только опубликованное без пустых папок.
@@ -145,17 +135,13 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
     openAll(ids);
   }, [currentId, index, openAll]);
 
-  // Поиск: во всей базе или в папке, где стоим.
-  const [query, setQuery] = useState("");
-  const debounced = useDebouncedValue(query, 300);
+  // Куда «Папка» и «Статья» внизу меню: в папку, где стоим.
   const current = currentId ? index.byId.get(currentId) : undefined;
   const scopeFolder = current
     ? current.kind === "folder"
       ? current
       : index.byId.get(current.parent_id ?? "")
     : undefined;
-  const [inFolder, setInFolder] = useState(false);
-  const search = useKbSearch(baseId, debounced, inFolder && scopeFolder ? scopeFolder.id : null);
 
   const publish = async (node: KbTreeNode) => {
     const { error } = await supabase.rpc("kb_publish", { p_node: node.id });
@@ -282,43 +268,13 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
       </TreeRow>
     ));
 
-  const showResults = debounced.trim().length >= 2;
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="space-y-2 px-3 pb-2">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Поиск по базе"
-          aria-label="Поиск по базе знаний"
-          className="border-white/15 bg-white/5 text-white placeholder:text-white/40 focus-visible:bg-white/10"
-        />
-        {query && scopeFolder && (
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-white/70">
-            <Checkbox
-              checked={inFolder}
-              onCheckedChange={(v) => setInFolder(v === true)}
-              className="border-white/40"
-            />
-            <span className="truncate">Только в «{scopeFolder.title}»</span>
-          </label>
-        )}
-      </div>
-
       <nav
         aria-label="Содержание базы знаний"
         className="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-2"
       >
-        {showResults ? (
-          <SearchResults
-            baseId={baseId}
-            index={index}
-            hits={search.data}
-            loading={search.isLoading}
-            onNavigate={onNavigate}
-          />
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="space-y-1.5 px-1 pt-1">
             {Array.from({ length: 7 }, (_, i) => (
               <Skeleton
@@ -641,73 +597,5 @@ function TreeRow({
         </ul>
       )}
     </li>
-  );
-}
-
-function SearchResults({
-  baseId,
-  index,
-  hits,
-  loading,
-  onNavigate,
-}: {
-  baseId: string;
-  index: KbTreeIndex;
-  hits: ReturnType<typeof useKbSearch>["data"];
-  loading: boolean;
-  onNavigate: () => void;
-}) {
-  if (loading)
-    return (
-      <div className="space-y-2 px-1 pt-1">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-12 bg-white/10" />
-        ))}
-      </div>
-    );
-  if (!hits?.length) return <p className="px-2 py-3 text-sm text-white/50">Ничего не нашлось</p>;
-  return (
-    <ul className="space-y-0.5" aria-label="Найдено">
-      {hits.map((h) => {
-        const path = ancestorsOf(index, h.id)
-          .map((a) => a.title)
-          .join(" › ");
-        return (
-          <li key={h.id}>
-            <Link
-              to="/kb/$baseId/$nodeId"
-              params={{ baseId, nodeId: h.id }}
-              onClick={onNavigate}
-              className="block rounded-md px-2 py-1.5 text-sm text-white outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40"
-            >
-              <span className="flex items-center gap-1.5 font-medium">
-                {h.kind === "folder" ? (
-                  <Folder className="size-3.5 shrink-0 text-white/60" />
-                ) : (
-                  <DocumentText className="size-3.5 shrink-0 text-white/60" />
-                )}
-                <span className={cn("truncate", h.status !== "published" && "text-white/50")}>
-                  {h.title || "Без названия"}
-                </span>
-              </span>
-              {path && <span className="block truncate text-xs text-white/45">{path}</span>}
-              {h.snippet && (
-                <span className="mt-0.5 line-clamp-2 text-xs text-white/60">
-                  {snippetParts(h.snippet).map((p, i) =>
-                    p.hit ? (
-                      <mark key={i} className="rounded-sm bg-transparent font-semibold text-white">
-                        {p.text}
-                      </mark>
-                    ) : (
-                      <span key={i}>{p.text}</span>
-                    ),
-                  )}
-                </span>
-              )}
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
   );
 }

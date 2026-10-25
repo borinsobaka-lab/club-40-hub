@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
+import { KbPageHeading } from "@/components/kb/kb-header";
 import { KbStatusBadge } from "@/components/kb/kb-status-badge";
 import { KbReportPageSkeleton } from "@/components/page-skeletons";
 import { StaffAvatar } from "@/components/employee-photo";
@@ -135,6 +136,7 @@ function KbReportPage() {
   return (
     <AdminShell title={`Отчёт по чтению${base ? ` · ${base.title}` : ""}`}>
       <div className="space-y-3">
+        <KbPageHeading baseId={baseId} title="Отчёт по чтению" />
         {!canEdit && access ? (
           <InfoNote variant="warning">Отчёт видят редакторы базы и владельцы.</InfoNote>
         ) : error && !data ? (

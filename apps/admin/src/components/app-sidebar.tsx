@@ -5,17 +5,16 @@ import { ChevronUp } from "lucide-react";
 import { Notebook, Settings } from "@/components/nav-icons";
 import { AppRail } from "@/components/app-rail";
 import {
-  ACCESS_ITEMS,
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
+  MANAGE_GROUPS,
   MOBILE_APP_ITEMS,
   REQUESTS_URL,
   SCRIPTS_SETTINGS_URL,
   SCRIPTS_URL,
   STAFF_CLUB_GROUP,
   STAFF_NAV_ITEM,
-  STUDIOS_ITEMS,
-  KB_URL,
+  canOpenPath,
   kbBaseIdOf,
   railSectionKey,
   type NavGroup,
@@ -24,7 +23,6 @@ import {
 } from "@/lib/nav-sections";
 import { usePlaybook, useScriptAccess, useUnreadSuggestions } from "@/lib/scripts/data";
 import { kbBasesQuery } from "@/lib/kb/data";
-import { kbIcon } from "@/lib/kb/icons";
 import { KbSidebarResize } from "@/components/kb/kb-sidebar-resize";
 import { useKbSidebarWidth } from "@/components/kb/use-kb-sidebar-width";
 import { sectionIcon } from "@/lib/scripts/icons";
@@ -74,14 +72,6 @@ const SECTION_MENUS: Partial<Record<RailSectionKey, { title: string; groups: Nav
     title: "Мобильное приложение",
     groups: [{ key: "mobile", label: "Разделы", items: MOBILE_APP_ITEMS }],
   },
-  access: {
-    title: "Доступы",
-    groups: [{ key: "access", label: "Разделы", items: ACCESS_ITEMS }],
-  },
-  studios: {
-    title: "Клубы",
-    groups: [{ key: "studios", label: "Разделы", items: STUDIOS_ITEMS }],
-  },
 };
 
 /**
@@ -115,32 +105,6 @@ function visibleGroups(
 const KbSidebarMenu = lazy(() =>
   import("@/components/kb/kb-sidebar-menu").then((m) => ({ default: m.KbSidebarMenu })),
 );
-
-/**
- * Меню «Знаний» (/kb): все доступные базы — как пункты меню. В самой базе
- * меню — её дерево (KbSidebarMenu).
- */
-function useKbMenu(
-  enabled: boolean,
-  access: AdminAccess | null,
-): { groups: NavGroup[]; loading: boolean } {
-  const { data: bases, isLoading } = useQuery({ ...kbBasesQuery, enabled });
-  if (!enabled) return { groups: [], loading: false };
-  if (!access || isLoading) return { groups: [], loading: true };
-  const items: NavItem[] = (bases ?? [])
-    .filter((b) => access.isOwner || !!access.kb?.[b.id])
-    .map((b) => ({ title: b.title, url: `${KB_URL}/${b.id}`, icon: kbIcon(b.icon) }));
-  return {
-    groups: [
-      {
-        key: "kb",
-        label: "Базы",
-        items: [{ title: "Все базы знаний", url: KB_URL, icon: Notebook, exact: true }, ...items],
-      },
-    ],
-    loading: false,
-  };
-}
 
 /**
  * Меню «Скриптов LS»: разделы скриптов живут в базе (их заводят и
@@ -273,9 +237,8 @@ export function AppSidebar() {
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
   const railKey = railSectionKey(currentPath);
   const scriptsMenu = useScriptsMenu(railKey === "scripts");
-  // База знаний: в меню — её дерево, панель шире; «Знания» — список баз.
+  // База знаний: в меню — дерево открытой базы, панель шире.
   const kbBaseId = railKey === "kb" ? kbBaseIdOf(currentPath) : null;
-  const kbMenu = useKbMenu(railKey === "kb" && !kbBaseId, access);
   const { data: kbBases } = useQuery({ ...kbBasesQuery, enabled: !!kbBaseId });
   const kbBase = kbBases?.find((b) => b.id === kbBaseId);
   const kbBaseTitle = kbBase?.title ?? "База знаний";
@@ -284,8 +247,19 @@ export function AppSidebar() {
     railKey === "scripts"
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
       : railKey === "kb"
-        ? { title: kbBaseId ? kbBaseTitle : "Базы знаний", groups: kbMenu.groups }
-        : SECTION_MENUS[railKey];
+        ? { title: kbBaseId ? kbBaseTitle : "База знаний", groups: [] }
+        : railKey === "manage"
+          ? {
+              // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
+              title: "Управление",
+              groups: access
+                ? MANAGE_GROUPS.map((g) => ({
+                    ...g,
+                    items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
+                  })).filter((g) => g.items.length > 0)
+                : [],
+            }
+          : SECTION_MENUS[railKey];
   const feedbackStudios = useSectionStudios("feedback");
   const npsStudios = useSectionStudios("nps");
   const pendingFeedback = usePendingFeedback(
@@ -319,8 +293,8 @@ export function AppSidebar() {
   const menuLoading =
     railKey === "scripts"
       ? scriptsMenu.loading
-      : railKey === "kb" && !kbBaseId
-        ? kbMenu.loading
+      : railKey === "manage"
+        ? !access
         : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
 
@@ -490,7 +464,13 @@ export function AppSidebar() {
         На широком экране он в шапке, а этот блок скрыт. «Выход» — в рейке
         (RailAccount).
       */}
-          <SidebarFooter className="gap-2 border-t border-white/10 p-3 lg:hidden">
+          {/* В базе знаний выбора клуба нет: базы общие для сети (решение владельца 2026-10-25). */}
+          <SidebarFooter
+            className={cn(
+              "gap-2 border-t border-white/10 p-3 lg:hidden",
+              railKey === "kb" && "hidden",
+            )}
+          >
             <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white focus-visible:bg-white/10 [&>svg]:text-white" />
           </SidebarFooter>
         </div>

@@ -173,8 +173,11 @@ function TablePage({
   rows,
   wrap = true,
   tabs,
+  kb,
 }: {
   title: string;
+  /** Страница базы знаний — её шапка (ShellSkeleton kb). */
+  kb?: boolean;
   actions?: ControlSkeleton[];
   /** Вкладки над плашкой фильтров (раздел «Сотрудники»). */
   tabs?: ReactNode;
@@ -188,7 +191,7 @@ function TablePage({
 }) {
   const table = <TableCardSkeleton headers={headers} rows={rows} pagination={pagination} />;
   return (
-    <ShellSkeleton title={title} actions={actions}>
+    <ShellSkeleton title={title} actions={actions} kb={kb}>
       {wrap ? (
         <div className="space-y-3">
           {tabs}
@@ -1986,16 +1989,14 @@ export function KbBasesPageSkeleton() {
   );
 }
 
-/** Шапка папки или статьи: крошки, заголовок, строка «Обновлено». */
+/** Шапка папки или статьи: крошки-надзаголовок, заголовок, строка «Обновлено». */
 function KbHeadSkeleton({ meta = true }: { meta?: boolean }) {
   return (
-    <>
-      <Skeleton className="mb-3 h-4 w-56 max-w-[70%]" />
-      <div className="rounded-lg border bg-background px-5 py-5 sm:px-8 sm:py-6">
-        <Skeleton className="h-8 w-80 max-w-[85%]" />
-        {meta && <Skeleton className="mt-3 h-4 w-60 max-w-[70%]" />}
-      </div>
-    </>
+    <div className="pt-2 pb-5 sm:pb-6">
+      <Skeleton className="mb-2 h-4 w-56 max-w-[70%]" />
+      <Skeleton className="h-8 w-80 max-w-[85%]" />
+      {meta && <Skeleton className="mt-3 h-4 w-60 max-w-[70%]" />}
+    </div>
   );
 }
 
@@ -2004,7 +2005,7 @@ export function KbFolderBodySkeleton() {
   return (
     <div className="mx-auto max-w-3xl">
       <KbHeadSkeleton meta={false} />
-      <ul className="mt-3 divide-y rounded-lg border bg-background">
+      <ul className="divide-y rounded-lg border bg-background">
         {Array.from({ length: 5 }, (_, i) => (
           <li key={i} className="flex items-center gap-3 px-4 py-3">
             <Skeleton className="size-5 rounded" />
@@ -2022,8 +2023,8 @@ export function KbArticleBodySkeleton() {
   return (
     <div className="mx-auto flex max-w-6xl gap-8">
       <div className="min-w-0 max-w-3xl flex-1">
-        <Skeleton className="mb-3 h-4 w-56 max-w-[70%]" />
-        <div className="rounded-lg border bg-background px-5 py-5 sm:px-10 sm:py-8">
+        <div className="px-5 py-5 sm:px-10 sm:py-8">
+          <Skeleton className="mb-2 h-4 w-56 max-w-[70%]" />
           <Skeleton className="h-8 w-96 max-w-[85%]" />
           <Skeleton className="mt-3 h-4 w-64 max-w-[70%]" />
           <div className="mt-8 space-y-3">
@@ -2046,7 +2047,7 @@ export function KbArticleBodySkeleton() {
 /** Страница базы, папки или статьи: что именно — станет ясно из дерева. */
 export function KbNodePageSkeleton() {
   return (
-    <ShellSkeleton title="База знаний">
+    <ShellSkeleton title="База знаний" kb>
       <KbFolderBodySkeleton />
     </ShellSkeleton>
   );
@@ -2055,6 +2056,7 @@ export function KbNodePageSkeleton() {
 export function KbReportPageSkeleton() {
   return (
     <TablePage
+      kb
       title="Отчёт по чтению"
       toolbar={{ search: true, controls: ["w-48"] }}
       pagination={false}
@@ -2066,6 +2068,7 @@ export function KbReportPageSkeleton() {
 export function KbTemplatesPageSkeleton() {
   return (
     <TablePage
+      kb
       title="Шаблоны"
       toolbar={null}
       pagination={false}
@@ -2078,6 +2081,7 @@ export function KbTemplatesPageSkeleton() {
 export function KbTrashPageSkeleton() {
   return (
     <TablePage
+      kb
       title="Корзина"
       toolbar={null}
       pagination={false}

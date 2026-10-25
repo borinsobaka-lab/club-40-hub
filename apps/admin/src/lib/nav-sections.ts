@@ -50,7 +50,7 @@ import {
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
-export type RailSectionKey = "dashboard" | "club" | "app" | "scripts" | "kb" | "access" | "studios";
+export type RailSectionKey = "dashboard" | "club" | "app" | "scripts" | "kb" | "manage";
 
 export type RailSection = {
   key: RailSectionKey;
@@ -61,11 +61,6 @@ export type RailSection = {
   title: string;
   /** Полное название — подсказка при наведении и для скринридера. */
   fullTitle?: string;
-  /**
-   * Переносить подпись по слогам автоматически: у баз знаний её пишет
-   * владелец, мягких дефисов там нет («Стандар-ты», а не «Стандарт-ы»).
-   */
-  autoHyphens?: boolean;
   url?: string;
   icon: NavIcon;
   /** Страницы раздела, кроме самого url (у раздела со своим меню). */
@@ -278,6 +273,23 @@ export const STAFF_NAV_ITEM: NavItem = {
 export const SCRIPTS_URL = "/scripts";
 export const SCRIPTS_SETTINGS_URL = "/scripts/settings";
 
+/**
+ * Базы знаний (db/migrations/2026-10-24_knowledge_base.sql): раздел рейки
+ * «База знаний» один на все базы (решение владельца 2026-10-25), базы
+ * переключаются вкладками в шапке (components/kb/kb-header.tsx), меню —
+ * дерево открытой базы (AppSidebar). /kb — переход в последнюю открытую
+ * базу, /kb/<база>/… — база. Заводят базы и меняют их порядок в
+ * «Управлении» → «Знания» (KB_BASES_URL).
+ */
+export const KB_URL = "/kb";
+export const KB_BASES_URL = "/kb-bases";
+
+/** База знаний страницы (/kb/<id>/…); null — не страница базы. */
+export function kbBaseIdOf(pathname: string): string | null {
+  const m = /^\/kb\/([0-9a-f-]{36})(?:\/|$)/.exec(pathname);
+  return m ? m[1] : null;
+}
+
 /** Раздел без url — заготовка: виден в рейке, но не нажимается. */
 export const SECTIONS: RailSection[] = [
   // Над студиями: своё меню — подразделы дашборда.
@@ -308,45 +320,42 @@ export const SECTIONS: RailSection[] = [
     url: SCRIPTS_URL,
     icon: Notebook,
   },
+  // Все базы знаний сотрудника — одним разделом; меню — дерево открытой базы.
+  { key: "kb", title: "База знаний", url: KB_URL, icon: Book },
 ];
 
 /**
- * Меню «Доступов» и «Клубов»: меню клуба там не к месту, разделы общие для
- * студий. «Доступы» (и их страницы) видит только владелец.
+ * «Управление» внизу рейки (решение владельца 2026-10-25: вместо трёх
+ * разделов «Знания», «Доступы», «Клубы») — настройки над студиями; их
+ * блоки — в меню раздела. «Знания» и «Доступы» видит только владелец.
  */
 export const ACCESS_ITEMS: NavItem[] = [
   { title: "Администраторы", url: "/employees", icon: ShieldUser },
   // Перенос клиентов из 1С (2026-10-18) — как и «Доступы», только владельцу.
   { title: "Импорт из 1С", url: "/import-1c", icon: ClipboardList },
 ];
-export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Settings }];
-
-/**
- * Базы знаний (db/migrations/2026-10-24_knowledge_base.sql): /kb — все базы
- * (и их настройки у владельца), /kb/<база>/… — база. Базы с «Показывать в
- * рейке» — свои пункты рейки (AppRail), меню базы — её дерево (AppSidebar).
- */
-export const KB_URL = "/kb";
-
-/** База знаний страницы (/kb/<id>/…); null — не страница базы. */
-export function kbBaseIdOf(pathname: string): string | null {
-  const m = /^\/kb\/([0-9a-f-]{36})(?:\/|$)/.exec(pathname);
-  return m ? m[1] : null;
-}
-
-/** Настройки над студиями — внизу рейки. */
-export const ADMIN_SECTIONS: RailSection[] = [
-  // Все базы знаний: владельцу — и их настройки; остальным виден, только
-  // если есть база не в рейке (AppRail).
-  { key: "kb", title: "Знания", fullTitle: "Базы знаний", url: KB_URL, icon: Book },
+export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Widget3 }];
+export const MANAGE_GROUPS: NavGroup[] = [
   {
-    key: "access",
-    title: "Доступы",
-    url: ACCESS_ITEMS[0].url,
-    paths: ACCESS_ITEMS.slice(1).map((i) => i.url),
-    icon: ShieldUser,
+    key: "manage-kb",
+    label: "Знания",
+    items: [{ title: "Базы знаний", url: KB_BASES_URL, icon: Book }],
   },
-  { key: "studios", title: "Клубы", url: STUDIOS_ITEMS[0].url, icon: Widget3 },
+  { key: "manage-access", label: "Доступы", items: ACCESS_ITEMS },
+  { key: "manage-studios", label: "Клубы", items: STUDIOS_ITEMS },
+];
+const MANAGE_URLS = MANAGE_GROUPS.flatMap((g) => g.items.map((i) => i.url));
+
+/** Внизу рейки. url — первая страница; AppRail ведёт на первую открытую. */
+export const ADMIN_SECTIONS: RailSection[] = [
+  {
+    key: "manage",
+    title: "Управ\u00ADление",
+    fullTitle: "Управление",
+    url: MANAGE_URLS[0],
+    paths: MANAGE_URLS.slice(1),
+    icon: Settings,
+  },
 ];
 
 const matches = (pathname: string, path: string) =>
@@ -387,7 +396,9 @@ export function canOpenPath(
   pathname: string,
 ): boolean {
   const section = railSectionKey(pathname);
-  if (section === "access") return access.isOwner;
+  // «Клубы» — всем (список и свои настройки), «Знания» и «Доступы» — владельцу.
+  if (section === "manage")
+    return STUDIOS_ITEMS.some((i) => matches(pathname, i.url)) || access.isOwner;
   if (section === "kb") {
     const baseId = kbBaseIdOf(pathname);
     if (!baseId) return access.isOwner || Object.keys(access.kb ?? {}).length > 0;
@@ -412,7 +423,8 @@ export function firstAllowedUrl(access: AdminAccess, studioId: string | null): s
   const urls = [
     ...CLUB_GROUPS.flatMap((g) => g.items.map((i) => i.url)),
     STAFF_NAV_ITEM.url,
-    ...[...SECTIONS, ...ADMIN_SECTIONS].flatMap((s) => (s.url && s.key !== "club" ? [s.url] : [])),
+    ...SECTIONS.flatMap((s) => (s.url && s.key !== "club" ? [s.url] : [])),
+    ...MANAGE_URLS,
   ];
   return urls.find((url) => canOpenPath(access, studioId, url)) ?? null;
 }

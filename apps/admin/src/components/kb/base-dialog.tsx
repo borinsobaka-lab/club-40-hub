@@ -29,9 +29,7 @@ import {
 
 const TIPS = {
   railTitle:
-    "Подпись под иконкой в левой рейке: в строку помещается ~7 букв, длинное слово переносится на вторую строку.",
-  showInRail:
-    "База — отдельным пунктом в левой рейке. Выключено — база открывается из «Знаний» внизу рейки.",
+    "Короткое название на вкладке в шапке базы знаний, рядом с иконкой. Пусто — полное название.",
   description: "Видно в списке баз знаний — для чего база и кому она.",
   protect:
     "Во всех статьях базы читатели не смогут скопировать текст, сохранить картинку и распечатать; поверх — водяной знак с почтой и датой. У отдельной статьи можно включить или выключить в её меню «⋯».",
@@ -47,7 +45,6 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
   const [railTitle, setRailTitle] = useState(base?.rail_title ?? "");
   const [icon, setIcon] = useState(base?.icon ?? KB_DEFAULT_ICON);
   const [description, setDescription] = useState(base?.description ?? "");
-  const [showInRail, setShowInRail] = useState(base?.show_in_rail ?? true);
   const [protect, setProtect] = useState(base?.protect_content ?? false);
   const [saving, setSaving] = useState(false);
 
@@ -65,7 +62,6 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
         rail_title: r,
         icon,
         description: description.trim(),
-        show_in_rail: showInRail,
         protect_content: protect,
       };
       const { error } = base
@@ -87,7 +83,7 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
       <DialogHeader>
         <DialogTitle>{base ? "База знаний" : "Новая база знаний"}</DialogTitle>
         <DialogDescription>
-          Название, иконка и место в рейке. Кто видит базу — настраивается в «Доступах»: по
+          Название, иконка и подпись вкладки. Кто видит базу — настраивается в «Доступах»: по
           умолчанию её видят только владельцы.
         </DialogDescription>
       </DialogHeader>
@@ -103,7 +99,7 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
               />
             </FormField>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Подпись в рейке" tip={TIPS.railTitle}>
+              <FormField label="Подпись вкладки" tip={TIPS.railTitle}>
                 <Input
                   value={railTitle}
                   maxLength={16}
@@ -137,12 +133,6 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
                 onChange={(e) => setDescription(e.target.value)}
               />
             </FormField>
-            <SwitchRow
-              title="Показывать в рейке"
-              tip={TIPS.showInRail}
-              checked={showInRail}
-              onCheckedChange={setShowInRail}
-            />
             <SwitchRow
               title="Защита содержимого"
               tip={TIPS.protect}

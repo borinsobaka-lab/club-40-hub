@@ -1,19 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useClubRequestsBadge } from "@/hooks/use-client-requests";
 import {
   ADMIN_SECTIONS,
+  MANAGE_GROUPS,
   SECTIONS,
-  KB_URL,
   canOpenPath,
-  kbBaseIdOf,
   railSectionKey,
   type RailSection,
 } from "@/lib/nav-sections";
-import { kbBasesQuery } from "@/lib/kb/data";
-import { kbIcon } from "@/lib/kb/icons";
 import { canOpenRail } from "@/lib/admin-access";
 import { cn } from "@/lib/utils";
 import { RailSkeleton } from "@/components/skeletons";
@@ -59,7 +55,7 @@ function RailItem({
       <span
         className={cn(
           "line-clamp-2 w-full text-center text-[11px] leading-tight break-words",
-          section.autoHyphens ? "hyphens-auto" : "hyphens-manual",
+          "hyphens-manual",
           active ? "font-semibold text-white" : "font-medium text-white/70",
         )}
       >
@@ -100,8 +96,8 @@ function RailItem({
  * Рейка разделов — узкая колонка слева от бокового меню: иконка и подпись
  * под ней. Меню справа — пункты клуба («Клуб» — всё, что относится к
  * студии, и общие для студий «Сотрудники») или своё меню раздела
- * («Мобильное приложение»). Оно, как и «Доступы» и «Студии», — общее для
- * всех студий.
+ * («Мобильное приложение», «База знаний», «Управление») — общее для всех
+ * студий.
  */
 export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (router) => router.location.pathname });
@@ -109,23 +105,6 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   const access = useAdminAccess();
   const studioId = useActiveStudioId();
   const openRequests = useClubRequestsBadge();
-  const { data: kbBases = [] } = useQuery(kbBasesQuery);
-
-  // Базы знаний с «Показывать в рейке» — свои пункты под рабочими разделами;
-  // «Знания» внизу — все базы: владельцу (и настройки), остальным — если
-  // есть база не в рейке.
-  const myBases = kbBases.filter((b) => !!access?.kb?.[b.id]);
-  const railBases = myBases.filter((b) => b.show_in_rail);
-  const kbBaseId = kbBaseIdOf(pathname);
-  const onRailBase = !!kbBaseId && railBases.some((b) => b.id === kbBaseId);
-  const kbSections: RailSection[] = railBases.map((b) => ({
-    key: "kb",
-    title: b.rail_title,
-    fullTitle: b.title,
-    autoHyphens: true,
-    url: `${KB_URL}/${b.id}`,
-    icon: kbIcon(b.icon),
-  }));
 
   // Разделы, закрытые сотруднику в «Доступах», не показываем; заготовки без
   // url — как есть. «Клуб» виден, если открыт раздел рейки, — даже когда
@@ -136,18 +115,17 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
     (!!access &&
       (section.key === "club"
         ? canOpenPath(access, null, section.url) || canOpenRail(access, "staff")
-        : section.key === "kb" && section.url === KB_URL
-          ? access.isOwner || myBases.some((b) => !b.show_in_rail)
-          : canOpenPath(access, studioId, section.url)));
+        : canOpenPath(access, studioId, section.url)));
 
-  // Пункты баз знаний делят ключ раздела «kb»: активен тот, чья база открыта;
-  // «Знания» — на /kb и в базах не из рейки.
-  const isActive = (section: RailSection) =>
-    section.key !== "kb"
-      ? section.key === activeKey
-      : section.url === KB_URL
-        ? activeKey === "kb" && !onRailBase
-        : !!kbBaseId && section.url === `${KB_URL}/${kbBaseId}`;
+  // «Управление» ведёт на первую открытую страницу своего меню: не
+  // владельцу «Знания» и «Доступы» закрыты, остаются «Клубы».
+  const withUrl = (section: RailSection): RailSection => {
+    if (section.key !== "manage" || !access) return section;
+    const url = MANAGE_GROUPS.flatMap((g) => g.items.map((i) => i.url)).find((u) =>
+      canOpenPath(access, studioId, u),
+    );
+    return { ...section, url: url ?? section.url };
+  };
 
   // Пока права грузятся — скелетоны на месте разделов: иначе рейка сначала
   // пустая, а потом разделы «выпрыгивают».
@@ -156,12 +134,13 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
       <RailSkeleton items={sections.length} />
     ) : (
       sections
+        .map(withUrl)
         .filter(visible)
         .map((section) => (
           <RailItem
-            key={section.url ?? section.key}
+            key={section.key}
             section={section}
-            active={isActive(section)}
+            active={section.key === activeKey}
             badge={section.key === "club" ? openRequests : undefined}
             onNavigate={onNavigate}
           />
@@ -178,10 +157,8 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
         justify-center: когда разделов станет больше высоты экрана,
         justify-center обрезал бы верхние без возможности прокрутить к ним.
       */}
-      <div className="my-auto flex w-full flex-col items-center gap-1">
-        {renderGroup([...SECTIONS, ...kbSections])}
-      </div>
-      {/* Внизу: «Доступы», «Клубы» и в самом низу — кто вошёл (аватарка, по нажатию — выход). */}
+      <div className="my-auto flex w-full flex-col items-center gap-1">{renderGroup(SECTIONS)}</div>
+      {/* Внизу: «Управление» и в самом низу — кто вошёл (аватарка, по нажатию — выход). */}
       <div className="flex w-full flex-col items-center gap-1 border-t border-white/10 pt-2">
         {renderGroup(ADMIN_SECTIONS)}
         <RailAccount />

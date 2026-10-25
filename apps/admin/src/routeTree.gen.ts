@@ -32,6 +32,7 @@ import { Route as AuthenticatedOtherSalesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/nps'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
+import { Route as AuthenticatedKbBasesRouteImport } from './routes/_authenticated/kb-bases'
 import { Route as AuthenticatedImport1cRouteImport } from './routes/_authenticated/import-1c'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
@@ -176,6 +177,11 @@ const AuthenticatedMembershipsRoute =
     path: '/memberships',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedKbBasesRoute = AuthenticatedKbBasesRouteImport.update({
+  id: '/kb-bases',
+  path: '/kb-bases',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedImport1cRoute = AuthenticatedImport1cRouteImport.update({
   id: '/import-1c',
   path: '/import-1c',
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/import-1c': typeof AuthenticatedImport1cRoute
+  '/kb-bases': typeof AuthenticatedKbBasesRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
@@ -397,6 +404,7 @@ export interface FileRoutesByTo {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/import-1c': typeof AuthenticatedImport1cRoute
+  '/kb-bases': typeof AuthenticatedKbBasesRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
   '/nps': typeof AuthenticatedNpsRoute
@@ -450,6 +458,7 @@ export interface FileRoutesById {
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/import-1c': typeof AuthenticatedImport1cRoute
+  '/_authenticated/kb-bases': typeof AuthenticatedKbBasesRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/nps': typeof AuthenticatedNpsRoute
@@ -504,6 +513,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/feedback'
     | '/import-1c'
+    | '/kb-bases'
     | '/memberships'
     | '/news'
     | '/nps'
@@ -554,6 +564,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/feedback'
     | '/import-1c'
+    | '/kb-bases'
     | '/memberships'
     | '/news'
     | '/nps'
@@ -606,6 +617,7 @@ export interface FileRouteTypes {
     | '/_authenticated/employees'
     | '/_authenticated/feedback'
     | '/_authenticated/import-1c'
+    | '/_authenticated/kb-bases'
     | '/_authenticated/memberships'
     | '/_authenticated/news'
     | '/_authenticated/nps'
@@ -814,6 +826,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembershipsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kb-bases': {
+      id: '/_authenticated/kb-bases'
+      path: '/kb-bases'
+      fullPath: '/kb-bases'
+      preLoaderRoute: typeof AuthenticatedKbBasesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/import-1c': {
       id: '/_authenticated/import-1c'
       path: '/import-1c'
@@ -1020,6 +1039,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedImport1cRoute: typeof AuthenticatedImport1cRoute
+  AuthenticatedKbBasesRoute: typeof AuthenticatedKbBasesRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedNpsRoute: typeof AuthenticatedNpsRoute
@@ -1069,6 +1089,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedImport1cRoute: AuthenticatedImport1cRoute,
+  AuthenticatedKbBasesRoute: AuthenticatedKbBasesRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedNpsRoute: AuthenticatedNpsRoute,
