@@ -379,6 +379,67 @@ describe.skipIf(!url)("академия (база)", () => {
       await asServer(tx);
     }));
 
+  test("свои ответы не проверяют: нет в очереди и счётчике, проверка — исключение", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.creator);
+      await tx`update acad_courses set sequential = false where id = ${t.course}`;
+      const [{ id: q3 }] = await tx`
+        insert into acad_questions (step_id, kind, text) values (${t.quiz}, 'open', 'Как встречаете гостя?')
+        returning id`;
+      // Проверяющий — и ученик этого курса.
+      await tx`insert into acad_assignments (course_id, subject_type, user_id) values (${t.course}, 'user', ${t.reviewer})`;
+      await asServer(tx);
+
+      await as(tx, t.reviewer);
+      const [{ a }] = await tx`
+        select acad_quiz_submit(${t.quiz}, ${JSON.stringify([
+          { question_id: t.q1, options: ["a"] },
+          { question_id: t.q2, options: ["x", "y"] },
+          { question_id: q3, text: "Улыбаюсь" },
+        ])}::text::jsonb) as a`;
+      expect(await tx`select * from acad_review_queue()`).toHaveLength(0);
+      const [{ acc }] = await tx`select acad_access() as acc`;
+      expect((acc as { to_review: number }).to_review).toBe(0);
+      const [{ id: openId }] = await tx`select id from acad_answers where attempt_id = ${a} and correct is null`;
+      const grades = JSON.stringify([{ answer_id: openId, correct: true }]);
+      expect(
+        await failure(tx, () => tx`select acad_review_submit(${a}, ${grades}::text::jsonb, '')`),
+      ).toContain("acad_own_attempt");
+      await asServer(tx);
+
+      // Владелец проверяет чужую попытку.
+      const queue = await rpc(tx, t.owner, () => tx`select attempt_id from acad_review_queue()`);
+      expect(queue.map((x) => x.attempt_id)).toEqual([a]);
+      const [{ st }] = await rpc(tx, t.owner, () => tx`select acad_review_submit(${a}, ${grades}::text::jsonb, '') as st`);
+      expect(st).toBe("passed");
+    }));
+
+  test("замок «по порядку» — в порядке интерфейса и при равном sort_order", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      // Равный sort_order: первым в интерфейсе — шаг с большим id (раньше
+      // замок решал по id и открывал не тот шаг).
+      const [first, second] = [t.lesson, t.quiz].sort().reverse() as string[];
+      await tx`update acad_steps set sort_order = 1 where course_id = ${t.course}`;
+      await tx`update acad_steps set created_at = now() - interval '1 hour' where id = ${first}`;
+      const [{ v }] = await rpc(tx, t.learner, () => tx`select acad_course_view(${t.course}) as v`);
+      const steps = (v as { steps: { id: string; locked: boolean }[] }).steps;
+      expect(steps.map((s) => [s.id, s.locked])).toEqual([
+        [first, false],
+        [second, true],
+      ]);
+      await as(tx, t.learner);
+      // Внутренняя — ученику не выдана.
+      expect(
+        await failure(tx, () => tx`select acad_step_unlocked(${t.learner}, ${first})`),
+      ).toContain("permission denied");
+      await asServer(tx);
+      const [{ a, b }] = await tx`select acad_step_unlocked(${t.learner}, ${first}) as a,
+                                         acad_step_unlocked(${t.learner}, ${second}) as b`;
+      expect([a, b]).toEqual([true, false]);
+    }));
+
   test("критерии проверяющего ученику не уходят; срок курса по умолчанию — 1–365 дней", () =>
     scenario(async (tx) => {
       const t = await setup(tx);

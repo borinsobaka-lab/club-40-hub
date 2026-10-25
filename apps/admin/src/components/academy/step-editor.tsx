@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowLeft,
   Check,
+  CloudOff,
   GripVertical,
   Loader2,
   Pencil,
@@ -17,6 +18,7 @@ import { PublishedNote } from "@/components/academy/parts";
 import { AcadQuestionForm } from "@/components/academy/question-form";
 import { useConfirm } from "@/components/confirm-dialog";
 import { DropIndicator } from "@/components/kb/drop-indicator";
+import { useAutosave, type AutosaveResult } from "@/components/kb/use-autosave";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { FormField, InfoNote } from "@/components/ui/form-field";
@@ -160,43 +162,25 @@ function LessonEditor({
   // Ссылки на статьи базы — по открытому тексту; правки досчитывает schedule.
   const [kbLinks, setKbLinks] = useState<number | null>(null);
   const links = kbLinks ?? kbLinkCount(content ?? []);
-  const [state, setState] = useState<"idle" | "pending" | "saving" | "saved">("idle");
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const timer = useRef<number | null>(null);
-  const latest = useRef<unknown[] | null>(null);
-  const baseline = useRef<string | null>(null);
-
-  const flush = async () => {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = null;
-    const doc = latest.current;
-    if (!doc) return;
-    latest.current = null;
-    setState("saving");
-    const { error } = await supabase.from("acad_steps").update({ content: doc }).eq("id", step.id);
-    if (error) {
-      toast.error(`Урок не сохранён: ${acadError(error)}`);
-      latest.current = doc;
-      setState("pending");
-      return;
-    }
-    setSavedAt(new Date());
-    setState("saved");
-  };
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  // Уход со страницы — сохранить, что набрано.
-  useEffect(() => () => void flushRef.current(), []);
-
+  const qc = useQueryClient();
+  const save = useCallback(
+    async (doc: unknown[]): Promise<AutosaveResult> => {
+      const { error } = await supabase
+        .from("acad_steps")
+        .update({ content: doc })
+        .eq("id", step.id);
+      if (error) return "error";
+      // Кэш текста урока (staleTime: Infinity) — сохранённый: вернулись к
+      // уроку — редактор открывает его, а не текст до правок.
+      qc.setQueryData(acadStepContentQuery(step.id).queryKey, doc);
+      return "ok";
+    },
+    [qc, step.id],
+  );
+  const { state, savedAt, schedule: scheduleSave, setBaseline } = useAutosave(save, AUTOSAVE_MS);
   const schedule = (doc: unknown[]) => {
-    const json = JSON.stringify(doc);
-    if (json === baseline.current) return;
-    baseline.current = json;
-    latest.current = doc;
     setKbLinks(kbLinkCount(doc));
-    setState("pending");
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => void flushRef.current(), AUTOSAVE_MS);
+    scheduleSave(doc);
   };
 
   return (
@@ -211,7 +195,11 @@ function LessonEditor({
         </span>
         {canEdit && (
           <span className="inline-flex items-center gap-1">
-            {state === "saving" || state === "pending" ? (
+            {state === "error" ? (
+              <span className="inline-flex items-center gap-1 text-destructive">
+                <CloudOff className="size-3.5" /> Нет связи — урок сохранится, когда она вернётся
+              </span>
+            ) : state === "saving" || state === "pending" ? (
               <>
                 <Loader2 className="size-3.5 animate-spin" /> Сохраняем…
               </>
@@ -249,9 +237,7 @@ function LessonEditor({
               filesFolder={acadCourseFolder(courseId)}
               initial={content}
               editable={canEdit}
-              onReady={(doc) => {
-                baseline.current = JSON.stringify(doc);
-              }}
+              onReady={setBaseline}
               onChange={canEdit ? schedule : undefined}
             />
           </Suspense>

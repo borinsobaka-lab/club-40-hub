@@ -440,10 +440,25 @@ function QuizForm({
         p_answers: quiz.questions.map((q) => answers[q.id]),
       });
       if (err) throw new Error(err.message);
-      await invalidateAcademy(qc);
+      // Сначала уйти с теста, потом сбросить кэш: иначе открытый тест
+      // перезапросил бы acad_quiz_start и на миг показал «Тест уже сдан».
+      await navigate({ to: "/academy/attempts/$attemptId", params: { attemptId: data as string } });
       qc.removeQueries({ queryKey: acadQuizQuery(step.id).queryKey });
-      void navigate({ to: "/academy/attempts/$attemptId", params: { attemptId: data as string } });
+      void invalidateAcademy(qc);
     } catch (e) {
+      const message = e instanceof Error ? e.message : "";
+      if (message.includes("acad_incomplete")) {
+        // Пока отвечали, в тест могли добавить вопросы: набор — заново с
+        // сервера (ответы на прежние вопросы остаются — они по id).
+        const before = quiz.questions.map((q) => q.id).join();
+        const fresh = await qc
+          .fetchQuery({ ...acadQuizQuery(step.id), staleTime: 0 })
+          .catch(() => null);
+        if (fresh && fresh.questions.map((q) => q.id).join() !== before) {
+          toast.error("Пока вы отвечали, тест изменили — ответьте на новые вопросы");
+          return;
+        }
+      }
       toast.error(acadError(e));
     } finally {
       setSaving(false);

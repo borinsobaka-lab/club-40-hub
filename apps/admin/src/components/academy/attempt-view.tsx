@@ -11,6 +11,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { acadAttemptQuery, acadReviewNotesQuery, invalidateAcademy } from "@/lib/academy/data";
 import { acadError, QUESTION_KIND_LABEL } from "@/lib/academy/logic";
@@ -35,12 +36,16 @@ export function AttemptView({
   fromReview?: boolean;
 }) {
   const access = useAdminAccess();
+  const { data: me } = useStaffProfile();
   const { data: attempt, isLoading, error } = useQuery(acadAttemptQuery(attemptId));
   if (isLoading) return null;
   if (error || !attempt)
     return <InfoNote variant="warning">{acadError(error ?? "Попытка не найдена")}</InfoNote>;
+  // Свои ответы не проверяют (база тоже не даст — acad_own_attempt).
   const canReview =
-    attempt.status === "review" && (!!access?.isOwner || !!access?.academy?.can_review);
+    attempt.status === "review" &&
+    attempt.user_id !== me?.id &&
+    (!!access?.isOwner || !!access?.academy?.can_review);
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <AttemptHeader attempt={attempt} fromReview={fromReview} />

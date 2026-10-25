@@ -8,6 +8,7 @@ import type {
   KbPersonRow,
   KbReader,
   KbReportRow,
+  KbSearchStats,
 } from "@/lib/kb/analytics";
 import type { KbRatingsReport } from "@/lib/kb/ratings";
 import { unwrap } from "@/lib/query";
@@ -28,6 +29,19 @@ export function useKbOverview(baseId: string, period: KbPeriod, enabled: boolean
     enabled,
     placeholderData: keepPreviousData,
     meta: { errorMessage: "Не удалось загрузить аналитику" },
+  });
+}
+
+/** Только журнал поиска — без пар сотрудник × статья, которые считает обзор. */
+export function useKbSearchStats(baseId: string, period: KbPeriod) {
+  return useQuery({
+    queryKey: ["kb_analytics_search", baseId, period],
+    queryFn: () =>
+      unwrap<KbSearchStats>(
+        supabase.rpc("kb_analytics_search", { p_base: baseId, p_days: Number(period) }),
+      ),
+    placeholderData: keepPreviousData,
+    meta: { errorMessage: "Не удалось загрузить статистику поиска" },
   });
 }
 

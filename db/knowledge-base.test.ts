@@ -473,6 +473,12 @@ describe.skipIf(!url)("база знаний (база)", () => {
       expect(ov.zero_queries.map((q: Row) => q.query)).toEqual(["сейф"]);
       expect(ov.top_queries.find((q: Row) => q.query === "админ")?.clicks).toBe(1);
       expect(ov.sections.map((x: Row) => x.title)).toEqual(["Администратор"]);
+      // Вкладка «Поиск» — те же цифры отдельной RPC, без расчёта чтения.
+      const sr = ((await tx`select kb_analytics_search(${t.b}, 30) as o`) as Row[])[0].o;
+      expect(sr.current).toEqual({ searches: 2, zero_searches: 1 });
+      expect(sr.previous).toEqual({ searches: 0, zero_searches: 0 });
+      expect(sr.top_queries).toEqual(ov.top_queries);
+      expect(sr.zero_queries).toEqual(ov.zero_queries);
 
       const people = (await tx`select * from kb_analytics_people(${t.b}, 30)`) as Row[];
       const me = people.find((r) => r.user_id === t.reader)!;
@@ -497,6 +503,7 @@ describe.skipIf(!url)("база знаний (база)", () => {
       // Аналитика — только редакторам и владельцам.
       await as(tx, t.reader);
       expect(await failure(tx, () => tx`select kb_analytics_overview(${t.b}, 30)`)).toContain("kb_forbidden");
+      expect(await failure(tx, () => tx`select kb_analytics_search(${t.b}, 30)`)).toContain("kb_forbidden");
       expect(await failure(tx, () => tx`select * from kb_analytics_people(${t.b}, 30)`)).toContain("kb_forbidden");
       expect(await failure(tx, () => tx`select kb_analytics_person(${t.b}, ${t.reader})`)).toContain("kb_forbidden");
       await as(tx, t.owner);
@@ -628,6 +635,33 @@ describe.skipIf(!url)("база знаний (база)", () => {
       expect(n).toBe(0);
       await tx`delete from kb_bases where id = ${t.b}`;
       expect(await tx`select 1 from kb_file_purge where base_id = ${t.b} and node_id is null`).toHaveLength(1);
+    }));
+
+  test("корзина возвращает учёт чтения целиком: версия, время, прокрутка, «дочитал»", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.editor);
+      await tx`select kb_save_draft(${t.pub}, ${JSON.stringify(doc("Версия 1"))}::text::jsonb, null)`;
+      await tx`select kb_publish(${t.pub})`;
+      await as(tx, t.reader);
+      await tx`select kb_mark_read(${t.pub})`;
+      await tx`select kb_track_reading(${t.pub}, 30, 95)`;
+      await asServer(tx);
+      const cols = (r: Row) => [r.read_published_at, r.seconds, r.max_scroll, r.completed_at];
+      const [before] = (await tx`select * from kb_reads where node_id = ${t.pub}`) as Row[];
+      expect(before.seconds).toBe(30);
+      expect(before.completed_at).not.toBeNull();
+
+      await as(tx, t.editor);
+      const [{ id: trashId }] = await tx`select kb_trash_node(${t.pub}) as id`;
+      await tx`select kb_trash_restore(${trashId})`;
+      await asServer(tx);
+      const [after] = (await tx`select * from kb_reads where node_id = ${t.pub}`) as Row[];
+      expect(cols(after)).toEqual(cols(before));
+      await as(tx, t.editor);
+      const readers = (await tx`select * from kb_article_readers(${t.pub})`) as Row[];
+      expect(readers.find((r) => r.user_id === t.reader)?.state).toBe("current");
+      await asServer(tx);
     }));
 
   test("избранное и отметки — свои и только на видимое; шаблоны — редакторам", () =>

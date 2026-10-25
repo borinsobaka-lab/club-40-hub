@@ -279,6 +279,7 @@ const ERRORS: Record<string, string> = {
   acad_bad_options: "Нужно от 2 до 20 заполненных вариантов",
   acad_bad_correct: "Проверьте отметки верных вариантов",
   acad_not_in_review: "Эту попытку уже проверили",
+  acad_own_attempt: "Свои ответы проверяет другой сотрудник",
   acad_not_quiz: "Вопросы — только в тесте",
 };
 
