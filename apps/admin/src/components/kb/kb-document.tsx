@@ -1035,7 +1035,8 @@ export function KbDocument({
   checks,
   filesFolder,
 }: {
-  baseId: string;
+  /** База статьи; без неё (урок «Академии») — без упоминаний «@», файлы — в filesFolder. */
+  baseId?: string;
   nodeId: string;
   /** Куда грузить новые файлы; по умолчанию — папка статьи (у шаблона — kbTemplateFolder). */
   filesFolder?: string;
@@ -1066,7 +1067,7 @@ export function KbDocument({
       if (error) throw new Error(error.message);
       return (data ?? []) as MentionCandidate[];
     },
-    enabled: editable,
+    enabled: editable && !!baseId,
     staleTime: 5 * 60_000,
     meta: { errorMessage: "Не удалось загрузить сотрудников для упоминаний" },
   });
@@ -1076,7 +1077,7 @@ export function KbDocument({
       try {
         // Прогресс — по блоку: его показывает панель файла или галерея.
         return await uploadKbFile(
-          filesFolder ?? kbArticleFolder(baseId, nodeId),
+          filesFolder ?? kbArticleFolder(baseId ?? "", nodeId),
           file,
           blockId ? (share) => setUploadProgress(blockId, share) : undefined,
         );

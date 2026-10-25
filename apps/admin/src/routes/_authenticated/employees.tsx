@@ -74,6 +74,8 @@ const TIPS = {
   role: "Владельцу открыто всё, и только он управляет «Доступами». Администратору и тренеру — разделы, отмеченные ниже.",
   sections:
     "Разделы в левой рейке. «Сотрудники», «Мобильное приложение» и «Скрипты LS» общие для всех клубов. Без «Правки скриптов» скрипты только читают, копируют и предлагают изменения.",
+  academy:
+    "«Академия» — курсы и тесты, общие для всех клубов. «Создаёт курсы» — конструктор, назначения и отчёт; «Проверяет ответы» — свободные ответы учеников и комментарии к ошибкам. Проходить курсы может любой, кому курс назначен.",
   kb: "Базы знаний общие для всех клубов. «Просмотр» — читать опубликованные статьи, «Правка» — ещё и писать, править и публиковать статьи и папки. Без доступа базы не видно.",
 };
 
@@ -300,9 +302,12 @@ function EmployeesPage() {
 
 function railSummary(e: EmployeeRow) {
   if (e.role === "owner") return "Все";
-  const kb = e.kb.length ? `Базы знаний: ${e.kb.length}` : null;
-  if (e.rail === null) return kb ? `Все, ${kb}` : "Все";
-  return [...e.rail.map((k) => RAIL_ACCESS_LABEL[k]), ...(kb ? [kb] : [])].join(", ") || "—";
+  const extra = [
+    e.kb.length ? `Базы знаний: ${e.kb.length}` : null,
+    e.academy.can_create || e.academy.can_review ? "Академия" : null,
+  ].filter((x): x is string => !!x);
+  if (e.rail === null) return ["Все", ...extra].join(", ");
+  return [...e.rail.map((k) => RAIL_ACCESS_LABEL[k]), ...extra].join(", ") || "—";
 }
 
 const ALL_CLUB_SECTIONS = [...CLUB_SECTION_KEYS];
@@ -347,6 +352,9 @@ function AccessForm({
   });
   const [kb, setKb] = useState<Record<string, KbGrantLevel>>(() =>
     Object.fromEntries((employee?.kb ?? []).map((g) => [g.base_id, g.level])),
+  );
+  const [academy, setAcademy] = useState(
+    () => employee?.academy ?? { can_create: false, can_review: false },
   );
   const [saving, setSaving] = useState(false);
 
@@ -421,6 +429,7 @@ function AccessForm({
       rail,
       studios: selected.map((s) => ({ studio_id: s.id, sections: studioSections[s.id] })),
       kb: Object.entries(kb).map(([base_id, level]): KbGrant => ({ base_id, level })),
+      academy,
     };
     setSaving(true);
     try {
@@ -528,7 +537,7 @@ function AccessForm({
                 {isOwnerRole ? (
                   <InfoNote>
                     Владельцу открыты все разделы админки и все разделы клуба в отмеченных клубах,
-                    «Доступы», «Клубы» и все базы знаний.
+                    «Доступы», «Клубы», все базы знаний и вся «Академия».
                   </InfoNote>
                 ) : (
                   <FormField label="Разделы админки" htmlFor={null} tip={TIPS.sections} required>
@@ -582,6 +591,25 @@ function AccessForm({
                           />
                         </div>
                       ))}
+                    </div>
+                  </FormField>
+                )}
+
+                {!isOwnerRole && (
+                  <FormField label="Академия" htmlFor={null} tip={TIPS.academy}>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3">
+                      <CheckboxOption
+                        checked={academy.can_create}
+                        onCheckedChange={(v) => setAcademy((a) => ({ ...a, can_create: v }))}
+                      >
+                        Создаёт курсы
+                      </CheckboxOption>
+                      <CheckboxOption
+                        checked={academy.can_review}
+                        onCheckedChange={(v) => setAcademy((a) => ({ ...a, can_review: v }))}
+                      >
+                        Проверяет ответы
+                      </CheckboxOption>
                     </div>
                   </FormField>
                 )}

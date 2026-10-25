@@ -17,6 +17,8 @@ type Usage = {
     revisions: number;
   }[];
   templates: { files: number; bytes: number };
+  /** Файлы «Академии» — уроки, обложки, ответы учеников (с 2026-10-25). */
+  academy?: { files: number; bytes: number; courses: number };
   files_total: number;
   bytes_total: number;
   db_bytes: number;
@@ -93,6 +95,20 @@ export function KbStorageCard() {
                 </span>
               </li>
             ))}
+            {data.academy && (
+              <li className="flex items-center gap-3 py-2">
+                <span className="min-w-0 flex-1 truncate font-medium">Академия</span>
+                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {plural(data.academy.courses, ["курс", "курса", "курсов"])}
+                </span>
+                <span className="w-32 shrink-0 text-right tabular-nums">
+                  {bytes(data.academy.bytes)}
+                  <span className="block text-xs text-muted-foreground">
+                    {plural(data.academy.files, ["файл", "файла", "файлов"])}
+                  </span>
+                </span>
+              </li>
+            )}
             <li className="flex items-center gap-3 py-2">
               <span className="min-w-0 flex-1 truncate font-medium">Шаблоны</span>
               <span className="w-32 shrink-0 text-right tabular-nums">

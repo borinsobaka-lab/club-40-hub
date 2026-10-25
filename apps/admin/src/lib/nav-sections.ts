@@ -7,6 +7,7 @@
 import {
   Bag3,
   Book,
+  Book2,
   BellBing,
   BillList,
   Bolt,
@@ -29,6 +30,7 @@ import {
   Settings,
   ShieldUser,
   Smartphone,
+  SquareAcademicCap,
   StarsMinimalistic,
   TagPrice,
   Target,
@@ -50,7 +52,7 @@ import {
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
-export type RailSectionKey = "dashboard" | "club" | "app" | "scripts" | "kb" | "manage";
+export type RailSectionKey = "dashboard" | "club" | "app" | "scripts" | "kb" | "academy" | "manage";
 
 export type RailSection = {
   key: RailSectionKey;
@@ -290,6 +292,49 @@ export function kbBaseIdOf(pathname: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * «Академия» (решение владельца 2026-10-25) — курсы, тесты и проверка
+ * тренером, отдельный раздел рейки со своим меню и настройками (не часть
+ * базы знаний). Пункт меню открыт по праву: any — всем, у кого раздел виден
+ * (назначен курс или есть права), team — создателям и проверяющим, create —
+ * «Создаёт курсы», review — «Проверяет ответы»; владельцу — всё.
+ */
+export const ACADEMY_URL = "/academy";
+export type AcademyNeed = "any" | "team" | "create" | "review";
+export const ACADEMY_ITEMS: (NavItem & { need: AcademyNeed })[] = [
+  {
+    title: "Мои курсы",
+    url: ACADEMY_URL,
+    icon: SquareAcademicCap,
+    exact: true,
+    paths: ["/academy/my", "/academy/attempts"],
+    need: "any",
+  },
+  { title: "Курсы", url: "/academy/courses", icon: Book2, need: "team" },
+  { title: "Проверка", url: "/academy/review", icon: ClipboardCheck, need: "review" },
+  { title: "Отчёт", url: "/academy/report", icon: ChartSquare, need: "team" },
+  { title: "Настройки", url: "/academy/settings", icon: Settings, need: "create" },
+];
+
+/** Какое право нужно странице «Академии». */
+export function academyNeed(pathname: string): AcademyNeed {
+  const item = ACADEMY_ITEMS.filter((i) => i.url !== ACADEMY_URL).find(
+    (i) => pathname === i.url || pathname.startsWith(`${i.url}/`),
+  );
+  return item?.need ?? "any";
+}
+
+/** Есть ли у сотрудника нужное право в «Академии». */
+export function hasAcademyRight(access: AdminAccess, need: AcademyNeed): boolean {
+  const a = access.academy;
+  if (access.isOwner) return true;
+  if (!a) return false;
+  if (need === "create") return a.can_create;
+  if (need === "review") return a.can_review;
+  if (need === "team") return a.can_create || a.can_review;
+  return a.can_create || a.can_review || a.my_courses > 0;
+}
+
 /** Раздел без url — заготовка: виден в рейке, но не нажимается. */
 export const SECTIONS: RailSection[] = [
   // Над студиями: своё меню — подразделы дашборда.
@@ -322,6 +367,14 @@ export const SECTIONS: RailSection[] = [
   },
   // Все базы знаний сотрудника — одним разделом; меню — дерево открытой базы.
   { key: "kb", title: "База знаний", url: KB_URL, icon: Book },
+  {
+    key: "academy",
+    title: "Акаде\u00ADмия",
+    fullTitle: "Академия — курсы и тесты",
+    url: ACADEMY_URL,
+    icon: SquareAcademicCap,
+    paths: ACADEMY_ITEMS.slice(1).map((i) => i.url),
+  },
 ];
 
 /**
@@ -404,6 +457,7 @@ export function canOpenPath(
     if (!baseId) return access.isOwner || Object.keys(access.kb ?? {}).length > 0;
     return access.isOwner || !!access.kb?.[baseId];
   }
+  if (section === "academy") return hasAcademyRight(access, academyNeed(pathname));
   // Дашборд над студиями: открыт, если открыт хоть в одной студии.
   if (section === "dashboard") return dashboardStudioIds(access).length > 0;
   if (section === "app" || section === "scripts") return canOpenRail(access, section);

@@ -46,8 +46,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   устройств и активности приложения `db/app-activity.test.ts`, общей базы
   клиентов пакетных клубов `db/shared-clients.test.ts`, переноса из 1С
   `db/import-1c.test.ts`, AI-ассистента Kate `db/assistant.test.ts`,
-  переоформления абонемента `db/membership-transfer.test.ts` и базы знаний
-  `db/knowledge-base.test.ts`
+  переоформления абонемента `db/membership-transfer.test.ts`, базы знаний
+  `db/knowledge-base.test.ts` и «Академии» `db/academy.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -817,6 +817,37 @@ AUTH_SETUP.md.
   (#rrggbb, null — цвет клуба). Корзина возвращает оценки и настройки,
   копия — настройки: актуальные определения `kb_trash_node`,
   `kb_trash_restore`, `kb_copy_node` — здесь.
+  **«Академия» — курсы, тесты, проверка тренером** (решения владельца
+  2026-10-25; план, решения и что вошло — ACADEMY.md):
+  `db/migrations/2026-10-25_zzzzzzz_academy.sql` — отдельный раздел, курсы
+  общие для сети (без `studio_id`). Права — `acad_staff` (`can_create`
+  «Создаёт курсы», `can_review` «Проверяет ответы»; пишет сервер «Доступов»;
+  по умолчанию закрыто, владелец — всё, без роли сотрудника не действует;
+  хелперы `acad_can_create` / `acad_can_review` / `acad_is_team`). Каталог —
+  `acad_folders`, `acad_courses` (черновик / опубликован / архив, `sequential`,
+  `pass_percent`, обложка `kbfile:academy/<курс>/…`), шаги `acad_steps`
+  (урок — `content` BlockNote; урок из статьи — копия, `source_node_id` /
+  `source_published_at`, «Статья изменилась» — RPC `acad_course_sources`;
+  `content_updated_at` / `questions_updated_at` — напоминание проверить
+  вопросы), вопросы `acad_questions` (`single` / `multiple` / `open`,
+  варианты `{id, text, correct}` проверяет триггер), назначения
+  `acad_assignments` (человек или правило «роль owner/admin/trainer в
+  клубах», пусто — во всех; срок `due_date` или `due_days`; ученики —
+  внутренняя `acad_pairs`, курсы сотрудника — `acad_user_course_ids`).
+  Ход — `acad_enrollments`, `acad_lesson_done`, попытки `acad_attempts` и
+  ответы `acad_answers` (снимок вопроса; `carried` — верный перенесён из
+  прошлой попытки). Таблицы читает команда; ученик — только RPC
+  (`acad_my_courses`, `acad_course_view`, `acad_lesson`,
+  `acad_lesson_complete`, `acad_quiz_start` без отметок верных,
+  `acad_quiz_submit` — закрытые проверяет сразу, пересдача — только вопросы с
+  ошибкой, `acad_attempt` — свои ответы без правильных вариантов); проверка —
+  `acad_review_queue` / `acad_review_submit`; отчёты — `acad_course_report`,
+  `acad_question_stats`, `acad_overview`, `acad_people_overview`,
+  `acad_person`; рейка — `acad_access`. Файлы — бакет `kb-media`, папки
+  `academy/<курс>/` и `academy/answers/<сотрудник>/` (политики «academy …»);
+  удалённый курс — папка в `kb_file_purge`. Актуальные определения
+  `kb_file_gc_candidates` (ссылки и в Академии) и `kb_storage_usage`
+  (строка `academy`) — здесь. Тесты — `db/academy.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
@@ -968,6 +999,8 @@ own"` оставить). Альтернатива — выдача абонем�
   шаги в веб-панелях: миграции, ключи, хуки, Coolify). Держать в актуальном
   состоянии.
 - `STUDIO_FORMATS.md` — форматы студий, журнал решений по пакетному формату.
+- `ACADEMY.md` — «Академия»: курсы, тесты, проверка тренером — решения
+  владельца, что вошло (по номерам брифа), устройство, бэклог.
 - `KNOWLEDGE_BASE.md` — база знаний: бриф сотрудников, решения владельца
   (всё на своём сервере, маленький лимит видео, перенос из Платрума вручную),
   что вошло в первую версию, архитектура, Этап 2 и бэклог.

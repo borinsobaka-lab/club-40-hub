@@ -25,6 +25,7 @@ import {
   ArrowDown as ArrowDownArt,
   ArrowLeft as ArrowLeftArt,
   ArrowLeftRight as ArrowLeftRightArt,
+  ArrowRight as ArrowRightArt,
   ArrowUp as ArrowUpArt,
   ArrowUpDown as ArrowUpDownArt,
   ArrowUpRight as ArrowUpRightArt,
@@ -71,12 +72,15 @@ import {
   FolderTransferIcon as FolderInputArt,
   FolderPlus as FolderPlusArt,
   Frown as FrownArt,
+  GraduationCap as GraduationCapArt,
   DragDropVerticalIcon as GripVerticalArt,
   Hash as HashArt,
   Heading2 as Heading2Art,
   HelpCircleIcon as HelpCircleArt,
   History as HistoryArt,
+  Hourglass as HourglassArt,
   ImageIcon as ImageIconArt,
+  ImagePlus as ImagePlusArt,
   Images as ImagesArt,
   Info as InfoArt,
   Italic as ItalicArt,
@@ -98,6 +102,7 @@ import {
   Minus as MinusArt,
   Music as MusicArt,
   PanelLeft as PanelLeftArt,
+  Paperclip as PaperclipArt,
   Pencil as PencilArt,
   Phone as PhoneArt,
   Play as PlayArt,
@@ -133,6 +138,7 @@ import {
   Users as UsersArt,
   Wallet as WalletArt,
   X as XArt,
+  XCircle as XCircleArt,
 } from "@hugeicons/core-free-icons";
 
 type LucideProps = SVGProps<SVGSVGElement> & {
@@ -157,6 +163,7 @@ export const ArchiveRestore = icon(ArchiveRestoreArt, "ArchiveRestore");
 export const ArrowDown = icon(ArrowDownArt, "ArrowDown");
 export const ArrowLeft = icon(ArrowLeftArt, "ArrowLeft");
 export const ArrowLeftRight = icon(ArrowLeftRightArt, "ArrowLeftRight");
+export const ArrowRight = icon(ArrowRightArt, "ArrowRight");
 export const ArrowUp = icon(ArrowUpArt, "ArrowUp");
 export const ArrowUpDown = icon(ArrowUpDownArt, "ArrowUpDown");
 export const ArrowUpRight = icon(ArrowUpRightArt, "ArrowUpRight");
@@ -203,12 +210,15 @@ export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
 export const FolderInput = icon(FolderInputArt, "FolderInput");
 export const FolderPlus = icon(FolderPlusArt, "FolderPlus");
 export const Frown = icon(FrownArt, "Frown");
+export const GraduationCap = icon(GraduationCapArt, "GraduationCap");
 export const GripVertical = icon(GripVerticalArt, "GripVertical");
 export const Hash = icon(HashArt, "Hash");
 export const Heading2 = icon(Heading2Art, "Heading2");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
 export const History = icon(HistoryArt, "History");
+export const Hourglass = icon(HourglassArt, "Hourglass");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
+export const ImagePlus = icon(ImagePlusArt, "ImagePlus");
 export const Images = icon(ImagesArt, "Images");
 export const Info = icon(InfoArt, "Info");
 export const Italic = icon(ItalicArt, "Italic");
@@ -230,6 +240,7 @@ export const Minimize = icon(MinimizeArt, "Minimize");
 export const Minus = icon(MinusArt, "Minus");
 export const Music = icon(MusicArt, "Music");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
+export const Paperclip = icon(PaperclipArt, "Paperclip");
 export const Pencil = icon(PencilArt, "Pencil");
 export const Phone = icon(PhoneArt, "Phone");
 export const Play = icon(PlayArt, "Play");
@@ -265,3 +276,4 @@ export const UserRound = icon(UserRoundArt, "UserRound");
 export const Users = icon(UsersArt, "Users");
 export const Wallet = icon(WalletArt, "Wallet");
 export const X = icon(XArt, "X");
+export const XCircle = icon(XCircleArt, "XCircle");

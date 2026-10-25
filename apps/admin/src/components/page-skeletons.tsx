@@ -2116,3 +2116,232 @@ export function KbTrashPageSkeleton() {
     />
   );
 }
+
+// ---------------------------------------------------------------------------
+// Академия (шапка без поиска клиента — ShellSkeleton network)
+
+/** Шапка курса: обложка, название, описание, полоса хода. */
+function AcademyCourseHeadSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 rounded-lg border bg-background p-4 sm:flex-row sm:p-5">
+      <Skeleton className="aspect-[16/9] w-full shrink-0 rounded-md sm:w-56" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3.5 w-28" />
+        <Skeleton className="h-6 w-72 max-w-[80%]" />
+        <Skeleton className="h-4 w-full max-w-md" />
+        <Skeleton className="mt-3 h-1.5 w-full max-w-md" />
+      </div>
+    </div>
+  );
+}
+
+export function AcademyMyPageSkeleton() {
+  return (
+    <ShellSkeleton title="Мои курсы" network>
+      <div className="mx-auto max-w-5xl space-y-3">
+        <Skeleton className="h-4 w-32" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="overflow-hidden rounded-lg border bg-background">
+              <Skeleton className="aspect-[16/7] w-full rounded-none" />
+              <div className="space-y-2 p-4">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="mt-4 h-1.5 w-full" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AcademyCoursePageSkeleton() {
+  return (
+    <ShellSkeleton title="Курс" network>
+      <div className="mx-auto max-w-6xl space-y-4">
+        <AcademyCourseHeadSkeleton />
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="space-y-1 rounded-lg border bg-background p-2 lg:w-72">
+            {Array.from({ length: 5 }, (_, i) => (
+              <Skeleton key={i} className="h-11 w-full" />
+            ))}
+          </div>
+          <div className="flex-1 space-y-3 rounded-lg border bg-background p-6">
+            <Skeleton className="h-6 w-60" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-4/5" />
+          </div>
+        </div>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+function AcademyAttemptSkeleton({ title }: { title: string }) {
+  return (
+    <ShellSkeleton title={title} network>
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div className="space-y-3 rounded-lg border bg-background p-5">
+          <Skeleton className="h-3.5 w-32" />
+          <Skeleton className="h-6 w-56" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="space-y-2 rounded-lg border bg-background p-4">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ))}
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AcademyAttemptPageSkeleton() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <AcademyAttemptSkeleton
+      title={pathname.startsWith("/academy/review") ? "Проверка ответов" : "Результат теста"}
+    />
+  );
+}
+
+export function AcademyReviewPageSkeleton() {
+  return (
+    <ShellSkeleton title="Проверка ответов" network>
+      <div className="mx-auto max-w-5xl">
+        <TableCardSkeleton
+          headers={["Сотрудник", "Курс и тест", "Свободных ответов", "Отправлено"]}
+          rows={4}
+          pagination={false}
+        />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AcademyCoursesPageSkeleton() {
+  return (
+    <ShellSkeleton title="Курсы" network actions={["w-36"]}>
+      <div className="mx-auto max-w-5xl space-y-4">
+        <ToolbarSkeleton search controls={["w-80"]} />
+        <Skeleton className="h-4 w-28" />
+        <ul className="divide-y rounded-lg border bg-background">
+          {Array.from({ length: 4 }, (_, i) => (
+            <li key={i} className="flex items-center gap-3 p-3">
+              <Skeleton className="aspect-[16/10] w-24 rounded-md" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-60 max-w-[70%]" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AcademyBuilderPageSkeleton() {
+  return (
+    <ShellSkeleton title="Курс" network>
+      <div className="mx-auto max-w-5xl space-y-4">
+        <AcademyCourseHeadSkeleton />
+        <div className="inline-flex h-10 items-center gap-1 rounded-full bg-muted p-1">
+          {["Содержание", "Ученики", "Ошибки"].map((t) => (
+            <span key={t} className="px-3 text-sm text-muted-foreground">
+              {t}
+            </span>
+          ))}
+        </div>
+        <ul className="divide-y rounded-lg border bg-background">
+          {Array.from({ length: 4 }, (_, i) => (
+            <li key={i} className="flex items-center gap-3 p-3">
+              <Skeleton className="size-4 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-4 w-64 max-w-[70%]" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AcademyStepPageSkeleton() {
+  return (
+    <ShellSkeleton title="Шаг курса" network>
+      <div className="mx-auto max-w-4xl space-y-4">
+        <Skeleton className="h-3.5 w-40" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="min-h-80 space-y-3 rounded-lg border bg-background p-6">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-11/12" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AcademyReportPageSkeleton() {
+  return (
+    <ShellSkeleton title="Отчёт по обучению" network>
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="inline-flex h-10 items-center gap-1 rounded-full bg-muted p-1">
+          {["Курсы", "Сотрудники"].map((t) => (
+            <span key={t} className="px-3 text-sm text-muted-foreground">
+              {t}
+            </span>
+          ))}
+        </div>
+        <TableCardSkeleton
+          headers={[
+            "Курс",
+            "Учеников",
+            "Прошли",
+            "Проходят / не начали",
+            "На проверке",
+            "Просрочено",
+          ]}
+          rows={4}
+          pagination={false}
+        />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AcademySettingsPageSkeleton() {
+  return (
+    <ShellSkeleton title="Настройки Академии" network>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <section className="space-y-2">
+          <h2 className="font-semibold">Папки курсов</h2>
+          <ul className="divide-y rounded-lg border bg-background">
+            {Array.from({ length: 3 }, (_, i) => (
+              <li key={i} className="flex items-center gap-2 px-3 py-2.5">
+                <Skeleton className="h-4 w-40" />
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="space-y-2">
+          <h2 className="font-semibold">Кто ведёт обучение</h2>
+          <Skeleton className="h-4 w-full" />
+        </section>
+      </div>
+    </ShellSkeleton>
+  );
+}

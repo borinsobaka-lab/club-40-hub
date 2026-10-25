@@ -82,7 +82,11 @@ function RailItem({
       to={section.url}
       title={section.fullTitle}
       // Счётчик внутри ссылки aria-label глушит — число добавляем сюда.
-      aria-label={badge ? `${section.fullTitle}, новых заявок: ${badge}` : section.fullTitle}
+      aria-label={
+        badge
+          ? `${section.fullTitle}, ${section.key === "academy" ? "ждут внимания" : "новых заявок"}: ${badge}`
+          : section.fullTitle
+      }
       aria-current={active ? "page" : undefined}
       className={cn(itemClass, "group/rail")}
       onClick={onNavigate}
@@ -141,7 +145,13 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
             key={section.key}
             section={section}
             active={section.key === activeKey}
-            badge={section.key === "club" ? openRequests : undefined}
+            badge={
+              section.key === "club"
+                ? openRequests
+                : section.key === "academy"
+                  ? (access.academy?.my_open ?? 0) + (access.academy?.to_review ?? 0)
+                  : undefined
+            }
             onNavigate={onNavigate}
           />
         ))
