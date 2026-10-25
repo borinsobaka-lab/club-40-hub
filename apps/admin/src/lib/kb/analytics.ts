@@ -215,3 +215,16 @@ export function plural(n: number, forms: [string, string, string]): string {
     a > 10 && a < 20 ? forms[2] : b === 1 ? forms[0] : b >= 2 && b <= 4 ? forms[1] : forms[2];
   return `${n} ${form}`;
 }
+
+/**
+ * «Обновлено …» в шапке статьи: «сегодня», «вчера», «11 дней назад»,
+ * дальше 30 дней — дата «12 окт. 2026».
+ */
+export function formatUpdatedAgo(iso: string, now = new Date()): string {
+  const at = new Date(iso);
+  const days = Math.round((dayStart(now) - dayStart(at)) / DAY);
+  if (days <= 0) return "сегодня";
+  if (days === 1) return "вчера";
+  if (days < 30) return `${plural(days, ["день", "дня", "дней"])} назад`;
+  return at.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}

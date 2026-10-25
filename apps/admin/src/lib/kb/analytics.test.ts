@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
-import { dayLabels, formatAgo, formatDuration, percentText, plural, share } from "./analytics";
+import {
+  dayLabels,
+  formatAgo,
+  formatDuration,
+  formatUpdatedAgo,
+  percentText,
+  plural,
+  share,
+} from "./analytics";
 
 describe("аналитика чтения", () => {
   test("время чтения", () => {
@@ -40,5 +48,14 @@ describe("аналитика чтения", () => {
     const d = dayLabels("2026-10-25");
     expect(d.tick).toContain("25");
     expect(d.label).toContain("25");
+  });
+
+  test("«Обновлено …» в шапке статьи", () => {
+    const now = new Date(2026, 9, 25, 10, 0);
+    expect(formatUpdatedAgo(new Date(2026, 9, 25, 0, 5).toISOString(), now)).toBe("сегодня");
+    expect(formatUpdatedAgo(new Date(2026, 9, 24, 12, 0).toISOString(), now)).toBe("вчера");
+    expect(formatUpdatedAgo(new Date(2026, 9, 14, 12, 0).toISOString(), now)).toBe("11 дней назад");
+    expect(formatUpdatedAgo(new Date(2026, 9, 22, 12, 0).toISOString(), now)).toBe("3 дня назад");
+    expect(formatUpdatedAgo(new Date(2026, 9, 4, 12, 0).toISOString(), now)).toBe("21 день назад");
   });
 });

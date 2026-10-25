@@ -190,19 +190,32 @@ export function snippetParts(snippet: string): { text: string; hit: boolean }[] 
   return parts;
 }
 
-/** Имена авторов и редакторов базы (RPC kb_authors): id → «Фамилия Имя». */
-export function useKbAuthors(baseId: string | null) {
-  return useQuery({
+export type KbAuthor = { user_id: string; full_name: string | null; avatar_url: string | null };
+
+/** Авторы и редакторы базы (RPC kb_authors) — один запрос на оба хука ниже. */
+function kbAuthorsQuery(baseId: string | null) {
+  return {
     queryKey: ["kb_authors", baseId],
-    queryFn: async () => {
-      const rows = await unwrap<{ user_id: string; full_name: string | null }[]>(
-        supabase.rpc("kb_authors", { p_base: baseId }),
-      );
-      return new Map(rows.map((r) => [r.user_id, r.full_name ?? ""]));
-    },
+    queryFn: () => unwrap<KbAuthor[]>(supabase.rpc("kb_authors", { p_base: baseId })),
     enabled: !!baseId,
     staleTime: 5 * 60_000,
     meta: { errorMessage: "Не удалось загрузить авторов статей" },
+  };
+}
+
+/** Имена авторов и редакторов базы: id → «Фамилия Имя». */
+export function useKbAuthors(baseId: string | null) {
+  return useQuery({
+    ...kbAuthorsQuery(baseId),
+    select: (rows) => new Map(rows.map((r) => [r.user_id, r.full_name ?? ""])),
+  });
+}
+
+/** Авторы базы с аватаркой (шапка статьи): id → строка kb_authors. */
+export function useKbAuthorProfiles(baseId: string | null) {
+  return useQuery({
+    ...kbAuthorsQuery(baseId),
+    select: (rows) => new Map(rows.map((r) => [r.user_id, r])),
   });
 }
 

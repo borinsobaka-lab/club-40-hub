@@ -816,7 +816,9 @@ AUTH_SETUP.md.
   `kb_ratings_report` (редакторам и владельцам), `kb_bases.brand_color`
   (#rrggbb, null — цвет клуба). Корзина возвращает оценки и настройки,
   копия — настройки: актуальные определения `kb_trash_node`,
-  `kb_trash_restore`, `kb_copy_node` — здесь.
+  `kb_trash_restore`, `kb_copy_node` — здесь. `kb_authors` отдаёт и
+  аватарку (`db/migrations/2026-10-25_zzzzzzzz_kb_authors_avatar.sql`,
+  актуальное определение — здесь): автор в шапке статьи.
   **«Академия» — курсы, тесты, проверка тренером** (решения владельца
   2026-10-25; план, решения и что вошло — ACADEMY.md):
   `db/migrations/2026-10-25_zzzzzzz_academy.sql` — отдельный раздел, курсы
