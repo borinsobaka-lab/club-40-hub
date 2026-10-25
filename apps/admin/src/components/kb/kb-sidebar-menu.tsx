@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ChartSquare, DocumentText, Folder, FolderOpen } from "@/components/nav-icons";
+import { ChartSquare, DocumentText, Folder } from "@/components/nav-icons";
+import { kbSectionIcon } from "@/lib/kb/icons";
 import { DropIndicator } from "@/components/kb/drop-indicator";
 import { KbMoveForm, KbNodeTitleForm } from "@/components/kb/node-dialogs";
 import { useKbActions } from "@/components/kb/use-kb-actions";
@@ -196,7 +197,11 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
       );
     }
     items.push({
-      label: isFolder ? "Название и описание" : "Переименовать",
+      label: isFolder
+        ? node.parent_id === null
+          ? "Название, иконка, описание"
+          : "Название и описание"
+        : "Переименовать",
       icon: Pencil,
       onSelect: () => setDialog({ kind: "rename", node }),
     });
@@ -387,8 +392,14 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
               kind={dialog.nodeKind}
               node={null}
               place={{ nodes, baseTitle: base?.title ?? "База", parentId: dialog.parentId }}
-              onSave={async (title, description, parentId) => {
-                const id = await actions.create(dialog.nodeKind, parentId, title, description);
+              onSave={async (title, description, parentId, icon) => {
+                const id = await actions.create(
+                  dialog.nodeKind,
+                  parentId,
+                  title,
+                  description,
+                  icon,
+                );
                 if (id && parentId) folders.toggle(parentId, true);
                 if (id) onNavigate();
                 return id;
@@ -400,8 +411,13 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
             <KbNodeTitleForm
               kind={dialog.node.kind}
               node={dialog.node}
-              onSave={(title, description) =>
-                actions.update(dialog.node.id, { title, description })
+              onSave={(title, description, _parentId, icon) =>
+                actions.update(
+                  dialog.node.id,
+                  dialog.node.kind === "folder"
+                    ? { title, description, icon }
+                    : { title, description },
+                )
               }
               onDone={() => setDialog(null)}
             />
@@ -474,7 +490,7 @@ function TreeRow({
   const muted = node.status !== "published";
   // Раздел — папка верхнего уровня: с иконкой и полужирный.
   const section = isFolder && depth === 0;
-  const SectionIcon = open ? FolderOpen : Folder;
+  const SectionIcon = kbSectionIcon(node.icon, open);
   const statusHint =
     node.status === "archived" ? "В архиве" : node.status === "draft" ? "Черновик" : undefined;
 

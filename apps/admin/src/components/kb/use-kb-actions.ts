@@ -19,7 +19,13 @@ export function useKbActions(baseId: string) {
   const fail = (e: unknown) => toast.error(kbErrorText(e));
 
   const create = useCallback(
-    async (kind: KbKind, parentId: string | null, title: string, description = "") => {
+    async (
+      kind: KbKind,
+      parentId: string | null,
+      title: string,
+      description = "",
+      icon: string | null = null,
+    ) => {
       const { data, error } = await supabase
         .from("kb_nodes")
         .insert({
@@ -28,6 +34,7 @@ export function useKbActions(baseId: string) {
           kind,
           title,
           description,
+          icon: kind === "folder" ? icon : null,
           // Папку видно сразу (пустую читателю не покажем), статья — черновик
           // до публикации.
           status: kind === "folder" ? "published" : "draft",
@@ -51,7 +58,10 @@ export function useKbActions(baseId: string) {
   );
 
   const update = useCallback(
-    async (id: string, patch: Partial<Pick<KbTreeNode, "title" | "description" | "status">>) => {
+    async (
+      id: string,
+      patch: Partial<Pick<KbTreeNode, "title" | "description" | "icon" | "status">>,
+    ) => {
       const { error } = await supabase.from("kb_nodes").update(patch).eq("id", id);
       if (error) {
         fail(error.message);
