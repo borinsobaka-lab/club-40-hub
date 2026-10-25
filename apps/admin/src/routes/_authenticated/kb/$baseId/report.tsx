@@ -57,6 +57,8 @@ const TIPS = {
   updated: "Последняя правка: публикация, название или черновик правок.",
 };
 
+const NO_READERS = "Нет читателей — выдайте доступ к базе в «Доступах»";
+
 type ReportRow = {
   id: string;
   parent_id: string | null;
@@ -160,6 +162,20 @@ function KbReportPage() {
                 }}
               />
             </TableToolbar>
+            {!!data?.length && data.every((r) => r.access_count === 0) && (
+              <InfoNote>
+                Читателей пока нет: базу никому не выдали в «Доступах», а владельцы и авторы статьи
+                в отчёте не считаются. Выдайте сотрудникам «Просмотр» —{" "}
+                {access?.isOwner ? (
+                  <Link to="/employees" className="font-medium underline">
+                    открыть «Доступы»
+                  </Link>
+                ) : (
+                  "это делает владелец"
+                )}
+                , и здесь появится, кто прочитал.
+              </InfoNote>
+            )}
             <div className="rounded-lg border bg-background">
               <Table>
                 <TableHeader>
@@ -248,7 +264,12 @@ function KbReportPage() {
 }
 
 function ReadShare({ row }: { row: ReportRow }) {
-  if (!row.access_count) return <span className="text-muted-foreground">—</span>;
+  if (!row.access_count)
+    return (
+      <span className="text-muted-foreground" title={NO_READERS}>
+        —
+      </span>
+    );
   const p = Math.round(percent(row) * 100);
   return (
     <span className="inline-flex items-center gap-2 whitespace-nowrap">

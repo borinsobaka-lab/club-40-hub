@@ -902,29 +902,33 @@ function EditBar({
   onPublish: () => void;
 }) {
   return (
-    <div className="sticky top-0 z-30 mb-3 flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 shadow-sm sm:px-3">
-      <div className="min-w-0 basis-full text-sm sm:basis-0 sm:flex-1">
-        <span className="font-medium">Редактирование</span>
-        <span className="block text-xs text-muted-foreground">
-          <AutosaveLabel state={autosave.state} savedAt={autosave.savedAt} />
-        </span>
+    // Подложка цвета канвы закрывает отступ рабочей области над прилипшей
+    // плашкой — иначе в этой полосе был виден прокручиваемый текст.
+    <div className="sticky -top-3 z-30 -mt-3 bg-canvas pt-3 pb-3 sm:-top-4 sm:-mt-4 sm:pt-4 lg:-top-6 lg:-mt-6 lg:pt-6">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 shadow-sm sm:px-3">
+        <div className="min-w-0 basis-full text-sm sm:basis-0 sm:flex-1">
+          <span className="font-medium">Редактирование</span>
+          <span className="block text-xs text-muted-foreground">
+            <AutosaveLabel state={autosave.state} savedAt={autosave.savedAt} />
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          className="flex-1 sm:flex-none"
+          disabled={publishing}
+          onClick={onClose}
+        >
+          Закрыть редактор
+        </Button>
+        <Button
+          className="flex-1 sm:flex-none"
+          disabled={publishing || autosave.state === "conflict"}
+          onClick={onPublish}
+        >
+          {publishing ? <Loader2 className="animate-spin" /> : <Send />}
+          Опубликовать…
+        </Button>
       </div>
-      <Button
-        variant="outline"
-        className="flex-1 sm:flex-none"
-        disabled={publishing}
-        onClick={onClose}
-      >
-        Закрыть редактор
-      </Button>
-      <Button
-        className="flex-1 sm:flex-none"
-        disabled={publishing || autosave.state === "conflict"}
-        onClick={onPublish}
-      >
-        {publishing ? <Loader2 className="animate-spin" /> : <Send />}
-        Опубликовать…
-      </Button>
     </div>
   );
 }
@@ -1006,31 +1010,96 @@ function TitleInput({
 }
 
 /** Оглавление статьи — справа на широком экране (боль брифа: длинные статьи без оглавления). */
+/** Отступ от верха области прокрутки: заголовок выше него — «текущий» (больше, чем scroll-margin у блоков в режиме правки, styles.css). */
+const TOC_SPY_OFFSET = 136;
+
+/**
+ * Какой раздел статьи сейчас на экране: последний заголовок, поднявшийся
+ * выше верхней трети окна; докрутили до конца — последний. Прокручивается
+ * рабочая область админки (`.admin-main`), а не окно.
+ */
+function useActiveHeading(ids: string[], anchor: React.RefObject<HTMLElement | null>) {
+  const [active, setActive] = useState<string | null>(null);
+  // Заголовки — по содержимому: новый массив с теми же id приходит на
+  // каждую правку текста, эффект от этого перезапускаться не должен.
+  const key = ids.join(",");
+  useEffect(() => {
+    const ids = key ? key.split(",") : [];
+    const scroller = anchor.current?.closest<HTMLElement>(".admin-main");
+    if (!scroller || ids.length === 0) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const top = scroller.getBoundingClientRect().top + TOC_SPY_OFFSET;
+      const atEnd = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4;
+      let current: string | null = null;
+      for (const id of ids) {
+        const el = scroller.querySelector(`[data-id="${CSS.escape(id)}"]`);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= top) current = id;
+        else break;
+      }
+      if (atEnd && scroller.scrollTop > 0) current = ids[ids.length - 1];
+      setActive(current ?? ids[0]);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [key, anchor]);
+  return [active, setActive] as const;
+}
+
 function Toc({ headings }: { headings: KbHeading[] }) {
+  const ref = useRef<HTMLElement>(null);
+  const [active, setActive] = useActiveHeading(
+    headings.map((h) => h.id),
+    ref,
+  );
   if (headings.length < 2) return <div className="hidden w-56 shrink-0 xl:block" />;
   const go = (id: string) => {
     const el = document.querySelector(`[data-id="${CSS.escape(id)}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActive(id);
   };
   return (
-    <aside className="hidden w-56 shrink-0 xl:block">
-      <nav aria-label="Оглавление" className="sticky top-0 pt-9">
+    <aside ref={ref} className="hidden w-56 shrink-0 xl:block">
+      <nav
+        aria-label="Оглавление"
+        className="sidebar-scroll sticky top-0 max-h-[calc(100dvh-6rem)] overflow-y-auto pt-9"
+      >
         <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
           Содержание
         </p>
         <ul className="space-y-1 border-l">
-          {headings.map((h) => (
-            <li key={h.id}>
-              <button
-                type="button"
-                onClick={() => go(h.id)}
-                className="-ml-px block w-full cursor-pointer border-l border-transparent py-0.5 text-left text-sm text-muted-foreground hover:border-foreground hover:text-foreground"
-                style={{ paddingLeft: 12 + (Math.min(h.level, 3) - 1) * 12 }}
-              >
-                {h.text}
-              </button>
-            </li>
-          ))}
+          {headings.map((h) => {
+            const current = h.id === active;
+            return (
+              <li key={h.id}>
+                <button
+                  type="button"
+                  onClick={() => go(h.id)}
+                  aria-current={current ? "location" : undefined}
+                  className={cn(
+                    "-ml-px block w-full cursor-pointer border-l py-0.5 text-left text-sm transition-colors",
+                    current
+                      ? "border-foreground font-medium text-foreground"
+                      : "border-transparent text-muted-foreground hover:border-muted-foreground hover:text-foreground",
+                  )}
+                  style={{ paddingLeft: 12 + (Math.min(h.level, 3) - 1) * 12 }}
+                >
+                  {h.text}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </aside>

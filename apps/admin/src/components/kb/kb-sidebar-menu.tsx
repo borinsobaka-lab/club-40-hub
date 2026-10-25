@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ChartSquare, DocumentText, Folder, FolderOpen } from "@/components/nav-icons";
+import { ChartSquare, DocumentText, Folder } from "@/components/nav-icons";
 import { DropIndicator } from "@/components/kb/drop-indicator";
 import { KbMoveForm, KbNodeTitleForm } from "@/components/kb/node-dialogs";
 import { useKbActions } from "@/components/kb/use-kb-actions";
@@ -472,34 +472,25 @@ function TreeRow({
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const muted = node.status !== "published";
-  const Icon = isFolder ? (open ? FolderOpen : Folder) : DocumentText;
   const statusHint =
     node.status === "archived" ? "В архиве" : node.status === "draft" ? "Черновик" : undefined;
 
   return (
     <li role="treeitem" aria-expanded={isFolder ? open : undefined} aria-selected={active}>
+      {/*
+        Строка без иконок, обычным начертанием (решение владельца 2026-10-25,
+        по образцу справочных центров): иконка и полужирный — только у корня,
+        названия базы в шапке меню. Папку отличает шеврон после названия.
+      */}
       <div
         ref={drag.ref}
         className={cn(
-          "group/kbrow relative flex h-8 items-center rounded-md text-sm text-white hover:bg-white/10 [[data-mobile=true]_&]:h-10",
-          active && "bg-white/10 font-semibold",
+          "group/kbrow relative flex h-8 items-center rounded-md text-sm text-white/75 hover:bg-white/10 hover:text-white [[data-mobile=true]_&]:h-10",
+          active && "bg-white/10 text-white",
           drag.dragging && "opacity-40",
         )}
-        style={{ paddingLeft: depth * 14 }}
       >
         <DropIndicator instruction={drag.instruction} onDark />
-        {isFolder ? (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-label={open ? `Свернуть «${node.title}»` : `Развернуть «${node.title}»`}
-            className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          >
-            <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} />
-          </button>
-        ) : (
-          <span className="size-6 shrink-0" />
-        )}
         <Link
           to="/kb/$baseId/$nodeId"
           params={{ baseId, nodeId: node.id }}
@@ -508,28 +499,44 @@ function TreeRow({
           // перебивала бы перенос строки.
           draggable={false}
           title={statusHint ? `${node.title} — ${statusHint.toLowerCase()}` : node.title}
-          className="flex h-full min-w-0 flex-1 items-center gap-2 pr-1 outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-md"
+          // Стрелки, как в дереве: → раскрыть папку, ← свернуть.
+          onKeyDown={(e) => {
+            if (!isFolder) return;
+            if ((e.key === "ArrowRight" && !open) || (e.key === "ArrowLeft" && open)) {
+              e.preventDefault();
+              onToggle();
+            }
+          }}
+          className="flex h-full min-w-0 flex-1 items-center gap-1 rounded-md pr-1 outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          style={{ paddingLeft: 8 + depth * 14 }}
         >
-          <Icon
-            active={active}
-            className={cn(
-              "size-4 shrink-0",
-              active ? "text-brand-on-dark" : "text-white/70",
-              muted && "opacity-50",
-            )}
-          />
           <span
             className={cn(
-              "min-w-0 flex-1 truncate",
+              "min-w-0 truncate",
               muted && "text-white/45",
               node.status === "archived" && "italic",
             )}
           >
             {node.title || "Без названия"}
           </span>
+          {isFolder && (
+            // Шеврон сворачивает и раскрывает, не открывая папку; с клавиатуры
+            // — стрелками на строке.
+            <span
+              aria-hidden
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-white/45 hover:bg-white/10 hover:text-white"
+            >
+              <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} />
+            </span>
+          )}
           {hasDraft && (
             <span
-              className="size-1.5 shrink-0 rounded-full bg-brand-on-dark"
+              className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-on-dark"
               title="Есть неопубликованные правки"
               aria-label="Есть неопубликованные правки"
             />
