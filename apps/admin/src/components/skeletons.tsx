@@ -112,6 +112,7 @@ export function ShellSkeleton({
   title,
   actions = [],
   kb = false,
+  network = false,
   children,
 }: {
   title: string;
@@ -119,6 +120,8 @@ export function ShellSkeleton({
   actions?: ControlSkeleton[];
   /** Шапка базы знаний: вкладки баз и поиск по базе, рабочая область белая. */
   kb?: boolean;
+  /** Раздел, общий для сети («Академия»): в шапке только заголовок. */
+  network?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -154,15 +157,19 @@ export function ShellSkeleton({
               <RefreshCw className="h-5 w-5" />
             </span>
           </div>
-          {/* Поиск клиента — как HeaderClientSearch. */}
-          <Skeleton className="order-last h-10 w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
-          <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
-            <Skeleton className="h-10 w-10 shrink-0 rounded-full sm:w-20" />
-            {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
-            <div className="hidden items-center gap-2 lg:flex">
-              <Skeleton className="h-10 w-60" />
-            </div>
-          </div>
+          {!network && (
+            <>
+              {/* Поиск клиента — как HeaderClientSearch. */}
+              <Skeleton className="order-last h-10 w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+              <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
+                <Skeleton className="h-10 w-10 shrink-0 rounded-full sm:w-20" />
+                {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
+                <div className="hidden items-center gap-2 lg:flex">
+                  <Skeleton className="h-10 w-60" />
+                </div>
+              </div>
+            </>
+          )}
         </header>
       )}
       <main

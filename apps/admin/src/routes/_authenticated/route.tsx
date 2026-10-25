@@ -16,6 +16,7 @@ import { studiosQuery } from "@/hooks/use-studios";
 import { staffProfileQuery } from "@/hooks/use-staff-profile";
 import { adminPermissionsQuery, useAdminAccess } from "@/hooks/use-admin-access";
 import { kbBasesQuery, kbOwnGrantsQuery } from "@/lib/kb/data";
+import { acadAccessQuery } from "@/lib/academy/data";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenPath, firstAllowedUrl } from "@/lib/nav-sections";
 import { usePreloadSections } from "@/hooks/use-preload-sections";
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/_authenticated")({
     void queryClient.prefetchQuery(staffProfileQuery);
     void queryClient.prefetchQuery(kbBasesQuery);
     void queryClient.prefetchQuery(kbOwnGrantsQuery);
+    void queryClient.prefetchQuery(acadAccessQuery);
 
     if (verifiedUserId === sessionUser.id) return { user: sessionUser };
 

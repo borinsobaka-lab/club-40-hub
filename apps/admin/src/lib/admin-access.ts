@@ -13,6 +13,7 @@
  * разделов). Владелец видит все разделы рейки, а в своей студии — все разделы
  * клуба. Модуль без React и иконок: его читает и сервер.
  */
+import type { AcadAccessInfo } from "@/lib/academy/types";
 import type { KbLevel } from "@/lib/kb/access";
 
 export const RAIL_ACCESS_KEYS = ["club", "staff", "app", "scripts"] as const;
@@ -59,6 +60,11 @@ export type AdminAccess = {
    * поля — баз нет. Владельцу открыты все, в том числе ещё не загруженные.
    */
   kb?: Record<string, KbLevel>;
+  /**
+   * «Академия»: права («Создаёт курсы», «Проверяет ответы») и счётчики (свои
+   * курсы, ответы на проверку) — RPC acad_access. Нет поля — раздела нет.
+   */
+  academy?: AcadAccessInfo;
   /** Владелец хоть одной студии: все разделы рейки, «Доступы». */
   isOwner: boolean;
   /** Разделы рейки (и 'scripts-edit'); null — все. */

@@ -5,6 +5,7 @@ import { ChevronUp } from "lucide-react";
 import { Notebook, Settings } from "@/components/nav-icons";
 import { AppRail } from "@/components/app-rail";
 import {
+  ACADEMY_ITEMS,
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
   MANAGE_GROUPS,
@@ -15,6 +16,7 @@ import {
   STAFF_CLUB_GROUP,
   STAFF_NAV_ITEM,
   canOpenPath,
+  hasAcademyRight,
   kbBaseIdOf,
   railSectionKey,
   type NavGroup,
@@ -248,18 +250,43 @@ export function AppSidebar() {
       ? { title: "Скрипты LS", groups: scriptsMenu.groups }
       : railKey === "kb"
         ? { title: kbBaseId ? kbBaseTitle : "База знаний", groups: [] }
-        : railKey === "manage"
+        : railKey === "academy"
           ? {
-              // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
-              title: "Управление",
+              // Пункты — по правам в «Академии»; счётчики: свои непройденные
+              // курсы и ответы, ждущие проверки.
+              title: "Академия",
               groups: access
-                ? MANAGE_GROUPS.map((g) => ({
-                    ...g,
-                    items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
-                  })).filter((g) => g.items.length > 0)
+                ? [
+                    {
+                      key: "academy",
+                      label: "Разделы",
+                      items: ACADEMY_ITEMS.filter((i) => hasAcademyRight(access, i.need)).map(
+                        (i) => ({
+                          ...i,
+                          badge:
+                            i.need === "review"
+                              ? access.academy?.to_review
+                              : i.need === "any"
+                                ? access.academy?.my_open
+                                : undefined,
+                        }),
+                      ),
+                    },
+                  ]
                 : [],
             }
-          : SECTION_MENUS[railKey];
+          : railKey === "manage"
+            ? {
+                // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
+                title: "Управление",
+                groups: access
+                  ? MANAGE_GROUPS.map((g) => ({
+                      ...g,
+                      items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
+                    })).filter((g) => g.items.length > 0)
+                  : [],
+              }
+            : SECTION_MENUS[railKey];
   const feedbackStudios = useSectionStudios("feedback");
   const npsStudios = useSectionStudios("nps");
   const pendingFeedback = usePendingFeedback(
@@ -293,7 +320,7 @@ export function AppSidebar() {
   const menuLoading =
     railKey === "scripts"
       ? scriptsMenu.loading
-      : railKey === "manage"
+      : railKey === "manage" || railKey === "academy"
         ? !access
         : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
@@ -468,7 +495,7 @@ export function AppSidebar() {
           <SidebarFooter
             className={cn(
               "gap-2 border-t border-white/10 p-3 lg:hidden",
-              railKey === "kb" && "hidden",
+              (railKey === "kb" || railKey === "academy") && "hidden",
             )}
           >
             <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white focus-visible:bg-white/10 [&>svg]:text-white" />

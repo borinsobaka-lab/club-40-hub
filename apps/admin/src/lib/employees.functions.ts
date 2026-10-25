@@ -47,7 +47,12 @@ export type EmployeeRow = {
   rail: AdminSectionKey[] | null;
   /** Базы знаний: просмотр или правка (владельцу — все без строк). */
   kb: KbGrant[];
+  /** «Академия» (acad_staff): создаёт курсы / проверяет ответы; владельцу — всё без строки. */
+  academy: AcademyRights;
 };
+
+export type AcademyRights = { can_create: boolean; can_review: boolean };
+const NO_ACADEMY: AcademyRights = { can_create: false, can_review: false };
 
 export type KbBaseOption = { id: string; title: string };
 
@@ -89,7 +94,7 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
       };
     }
 
-    const [roles, profiles, rail, perStudio, kbGrants] = await Promise.all([
+    const [roles, profiles, rail, perStudio, kbGrants, academy] = await Promise.all([
       admin
         .from("user_roles")
         .select("user_id, studio_id, role")
@@ -107,8 +112,9 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
         .eq("subject_type", "user")
         .is("node_id", null)
         .in("subject_id", userIds),
+      admin.from("acad_staff").select("user_id, can_create, can_review").in("user_id", userIds),
     ]);
-    for (const res of [roles, profiles, rail, perStudio, kbGrants]) {
+    for (const res of [roles, profiles, rail, perStudio, kbGrants, academy]) {
       if (res.error) throw new Error(res.error.message);
     }
 
@@ -151,6 +157,13 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
       ]);
     }
 
+    const academyOf = new Map(
+      ((academy.data ?? []) as ({ user_id: string } & AcademyRights)[]).map((r) => [
+        r.user_id,
+        { can_create: r.can_create, can_review: r.can_review },
+      ]),
+    );
+
     const byUser = new Map<string, EmployeeRow>();
     for (const r of (roles.data ?? []) as {
       user_id: string;
@@ -170,6 +183,7 @@ export const getEmployeesContext = createServerFn({ method: "GET" })
           otherStudios: 0,
           rail: railOf.get(r.user_id) ?? null,
           kb: kbOf.get(r.user_id) ?? [],
+          academy: academyOf.get(r.user_id) ?? NO_ACADEMY,
         };
         byUser.set(r.user_id, row);
       }
@@ -231,6 +245,8 @@ const accessSchema = z
     kb: z
       .array(z.object({ base_id: z.string().uuid(), level: z.enum(KB_GRANT_LEVELS) }))
       .optional(),
+    // Нет поля (старая вкладка) — права «Академии» не трогаем.
+    academy: z.object({ can_create: z.boolean(), can_review: z.boolean() }).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.role === "owner") return;
@@ -351,6 +367,18 @@ async function applyAccess(
   // поэтому порядок с ролями не важен. Владельцу открыто всё — строки не нужны.
   if (isOwnerRole) await applyKbGrants(admin, userId, []);
   else if (input.kb) await applyKbGrants(admin, userId, input.kb);
+
+  // 5. «Академия» — так же: строка только открывает, владельцу не нужна.
+  const academy = isOwnerRole ? NO_ACADEMY : input.academy;
+  if (academy) {
+    check(
+      academy.can_create || academy.can_review
+        ? await admin
+            .from("acad_staff")
+            .upsert({ user_id: userId, ...academy, updated_at: new Date().toISOString() })
+        : await admin.from("acad_staff").delete().eq("user_id", userId),
+    );
+  }
 }
 
 /** Доступы к базам знаний: лишние — убрать, новые — добавить, уровень — поправить. */
@@ -721,6 +749,11 @@ export const deleteEmployee = createServerFn({ method: "POST" })
         .eq("subject_type", "user")
         .eq("subject_id", data.user_id);
       if (kbErr) throw new Error(kbErr.message);
+      const { error: acadErr } = await admin
+        .from("acad_staff")
+        .delete()
+        .eq("user_id", data.user_id);
+      if (acadErr) throw new Error(acadErr.message);
     }
     if (keepAccount) return { ok: true, accountKept: true };
 

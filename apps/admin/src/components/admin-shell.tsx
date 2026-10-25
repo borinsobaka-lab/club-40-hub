@@ -71,6 +71,9 @@ export function AdminShell({
   // поиск по базе вместо заголовка и поиска клиента, без Kate и выбора
   // клуба (базы общие для сети); весь раздел — на белом.
   const kb = railSectionKey(pathname) === "kb";
+  // «Академия» общая для сети: только заголовок, без поиска клиента, Kate и
+  // выбора клуба.
+  const network = railSectionKey(pathname) === "academy";
   const kbBaseId = kb ? kbBaseIdOf(pathname) : null;
 
   // «Обновить»: иконка крутится, пока перезагружаются лоадеры роута и
@@ -169,9 +172,16 @@ export function AdminShell({
               {refreshButton}
             </div>
 
-            <HeaderClientSearch className="order-last w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+            {!network && (
+              <HeaderClientSearch className="order-last w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+            )}
 
-            <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
+            <div
+              className={cn(
+                "flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0",
+                network && "hidden",
+              )}
+            >
               <button
                 type="button"
                 onClick={() => setKateOpen(true)}
