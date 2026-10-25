@@ -4,7 +4,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { KB_NODES_KEY, invalidateKb, kbErrorText, loadKbTemplateContent } from "@/lib/kb/data";
+import {
+  KB_NODES_KEY,
+  invalidateKb,
+  kbErrorText,
+  loadKbTemplateContent,
+  saveKbNodeTags,
+} from "@/lib/kb/data";
 import { documentFilePaths } from "@/lib/kb/document";
 import { copyKbFiles, kbArticleFolder } from "@/lib/kb/files";
 import { applyMove } from "@/lib/kb/tree";
@@ -29,6 +35,8 @@ export function useKbActions(baseId: string) {
       icon: string | null = null,
       /** Статья по шаблону: его текст — черновиком новой статьи. */
       templateId: string | null = null,
+      /** Теги новой статьи. */
+      tags: string[] = [],
     ) => {
       const { data, error } = await supabase
         .from("kb_nodes")
@@ -50,6 +58,13 @@ export function useKbActions(baseId: string) {
         return null;
       }
       const id = (data as { id: string }).id;
+      if (kind === "article" && tags.length) {
+        try {
+          await saveKbNodeTags(baseId, id, [], tags);
+        } catch (e) {
+          toast.error(`Статья создана, но теги не сохранились: ${kbErrorText(e)}`);
+        }
+      }
       if (kind === "article" && templateId) {
         try {
           // Файлы шаблона — копиями в папку статьи: шаблон общий для всех
@@ -154,6 +169,17 @@ export function useKbActions(baseId: string) {
         return;
       }
       const copyId = data as string;
+      // Теги — как у оригинала.
+      try {
+        const { data: rows } = await supabase
+          .from("kb_node_tags")
+          .select("tag_id")
+          .eq("node_id", nodeId);
+        const tagIds = ((rows ?? []) as { tag_id: string }[]).map((r) => r.tag_id);
+        if (tagIds.length) await saveKbNodeTags(baseId, copyId, [], tagIds);
+      } catch (e) {
+        toast.warning(`Копия создана, но теги не скопировались: ${kbErrorText(e)}`);
+      }
       // Файлы — копиями в папку копии: иначе копия ссылалась бы на папку
       // оригинала и теряла картинки, когда оригинал удалят навсегда.
       try {

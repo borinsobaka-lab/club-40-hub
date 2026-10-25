@@ -249,8 +249,8 @@ function KbTemplatesPage() {
                 baseId,
                 templateId: dialog.template.id,
               }}
-              onSave={(title, description, parentId, icon, templateId) =>
-                actions.create("article", parentId, title, description, icon, templateId)
+              onSave={(title, description, parentId, icon, templateId, tags) =>
+                actions.create("article", parentId, title, description, icon, templateId, tags)
               }
               onDone={() => open(null)}
             />

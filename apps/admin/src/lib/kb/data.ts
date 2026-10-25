@@ -7,11 +7,13 @@
  * его читают и боковое меню, и страницы (крошки, содержимое папки); текст
  * статьи — отдельным запросом при открытии.
  */
+import { useMemo } from "react";
 import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
 import type { KbGrant } from "./access";
+import { groupNodeTags, sortTags, tagDiff, type KbNodeTags, type KbTag } from "./tags";
 import type { KbBase, KbDraft, KbNodeFull, KbTreeNode } from "./types";
 
 export const KB_BASES_KEY = "kb_bases";
@@ -19,6 +21,8 @@ export const KB_GRANTS_KEY = "kb_grants";
 export const KB_NODES_KEY = "kb_nodes";
 export const KB_NODE_KEY = "kb_node";
 export const KB_DRAFTS_KEY = "kb_drafts";
+export const KB_TAGS_KEY = "kb_tags";
+export const KB_NODE_TAGS_KEY = "kb_node_tags";
 
 const TREE_COLUMNS =
   "id, base_id, parent_id, kind, title, description, icon, protect, feedback_enabled, pager_enabled, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
@@ -126,6 +130,8 @@ export function invalidateKb(queryClient: QueryClient, baseId?: string) {
     queryClient.invalidateQueries({ queryKey: [KB_NODE_KEY] }),
     // Черновики — и списком базы, и у открытой статьи (["kb_drafts", "node", id]).
     queryClient.invalidateQueries({ queryKey: [KB_DRAFTS_KEY] }),
+    // Теги статей — корзина и копия возвращают и их.
+    queryClient.invalidateQueries({ queryKey: [KB_NODE_TAGS_KEY] }),
   ]);
 }
 
@@ -140,6 +146,10 @@ export function kbErrorText(error: unknown, fallback = "Не удалось со
   if (message.includes("kb_folder_in_article"))
     return "Внутрь статьи можно вложить только статью, не папку";
   if (message.includes("kb_already_restored")) return "Это уже вернули из корзины";
+  if (message.includes("kb_too_many_tags")) return "У статьи может быть не больше 10 тегов";
+  if (message.includes("kb_tags_base_name_key")) return "Такой тег в базе уже есть";
+  if (message.includes("kb_tag_empty")) return "Укажите название тега";
+  if (message.includes("kb_tag_not_article")) return "Теги ставятся только статьям";
   if (message.includes("kb_not_found")) return "Не нашлось — возможно, уже удалили";
   if (message.includes("kb_forbidden") || message.includes("row-level security"))
     return "Нет права на правку этой базы знаний";
@@ -363,4 +373,76 @@ export function useKbChecks(nodeId: string | null) {
     enabled: !!nodeId,
     meta: { errorMessage: "Не удалось загрузить отметки чек-листа" },
   });
+}
+
+// --- Теги статей (db/migrations/2026-10-25_zzzzzzzzz_kb_tags.sql) ----------------------------
+
+/** Теги базы — по имени. */
+export function useKbTags(baseId: string | null) {
+  return useQuery({
+    queryKey: [KB_TAGS_KEY, baseId],
+    queryFn: async () =>
+      sortTags(
+        await unwrap<KbTag[]>(supabase.from("kb_tags").select("id, name").eq("base_id", baseId!)),
+      ),
+    enabled: !!baseId,
+    meta: { errorMessage: "Не удалось загрузить теги базы" },
+  });
+}
+
+/**
+ * Теги статей базы: статья → id тегов (по имени тега). Читателю RLS отдаёт
+ * теги только видимых ему статей.
+ */
+export function useKbNodeTags(baseId: string | null) {
+  const tags = useKbTags(baseId);
+  const rows = useQuery({
+    queryKey: [KB_NODE_TAGS_KEY, baseId],
+    queryFn: () =>
+      unwrap<{ node_id: string; tag_id: string }[]>(
+        supabase.from("kb_node_tags").select("node_id, tag_id").eq("base_id", baseId!),
+      ),
+    enabled: !!baseId,
+    meta: { errorMessage: "Не удалось загрузить теги статей" },
+  });
+  const data = useMemo<KbNodeTags | undefined>(
+    () => (rows.data && tags.data ? groupNodeTags(rows.data, tags.data) : undefined),
+    [rows.data, tags.data],
+  );
+  return { data, tags: tags.data, isLoading: rows.isLoading || tags.isLoading };
+}
+
+/** Новый тег базы; имя чистит база («#», пробелы). */
+export async function createKbTag(baseId: string, name: string): Promise<KbTag> {
+  const { data, error } = await supabase
+    .from("kb_tags")
+    .insert({ base_id: baseId, name })
+    .select("id, name")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as KbTag;
+}
+
+/** Теги статьи — как в `next`: добавить недостающие, снять лишние. */
+export async function saveKbNodeTags(
+  baseId: string,
+  nodeId: string,
+  prev: string[],
+  next: string[],
+): Promise<void> {
+  const { add, remove } = tagDiff(prev, next);
+  if (remove.length) {
+    const { error } = await supabase
+      .from("kb_node_tags")
+      .delete()
+      .eq("node_id", nodeId)
+      .in("tag_id", remove);
+    if (error) throw new Error(error.message);
+  }
+  if (add.length) {
+    const { error } = await supabase
+      .from("kb_node_tags")
+      .insert(add.map((tag_id) => ({ node_id: nodeId, tag_id, base_id: baseId })));
+    if (error) throw new Error(error.message);
+  }
 }

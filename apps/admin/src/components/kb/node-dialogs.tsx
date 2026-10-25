@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { DocumentText, Folder, Notebook } from "@/components/nav-icons";
 import { SearchInput } from "@/components/ui/search-input";
 import { KbStatusBadge } from "@/components/kb/kb-status-badge";
+import { KbTagsField } from "@/components/kb/tags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -99,6 +100,8 @@ export function KbNodeTitleForm({
     icon: string | null,
     /** Шаблон новой статьи; null — пустая. */
     templateId: string | null,
+    /** Теги новой статьи (id тегов базы). */
+    tags: string[],
   ) => Promise<boolean | string | null>;
   onDone: () => void;
 }) {
@@ -108,6 +111,7 @@ export function KbNodeTitleForm({
   const [description, setDescription] = useState(node?.description ?? "");
   const [icon, setIcon] = useState(node?.icon ?? KB_SECTION_DEFAULT_ICON);
   const [templateId, setTemplateId] = useState(place?.templateId ?? NO_TEMPLATE);
+  const [tags, setTags] = useState<string[]>([]);
   const { data: templates } = useKbTemplates(!node && kind === "article" && !!place?.baseId);
   const template = templates?.find((t) => t.id === templateId);
   const [saving, setSaving] = useState(false);
@@ -133,7 +137,7 @@ export function KbNodeTitleForm({
           ? (node?.icon ?? null)
           : null;
       const tpl = templateId === NO_TEMPLATE ? null : templateId;
-      if (await onSave(t, description.trim(), parentId, sectionIcon, tpl)) onDone();
+      if (await onSave(t, description.trim(), parentId, sectionIcon, tpl, tags)) onDone();
     } finally {
       setSaving(false);
     }
@@ -236,6 +240,14 @@ export function KbNodeTitleForm({
                 onChange={(e) => setTitle(e.target.value)}
               />
             </FormField>
+            {!node && !isFolder && place?.baseId && (
+              <FormField
+                label="Теги"
+                tip="По тегу статью находят в поиске и на главной базы. Выберите из тегов базы или впишите новый — он сразу появится в базе."
+              >
+                <KbTagsField baseId={place.baseId} value={tags} onChange={setTags} />
+              </FormField>
+            )}
             {isSection && (
               <FormField
                 label="Иконка"

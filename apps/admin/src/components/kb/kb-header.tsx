@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Hash } from "lucide-react";
 import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 
 import { DocumentText, Folder } from "@/components/nav-icons";
@@ -11,7 +12,8 @@ import { useAdminAccess } from "@/hooks/use-admin-access";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { canEditKb } from "@/lib/kb/access";
-import { kbBasesQuery, snippetParts, useKbSearch, useKbTree } from "@/lib/kb/data";
+import { kbBasesQuery, snippetParts, useKbNodeTags, useKbSearch, useKbTree } from "@/lib/kb/data";
+import { matchTags, tagArticleCounts } from "@/lib/kb/tags";
 import { kbIcon } from "@/lib/kb/icons";
 import { ancestorsOf, indexTree, readerNodes, type KbTreeIndex } from "@/lib/kb/tree";
 import { KB_LAST_BASE_KEY, useMyKbBases } from "@/lib/kb/my-bases";
@@ -135,6 +137,23 @@ export function KbHeaderSearch({ baseId, className }: { baseId: string; classNam
   const debounced = useDebouncedValue(query, 300);
   const folderId = inFolder && scopeFolder ? scopeFolder.id : null;
   const search = useKbSearch(baseId, debounced, folderId);
+  // Теги под запрос — сразу, без ожидания поиска: у читателя — только теги
+  // видимых ему статей (архив не в счёт).
+  const { data: nodeTags, tags } = useKbNodeTags(baseId);
+  const tagCounts = useMemo(
+    () =>
+      nodeTags
+        ? tagArticleCounts(nodeTags, (id) => {
+            const n = index.byId.get(id);
+            return !!n && n.kind === "article" && n.status !== "archived";
+          })
+        : new Map<string, number>(),
+    [nodeTags, index],
+  );
+  const foundTags = matchTags(
+    (tags ?? []).filter((t) => (tagCounts.get(t.id) ?? 0) > 0),
+    query,
+  ).slice(0, 6);
 
   // Что ищут — в аналитику базы (kb_log_search): запрос, сколько нашлось,
   // перешёл ли по результату. Пишем, когда пришёл ответ на этот запрос.
@@ -220,12 +239,43 @@ export function KbHeaderSearch({ baseId, className }: { baseId: string; classNam
               <span className="truncate">Только в «{scopeFolder.title}»</span>
             </label>
           )}
+          {foundTags.length > 0 && (
+            <div className="border-b px-1 pt-1 pb-2">
+              <p className="px-1 pb-1 text-xs font-medium text-muted-foreground">Теги</p>
+              <ul aria-label="Найденные теги" className="flex flex-wrap gap-1">
+                {foundTags.map((t) => (
+                  <li key={t.id}>
+                    <Link
+                      to="/kb/$baseId"
+                      params={{ baseId }}
+                      search={{ tag: t.id }}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-1 rounded-sm px-2 py-1 text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+                    >
+                      <Hash className="size-3.5 text-muted-foreground" />
+                      {t.name}
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {tagCounts.get(t.id)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <SearchResults
             baseId={baseId}
             index={index}
             hits={search.data}
             loading={search.isLoading || debounced !== query}
             onPick={onPick}
+            hasTags={foundTags.length > 0}
+            tagNames={(id) => {
+              const ids = nodeTags?.get(id) ?? [];
+              return ids
+                .map((tagId) => tags?.find((t) => t.id === tagId)?.name)
+                .filter((n): n is string => !!n);
+            }}
           />
         </div>
       )}
@@ -239,12 +289,18 @@ function SearchResults({
   hits,
   loading,
   onPick,
+  hasTags,
+  tagNames,
 }: {
   baseId: string;
   index: KbTreeIndex;
   hits: ReturnType<typeof useKbSearch>["data"];
   loading: boolean;
   onPick: (nodeId: string) => void;
+  /** Выше нашлись теги — «Ничего не нашлось» не пишем. */
+  hasTags: boolean;
+  /** Теги статьи — строкой под путём. */
+  tagNames: (nodeId: string) => string[];
 }) {
   if (loading && !hits?.length)
     return (
@@ -255,7 +311,13 @@ function SearchResults({
       </div>
     );
   if (!hits?.length)
-    return <p className="py-6 text-center text-sm text-muted-foreground">Ничего не нашлось</p>;
+    return hasTags ? (
+      <p className="px-2 py-3 text-xs text-muted-foreground">
+        Статей с такими словами в тексте нет
+      </p>
+    ) : (
+      <p className="py-6 text-center text-sm text-muted-foreground">Ничего не нашлось</p>
+    );
   return (
     <ul className="space-y-0.5 pt-1" aria-label="Найдено">
       {hits.map((h) => {
@@ -283,6 +345,13 @@ function SearchResults({
                 </span>
               </span>
               {path && <span className="block truncate text-xs text-muted-foreground">{path}</span>}
+              {tagNames(h.id).length > 0 && (
+                <span className="block truncate text-xs text-muted-foreground">
+                  {tagNames(h.id)
+                    .map((n) => `#${n}`)
+                    .join(" ")}
+                </span>
+              )}
               {h.snippet && (
                 <span className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   {snippetParts(h.snippet).map((p, i) =>
