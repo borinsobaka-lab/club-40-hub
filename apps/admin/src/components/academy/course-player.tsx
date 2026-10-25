@@ -167,7 +167,7 @@ function CourseHeader({ view, preview }: { view: AcadCourseView; preview: boolea
     <div className="flex flex-col gap-4 rounded-lg border bg-background p-4 sm:flex-row sm:p-5">
       <CourseCover
         cover={view.course.cover}
-        className="aspect-[16/9] w-full shrink-0 rounded-md sm:w-56"
+        className="aspect-[16/9] w-full shrink-0 self-start rounded-md sm:w-56"
       />
       <div className="min-w-0 flex-1 space-y-2">
         {preview ? (

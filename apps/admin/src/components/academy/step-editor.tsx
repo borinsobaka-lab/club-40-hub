@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useRef, useState, type RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -41,6 +41,7 @@ import {
   plural,
   QUESTION_KIND_LABEL,
   quizzesToRecheck,
+  recheckText,
 } from "@/lib/academy/logic";
 import type { AcadCourse, AcadQuestion, AcadStep } from "@/lib/academy/types";
 import { formatDateTime } from "@/lib/format";
@@ -73,6 +74,8 @@ export function StepEditor({
   const { data: course } = useQuery(acadCourseQuery(courseId));
   const { data: steps, isLoading } = useQuery(acadStepsQuery(courseId));
   const step = steps?.find((s) => s.id === stepId);
+  // Текст урока: Enter в названии ставит курсор сюда.
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   if (isLoading) return null;
   if (!step) return <InfoNote variant="warning">Шаг не найден — возможно, его удалили.</InfoNote>;
@@ -89,13 +92,29 @@ export function StepEditor({
         </Link>
       </div>
       {course?.status === "published" && canEdit && <PublishedNote />}
-      <TitleField step={step} canEdit={canEdit} autoFocus={isNew} />
+      <TitleField
+        step={step}
+        canEdit={canEdit}
+        autoFocus={isNew}
+        onEnter={
+          step.kind === "lesson"
+            ? () => {
+                const editor = bodyRef.current?.querySelector<HTMLElement>(
+                  '[contenteditable="true"]',
+                );
+                editor?.focus();
+                return !!editor;
+              }
+            : undefined
+        }
+      />
       {step.kind === "lesson" ? (
         <LessonEditor
           courseId={courseId}
           step={step}
           canEdit={canEdit}
           published={course?.status === "published"}
+          bodyRef={bodyRef}
         />
       ) : (
         <QuizEditor course={course} steps={steps ?? []} step={step} canEdit={canEdit} />
@@ -108,13 +127,19 @@ function TitleField({
   step,
   canEdit,
   autoFocus,
+  onEnter,
 }: {
   step: AcadStep;
   canEdit: boolean;
   autoFocus?: boolean;
+  /** Enter: перейти к тексту урока; false — текста нет, просто сохранить. */
+  onEnter?: () => boolean;
 }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState(step.title);
+  // Название выделяется только при первом входе в новый шаг: иначе после
+  // Enter и возврата фокуса набранный текст урока затёр бы его.
+  const selected = useRef(false);
   const save = async () => {
     const t = title.trim();
     if (!t) {
@@ -133,12 +158,20 @@ function TitleField({
         value={title}
         maxLength={200}
         autoFocus={autoFocus}
-        onFocus={autoFocus ? (e) => e.currentTarget.select() : undefined}
+        onFocus={(e) => {
+          if (!autoFocus || selected.current) return;
+          selected.current = true;
+          e.currentTarget.select();
+        }}
+        enterKeyHint="next"
         className="text-base font-semibold"
         onChange={(e) => setTitle(e.target.value)}
         onBlur={() => void save()}
         onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+          e.preventDefault();
+          // Фокус в текст урока сам вызовет onBlur — название сохранится.
+          if (!onEnter?.()) e.currentTarget.blur();
         }}
       />
     </FormField>
@@ -150,11 +183,13 @@ function LessonEditor({
   step,
   canEdit,
   published,
+  bodyRef,
 }: {
   courseId: string;
   step: AcadStep;
   canEdit: boolean;
   published: boolean;
+  bodyRef: RefObject<HTMLDivElement | null>;
 }) {
   const { data: content, isLoading } = useQuery(acadStepContentQuery(step.id));
   const { data: sources } = useQuery(acadSourcesQuery(courseId));
@@ -225,7 +260,7 @@ function LessonEditor({
           </span>
         </InfoNote>
       )}
-      <div className="min-h-80 rounded-lg border bg-background py-4">
+      <div ref={bodyRef} className="min-h-80 rounded-lg border bg-background py-4">
         {isLoading || !content ? (
           <div className="flex items-center gap-2 px-6 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Открываем урок…
@@ -317,9 +352,7 @@ function QuizEditor({
         <InfoNote variant="warning" className="flex flex-wrap items-center gap-2">
           <AlertTriangle className="size-4 shrink-0" />
           <span className="flex-1">
-            После последней правки вопросов изменились уроки:{" "}
-            {changed.map((t) => `«${t}»`).join(", ")}. Проверьте, что вопросы ещё совпадают с
-            текстом.
+            {recheckText(changed)}. Проверьте, что вопросы ещё совпадают с текстом.
           </span>
           <Button size="sm" variant="outline" onClick={() => void markChecked()}>
             Вопросы проверены
@@ -426,6 +459,7 @@ function QuestionRow({
           {index + 1}. {QUESTION_KIND_LABEL[q.kind]}
           {q.points > 1 ? ` · ${q.points} ${plural(q.points, ["балл", "балла", "баллов"])}` : ""}
           {q.allow_file ? " · с файлом" : ""}
+          {q.kind === "open" && q.review_notes ? " · есть критерии для проверяющего" : ""}
         </p>
         <p className="font-medium whitespace-pre-line">{q.text}</p>
         {q.kind !== "open" && (

@@ -12,6 +12,7 @@ import {
   publishIssues,
   questionError,
   quizzesToRecheck,
+  recheckText,
   staleLessons,
   unanswered,
 } from "./logic";
@@ -149,7 +150,35 @@ describe("напоминания конструктора", () => {
       step("тест 3", "quiz", { questions_updated_at: null }),
     ];
     const recheck = quizzesToRecheck(steps, { "тест 1": 3, "тест 2": 2, "тест 3": 0 });
-    expect([...recheck]).toEqual([["тест 1", ["урок 1"]]]);
+    expect([...recheck]).toEqual([["тест 1", [{ title: "урок 1", added: false }]]]);
+  });
+
+  test("новый урок перед тестом — «добавлен», а не «изменился»", () => {
+    const steps = [
+      step("старый", "lesson", {
+        created_at: "2026-10-01T00:00:00Z",
+        content_updated_at: "2026-10-20T00:00:00Z",
+      }),
+      step("новый", "lesson", {
+        created_at: "2026-10-18T00:00:00Z",
+        content_updated_at: "2026-10-18T00:00:00Z",
+      }),
+      step("тест", "quiz", { questions_updated_at: "2026-10-15T00:00:00Z" }),
+    ];
+    const list = quizzesToRecheck(steps, { тест: 2 }).get("тест")!;
+    expect(list).toEqual([
+      { title: "старый", added: false },
+      { title: "новый", added: true },
+    ]);
+    expect(recheckText(list)).toBe(
+      "После правки вопросов добавлен урок «новый», изменился урок «старый»",
+    );
+    expect(
+      recheckText([
+        { title: "a", added: true },
+        { title: "b", added: true },
+      ]),
+    ).toBe("После правки вопросов добавлены уроки «a», «b»");
   });
 
   test("сколько людей получат курс", () => {

@@ -148,7 +148,8 @@ export function AcadQuestionForm({
     <>
       <DialogHeader>
         <DialogTitle>{question ? "Вопрос" : "Новый вопрос"}</DialogTitle>
-        <DialogDescription>{QUESTION_KIND_HINT[kind]}</DialogDescription>
+        {/* Две строки всегда: подсказка вида разной длины не сдвигает поля ниже. */}
+        <DialogDescription className="min-h-10">{QUESTION_KIND_HINT[kind]}</DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={save}>
         <DialogBody>

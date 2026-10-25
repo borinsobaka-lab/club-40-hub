@@ -2124,7 +2124,7 @@ export function KbTrashPageSkeleton() {
 function AcademyCourseHeadSkeleton() {
   return (
     <div className="flex flex-col gap-4 rounded-lg border bg-background p-4 sm:flex-row sm:p-5">
-      <Skeleton className="aspect-[16/9] w-full shrink-0 rounded-md sm:w-56" />
+      <Skeleton className="aspect-[16/9] w-full shrink-0 self-start rounded-md sm:w-56" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-3.5 w-28" />
         <Skeleton className="h-6 w-72 max-w-[80%]" />

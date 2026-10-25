@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  Check,
   ClipboardList,
   Ellipsis,
   Eye,
@@ -71,6 +72,8 @@ import {
   progressPercent,
   publishIssues,
   quizzesToRecheck,
+  type RecheckLesson,
+  recheckText,
   ROLE_LABEL,
   staleLessons,
 } from "@/lib/academy/logic";
@@ -208,7 +211,9 @@ function CourseHead({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
     <div className="flex flex-col gap-4 rounded-lg border bg-background p-4 sm:flex-row sm:p-5">
       <CourseCover
         cover={course.cover}
-        className="aspect-[16/9] w-full shrink-0 rounded-md sm:w-52"
+        // self-start: в строке flex растягивал обложку на высоту текста —
+        // рамка выходила ~4:3 и резала картинку по краям.
+        className="aspect-[16/9] w-full shrink-0 self-start rounded-md sm:w-52"
       />
       <div className="min-w-0 flex-1 space-y-2">
         <Link
@@ -227,6 +232,9 @@ function CourseHead({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
         <p className="text-xs text-muted-foreground">
           {course.sequential ? "По порядку" : "В любом порядке"} · тесты сданы от{" "}
           {course.pass_percent}%
+          {course.default_due_days
+            ? ` · срок ${course.default_due_days} ${plural(course.default_due_days, ["день", "дня", "дней"])} с назначения`
+            : ""}
           {course.published_at ? ` · опубликован ${formatDate(course.published_at)}` : ""}
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
@@ -385,6 +393,15 @@ function ContentTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
     }
   };
 
+  const markChecked = async (step: AcadStep) => {
+    const { error } = await supabase
+      .from("acad_steps")
+      .update({ questions_updated_at: new Date().toISOString() })
+      .eq("id", step.id);
+    if (error) toast.error(acadError(error));
+    await invalidateAcademy(qc);
+  };
+
   const removeStep = async (step: AcadStep) => {
     const { count } = await supabase
       .from("acad_attempts")
@@ -440,6 +457,7 @@ function ContentTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
               stale={stale.has(s.id)}
               recheck={recheck.get(s.id)}
               onRefresh={(src) => void refresh(s, src)}
+              onRechecked={() => void markChecked(s)}
               onDelete={() => void removeStep(s)}
               onDropRow={(sourceId, op) => void reorder(sourceId, s.id, op)}
             />
@@ -487,6 +505,7 @@ function StepRow({
   stale,
   recheck,
   onRefresh,
+  onRechecked,
   onDelete,
   onDropRow,
 }: {
@@ -497,8 +516,9 @@ function StepRow({
   questions: number;
   source?: AcadSource;
   stale: boolean;
-  recheck?: string[];
+  recheck?: RecheckLesson[];
   onRefresh: (src: AcadSource) => void;
+  onRechecked: () => void;
   onDelete: () => void;
   onDropRow: (sourceId: string, op: RowDropOperation) => void;
 }) {
@@ -546,8 +566,7 @@ function StepRow({
           {recheck && (
             <span className="mt-1 flex items-start gap-1 text-xs text-amber-700">
               <AlertTriangle className="mt-px size-3.5 shrink-0" />
-              После правки вопросов изменились уроки: {recheck.map((t) => `«${t}»`).join(", ")} —
-              проверьте вопросы
+              {recheckText(recheck)} — проверьте вопросы
             </span>
           )}
           {stale && source && (
@@ -558,6 +577,12 @@ function StepRow({
           )}
         </span>
       </Link>
+      {canEdit && recheck && (
+        // Напоминание снимается и отсюда, не заходя в тест.
+        <Button variant="outline" size="sm" onClick={onRechecked}>
+          <Check /> Вопросы проверены
+        </Button>
+      )}
       {canEdit && stale && source?.available && (
         <Button variant="outline" size="sm" onClick={() => onRefresh(source)}>
           <RefreshCw /> Обновить
