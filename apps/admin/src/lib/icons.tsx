@@ -86,6 +86,7 @@ import {
   Mic as MicArt,
   ArrowShrinkIcon as MinimizeArt,
   Minus as MinusArt,
+  Music as MusicArt,
   PanelLeft as PanelLeftArt,
   Pencil as PencilArt,
   Phone as PhoneArt,
@@ -203,6 +204,7 @@ export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
 export const Mic = icon(MicArt, "Mic");
 export const Minimize = icon(MinimizeArt, "Minimize");
 export const Minus = icon(MinusArt, "Minus");
+export const Music = icon(MusicArt, "Music");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Pencil = icon(PencilArt, "Pencil");
 export const Phone = icon(PhoneArt, "Phone");

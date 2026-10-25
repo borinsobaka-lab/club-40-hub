@@ -117,7 +117,11 @@ export function AdminShell({
             элементы (р, у), их бы срезало. На телефоне ступенью меньше (xl):
             в 2xl «Отмены автопродления» не помещались рядом с кнопками.
           */}
-          <h1 className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl">
+          {/* Длинное название (база знаний, клуб) обрезается — целиком в подсказке. */}
+          <h1
+            title={title}
+            className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl"
+          >
             {title}
           </h1>
           <Button

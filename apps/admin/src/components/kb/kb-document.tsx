@@ -35,7 +35,17 @@ import {
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import { useNavigate } from "@tanstack/react-router";
-import { ExternalLink, FileText, Images, Link2, Loader2, Plus, X } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  FileText,
+  Images,
+  Link2,
+  Loader2,
+  Music,
+  Plus,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -43,11 +53,189 @@ import {
   isKbFile,
   KB_MAX_FILE_BYTES,
   KbFileTooLarge,
+  resolveKbDownloadUrl,
   resolveKbFileUrl,
   uploadKbFile,
 } from "@/lib/kb/files";
 import { documentHeadings, type KbHeading } from "@/lib/kb/document";
 import { cn } from "@/lib/utils";
+
+// --- Тексты ----------------------------------------------------------------------
+
+/**
+ * Русский словарь BlockNote с нашими правками: подсказки короче и по-человечески
+ * (замечания тестирования 2026-10-25: «Введите текст или введите «/»…»,
+ * «Пустой переключатель…», «Изменить URL» у новой ссылки).
+ */
+const dictionary = {
+  ...ru,
+  placeholders: {
+    ...ru.placeholders,
+    default: "Начните писать или нажмите «/»",
+    toggleListItem: "Сворачиваемый пункт",
+  },
+  toggle_blocks: {
+    ...ru.toggle_blocks,
+    add_block_button: "Внутри пусто — нажмите, чтобы добавить текст",
+  },
+  link_toolbar: {
+    ...ru.link_toolbar,
+    form: {
+      ...ru.link_toolbar.form,
+      url_placeholder: "Вставьте ссылку",
+      title_placeholder: "Текст ссылки",
+    },
+  },
+};
+
+// --- Файл и аудио ---------------------------------------------------------------
+
+/** Подпись и цвет значка файла по расширению. */
+function fileKind(name: string): { ext: string; color: string } {
+  const ext = (/\.([a-z0-9]{1,6})$/i.exec(name)?.[1] ?? "").toLowerCase();
+  const color =
+    ext === "pdf"
+      ? "#e5484d"
+      : ["doc", "docx", "odt", "rtf", "txt"].includes(ext)
+        ? "#3e63dd"
+        : ["xls", "xlsx", "ods", "csv"].includes(ext)
+          ? "#30a46c"
+          : ["ppt", "pptx", "odp", "key"].includes(ext)
+            ? "#f76b15"
+            : ["zip", "rar", "7z"].includes(ext)
+              ? "#8e8c99"
+              : "#6e56cf";
+  return { ext: ext ? ext.toUpperCase().slice(0, 4) : "ФАЙЛ", color };
+}
+
+/**
+ * Файл — карточкой: значок формата, имя, размер и «Скачать» (стандартный
+ * блок BlockNote выглядел как строка текста — замечание тестирования).
+ * Тот же тип «file», что у BlockNote, плюс размер — старые документы
+ * открываются как есть.
+ */
+const KbFileBlock = createReactBlockSpec(
+  {
+    type: "file",
+    propSchema: {
+      backgroundColor: { default: "default" },
+      name: { default: "" },
+      url: { default: "" },
+      caption: { default: "" },
+      size: { default: 0 },
+    },
+    content: "none",
+  },
+  {
+    render: (props) =>
+      props.block.props.url ? (
+        <FileCard
+          url={props.block.props.url}
+          name={props.block.props.name}
+          size={props.block.props.size}
+          caption={props.block.props.caption}
+        />
+      ) : (
+        <FileBlockWrapper {...(props as unknown as Parameters<typeof FileBlockWrapper>[0])} />
+      ),
+  },
+);
+
+function FileCard({
+  url,
+  name,
+  size,
+  caption,
+}: {
+  url: string;
+  name: string;
+  size: number;
+  caption: string;
+}) {
+  const [href, setHref] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    resolveKbDownloadUrl(url, name || "файл")
+      .then((u) => alive && setHref(u))
+      .catch(() => alive && setHref(null));
+    return () => {
+      alive = false;
+    };
+  }, [url, name]);
+  const kind = fileKind(name);
+  return (
+    <div className="kb-file w-full" contentEditable={false}>
+      <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-md text-[10px] font-bold tracking-wide text-white"
+          style={{ background: kind.color }}
+        >
+          {kind.ext}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{name || "Файл"}</span>
+          <span className="block text-xs text-muted-foreground">
+            {kind.ext}
+            {size > 0 && ` · ${formatFileSize(size)}`}
+          </span>
+        </span>
+        <a
+          href={href ?? undefined}
+          download={name || true}
+          aria-disabled={!href}
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium no-underline hover:bg-muted"
+        >
+          <Download className="size-4" />
+          Скачать
+        </a>
+      </div>
+      {caption && <p className="mt-1 text-sm text-muted-foreground">{caption}</p>}
+    </div>
+  );
+}
+
+/** Аудио — с названием над плеером (у стандартного блока его не было). */
+const KbAudioBlock = createReactBlockSpec(
+  {
+    type: "audio",
+    propSchema: {
+      backgroundColor: { default: "default" },
+      name: { default: "" },
+      url: { default: "" },
+      caption: { default: "" },
+      showPreview: { default: true },
+    },
+    content: "none",
+  },
+  {
+    meta: { fileBlockAccept: ["audio/*"] },
+    render: (props) => (
+      <FileBlockWrapper
+        {...(props as unknown as Parameters<typeof FileBlockWrapper>[0])}
+        buttonIcon={<Music className="size-6" />}
+      >
+        <AudioPlayer url={props.block.props.url} name={props.block.props.name} />
+      </FileBlockWrapper>
+    ),
+  },
+);
+
+function AudioPlayer({ url, name }: { url: string; name: string }) {
+  const resolved = useResolveUrl(url);
+  return (
+    <div className="kb-audio w-full rounded-lg border bg-background p-3" contentEditable={false}>
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+        <Music className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate">{name || "Аудиозапись"}</span>
+      </div>
+      {resolved.loadingState === "loaded" ? (
+        <audio controls preload="metadata" src={resolved.downloadUrl} className="w-full" />
+      ) : (
+        <div className="h-10 animate-pulse rounded bg-muted" />
+      )}
+    </div>
+  );
+}
 
 // --- PDF ----------------------------------------------------------------------
 
@@ -319,8 +507,29 @@ function GalleryItem({
 const { codeBlock: _codeBlock, ...blockSpecs } = defaultBlockSpecs;
 
 const kbSchema = BlockNoteSchema.create({
-  blockSpecs: { ...blockSpecs, pdf: PdfBlock(), gallery: GalleryBlock() },
+  blockSpecs: {
+    ...blockSpecs,
+    file: KbFileBlock(),
+    audio: KbAudioBlock(),
+    pdf: PdfBlock(),
+    gallery: GalleryBlock(),
+  },
 });
+
+/** Заголовки 4–6 уровня базе знаний не нужны — из меню «/» убраны. */
+const HIDDEN_SLASH_ITEMS = new Set(["heading_4", "heading_5", "heading_6"]);
+
+/**
+ * Пустой абзац после блока-файла в конце документа: иначе под PDF или
+ * галереей последним блоком не поставить курсор (замечание тестирования).
+ */
+function ensureTrailingParagraph(editor: KbEditor) {
+  const doc = editor.document;
+  const last = doc[doc.length - 1];
+  if (last && last.type !== "paragraph" && !Array.isArray(last.content)) {
+    editor.insertBlocks([{ type: "paragraph" }], last, "after");
+  }
+}
 
 type KbEditor = typeof kbSchema.BlockNoteEditor;
 
@@ -336,8 +545,11 @@ function slashItems(
     const empty = Array.isArray(cur.content) && cur.content.length === 0;
     if (empty) editor.replaceBlocks([cur], [block]);
     else editor.insertBlocks([block], cur, "after");
+    ensureTrailingParagraph(editor);
   };
-  const items = getDefaultReactSlashMenuItems(editor);
+  const items = getDefaultReactSlashMenuItems(editor).filter(
+    (i) => !("key" in i) || !HIDDEN_SLASH_ITEMS.has(String(i.key)),
+  );
   // Меню группирует подряд идущие пункты: свой пункт встаёт сразу после
   // последнего из его группы, иначе группа выходит в меню дважды.
   const add = (item: DefaultReactSuggestionItem) => {
@@ -430,6 +642,19 @@ const FILE_ACCEPT: Record<string, string> = {
   audio: "audio/*",
   pdf: "application/pdf",
 };
+/** Подходит ли файл блоку: в блок «Картинка» PDF не загрузить. */
+const FILE_FITS: Record<string, (f: File) => boolean> = {
+  image: (f) => f.type.startsWith("image/"),
+  video: (f) => f.type.startsWith("video/"),
+  audio: (f) => f.type.startsWith("audio/"),
+  pdf: (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name),
+};
+const FILE_WHAT: Record<string, string> = {
+  image: "картинка",
+  video: "видео",
+  audio: "аудиозапись",
+  pdf: "PDF",
+};
 const FILE_HINT: Record<string, string> = {
   image: "PNG, JPG, GIF или WEBP",
   video: "MP4 (H.264) — играет во всех браузерах; MOV с iPhone — не везде",
@@ -453,10 +678,18 @@ function UploadOnlyFilePanel({ blockId }: FilePanelProps) {
 
   const pick = async (file: File | undefined) => {
     if (!file || !editor.uploadFile) return;
+    const fits = FILE_FITS[type];
+    if (fits && !fits(file)) {
+      toast.error(`«${file.name}» — не ${FILE_WHAT[type]}. ${FILE_HINT[type]}.`);
+      return;
+    }
     setLoading(true);
     try {
       const url = await editor.uploadFile(file, blockId);
-      editor.updateBlock(blockId, { props: { name: file.name, url } } as never);
+      editor.updateBlock(blockId, {
+        props:
+          type === "file" ? { name: file.name, url, size: file.size } : { name: file.name, url },
+      } as never);
     } catch {
       // текст ошибки уже показал uploadFile
     } finally {
@@ -490,6 +723,42 @@ function UploadOnlyFilePanel({ blockId }: FilePanelProps) {
       />
     </div>
   );
+}
+
+/**
+ * Tab в последней ячейке таблицы — новая строка и курсор в её первую ячейку
+ * (как в Word и Google Docs; у BlockNote Tab там ничего не делал).
+ */
+function addTableRowAtEnd(editor: KbEditor): boolean {
+  const { $from } = editor.prosemirrorState.selection;
+  let d = $from.depth;
+  while (d > 0 && !["tableCell", "tableHeader"].includes($from.node(d).type.name)) d--;
+  if (d < 2) return false;
+  const row = $from.node(d - 1);
+  const table = $from.node(d - 2);
+  if ($from.index(d - 1) !== row.childCount - 1 || $from.index(d - 2) !== table.childCount - 1)
+    return false;
+  const block = editor.getTextCursorPosition().block;
+  if (block.type !== "table" || !block.content || Array.isArray(block.content)) return false;
+  const content = block.content as {
+    type: "tableContent";
+    rows: { cells: unknown[] }[];
+  };
+  const lastRow = content.rows[content.rows.length - 1];
+  const empty = lastRow.cells.map((c) =>
+    Array.isArray(c) ? [] : { ...(c as Record<string, unknown>), content: [] },
+  );
+  editor.updateBlock(block, {
+    content: { ...content, rows: [...content.rows, { cells: empty }] },
+  } as never);
+  // Курсор — в первую ячейку новой строки: тот же Tab из предпоследней
+  // ячейки таблица уже умеет.
+  requestAnimationFrame(() => {
+    editor.prosemirrorView.dom.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }),
+    );
+  });
+  return true;
 }
 
 // --- Компонент --------------------------------------------------------------------
@@ -538,7 +807,7 @@ export function KbDocument({
   const editor = useCreateBlockNote(
     {
       schema: kbSchema,
-      dictionary: ru,
+      dictionary,
       initialContent:
         Array.isArray(initial) && initial.length > 0
           ? (initial as PartialBlock<typeof kbSchema.blockSchema>[])
@@ -563,6 +832,12 @@ export function KbDocument({
   return (
     <div
       className={cn("kb-document", !editable && "kb-document-read")}
+      onKeyDownCapture={(e) => {
+        if (editable && e.key === "Tab" && !e.shiftKey && addTableRowAtEnd(editor)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
       onClick={(e) => {
         // Ссылки на статьи базы — переходом внутри админки, без перезагрузки.
         if (editable) return;
@@ -577,14 +852,16 @@ export function KbDocument({
         editor={editor}
         editable={editable}
         theme="light"
-        emojiPicker={false}
         filePanel={false}
         slashMenu={false}
         onChange={() => {
           const doc = editor.document as unknown[];
           onChange?.(doc);
           onHeadings?.(documentHeadings(doc));
-          if (editable) void reuploadForeignImages(editor, pending.current, upload);
+          if (editable) {
+            ensureTrailingParagraph(editor);
+            void reuploadForeignImages(editor, pending.current, upload);
+          }
         }}
       >
         <SuggestionMenuController

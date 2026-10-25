@@ -52,10 +52,8 @@ export const Route = createFileRoute("/_authenticated/kb/$baseId/report")({
 });
 
 const TIPS = {
-  access:
-    "Сколько сотрудников могут открыть статью: владельцы и те, кому база выдана в «Доступах».",
-  readers: "Сколько из них открыли статью хотя бы раз.",
-  percent: "Доля открывших от тех, у кого есть доступ.",
+  percent:
+    "Сколько сотрудников открыли статью хотя бы раз — из тех, кому база выдана в «Доступах». Владельцы и авторы статьи (создал, правил, публиковал) не считаются.",
   updated: "Последняя правка: публикация, название или черновик правок.",
 };
 
@@ -92,8 +90,6 @@ const SORT: SortGetters<ReportRow> = {
   status: (r) => KB_STATUS_LABEL[r.status],
   created: (r) => r.created_at,
   updated: (r) => r.updated_at,
-  access: (r) => r.access_count,
-  readers: (r) => r.readers_count,
   percent: percent,
   last: (r) => r.last_read_at,
 };
@@ -174,24 +170,18 @@ function KbReportPage() {
                     <TableHead tip={TIPS.updated} {...sort.head("updated")}>
                       Обновлено
                     </TableHead>
-                    <TableHead tip={TIPS.access} {...sort.head("access")}>
-                      Доступ
-                    </TableHead>
-                    <TableHead tip={TIPS.readers} {...sort.head("readers")}>
-                      Открыли
-                    </TableHead>
                     <TableHead tip={TIPS.percent} {...sort.head("percent")}>
                       Прочитали
                     </TableHead>
-                    <TableHead {...sort.head("last")}>Последнее открытие</TableHead>
+                    <TableHead {...sort.head("last")}>Открывали</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
-                    <TableSkeletonRows columns={8} rows={6} />
+                    <TableSkeletonRows columns={6} rows={6} />
                   ) : pg.paged.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                         {data?.length ? "Ничего не нашлось" : "В базе пока нет статей"}
                       </TableCell>
                     </TableRow>
@@ -204,7 +194,7 @@ function KbReportPage() {
                         onClick={() => setOpen(r)}
                         onKeyDown={(e) => e.key === "Enter" && setOpen(r)}
                       >
-                        <TableCell className="max-w-80">
+                        <TableCell className="max-w-72">
                           <Link
                             to="/kb/$baseId/$nodeId"
                             params={{ baseId, nodeId: r.id }}
@@ -234,8 +224,6 @@ function KbReportPage() {
                             {r.updated_by_name || ""}
                           </span>
                         </TableCell>
-                        <TableCell className="tabular-nums">{r.access_count}</TableCell>
-                        <TableCell className="tabular-nums">{r.readers_count}</TableCell>
                         <TableCell>
                           <ReadShare row={r} />
                         </TableCell>
@@ -263,9 +251,14 @@ function ReadShare({ row }: { row: ReportRow }) {
   if (!row.access_count) return <span className="text-muted-foreground">—</span>;
   const p = Math.round(percent(row) * 100);
   return (
-    <StatusChip tone={p >= 80 ? "positive" : p === 0 ? "neutral" : "warning"} size="sm">
-      {p}%
-    </StatusChip>
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <StatusChip tone={p >= 80 ? "positive" : p === 0 ? "neutral" : "warning"} size="sm">
+        {p}%
+      </StatusChip>
+      <span className="text-xs text-muted-foreground tabular-nums">
+        {row.readers_count} из {row.access_count}
+      </span>
+    </span>
   );
 }
 
@@ -283,8 +276,9 @@ function ReadersList({ row }: { row: ReportRow }) {
       <DialogHeader>
         <DialogTitle>{row.title || "Без названия"}</DialogTitle>
         <DialogDescription>
-          Открыли {row.readers_count} из {row.access_count}. Повторное открытие чаще раза в 30 минут
-          не считается.
+          Открыли {row.readers_count} из {row.access_count} — сотрудников, кому база выдана в
+          «Доступах»; владельцы и авторы статьи не считаются. Повторное открытие чаще раза в 30
+          минут не считается.
         </DialogDescription>
       </DialogHeader>
       <DialogBody>

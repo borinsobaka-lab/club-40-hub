@@ -2058,7 +2058,7 @@ export function KbReportPageSkeleton() {
       title="Отчёт по чтению"
       toolbar={{ search: true, controls: ["w-48"] }}
       pagination={false}
-      headers={["Статья", "Статус", "Создал", "Обновлено", "Доступ", "Открыли", "Прочитали"]}
+      headers={["Статья", "Статус", "Создал", "Обновлено", "Прочитали", "Открывали"]}
     />
   );
 }

@@ -563,13 +563,52 @@ input[type="number"]::-webkit-outer-spin-button {
    BlockNote берёт размер из --level (у первого уровня было 3em). */
 .kb-document [data-content-type="heading"],
 .kb-document [data-content-type="heading"][data-level="1"] {
-  --level: 1.6em;
+  --level: 1.5em;
 }
 .kb-document [data-content-type="heading"][data-level="2"] {
-  --level: 1.3em;
+  --level: 1.25em;
 }
 .kb-document [data-content-type="heading"][data-level="3"] {
-  --level: 1.12em;
+  --level: 1.05em;
+}
+/* Ступени заголовков видны и по отбивке сверху (замечание тестирования:
+   H2 и H3 почти не различались). */
+.kb-document .bn-block-outer:not(:first-child) > .bn-block > [data-content-type="heading"] {
+  margin-top: 0.75em;
+}
+.kb-document
+  .bn-block-outer:not(:first-child)
+  > .bn-block
+  > [data-content-type="heading"][data-level="3"] {
+  margin-top: 0.35em;
+}
+.kb-document [data-content-type="heading"][data-level="3"] h3 {
+  font-weight: 600;
+}
+/* Код в строке — на плашке, иначе его не отличить от текста. */
+.kb-document .bn-inline-content code {
+  border-radius: 0.25rem;
+  background: var(--muted);
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+/* Кнопки «Скачать» и «Открыть» в карточках файлов — не ссылки текста
+   (у BlockNote `.bn-shadcn .bn-editor a` — его стили грузятся позже). */
+.kb-document .bn-editor .kb-file a,
+.kb-document .bn-editor .kb-pdf a {
+  color: inherit;
+  text-decoration: none;
+}
+/* Пустая панель форматирования (над галереей, PDF, файлом — блоками без
+   текста и без своих кнопок) — не показываем кружок без кнопок. */
+.bn-formatting-toolbar:empty {
+  display: none;
+}
+/* Узкий экран: панель форматирования переносится на вторую строку, а не
+   уходит за правый край. */
+.bn-formatting-toolbar {
+  max-width: calc(100vw - 2rem);
+  flex-wrap: wrap;
 }
 
 /* Пока тянут край меню базы знаний (KbSidebarResize) — без анимации

@@ -53,10 +53,23 @@ export function isWithin(index: KbTreeIndex, id: string, ancestorId: string): bo
   return id === ancestorId || ancestorsOf(index, id).some((a) => a.id === ancestorId);
 }
 
-/** Статей в папке на любой глубине (папки не считаются). */
-export function articleCount(index: KbTreeIndex, folderId: string | null): number {
+/**
+ * Статей в папке на любой глубине (папки не считаются); `onlyVisible` —
+ * только те, что видит читатель (без черновиков и архива).
+ */
+export function articleCount(
+  index: KbTreeIndex,
+  folderId: string | null,
+  onlyVisible = false,
+): number {
   return childrenOf(index, folderId).reduce(
-    (sum, n) => sum + (n.kind === "article" ? 1 : articleCount(index, n.id)),
+    (sum, n) =>
+      sum +
+      (n.kind === "article"
+        ? !onlyVisible || n.reader_visible
+          ? 1
+          : 0
+        : articleCount(index, n.id, onlyVisible)),
     0,
   );
 }
