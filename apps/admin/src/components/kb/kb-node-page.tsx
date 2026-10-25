@@ -420,7 +420,8 @@ function FolderView({
           <span
             className={cn(
               "flex size-11 shrink-0 items-center justify-center rounded-lg",
-              folder ? "bg-muted text-muted-foreground" : "bg-sidebar text-brand-on-dark",
+              // Иконка базы — её цветом на осветлённой подложке (решение владельца 2026-10-25).
+              folder ? "bg-muted text-muted-foreground" : "bg-brand/15 text-brand",
             )}
           >
             <Icon className="size-6" />

@@ -165,7 +165,7 @@ export function KbArticlePager({
   const { prev, next } = articleNeighbors(index, nodeId);
   if (!prev && !next) return null;
   const card =
-    "group flex min-w-0 flex-col gap-1 rounded-lg border bg-background px-4 py-3 outline-none transition-colors hover:border-brand-on-light/50 focus-visible:ring-2 focus-visible:ring-ring";
+    "group flex min-w-0 flex-col gap-1 rounded-lg border bg-background px-4 py-3 outline-none transition-colors hover:border-brand focus-visible:ring-2 focus-visible:ring-ring";
   return (
     <nav aria-label="Соседние статьи" className="mt-6 grid gap-3 sm:grid-cols-2">
       {prev && (

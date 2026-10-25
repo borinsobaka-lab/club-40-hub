@@ -15,8 +15,11 @@ const Tabs = TabsPrimitive.Root;
  */
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
+    /** Табы, заводимые заново на каждой странице: плашка переезжает с прежнего места (useActiveIndicator). */
+    indicatorMemoryKey?: string;
+  }
+>(({ className, children, indicatorMemoryKey, ...props }, ref) => {
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -31,6 +34,7 @@ const TabsList = React.forwardRef<
     '[role="tab"]',
     '[role="tab"][data-state="active"]',
     "data-state",
+    indicatorMemoryKey,
   );
 
   return (
