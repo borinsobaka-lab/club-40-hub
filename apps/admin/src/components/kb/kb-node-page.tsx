@@ -24,7 +24,12 @@ import { AdminShell } from "@/components/admin-shell";
 import { DocumentText, Folder } from "@/components/nav-icons";
 import { KbArticleBodySkeleton, KbFolderBodySkeleton } from "@/components/page-skeletons";
 import { KbBaseForm } from "@/components/kb/base-dialog";
-import { KbArticlePickerForm, KbMoveForm, KbNodeTitleForm } from "@/components/kb/node-dialogs";
+import {
+  KbArticlePickerForm,
+  KbHeadingPickerForm,
+  KbMoveForm,
+  KbNodeTitleForm,
+} from "@/components/kb/node-dialogs";
 import { KbDraftBadge, KbStatusBadge } from "@/components/kb/kb-status-badge";
 import { useDraftAutosave, type AutosaveState } from "@/components/kb/use-draft-autosave";
 import { useKbActions } from "@/components/kb/use-kb-actions";
@@ -558,7 +563,8 @@ function ArticleView({
     setEditing(true);
   };
   const [headings, setHeadings] = useState<KbHeading[]>([]);
-  const [dialog, setDialog] = useState<"rename" | "move" | "link" | null>(null);
+  const [dialog, setDialog] = useState<"rename" | "move" | "link" | "heading" | null>(null);
+  const [pickHeadings, setPickHeadings] = useState<KbHeading[]>([]);
   const [publishing, setPublishing] = useState(false);
   const linkResolver = useRef<((link: KbArticleLink | null) => void) | null>(null);
   const name = (id: string | null | undefined) => (id ? authors?.get(id) || "сотрудник" : "");
@@ -654,6 +660,12 @@ function ArticleView({
     new Promise<KbArticleLink | null>((resolve) => {
       linkResolver.current = resolve;
       setDialog("link");
+    });
+  const pickHeading = (list: KbHeading[]) =>
+    new Promise<KbArticleLink | null>((resolve) => {
+      linkResolver.current = resolve;
+      setPickHeadings(list);
+      setDialog("heading");
     });
 
   const loading = isLoading || (canEdit && draftLoading);
@@ -803,6 +815,7 @@ function ArticleView({
                       onReady={editing ? autosave.setBaseline : undefined}
                       onHeadings={setHeadings}
                       onPickArticle={pickArticle}
+                      onPickHeading={pickHeading}
                     />
                   </Suspense>
                 )}
@@ -817,7 +830,7 @@ function ArticleView({
         open={!!dialog}
         onOpenChange={(o) => {
           if (o) return;
-          if (dialog === "link") {
+          if (dialog === "link" || dialog === "heading") {
             linkResolver.current?.(null);
             linkResolver.current = null;
           }
@@ -840,6 +853,16 @@ function ArticleView({
               baseTitle={baseTitle}
               onMove={(p, pos) => actions.move(node.id, p, pos)}
               onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "heading" && (
+            <KbHeadingPickerForm
+              headings={pickHeadings}
+              onPick={(link) => {
+                linkResolver.current?.(link);
+                linkResolver.current = null;
+                setDialog(null);
+              }}
             />
           )}
           {dialog === "link" && (
@@ -1089,6 +1112,8 @@ function Toc({ headings }: { headings: KbHeading[] }) {
     const el = document.querySelector(`[data-id="${CSS.escape(id)}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
     setActive(id);
+    // Адрес раздела — в строке браузера: его можно скопировать и прислать.
+    window.history.replaceState(null, "", `#${id}`);
   };
   return (
     <aside ref={ref} className="hidden w-56 shrink-0 xl:block">

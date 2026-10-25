@@ -1,7 +1,7 @@
 /**
  * Документ статьи базы знаний — редактор BlockNote (MPL-2.0, собран в наш
- * бандл, облака и внешних запросов нет; выбор эмодзи — он тянул данные с CDN —
- * выключен). Один компонент на чтение и правку: `editable={false}` — читатель
+ * бандл, облака и внешних запросов нет; эмодзи — данные emoji-mart из
+ * бандла, системные, без картинок). Один компонент на чтение и правку: `editable={false}` — читатель
  * видит ту же разметку. Грузится отдельным чанком (lazy).
  *
  * Блоки: все стандартные, кроме блока кода (по брифу не нужен), и свои —
@@ -26,10 +26,13 @@ import {
   createReactBlockSpec,
   FileBlockWrapper,
   FilePanelController,
+  FormattingToolbar,
   FormattingToolbarController,
   getDefaultReactSlashMenuItems,
+  getFormattingToolbarItems,
   SuggestionMenuController,
   useBlockNoteEditor,
+  useComponentsContext,
   useCreateBlockNote,
   useResolveUrl,
   type DefaultReactSuggestionItem,
@@ -40,8 +43,10 @@ import { flip, offset, shift } from "@floating-ui/react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Download,
+  Eraser,
   ExternalLink,
   FileText,
+  Hash,
   Images,
   Link2,
   Loader2,
@@ -61,6 +66,7 @@ import {
   uploadKbFile,
 } from "@/lib/kb/files";
 import { documentHeadings, type KbHeading } from "@/lib/kb/document";
+import { setUploadProgress, useUploadProgress } from "@/lib/kb/upload-progress";
 import { cn } from "@/lib/utils";
 
 // --- Тексты ----------------------------------------------------------------------
@@ -388,6 +394,7 @@ function Gallery({
   const images = parseImages(block.props.images);
   const input = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(0);
+  const progress = useUploadProgress(block.id);
   const editable = editor.isEditable;
   const set = (list: GalleryImage[]) =>
     editor.updateBlock(block.id, { props: { images: JSON.stringify(list) } });
@@ -445,7 +452,7 @@ function Gallery({
               <Images className="size-4" />
             )}
             {uploading
-              ? "Загружаем…"
+              ? `Загружаем${uploading > 1 ? ` (ещё ${uploading})` : ""}… ${Math.round((progress ?? 0) * 100)}%`
               : images.length
                 ? "Добавить картинки"
                 : "Картинки в ряд — выберите файлы"}
@@ -547,6 +554,7 @@ export type KbArticleLink = { title: string; href: string };
 function slashItems(
   editor: KbEditor,
   onPickArticle?: () => Promise<KbArticleLink | null>,
+  onPickHeading?: (headings: KbHeading[]) => Promise<KbArticleLink | null>,
 ): DefaultReactSuggestionItem[] {
   const insertBlock = (block: PartialBlock<typeof kbSchema.blockSchema>) => {
     const cur = editor.getTextCursorPosition().block;
@@ -606,7 +614,73 @@ function slashItems(
       },
     });
   }
+  if (onPickHeading) {
+    add({
+      title: "Ссылка на заголовок",
+      subtext: "Раздел этой статьи — по ссылке читатель перейдёт к нему",
+      aliases: ["заголовок", "раздел", "якорь", "anchor"],
+      group: basic,
+      icon: <Hash className="size-[18px]" />,
+      onItemClick: async () => {
+        const headings = documentHeadings(editor.document as unknown[]);
+        if (headings.length === 0) {
+          toast.info("В статье пока нет заголовков — добавьте их, и на них можно будет сослаться.");
+          return;
+        }
+        const link = await onPickHeading(headings);
+        if (!link) return;
+        editor.insertInlineContent([{ type: "link", href: link.href, content: link.title }, " "]);
+      },
+    });
+  }
   return items;
+}
+
+/**
+ * «Очистить форматирование» в панели над выделением: снимает жирный,
+ * курсив, подчёркивание, зачёркивание, код в строке и цвета (ссылки
+ * остаются).
+ */
+function ClearFormattingButton() {
+  const editor = useBlockNoteEditor();
+  const Components = useComponentsContext();
+  if (!Components || !editor.isEditable) return null;
+  return (
+    <Components.FormattingToolbar.Button
+      mainTooltip="Очистить форматирование"
+      label="Очистить форматирование"
+      icon={<Eraser className="size-4" />}
+      onClick={() => {
+        editor.removeStyles({
+          bold: true,
+          italic: true,
+          underline: true,
+          strike: true,
+          code: true,
+          textColor: "default",
+          backgroundColor: "default",
+        });
+        editor.focus();
+      }}
+    />
+  );
+}
+
+function KbFormattingToolbar() {
+  return (
+    <FormattingToolbar>
+      {getFormattingToolbarItems()}
+      <ClearFormattingButton key="clearFormattingButton" />
+    </FormattingToolbar>
+  );
+}
+
+/** Прокрутить к блоку статьи (ссылка на заголовок, `#<id блока>` в адресе). */
+function scrollToBlock(root: HTMLElement | null, id: string, smooth: boolean): boolean {
+  const el = root?.querySelector(`[data-id="${CSS.escape(id)}"]`);
+  if (!el) return false;
+  el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+  return true;
 }
 
 // --- Перезаливка картинок из вставленного текста ----------------------------------
@@ -686,7 +760,8 @@ const FILE_HINT: Record<string, string> = {
 function UploadOnlyFilePanel({ blockId }: FilePanelProps) {
   const editor = useBlockNoteEditor();
   const input = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<File | null>(null);
+  const progress = useUploadProgress(blockId);
   const block = editor.getBlock(blockId);
   const type = block?.type ?? "file";
 
@@ -697,7 +772,7 @@ function UploadOnlyFilePanel({ blockId }: FilePanelProps) {
       toast.error(`«${file.name}» — не ${FILE_WHAT[type]}. ${FILE_HINT[type]}.`);
       return;
     }
-    setLoading(true);
+    setLoading(file);
     try {
       const url = await editor.uploadFile(file, blockId);
       editor.updateBlock(blockId, {
@@ -707,24 +782,29 @@ function UploadOnlyFilePanel({ blockId }: FilePanelProps) {
     } catch {
       // текст ошибки уже показал uploadFile
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
   return (
     <div className="bn-panel w-80 rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
-      <button
-        type="button"
-        disabled={loading}
-        onClick={() => input.current?.click()}
-        className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-      >
-        {loading ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-        {loading ? "Загружаем…" : "Выбрать файл"}
-      </button>
-      <p className="mt-2 text-xs text-muted-foreground">
-        {FILE_HINT[type] ?? FILE_HINT.file}. До {formatFileSize(KB_MAX_FILE_BYTES)}.
-      </p>
+      {loading ? (
+        <UploadProgress file={loading} share={progress} />
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="size-4" />
+            Выбрать файл
+          </button>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {FILE_HINT[type] ?? FILE_HINT.file}. До {formatFileSize(KB_MAX_FILE_BYTES)}.
+          </p>
+        </>
+      )}
       <input
         ref={input}
         type="file"
@@ -735,6 +815,29 @@ function UploadOnlyFilePanel({ blockId }: FilePanelProps) {
           e.target.value = "";
         }}
       />
+    </div>
+  );
+}
+
+/** Полоса загрузки: имя, сколько отправлено из скольких, проценты. */
+function UploadProgress({ file, share }: { file: File; share: number | null }) {
+  const pct = Math.round((share ?? 0) * 100);
+  return (
+    <div className="space-y-1.5" role="status" aria-live="polite">
+      <div className="flex items-center gap-2 text-sm">
+        <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate font-medium">{file.name}</span>
+        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{pct}%</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-200"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground tabular-nums">
+        {formatFileSize(Math.round((share ?? 0) * file.size))} из {formatFileSize(file.size)}
+      </p>
     </div>
   );
 }
@@ -785,6 +888,7 @@ export function KbDocument({
   onChange,
   onHeadings,
   onPickArticle,
+  onPickHeading,
   onReady,
 }: {
   baseId: string;
@@ -797,15 +901,23 @@ export function KbDocument({
   onHeadings?: (headings: KbHeading[]) => void;
   /** «Ссылка на статью» в меню «/»: окно выбора статьи. */
   onPickArticle?: () => Promise<KbArticleLink | null>;
+  /** «Ссылка на заголовок» в меню «/»: окно выбора заголовка этой статьи. */
+  onPickHeading?: (headings: KbHeading[]) => Promise<KbArticleLink | null>;
   /** Документ, каким его открыли (уже с id блоков) — точка отсчёта правок. */
   onReady?: (doc: unknown[]) => void;
 }) {
   const navigate = useNavigate();
   const pending = useRef(new Set<string>());
   const upload = useMemo(
-    () => async (file: File) => {
+    () => async (file: File, blockId?: string) => {
       try {
-        return await uploadKbFile(baseId, nodeId, file);
+        // Прогресс — по блоку: его показывает панель файла или галерея.
+        return await uploadKbFile(
+          baseId,
+          nodeId,
+          file,
+          blockId ? (share) => setUploadProgress(blockId, share) : undefined,
+        );
       } catch (e) {
         toast.error(
           e instanceof KbFileTooLarge
@@ -813,6 +925,8 @@ export function KbDocument({
             : `Не удалось загрузить файл: ${(e as Error).message}`,
         );
         throw e;
+      } finally {
+        if (blockId) setUploadProgress(blockId, null);
       }
     },
     [baseId, nodeId],
@@ -860,6 +974,15 @@ export function KbDocument({
     mountRef.current.onReady?.(doc);
   }, [editor]);
 
+  // Адрес с #id блока (ссылка на заголовок из другой статьи или
+  // присланная) — сразу к нему, когда документ нарисован.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id || !box) return;
+    const t = window.setTimeout(() => scrollToBlock(box, id, false), 150);
+    return () => window.clearTimeout(t);
+  }, [box, nodeId]);
+
   return (
     <div
       ref={setBox}
@@ -871,10 +994,18 @@ export function KbDocument({
         }
       }}
       onClick={(e) => {
-        // Ссылки на статьи базы — переходом внутри админки, без перезагрузки.
+        // Ссылки на статьи базы — переходом внутри админки, без перезагрузки;
+        // на заголовок этой статьи — прокруткой к нему (адрес с #id можно
+        // скопировать и прислать).
         if (editable) return;
         const a = (e.target as HTMLElement).closest("a");
         const href = a?.getAttribute("href");
+        if (href?.startsWith("#") && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          const id = decodeURIComponent(href.slice(1));
+          if (scrollToBlock(box, id, true)) window.history.replaceState(null, "", `#${id}`);
+          return;
+        }
         if (!href || !href.startsWith("/kb/") || e.metaKey || e.ctrlKey) return;
         e.preventDefault();
         void navigate({ to: href });
@@ -900,11 +1031,14 @@ export function KbDocument({
         <SuggestionMenuController
           triggerCharacter="/"
           getItems={async (query) =>
-            filterSuggestionItems(slashItems(editor, onPickArticle), query)
+            filterSuggestionItems(slashItems(editor, onPickArticle, onPickHeading), query)
           }
         />
         <FilePanelController filePanel={UploadOnlyFilePanel} />
-        <FormattingToolbarController floatingUIOptions={toolbarFloating} />
+        <FormattingToolbarController
+          formattingToolbar={KbFormattingToolbar}
+          floatingUIOptions={toolbarFloating}
+        />
       </BlockNoteView>
     </div>
   );
