@@ -82,6 +82,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-selected: var(--selected);
+  --color-selected-foreground: var(--selected-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -134,6 +136,10 @@
      перекликались с ним. */
   --primary: #1a2027;
   --primary-foreground: oklch(0.984 0.003 247.858);
+  /* Выбранное в табах и сегментах (плашка ActiveIndicator). В светлой теме —
+     как --primary; в тёмной базе знаний — своя, светлее дорожки. */
+  --selected: #1a2027;
+  --selected-foreground: oklch(0.984 0.003 247.858);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
@@ -253,12 +259,73 @@
   --field: oklch(0.26 0.03 264);
 }
 
-/* Тёмная тема базы знаний (lib/kb/theme.ts): цвет базы на тёмном —
-   вариант для тёмного фона, иначе надзаголовки и ссылки темнели бы на
-   тёмном. */
-.kb-dark {
-  --brand-on-light: var(--brand-on-dark);
+/* Тёмная тема базы знаний (решение владельца 2026-10-25; lib/kb/theme.ts).
+   Класс .dark.kb-dark висит на <html>, пока открыта база и выбрана тёмная
+   тема, — поэтому темнеют и окна, и всплывающие меню (порталы в body), а
+   токены @theme пересчитываются на том же элементе.
+   Палитра — «графит» в тон меню (--sidebar #1a2027, --rail #12161b), а не
+   синевато-чёрная по умолчанию shadcn: страница чуть темнее меню, поднятые
+   поверхности — ступенями светлее (страница → карточка → окно), линии —
+   сплошные приглушённые, не белые полупрозрачные. Текст — не чистый белый
+   (меньше «свечения» на длинном чтении), второстепенный ≥ 7:1 к фону.
+   Акцент на тёмном — светлые кнопки; цвет клуба/базы — вариант для тёмного
+   фона (--brand-on-light пересчитывает StudioBranding). */
+html.dark.kb-dark {
   color-scheme: dark;
+  --background: #15191e;
+  --foreground: #e6e9ed;
+  --card: #1b2026;
+  --card-foreground: #e6e9ed;
+  --popover: #1f252c;
+  --popover-foreground: #e6e9ed;
+  --primary: #e6e9ed;
+  --primary-foreground: #15191e;
+  --selected: #353e48;
+  --selected-foreground: #ffffff;
+  --secondary: #232a32;
+  --secondary-foreground: #e6e9ed;
+  --muted: #222930;
+  --muted-foreground: #9ba5b0;
+  --accent: #262d36;
+  --accent-foreground: #e6e9ed;
+  --destructive: #f2777a;
+  --destructive-foreground: #15191e;
+  --border: #2a3139;
+  --input: #353d47;
+  --ring: #8d99a6;
+  --canvas: #15191e;
+  --field: #1b2026;
+  --link: #8ab4f8;
+  --link-hover: #aecbfa;
+  --brand-on-light: var(--brand-on-dark);
+  --note: #2a2518;
+  --note-soft: #231f15;
+  --note-border: #4a4026;
+  --note-foreground: #ece0bf;
+  --note-shadow: none;
+}
+/* Редактор BlockNote в тёмной теме — на палитре админки, а не на своей
+   серой (#1f1f1f / #cfcfcf). */
+html.dark.kb-dark .bn-container[data-color-scheme="dark"] {
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-editor-background: transparent;
+  --bn-colors-menu-text: var(--popover-foreground);
+  --bn-colors-menu-background: var(--popover);
+  --bn-colors-tooltip-text: var(--popover-foreground);
+  --bn-colors-tooltip-background: var(--accent);
+  --bn-colors-hovered-text: var(--accent-foreground);
+  --bn-colors-hovered-background: var(--accent);
+  --bn-colors-selected-text: var(--accent-foreground);
+  --bn-colors-selected-background: var(--selected);
+  --bn-colors-disabled-text: var(--muted-foreground);
+  --bn-colors-disabled-background: var(--muted);
+  --bn-colors-shadow: rgb(0 0 0 / 0.4);
+  --bn-colors-border: var(--border);
+  --bn-colors-side-menu: var(--muted-foreground);
+}
+/* Флажок своего чек-листа: заливка — светлый --primary, галочка — тёмная. */
+html.dark.kb-dark .kb-own-checks {
+  --kb-check-mark: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%2315191e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 @layer base {

@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
+import { KB_THEME_BOOT } from "@/lib/kb/theme";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -111,8 +112,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="ru">
+    // Класс темы базы знаний ставит скрипт до гидратации (KB_THEME_BOOT).
+    <html lang="ru" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: KB_THEME_BOOT }} />
         <HeadContent />
       </head>
       <body>

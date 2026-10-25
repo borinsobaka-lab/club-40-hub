@@ -77,7 +77,7 @@ export function Delta({
     <span
       className={cn(
         "inline-flex flex-wrap items-center gap-x-1 text-xs",
-        good ? "text-emerald-700" : "text-rose-600",
+        good ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300",
       )}
     >
       <Icon className="h-3 w-3" />

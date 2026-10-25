@@ -150,7 +150,9 @@ export function KbPeopleTab({ baseId, period }: { baseId: string; period: KbPeri
                         </span>
                       </span>
                       {r.read_outdated > 0 && (
-                        <span className="text-amber-700">+{r.read_outdated} прежн.</span>
+                        <span className="text-amber-700 dark:text-amber-300">
+                          +{r.read_outdated} прежн.
+                        </span>
                       )}
                     </span>
                     <ReadBar

@@ -145,7 +145,7 @@ export function KbPersonDialogBody({ baseId, person }: { baseId: string; person:
                     <span
                       className={
                         q.results === 0
-                          ? "shrink-0 text-xs text-amber-700"
+                          ? "shrink-0 text-xs text-amber-700 dark:text-amber-300"
                           : "shrink-0 text-xs text-muted-foreground"
                       }
                     >
@@ -206,7 +206,9 @@ function ArticleRow({ baseId, article: a }: { baseId: string; article: KbPersonA
           title={a.last_read_at ? formatDateTime(a.last_read_at) : undefined}
         >
           {formatAgo(a.last_read_at)}
-          {a.completed_at && <span className="block text-emerald-700">дочитал</span>}
+          {a.completed_at && (
+            <span className="block text-emerald-700 dark:text-emerald-300">дочитал</span>
+          )}
         </span>
       )}
     </li>
