@@ -16,6 +16,7 @@ import {
   FolderPlus,
   History,
   LayoutTemplate,
+  Link2,
   Loader2,
   Pencil,
   Send,
@@ -282,40 +283,92 @@ function BaseHomeLists({ baseId, index }: { baseId: string; index: KbTreeIndex }
   );
 }
 
-/** Звёздочка «В избранное» — своё избранное читателя (kb_favorites). */
+/**
+ * Звёздочка «В избранное» — своё избранное читателя (kb_favorites). Красится
+ * сразу по нажатию (решение владельца 2026-10-25): список в кэше меняется до
+ * ответа сервера, не получилось — возвращается и выходит предупреждение.
+ * Выключена — серая залитая, включена — золотая, один цвет.
+ */
 function FavoriteButton({ baseId, nodeId }: { baseId: string; nodeId: string }) {
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
   const { data: favorites } = useKbFavorites(baseId);
   const on = !!favorites?.includes(nodeId);
-  const [busy, setBusy] = useState(false);
+  const busy = useRef(false);
   const toggle = async () => {
-    setBusy(true);
+    if (busy.current || !favorites) return;
+    busy.current = true;
+    const key = [KB_FAVORITES_KEY, baseId];
+    const before = favorites;
+    qc.setQueryData<string[]>(key, (list = []) =>
+      on ? list.filter((id) => id !== nodeId) : [nodeId, ...list],
+    );
     try {
       const { error } = on
         ? await supabase.from("kb_favorites").delete().eq("node_id", nodeId)
         : await supabase.from("kb_favorites").insert({ node_id: nodeId, base_id: baseId });
-      if (error) {
-        toast.error(kbErrorText(error.message));
-        return;
-      }
-      await qc.invalidateQueries({ queryKey: [KB_FAVORITES_KEY, baseId] });
-      toast.success(on ? "Убрано из избранного" : "В избранном — на главной базы");
+      if (error) throw error;
+      void qc.invalidateQueries({ queryKey: key });
+    } catch {
+      qc.setQueryData(key, before);
+      await confirm({
+        title: on ? "Не удалось убрать из избранного" : "Не удалось добавить в избранное",
+        description: "Сервер не сохранил изменение. Проверьте интернет и попробуйте ещё раз.",
+        confirmLabel: "Понятно",
+        destructive: false,
+        hideCancel: true,
+      });
     } finally {
-      setBusy(false);
+      busy.current = false;
     }
+  };
+  const label = on ? "Убрать из избранного" : "В избранное";
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="shrink-0"
+        disabled={!favorites}
+        aria-pressed={on}
+        aria-label={label}
+        title={label}
+        onClick={() => void toggle()}
+      >
+        <Star
+          className={cn(
+            "fill-current transition-colors",
+            on ? "text-amber-400" : "text-muted-foreground/45",
+          )}
+        />
+      </Button>
+      {confirmDialog}
+    </>
+  );
+}
+
+/**
+ * «Скопировать ссылку» на статью: её отправляют коллеге, по ней статья
+ * открывается сразу (не вошёл — после входа, см. /auth?redirect).
+ */
+function CopyLinkButton({ baseId, nodeId }: { baseId: string; nodeId: string }) {
+  const copy = () => {
+    const url = `${window.location.origin}/kb/${baseId}/${nodeId}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Ссылка на статью скопирована"),
+      () => toast.error("Не удалось скопировать — скопируйте адрес из строки браузера"),
+    );
   };
   return (
     <Button
       variant="ghost"
       size="icon"
       className="shrink-0"
-      disabled={busy || !favorites}
-      aria-pressed={on}
-      aria-label={on ? "Убрать из избранного" : "В избранное"}
-      title={on ? "Убрать из избранного" : "В избранное"}
-      onClick={() => void toggle()}
+      aria-label="Скопировать ссылку на статью"
+      title="Скопировать ссылку на статью"
+      onClick={copy}
     >
-      <Star className={cn(on && "fill-amber-400 text-amber-500")} />
+      <Link2 />
     </Button>
   );
 }
@@ -1035,6 +1088,7 @@ function ArticleView({
                   )}
                 </div>
                 <FavoriteButton baseId={baseId} nodeId={node.id} />
+                <CopyLinkButton baseId={baseId} nodeId={node.id} />
                 {canEdit && (
                   <NodeMenu
                     baseId={baseId}

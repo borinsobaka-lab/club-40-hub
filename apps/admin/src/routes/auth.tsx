@@ -10,8 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { AuthPageSkeleton } from "@/components/page-skeletons";
+import { safeRedirectPath } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth")({
+  // Ключ — всегда, и undefined: без него роутер оставил бы исходное значение
+  // из адреса (поиск родителя без validateSearch проходит насквозь).
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+    redirect: safeRedirectPath(search.redirect),
+  }),
   pendingComponent: AuthPageSkeleton,
   component: AuthPage,
 });
@@ -32,6 +38,7 @@ const CODE_LENGTH = 6;
  */
 function AuthPage() {
   const navigate = useNavigate();
+  const back = safeRedirectPath(Route.useSearch().redirect);
   const requestCode = useServerFn(requestStaffLoginCode);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -42,14 +49,16 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Вошёл — туда, откуда прислали на вход (ссылка на статью), иначе на главную.
+    const done = () => (back ? navigate({ href: back }) : navigate({ to: "/" }));
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
+      if (data.session) void done();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      if (s) navigate({ to: "/" });
+      if (s) void done();
     });
     return () => sub.subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, back]);
 
   const sendCode = async () => {
     setLoading(true);
