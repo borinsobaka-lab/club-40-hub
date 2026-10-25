@@ -82,7 +82,8 @@ function CourseCard({ course: c }: { course: AcadMyCourse }) {
       params={{ courseId: c.course_id }}
       className="group flex flex-col overflow-hidden rounded-lg border bg-background outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <CourseCover cover={c.cover} className="aspect-[16/7]" />
+      {/* 16:9 — как просят загружать обложку: показывается целиком, без обрезки. */}
+      <CourseCover cover={c.cover} className="aspect-[16/9]" />
       <div className="flex flex-1 flex-col gap-2 p-4">
         {c.folder_title && (
           <span className="text-xs font-semibold text-brand-on-light">{c.folder_title}</span>

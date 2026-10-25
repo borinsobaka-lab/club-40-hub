@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -34,6 +34,8 @@ const TIPS = {
   explanation:
     "Ученик увидит пояснение у вопроса, где ошибся: где в уроке найти ответ. Правильный вариант сам по себе ученику не показывается.",
   file: "Ученик сможет приложить к ответу файл — фото, видео, документ (до 50 МБ).",
+  notes:
+    "Видит только проверяющий — рядом с ответом ученика: эталонный ответ, что обязательно должно быть, за что не засчитывать.",
 };
 
 /**
@@ -59,6 +61,10 @@ export function AcadQuestionForm({
   const [points, setPoints] = useState(String(question?.points ?? 1));
   const [explanation, setExplanation] = useState(question?.explanation ?? "");
   const [allowFile, setAllowFile] = useState(question?.allow_file ?? false);
+  const [reviewNotes, setReviewNotes] = useState(question?.review_notes ?? "");
+  // Поля вариантов — чтобы Enter и «+ Вариант» ставили курсор в нужное.
+  const inputs = useRef(new Map<string, HTMLInputElement>());
+  const [focusId, setFocusId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showError, setShowError] = useState(false);
 
@@ -74,6 +80,25 @@ export function AcadQuestionForm({
             : o,
       ),
     );
+  /** Новый вариант после `afterId` (без него — в конец), курсор — в него. */
+  const addOption = (afterId?: string) => {
+    if (options.length >= 20) return;
+    const o = newOption();
+    setOptions((list) => {
+      const at = afterId ? list.findIndex((x) => x.id === afterId) + 1 : list.length;
+      return [...list.slice(0, at), o, ...list.slice(at)];
+    });
+    setFocusId(o.id);
+  };
+  // Enter в варианте — следующий вариант (пустой следующий — курсор в него),
+  // а не отправка формы с ошибкой «Отметьте верный».
+  const onOptionEnter = (id: string) => {
+    const i = options.findIndex((o) => o.id === id);
+    if (!options[i]?.text.trim()) return;
+    const next = options[i + 1];
+    if (next && !next.text.trim()) inputs.current.get(next.id)?.focus();
+    else addOption(id);
+  };
   const changeKind = (k: AcadQuestionKind) => {
     setKind(k);
     // Из «нескольких» в «один» — оставляем первый верный.
@@ -104,6 +129,7 @@ export function AcadQuestionForm({
         points: p,
         explanation: explanation.trim(),
         allow_file: kind === "open" && allowFile,
+        review_notes: kind === "open" ? reviewNotes.trim() : "",
       };
       const { error: err } = question
         ? await supabase.from("acad_questions").update(row).eq("id", question.id)
@@ -174,11 +200,22 @@ export function AcadQuestionForm({
                         onCheckedChange={(v) => setOption(o.id, { correct: v === true })}
                       />
                       <Input
+                        ref={(el) => {
+                          if (el) inputs.current.set(o.id, el);
+                          else inputs.current.delete(o.id);
+                        }}
+                        autoFocus={o.id === focusId}
                         value={o.text}
                         maxLength={500}
                         placeholder={`Вариант ${i + 1}`}
+                        enterKeyHint="next"
                         className="border-0 bg-transparent shadow-none focus-visible:ring-0"
                         onChange={(e) => setOption(o.id, { text: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                          e.preventDefault();
+                          onOptionEnter(o.id);
+                        }}
                       />
                       <Button
                         variant="ghost"
@@ -192,11 +229,7 @@ export function AcadQuestionForm({
                     </div>
                   ))}
                   {options.length < 20 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setOptions((list) => [...list, newOption()])}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => addOption()}>
                       <Plus /> Вариант
                     </Button>
                   )}
@@ -204,12 +237,23 @@ export function AcadQuestionForm({
               </FormField>
             )}
             {kind === "open" && (
-              <SwitchRow
-                title="Можно приложить файл"
-                tip={TIPS.file}
-                checked={allowFile}
-                onCheckedChange={setAllowFile}
-              />
+              <>
+                <FormField label="Эталон и критерии для проверяющего" tip={TIPS.notes} optional>
+                  <Textarea
+                    rows={3}
+                    maxLength={2000}
+                    value={reviewNotes}
+                    placeholder="Например, «Назвать клиентку по имени, предложить воду, показать раздевалку»"
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                  />
+                </FormField>
+                <SwitchRow
+                  title="Можно приложить файл"
+                  tip={TIPS.file}
+                  checked={allowFile}
+                  onCheckedChange={setAllowFile}
+                />
+              </>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr]">
               <FormField label="Баллы" tip={TIPS.points}>

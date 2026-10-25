@@ -204,6 +204,44 @@ export function quizzesToRecheck(
   return out;
 }
 
+/**
+ * Что мешает ученикам пройти курс — предупреждение в окне публикации: курс
+ * без шагов, тесты без вопросов (у ученика «Начать тест» не нажимается, а в
+ * курсе «по порядку» дальше теста не пройти).
+ */
+export function publishIssues(
+  steps: Pick<AcadStep, "id" | "kind" | "title">[],
+  questionCount: Record<string, number>,
+  sequential: boolean,
+): string[] {
+  if (steps.length === 0) return ["В курсе нет ни одного урока или теста."];
+  const empty = steps.filter((s) => s.kind === "quiz" && !(questionCount[s.id] ?? 0));
+  if (empty.length === 0) return [];
+  const names = empty.map((s) => `«${s.title}»`).join(", ");
+  return [
+    `${empty.length === 1 ? "В тесте" : "В тестах"} ${names} нет вопросов — ученик не сможет ${
+      empty.length === 1 ? "его" : "их"
+    } сдать${sequential ? ", а курс проходится по порядку: дальше теста он не продвинется" : ""}.`,
+  ];
+}
+
+/** Ссылки документа на статьи базы знаний (`/kb/…`) — у ученика без доступа к базе не откроются. */
+export function kbLinkCount(doc: unknown): number {
+  let n = 0;
+  const walk = (v: unknown) => {
+    if (Array.isArray(v)) {
+      v.forEach(walk);
+      return;
+    }
+    if (!v || typeof v !== "object") return;
+    const o = v as Record<string, unknown>;
+    if (o.type === "link" && typeof o.href === "string" && o.href.startsWith("/kb/")) n += 1;
+    for (const key of ["content", "children", "rows", "cells"]) if (key in o) walk(o[key]);
+  };
+  walk(doc);
+  return n;
+}
+
 /** Совпадает ли сотрудник с правилом назначения (для подсчёта в конструкторе). */
 export function matchesAssignment(person: AcadStaffPerson, a: AcadAssignment): boolean {
   if (a.subject_type === "user") return a.user_id === person.user_id;
