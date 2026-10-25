@@ -48,7 +48,7 @@ import {
   useKbTree,
 } from "@/lib/kb/data";
 import { documentIsEmpty, type KbHeading } from "@/lib/kb/document";
-import { kbIcon } from "@/lib/kb/icons";
+import { kbIcon, kbSectionIcon } from "@/lib/kb/icons";
 import {
   ancestorsOf,
   articleCount,
@@ -156,6 +156,12 @@ export function KbNodePage({
   );
 }
 
+/** Иконка папки в списке: у раздела (верхний уровень) — своя. */
+function ItemFolderIcon({ node }: { node: KbTreeNode }) {
+  const Icon = node.parent_id === null ? kbSectionIcon(node.icon) : Folder;
+  return <Icon className="size-5 shrink-0 text-muted-foreground" />;
+}
+
 /**
  * Сколько статей видят читатели; редактору — ещё и сколько не опубликовано
  * (замечание тестирования: черновики попадали в счётчик).
@@ -244,7 +250,12 @@ function FolderView({
     null,
   );
   const items = childrenOf(index, folder?.id ?? null);
-  const Icon = folder ? Folder : kbIcon(baseIcon);
+  // Раздел (папка верхнего уровня) — со своей иконкой, как в меню.
+  const Icon = folder
+    ? folder.parent_id === null
+      ? kbSectionIcon(folder.icon)
+      : Folder
+    : kbIcon(baseIcon);
   const description = folder ? folder.description : baseDescription;
 
   return (
@@ -337,7 +348,7 @@ function FolderView({
                   className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 >
                   {n.kind === "folder" ? (
-                    <Folder className="size-5 shrink-0 text-muted-foreground" />
+                    <ItemFolderIcon node={n} />
                   ) : (
                     <DocumentText className="size-5 shrink-0 text-muted-foreground" />
                   )}
@@ -378,7 +389,7 @@ function FolderView({
               kind={dialog}
               node={null}
               place={{ nodes, baseTitle, parentId: folder?.id ?? null }}
-              onSave={(t, d, p) => actions.create(dialog, p, t, d)}
+              onSave={(t, d, p, i) => actions.create(dialog, p, t, d, i)}
               onDone={() => setDialog(null)}
             />
           )}
@@ -386,7 +397,9 @@ function FolderView({
             <KbNodeTitleForm
               kind="folder"
               node={folder}
-              onSave={(t, d) => actions.update(folder.id, { title: t, description: d })}
+              onSave={(t, d, _p, i) =>
+                actions.update(folder.id, { title: t, description: d, icon: i })
+              }
               onDone={() => setDialog(null)}
             />
           )}
@@ -473,7 +486,15 @@ function NodeMenu({
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-60 p-1">
-          {item(isFolder ? "Название и описание" : "Переименовать", Pencil, onRename)}
+          {item(
+            isFolder
+              ? node.parent_id === null
+                ? "Название, иконка, описание"
+                : "Название и описание"
+              : "Переименовать",
+            Pencil,
+            onRename,
+          )}
           {item("Переместить…", FolderInput, onMove)}
           {!isFolder && item("Сделать копию", Copy, () => actions.copy(node.id))}
           {hasDraft &&

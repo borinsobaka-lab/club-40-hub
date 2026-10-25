@@ -25,6 +25,8 @@ export type KbTreeNode = {
   kind: KbKind;
   title: string;
   description: string;
+  /** Иконка раздела (папки верхнего уровня), ключ KB_SECTION_ICONS; null — папка. */
+  icon: string | null;
   sort_order: number;
   status: KbStatus;
   reader_visible: boolean;

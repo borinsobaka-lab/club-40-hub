@@ -21,7 +21,7 @@ export const KB_NODE_KEY = "kb_node";
 export const KB_DRAFTS_KEY = "kb_drafts";
 
 const TREE_COLUMNS =
-  "id, base_id, parent_id, kind, title, description, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
+  "id, base_id, parent_id, kind, title, description, icon, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
 
 /** Доступные базы — для рейки и прав; заранее грузит проверка входа. */
 export const kbBasesQuery = queryOptions({

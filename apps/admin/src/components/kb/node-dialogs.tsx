@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { KB_SECTION_DEFAULT_ICON, KB_SECTION_ICONS, kbSectionIcon } from "@/lib/kb/icons";
 import { ancestorsOf, childrenOf, indexTree, isWithin } from "@/lib/kb/tree";
 import type { KbKind, KbTreeNode } from "@/lib/kb/types";
 
@@ -49,7 +50,8 @@ const ROOT = "__root__";
  * Новая папка или статья (название и где создать), правка названия и
  * описания папки. «Где создать» видно всегда: кнопки «Папка» / «Статья» в
  * меню и на странице папки создают в разных местах — окно показывает, где
- * именно, и даёт поменять.
+ * именно, и даёт поменять. У раздела — папки верхнего уровня — ещё иконка
+ * (в меню базы она есть только у разделов).
  */
 export function KbNodeTitleForm({
   kind,
@@ -67,6 +69,8 @@ export function KbNodeTitleForm({
     title: string,
     description: string,
     parentId: string | null,
+    /** Иконка раздела (ключ KB_SECTION_ICONS); null — обычная папка. */
+    icon: string | null,
   ) => Promise<boolean | string | null>;
   onDone: () => void;
 }) {
@@ -74,8 +78,11 @@ export function KbNodeTitleForm({
   const folders = useMemo(() => (place ? folderOptions(place.nodes) : []), [place]);
   const [title, setTitle] = useState(node?.title ?? "");
   const [description, setDescription] = useState(node?.description ?? "");
+  const [icon, setIcon] = useState(node?.icon ?? KB_SECTION_DEFAULT_ICON);
   const [saving, setSaving] = useState(false);
   const isFolder = kind === "folder";
+  // Раздел — папка на верхнем уровне базы: новая — по «Где создать».
+  const isSection = isFolder && (node ? node.parent_id === null : parentId === null);
 
   const save = async () => {
     const t = title.trim();
@@ -85,7 +92,16 @@ export function KbNodeTitleForm({
     }
     setSaving(true);
     try {
-      if (await onSave(t, description.trim(), parentId)) onDone();
+      // У вложенной папки иконку не показываем и не трогаем — вернётся
+      // с ней наверх при переносе.
+      const sectionIcon = isSection
+        ? icon === KB_SECTION_DEFAULT_ICON
+          ? null
+          : icon
+        : isFolder
+          ? (node?.icon ?? null)
+          : null;
+      if (await onSave(t, description.trim(), parentId, sectionIcon)) onDone();
     } finally {
       setSaving(false);
     }
@@ -97,16 +113,22 @@ export function KbNodeTitleForm({
         <DialogTitle>
           {node
             ? isFolder
-              ? "Папка"
+              ? isSection
+                ? "Раздел"
+                : "Папка"
               : "Название статьи"
             : isFolder
-              ? "Новая папка"
+              ? isSection
+                ? "Новый раздел"
+                : "Новая папка"
               : "Новая статья"}
         </DialogTitle>
         <DialogDescription>
-          {isFolder
-            ? "Папка собирает статьи и другие папки. Читателям пустая папка не видна."
-            : "Статья создаётся черновиком: читатели увидят её после публикации."}
+          {isSection
+            ? "Раздел — папка верхнего уровня базы: в меню он с иконкой и выделен. Собирает статьи и папки; пустой читателям не виден."
+            : isFolder
+              ? "Папка собирает статьи и другие папки. Читателям пустая папка не видна."
+              : "Статья создаётся черновиком: читатели увидят её после публикации."}
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={save}>
@@ -126,17 +148,20 @@ export function KbNodeTitleForm({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ROOT}>{place.baseTitle} — верхний уровень</SelectItem>
-                    {folders.map(({ node: f, depth }) => (
-                      <SelectItem key={f.id} value={f.id} textValue={f.title}>
-                        <span
-                          style={{ paddingLeft: depth * 14 }}
-                          className="flex items-center gap-2"
-                        >
-                          <Folder className="size-4 text-muted-foreground" />
-                          {f.title || "Без названия"}
-                        </span>
-                      </SelectItem>
-                    ))}
+                    {folders.map(({ node: f, depth }) => {
+                      const FolderIcon = depth === 0 ? kbSectionIcon(f.icon) : Folder;
+                      return (
+                        <SelectItem key={f.id} value={f.id} textValue={f.title}>
+                          <span
+                            style={{ paddingLeft: depth * 14 }}
+                            className="flex items-center gap-2"
+                          >
+                            <FolderIcon className="size-4 text-muted-foreground" />
+                            {f.title || "Без названия"}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </FormField>
@@ -149,6 +174,28 @@ export function KbNodeTitleForm({
                 onChange={(e) => setTitle(e.target.value)}
               />
             </FormField>
+            {isSection && (
+              <FormField
+                label="Иконка"
+                tip="Видна у раздела в меню базы, на её главной и в окнах выбора папки. Вложенные папки и статьи — без иконок."
+              >
+                <Select value={icon} onValueChange={setIcon}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KB_SECTION_ICONS.map((i) => (
+                      <SelectItem key={i.key} value={i.key} textValue={i.label}>
+                        <span className="flex items-center gap-2">
+                          <i.icon className="size-4 text-muted-foreground" />
+                          {i.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
             {isFolder && (
               <FormField
                 label="Описание"

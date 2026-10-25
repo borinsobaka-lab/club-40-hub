@@ -359,6 +359,26 @@ describe.skipIf(!url)("база знаний (база)", () => {
       await asServer(tx);
     }));
 
+  test("иконка раздела: пишет редактор, только у папки и ключом из набора", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.editor);
+      await tx`update kb_nodes set icon = 'wallet' where id = ${t.folder}`;
+      const [row] = await tx`select icon from kb_nodes where id = ${t.folder}`;
+      expect(row.icon).toBe("wallet");
+      expect(await failure(tx, () => tx`update kb_nodes set icon = 'wallet' where id = ${t.pub}`)).toContain(
+        "kb_nodes_icon_check",
+      );
+      expect(
+        await failure(tx, () => tx`update kb_nodes set icon = '<script>' where id = ${t.folder}`),
+      ).toContain("kb_nodes_icon_check");
+      await as(tx, t.reader);
+      await tx`update kb_nodes set icon = 'fire' where id = ${t.folder}`;
+      await asServer(tx);
+      const [still] = await tx`select icon from kb_nodes where id = ${t.folder}`;
+      expect(still.icon).toBe("wallet");
+    }));
+
   test("файлы: читатель базы читает, пишет только редактор, чужая база закрыта", () =>
     scenario(async (tx) => {
       const t = await setup(tx);

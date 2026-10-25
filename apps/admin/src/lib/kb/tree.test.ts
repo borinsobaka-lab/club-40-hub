@@ -21,6 +21,7 @@ function n(id: string, parent: string | null, kind: "folder" | "article" = "arti
     kind,
     title: id,
     description: "",
+    icon: null,
     sort_order: order,
     status: "published",
     reader_visible: true,
