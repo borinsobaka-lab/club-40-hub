@@ -1260,7 +1260,10 @@ function ArticleView({
                     </h2>
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    {/* Одной строкой (решение владельца 2026-10-25): статус
+                        (редактору), теги, чек-лист; автор — строкой ниже. */}
                     {canEdit && <KbStatusBadge status={node.status} />}
+                    {!editing && <KbArticleTags baseId={baseId} nodeId={node.id} />}
                     {!editing && checkItems.length > 0 && (
                       <span title="Отметки чек-листа — ваши, их видите только вы">
                         Чек-лист: {doneCount} из {checkItems.length}
@@ -1278,11 +1281,7 @@ function ArticleView({
                     {canEdit && hasDraft && node.status === "published" && <KbDraftBadge />}
                     {!node.published_at && <span>Ещё не опубликована</span>}
                   </div>
-                  {editing ? (
-                    <KbArticleTagsEditor baseId={baseId} nodeId={node.id} />
-                  ) : (
-                    <KbArticleTags baseId={baseId} nodeId={node.id} />
-                  )}
+                  {editing && <KbArticleTagsEditor baseId={baseId} nodeId={node.id} />}
                   {node.published_at && (
                     <ArticleAuthor
                       baseId={baseId}

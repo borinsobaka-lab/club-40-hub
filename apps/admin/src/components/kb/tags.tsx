@@ -152,15 +152,26 @@ export function KbTagChip({
   );
 }
 
-/** Теги статьи под её названием — ссылками на статьи с тем же тегом. */
-export function KbArticleTags({ baseId, nodeId }: { baseId: string; nodeId: string }) {
+/**
+ * Теги статьи под её названием — ссылками на статьи с тем же тегом; стоят в
+ * одной строке со статусом и чек-листом (`className` — отступы там).
+ */
+export function KbArticleTags({
+  baseId,
+  nodeId,
+  className,
+}: {
+  baseId: string;
+  nodeId: string;
+  className?: string;
+}) {
   const { data: nodeTags, tags } = useKbNodeTags(baseId);
   const ids = nodeTags?.get(nodeId) ?? [];
   const byId = new Map((tags ?? []).map((t) => [t.id, t]));
   const list = ids.map((id) => byId.get(id)).filter((t): t is KbTag => !!t);
   if (list.length === 0) return null;
   return (
-    <ul aria-label="Теги статьи" className="mt-3 flex flex-wrap gap-1.5">
+    <ul aria-label="Теги статьи" className={cn("flex flex-wrap gap-1.5", className)}>
       {list.map((t) => (
         <li key={t.id}>
           <KbTagChip baseId={baseId} tag={t} />
