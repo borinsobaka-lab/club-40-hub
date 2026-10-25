@@ -76,6 +76,15 @@ export type KbOverview = {
   zero_queries: { query: string; count: number; users: number; last_at: string }[];
 };
 
+/** Вкладка «Поиск» (RPC kb_analytics_search): те же поля, что в обзоре. */
+export type KbSearchStats = Pick<
+  KbOverview,
+  "from" | "to" | "days" | "top_queries" | "zero_queries"
+> & {
+  current: Pick<KbActivity, "searches" | "zero_searches">;
+  previous: Pick<KbActivity, "searches" | "zero_searches">;
+};
+
 export type KbPersonRow = {
   user_id: string;
   full_name: string | null;

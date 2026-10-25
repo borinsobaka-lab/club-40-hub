@@ -1,5 +1,5 @@
 import { EmptyBlock, KpiTile, Delta } from "@/components/kb/analytics/parts";
-import { useKbOverview } from "@/components/kb/analytics/queries";
+import { useKbSearchStats } from "@/components/kb/analytics/queries";
 import { InfoNote } from "@/components/ui/form-field";
 import { StatusChip } from "@/components/ui/status-chip";
 import {
@@ -23,10 +23,11 @@ const TIPS = {
 
 /**
  * «Поиск» аналитики: что ищут сотрудники и что не находят (kb_search_log
- * через kb_analytics_overview — те же данные и период, что у «Обзора»).
+ * через kb_analytics_search — те же цифры и период, что у «Обзора», но без
+ * тяжёлого расчёта чтения).
  */
 export function KbSearchTab({ baseId, period }: { baseId: string; period: KbPeriod }) {
-  const { data: o, isLoading, error } = useKbOverview(baseId, period, true);
+  const { data: o, isLoading, error } = useKbSearchStats(baseId, period);
   if (error && !o) return <InfoNote variant="warning">{error.message}</InfoNote>;
   const loading = isLoading || !o;
   const clicks = (o?.top_queries ?? []).reduce((s, q) => s + q.clicks, 0);
