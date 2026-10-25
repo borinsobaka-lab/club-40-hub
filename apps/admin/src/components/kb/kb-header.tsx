@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { canEditKb } from "@/lib/kb/access";
 import { kbBasesQuery, snippetParts, useKbNodeTags, useKbSearch, useKbTree } from "@/lib/kb/data";
-import { matchTags, tagArticleCounts } from "@/lib/kb/tags";
+import { kbTagColor, matchTags, tagArticleCounts } from "@/lib/kb/tags";
 import { kbIcon } from "@/lib/kb/icons";
 import { ancestorsOf, indexTree, readerNodes, type KbTreeIndex } from "@/lib/kb/tree";
 import { KB_LAST_BASE_KEY, useMyKbBases } from "@/lib/kb/my-bases";
@@ -250,13 +250,14 @@ export function KbHeaderSearch({ baseId, className }: { baseId: string; classNam
                       params={{ baseId }}
                       search={{ tag: t.id }}
                       onClick={() => setOpen(false)}
-                      className="flex items-center gap-1 rounded-sm px-2 py-1 text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+                      className={cn(
+                        "flex items-center gap-1 rounded-full px-2 py-0.5 text-sm outline-none hover:ring-2 hover:ring-current/30 focus-visible:ring-2 focus-visible:ring-current/50",
+                        kbTagColor(t.color).chip,
+                      )}
                     >
-                      <Hash className="size-3.5 text-muted-foreground" />
+                      <Hash className="size-3.5 opacity-60" />
                       {t.name}
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {tagCounts.get(t.id)}
-                      </span>
+                      <span className="text-xs tabular-nums opacity-60">{tagCounts.get(t.id)}</span>
                     </Link>
                   </li>
                 ))}

@@ -276,9 +276,14 @@ export function KbTagsField({
                 </CommandEmpty>
                 <CommandGroup>
                   {options.map((t) => (
+                    // Тег в списке — той же цветной плашкой, что у статьи.
                     <CommandItem key={t.id} value={t.id} onSelect={() => add(t.id)}>
-                      <span className="text-muted-foreground">#</span>
-                      <span className="truncate">{t.name}</span>
+                      <span
+                        className={cn(chipBase, kbTagColor(t.color).chip, "max-w-full min-w-0")}
+                      >
+                        <span className="opacity-60">#</span>
+                        <span className="truncate">{t.name}</span>
+                      </span>
                     </CommandItem>
                   ))}
                   {name && !existing && (
