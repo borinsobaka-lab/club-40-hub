@@ -35,6 +35,8 @@ export type AcadCourse = {
   status: AcadCourseStatus;
   sequential: boolean;
   pass_percent: number;
+  /** Срок по умолчанию для новых назначений — дней с назначения. */
+  default_due_days: number | null;
   sort_order: number | null;
   created_at: string;
   updated_at: string;
@@ -67,6 +69,8 @@ export type AcadQuestion = {
   points: number;
   allow_file: boolean;
   explanation: string;
+  /** Свободный ответ: эталон и критерии — только проверяющему. */
+  review_notes: string;
 };
 
 export type AcadAssignment = {

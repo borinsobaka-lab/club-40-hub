@@ -30,7 +30,7 @@ type Role = "owner" | "admin" | "trainer";
 
 const TIPS = {
   role: "Курс получат все сотрудники с этой ролью в выбранных клубах — и те, кому роль выдадут позже: им курс назначится сам.",
-  due: "«Дней с назначения» — у правила по роли отсчёт для нового сотрудника идёт с выдачи ему роли.",
+  due: "Подставлен срок из настроек курса. «Дней с назначения» — у правила по роли отсчёт для нового сотрудника идёт с выдачи ему роли.",
 };
 
 /** Клубы — для правила по роли (studios читаются публично). */
@@ -54,10 +54,13 @@ function useAllStudios() {
 export function AcadAssignmentForm({
   courseId,
   existing,
+  defaultDueDays,
   onDone,
 }: {
   courseId: string;
   existing: AcadAssignment[];
+  /** Срок курса по умолчанию (настройки курса) — подставляется сам. */
+  defaultDueDays: number | null;
   onDone: () => void;
 }) {
   const qc = useQueryClient();
@@ -69,9 +72,9 @@ export function AcadAssignmentForm({
   const [role, setRole] = useState<Role>("admin");
   const [allStudios, setAllStudios] = useState(true);
   const [studioIds, setStudioIds] = useState<Set<string>>(new Set());
-  const [due, setDue] = useState<Due>("none");
+  const [due, setDue] = useState<Due>(defaultDueDays ? "days" : "none");
   const [dueDate, setDueDate] = useState("");
-  const [dueDays, setDueDays] = useState("14");
+  const [dueDays, setDueDays] = useState(String(defaultDueDays ?? 14));
   const [saving, setSaving] = useState(false);
 
   const assigned = useMemo(

@@ -25,6 +25,7 @@ import {
   PersonCell,
   ProgressBadge,
   ProgressBar,
+  PublishedNote,
   StepIcon,
 } from "@/components/academy/parts";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -68,6 +69,7 @@ import {
   learnersCount,
   plural,
   progressPercent,
+  publishIssues,
   quizzesToRecheck,
   ROLE_LABEL,
   staleLessons,
@@ -142,11 +144,26 @@ function CourseHead({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
   const setStatus = async (status: AcadCourse["status"]) => {
     setMenu(false);
     if (status === "published") {
+      // Пустые тесты окно публикации называет: у ученика их не сдать.
+      let issues: string[] = [];
+      try {
+        const [steps, questions] = await Promise.all([
+          qc.fetchQuery(acadStepsQuery(course.id)),
+          qc.fetchQuery(acadQuestionsQuery(course.id)),
+        ]);
+        const counts: Record<string, number> = {};
+        for (const q of questions) counts[q.step_id] = (counts[q.step_id] ?? 0) + 1;
+        issues = publishIssues(steps, counts, course.sequential);
+      } catch {
+        // Не проверили — публикуем с обычным предупреждением.
+      }
       const ok = await confirm({
-        title: "Опубликовать курс?",
-        description:
-          "Курс увидят все, кому он назначен. Правки после публикации ученики видят сразу.",
-        confirmLabel: "Опубликовать",
+        title: issues.length ? "Опубликовать курс с недоделками?" : "Опубликовать курс?",
+        description: [
+          ...issues,
+          "Курс увидят все, кому он назначен. Черновика правок у курса нет: после публикации каждая правка урока или вопроса сразу видна ученикам.",
+        ].join(" "),
+        confirmLabel: issues.length ? "Всё равно опубликовать" : "Опубликовать",
         destructive: false,
       });
       if (!ok) return;
@@ -214,7 +231,7 @@ function CourseHead({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
           <Button asChild variant="outline" size="sm">
-            <Link to="/academy/my/$courseId" params={{ courseId: course.id }}>
+            <Link to="/academy/courses/$courseId/preview" params={{ courseId: course.id }}>
               <Eye /> Как видит ученик
             </Link>
           </Button>
@@ -303,9 +320,11 @@ function ContentTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
         .single();
       if (error) throw new Error(error.message);
       await invalidateAcademy(qc);
+      // Сразу в название: «Урок 1» легко забыть поменять.
       void navigate({
         to: "/academy/courses/$courseId/$stepId",
         params: { courseId: course.id, stepId: (data as { id: string }).id },
+        search: { new: 1 },
       });
     } catch (e) {
       toast.error(acadError(e));
@@ -401,6 +420,7 @@ function ContentTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
 
   return (
     <div className="space-y-3">
+      {course.status === "published" && canEdit && <PublishedNote />}
       {list.length === 0 && !isLoading ? (
         <InfoNote variant="empty">
           Добавьте первый урок: свой текст или копию статьи базы знаний. После уроков — тест с
@@ -445,6 +465,7 @@ function ContentTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean 
           {picking && (
             <AcadArticlePicker
               busy={busy}
+              usedIds={new Set(list.flatMap((st) => st.source_node_id ?? []))}
               onPick={(node) => void addFromArticle(node)}
               onCancel={() => setPicking(false)}
             />
@@ -728,6 +749,7 @@ function LearnersTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean
             <AcadAssignmentForm
               courseId={course.id}
               existing={list}
+              defaultDueDays={course.default_due_days}
               onDone={() => setAdding(false)}
             />
           )}

@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 
 import { AdminShell } from "@/components/admin-shell";
 import { CourseBuilder, type BuilderTab } from "@/components/academy/course-builder";
 import { AcademyBuilderPageSkeleton } from "@/components/page-skeletons";
+import { acadCourseQuery } from "@/lib/academy/data";
 
 const TABS: BuilderTab[] = ["content", "learners", "errors"];
 
@@ -20,8 +22,9 @@ export const Route = createFileRoute("/_authenticated/academy/courses/$courseId/
 function BuilderPage() {
   const { courseId } = Route.useParams();
   const { tab } = Route.useSearch();
+  const { data: course } = useQuery(acadCourseQuery(courseId));
   return (
-    <AdminShell title="Курс">
+    <AdminShell title={course?.title ?? "Курс"}>
       <CourseBuilder key={courseId} courseId={courseId} tab={tab ?? "content"} />
     </AdminShell>
   );

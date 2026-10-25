@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { Check, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { CourseCover } from "@/components/academy/parts";
@@ -31,14 +31,17 @@ import { KbFileTooLarge, uploadKbFile } from "@/lib/kb/files";
 
 const TIPS = {
   folder:
-    "Папки — разделы каталога курсов («Администраторы», «Тренеры»…). Заводятся в «Настройках» Академии.",
+    "Папки — разделы каталога курсов («Администраторы», «Тренеры»…). Новую можно завести прямо в списке, порядок и названия — в «Настройках» Академии.",
   pass: "Сколько процентов баллов нужно набрать, чтобы тест считался сданным. У отдельного теста можно задать свой.",
   sequential:
     "Включено — следующий шаг открывается, когда пройден предыдущий (тест на проверке у тренера не держит). Выключено — шаги в любом порядке.",
-  cover: "Картинка на карточке курса у учеников; лучше горизонтальная, 16:9.",
+  cover:
+    "Картинка на карточке курса у учеников — горизонтальная 16:9 (например, 1600×900), показывается целиком. Текст на ней — крупный: в каталоге обложка маленькая.",
+  due: "Подставится в окне «Назначить» — не нужно выставлять срок каждый раз, если назначать курс частями. Уже сделанные назначения не меняются.",
 };
 
 const NO_FOLDER = "none";
+const NEW_FOLDER = "new";
 
 /**
  * Новый курс или его настройки (право «Создаёт курсы»; RLS —
@@ -60,6 +63,12 @@ export function AcadCourseForm({
   const [folderId, setFolderId] = useState(course?.folder_id ?? NO_FOLDER);
   const [pass, setPass] = useState(String(course?.pass_percent ?? 80));
   const [sequential, setSequential] = useState(course?.sequential ?? true);
+  const [dueDays, setDueDays] = useState(
+    course?.default_due_days ? String(course.default_due_days) : "",
+  );
+  // «+ Новая папка» прямо в списке, без похода в «Настройки».
+  const [folderDraft, setFolderDraft] = useState<string | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [cover, setCover] = useState(course?.cover ?? null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -81,15 +90,45 @@ export function AcadCourseForm({
     }
   };
 
+  const createFolder = async () => {
+    const t = (folderDraft ?? "").trim();
+    if (!t) {
+      toast.error("Укажите название папки");
+      return;
+    }
+    setCreatingFolder(true);
+    try {
+      const order = (folders ?? []).reduce((m, f) => Math.max(m, f.sort_order), 0) + 1;
+      const { data, error } = await supabase
+        .from("acad_folders")
+        .insert({ title: t, sort_order: order })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      await invalidateAcademy(qc);
+      setFolderId((data as { id: string }).id);
+      setFolderDraft(null);
+    } catch (e) {
+      toast.error(acadError(e));
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
   const save = async () => {
     const t = title.trim();
     const p = Number(pass);
+    const days = dueDays.trim() ? Number(dueDays) : null;
     if (!t) {
       toast.error("Укажите название курса");
       return;
     }
     if (!Number.isInteger(p) || p < 1 || p > 100) {
       toast.error("Проходной процент — от 1 до 100");
+      return;
+    }
+    if (days !== null && (!Number.isInteger(days) || days < 1 || days > 365)) {
+      toast.error("Срок по умолчанию — от 1 до 365 дней или пусто");
       return;
     }
     setSaving(true);
@@ -100,6 +139,7 @@ export function AcadCourseForm({
         folder_id: folderId === NO_FOLDER ? null : folderId,
         pass_percent: p,
         sequential,
+        default_due_days: days,
         cover,
       };
       const { error } = course
@@ -145,20 +185,69 @@ export function AcadCourseForm({
               />
             </FormField>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Папка" tip={TIPS.folder}>
-                <Select value={folderId} onValueChange={setFolderId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_FOLDER}>Без папки</SelectItem>
-                    {(folders ?? []).map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.title}
+              <FormField
+                label="Папка"
+                tip={TIPS.folder}
+                htmlFor={folderDraft === null ? undefined : null}
+              >
+                {folderDraft === null ? (
+                  <Select
+                    value={folderId}
+                    onValueChange={(v) => (v === NEW_FOLDER ? setFolderDraft("") : setFolderId(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_FOLDER}>Без папки</SelectItem>
+                      {(folders ?? []).map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.title}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={NEW_FOLDER} className="font-medium text-brand-on-light">
+                        <Plus /> Новая папка
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      autoFocus
+                      aria-label="Название новой папки"
+                      value={folderDraft}
+                      maxLength={80}
+                      placeholder="Название папки"
+                      disabled={creatingFolder}
+                      onChange={(e) => setFolderDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        // Enter — создать папку, а не сохранить весь курс.
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault();
+                          void createFolder();
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Создать папку"
+                      disabled={creatingFolder}
+                      onClick={() => void createFolder()}
+                    >
+                      {creatingFolder ? <Loader2 className="animate-spin" /> : <Check />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Не создавать папку"
+                      disabled={creatingFolder}
+                      onClick={() => setFolderDraft(null)}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                )}
               </FormField>
               <FormField label="Проходной процент" tip={TIPS.pass} required>
                 <Input
@@ -177,6 +266,22 @@ export function AcadCourseForm({
               checked={sequential}
               onCheckedChange={setSequential}
             />
+            <FormField label="Срок по умолчанию" tip={TIPS.due} optional htmlFor={null}>
+              <div className="flex items-center gap-2 text-sm">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={365}
+                  className="w-24"
+                  aria-label="Срок по умолчанию, дней"
+                  placeholder="—"
+                  value={dueDays}
+                  onChange={(e) => setDueDays(e.target.value)}
+                />
+                дней с назначения
+              </div>
+            </FormField>
             <FormField label="Обложка" tip={TIPS.cover} optional htmlFor={null}>
               <div className="flex items-center gap-3">
                 <CourseCover cover={cover} className="aspect-[16/9] w-40 shrink-0 rounded-md" />

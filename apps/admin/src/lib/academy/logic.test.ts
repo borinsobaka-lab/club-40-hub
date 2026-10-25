@@ -5,9 +5,11 @@ import {
   answerGiven,
   assignmentDueText,
   dueLabel,
+  kbLinkCount,
   learnersCount,
   plural,
   progressPercent,
+  publishIssues,
   questionError,
   quizzesToRecheck,
   staleLessons,
@@ -180,5 +182,47 @@ describe("напоминания конструктора", () => {
       { ...base, subject_type: "user", user_id: "a", role: null, studio_ids: [] },
     ];
     expect(learnersCount(people, assignments)).toBe(2);
+  });
+});
+
+describe("публикация курса", () => {
+  const steps = [
+    { id: "l", kind: "lesson" as const, title: "Урок" },
+    { id: "q1", kind: "quiz" as const, title: "Тест 1" },
+    { id: "q2", kind: "quiz" as const, title: "Тест 2" },
+  ];
+  test("пустой курс и тесты без вопросов", () => {
+    expect(publishIssues([], {}, true)).toEqual(["В курсе нет ни одного урока или теста."]);
+    expect(publishIssues(steps, { q1: 3, q2: 1 }, true)).toEqual([]);
+    expect(publishIssues(steps, { q1: 3 }, false)).toEqual([
+      "В тесте «Тест 2» нет вопросов — ученик не сможет его сдать.",
+    ]);
+    expect(publishIssues(steps, {}, true)[0]).toBe(
+      "В тестах «Тест 1», «Тест 2» нет вопросов — ученик не сможет их сдать, а курс проходится по порядку: дальше теста он не продвинется.",
+    );
+  });
+});
+
+describe("ссылки на базу знаний в уроке", () => {
+  const link = (href: string) => ({ type: "link", href, content: [{ type: "text", text: "x" }] });
+  test("в тексте, вложенных блоках и таблицах; внешние и якоря не в счёт", () => {
+    const doc = [
+      { type: "paragraph", content: [link("/kb/b/n"), link("https://example.com"), link("#h")] },
+      {
+        type: "columns",
+        children: [
+          { type: "column", children: [{ type: "paragraph", content: [link("/kb/b/m")] }] },
+        ],
+      },
+      {
+        type: "table",
+        content: {
+          type: "tableContent",
+          rows: [{ cells: [{ type: "tableCell", content: [link("/kb/b/k")] }] }],
+        },
+      },
+    ];
+    expect(kbLinkCount(doc)).toBe(3);
+    expect(kbLinkCount([])).toBe(0);
   });
 });
