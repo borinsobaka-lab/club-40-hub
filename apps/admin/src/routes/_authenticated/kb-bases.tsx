@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
 import { KbBaseForm } from "@/components/kb/base-dialog";
+import { KbStorageCard } from "@/components/kb/storage-card";
 import { DropIndicator } from "@/components/kb/drop-indicator";
 import { KbBasesPageSkeleton } from "@/components/page-skeletons";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -118,6 +119,7 @@ function KbBasesPage() {
             сотрудникам — в «Доступах», у каждого сотрудника: «Просмотр» или «Правка».
           </p>
         )}
+        {isOwner && <KbStorageCard />}
       </div>
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent className="max-w-lg">

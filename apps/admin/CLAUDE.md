@@ -423,6 +423,14 @@ kb`. Доступ — в «Доступах», блок «Базы знаний�
   `kb-header.tsx`). В шапке статьи редактору — «Прочитали N из M»
   (`ReadersChip`, окно — `components/kb/readers-dialog.tsx`, его же
   открывает вкладка «Статьи»). Схема — корневой CLAUDE.md.
+  **Место (2026-10-25)**: картинки JPEG/PNG/WebP/BMP больше 300 КБ
+  уменьшаются в браузере до 2000 px по длинной стороне в WebP
+  (`shrinkKbImage` в `uploadKbFile`, `lib/kb/files.ts`; не стало меньше —
+  уходит оригинал); «Сделать копию» копирует и файлы статьи в папку копии
+  (`copy` в `use-kb-actions.ts`: `copyKbFiles` + `kb_save_draft`); владельцу
+  на `/kb-bases` — блок «Место» (`components/kb/storage-card.tsx`, RPC
+  `kb_storage_usage`; больше 20 ГБ файлов — предупреждение вынести их в
+  отдельное хранилище).
   Действия с деревом — `components/kb/use-kb-actions.ts`, окна —
   `node-dialogs.tsx`, логика без React — `lib/kb/` (`tree.ts`: порядок,
   перенос, что видит читатель; `document.ts`: оглавление, пустая статья;
@@ -802,7 +810,9 @@ kb`. Доступ — в «Доступах», блок «Базы знаний�
 - Корзина базы знаний — фоновый цикл `src/lib/kb/trash-purge.server.ts`
   (запуск — `src/server.ts`, раз в час, сервис-ключ; `PUSH_WORKER=off`
   выключает и его): истёкшее — `kb_trash_purge_due`, файлы из очереди
-  `kb_file_purge` — Storage API (`list` вглубь + `remove`).
+  `kb_file_purge` — Storage API (`list` вглубь + `remove`); раз в сутки
+  (`runKbDaily`) — файлы без ссылок старше 7 дней (`kb_file_gc_candidates`,
+  пачками по 100) и сроки журналов (`kb_housekeeping`).
 - `gcTime` React Query на сервере — `Infinity` (`lib/query.ts`): QueryClient
   создаётся на каждый SSR-запрос, таймер держал бы его кэш в памяти.
 - Модули `*.server.ts` в клиентский бандл не попадают — сборка падает

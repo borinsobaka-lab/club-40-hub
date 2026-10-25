@@ -1984,6 +1984,13 @@ export function KbBasesPageSkeleton() {
             </li>
           ))}
         </ul>
+        {/* «Место» — KbStorageCard. */}
+        <section className="rounded-lg border bg-background p-4">
+          <h2 className="mb-3 text-sm font-semibold">Место</h2>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="mt-3 h-4 w-full" />
+          <Skeleton className="mt-2 h-4 w-full" />
+        </section>
       </div>
     </ShellSkeleton>
   );
