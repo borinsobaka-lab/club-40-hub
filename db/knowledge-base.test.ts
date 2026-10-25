@@ -379,6 +379,98 @@ describe.skipIf(!url)("база знаний (база)", () => {
       expect(still.icon).toBe("wallet");
     }));
 
+  test("корзина: удалённое со всем вложенным возвращается с прежними id и авторством", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.editor);
+      const [{ id: own }] = await tx`insert into kb_nodes (base_id, parent_id, kind, title, status)
+                                     values (${t.b}, ${t.folder}, 'article', 'Своя', 'published') returning id`;
+      await tx`select kb_save_draft(${own}, ${JSON.stringify(doc("правка"))}::text::jsonb, null)`;
+      await as(tx, t.reader);
+      await tx`select kb_mark_read(${t.pub})`;
+      await tx`insert into kb_favorites (node_id, base_id) values (${t.pub}, ${t.b})`;
+      await tx`insert into kb_checks (node_id, base_id, block_id) values (${t.pub}, ${t.b}, 'blk1')`;
+      // Читатель не удаляет.
+      expect(await failure(tx, () => tx`select kb_trash_node(${t.folder})`)).toContain("kb_forbidden");
+
+      await as(tx, t.editor);
+      const [{ id: trashId }] = await tx`select kb_trash_node(${t.folder}) as id`;
+      expect(await tx`select id from kb_nodes where base_id = ${t.b}`).toHaveLength(0);
+      const [row] = (await tx`select title, kind, articles_count from kb_trash where id = ${trashId}`) as Row[];
+      expect(row).toEqual({ title: "Администратор", kind: "folder", articles_count: 3 });
+      // Корзину видит только редактор.
+      await as(tx, t.reader);
+      expect(await tx`select id from kb_trash`).toHaveLength(0);
+      expect(await failure(tx, () => tx`select kb_trash_restore(${trashId})`)).toContain("kb_forbidden");
+
+      await as(tx, t.editor);
+      const [{ id: restored }] = await tx`select kb_trash_restore(${trashId}) as id`;
+      expect(restored).toBe(t.folder);
+      await asServer(tx);
+      const nodes = (await tx`select id, title, created_by, reader_visible from kb_nodes
+                                where base_id = ${t.b} order by title`) as Row[];
+      expect(nodes.map((n) => n.title)).toEqual(["Администратор", "Открытие смены", "Своя", "Черновик"]);
+      expect(nodes.find((n) => n.id === own)?.created_by).toBe(t.editor);
+      expect(nodes.find((n) => n.id === t.pub)?.reader_visible).toBe(true);
+      expect(await tx`select 1 from kb_drafts where node_id = ${own}`).toHaveLength(1);
+      expect(await tx`select 1 from kb_reads where node_id = ${t.pub}`).toHaveLength(1);
+      expect(await tx`select 1 from kb_favorites where node_id = ${t.pub}`).toHaveLength(1);
+      expect(await tx`select 1 from kb_checks where node_id = ${t.pub}`).toHaveLength(1);
+      expect(await tx`select id from kb_trash`).toHaveLength(0);
+      // Восстановление — не удаление: файлы не в очереди.
+      expect(await tx`select 1 from kb_file_purge`).toHaveLength(0);
+
+      // Навсегда — файлы статей в очередь; истёкшее чистит только сервер.
+      await as(tx, t.editor);
+      const [{ id: again }] = await tx`select kb_trash_node(${t.pub}) as id`;
+      await tx`select kb_trash_delete(${again})`;
+      expect(await failure(tx, () => tx`select kb_trash_purge_due()`)).toContain("permission denied");
+      await asServer(tx);
+      const queued = (await tx`select base_id, node_id from kb_file_purge`) as Row[];
+      expect(queued).toEqual([{ base_id: t.b, node_id: t.pub }]);
+      await tx`update kb_trash set purge_after = now() - interval '1 day'`;
+      const [{ n }] = await tx`select kb_trash_purge_due() as n`;
+      expect(n).toBe(0);
+      await tx`delete from kb_bases where id = ${t.b}`;
+      expect(await tx`select 1 from kb_file_purge where base_id = ${t.b} and node_id is null`).toHaveLength(1);
+    }));
+
+  test("избранное и отметки — свои и только на видимое; шаблоны — редакторам", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.reader);
+      await tx`insert into kb_favorites (node_id, base_id) values (${t.pub}, ${t.b})`;
+      expect(
+        await failure(tx, () => tx`insert into kb_favorites (node_id, base_id) values (${t.draft}, ${t.b})`),
+      ).toContain("row-level security");
+      expect(
+        await failure(tx, () => tx`insert into kb_checks (node_id, base_id, block_id) values (${t.draft}, ${t.b}, 'x')`),
+      ).toContain("row-level security");
+      await tx`insert into kb_checks (node_id, base_id, block_id) values (${t.pub}, ${t.b}, 'x')`;
+      await as(tx, t.editor);
+      expect(await tx`select 1 from kb_favorites`).toHaveLength(0);
+      expect(await tx`select 1 from kb_checks`).toHaveLength(0);
+
+      await tx`insert into kb_templates (base_id, title, content) values (${t.b}, 'Регламент', ${JSON.stringify(doc("Шаг 1"))}::text::jsonb)`;
+      const [tpl] = (await tx`select created_by from kb_templates`) as Row[];
+      expect(tpl.created_by).toBe(t.editor);
+      await as(tx, t.reader);
+      expect(await tx`select 1 from kb_templates`).toHaveLength(0);
+      expect(
+        await failure(tx, () => tx`insert into kb_templates (base_id, title, content) values (${t.b}, 'x', '[]')`),
+      ).toContain("row-level security");
+
+      // Упомянуть можно владельцев и тех, кому выдана база.
+      expect(await failure(tx, () => tx`select * from kb_mention_candidates(${t.b})`)).toContain("kb_forbidden");
+      await as(tx, t.editor);
+      const people = ((await tx`select user_id from kb_mention_candidates(${t.b})`) as Row[]).map((r) => r.user_id);
+      expect(people).toContain(t.owner);
+      expect(people).toContain(t.reader);
+      expect(people).toContain(t.editor);
+      expect(people).not.toContain(t.stranger);
+      await asServer(tx);
+    }));
+
   test("файлы: читатель базы читает, пишет только редактор, чужая база закрыта", () =>
     scenario(async (tx) => {
       const t = await setup(tx);

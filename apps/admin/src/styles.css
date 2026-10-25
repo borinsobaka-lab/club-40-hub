@@ -611,6 +611,118 @@ input[type="number"]::-webkit-outer-spin-button {
   color: inherit;
   text-decoration: none;
 }
+/* Колонки (components/kb/kb-document.tsx, блоки columns / column): колонки
+   ряда — сеткой рядом, без отступа вложенности; на телефоне — друг под
+   другом. Блок «Колонка» невидим, у ряда в правке — подпись. Свои блоки
+   BlockNote оборачивает в .react-renderer — отсюда звено в селекторах. */
+.kb-document
+  .bn-block:has(> .react-renderer > .bn-block-content[data-content-type="columns"])
+  > .bn-block-group {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: 1.5rem;
+  margin-left: 0 !important;
+}
+.kb-document
+  .bn-block:has(> .react-renderer > .bn-block-content[data-content-type="column"])
+  > .bn-block-group {
+  margin-left: 0 !important;
+}
+.kb-document .bn-block-content[data-content-type="column"],
+.kb-document-read .bn-block-content[data-content-type="columns"] {
+  display: none;
+}
+.kb-document:not(.kb-document-read) .kb-columns-anchor {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  border-bottom: 1px dashed var(--border);
+  width: 100%;
+  padding-bottom: 0.125rem;
+}
+.kb-document:not(.kb-document-read)
+  .bn-block:has(> .react-renderer > .bn-block-content[data-content-type="column"])
+  > .bn-block-group {
+  border-left: 1px dashed var(--border);
+  padding-left: 0.25rem;
+}
+@media (max-width: 639px) {
+  .kb-document
+    .bn-block:has(> .react-renderer > .bn-block-content[data-content-type="columns"])
+    > .bn-block-group {
+    display: block;
+  }
+}
+/* Линии вложенности BlockNote у колонок не нужны: колонка — не отступ. */
+.kb-document
+  .bn-block:has(> .react-renderer > .bn-block-content[data-content-type="columns"])
+  .bn-block-outer::before {
+  display: none;
+}
+/* Упоминание сотрудника — плашкой цвета клуба. */
+.kb-document .kb-mention {
+  border-radius: 0.25rem;
+  background: color-mix(in oklab, var(--brand) 14%, transparent);
+  padding: 0 0.2em;
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* Чек-лист у читателя (kb_checks): свой флажок вместо флажка документа —
+   отмечен он или нет, решает вставленный стиль с id отмеченных пунктов. */
+.kb-own-checks {
+  --kb-check-mark: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.kb-own-checks [data-content-type="checkListItem"] > div:has(> input) {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.kb-own-checks [data-content-type="checkListItem"] > div:has(> input) > input {
+  display: none;
+}
+.kb-own-checks [data-content-type="checkListItem"] > div:has(> input)::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  margin: 0 8px 0 2px;
+  border: 1.5px solid var(--muted-foreground);
+  border-radius: 4px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px;
+}
+.kb-own-checks [data-content-type="checkListItem"][data-checked="true"] .bn-inline-content {
+  text-decoration: none;
+}
+/* Защита содержимого статьи (components/kb/protected-area.tsx): читателю —
+   без выделения, долгого нажатия «Сохранить картинку», перехода по
+   картинке галереи; печать — вместо статьи надпись. */
+.kb-no-copy,
+.kb-no-copy * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.kb-no-copy img,
+.kb-no-copy video {
+  -webkit-user-drag: none;
+}
+.kb-no-copy .kb-gallery a {
+  pointer-events: none;
+}
+@media print {
+  .kb-no-copy,
+  body:has(.kb-no-copy) nav[aria-label="Оглавление"] {
+    display: none !important;
+  }
+  .kb-print-blocked {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2rem;
+    font-size: 1.125rem;
+  }
+}
 /* Пустая панель форматирования (над галереей, PDF, файлом — блоками без
    текста и без своих кнопок) — не показываем кружок без кнопок. */
 .bn-formatting-toolbar:empty {

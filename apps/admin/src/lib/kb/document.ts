@@ -5,7 +5,12 @@
 
 export type KbHeading = { id: string; level: number; text: string };
 
-type Inline = { type?: string; text?: string; content?: Inline[] | string };
+type Inline = {
+  type?: string;
+  text?: string;
+  content?: Inline[] | string;
+  props?: Record<string, unknown>;
+};
 type Block = {
   id?: string;
   type?: string;
@@ -18,8 +23,71 @@ function inlineText(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
   return (content as Inline[])
-    .map((c) => (typeof c === "string" ? c : (c.text ?? inlineText(c.content))))
+    .map((c) =>
+      typeof c === "string"
+        ? c
+        : c.type === "mention"
+          ? `@${String(c.props?.name ?? "")}`
+          : (c.text ?? inlineText(c.content)),
+    )
     .join("");
+}
+
+/** Строка документа для сравнения версий: вид блока, глубина, текст. */
+export type KbDocLine = { kind: string; depth: number; text: string };
+
+const KIND_LABEL: Record<string, string> = {
+  image: "Картинка",
+  video: "Видео",
+  audio: "Аудио",
+  file: "Файл",
+  pdf: "PDF",
+  gallery: "Картинки в ряд",
+};
+
+function cellText(cell: unknown): string {
+  if (Array.isArray(cell)) return inlineText(cell);
+  if (cell && typeof cell === "object" && "content" in cell) {
+    return inlineText((cell as { content: unknown }).content);
+  }
+  return "";
+}
+
+/**
+ * Документ построчно — для «Что изменилось» в версиях: абзац, заголовок,
+ * пункт списка — строка с текстом; таблица — строка на ряд («a | b»);
+ * файлы и картинки — «Файл: имя».
+ */
+export function documentLines(doc: unknown[] | null | undefined): KbDocLine[] {
+  const out: KbDocLine[] = [];
+  const walk = (blocks: Block[], depth: number) => {
+    for (const b of blocks) {
+      const kind = b.type ?? "paragraph";
+      const props = b.props ?? {};
+      const content = b.content as { type?: string; rows?: { cells: unknown[] }[] } | unknown;
+      if (content && typeof content === "object" && !Array.isArray(content)) {
+        const rows = (content as { rows?: { cells: unknown[] }[] }).rows ?? [];
+        for (const row of rows) {
+          out.push({ kind: "table", depth, text: row.cells.map(cellText).join(" | ") });
+        }
+      } else if (KIND_LABEL[kind]) {
+        const name =
+          kind === "gallery"
+            ? `${String(props.images ?? "[]").split('"url"').length - 1} шт.`
+            : String(props.name ?? props.caption ?? "");
+        out.push({ kind, depth, text: `${KIND_LABEL[kind]}${name ? `: ${name}` : ""}` });
+      } else {
+        const text = inlineText(b.content).trim();
+        if (kind !== "columns" && kind !== "column" && (text || kind !== "paragraph")) {
+          const mark = kind === "checkListItem" ? (props.checked ? "☑ " : "☐ ") : "";
+          out.push({ kind, depth, text: mark + text });
+        }
+      }
+      if (b.children?.length) walk(b.children, depth + 1);
+    }
+  };
+  walk((Array.isArray(doc) ? doc : []) as Block[], 0);
+  return out;
 }
 
 /** Заголовки документа по порядку (и во вложенных блоках) — оглавление. */
@@ -31,6 +99,19 @@ export function documentHeadings(doc: unknown[] | null | undefined): KbHeading[]
         const text = inlineText(b.content).trim();
         if (text) out.push({ id: b.id, level: Number(b.props?.level ?? 1), text });
       }
+      if (b.children?.length) walk(b.children);
+    }
+  };
+  walk((Array.isArray(doc) ? doc : []) as Block[]);
+  return out;
+}
+
+/** id пунктов чек-листа документа (и во вложенных блоках). */
+export function documentCheckItems(doc: unknown[] | null | undefined): string[] {
+  const out: string[] = [];
+  const walk = (blocks: Block[]) => {
+    for (const b of blocks) {
+      if (b.type === "checkListItem" && b.id) out.push(b.id);
       if (b.children?.length) walk(b.children);
     }
   };

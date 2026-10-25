@@ -52,7 +52,10 @@ import {
   ChevronsRight as ChevronsRightArt,
   Circle as CircleArt,
   ClipboardList as ClipboardListArt,
+  Clock as ClockArt,
   CloudOff as CloudOffArt,
+  Columns2 as Columns2Art,
+  Columns3 as Columns3Art,
   Copy as CopyArt,
   CreditCard as CreditCardArt,
   Database as DatabaseArt,
@@ -71,15 +74,18 @@ import {
   Hash as HashArt,
   Heading2 as Heading2Art,
   HelpCircleIcon as HelpCircleArt,
+  History as HistoryArt,
   ImageIcon as ImageIconArt,
   Images as ImagesArt,
   Info as InfoArt,
   Italic as ItalicArt,
+  LayoutTemplate as LayoutTemplateArt,
   Link as LinkArt,
   Link2 as Link2Art,
   List as ListArt,
   ListOrdered as ListOrderedArt,
   LoaderCircle as Loader2Art,
+  Lock as LockArt,
   LogIn as LogInArt,
   ArrowExpandIcon as MaximizeArt,
   MessageCircle as MessageCircleArt,
@@ -104,10 +110,12 @@ import {
   Search as SearchArt,
   SentIcon as SendArt,
   Shapes as ShapesArt,
+  ShieldCheck as ShieldCheckArt,
   ShoppingBag as ShoppingBagArt,
   SlidersHorizontal as SlidersHorizontalArt,
   Smartphone as SmartphoneArt,
   Square as SquareArt,
+  Star as StarArt,
   Ticket as TicketArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
@@ -172,7 +180,10 @@ export const ChevronsLeft = icon(ChevronsLeftArt, "ChevronsLeft");
 export const ChevronsRight = icon(ChevronsRightArt, "ChevronsRight");
 export const Circle = icon(CircleArt, "Circle");
 export const ClipboardList = icon(ClipboardListArt, "ClipboardList");
+export const Clock = icon(ClockArt, "Clock");
 export const CloudOff = icon(CloudOffArt, "CloudOff");
+export const Columns2 = icon(Columns2Art, "Columns2");
+export const Columns3 = icon(Columns3Art, "Columns3");
 export const Copy = icon(CopyArt, "Copy");
 export const CreditCard = icon(CreditCardArt, "CreditCard");
 export const Database = icon(DatabaseArt, "Database");
@@ -191,15 +202,18 @@ export const GripVertical = icon(GripVerticalArt, "GripVertical");
 export const Hash = icon(HashArt, "Hash");
 export const Heading2 = icon(Heading2Art, "Heading2");
 export const HelpCircle = icon(HelpCircleArt, "HelpCircle");
+export const History = icon(HistoryArt, "History");
 export const ImageIcon = icon(ImageIconArt, "ImageIcon");
 export const Images = icon(ImagesArt, "Images");
 export const Info = icon(InfoArt, "Info");
 export const Italic = icon(ItalicArt, "Italic");
+export const LayoutTemplate = icon(LayoutTemplateArt, "LayoutTemplate");
 export const Link = icon(LinkArt, "Link");
 export const Link2 = icon(Link2Art, "Link2");
 export const List = icon(ListArt, "List");
 export const ListOrdered = icon(ListOrderedArt, "ListOrdered");
 export const Loader2 = icon(Loader2Art, "Loader2");
+export const Lock = icon(LockArt, "Lock");
 export const LogIn = icon(LogInArt, "LogIn");
 export const Maximize = icon(MaximizeArt, "Maximize");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
@@ -224,10 +238,12 @@ export const Save = icon(SaveArt, "Save");
 export const Search = icon(SearchArt, "Search");
 export const Send = icon(SendArt, "Send");
 export const Shapes = icon(ShapesArt, "Shapes");
+export const ShieldCheck = icon(ShieldCheckArt, "ShieldCheck");
 export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
 export const SlidersHorizontal = icon(SlidersHorizontalArt, "SlidersHorizontal");
 export const Smartphone = icon(SmartphoneArt, "Smartphone");
 export const Square = icon(SquareArt, "Square");
+export const Star = icon(StarArt, "Star");
 export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");

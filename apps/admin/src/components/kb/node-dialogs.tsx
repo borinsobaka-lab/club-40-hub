@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Hash, Loader2 } from "lucide-react";
+import { Hash, LayoutTemplate, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { DocumentText, Folder, Notebook } from "@/components/nav-icons";
@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useKbTemplates } from "@/lib/kb/data";
 import { KB_SECTION_DEFAULT_ICON, KB_SECTION_ICONS, kbSectionIcon } from "@/lib/kb/icons";
 import { ancestorsOf, childrenOf, indexTree, isWithin } from "@/lib/kb/tree";
 import type { KbHeading } from "@/lib/kb/document";
@@ -47,6 +48,7 @@ function folderOptions(nodes: KbTreeNode[], skip?: string): { node: KbTreeNode; 
 }
 
 const ROOT = "__root__";
+const NO_TEMPLATE = "__none__";
 
 /**
  * Новая папка или статья (название и где создать), правка названия и
@@ -66,13 +68,23 @@ export function KbNodeTitleForm({
   /** null — новая. */
   node: KbTreeNode | null;
   /** Для новой: дерево базы и папка по умолчанию (null — верхний уровень). */
-  place?: { nodes: KbTreeNode[]; baseTitle: string; parentId: string | null };
+  place?: {
+    nodes: KbTreeNode[];
+    baseTitle: string;
+    parentId: string | null;
+    /** База — для выбора шаблона новой статьи. */
+    baseId?: string;
+    /** Шаблон, выбранный заранее (страница «Шаблоны»). */
+    templateId?: string;
+  };
   onSave: (
     title: string,
     description: string,
     parentId: string | null,
     /** Иконка раздела (ключ KB_SECTION_ICONS); null — обычная папка. */
     icon: string | null,
+    /** Шаблон новой статьи; null — пустая. */
+    templateId: string | null,
   ) => Promise<boolean | string | null>;
   onDone: () => void;
 }) {
@@ -81,6 +93,12 @@ export function KbNodeTitleForm({
   const [title, setTitle] = useState(node?.title ?? "");
   const [description, setDescription] = useState(node?.description ?? "");
   const [icon, setIcon] = useState(node?.icon ?? KB_SECTION_DEFAULT_ICON);
+  const [templateId, setTemplateId] = useState(place?.templateId ?? NO_TEMPLATE);
+  const { data: templates } = useKbTemplates(
+    place?.baseId ?? null,
+    !node && kind === "article" && !!place?.baseId,
+  );
+  const template = templates?.find((t) => t.id === templateId);
   const [saving, setSaving] = useState(false);
   const isFolder = kind === "folder";
   // Раздел — папка на верхнем уровне базы: новая — по «Где создать».
@@ -103,7 +121,8 @@ export function KbNodeTitleForm({
         : isFolder
           ? (node?.icon ?? null)
           : null;
-      if (await onSave(t, description.trim(), parentId, sectionIcon)) onDone();
+      const tpl = templateId === NO_TEMPLATE ? null : templateId;
+      if (await onSave(t, description.trim(), parentId, sectionIcon, tpl)) onDone();
     } finally {
       setSaving(false);
     }
@@ -166,6 +185,32 @@ export function KbNodeTitleForm({
                     })}
                   </SelectContent>
                 </Select>
+              </FormField>
+            )}
+            {!!templates?.length && (
+              <FormField
+                label="Шаблон"
+                tip="Статья начнётся с текста шаблона — дальше правьте как обычно. Шаблоны базы — «Шаблоны» внизу меню."
+              >
+                <Select value={templateId} onValueChange={setTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_TEMPLATE}>Пустая статья</SelectItem>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id} textValue={t.title}>
+                        <span className="flex items-center gap-2">
+                          <LayoutTemplate className="size-4 text-muted-foreground" />
+                          {t.title}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {template?.description && (
+                  <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
+                )}
               </FormField>
             )}
             <FormField label="Название" required>

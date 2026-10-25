@@ -55,6 +55,8 @@ import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_a
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
 import { Route as AuthenticatedKbBaseIdIndexRouteImport } from './routes/_authenticated/kb/$baseId/index'
+import { Route as AuthenticatedKbBaseIdTrashRouteImport } from './routes/_authenticated/kb/$baseId/trash'
+import { Route as AuthenticatedKbBaseIdTemplatesRouteImport } from './routes/_authenticated/kb/$baseId/templates'
 import { Route as AuthenticatedKbBaseIdReportRouteImport } from './routes/_authenticated/kb/$baseId/report'
 import { Route as AuthenticatedKbBaseIdNodeIdRouteImport } from './routes/_authenticated/kb/$baseId/$nodeId'
 
@@ -304,6 +306,18 @@ const AuthenticatedKbBaseIdIndexRoute =
     path: '/kb/$baseId/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedKbBaseIdTrashRoute =
+  AuthenticatedKbBaseIdTrashRouteImport.update({
+    id: '/kb/$baseId/trash',
+    path: '/kb/$baseId/trash',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedKbBaseIdTemplatesRoute =
+  AuthenticatedKbBaseIdTemplatesRouteImport.update({
+    id: '/kb/$baseId/templates',
+    path: '/kb/$baseId/templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedKbBaseIdReportRoute =
   AuthenticatedKbBaseIdReportRouteImport.update({
     id: '/kb/$baseId/report',
@@ -364,6 +378,8 @@ export interface FileRoutesByFullPath {
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
   '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
   '/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
+  '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -413,6 +429,8 @@ export interface FileRoutesByTo {
   '/scripts': typeof AuthenticatedScriptsIndexRoute
   '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
   '/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
+  '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/kb/$baseId': typeof AuthenticatedKbBaseIdIndexRoute
 }
 export interface FileRoutesById {
@@ -464,6 +482,8 @@ export interface FileRoutesById {
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
   '/_authenticated/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
   '/_authenticated/kb/$baseId/report': typeof AuthenticatedKbBaseIdReportRoute
+  '/_authenticated/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
+  '/_authenticated/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/_authenticated/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -515,6 +535,8 @@ export interface FileRouteTypes {
     | '/scripts/'
     | '/kb/$baseId/$nodeId'
     | '/kb/$baseId/report'
+    | '/kb/$baseId/templates'
+    | '/kb/$baseId/trash'
     | '/kb/$baseId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -564,6 +586,8 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/kb/$baseId/$nodeId'
     | '/kb/$baseId/report'
+    | '/kb/$baseId/templates'
+    | '/kb/$baseId/trash'
     | '/kb/$baseId'
   id:
     | '__root__'
@@ -614,6 +638,8 @@ export interface FileRouteTypes {
     | '/_authenticated/scripts/'
     | '/_authenticated/kb/$baseId/$nodeId'
     | '/_authenticated/kb/$baseId/report'
+    | '/_authenticated/kb/$baseId/templates'
+    | '/_authenticated/kb/$baseId/trash'
     | '/_authenticated/kb/$baseId/'
   fileRoutesById: FileRoutesById
 }
@@ -949,6 +975,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKbBaseIdIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kb/$baseId/trash': {
+      id: '/_authenticated/kb/$baseId/trash'
+      path: '/kb/$baseId/trash'
+      fullPath: '/kb/$baseId/trash'
+      preLoaderRoute: typeof AuthenticatedKbBaseIdTrashRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kb/$baseId/templates': {
+      id: '/_authenticated/kb/$baseId/templates'
+      path: '/kb/$baseId/templates'
+      fullPath: '/kb/$baseId/templates'
+      preLoaderRoute: typeof AuthenticatedKbBaseIdTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kb/$baseId/report': {
       id: '/_authenticated/kb/$baseId/report'
       path: '/kb/$baseId/report'
@@ -1009,6 +1049,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
   AuthenticatedKbBaseIdNodeIdRoute: typeof AuthenticatedKbBaseIdNodeIdRoute
   AuthenticatedKbBaseIdReportRoute: typeof AuthenticatedKbBaseIdReportRoute
+  AuthenticatedKbBaseIdTemplatesRoute: typeof AuthenticatedKbBaseIdTemplatesRoute
+  AuthenticatedKbBaseIdTrashRoute: typeof AuthenticatedKbBaseIdTrashRoute
   AuthenticatedKbBaseIdIndexRoute: typeof AuthenticatedKbBaseIdIndexRoute
 }
 
@@ -1056,6 +1098,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,
   AuthenticatedKbBaseIdNodeIdRoute: AuthenticatedKbBaseIdNodeIdRoute,
   AuthenticatedKbBaseIdReportRoute: AuthenticatedKbBaseIdReportRoute,
+  AuthenticatedKbBaseIdTemplatesRoute: AuthenticatedKbBaseIdTemplatesRoute,
+  AuthenticatedKbBaseIdTrashRoute: AuthenticatedKbBaseIdTrashRoute,
   AuthenticatedKbBaseIdIndexRoute: AuthenticatedKbBaseIdIndexRoute,
 }
 

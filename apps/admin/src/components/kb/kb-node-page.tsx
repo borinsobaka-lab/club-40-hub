@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -6,15 +6,20 @@ import {
   ArchiveRestore,
   Check,
   ChevronRight,
+  Clock,
   CloudOff,
   Copy,
   Ellipsis,
   FilePlus,
   FolderInput,
   FolderPlus,
+  History,
+  LayoutTemplate,
   Loader2,
   Pencil,
   Send,
+  ShieldCheck,
+  Star,
   Trash2,
   Undo2,
 } from "lucide-react";
@@ -24,6 +29,10 @@ import { AdminShell } from "@/components/admin-shell";
 import { DocumentText, Folder } from "@/components/nav-icons";
 import { KbArticleBodySkeleton, KbFolderBodySkeleton } from "@/components/page-skeletons";
 import { KbBaseForm } from "@/components/kb/base-dialog";
+import { KbProtectForm } from "@/components/kb/protect-dialog";
+import { KbProtectedArea } from "@/components/kb/protected-area";
+import { KbSaveTemplateForm } from "@/components/kb/template-dialogs";
+import { KbVersionsForm } from "@/components/kb/versions-dialog";
 import {
   KbArticlePickerForm,
   KbHeadingPickerForm,
@@ -40,19 +49,25 @@ import { InfoNote } from "@/components/ui/form-field";
 import { ListItemButton } from "@/components/ui/list-item-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAdminAccess } from "@/hooks/use-admin-access";
+import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { canEditKb } from "@/lib/kb/access";
 import {
   invalidateKb,
+  KB_FAVORITES_KEY,
   kbBasesQuery,
   kbErrorText,
   useKbAuthors,
+  useKbChecks,
   useKbDraft,
   useKbDrafts,
+  useKbFavorites,
   useKbNode,
+  useKbRecentReads,
   useKbTree,
+  type KbRevision,
 } from "@/lib/kb/data";
-import { documentIsEmpty, type KbHeading } from "@/lib/kb/document";
+import { documentCheckItems, documentIsEmpty, type KbHeading } from "@/lib/kb/document";
 import { kbIcon, kbSectionIcon } from "@/lib/kb/icons";
 import {
   ancestorsOf,
@@ -138,6 +153,7 @@ export function KbNodePage({
         key={node.id}
         baseId={baseId}
         baseTitle={title}
+        baseProtects={!!base?.protect_content}
         node={node}
         nodes={nodes}
         index={index}
@@ -186,6 +202,110 @@ function ArticleCounter({
   const hidden = canEdit ? articleCount(index, folderId) - visible : 0;
   const tail = hidden > 0 ? ` + ${hidden} не опубл.` : "";
   return <>{long ? `Опубликовано статей: ${visible}${tail}` : `${visible} ст.${tail}`}</>;
+}
+
+/**
+ * Главная базы (№4–5): своё избранное, недавно открытые и недавно
+ * обновлённые статьи — над списком разделов. Пустые блоки не показываются.
+ */
+function BaseHomeLists({ baseId, index }: { baseId: string; index: KbTreeIndex }) {
+  const { data: me } = useStaffProfile();
+  const { data: favorites } = useKbFavorites(baseId);
+  const { data: reads } = useKbRecentReads(baseId, me?.id);
+  const pick = (ids: string[]) =>
+    ids
+      .map((id) => index.byId.get(id))
+      .filter((n): n is KbTreeNode => !!n && n.status !== "archived")
+      .slice(0, 5);
+  const fav = pick(favorites ?? []);
+  const recent = pick((reads ?? []).map((r) => r.node_id));
+  const updated = [...index.byId.values()]
+    .filter((n) => n.kind === "article" && n.reader_visible && n.published_at)
+    .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
+    .slice(0, 5);
+  const blocks = [
+    {
+      title: "Избранное",
+      icon: Star,
+      nodes: fav,
+      empty: "Нажмите ☆ у статьи — она появится здесь.",
+    },
+    { title: "Недавно открывали", icon: History, nodes: recent, empty: "" },
+    { title: "Обновлено недавно", icon: Clock, nodes: updated, empty: "" },
+  ].filter((b) => b.nodes.length > 0 || b.empty);
+  if (blocks.every((b) => b.nodes.length === 0) && !updated.length) return null;
+  return (
+    <div className="mt-3 grid gap-3 md:grid-cols-3">
+      {blocks.map((b) => (
+        <section key={b.title} className="min-w-0 rounded-lg border bg-background p-3">
+          <h3 className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold">
+            <b.icon className="size-4 text-muted-foreground" />
+            {b.title}
+          </h3>
+          {b.nodes.length === 0 ? (
+            <p className="px-1 text-xs text-muted-foreground">{b.empty}</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {b.nodes.map((n) => (
+                <li key={n.id}>
+                  <Link
+                    to="/kb/$baseId/$nodeId"
+                    params={{ baseId, nodeId: n.id }}
+                    className="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-muted/60"
+                  >
+                    {n.kind === "folder" ? (
+                      <ItemFolderIcon node={n} />
+                    ) : (
+                      <DocumentText className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="min-w-0 truncate">{n.title || "Без названия"}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/** Звёздочка «В избранное» — своё избранное читателя (kb_favorites). */
+function FavoriteButton({ baseId, nodeId }: { baseId: string; nodeId: string }) {
+  const qc = useQueryClient();
+  const { data: favorites } = useKbFavorites(baseId);
+  const on = !!favorites?.includes(nodeId);
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const { error } = on
+        ? await supabase.from("kb_favorites").delete().eq("node_id", nodeId)
+        : await supabase.from("kb_favorites").insert({ node_id: nodeId, base_id: baseId });
+      if (error) {
+        toast.error(kbErrorText(error.message));
+        return;
+      }
+      await qc.invalidateQueries({ queryKey: [KB_FAVORITES_KEY, baseId] });
+      toast.success(on ? "Убрано из избранного" : "В избранном — на главной базы");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="shrink-0"
+      disabled={busy || !favorites}
+      aria-pressed={on}
+      aria-label={on ? "Убрать из избранного" : "В избранное"}
+      title={on ? "Убрать из избранного" : "В избранное"}
+      onClick={() => void toggle()}
+    >
+      <Star className={cn(on && "fill-amber-400 text-amber-500")} />
+    </Button>
+  );
 }
 
 function Crumbs({
@@ -337,6 +457,8 @@ function FolderView({
           )}
         </header>
 
+        {!folder && <BaseHomeLists baseId={baseId} index={index} />}
+
         {items.length === 0 ? (
           <div className="mt-3 rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
             {canEdit
@@ -393,8 +515,8 @@ function FolderView({
             <KbNodeTitleForm
               kind={dialog}
               node={null}
-              place={{ nodes, baseTitle, parentId: folder?.id ?? null }}
-              onSave={(t, d, p, i) => actions.create(dialog, p, t, d, i)}
+              place={{ nodes, baseTitle, parentId: folder?.id ?? null, baseId }}
+              onSave={(t, d, p, i, tpl) => actions.create(dialog, p, t, d, i, tpl)}
               onDone={() => setDialog(null)}
             />
           )}
@@ -434,6 +556,9 @@ function NodeMenu({
   onRename,
   onMove,
   onDiscardDraft,
+  onVersions,
+  onSaveTemplate,
+  onProtect,
 }: {
   baseId: string;
   node: KbTreeNode;
@@ -442,6 +567,9 @@ function NodeMenu({
   onRename: () => void;
   onMove: () => void;
   onDiscardDraft?: () => void;
+  onVersions?: () => void;
+  onSaveTemplate?: () => void;
+  onProtect?: () => void;
 }) {
   const actions = useKbActions(baseId);
   const navigate = useNavigate();
@@ -471,7 +599,10 @@ function NodeMenu({
     const ok = await confirm({
       title: isFolder ? `Удалить папку «${node.title}»?` : `Удалить статью «${node.title}»?`,
       description:
-        "Удаляется насовсем, вместе с историей и отметками о прочтении. Если может пригодиться — лучше в архив.",
+        isFolder && hasChildren
+          ? "Папка уйдёт в корзину вместе со всем, что в ней. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда."
+          : "Статья уйдёт в корзину. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда.",
+      confirmLabel: "В корзину",
     });
     if (ok && (await actions.remove(node))) {
       await navigate(
@@ -502,6 +633,9 @@ function NodeMenu({
           )}
           {item("Переместить…", FolderInput, onMove)}
           {!isFolder && item("Сделать копию", Copy, () => actions.copy(node.id))}
+          {onVersions && item("Версии…", History, onVersions)}
+          {onSaveTemplate && item("Сохранить как шаблон…", LayoutTemplate, onSaveTemplate)}
+          {onProtect && item("Защита содержимого…", ShieldCheck, onProtect)}
           {hasDraft &&
             onDiscardDraft &&
             item("Отменить неопубликованные правки", Undo2, onDiscardDraft)}
@@ -515,7 +649,7 @@ function NodeMenu({
                 actions.setStatus(node, isFolder ? "published" : "draft"),
               )
             : item("В архив", Archive, () => actions.setStatus(node, "archived"))}
-          {node.status !== "published" && !hasChildren && item("Удалить", Trash2, remove, true)}
+          {item("Удалить", Trash2, remove, true)}
         </PopoverContent>
       </Popover>
       {confirmDialog}
@@ -528,6 +662,7 @@ function NodeMenu({
 function ArticleView({
   baseId,
   baseTitle,
+  baseProtects,
   node,
   nodes,
   index,
@@ -536,6 +671,7 @@ function ArticleView({
 }: {
   baseId: string;
   baseTitle: string;
+  baseProtects: boolean;
   node: KbTreeNode;
   nodes: KbTreeNode[];
   index: KbTreeIndex;
@@ -543,6 +679,7 @@ function ArticleView({
   initialEdit: boolean;
 }) {
   const qc = useQueryClient();
+  const protectOn = node.protect === "on" || (node.protect === "inherit" && baseProtects);
   const navigate = useNavigate();
   const actions = useKbActions(baseId);
   const { confirm, confirmDialog } = useConfirm();
@@ -563,7 +700,9 @@ function ArticleView({
     setEditing(true);
   };
   const [headings, setHeadings] = useState<KbHeading[]>([]);
-  const [dialog, setDialog] = useState<"rename" | "move" | "link" | "heading" | null>(null);
+  const [dialog, setDialog] = useState<
+    "rename" | "move" | "link" | "heading" | "versions" | "template" | "protect" | null
+  >(null);
   const [pickHeadings, setPickHeadings] = useState<KbHeading[]>([]);
   const [publishing, setPublishing] = useState(false);
   const linkResolver = useRef<((link: KbArticleLink | null) => void) | null>(null);
@@ -590,6 +729,34 @@ function ArticleView({
   // Черновик статьи-черновика редактор видит и без режима правки — это и есть статья.
   const showDraft = canEdit && !!draft && (editing || node.status !== "published");
   const doc = showDraft ? draft!.content : published;
+
+  // Чек-лист читателя: свои отметки (kb_checks) — сразу на месте, база вслед.
+  const { data: checked } = useKbChecks(node.id);
+  const checkItems = useMemo(() => documentCheckItems(doc), [doc]);
+  const doneCount = checkItems.filter((id) => checked?.has(id)).length;
+  const toggleCheck = useCallback(
+    async (blockId: string) => {
+      const on = !qc.getQueryData<Set<string>>(["kb_checks", node.id])?.has(blockId);
+      qc.setQueryData<Set<string>>(["kb_checks", node.id], (prev) => {
+        const next = new Set(prev);
+        if (on) next.add(blockId);
+        else next.delete(blockId);
+        return next;
+      });
+      const { error } = on
+        ? await supabase
+            .from("kb_checks")
+            .insert({ node_id: node.id, base_id: baseId, block_id: blockId })
+        : await supabase.from("kb_checks").delete().eq("node_id", node.id).eq("block_id", blockId);
+      if (error) toast.error(kbErrorText(error.message));
+      await qc.invalidateQueries({ queryKey: ["kb_checks", node.id] });
+    },
+    [qc, node.id, baseId],
+  );
+  const checks = useMemo(
+    () => (checked ? { checked, onToggle: (id: string) => void toggleCheck(id) } : undefined),
+    [checked, toggleCheck],
+  );
 
   const discardDraft = async () => {
     const ok = await confirm({
@@ -656,6 +823,35 @@ function ArticleView({
     }
   };
 
+  // Вернуть версию: её текст — в черновик правок (и прежнее название), дальше
+  // редактор проверяет и публикует.
+  const restoreVersion = async (revision: KbRevision, content: unknown[]) => {
+    const ok = await confirm({
+      title: "Вернуть эту версию?",
+      description: draft
+        ? `Текст версии от ${formatDateTime(revision.published_at)} заменит неопубликованные правки — они пропадут. Читатели увидят его после «Опубликовать».`
+        : `Текст версии от ${formatDateTime(revision.published_at)} встанет в черновик правок. Читатели увидят его после «Опубликовать».`,
+      destructive: !!draft,
+      confirmLabel: "Вернуть",
+    });
+    if (!ok) return;
+    const { error } = await supabase.rpc("kb_save_draft", {
+      p_node: node.id,
+      p_content: content,
+      p_expected: draft?.updated_at ?? null,
+    });
+    if (error) {
+      toast.error(kbErrorText(error.message));
+      return;
+    }
+    if (revision.title && revision.title !== node.title)
+      await actions.update(node.id, { title: revision.title });
+    await invalidateKb(qc, baseId);
+    setDialog(null);
+    toast.success("Версия в черновике — проверьте и опубликуйте");
+    void startEdit();
+  };
+
   const pickArticle = () =>
     new Promise<KbArticleLink | null>((resolve) => {
       linkResolver.current = resolve;
@@ -692,7 +888,11 @@ function ArticleView({
               />
             )}
             <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={node.id} />
-            <div className="rounded-lg border bg-background px-5 py-5 sm:px-10 sm:py-8">
+            <KbProtectedArea
+              enabled={protectOn && !editing}
+              canCopy={canEdit}
+              className="rounded-lg border bg-background px-5 py-5 sm:px-10 sm:py-8"
+            >
               <header className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   {editing ? (
@@ -707,6 +907,20 @@ function ArticleView({
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                     {canEdit && <KbStatusBadge status={node.status} />}
+                    {!editing && checkItems.length > 0 && (
+                      <span title="Отметки чек-листа — ваши, их видите только вы">
+                        Чек-лист: {doneCount} из {checkItems.length}
+                      </span>
+                    )}
+                    {protectOn && (
+                      <span
+                        className="inline-flex items-center gap-1"
+                        title="Копирование и печать закрыты, поверх текста — водяной знак с почтой и датой"
+                      >
+                        <ShieldCheck className="size-3.5" />
+                        Защищено
+                      </span>
+                    )}
                     {canEdit && hasDraft && node.status === "published" && <KbDraftBadge />}
                     {node.published_at ? (
                       <span>
@@ -718,6 +932,7 @@ function ArticleView({
                     )}
                   </div>
                 </div>
+                <FavoriteButton baseId={baseId} nodeId={node.id} />
                 {canEdit && (
                   <NodeMenu
                     baseId={baseId}
@@ -726,6 +941,9 @@ function ArticleView({
                     onRename={() => setDialog("rename")}
                     onMove={() => setDialog("move")}
                     onDiscardDraft={discardDraft}
+                    onVersions={() => setDialog("versions")}
+                    onSaveTemplate={() => setDialog("template")}
+                    onProtect={() => setDialog("protect")}
                   />
                 )}
               </header>
@@ -816,11 +1034,12 @@ function ArticleView({
                       onHeadings={setHeadings}
                       onPickArticle={pickArticle}
                       onPickHeading={pickHeading}
+                      checks={editing ? undefined : checks}
                     />
                   </Suspense>
                 )}
               </div>
-            </div>
+            </KbProtectedArea>
           </article>
           <Toc headings={headings} />
         </div>
@@ -837,7 +1056,7 @@ function ArticleView({
           setDialog(null);
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className={cn("max-w-lg", dialog === "versions" && "max-w-4xl")}>
           {dialog === "rename" && (
             <KbNodeTitleForm
               kind="article"
@@ -852,6 +1071,31 @@ function ArticleView({
               nodes={nodes}
               baseTitle={baseTitle}
               onMove={(p, pos) => actions.move(node.id, p, pos)}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "versions" && (
+            <KbVersionsForm
+              baseId={baseId}
+              node={node}
+              authorName={name}
+              canRestore={!editing}
+              onRestore={restoreVersion}
+            />
+          )}
+          {dialog === "template" && (
+            <KbSaveTemplateForm
+              baseId={baseId}
+              content={(draft?.content ?? published ?? []) as unknown[]}
+              defaultTitle={node.title}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "protect" && (
+            <KbProtectForm
+              value={node.protect}
+              baseProtects={baseProtects}
+              onSave={(protect) => actions.update(node.id, { protect })}
               onDone={() => setDialog(null)}
             />
           )}

@@ -33,6 +33,8 @@ const TIPS = {
   showInRail:
     "База — отдельным пунктом в левой рейке. Выключено — база открывается из «Знаний» внизу рейки.",
   description: "Видно в списке баз знаний — для чего база и кому она.",
+  protect:
+    "Во всех статьях базы читатели не смогут скопировать текст, сохранить картинку и распечатать; поверх — водяной знак с почтой и датой. У отдельной статьи можно включить или выключить в её меню «⋯».",
 };
 
 /**
@@ -46,6 +48,7 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
   const [icon, setIcon] = useState(base?.icon ?? KB_DEFAULT_ICON);
   const [description, setDescription] = useState(base?.description ?? "");
   const [showInRail, setShowInRail] = useState(base?.show_in_rail ?? true);
+  const [protect, setProtect] = useState(base?.protect_content ?? false);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -63,6 +66,7 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
         icon,
         description: description.trim(),
         show_in_rail: showInRail,
+        protect_content: protect,
       };
       const { error } = base
         ? await supabase.from("kb_bases").update(row).eq("id", base.id)
@@ -138,6 +142,12 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
               tip={TIPS.showInRail}
               checked={showInRail}
               onCheckedChange={setShowInRail}
+            />
+            <SwitchRow
+              title="Защита содержимого"
+              tip={TIPS.protect}
+              checked={protect}
+              onCheckedChange={setProtect}
             />
           </div>
         </DialogBody>
