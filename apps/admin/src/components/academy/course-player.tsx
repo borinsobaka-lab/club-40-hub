@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Loader2, Paperclip, X } from "lucide-react";
@@ -45,13 +45,29 @@ const KbDocument = lazy(() =>
  * пройденного, если курс «по порядку»), справа — урок или тест. Команда
  * (создатель, проверяющий) видит курс без записи хода — «Просмотр».
  */
-export function CoursePlayer({ courseId, stepId }: { courseId: string; stepId?: string }) {
+export function CoursePlayer({
+  courseId,
+  stepId,
+  preview,
+}: {
+  courseId: string;
+  stepId?: string;
+  /** «Как видит ученик» из конструктора: без записи хода, даже если курс назначен и вам. */
+  preview?: boolean;
+}) {
   const navigate = useNavigate();
-  const { data: view, isLoading, error } = useQuery(acadCourseViewQuery(courseId));
+  const { data: loaded, isLoading, error } = useQuery(acadCourseViewQuery(courseId));
 
   if (isLoading) return null;
-  if (error || !view)
+  if (error || !loaded)
     return <InfoNote variant="warning">{acadError(error ?? "Курс не найден")}</InfoNote>;
+  const view: AcadCourseView = preview
+    ? {
+        ...loaded,
+        learner: false,
+        steps: loaded.steps.map((s) => ({ ...s, state: "todo", locked: false })),
+      }
+    : loaded;
 
   // Открытый шаг: из адреса, иначе первый непройденный и открытый.
   const current =
@@ -60,17 +76,22 @@ export function CoursePlayer({ courseId, stepId }: { courseId: string; stepId?: 
     view.steps[0];
   const go = (id: string) =>
     void navigate({
-      to: "/academy/my/$courseId",
+      to: preview ? "/academy/courses/$courseId/preview" : "/academy/my/$courseId",
       params: { courseId },
       search: { step: id },
       replace: true,
     });
   const index = current ? view.steps.findIndex((s) => s.id === current.id) : -1;
   const next = index >= 0 ? view.steps[index + 1] : undefined;
+  const prev = index > 0 ? view.steps[index - 1] : undefined;
+  const nav = {
+    onPrev: prev ? () => go(prev.id) : undefined,
+    onNext: next ? () => go(next.id) : undefined,
+  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <CourseHeader view={view} />
+      <CourseHeader view={view} preview={!!preview} />
       {view.steps.length === 0 ? (
         <InfoNote variant="empty">В курсе пока нет уроков.</InfoNote>
       ) : (
@@ -78,15 +99,19 @@ export function CoursePlayer({ courseId, stepId }: { courseId: string; stepId?: 
           <StepList steps={view.steps} currentId={current?.id} onSelect={go} />
           <div className="min-w-0 flex-1 rounded-lg border bg-background p-4 sm:p-6">
             {current?.locked ? (
-              <InfoNote variant="muted">
-                Шаг откроется, когда пройдёте предыдущие — курс проходится по порядку.
-              </InfoNote>
+              <div className="space-y-4">
+                <InfoNote variant="muted">
+                  Шаг откроется, когда пройдёте предыдущие — курс проходится по порядку.
+                </InfoNote>
+                <StepNav onPrev={nav.onPrev} />
+              </div>
             ) : current?.kind === "lesson" ? (
               <LessonView
                 key={current.id}
                 step={current}
                 learner={view.learner}
-                onNext={next ? () => go(next.id) : undefined}
+                onPrev={nav.onPrev}
+                onNext={nav.onNext}
               />
             ) : current ? (
               <QuizView
@@ -94,6 +119,8 @@ export function CoursePlayer({ courseId, stepId }: { courseId: string; stepId?: 
                 courseId={courseId}
                 step={current}
                 learner={view.learner}
+                onPrev={nav.onPrev}
+                onNext={next && !next.locked ? nav.onNext : undefined}
               />
             ) : null}
           </div>
@@ -103,7 +130,37 @@ export function CoursePlayer({ courseId, stepId }: { courseId: string; stepId?: 
   );
 }
 
-function CourseHeader({ view }: { view: AcadCourseView }) {
+/** «Назад» к прошлому шагу и, если передан, «Дальше» — внизу шага. */
+function StepNav({
+  onPrev,
+  onNext,
+  children,
+}: {
+  onPrev?: () => void;
+  onNext?: () => void;
+  children?: ReactNode;
+}) {
+  if (!onPrev && !onNext && !children) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+      {onPrev && (
+        <Button variant="ghost" onClick={onPrev}>
+          <ArrowLeft /> Назад
+        </Button>
+      )}
+      <div className="ml-auto flex flex-wrap gap-2">
+        {children}
+        {onNext && (
+          <Button variant="outline" onClick={onNext}>
+            Дальше <ArrowRight />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CourseHeader({ view, preview }: { view: AcadCourseView; preview: boolean }) {
   const done = view.steps.filter((s) => s.state === "done" || s.state === "passed").length;
   const due = view.completed_at ? null : dueLabel(view.due_date, todayISO());
   return (
@@ -113,14 +170,24 @@ function CourseHeader({ view }: { view: AcadCourseView }) {
         className="aspect-[16/9] w-full shrink-0 rounded-md sm:w-56"
       />
       <div className="min-w-0 flex-1 space-y-2">
-        <Link
-          to={view.learner ? "/academy" : "/academy/courses"}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-brand-on-light hover:underline"
-        >
-          <ArrowLeft className="size-3.5" />
-          {view.learner ? "Мои курсы" : "Курсы"}
-          {view.course.folder_title ? ` · ${view.course.folder_title}` : ""}
-        </Link>
+        {preview ? (
+          <Link
+            to="/academy/courses/$courseId"
+            params={{ courseId: view.course.id }}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-on-light hover:underline"
+          >
+            <ArrowLeft className="size-3.5" /> В конструктор курса
+          </Link>
+        ) : (
+          <Link
+            to={view.learner ? "/academy" : "/academy/courses"}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-on-light hover:underline"
+          >
+            <ArrowLeft className="size-3.5" />
+            {view.learner ? "Мои курсы" : "Курсы"}
+            {view.course.folder_title ? ` · ${view.course.folder_title}` : ""}
+          </Link>
+        )}
         <h2 className="text-xl font-semibold leading-tight">{view.course.title}</h2>
         {view.course.description && (
           <p className="text-sm whitespace-pre-line text-muted-foreground">
@@ -195,10 +262,12 @@ function StepList({
 function LessonView({
   step,
   learner,
+  onPrev,
   onNext,
 }: {
   step: AcadViewStep;
   learner: boolean;
+  onPrev?: () => void;
   onNext?: () => void;
 }) {
   const qc = useQueryClient();
@@ -222,7 +291,8 @@ function LessonView({
   return (
     <article className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold">{step.title}</h3>
+        {/* Как название статьи базы знаний — крупнее заголовков внутри текста. */}
+        <h3 className="text-3xl leading-tight font-semibold break-words">{step.title}</h3>
         {learner && step.state === "done" && (
           <span className="text-xs font-medium text-emerald-700">Урок пройден</span>
         )}
@@ -240,18 +310,16 @@ function LessonView({
           </Suspense>
         </div>
       )}
-      <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
-        {learner && step.state !== "done" ? (
+      {learner && step.state !== "done" ? (
+        <StepNav onPrev={onPrev}>
           <Button onClick={() => void complete()} disabled={saving || isLoading}>
             {saving && <Loader2 className="animate-spin" />}
             Урок пройден{onNext ? " — дальше" : ""}
           </Button>
-        ) : onNext ? (
-          <Button variant="outline" onClick={onNext}>
-            Дальше <ArrowRight />
-          </Button>
-        ) : null}
-      </div>
+        </StepNav>
+      ) : (
+        <StepNav onPrev={onPrev} onNext={onNext} />
+      )}
     </article>
   );
 }
@@ -260,10 +328,14 @@ function QuizView({
   courseId,
   step,
   learner,
+  onPrev,
+  onNext,
 }: {
   courseId: string;
   step: AcadViewStep;
   learner: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   const [started, setStarted] = useState(!learner);
   const attemptLink = step.last_attempt_id ? (
@@ -277,7 +349,7 @@ function QuizView({
   if (learner && !started) {
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">{step.title}</h3>
+        <h3 className="text-3xl leading-tight font-semibold break-words">{step.title}</h3>
         <p className="text-sm text-muted-foreground">
           {step.questions} {plural(step.questions, ["вопрос", "вопроса", "вопросов"])} · сдан от{" "}
           {step.pass_percent}% верных
@@ -306,6 +378,8 @@ function QuizView({
           )}
           {attemptLink}
         </div>
+        {/* «Дальше» — когда следующий шаг открыт (тест его не держит). */}
+        <StepNav onPrev={onPrev} onNext={onNext} />
       </div>
     );
   }
@@ -315,6 +389,8 @@ function QuizView({
       step={step}
       learner={learner}
       onCancel={() => setStarted(false)}
+      onPrev={onPrev}
+      onNext={onNext}
     />
   );
 }
@@ -324,11 +400,15 @@ function QuizForm({
   step,
   learner,
   onCancel,
+  onPrev,
+  onNext,
 }: {
   courseId: string;
   step: AcadViewStep;
   learner: boolean;
   onCancel: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -373,8 +453,8 @@ function QuizForm({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-lg font-semibold">{step.title}</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="text-3xl leading-tight font-semibold break-words">{step.title}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           {quiz.questions.length < quiz.total
             ? `Пересдача: ${quiz.questions.length} из ${quiz.total} — только вопросы с ошибками`
             : `${quiz.total} ${plural(quiz.total, ["вопрос", "вопроса", "вопросов"])}`}{" "}
@@ -413,13 +493,13 @@ function QuizForm({
         </div>
       )}
       {!learner && (
-        <div className="flex justify-end border-t pt-4">
-          <Button asChild variant="outline">
-            <Link to="/academy/courses/$courseId" params={{ courseId }}>
-              В конструктор курса
+        <StepNav onPrev={onPrev} onNext={onNext}>
+          <Button asChild variant="ghost">
+            <Link to="/academy/courses/$courseId/$stepId" params={{ courseId, stepId: step.id }}>
+              Править вопросы
             </Link>
           </Button>
-        </div>
+        </StepNav>
       )}
     </div>
   );
@@ -531,6 +611,17 @@ function OpenAnswer({
         value={answer?.text ?? ""}
         onChange={(e) => onChange({ text: e.target.value })}
       />
+      {question.allow_file && disabled && (
+        // Просмотр: кнопка как у ученика, но без загрузки.
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Button variant="outline" size="sm" disabled>
+            <Paperclip /> Приложить файл
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            до {formatFileSize(50 * 1024 * 1024)}
+          </span>
+        </div>
+      )}
       {question.allow_file && !disabled && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {fileName ? (

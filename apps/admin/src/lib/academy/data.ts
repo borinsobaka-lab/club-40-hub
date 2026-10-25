@@ -66,7 +66,7 @@ export const acadFoldersQuery = queryOptions({
 });
 
 const COURSE_COLUMNS =
-  "id, folder_id, title, description, cover, status, sequential, pass_percent, sort_order, created_at, updated_at, published_at";
+  "id, folder_id, title, description, cover, status, sequential, pass_percent, default_due_days, sort_order, created_at, updated_at, published_at";
 
 export const acadCoursesQuery = queryOptions({
   queryKey: [ACAD_KEY, "courses"],
@@ -130,7 +130,9 @@ export function acadQuestionsQuery(courseId: string) {
       unwrap<AcadQuestion[]>(
         supabase
           .from("acad_questions")
-          .select("id, step_id, sort_order, kind, text, options, points, allow_file, explanation")
+          .select(
+            "id, step_id, sort_order, kind, text, options, points, allow_file, explanation, review_notes",
+          )
           .eq("course_id", courseId)
           .order("sort_order")
           .order("created_at"),
@@ -263,3 +265,21 @@ export function acadPersonQuery(userId: string) {
 export const acadCourseFolder = (courseId: string) => `academy/${courseId}`;
 /** Папка файлов к ответам ученика. */
 export const acadAnswersFolder = (userId: string) => `academy/answers/${userId}`;
+
+/**
+ * Эталон и критерии свободных ответов — проверяющему (команда читает
+ * acad_questions под RLS; ученику ни таблица, ни заметки не уходят).
+ */
+export function acadReviewNotesQuery(questionIds: string[]) {
+  return queryOptions({
+    queryKey: [ACAD_KEY, "review-notes", questionIds.join(",")],
+    queryFn: async () => {
+      const rows = await unwrap<{ id: string; review_notes: string }[]>(
+        supabase.from("acad_questions").select("id, review_notes").in("id", questionIds),
+      );
+      return new Map(rows.filter((r) => r.review_notes).map((r) => [r.id, r.review_notes]));
+    },
+    enabled: questionIds.length > 0,
+    meta: { errorMessage: "Не удалось загрузить критерии проверки" },
+  });
+}

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { PublishedNote } from "@/components/academy/parts";
 import { AcadQuestionForm } from "@/components/academy/question-form";
 import { useConfirm } from "@/components/confirm-dialog";
 import { DropIndicator } from "@/components/kb/drop-indicator";
@@ -32,7 +33,13 @@ import {
   acadStepsQuery,
   invalidateAcademy,
 } from "@/lib/academy/data";
-import { acadError, plural, QUESTION_KIND_LABEL, quizzesToRecheck } from "@/lib/academy/logic";
+import {
+  acadError,
+  kbLinkCount,
+  plural,
+  QUESTION_KIND_LABEL,
+  quizzesToRecheck,
+} from "@/lib/academy/logic";
 import type { AcadCourse, AcadQuestion, AcadStep } from "@/lib/academy/types";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -49,7 +56,16 @@ const AUTOSAVE_MS = 1500;
  * (файлы — в папку курса, автосохранение), тест — вопросы и проходной
  * процент. Без права «Создаёт курсы» — только просмотр.
  */
-export function StepEditor({ courseId, stepId }: { courseId: string; stepId: string }) {
+export function StepEditor({
+  courseId,
+  stepId,
+  isNew,
+}: {
+  courseId: string;
+  stepId: string;
+  /** Только что создан — курсор в название («Урок 1» легко забыть поменять). */
+  isNew?: boolean;
+}) {
   const access = useAdminAccess();
   const canEdit = !!access?.isOwner || !!access?.academy?.can_create;
   const { data: course } = useQuery(acadCourseQuery(courseId));
@@ -70,12 +86,15 @@ export function StepEditor({ courseId, stepId }: { courseId: string; stepId: str
           <ArrowLeft className="size-3.5" /> {course?.title ?? "Курс"}
         </Link>
       </div>
-      {course?.status === "published" && canEdit && (
-        <InfoNote variant="info">Курс опубликован: правки ученики видят сразу.</InfoNote>
-      )}
-      <TitleField step={step} canEdit={canEdit} />
+      {course?.status === "published" && canEdit && <PublishedNote />}
+      <TitleField step={step} canEdit={canEdit} autoFocus={isNew} />
       {step.kind === "lesson" ? (
-        <LessonEditor courseId={courseId} step={step} canEdit={canEdit} />
+        <LessonEditor
+          courseId={courseId}
+          step={step}
+          canEdit={canEdit}
+          published={course?.status === "published"}
+        />
       ) : (
         <QuizEditor course={course} steps={steps ?? []} step={step} canEdit={canEdit} />
       )}
@@ -83,7 +102,15 @@ export function StepEditor({ courseId, stepId }: { courseId: string; stepId: str
   );
 }
 
-function TitleField({ step, canEdit }: { step: AcadStep; canEdit: boolean }) {
+function TitleField({
+  step,
+  canEdit,
+  autoFocus,
+}: {
+  step: AcadStep;
+  canEdit: boolean;
+  autoFocus?: boolean;
+}) {
   const qc = useQueryClient();
   const [title, setTitle] = useState(step.title);
   const save = async () => {
@@ -103,6 +130,8 @@ function TitleField({ step, canEdit }: { step: AcadStep; canEdit: boolean }) {
       <Input
         value={title}
         maxLength={200}
+        autoFocus={autoFocus}
+        onFocus={autoFocus ? (e) => e.currentTarget.select() : undefined}
         className="text-base font-semibold"
         onChange={(e) => setTitle(e.target.value)}
         onBlur={() => void save()}
@@ -118,14 +147,19 @@ function LessonEditor({
   courseId,
   step,
   canEdit,
+  published,
 }: {
   courseId: string;
   step: AcadStep;
   canEdit: boolean;
+  published: boolean;
 }) {
   const { data: content, isLoading } = useQuery(acadStepContentQuery(step.id));
   const { data: sources } = useQuery(acadSourcesQuery(courseId));
   const source = sources?.find((s) => s.step_id === step.id);
+  // Ссылки на статьи базы — по открытому тексту; правки досчитывает schedule.
+  const [kbLinks, setKbLinks] = useState<number | null>(null);
+  const links = kbLinks ?? kbLinkCount(content ?? []);
   const [state, setState] = useState<"idle" | "pending" | "saving" | "saved">("idle");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const timer = useRef<number | null>(null);
@@ -159,6 +193,7 @@ function LessonEditor({
     if (json === baseline.current) return;
     baseline.current = json;
     latest.current = doc;
+    setKbLinks(kbLinkCount(doc));
     setState("pending");
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => void flushRef.current(), AUTOSAVE_MS);
@@ -184,13 +219,24 @@ function LessonEditor({
               <>
                 <Check className="size-3.5" /> Сохранено в{" "}
                 {savedAt.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                {published && " — ученики уже видят"}
               </>
             ) : (
-              "Правки сохраняются сами"
+              `Правки сохраняются сами${published ? " и сразу видны ученикам" : ""}`
             )}
           </span>
         )}
       </div>
+      {links > 0 && (
+        <InfoNote variant="warning" className="flex items-start gap-2">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            В уроке {links} {plural(links, ["ссылка", "ссылки", "ссылок"])} на статьи базы знаний.
+            Ученик без доступа к этой базе их не откроет — перенесите нужный текст в урок или
+            добавьте ту статью отдельным уроком.
+          </span>
+        </InfoNote>
+      )}
       <div className="min-h-80 rounded-lg border bg-background py-4">
         {isLoading || !content ? (
           <div className="flex items-center gap-2 px-6 text-sm text-muted-foreground">
@@ -338,7 +384,7 @@ function QuizEditor({
         </Button>
       )}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl" anchor="top">
           {editing && (
             <AcadQuestionForm
               key={editing === "new" ? "new" : editing.id}

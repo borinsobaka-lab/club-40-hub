@@ -14,6 +14,7 @@ import {
 import { FormField, InfoNote } from "@/components/ui/form-field";
 import { ListItemButton } from "@/components/ui/list-item-button";
 import { SearchInput } from "@/components/ui/search-input";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Select,
   SelectContent,
@@ -32,10 +33,13 @@ import type { KbTreeNode } from "@/lib/kb/types";
  */
 export function AcadArticlePicker({
   busy,
+  usedIds,
   onPick,
   onCancel,
 }: {
   busy: boolean;
+  /** Статьи, уже ставшие уроками курса, — помечены и не выбираются второй раз. */
+  usedIds: Set<string>;
   onPick: (node: KbTreeNode) => void;
   onCancel: () => void;
 }) {
@@ -92,21 +96,29 @@ export function AcadArticlePicker({
                   Опубликованных статей не нашлось
                 </p>
               ) : (
-                articles.map((a) => (
-                  <ListItemButton key={a.id} disabled={busy} onClick={() => onPick(a)}>
-                    <DocumentText className="text-muted-foreground" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">
-                        {a.title || "Без названия"}
+                articles.map((a) => {
+                  const used = usedIds.has(a.id);
+                  return (
+                    <ListItemButton key={a.id} disabled={busy || used} onClick={() => onPick(a)}>
+                      <DocumentText className="text-muted-foreground" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                          {a.title || "Без названия"}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {ancestorsOf(index, a.id)
+                            .map((p) => p.title)
+                            .join(" › ") || "Верхний уровень"}
+                        </span>
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {ancestorsOf(index, a.id)
-                          .map((p) => p.title)
-                          .join(" › ") || "Верхний уровень"}
-                      </span>
-                    </span>
-                  </ListItemButton>
-                ))
+                      {used && (
+                        <StatusChip tone="neutral" size="sm">
+                          Уже в курсе
+                        </StatusChip>
+                      )}
+                    </ListItemButton>
+                  );
+                })
               )}
             </div>
           </div>

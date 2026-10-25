@@ -272,7 +272,7 @@ export function KbOverviewTab({
                     <span className="block text-xs text-muted-foreground">
                       {a.published_at && `Опубликована ${formatAgo(a.published_at)}`}
                       {a.read_outdated > 0 && (
-                        <span className="text-amber-700">
+                        <span className="text-amber-700 dark:text-amber-300">
                           {a.published_at && " · "}
                           {a.read_outdated} читали прежнюю версию
                         </span>
@@ -321,7 +321,7 @@ export function KbOverviewTab({
               <button
                 type="button"
                 onClick={onOpenSearch}
-                className="cursor-pointer font-medium text-amber-700 underline"
+                className="cursor-pointer font-medium text-amber-700 dark:text-amber-300 underline"
               >
                 Не нашли: {o.zero_queries.length}
               </button>

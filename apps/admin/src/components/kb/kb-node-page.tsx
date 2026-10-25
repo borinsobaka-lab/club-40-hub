@@ -835,10 +835,8 @@ function NodeMenu({
   node,
   hasChildren,
   onAddChild,
-  hasDraft,
   onRename,
   onMove,
-  onDiscardDraft,
   onVersions,
   onSaveTemplate,
   onProtect,
@@ -849,10 +847,8 @@ function NodeMenu({
   hasChildren?: boolean;
   /** Статья: «Вложенная статья». */
   onAddChild?: () => void;
-  hasDraft?: boolean;
   onRename: () => void;
   onMove: () => void;
-  onDiscardDraft?: () => void;
   onVersions?: () => void;
   onSaveTemplate?: () => void;
   onProtect?: () => void;
@@ -927,9 +923,6 @@ function NodeMenu({
           {onSaveTemplate && item("Сохранить как шаблон…", LayoutTemplate, onSaveTemplate)}
           {onSettings && item("Настройки страницы…", Settings2, onSettings)}
           {onProtect && item("Защита содержимого…", ShieldCheck, onProtect)}
-          {hasDraft &&
-            onDiscardDraft &&
-            item("Отменить неопубликованные правки", Undo2, onDiscardDraft)}
           {isFolder &&
             node.status === "draft" &&
             item("Опубликовать папку", Send, () => actions.setStatus(node, "published"))}
@@ -1117,7 +1110,7 @@ function ArticleView({
 
   const discardDraft = async () => {
     const ok = await confirm({
-      title: "Отменить неопубликованные правки?",
+      title: "Отменить правки?",
       description:
         node.status === "published"
           ? "Черновик правок удалится, статья останется такой, как её видят читатели."
@@ -1306,10 +1299,8 @@ function ArticleView({
                     node={node}
                     hasChildren={childrenOf(index, node.id).length > 0}
                     onAddChild={() => setDialog("child")}
-                    hasDraft={hasDraft}
                     onRename={() => setDialog("rename")}
                     onMove={() => setDialog("move")}
-                    onDiscardDraft={discardDraft}
                     onVersions={() => setDialog("versions")}
                     onSaveTemplate={() => setDialog("template")}
                     onProtect={() => setDialog("protect")}
@@ -1338,6 +1329,14 @@ function ArticleView({
                     <Button size="sm" variant="outline" onClick={() => void startEdit()}>
                       {hasDraft ? "Продолжить правку" : "Редактировать"}
                     </Button>
+                    {/* Отмена правок — здесь, у плашки черновика (решение владельца
+                        2026-10-25: в меню «⋯» её не находили). */}
+                    {hasDraft && (
+                      <Button size="sm" variant="outline" onClick={() => void discardDraft()}>
+                        <Undo2 />
+                        Отменить правки
+                      </Button>
+                    )}
                     {node.status !== "archived" && (
                       <Button
                         size="sm"

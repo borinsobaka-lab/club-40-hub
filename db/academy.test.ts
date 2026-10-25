@@ -379,6 +379,39 @@ describe.skipIf(!url)("академия (база)", () => {
       await asServer(tx);
     }));
 
+  test("критерии проверяющего ученику не уходят; срок курса по умолчанию — 1–365 дней", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.creator);
+      await tx`update acad_courses set sequential = false where id = ${t.course}`;
+      const [{ id: q3 }] = await tx`
+        insert into acad_questions (step_id, kind, text, review_notes)
+        values (${t.quiz}, 'open', 'Как встречаете гостя?', 'Эталон: по имени, вода, раздевалка')
+        returning id`;
+      await tx`update acad_courses set default_due_days = 14 where id = ${t.course}`;
+      expect(
+        await failure(tx, () => tx`update acad_courses set default_due_days = 0 where id = ${t.course}`),
+      ).toContain("check");
+      await asServer(tx);
+
+      await as(tx, t.learner);
+      const [{ q }] = await tx`select acad_quiz_start(${t.quiz}) as q`;
+      expect(JSON.stringify(q)).not.toContain("Эталон");
+      const [{ a }] = await tx`
+        select acad_quiz_submit(${t.quiz}, ${JSON.stringify([
+          { question_id: t.q1, options: ["a"] },
+          { question_id: t.q2, options: ["x", "y"] },
+          { question_id: q3, text: "Улыбаюсь" },
+        ])}::text::jsonb) as a`;
+      const [{ r }] = await tx`select acad_attempt(${a}) as r`;
+      expect(JSON.stringify(r)).not.toContain("Эталон");
+      expect((await tx`select review_notes from acad_questions`).length).toBe(0);
+      await asServer(tx);
+
+      const notes = await rpc(tx, t.reviewer, () => tx`select review_notes from acad_questions where id = ${q3}`);
+      expect(notes[0].review_notes).toBe("Эталон: по имени, вода, раздевалка");
+    }));
+
   test("отчёты: ход по курсу, разбор ошибок, сводки по курсам и людям", () =>
     scenario(async (tx) => {
       const t = await setup(tx);

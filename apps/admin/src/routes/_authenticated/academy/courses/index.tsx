@@ -31,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/academy/courses/")({
 });
 
 type StatusFilter = "all" | AcadCourseStatus;
+type StepCounts = { lessons: number; quizzes: number; emptyQuizzes: number };
 
 /**
  * Каталог курсов (создателям и проверяющим): по папкам, у курса — статус,
@@ -46,14 +47,20 @@ function CoursesPage() {
   const { data: stepCounts } = useQuery({
     queryKey: [ACAD_KEY, "step-counts"],
     queryFn: async () => {
-      const rows = await unwrap<{ course_id: string; kind: string }[]>(
-        supabase.from("acad_steps").select("course_id, kind"),
-      );
-      const out: Record<string, { lessons: number; quizzes: number }> = {};
+      const [rows, questions] = await Promise.all([
+        unwrap<{ id: string; course_id: string; kind: string }[]>(
+          supabase.from("acad_steps").select("id, course_id, kind"),
+        ),
+        unwrap<{ step_id: string }[]>(supabase.from("acad_questions").select("step_id")),
+      ]);
+      const withQuestions = new Set(questions.map((q) => q.step_id));
+      const out: Record<string, StepCounts> = {};
       for (const r of rows) {
-        const c = (out[r.course_id] ??= { lessons: 0, quizzes: 0 });
-        if (r.kind === "quiz") c.quizzes += 1;
-        else c.lessons += 1;
+        const c = (out[r.course_id] ??= { lessons: 0, quizzes: 0, emptyQuizzes: 0 });
+        if (r.kind === "quiz") {
+          c.quizzes += 1;
+          if (!withQuestions.has(r.id)) c.emptyQuizzes += 1;
+        } else c.lessons += 1;
       }
       return out;
     },
@@ -177,7 +184,7 @@ function CourseRow({
   review,
 }: {
   course: AcadCourse;
-  counts?: { lessons: number; quizzes: number };
+  counts?: StepCounts;
   learners: number;
   completed: number;
   review: number;
@@ -191,7 +198,7 @@ function CourseRow({
       >
         <CourseCover
           cover={c.cover}
-          className="aspect-[16/10] w-24 shrink-0 rounded-md [&_svg]:size-6"
+          className="aspect-[16/9] w-28 shrink-0 rounded-md [&_svg]:size-6"
         />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
@@ -201,6 +208,15 @@ function CourseRow({
           <span className="block text-xs text-muted-foreground">
             {counts?.lessons ?? 0} {plural(counts?.lessons ?? 0, ["урок", "урока", "уроков"])} ·{" "}
             {counts?.quizzes ?? 0} {plural(counts?.quizzes ?? 0, ["тест", "теста", "тестов"])}
+            {counts?.emptyQuizzes ? (
+              <span className="text-amber-700">
+                {" "}
+                ·{" "}
+                {counts.emptyQuizzes === counts.quizzes && counts.quizzes === 1
+                  ? "без вопросов"
+                  : `${counts.emptyQuizzes} без вопросов`}
+              </span>
+            ) : null}
           </span>
         </span>
         <span className="hidden shrink-0 text-right text-xs text-muted-foreground sm:block">

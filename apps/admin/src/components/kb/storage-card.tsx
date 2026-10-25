@@ -75,7 +75,7 @@ export function KbStorageCard() {
             </div>
           </div>
           {data.bytes_total > FILES_WARN_BYTES && (
-            <p className="mt-2 text-xs text-amber-700">
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
               Файлов больше 20 ГБ — пора выносить их с диска сервера в отдельное хранилище.
             </p>
           )}
