@@ -782,8 +782,10 @@ input[type="number"]::-webkit-outer-spin-button {
 .kb-no-copy video {
   -webkit-user-drag: none;
 }
-.kb-no-copy .kb-gallery a {
-  pointer-events: none;
+/* Картинки статьи у читателя открываются в окне (components/kb/image-lightbox.tsx). */
+.kb-document-read img.bn-visual-media,
+.kb-document-read .kb-gallery img {
+  cursor: zoom-in;
 }
 @media print {
   .kb-no-copy,
