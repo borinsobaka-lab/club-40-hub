@@ -147,8 +147,7 @@ export function useScriptAccess(): { canRead: boolean; canEdit: boolean } | null
   const canRead = canOpenRail(access, "scripts");
   return {
     canRead,
-    canEdit:
-      canRead && (access.isOwner || access.rail === null || access.rail.includes("scripts-edit")),
+    canEdit: canRead && (access.rail === null || access.rail.includes("scripts-edit")),
   };
 }
 

@@ -6,7 +6,7 @@ import {
   getSupabaseAdmin,
   hasSupabaseAdmin,
 } from "@/integrations/supabase/client.server";
-import { STAFF_ROLES } from "@/lib/roles";
+import { hasStaffRole } from "@/lib/roles";
 
 /**
  * Вход в админку — только по 6-значному коду из письма, паролей у сотрудников
@@ -53,14 +53,15 @@ export const requestStaffLoginCode = createServerFn({ method: "POST" })
     const ids = (profiles ?? []).map((p) => p.id as string);
     if (ids.length === 0) return { ok: true };
 
-    const { data: roles, error: rolesErr } = await admin
-      .from("user_roles")
-      .select("user_id")
-      .in("user_id", ids)
-      .in("role", STAFF_ROLES)
-      .limit(1);
-    if (rolesErr) throw new Error(rolesErr.message);
-    if (!roles?.length) return { ok: true };
+    // Сотрудник клуба или человек портала с ролями (УК — и без клуба).
+    let portal = false;
+    for (const id of ids) {
+      if (await hasStaffRole(admin, id)) {
+        portal = true;
+        break;
+      }
+    }
+    if (!portal) return { ok: true };
 
     return sendCode(data.email, data.redirectTo);
   });

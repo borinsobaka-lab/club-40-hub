@@ -47,7 +47,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   клиентов пакетных клубов `db/shared-clients.test.ts`, переноса из 1С
   `db/import-1c.test.ts`, AI-ассистента Kate `db/assistant.test.ts`,
   переоформления абонемента `db/membership-transfer.test.ts`, базы знаний
-  `db/knowledge-base.test.ts` и «Академии» `db/academy.test.ts`
+  `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts` и
+  пользователей, ролей и доступов `db/access.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -176,11 +177,13 @@ AUTH_SETUP.md.
   `trainer_studios`; реквизиты `trainer_bank_details` и зарплатные ставки
   `trainer_pay_rates` — только сотрудникам (клиенты видят тренеров своей
   студии в расписании, но не счёт и не ставки). Это НЕ доступ в админку —
-  тот в `user_roles` («Доступы»). Права в админке:
+  тот в `user_roles` (с 2026-10-25 — из ролей «Пользователей и ролей»,
+  см. «Пользователи портала, роли и доступы» ниже). Права в админке:
   `db/migrations/2026-10-10_admin_permissions.sql` — студии = роль в
   `user_roles`, разделы рейки («Клуб»/«Сотрудники»/«Мобильное приложение») —
   `admin_permissions`, разделы клуба по студиям — `admin_studio_permissions`
-  (нет строки — открыто всё; владельцу — всё). RLS проверяет разделы рейки
+  (нет строки — открыто всё; владельцу клуба в его клубе — всё). С
+  2026-10-25 эти таблицы пишет пересчёт прав из ролей, не «Доступы». RLS проверяет разделы рейки
   (`has_admin_section`: правка сотрудников, реквизиты и ставки; новости,
   услуги, пуши, `club_settings`), разделы клуба скрывает только интерфейс —
   их таблицы общие, граница там по-прежнему студия. Мобильное приложение — по
@@ -887,6 +890,46 @@ AUTH_SETUP.md.
   актуальные определения `acad_step_unlocked`, `acad_course_view`,
   `acad_access`, `acad_review_queue`, `acad_review_submit` — здесь. Тесты —
   `db/academy.test.ts`.
+  **Пользователи портала, роли и доступы** (решение владельца 2026-10-25,
+  под сеть Lady Stretch; подробно — ACCESS.md):
+  `db/migrations/2026-10-25_zzzzzzzzzzzz_access_roles.sql` — сеть
+  (`org_brands`, `studios.brand_id` / `ownership` / `city`), оргструктура
+  (`org_units` деревом, `path` — подразделения выше; `org_unit_members` —
+  руководитель / заместитель / сотрудник, человек в нескольких;
+  `org_positions`), люди (`portal_users`: тип, должность, статус,
+  `access_until`), каталог прав `access_permissions`, роли
+  `access_roles` + `access_role_permissions` (личная роль —
+  `personal_user_id`), назначения `access_assignments` (человеку /
+  подразделению «всем или руководителям, и ниже» / должности; во всех
+  клубах / клубах брендов / выбранных; `valid_from` / `valid_until`).
+  **Права из ролей пересчитывает `access_compile` и пишет в прежние
+  таблицы RLS**: `user_roles` (уровень в клубе), `admin_permissions`,
+  `admin_studio_permissions`, `kb_grants` (уровень базы), `acad_staff`.
+  Сетевые права и итог пишет в `access_user_rights` (`rights`,
+  `manage_all` / `manage_studio_ids`, `effective`). Эти таблицы **руками не
+  правятся**: изменения ролей, назначений, структуры, статуса, новые клубы
+  и базы помечают людей (`access_dirty`) и пересчитываются в той же
+  транзакции (`access_flush` в RPC, иначе — отложенный триггер). Сроки
+  пересчитывает сервер админки (`access_sync_due`, раз в 5 минут). Пишут
+  только RPC `access_*` / `org_*`. Они проверяют права: не больше своих и
+  только в своих клубах (`access_grant_problem`), последний
+  суперадминистратор не снимается (`access_guard`). Журнал — `access_log`.
+  **Владелец клуба больше не администратор сети**: `kb_is_admin`,
+  `acad_is_admin`, `has_admin_section`, `create_studio` смотрят на сетевые
+  права (`kb.admin`, `academy.admin`, `portal.admin`, `studios.create`). У
+  людей без строки `access_user_rights` — прежние правила (тесты,
+  сервисные записи). Вход в админку и базы знаний / Академия —
+  `is_portal_user` (сотрудник клуба **или** человек портала с ролями:
+  сотрудник УК может быть без клуба). Политика «user_roles owner manage»
+  снята: роли в клубах пишет только пересчёт. Перенос прежних «Доступов»
+  без изменения прав — `access_import_legacy` (один раз при выкатке).
+  Назначения Академии — ещё `access_role` / `unit` (+ `with_subunits`) /
+  `position` (`acad_pairs`, `acad_staff_directory` — актуальные определения
+  здесь). Актуальные определения `kb_base_people`, `kb_article_audience`,
+  `kb_mention_candidates` (без администраторов баз, а не без владельцев
+  клубов), `kb_base_level`, `auth_kb_view_base_ids` / `auth_kb_edit_base_ids`,
+  `acad_can_create` / `acad_can_review` / `acad_access` — здесь. Тесты —
+  `db/access.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
@@ -1030,6 +1073,9 @@ own"` оставить). Альтернатива — выдача абонем�
 
 ## Документы
 
+- `ACCESS.md` — пользователи портала, роли и доступы (2026-10-25): источники
+  (Битрикс24 Lady Stretch, ТЗ XFIT, рынок), модель, надёжность, интерфейс,
+  что дальше.
 - `LAUNCH_READINESS.md` — готовность к запуску для клиентов (2026-10-16):
   нагрузка 1000 одновременно, что проверено и исправлено в коде, лимиты
   внешних сервисов, что купить/включить; проверку панелей делает браузерный

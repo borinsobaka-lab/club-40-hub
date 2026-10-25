@@ -55,7 +55,7 @@ const DAY = 24 * 60 * 60 * 1000;
 function KbTrashPage() {
   const { baseId } = Route.useParams();
   const access = useAdminAccess();
-  const canEdit = canEditKb(access?.isOwner ? "manage" : access?.kb?.[baseId]);
+  const canEdit = canEditKb(access?.kbAdmin ? "manage" : access?.kb?.[baseId]);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { confirm, confirmDialog } = useConfirm();

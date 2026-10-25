@@ -116,7 +116,7 @@ export function KbBaseTabs() {
  */
 export function KbHeaderSearch({ baseId, className }: { baseId: string; className?: string }) {
   const access = useAdminAccess();
-  const canEdit = canEditKb(access?.isOwner ? "manage" : access?.kb?.[baseId]);
+  const canEdit = canEditKb(access?.kbAdmin ? "manage" : access?.kb?.[baseId]);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentId = /^\/kb\/[^/]+\/([0-9a-f-]{36})/.exec(pathname)?.[1] ?? null;
   const { data: allNodes } = useKbTree(baseId);

@@ -32,6 +32,7 @@ import {
   Smartphone,
   SquareAcademicCap,
   StarsMinimalistic,
+  Structure,
   TagPrice,
   Target,
   TicketSale,
@@ -49,6 +50,7 @@ import {
   type AdminAccess,
   type ClubSectionKey,
 } from "@/lib/admin-access";
+import type { AccessRight } from "@/lib/access/logic";
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
@@ -327,8 +329,8 @@ export function academyNeed(pathname: string): AcademyNeed {
 /** Есть ли у сотрудника нужное право в «Академии». */
 export function hasAcademyRight(access: AdminAccess, need: AcademyNeed): boolean {
   const a = access.academy;
-  if (access.isOwner) return true;
   if (!a) return false;
+  if (a.is_admin) return true;
   if (need === "create") return a.can_create;
   if (need === "review") return a.can_review;
   if (need === "team") return a.can_create || a.can_review;
@@ -380,11 +382,23 @@ export const SECTIONS: RailSection[] = [
 /**
  * «Управление» внизу рейки (решение владельца 2026-10-25: вместо трёх
  * разделов «Знания», «Доступы», «Клубы») — настройки над студиями; их
- * блоки — в меню раздела. «Знания» и «Доступы» видит только владелец.
+ * блоки — в меню раздела. Пункт открыт по сетевому праву (canOpenManagePath):
+ * «Знания» — администратору баз знаний, «Пользователи и роли» (2026-10-25,
+ * ACCESS.md) — тем, кто управляет людьми, ролями или структурой.
  */
+export const ACCESS_URL = "/access";
 export const ACCESS_ITEMS: NavItem[] = [
-  { title: "Администраторы", url: "/employees", icon: ShieldUser },
-  // Перенос клиентов из 1С (2026-10-18) — как и «Доступы», только владельцу.
+  {
+    title: "Пользователи",
+    url: ACCESS_URL,
+    icon: UsersGroupRounded,
+    exact: true,
+    paths: ["/access/users"],
+  },
+  { title: "Роли", url: "/access/roles", icon: ShieldUser },
+  { title: "Оргструктура", url: "/access/structure", icon: Structure },
+  { title: "Журнал", url: "/access/log", icon: History },
+  // Перенос клиентов из 1С (2026-10-18) — владельцу клуба.
   { title: "Импорт из 1С", url: "/import-1c", icon: ClipboardList },
 ];
 export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Widget3 }];
@@ -394,7 +408,7 @@ export const MANAGE_GROUPS: NavGroup[] = [
     label: "Знания",
     items: [{ title: "Базы знаний", url: KB_BASES_URL, icon: Book }],
   },
-  { key: "manage-access", label: "Доступы", items: ACCESS_ITEMS },
+  { key: "manage-access", label: "Пользователи и роли", items: ACCESS_ITEMS },
   { key: "manage-studios", label: "Клубы", items: STUDIOS_ITEMS },
 ];
 const MANAGE_URLS = MANAGE_GROUPS.flatMap((g) => g.items.map((i) => i.url));
@@ -449,13 +463,11 @@ export function canOpenPath(
   pathname: string,
 ): boolean {
   const section = railSectionKey(pathname);
-  // «Клубы» — всем (список и свои настройки), «Знания» и «Доступы» — владельцу.
-  if (section === "manage")
-    return STUDIOS_ITEMS.some((i) => matches(pathname, i.url)) || access.isOwner;
+  if (section === "manage") return canOpenManagePath(access, pathname);
   if (section === "kb") {
     const baseId = kbBaseIdOf(pathname);
-    if (!baseId) return access.isOwner || Object.keys(access.kb ?? {}).length > 0;
-    return access.isOwner || !!access.kb?.[baseId];
+    if (!baseId) return access.kbAdmin || Object.keys(access.kb ?? {}).length > 0;
+    return access.kbAdmin || !!access.kb?.[baseId];
   }
   if (section === "academy") return hasAcademyRight(access, academyNeed(pathname));
   // Дашборд над студиями: открыт, если открыт хоть в одной студии.
@@ -468,6 +480,26 @@ export function canOpenPath(
     return item ? canOpenClubSection(access, studioId, item.section) : canOpenRail(access, "club");
   }
   return true;
+}
+
+/**
+ * Страница «Управления»: «Клубы» — всем (список и свои настройки), «Знания» —
+ * администратору баз знаний, импорт из 1С — владельцу клуба, «Пользователи и
+ * роли» — по правам: люди — управляющим пользователями (и тем, кто ведёт роли
+ * или журнал — для просмотра), роли и структура — им же, журнал — audit.view
+ * или roles.manage.
+ */
+export function canOpenManagePath(access: AdminAccess, pathname: string): boolean {
+  const any = (...rights: AccessRight[]) => rights.some((r) => access.rights.includes(r));
+  if (STUDIOS_ITEMS.some((i) => matches(pathname, i.url))) return true;
+  if (matches(pathname, KB_BASES_URL)) return access.kbAdmin;
+  if (matches(pathname, "/import-1c")) return Object.values(access.studios).some((s) => s.owner);
+  if (matches(pathname, "/access/log")) return any("audit.view", "roles.manage");
+  if (matches(pathname, "/access/structure"))
+    return any("structure.manage", "users.manage", "roles.manage", "audit.view");
+  if (matches(pathname, ACCESS_URL))
+    return any("users.manage", "roles.manage", "audit.view", "structure.manage");
+  return false;
 }
 
 /** Первая страница, которую сотруднику можно открыть (null — ни одной). */

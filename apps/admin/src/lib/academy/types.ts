@@ -76,10 +76,19 @@ export type AcadQuestion = {
 export type AcadAssignment = {
   id: string;
   course_id: string;
-  subject_type: "user" | "role";
+  /**
+   * user — человек; role — роль в клубах (owner/admin/trainer); access_role
+   * — роль портала; unit — подразделение (with_subunits — и ниже); position —
+   * должность (ACCESS.md).
+   */
+  subject_type: "user" | "role" | "access_role" | "unit" | "position";
   user_id: string | null;
   role: "owner" | "admin" | "trainer" | null;
   studio_ids: string[];
+  access_role_id: string | null;
+  unit_id: string | null;
+  position_id: string | null;
+  with_subunits: boolean;
   due_date: string | null;
   due_days: number | null;
   created_at: string;
@@ -91,6 +100,10 @@ export type AcadStaffPerson = {
   avatar_url: string | null;
   email: string | null;
   roles: { role: "owner" | "admin" | "trainer"; studio_id: string }[];
+  /** Должность, подразделения (с путём — для «и ниже») и действующие роли портала. */
+  position_id: string | null;
+  units: { unit_id: string; path: string[]; member_role: string }[];
+  access_role_ids: string[];
 };
 
 export type AcadMyCourse = {

@@ -149,7 +149,7 @@ export function acadAssignmentsQuery(courseId: string) {
         supabase
           .from("acad_assignments")
           .select(
-            "id, course_id, subject_type, user_id, role, studio_ids, due_date, due_days, created_at",
+            "id, course_id, subject_type, user_id, role, studio_ids, access_role_id, unit_id, position_id, with_subunits, due_date, due_days, created_at",
           )
           .eq("course_id", courseId)
           .order("created_at"),

@@ -20,16 +20,34 @@ import { SearchInput } from "@/components/ui/search-input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { supabase } from "@/integrations/supabase/client";
 import { acadStaffQuery, invalidateAcademy } from "@/lib/academy/data";
+import { orgPositionsQuery, orgUnitsQuery } from "@/lib/access/data";
+import { unitTree } from "@/lib/access/logic";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { acadError, ROLE_LABEL } from "@/lib/academy/logic";
 import type { AcadAssignment } from "@/lib/academy/types";
 import { unwrap } from "@/lib/query";
 
-type Mode = "user" | "role";
+type Mode = "user" | "role" | "unit" | "position" | "access_role";
+const MODE_LABEL: Record<Mode, string> = {
+  user: "Сотрудникам",
+  role: "По роли в клубе",
+  unit: "Подразделению",
+  position: "По должности",
+  access_role: "По роли портала",
+};
 type Due = "none" | "date" | "days";
 type Role = "owner" | "admin" | "trainer";
 
 const TIPS = {
   role: "Курс получат все сотрудники с этой ролью в выбранных клубах — и те, кому роль выдадут позже: им курс назначится сам.",
+  group:
+    "Курс получат все, кто в подразделении (и ниже, если отмечено), с этой должностью или ролью портала — и те, кто появится там позже.",
   due: "Подставлен срок из настроек курса. «Дней с назначения» — у правила по роли отсчёт для нового сотрудника идёт с выдачи ему роли.",
 };
 
@@ -70,6 +88,23 @@ export function AcadAssignmentForm({
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [role, setRole] = useState<Role>("admin");
+  const [groupId, setGroupId] = useState("");
+  const [withSubunits, setWithSubunits] = useState(true);
+  const { data: units } = useQuery({ ...orgUnitsQuery, enabled: mode === "unit" });
+  const { data: positions } = useQuery({ ...orgPositionsQuery, enabled: mode === "position" });
+  const { data: accessRoles } = useQuery({
+    queryKey: ["acad", "access-roles"],
+    queryFn: () =>
+      unwrap<{ id: string; name: string }[]>(
+        supabase
+          .from("access_roles")
+          .select("id, name")
+          .is("personal_user_id", null)
+          .order("sort_order"),
+      ),
+    enabled: mode === "access_role",
+    meta: { errorMessage: "Не удалось загрузить роли" },
+  });
   const [allStudios, setAllStudios] = useState(true);
   const [studioIds, setStudioIds] = useState<Set<string>>(new Set());
   const [due, setDue] = useState<Due>(defaultDueDays ? "days" : "none");
@@ -99,6 +134,16 @@ export function AcadAssignmentForm({
       toast.error("Отметьте сотрудников");
       return;
     }
+    if ((mode === "unit" || mode === "position" || mode === "access_role") && !groupId) {
+      toast.error(
+        mode === "unit"
+          ? "Выберите подразделение"
+          : mode === "position"
+            ? "Выберите должность"
+            : "Выберите роль",
+      );
+      return;
+    }
     if (mode === "role" && !allStudios && studioIds.size === 0) {
       toast.error("Отметьте клубы или «Во всех клубах»");
       return;
@@ -126,15 +171,27 @@ export function AcadAssignmentForm({
               user_id,
               ...term,
             }))
-          : [
-              {
-                course_id: courseId,
-                subject_type: "role",
-                role,
-                studio_ids: allStudios ? [] : [...studioIds],
-                ...term,
-              },
-            ];
+          : mode === "role"
+            ? [
+                {
+                  course_id: courseId,
+                  subject_type: "role",
+                  role,
+                  studio_ids: allStudios ? [] : [...studioIds],
+                  ...term,
+                },
+              ]
+            : [
+                {
+                  course_id: courseId,
+                  subject_type: mode,
+                  unit_id: mode === "unit" ? groupId : null,
+                  position_id: mode === "position" ? groupId : null,
+                  access_role_id: mode === "access_role" ? groupId : null,
+                  with_subunits: withSubunits,
+                  ...term,
+                },
+              ];
       const { error } = await supabase.from("acad_assignments").insert(rows);
       if (error) throw new Error(error.message);
       toast.success("Курс назначен");
@@ -158,16 +215,26 @@ export function AcadAssignmentForm({
       <DialogForm onSubmit={save}>
         <DialogBody>
           <div className="space-y-4">
-            <SegmentedControl
-              aria-label="Кому"
-              fullWidth
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: "user", label: "Сотрудникам" },
-                { value: "role", label: "По роли" },
-              ]}
-            />
+            <FormField label="Кому" htmlFor={null}>
+              <Select
+                value={mode}
+                onValueChange={(v) => {
+                  setMode(v as Mode);
+                  setGroupId("");
+                }}
+              >
+                <SelectTrigger aria-label="Кому">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {MODE_LABEL[m]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
             {mode === "user" ? (
               <div className="space-y-2">
                 <SearchInput value={q} onChange={setQ} placeholder="Имя или почта" />
@@ -202,6 +269,47 @@ export function AcadAssignmentForm({
                   <p className="text-xs text-muted-foreground">Отмечено: {picked.size}</p>
                 )}
               </div>
+            ) : mode !== "role" ? (
+              <FormField
+                label={
+                  mode === "unit"
+                    ? "Подразделение"
+                    : mode === "position"
+                      ? "Должность"
+                      : "Роль портала"
+                }
+                tip={TIPS.group}
+                htmlFor={null}
+              >
+                <div className="space-y-2">
+                  <Select value={groupId} onValueChange={setGroupId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mode === "unit"
+                        ? unitTree(units ?? []).map(({ unit, depth }) => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {"\u00A0\u00A0".repeat(depth)}
+                              {unit.name}
+                            </SelectItem>
+                          ))
+                        : (mode === "position" ? (positions ?? []) : (accessRoles ?? [])).map(
+                            (x) => (
+                              <SelectItem key={x.id} value={x.id}>
+                                {x.name}
+                              </SelectItem>
+                            ),
+                          )}
+                    </SelectContent>
+                  </Select>
+                  {mode === "unit" && (
+                    <CheckboxOption checked={withSubunits} onCheckedChange={setWithSubunits}>
+                      И в подразделениях ниже
+                    </CheckboxOption>
+                  )}
+                </div>
+              </FormField>
             ) : (
               <div className="space-y-3">
                 <FormField label="Роль" tip={TIPS.role} htmlFor={null}>

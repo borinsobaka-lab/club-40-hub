@@ -9,20 +9,16 @@ export const STAFF_ROLES = ["owner", "admin", "trainer"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
 /**
- * Есть ли у пользователя роль сотрудника хоть в одной студии. Работает с
- * любым клиентом (браузерным или серверным от имени пользователя): строки
- * user_roles своего пользователя RLS отдаёт всегда.
+ * Пользователь админки: роль сотрудника хоть в одном клубе или человек
+ * портала с действующими ролями (сотрудник УК может быть без клуба —
+ * «Пользователи и роли», ACCESS.md). Работает с любым клиентом (браузерным
+ * или серверным): is_portal_user выдана authenticated и service_role.
  *
  * Ошибка запроса — исключение, а не false: сбой сети или рестарт PostgREST
  * не должен выглядеть как «не сотрудник» и выкидывать из админки.
  */
 export async function hasStaffRole(supabase: SupabaseClient, userId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .in("role", STAFF_ROLES)
-    .limit(1);
+  const { data, error } = await supabase.rpc("is_portal_user", { _user_id: userId });
   if (error) throw new Error(`Не удалось проверить роль: ${error.message}`);
-  return !!data?.length;
+  return data === true;
 }

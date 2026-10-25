@@ -7,6 +7,8 @@ import type { AdminAccess, AdminSectionKey, ClubSectionKey } from "@/lib/admin-a
 import { kbLevelOf, type KbLevel } from "@/lib/kb/access";
 import { kbBasesQuery, kbOwnGrantsQuery } from "@/lib/kb/data";
 import { acadAccessQuery } from "@/lib/academy/data";
+import { accessMeQuery } from "@/lib/access/data";
+import { ACCESS_RIGHTS, type AccessRight } from "@/lib/access/logic";
 
 type OwnPermissions = {
   rail: AdminSectionKey[] | null;
@@ -55,20 +57,32 @@ export function useAdminAccess(): AdminAccess | null {
   const { data: kbBases, isLoading: kbLoading } = useQuery(kbBasesQuery);
   const { data: kbGrants, isLoading: kbGrantsLoading } = useQuery(kbOwnGrantsQuery);
   const { data: academy, isLoading: academyLoading } = useQuery(acadAccessQuery);
+  const { data: me, isLoading: meLoading } = useQuery(accessMeQuery);
 
-  if (studiosLoading || isLoading || kbLoading || kbGrantsLoading || academyLoading) return null;
+  if (studiosLoading || isLoading || kbLoading || kbGrantsLoading || academyLoading || meLoading)
+    return null;
   const list = studios ?? [];
-  const isOwner = list.some((s) => s.roles.includes("owner"));
+  // Вне новой модели (прежние правила): владелец клуба — администратор сети.
+  const legacyOwner = !me?.managed && list.some((s) => s.roles.includes("owner"));
+  const rights: AccessRight[] = legacyOwner
+    ? [...ACCESS_RIGHTS]
+    : ((me?.rights ?? []).filter((r): r is AccessRight =>
+        (ACCESS_RIGHTS as readonly string[]).includes(r),
+      ) as AccessRight[]);
+  const kbAdmin = rights.includes("kb.admin");
   const kb: Record<string, KbLevel> = {};
   for (const base of kbBases ?? []) {
-    const level = kbLevelOf(isOwner, kbGrants ?? [], base.id);
+    const level = kbLevelOf(kbAdmin, kbGrants ?? [], base.id);
     if (level) kb[base.id] = level;
   }
   return {
-    isOwner,
+    rights,
+    kbAdmin,
+    manageAll: legacyOwner || !!me?.manage_all,
+    manageStudioIds: me?.manage_studio_ids ?? [],
     kb,
     academy,
-    rail: own?.rail ?? null,
+    rail: legacyOwner ? null : (own?.rail ?? null),
     studios: Object.fromEntries(
       list.map((s) => [
         s.id,

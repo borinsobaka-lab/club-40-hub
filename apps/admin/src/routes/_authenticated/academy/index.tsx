@@ -26,7 +26,8 @@ export const Route = createFileRoute("/_authenticated/academy/")({
 function MyCoursesPage() {
   const access = useAdminAccess();
   const { data, isLoading } = useQuery(acadMyCoursesQuery);
-  const team = !!access?.isOwner || !!access?.academy?.can_create || !!access?.academy?.can_review;
+  const team =
+    !!access?.academy?.is_admin || !!access?.academy?.can_create || !!access?.academy?.can_review;
   const courses = data ?? [];
   const open = courses.filter((c) => c.status !== "completed");
   const done = courses.filter((c) => c.status === "completed");

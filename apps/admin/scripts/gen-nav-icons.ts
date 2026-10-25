@@ -67,6 +67,7 @@ const ICONS: Record<string, string> = {
   Smartphone: "devices",
   SquareAcademicCap: "school",
   StarShine: "like",
+  Structure: "it",
   StarsMinimalistic: "astronomy",
   TagPrice: "money",
   Target: "ui",

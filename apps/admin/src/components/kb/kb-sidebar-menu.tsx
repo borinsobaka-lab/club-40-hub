@@ -104,7 +104,7 @@ type Dialogs =
  */
 export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNavigate: () => void }) {
   const access = useAdminAccess();
-  const level = access?.isOwner ? "manage" : access?.kb?.[baseId];
+  const level = access?.kbAdmin ? "manage" : access?.kb?.[baseId];
   const canEdit = canEditKb(level);
   const { data: bases } = useQuery(kbBasesQuery);
   const base = bases?.find((b) => b.id === baseId);

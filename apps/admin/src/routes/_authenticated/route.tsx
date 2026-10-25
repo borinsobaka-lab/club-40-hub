@@ -17,6 +17,7 @@ import { staffProfileQuery } from "@/hooks/use-staff-profile";
 import { adminPermissionsQuery, useAdminAccess } from "@/hooks/use-admin-access";
 import { kbBasesQuery, kbOwnGrantsQuery } from "@/lib/kb/data";
 import { acadAccessQuery } from "@/lib/academy/data";
+import { accessMeQuery } from "@/lib/access/data";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { canOpenPath, firstAllowedUrl } from "@/lib/nav-sections";
 import { usePreloadSections } from "@/hooks/use-preload-sections";
@@ -50,12 +51,14 @@ export const Route = createFileRoute("/_authenticated")({
     void queryClient.prefetchQuery(kbBasesQuery);
     void queryClient.prefetchQuery(kbOwnGrantsQuery);
     void queryClient.prefetchQuery(acadAccessQuery);
+    void queryClient.prefetchQuery(accessMeQuery);
 
     if (verifiedUserId === sessionUser.id) return { user: sessionUser };
 
     // Одной авторизации мало: клиент мобильного приложения — тоже
     // авторизованный пользователь этого же проекта Supabase. В админку
-    // пускаем только сотрудников (owner/admin/trainer в user_roles).
+    // пускаем только сотрудников клубов и людей портала с ролями
+    // (is_portal_user: сотрудник УК может быть без клуба).
     // Сбой самой проверки роли — исключение: страница ошибки с «Повторить»,
     // без выхода из аккаунта. getUser сверяет сессию с сервером (локальная
     // могла быть отозвана), роль проверяется одновременно с ним.
@@ -137,7 +140,7 @@ function AccessGate() {
   return (
     <AdminShell title="Нет доступа">
       <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-        Нет доступных разделов. Попросите владельца открыть их в «Доступах».
+        Нет доступных разделов. Попросите администратора выдать роль в «Пользователях и ролях».
       </div>
     </AdminShell>
   );

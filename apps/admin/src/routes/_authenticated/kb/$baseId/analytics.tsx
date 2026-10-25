@@ -13,6 +13,7 @@ import { InfoNote } from "@/components/ui/form-field";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminAccess } from "@/hooks/use-admin-access";
+import { hasRight } from "@/lib/admin-access";
 import { canEditKb } from "@/lib/kb/access";
 import { KB_PERIODS, type KbPeriod } from "@/lib/kb/analytics";
 import { kbBasesQuery } from "@/lib/kb/data";
@@ -58,7 +59,7 @@ function KbAnalyticsPage() {
   const { tab = "overview", period = "30", node } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const access = useAdminAccess();
-  const canEdit = canEditKb(access?.isOwner ? "manage" : access?.kb?.[baseId]);
+  const canEdit = canEditKb(access?.kbAdmin ? "manage" : access?.kb?.[baseId]);
   const { data: bases } = useQuery(kbBasesQuery);
   const base = bases?.find((b) => b.id === baseId);
   const go = (next: { tab?: Tab; period?: KbPeriod; node?: string }) =>
@@ -103,7 +104,9 @@ function KbAnalyticsPage() {
               />
             )}
             {tab === "people" && <KbPeopleTab baseId={baseId} period={period} />}
-            {tab === "articles" && <KbArticlesTab baseId={baseId} isOwner={!!access?.isOwner} />}
+            {tab === "articles" && (
+              <KbArticlesTab baseId={baseId} canGrant={hasRight(access, "users.manage")} />
+            )}
             {tab === "search" && <KbSearchTab baseId={baseId} period={period} />}
             {tab === "ratings" && (
               <KbRatingsTab

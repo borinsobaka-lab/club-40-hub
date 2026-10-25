@@ -268,6 +268,14 @@ export function kbLinkCount(doc: unknown): number {
 /** Совпадает ли сотрудник с правилом назначения (для подсчёта в конструкторе). */
 export function matchesAssignment(person: AcadStaffPerson, a: AcadAssignment): boolean {
   if (a.subject_type === "user") return a.user_id === person.user_id;
+  if (a.subject_type === "access_role")
+    return !!a.access_role_id && (person.access_role_ids ?? []).includes(a.access_role_id);
+  if (a.subject_type === "position") return !!a.position_id && person.position_id === a.position_id;
+  if (a.subject_type === "unit")
+    return (person.units ?? []).some(
+      (m) =>
+        m.unit_id === a.unit_id || (a.with_subunits && !!a.unit_id && m.path.includes(a.unit_id)),
+    );
   return person.roles.some(
     (r) => r.role === a.role && (a.studio_ids.length === 0 || a.studio_ids.includes(r.studio_id)),
   );

@@ -182,6 +182,7 @@ describe("напоминания конструктора", () => {
   });
 
   test("сколько людей получат курс", () => {
+    const extra = { position_id: null, units: [], access_role_ids: [] };
     const people: AcadStaffPerson[] = [
       {
         user_id: "a",
@@ -189,6 +190,7 @@ describe("напоминания конструктора", () => {
         avatar_url: null,
         email: null,
         roles: [{ role: "admin", studio_id: "s1" }],
+        ...extra,
       },
       {
         user_id: "b",
@@ -196,6 +198,7 @@ describe("напоминания конструктора", () => {
         avatar_url: null,
         email: null,
         roles: [{ role: "trainer", studio_id: "s2" }],
+        ...extra,
       },
       {
         user_id: "c",
@@ -203,14 +206,56 @@ describe("напоминания конструктора", () => {
         avatar_url: null,
         email: null,
         roles: [{ role: "trainer", studio_id: "s1" }],
+        ...extra,
+      },
+      // Сотрудник УК без клуба: подразделение «Кураторы» внутри «Отдела развития».
+      {
+        user_id: "d",
+        full_name: "Г",
+        avatar_url: null,
+        email: null,
+        roles: [],
+        position_id: "p1",
+        units: [{ unit_id: "u2", path: ["u1"], member_role: "member" }],
+        access_role_ids: ["r1"],
       },
     ];
-    const base = { id: "x", course_id: "c", due_date: null, due_days: null, created_at: "" };
+    const base = {
+      id: "x",
+      course_id: "c",
+      due_date: null,
+      due_days: null,
+      created_at: "",
+      access_role_id: null,
+      unit_id: null,
+      position_id: null,
+      with_subunits: true,
+    };
     const assignments: AcadAssignment[] = [
       { ...base, subject_type: "role", role: "trainer", studio_ids: ["s2"], user_id: null },
       { ...base, subject_type: "user", user_id: "a", role: null, studio_ids: [] },
     ];
     expect(learnersCount(people, assignments)).toBe(2);
+    const unit = {
+      ...base,
+      subject_type: "unit" as const,
+      unit_id: "u1",
+      user_id: null,
+      role: null,
+      studio_ids: [],
+    };
+    expect(learnersCount(people, [unit])).toBe(1);
+    expect(learnersCount(people, [{ ...unit, with_subunits: false }])).toBe(0);
+    expect(
+      learnersCount(people, [
+        { ...unit, subject_type: "position", unit_id: null, position_id: "p1" },
+      ]),
+    ).toBe(1);
+    expect(
+      learnersCount(people, [
+        { ...unit, subject_type: "access_role", unit_id: null, access_role_id: "r1" },
+      ]),
+    ).toBe(1);
   });
 });
 

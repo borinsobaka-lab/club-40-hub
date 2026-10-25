@@ -24,6 +24,7 @@ import { FormField, InfoNote } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/ui/status-chip";
 import { useAdminAccess } from "@/hooks/use-admin-access";
+import { hasRight } from "@/lib/admin-access";
 import { useDragRow, type RowDropOperation } from "@/hooks/use-drag-row";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -241,6 +242,8 @@ function FolderForm({ folder, onDone }: { folder: AcadFolder | null; onDone: () 
 
 function TeamSection() {
   const access = useAdminAccess();
+  const isAdmin = !!access?.academy?.is_admin;
+  const canManage = hasRight(access, "roles.manage") || hasRight(access, "users.manage");
   const { data: staff } = useQuery(acadStaffQuery);
   const { data: rights } = useQuery({
     queryKey: [ACAD_KEY, "team"],
@@ -248,43 +251,36 @@ function TeamSection() {
       unwrap<{ user_id: string; can_create: boolean; can_review: boolean }[]>(
         supabase.from("acad_staff").select("user_id, can_create, can_review"),
       ),
-    enabled: !!access?.isOwner,
+    enabled: isAdmin,
     meta: { errorMessage: "Не удалось загрузить права Академии" },
   });
   const people = (staff ?? []).flatMap((p) => {
     const r = rights?.find((x) => x.user_id === p.user_id);
-    const owner = p.roles.some((x) => x.role === "owner");
-    return owner || r?.can_create || r?.can_review ? [{ person: p, owner, r }] : [];
+    return r?.can_create || r?.can_review ? [{ person: p, r }] : [];
   });
   return (
     <section className="space-y-2">
       <h2 className="font-semibold">Кто ведёт обучение</h2>
       <p className="text-sm text-muted-foreground">
         «Создаёт курсы» — конструктор, назначения, отчёт; «Проверяет ответы» — свободные ответы
-        учеников. Владельцам открыто всё. Права выдаёт владелец в{" "}
-        {access?.isOwner ? (
-          <Link to="/employees" className="font-medium text-brand-on-light hover:underline">
-            «Доступах»
+        учеников. Администраторам Академии открыто всё. Права выдаются ролями в{" "}
+        {canManage ? (
+          <Link to="/access/roles" className="font-medium text-brand-on-light hover:underline">
+            «Пользователях и ролях»
           </Link>
         ) : (
-          "«Доступах»"
+          "«Пользователях и ролях»"
         )}
         .
       </p>
-      {access?.isOwner ? (
+      {isAdmin ? (
         <ul className="divide-y rounded-lg border bg-background">
-          {people.map(({ person, owner, r }) => (
+          {people.map(({ person, r }) => (
             <li key={person.user_id} className="flex items-center gap-3 px-3 py-2">
               <PersonCell name={person.full_name} avatar={person.avatar_url} />
               <span className="ml-auto flex flex-wrap justify-end gap-1">
-                {owner ? (
-                  <StatusChip tone="strong">Владелец</StatusChip>
-                ) : (
-                  <>
-                    {r?.can_create && <StatusChip tone="info">Создаёт курсы</StatusChip>}
-                    {r?.can_review && <StatusChip tone="info">Проверяет ответы</StatusChip>}
-                  </>
-                )}
+                {r?.can_create && <StatusChip tone="info">Создаёт курсы</StatusChip>}
+                {r?.can_review && <StatusChip tone="info">Проверяет ответы</StatusChip>}
               </span>
             </li>
           ))}

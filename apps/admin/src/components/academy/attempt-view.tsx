@@ -45,7 +45,7 @@ export function AttemptView({
   const canReview =
     attempt.status === "review" &&
     attempt.user_id !== me?.id &&
-    (!!access?.isOwner || !!access?.academy?.can_review);
+    (!!access?.academy?.is_admin || !!access?.academy?.can_review);
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <AttemptHeader attempt={attempt} fromReview={fromReview} />
