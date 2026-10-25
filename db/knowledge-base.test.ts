@@ -881,6 +881,19 @@ describe.skipIf(!url)("база знаний (база)", () => {
       await asServer(tx);
     }));
 
+  test("цвет тега: ключ из набора или пусто", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.editor);
+      const [{ id }] = await tx`insert into kb_tags (base_id, name, color) values (${t.b}, 'Касса', 'green') returning id`;
+      await tx`update kb_tags set color = 'pink' where id = ${id}`;
+      expect(
+        await failure(tx, () => tx`update kb_tags set color = '#ff0000' where id = ${id}`),
+      ).toContain("kb_tags_color_check");
+      await tx`update kb_tags set color = null where id = ${id}`;
+      await asServer(tx);
+    }));
+
   test("файлы: читатель базы читает, пишет только редактор, чужая база закрыта", () =>
     scenario(async (tx) => {
       const t = await setup(tx);
