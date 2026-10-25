@@ -19,6 +19,15 @@ import { kbBaseIdOf } from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
 
 /**
+ * Место вкладок в шапке. С lg поиск — по центру шапки (решение владельца
+ * 2026-10-25): вкладки и правая часть (AdminShell) тянутся поровну
+ * (flex-1 basis-0); вкладкам шире своей половины min-width auto не даёт
+ * сжаться — поиск сдвигается вправо, а предел max-w оставляет место
+ * поиску и «Обновить», дальше вкладки прокручиваются.
+ */
+const KB_TABS_SLOT = "min-w-0 flex-1 lg:min-w-auto lg:basis-0 lg:max-w-[calc(100%-23.5rem)]";
+
+/**
  * Вкладки баз знаний в шапке (решение владельца 2026-10-25): раздел рейки
  * один, базы — вкладками с иконкой и подписью вкладки (rail_title), порядок
  * — как в «Управлении» → «Знания». Вкладка открывает главную базы, меню
@@ -48,7 +57,7 @@ export function KbBaseTabs() {
 
   if (loading)
     return (
-      <div className="flex min-w-0 flex-1 gap-1">
+      <div className={cn("flex gap-1", KB_TABS_SLOT)}>
         {Array.from({ length: 3 }, (_, i) => (
           <Skeleton key={i} className="h-10 w-32 rounded-full" />
         ))}
@@ -63,7 +72,7 @@ export function KbBaseTabs() {
         void navigate({ to: "/kb/$baseId", params: { baseId: id } });
       }}
       activationMode="manual"
-      className="min-w-0 flex-1"
+      className={KB_TABS_SLOT}
     >
       {/* Баз больше, чем ширины, — вкладки прокручиваются. */}
       <TabsList
