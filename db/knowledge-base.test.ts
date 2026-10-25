@@ -627,6 +627,100 @@ describe.skipIf(!url)("база знаний (база)", () => {
       await asServer(tx);
     }));
 
+  test("оценка статьи: своя и только видимое, версия, выключение, аналитика, корзина", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.editor);
+      await tx`select kb_save_draft(${t.pub}, ${JSON.stringify(doc("Версия 1"))}::text::jsonb, null)`;
+      await tx`select kb_publish(${t.pub})`;
+
+      await as(tx, t.reader);
+      await tx`select kb_rate(${t.pub}, 1)`;
+      await tx`select kb_rate(${t.pub}, 3)`; // та же версия — оценка меняется, строка одна
+      expect(await failure(tx, () => tx`select kb_rate(${t.pub}, 4)`)).toContain("kb_bad_score");
+      expect(await failure(tx, () => tx`select kb_rate(${t.draft}, 2)`)).toContain("kb_not_found");
+      expect(await failure(tx, () => tx`select kb_rate(${t.folder}, 2)`)).toContain("kb_not_found");
+      // Писать напрямую нельзя, свои строки — видно.
+      expect(
+        await failure(tx, () => tx`insert into kb_ratings (node_id, base_id, user_id, score, version_at)
+                                    values (${t.pub}, ${t.b}, ${t.reader}, 1, now())`),
+      ).toContain("permission denied");
+      const own = (await tx`select score from kb_ratings where node_id = ${t.pub}`) as Row[];
+      expect(own).toEqual([{ score: 3 }]);
+      // Сотрудник без доступа не оценит; аналитику читатель не видит.
+      await as(tx, t.stranger);
+      expect(await failure(tx, () => tx`select kb_rate(${t.pub}, 2)`)).toContain("kb_not_found");
+      await as(tx, t.reader);
+      expect(await failure(tx, () => tx`select kb_ratings_report(${t.b}, 30)`)).toContain("kb_forbidden");
+
+      // Новая версия — новая строка; прежняя оценка — «прежней версии».
+      await asServer(tx);
+      await tx`update kb_ratings set version_at = version_at - interval '1 minute', rated_at = rated_at - interval '1 minute'`;
+      await tx`update kb_nodes set published_at = published_at - interval '1 minute' where id = ${t.pub}`;
+      await tx`update kb_nodes set published_at = now() where id = ${t.pub}`;
+      await as(tx, t.reader);
+      await tx`select kb_rate(${t.pub}, 2)`;
+      await as(tx, t.owner);
+      await tx`select kb_rate(${t.pub}, 1)`;
+
+      await as(tx, t.editor);
+      const [{ r }] = (await tx`select kb_ratings_report(${t.b}, 30) as r`) as Row[];
+      const report = r as {
+        current: Record<string, number>;
+        articles: { id: string; count: number; bad: number; ok: number; good: number }[];
+        log: { user_id: string; score: number; outdated: boolean }[];
+      };
+      expect(report.current).toEqual({ count: 3, people: 2, bad: 1, ok: 1, good: 1 });
+      expect(report.articles).toHaveLength(1);
+      expect(report.articles[0]).toMatchObject({ id: t.pub, count: 3, bad: 1, ok: 1, good: 1 });
+      expect(report.log.map((l) => [l.user_id, l.score, l.outdated])).toEqual([
+        [t.owner, 1, false],
+        [t.reader, 2, false],
+        [t.reader, 3, true],
+      ]);
+      // Редактор видит все оценки базы.
+      expect(await tx`select 1 from kb_ratings where base_id = ${t.b}`).toHaveLength(3);
+
+      // Оценку выключили в настройках статьи — оценить нельзя.
+      await tx`update kb_nodes set feedback_enabled = false, pager_enabled = false where id = ${t.pub}`;
+      await as(tx, t.reader);
+      expect(await failure(tx, () => tx`select kb_rate(${t.pub}, 3)`)).toContain("kb_rating_off");
+
+      // Корзина: оценки и настройки статьи возвращаются вместе с ней.
+      await as(tx, t.editor);
+      const [{ id: trashId }] = await tx`select kb_trash_node(${t.pub}) as id`;
+      await asServer(tx);
+      expect(await tx`select 1 from kb_ratings where node_id = ${t.pub}`).toHaveLength(0);
+      await as(tx, t.editor);
+      await tx`select kb_trash_restore(${trashId})`;
+      await asServer(tx);
+      expect(await tx`select 1 from kb_ratings where node_id = ${t.pub}`).toHaveLength(3);
+      const [settings] = (await tx`select feedback_enabled, pager_enabled from kb_nodes where id = ${t.pub}`) as Row[];
+      expect(settings).toEqual({ feedback_enabled: false, pager_enabled: false });
+      // Копия — с настройками, без оценок.
+      await as(tx, t.editor);
+      const [{ id: copy }] = await tx`select kb_copy_node(${t.pub}) as id`;
+      await asServer(tx);
+      const [copied] = (await tx`select feedback_enabled, pager_enabled from kb_nodes where id = ${copy}`) as Row[];
+      expect(copied).toEqual({ feedback_enabled: false, pager_enabled: false });
+      expect(await tx`select 1 from kb_ratings where node_id = ${copy}`).toHaveLength(0);
+    }));
+
+  test("цвет базы: #rrggbb или пусто; ставит владелец", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.owner);
+      await tx`update kb_bases set brand_color = '#17b3a3' where id = ${t.b}`;
+      expect(
+        await failure(tx, () => tx`update kb_bases set brand_color = 'red' where id = ${t.b}`),
+      ).toContain("kb_bases_brand_color_check");
+      await as(tx, t.editor);
+      await tx`update kb_bases set brand_color = '#000000' where id = ${t.b}`; // RLS: не его — 0 строк
+      const [row] = (await tx`select brand_color from kb_bases where id = ${t.b}`) as Row[];
+      expect(row.brand_color).toBe("#17b3a3");
+      await asServer(tx);
+    }));
+
   test("файлы: читатель базы читает, пишет только редактор, чужая база закрыта", () =>
     scenario(async (tx) => {
       const t = await setup(tx);

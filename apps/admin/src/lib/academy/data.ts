@@ -3,7 +3,7 @@
  * ACAD_KEY: после любой записи достаточно сбросить ["acad"]. Команда
  * (создатели и проверяющие) читает таблицы напрямую под RLS, ученик — только
  * через RPC (вопросы с отметками верных ему закрыты).
- * Схема — db/migrations/2026-10-25_zzzzzz_academy.sql.
+ * Схема — db/migrations/2026-10-25_zzzzzzz_academy.sql.
  */
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 

@@ -9,6 +9,7 @@ import type {
   KbReader,
   KbReportRow,
 } from "@/lib/kb/analytics";
+import type { KbRatingsReport } from "@/lib/kb/ratings";
 import { unwrap } from "@/lib/query";
 
 /**
@@ -73,5 +74,19 @@ export function useKbReaders(nodeId: string, enabled = true) {
     queryFn: () => unwrap<KbReader[]>(supabase.rpc("kb_article_readers", { p_node: nodeId })),
     enabled,
     meta: { errorMessage: "Не удалось загрузить, кто прочитал статью" },
+  });
+}
+
+/** Оценки статей базы: итоги, по статьям, хронология (RPC kb_ratings_report). */
+export function useKbRatings(baseId: string, period: KbPeriod, enabled = true) {
+  return useQuery({
+    queryKey: ["kb_ratings_report", baseId, period],
+    queryFn: () =>
+      unwrap<KbRatingsReport>(
+        supabase.rpc("kb_ratings_report", { p_base: baseId, p_days: Number(period) }),
+      ),
+    enabled,
+    placeholderData: keepPreviousData,
+    meta: { errorMessage: "Не удалось загрузить оценки статей" },
   });
 }

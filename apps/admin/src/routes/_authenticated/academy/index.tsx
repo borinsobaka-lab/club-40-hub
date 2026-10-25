@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/academy/")({
 /**
  * «Академия» → «Мои курсы»: курсы, назначенные сотруднику (людям или
  * ролью), — сначала непройденные и просроченные. Схема —
- * db/migrations/2026-10-25_zzzzzz_academy.sql (acad_my_courses).
+ * db/migrations/2026-10-25_zzzzzzz_academy.sql (acad_my_courses).
  */
 function MyCoursesPage() {
   const access = useAdminAccess();

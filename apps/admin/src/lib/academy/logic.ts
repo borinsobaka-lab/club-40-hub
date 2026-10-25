@@ -1,7 +1,7 @@
 /**
  * «Академия» без React: подписи, проверка вопроса в форме, готовность ответов,
  * сроки и напоминания конструктора (№65 брифа). Схема —
- * db/migrations/2026-10-25_zzzzzz_academy.sql.
+ * db/migrations/2026-10-25_zzzzzzz_academy.sql.
  */
 import type { StatusTone } from "@/components/ui/status-chip-styles";
 import type {

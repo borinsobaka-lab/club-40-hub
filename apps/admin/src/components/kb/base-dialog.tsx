@@ -7,7 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { KB_BASES_KEY } from "@/lib/kb/data";
 import { KB_DEFAULT_ICON, KB_ICONS } from "@/lib/kb/icons";
 import type { KbBase } from "@/lib/kb/types";
+import { DEFAULT_BRAND_COLOR } from "@/lib/studio-formats";
 import { Button } from "@/components/ui/button";
+import { ColorInput } from "@/components/ui/color-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField, SwitchRow } from "@/components/ui/form-field";
@@ -31,6 +33,8 @@ const TIPS = {
   railTitle:
     "Короткое название на вкладке в шапке базы знаний, рядом с иконкой. Пусто — полное название.",
   description: "Видно в списке баз знаний — для чего база и кому она.",
+  color:
+    "Внутри базы этим цветом красятся иконка базы в шапке, надзаголовки, метки черновиков и правок, точки в меню, выделение в оглавлении. Без своего цвета — цвет клуба.",
   protect:
     "Во всех статьях базы читатели не смогут скопировать текст, сохранить картинку и распечатать; поверх — водяной знак с почтой и датой. У отдельной статьи можно включить или выключить в её меню «⋯».",
 };
@@ -45,6 +49,7 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
   const [railTitle, setRailTitle] = useState(base?.rail_title ?? "");
   const [icon, setIcon] = useState(base?.icon ?? KB_DEFAULT_ICON);
   const [description, setDescription] = useState(base?.description ?? "");
+  const [color, setColor] = useState(base?.brand_color ?? "");
   const [protect, setProtect] = useState(base?.protect_content ?? false);
   const [saving, setSaving] = useState(false);
 
@@ -55,6 +60,11 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
       toast.error("Укажите название базы");
       return;
     }
+    const brandColor = color.trim().toLowerCase();
+    if (brandColor && !/^#[0-9a-f]{6}$/.test(brandColor)) {
+      toast.error("Цвет — в формате #RRGGBB");
+      return;
+    }
     setSaving(true);
     try {
       const row = {
@@ -63,6 +73,7 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
         icon,
         description: description.trim(),
         protect_content: protect,
+        brand_color: brandColor || null,
       };
       const { error } = base
         ? await supabase.from("kb_bases").update(row).eq("id", base.id)
@@ -83,7 +94,7 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
       <DialogHeader>
         <DialogTitle>{base ? "База знаний" : "Новая база знаний"}</DialogTitle>
         <DialogDescription>
-          Название, иконка и подпись вкладки. Кто видит базу — настраивается в «Доступах»: по
+          Название, иконка, подпись вкладки и цвет. Кто видит базу — настраивается в «Доступах»: по
           умолчанию её видят только владельцы.
         </DialogDescription>
       </DialogHeader>
@@ -132,6 +143,20 @@ export function KbBaseForm({ base, onDone }: { base: KbBase | null; onDone: () =
                 rows={3}
                 onChange={(e) => setDescription(e.target.value)}
               />
+            </FormField>
+            <FormField label="Фирменный цвет" tip={TIPS.color}>
+              <div className="space-y-2">
+                <ColorInput value={color} onChange={setColor} fallback={DEFAULT_BRAND_COLOR} />
+                {color ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setColor("")}>
+                    Как у клуба
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Не задан — база в цвете клуба. Выберите цвет, чтобы задать свой.
+                  </p>
+                )}
+              </div>
             </FormField>
             <SwitchRow
               title="Защита содержимого"

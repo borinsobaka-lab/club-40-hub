@@ -31,6 +31,11 @@ export function KbBaseTabs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const baseId = kbBaseIdOf(pathname);
   const { bases, loading } = useMyKbBases();
+  // Выбранная вкладка — сразу по клику, не дожидаясь новой страницы: плашка
+  // начинает переезд тут же (шапка — часть страницы и заводится заново,
+  // поэтому плашка ещё и помнит прежнее место — indicatorMemoryKey).
+  const [picked, setPicked] = useState<string | null>(null);
+  useEffect(() => setPicked(null), [baseId]);
 
   useEffect(() => {
     if (!baseId) return;
@@ -52,14 +57,18 @@ export function KbBaseTabs() {
 
   return (
     <Tabs
-      value={baseId ?? ""}
-      onValueChange={(id) => navigate({ to: "/kb/$baseId", params: { baseId: id } })}
+      value={picked ?? baseId ?? ""}
+      onValueChange={(id) => {
+        setPicked(id);
+        void navigate({ to: "/kb/$baseId", params: { baseId: id } });
+      }}
       activationMode="manual"
       className="min-w-0 flex-1"
     >
       {/* Баз больше, чем ширины, — вкладки прокручиваются. */}
       <TabsList
         aria-label="Базы знаний"
+        indicatorMemoryKey="kb-bases"
         className="max-w-full justify-start overflow-x-auto [scrollbar-width:none]"
       >
         {bases.map((b) => {
@@ -74,7 +83,11 @@ export function KbBaseTabs() {
                 router.preloadRoute({ to: "/kb/$baseId", params: { baseId: b.id } }).catch(() => {})
               }
             >
-              <Icon active={b.id === baseId} className="size-4 shrink-0" />
+              {/* Иконка открытой базы — её цвет (--brand внутри базы — цвет базы). */}
+              <Icon
+                active={b.id === (picked ?? baseId)}
+                className={cn("size-4 shrink-0", b.id === baseId && "text-brand-on-dark")}
+              />
               {b.rail_title || b.title}
             </TabsTrigger>
           );

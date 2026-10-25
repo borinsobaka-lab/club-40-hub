@@ -19,6 +19,7 @@ import {
   Loader2,
   Pencil,
   Send,
+  Settings2,
   ShieldCheck,
   Star,
   Trash2,
@@ -30,6 +31,8 @@ import { AdminShell } from "@/components/admin-shell";
 import { DocumentText, Folder } from "@/components/nav-icons";
 import { KbArticleBodySkeleton, KbFolderBodySkeleton } from "@/components/page-skeletons";
 import { KbBaseForm } from "@/components/kb/base-dialog";
+import { KbArticlePager, KbArticleRating } from "@/components/kb/article-footer";
+import { KbPageSettingsForm } from "@/components/kb/page-settings-dialog";
 import { KbProtectForm } from "@/components/kb/protect-dialog";
 import { KbProtectedArea } from "@/components/kb/protected-area";
 import { KbSaveTemplateForm } from "@/components/kb/template-dialogs";
@@ -417,7 +420,8 @@ function FolderView({
           <span
             className={cn(
               "flex size-11 shrink-0 items-center justify-center rounded-lg",
-              folder ? "bg-muted text-muted-foreground" : "bg-sidebar text-white",
+              // Иконка базы — её цветом на осветлённой подложке (решение владельца 2026-10-25).
+              folder ? "bg-muted text-muted-foreground" : "bg-brand/15 text-brand",
             )}
           >
             <Icon className="size-6" />
@@ -570,6 +574,7 @@ function NodeMenu({
   onVersions,
   onSaveTemplate,
   onProtect,
+  onSettings,
 }: {
   baseId: string;
   node: KbTreeNode;
@@ -581,6 +586,7 @@ function NodeMenu({
   onVersions?: () => void;
   onSaveTemplate?: () => void;
   onProtect?: () => void;
+  onSettings?: () => void;
 }) {
   const actions = useKbActions(baseId);
   const navigate = useNavigate();
@@ -646,6 +652,7 @@ function NodeMenu({
           {!isFolder && item("Сделать копию", Copy, () => actions.copy(node.id))}
           {onVersions && item("Версии…", History, onVersions)}
           {onSaveTemplate && item("Сохранить как шаблон…", LayoutTemplate, onSaveTemplate)}
+          {onSettings && item("Настройки страницы…", Settings2, onSettings)}
           {onProtect && item("Защита содержимого…", ShieldCheck, onProtect)}
           {hasDraft &&
             onDiscardDraft &&
@@ -712,7 +719,16 @@ function ArticleView({
   };
   const [headings, setHeadings] = useState<KbHeading[]>([]);
   const [dialog, setDialog] = useState<
-    "rename" | "move" | "link" | "heading" | "versions" | "template" | "protect" | "readers" | null
+    | "rename"
+    | "move"
+    | "link"
+    | "heading"
+    | "versions"
+    | "template"
+    | "protect"
+    | "settings"
+    | "readers"
+    | null
   >(null);
   const [pickHeadings, setPickHeadings] = useState<KbHeading[]>([]);
   const [publishing, setPublishing] = useState(false);
@@ -963,6 +979,7 @@ function ArticleView({
                     onVersions={() => setDialog("versions")}
                     onSaveTemplate={() => setDialog("template")}
                     onProtect={() => setDialog("protect")}
+                    onSettings={() => setDialog("settings")}
                   />
                 )}
               </header>
@@ -1058,6 +1075,12 @@ function ArticleView({
                   </Suspense>
                 )}
               </div>
+              {!editing && !loading && node.status === "published" && node.feedback_enabled && (
+                <KbArticleRating baseId={baseId} node={node} canEdit={canEdit} />
+              )}
+              {!editing && node.pager_enabled && (
+                <KbArticlePager baseId={baseId} index={index} nodeId={node.id} />
+              )}
             </KbProtectedArea>
           </article>
           <Toc headings={headings} />
@@ -1115,6 +1138,13 @@ function ArticleView({
               value={node.protect}
               baseProtects={baseProtects}
               onSave={(protect) => actions.update(node.id, { protect })}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "settings" && (
+            <KbPageSettingsForm
+              value={node}
+              onSave={(patch) => actions.update(node.id, patch)}
               onDone={() => setDialog(null)}
             />
           )}
@@ -1410,9 +1440,7 @@ function Toc({ headings }: { headings: KbHeading[] }) {
         aria-label="Оглавление"
         className="sidebar-scroll sticky top-0 max-h-[calc(100dvh-6rem)] overflow-y-auto pt-9"
       >
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Содержание
-        </p>
+        <p className="mb-2 text-sm font-medium text-muted-foreground">Содержание</p>
         <ul className="space-y-1 border-l">
           {headings.map((h) => {
             const current = h.id === active;
@@ -1425,7 +1453,7 @@ function Toc({ headings }: { headings: KbHeading[] }) {
                   className={cn(
                     "-ml-px block w-full cursor-pointer border-l py-0.5 text-left text-sm transition-colors",
                     current
-                      ? "border-foreground font-medium text-foreground"
+                      ? "border-brand-on-light font-medium text-foreground"
                       : "border-transparent text-muted-foreground hover:border-muted-foreground hover:text-foreground",
                   )}
                   style={{ paddingLeft: 12 + (Math.min(h.level, 3) - 1) * 12 }}

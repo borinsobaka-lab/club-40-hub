@@ -1,6 +1,6 @@
 /**
  * «Академия» — типы строк и ответов RPC
- * (db/migrations/2026-10-25_zzzzzz_academy.sql).
+ * (db/migrations/2026-10-25_zzzzzzz_academy.sql).
  */
 
 export type AcadCourseStatus = "draft" | "published" | "archived";

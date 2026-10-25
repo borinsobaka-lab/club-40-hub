@@ -71,6 +71,7 @@ import {
   FlaskConical as FlaskConicalArt,
   FolderTransferIcon as FolderInputArt,
   FolderPlus as FolderPlusArt,
+  Frown as FrownArt,
   GraduationCap as GraduationCapArt,
   DragDropVerticalIcon as GripVerticalArt,
   Hash as HashArt,
@@ -92,6 +93,7 @@ import {
   Lock as LockArt,
   LogIn as LogInArt,
   ArrowExpandIcon as MaximizeArt,
+  Meh as MehArt,
   MessageCircle as MessageCircleArt,
   MessageCirclePlus as MessageCirclePlusArt,
   MessageSquare as MessageSquareArt,
@@ -120,6 +122,7 @@ import {
   ShoppingBag as ShoppingBagArt,
   SlidersHorizontal as SlidersHorizontalArt,
   Smartphone as SmartphoneArt,
+  Smile as SmileArt,
   Square as SquareArt,
   Star as StarArt,
   Ticket as TicketArt,
@@ -206,6 +209,7 @@ export const FileUp = icon(FileUpArt, "FileUp");
 export const FlaskConical = icon(FlaskConicalArt, "FlaskConical");
 export const FolderInput = icon(FolderInputArt, "FolderInput");
 export const FolderPlus = icon(FolderPlusArt, "FolderPlus");
+export const Frown = icon(FrownArt, "Frown");
 export const GraduationCap = icon(GraduationCapArt, "GraduationCap");
 export const GripVertical = icon(GripVerticalArt, "GripVertical");
 export const Hash = icon(HashArt, "Hash");
@@ -227,6 +231,7 @@ export const Loader2 = icon(Loader2Art, "Loader2");
 export const Lock = icon(LockArt, "Lock");
 export const LogIn = icon(LogInArt, "LogIn");
 export const Maximize = icon(MaximizeArt, "Maximize");
+export const Meh = icon(MehArt, "Meh");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");
 export const MessageCirclePlus = icon(MessageCirclePlusArt, "MessageCirclePlus");
 export const MessageSquare = icon(MessageSquareArt, "MessageSquare");
@@ -255,6 +260,7 @@ export const ShieldCheck = icon(ShieldCheckArt, "ShieldCheck");
 export const ShoppingBag = icon(ShoppingBagArt, "ShoppingBag");
 export const SlidersHorizontal = icon(SlidersHorizontalArt, "SlidersHorizontal");
 export const Smartphone = icon(SmartphoneArt, "Smartphone");
+export const Smile = icon(SmileArt, "Smile");
 export const Square = icon(SquareArt, "Square");
 export const Star = icon(StarArt, "Star");
 export const Ticket = icon(TicketArt, "Ticket");

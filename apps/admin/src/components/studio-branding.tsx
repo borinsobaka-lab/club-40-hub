@@ -1,8 +1,12 @@
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useRouterState } from "@tanstack/react-router";
 
 import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
 import { readableOn, textOnTint } from "@/lib/color-contrast";
+import { kbBasesQuery } from "@/lib/kb/data";
+import { kbBaseIdOf } from "@/lib/nav-sections";
 import { rememberStudioFormat } from "@/lib/page-skeleton-layout";
 
 /** Фон меню (`--sidebar` в styles.css). */
@@ -14,6 +18,9 @@ const SIDEBAR_HEX = "#1a2027";
  * - красит админку в цвет активной студии: --brand (иконка активного пункта
  *   меню, «сегодня» в расписании и прочие акценты) берётся из
  *   studios.brand_color. Без студии остаётся цвет по умолчанию из styles.css.
+ *   Внутри базы знаний со своим цветом (kb_bases.brand_color, решение
+ *   владельца 2026-10-25) — её цвет: всё, что красится цветом клуба
+ *   (надзаголовки, точки и метки правок, оглавление), красится цветом базы.
  * Фавикон с 2026-10-20 один на всю админку (__root.tsx), по формату клуба не
  * меняется.
  */
@@ -33,16 +40,23 @@ export function StudioBranding() {
   const format = active?.format;
   useEffect(() => rememberStudioFormat(format), [format]);
 
-  const color = active?.brand_color;
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const kbBaseId = kbBaseIdOf(pathname);
+  const { data: kbBases } = useQuery({ ...kbBasesQuery, enabled: !!kbBaseId });
+  const kbColor = kbBaseId ? kbBases?.find((b) => b.id === kbBaseId)?.brand_color : null;
+  const color = kbColor || active?.brand_color;
+  // Цвет базы — как задан (решение владельца 2026-10-25): на белом не
+  // темнеет; подстраивается только иконка на тёмном (меню, плашка вкладок).
+  const exact = !!kbColor;
   useEffect(() => {
     if (!color) return;
     const root = document.documentElement;
-    const vars = brandVars(color);
+    const vars = brandVars(color, exact);
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     return () => {
       for (const k of Object.keys(vars)) root.style.removeProperty(k);
     };
-  }, [color]);
+  }, [color, exact]);
 
   return null;
 }
@@ -54,11 +68,11 @@ export function StudioBranding() {
  * читается. Без этого тёмно-красный бренд терялся в меню, а белая цифра на
  * светлом бренде пропадала.
  */
-function brandVars(color: string): Record<string, string> {
+function brandVars(color: string, exact = false): Record<string, string> {
   return {
     "--brand": color,
     "--brand-on-dark": readableOn(color, SIDEBAR_HEX),
-    "--brand-on-light": readableOn(color, "#ffffff", 4.5),
+    "--brand-on-light": exact ? color : readableOn(color, "#ffffff", 4.5),
     "--brand-foreground": textOnTint(color, 1) === "light" ? "#ffffff" : "var(--foreground)",
   };
 }

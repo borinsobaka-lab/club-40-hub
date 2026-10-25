@@ -2,7 +2,7 @@
 
 Статус: **первая версия сделана 2026-10-25 (версия админки 1.39)**. Код —
 раздел «Академия» в `apps/admin/CLAUDE.md`, схема — корневой `CLAUDE.md`
-(миграция `db/migrations/2026-10-25_zzzzzz_academy.sql`, тесты
+(миграция `db/migrations/2026-10-25_zzzzzzz_academy.sql`, тесты
 `db/academy.test.ts`). Источник требований — бриф сотрудников Lady Stretch по
 функциям Платрума, блок «Проверка знаний („Академия“)», №58–69 (номера — как
 на листе «Сводная по функциям»; см. KNOWLEDGE_BASE.md).
@@ -72,7 +72,7 @@
 
 ## Устройство
 
-- **Схема** — `db/migrations/2026-10-25_zzzzzz_academy.sql`: права
+- **Схема** — `db/migrations/2026-10-25_zzzzzzz_academy.sql`: права
   `acad_staff`; каталог `acad_folders`, `acad_courses`, шаги `acad_steps`
   (урок — `content` BlockNote, `source_node_id` / `source_published_at`;
   тест — `pass_percent`), вопросы `acad_questions` (варианты jsonb
