@@ -573,7 +573,7 @@ function TreeRow({
           )}
           {hasDraft && (
             <span
-              className="ml-auto size-1.5 shrink-0 rounded-full bg-brand-on-dark"
+              className="ml-auto size-1.5 shrink-0 rounded-full bg-amber-400"
               title="Есть неопубликованные правки"
               aria-label="Есть неопубликованные правки"
             />
