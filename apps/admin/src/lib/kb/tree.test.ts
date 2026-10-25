@@ -81,8 +81,15 @@ describe("дерево базы знаний", () => {
   test("папку нельзя в саму себя, в свою вложенную и внутрь статьи", () => {
     expect(dropPlacement(index, "LS", "admin", "combine")).toBeNull();
     expect(dropPlacement(index, "LS", "open", "reorder-after")).toBeNull();
-    expect(dropPlacement(index, "office", "open", "combine")).toBeNull();
+    expect(dropPlacement(index, "empty", "open", "combine")).toBeNull();
     expect(dropPlacement(index, "LS", "LS", "reorder-after")).toBeNull();
+  });
+
+  test("статью — внутрь статьи (вложенные статьи)", () => {
+    expect(dropPlacement(index, "office", "open", "combine")).toEqual({
+      parentId: "open",
+      position: 0,
+    });
   });
 
   test("порядок после переноса показывается сразу", () => {
@@ -115,5 +122,44 @@ describe("articleNeighbors", () => {
     );
     expect(articleNeighbors(indexTree(archived), "open").next?.id).toBe("office");
     expect(articleNeighbors(idx, "nope")).toEqual({ prev: null, next: null });
+  });
+});
+
+describe("вложенные статьи", () => {
+  // guide ─┬─ step1 ─── step1a
+  //        └─ step2
+  // tail
+  const tree = [
+    n("guide", null),
+    n("step1", "guide"),
+    n("step1a", "step1"),
+    n("step2", "guide"),
+    n("tail", null),
+  ];
+  const idx = indexTree(tree);
+
+  test("считаются вместе со статьёй-родителем, предки — статьи", () => {
+    expect(articleCount(idx, null)).toBe(5);
+    expect(articleCount(idx, "guide")).toBe(3);
+    expect(ancestorsOf(idx, "step1a").map((x) => x.id)).toEqual(["guide", "step1"]);
+  });
+
+  test("«Предыдущая / Следующая» — статья, затем её вложенные", () => {
+    expect(articleNeighbors(idx, "guide")).toMatchObject({ prev: null, next: { id: "step1" } });
+    expect(articleNeighbors(idx, "step1a")).toMatchObject({
+      prev: { id: "step1" },
+      next: { id: "step2" },
+    });
+    expect(articleNeighbors(idx, "tail").prev?.id).toBe("step2");
+  });
+
+  test("рядом с вложенной статьёй — внутрь её родителя; папку туда нельзя", () => {
+    const withFolder = indexTree([...tree, n("box", null, "folder")]);
+    expect(dropPlacement(withFolder, "tail", "step2", "reorder-before")).toEqual({
+      parentId: "guide",
+      position: 1,
+    });
+    expect(dropPlacement(withFolder, "box", "step2", "reorder-before")).toBeNull();
+    expect(dropPlacement(withFolder, "guide", "step1a", "combine")).toBeNull();
   });
 });

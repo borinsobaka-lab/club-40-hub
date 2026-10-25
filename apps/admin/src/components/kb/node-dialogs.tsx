@@ -27,24 +27,38 @@ import {
 } from "@/components/ui/dialog";
 import { useKbTemplates } from "@/lib/kb/data";
 import { KB_SECTION_DEFAULT_ICON, KB_SECTION_ICONS, kbSectionIcon } from "@/lib/kb/icons";
-import { ancestorsOf, childrenOf, indexTree, isWithin } from "@/lib/kb/tree";
+import { ancestorsOf, canNestIn, childrenOf, indexTree, isWithin } from "@/lib/kb/tree";
 import type { KbHeading } from "@/lib/kb/document";
 import type { KbKind, KbTreeNode } from "@/lib/kb/types";
 import { cn } from "@/lib/utils";
 
-/** Папки дерева по порядку с глубиной — для выбора «куда»; `skip` — без этой ветки. */
-function folderOptions(nodes: KbTreeNode[], skip?: string): { node: KbTreeNode; depth: number }[] {
+/**
+ * Куда можно положить узел вида `kind` — по порядку дерева с глубиной, для
+ * выбора «куда»: папки, а для статьи — и статьи (вложенные статьи); `skip` —
+ * без этой ветки (переносимый узел и его вложенное).
+ */
+function parentOptions(
+  nodes: KbTreeNode[],
+  kind: KbKind,
+  skip?: string,
+): { node: KbTreeNode; depth: number }[] {
   const index = indexTree(nodes);
   const out: { node: KbTreeNode; depth: number }[] = [];
   const walk = (parent: string | null, depth: number) => {
     for (const n of childrenOf(index, parent)) {
-      if (n.kind !== "folder" || (skip && isWithin(index, n.id, skip))) continue;
+      if (!canNestIn(n, kind) || (skip && isWithin(index, n.id, skip))) continue;
       out.push({ node: n, depth });
       walk(n.id, depth + 1);
     }
   };
   walk(null, 0);
   return out;
+}
+
+/** Значок места: раздел — своей иконкой, папка, статья. */
+function placeIcon(n: KbTreeNode, depth: number) {
+  if (n.kind === "article") return DocumentText;
+  return depth === 0 ? kbSectionIcon(n.icon) : Folder;
 }
 
 const ROOT = "__root__";
@@ -89,7 +103,7 @@ export function KbNodeTitleForm({
   onDone: () => void;
 }) {
   const [parentId, setParentId] = useState<string | null>(place?.parentId ?? null);
-  const folders = useMemo(() => (place ? folderOptions(place.nodes) : []), [place]);
+  const folders = useMemo(() => (place ? parentOptions(place.nodes, kind) : []), [place, kind]);
   const [title, setTitle] = useState(node?.title ?? "");
   const [description, setDescription] = useState(node?.description ?? "");
   const [icon, setIcon] = useState(node?.icon ?? KB_SECTION_DEFAULT_ICON);
@@ -155,7 +169,11 @@ export function KbNodeTitleForm({
             {place && !node && (
               <FormField
                 label="Где создать"
-                tip="Папка, в которой появится новая папка или статья. Потом её можно перенести перетаскиванием в меню."
+                tip={
+                  isFolder
+                    ? "Папка, в которой появится новая папка. Потом её можно перенести перетаскиванием в меню."
+                    : "Папка или статья, в которой появится новая статья (вложенная — на любую глубину). Потом её можно перенести перетаскиванием в меню."
+                }
               >
                 <Select
                   value={parentId ?? ROOT}
@@ -167,7 +185,7 @@ export function KbNodeTitleForm({
                   <SelectContent>
                     <SelectItem value={ROOT}>{place.baseTitle} — верхний уровень</SelectItem>
                     {folders.map(({ node: f, depth }) => {
-                      const FolderIcon = depth === 0 ? kbSectionIcon(f.icon) : Folder;
+                      const FolderIcon = placeIcon(f, depth);
                       return (
                         <SelectItem key={f.id} value={f.id} textValue={f.title}>
                           <span
@@ -290,8 +308,9 @@ export function KbMoveForm({
   const [target, setTarget] = useState<string | null>(node.parent_id);
   const [saving, setSaving] = useState(false);
 
-  // Папки дерева с отступом по глубине, без самого узла и его вложенных.
-  const folders = folderOptions(nodes, node.id);
+  // Куда можно: папки (статье — и статьи) с отступом по глубине, без самого
+  // узла и его вложенных.
+  const folders = parentOptions(nodes, node.kind, node.id);
 
   const save = async () => {
     if (target === node.parent_id) {
@@ -312,8 +331,10 @@ export function KbMoveForm({
       <DialogHeader>
         <DialogTitle>Переместить «{node.title || "Без названия"}»</DialogTitle>
         <DialogDescription>
-          Выберите папку — {node.kind === "folder" ? "папка" : "статья"} встанет в её конец. Порядок
-          внутри папки меняется перетаскиванием в меню.
+          {node.kind === "folder"
+            ? "Выберите папку — папка встанет в её конец."
+            : "Выберите папку или статью — статья встанет в конец (внутрь статьи — вложенной)."}{" "}
+          Порядок меняется перетаскиванием в меню.
         </DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={save}>
@@ -323,17 +344,20 @@ export function KbMoveForm({
               <Notebook className="text-muted-foreground" />
               {baseTitle} — верхний уровень
             </ListItemButton>
-            {folders.map(({ node: f, depth }) => (
-              <ListItemButton
-                key={f.id}
-                active={target === f.id}
-                onClick={() => setTarget(f.id)}
-                style={{ paddingLeft: `${12 + (depth + 1) * 16}px` }}
-              >
-                <Folder className="text-muted-foreground" />
-                <span className="truncate">{f.title || "Без названия"}</span>
-              </ListItemButton>
-            ))}
+            {folders.map(({ node: f, depth }) => {
+              const Icon = f.kind === "article" ? DocumentText : Folder;
+              return (
+                <ListItemButton
+                  key={f.id}
+                  active={target === f.id}
+                  onClick={() => setTarget(f.id)}
+                  style={{ paddingLeft: `${12 + (depth + 1) * 16}px` }}
+                >
+                  <Icon className="text-muted-foreground" />
+                  <span className="truncate">{f.title || "Без названия"}</span>
+                </ListItemButton>
+              );
+            })}
           </div>
         </DialogBody>
         <DialogFooter>

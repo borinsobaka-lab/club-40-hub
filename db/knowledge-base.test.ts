@@ -210,7 +210,7 @@ describe.skipIf(!url)("база знаний (база)", () => {
         "kb_move_into_self",
       );
       expect(await failure(tx, () => tx`select kb_move_node(${t.folder}, ${t.pub}, 0)`)).toContain(
-        "kb_parent_not_folder",
+        "kb_folder_in_article",
       );
 
       await tx`select kb_move_node(${t.draft}, ${t.folder}, 0)`;
@@ -219,6 +219,61 @@ describe.skipIf(!url)("база знаний (база)", () => {
 
       await as(tx, t.reader);
       expect(await failure(tx, () => tx`select kb_move_node(${t.pub}, null, 0)`)).toContain("kb_forbidden");
+      await asServer(tx);
+    }));
+
+  test("вложенные статьи: статья в статье на любую глубину, папка — нет; черновик прячет вложенное", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      await as(tx, t.editor);
+      const [{ id: child }] = await tx`insert into kb_nodes (base_id, parent_id, kind, title, status)
+                                       values (${t.b}, ${t.pub}, 'article', 'Шаг 1', 'published') returning id`;
+      const [{ id: grand }] = await tx`insert into kb_nodes (base_id, parent_id, kind, title, status)
+                                       values (${t.b}, ${child}, 'article', 'Шаг 1.1', 'published') returning id`;
+      const [g] = await tx`select path, reader_visible from kb_nodes where id = ${grand}`;
+      expect(g).toEqual({ path: [t.folder, t.pub, child], reader_visible: true });
+      expect(
+        await failure(
+          tx,
+          () => tx`insert into kb_nodes (base_id, parent_id, kind, title) values (${t.b}, ${t.pub}, 'folder', 'Папка')`,
+        ),
+      ).toContain("kb_folder_in_article");
+      // Перенос статьи внутрь другой статьи и обратно.
+      await tx`select kb_move_node(${t.draft}, ${grand}, 0)`;
+      expect((await tx`select path from kb_nodes where id = ${t.draft}`)[0].path).toEqual([
+        t.folder,
+        t.pub,
+        child,
+        grand,
+      ]);
+      expect(await failure(tx, () => tx`select kb_move_node(${t.pub}, ${grand}, 0)`)).toContain(
+        "kb_move_into_self",
+      );
+      await tx`select kb_move_node(${t.draft}, ${t.folder}, 0)`;
+
+      // Статья-родитель снята с публикации — читатель не видит и вложенное.
+      expect(await visible(tx, t.reader, t.b)).toEqual([
+        "Администратор",
+        "Открытие смены",
+        "Шаг 1",
+        "Шаг 1.1",
+      ]);
+      await as(tx, t.editor);
+      await tx`update kb_nodes set status = 'draft' where id = ${t.pub}`;
+      expect(await visible(tx, t.reader, t.b)).toEqual(["Администратор"]);
+      await as(tx, t.editor);
+      await tx`update kb_nodes set status = 'published' where id = ${t.pub}`;
+
+      // В корзину — со всеми вложенными; вернуть — под прежнюю статью.
+      const [{ id: trashId }] = await tx`select kb_trash_node(${child}) as id`;
+      const [row] = (await tx`select kind, articles_count from kb_trash where id = ${trashId}`) as Row[];
+      expect(row).toEqual({ kind: "article", articles_count: 2 });
+      await tx`select kb_trash_restore(${trashId})`;
+      const back = (await tx`select id, parent_id from kb_nodes where id in (${child}, ${grand}) order by title`) as Row[];
+      expect(back).toEqual([
+        { id: child, parent_id: t.pub },
+        { id: grand, parent_id: child },
+      ]);
       await asServer(tx);
     }));
 

@@ -33,7 +33,19 @@ export function childrenOf(index: KbTreeIndex, parentId: string | null): KbTreeN
   return index.children.get(parentId) ?? [];
 }
 
-/** Папки выше узла — от верхней к ближайшей. */
+/**
+ * Может ли узел вида `kind` лежать внутри `parent` (null — верхний уровень).
+ * В папке — что угодно, в статье — только статьи (вложенные статьи, решение
+ * владельца 2026-10-25); как проверяет база (kb_nodes_biu).
+ */
+export function canNestIn(
+  parent: KbTreeNode | null | undefined,
+  kind: KbTreeNode["kind"],
+): boolean {
+  return !parent || parent.kind === "folder" || kind === "article";
+}
+
+/** Папки и статьи выше узла — от верхней к ближайшей. */
 export function ancestorsOf(index: KbTreeIndex, id: string): KbTreeNode[] {
   const out: KbTreeNode[] = [];
   let cur = index.byId.get(id);
@@ -54,8 +66,9 @@ export function isWithin(index: KbTreeIndex, id: string, ancestorId: string): bo
 }
 
 /**
- * Статей в папке на любой глубине (папки не считаются); `onlyVisible` —
- * только те, что видит читатель (без черновиков и архива).
+ * Статей внутри узла на любой глубине — и вложенных в статьи (папки не
+ * считаются); `onlyVisible` — только те, что видит читатель (без черновиков
+ * и архива).
  */
 export function articleCount(
   index: KbTreeIndex,
@@ -65,11 +78,8 @@ export function articleCount(
   return childrenOf(index, folderId).reduce(
     (sum, n) =>
       sum +
-      (n.kind === "article"
-        ? !onlyVisible || n.reader_visible
-          ? 1
-          : 0
-        : articleCount(index, n.id, onlyVisible)),
+      (n.kind === "article" && (!onlyVisible || n.reader_visible) ? 1 : 0) +
+      articleCount(index, n.id, onlyVisible),
     0,
   );
 }
@@ -87,9 +97,9 @@ export function readerNodes(nodes: KbTreeNode[]): KbTreeNode[] {
 export type DropOperation = "reorder-before" | "reorder-after" | "combine";
 
 /**
- * Куда встанет узел `sourceId`, уроненный на `targetId`: папка и место среди
- * её содержимого (как ждёт RPC kb_move_node). null — нельзя (папку в саму
- * себя или в свою вложенную, внутрь статьи).
+ * Куда встанет узел `sourceId`, уроненный на `targetId`: родитель и место
+ * среди его содержимого (как ждёт RPC kb_move_node). null — нельзя (в саму
+ * себя или в своё вложенное, папку — внутрь статьи).
  */
 export function dropPlacement(
   index: KbTreeIndex,
@@ -101,7 +111,7 @@ export function dropPlacement(
   const source = index.byId.get(sourceId);
   if (!target || !source || sourceId === targetId) return null;
   if (operation === "combine") {
-    if (target.kind !== "folder") return null;
+    if (!canNestIn(target, source.kind)) return null;
     if (isWithin(index, target.id, source.id)) return null;
     // Внутрь папки — в конец её содержимого.
     const siblings = childrenOf(index, target.id).filter((n) => n.id !== sourceId);
@@ -109,6 +119,8 @@ export function dropPlacement(
   }
   const parentId = target.parent_id;
   if (parentId && isWithin(index, parentId, source.id)) return null;
+  // Рядом со вложенной статьёй — значит внутрь её статьи-родителя.
+  if (!canNestIn(parentId ? index.byId.get(parentId) : null, source.kind)) return null;
   const siblings = childrenOf(index, parentId).filter((n) => n.id !== sourceId);
   const at = siblings.findIndex((n) => n.id === targetId);
   return { parentId, position: at + (operation === "reorder-after" ? 1 : 0) };
@@ -147,8 +159,9 @@ export function articleNeighbors(
   const walk = (parentId: string | null) => {
     for (const n of childrenOf(index, parentId)) {
       if (n.status === "archived") continue;
+      // Статья — и сразу её вложенные статьи, как в меню.
       if (n.kind === "article") order.push(n);
-      else walk(n.id);
+      walk(n.id);
     }
   };
   walk(null);
