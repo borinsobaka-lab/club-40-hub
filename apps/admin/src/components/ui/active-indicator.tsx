@@ -6,7 +6,7 @@ export function ActiveIndicator({ indicator }: { indicator: Indicator | null }) 
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute left-0 top-0 rounded-full bg-primary transition-[transform,width,height] duration-200 ease-out motion-reduce:transition-none"
+      className="pointer-events-none absolute left-0 top-0 rounded-full bg-selected transition-[transform,width,height] duration-200 ease-out motion-reduce:transition-none"
       style={{
         width: indicator.width,
         height: indicator.height,

@@ -216,7 +216,9 @@ export function KbArticlesTab({ baseId, isOwner }: { baseId: string; isOwner: bo
                             </span>
                           </span>
                           {r.outdated_count > 0 && (
-                            <span className="text-amber-700">+{r.outdated_count} прежн.</span>
+                            <span className="text-amber-700 dark:text-amber-300">
+                              +{r.outdated_count} прежн.
+                            </span>
                           )}
                         </span>
                         <ReadBar

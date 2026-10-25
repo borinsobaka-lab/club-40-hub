@@ -85,7 +85,9 @@ export function KbReadersDialogBody({ nodeId, title }: { nodeId: string; title: 
                           >
                             {formatAgo(r.last_read_at)}
                             {r.completed_at && (
-                              <span className="block text-emerald-700">дочитал</span>
+                              <span className="block text-emerald-700 dark:text-emerald-300">
+                                дочитал
+                              </span>
                             )}
                           </span>
                         )}

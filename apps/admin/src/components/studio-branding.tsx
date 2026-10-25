@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 
@@ -6,8 +6,12 @@ import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio"
 import { useActiveStudio, useStudios } from "@/hooks/use-studios";
 import { readableOn, textOnTint } from "@/lib/color-contrast";
 import { kbBasesQuery } from "@/lib/kb/data";
-import { kbBaseIdOf } from "@/lib/nav-sections";
+import { KB_DARK_BG, setKbThemeRoot, useKbDarkTheme } from "@/lib/kb/theme";
+import { kbBaseIdOf, railSectionKey } from "@/lib/nav-sections";
 import { rememberStudioFormat } from "@/lib/page-skeleton-layout";
+
+// На сервере useLayoutEffect ругается в консоль; там класс и не нужен.
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /** Фон меню (`--sidebar` в styles.css). */
 const SIDEBAR_HEX = "#1a2027";
@@ -45,15 +49,23 @@ export function StudioBranding() {
   const { data: kbBases } = useQuery({ ...kbBasesQuery, enabled: !!kbBaseId });
   const kbColor = kbBaseId ? kbBases?.find((b) => b.id === kbBaseId)?.brand_color : null;
   const color = kbColor || active?.brand_color;
+  // Тёмная тема базы знаний — классом на <html> (окна и меню в порталах тоже
+  // темнеют), только пока открыта база. До отрисовки — без мигания.
+  const [kbDarkTheme] = useKbDarkTheme();
+  const kbDark = kbDarkTheme && railSectionKey(pathname) === "kb";
+  useIsomorphicLayoutEffect(() => {
+    setKbThemeRoot(kbDark);
+    return () => setKbThemeRoot(false);
+  }, [kbDark]);
   useEffect(() => {
     if (!color) return;
     const root = document.documentElement;
-    const vars = brandVars(color);
+    const vars = brandVars(color, kbDark ? KB_DARK_BG : "#ffffff");
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     return () => {
       for (const k of Object.keys(vars)) root.style.removeProperty(k);
     };
-  }, [color]);
+  }, [color, kbDark]);
 
   return null;
 }
@@ -65,11 +77,13 @@ export function StudioBranding() {
  * читается. Без этого тёмно-красный бренд терялся в меню, а белая цифра на
  * светлом бренде пропадала.
  */
-function brandVars(color: string): Record<string, string> {
+function brandVars(color: string, page: string): Record<string, string> {
   return {
     "--brand": color,
     "--brand-on-dark": readableOn(color, SIDEBAR_HEX),
-    "--brand-on-light": readableOn(color, "#ffffff", 4.5),
+    // Текст цветом бренда на странице: на белом — темнее, в тёмной базе
+    // знаний — светлее (page — фон страницы).
+    "--brand-on-light": readableOn(color, page, 4.5),
     "--brand-foreground": textOnTint(color, 1) === "light" ? "#ffffff" : "var(--foreground)",
   };
 }
