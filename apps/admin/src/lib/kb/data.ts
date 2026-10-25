@@ -134,14 +134,17 @@ export function kbErrorText(error: unknown, fallback = "Не удалось со
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (message.includes("kb_draft_conflict"))
     return "Статью только что сохранил другой редактор. Обновите страницу, чтобы не затереть его правки.";
-  if (message.includes("kb_move_into_self")) return "Папку нельзя перенести внутрь неё самой";
+  if (message.includes("kb_move_into_self"))
+    return "Нельзя перенести внутрь самой себя или своей вложенной статьи";
   if (message.includes("kb_parent_not_folder")) return "Переносить можно только в папку";
+  if (message.includes("kb_folder_in_article"))
+    return "Внутрь статьи можно вложить только статью, не папку";
   if (message.includes("kb_already_restored")) return "Это уже вернули из корзины";
   if (message.includes("kb_not_found")) return "Не нашлось — возможно, уже удалили";
   if (message.includes("kb_forbidden") || message.includes("row-level security"))
     return "Нет права на правку этой базы знаний";
   if (message.includes("foreign key") || message.includes("kb_nodes_parent_id_fkey"))
-    return "В папке есть статьи — сначала перенесите или удалите их";
+    return "Внутри есть статьи — сначала перенесите или удалите их";
   return message || fallback;
 }
 

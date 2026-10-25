@@ -131,7 +131,8 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
   useEffect(() => {
     if (!currentId || !index.byId.has(currentId)) return;
     const ids = ancestorsOf(index, currentId).map((a) => a.id);
-    if (index.byId.get(currentId)?.kind === "folder") ids.push(currentId);
+    // Папку и статью с вложенными — раскрыть и саму.
+    if (childrenOf(index, currentId).length) ids.push(currentId);
     openAll(ids);
   }, [currentId, index, openAll]);
 
@@ -162,7 +163,9 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
       description:
         node.kind === "folder" && hasChildren
           ? "Папка уйдёт в корзину вместе со всем, что в ней. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда."
-          : "Уйдёт в корзину. 30 дней можно вернуть — с версиями и отметками о прочтении, потом удалится навсегда.",
+          : hasChildren
+            ? "Статья уйдёт в корзину вместе с вложенными статьями. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда."
+            : "Уйдёт в корзину. 30 дней можно вернуть — с версиями и отметками о прочтении, потом удалится навсегда.",
       confirmLabel: "В корзину",
     });
     if (ok) await actions.remove(node);
@@ -185,6 +188,13 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
           onSelect: () => setDialog({ kind: "create", nodeKind: "folder", parentId: node.id }),
         },
       );
+    } else {
+      // Вложенные статьи — на любую глубину (решение владельца 2026-10-25).
+      items.push({
+        label: "Вложенная статья",
+        icon: FilePlus,
+        onSelect: () => setDialog({ kind: "create", nodeKind: "article", parentId: node.id }),
+      });
     }
     items.push({
       label: isFolder
@@ -242,7 +252,14 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
     op: Parameters<typeof dropPlacement>[3],
   ) => {
     const placement = dropPlacement(index, sourceId, targetId, op);
-    if (!placement) return;
+    if (!placement) {
+      if (
+        index.byId.get(sourceId)?.kind === "folder" &&
+        index.byId.get(targetId)?.kind === "article"
+      )
+        toast.error(kbErrorText("kb_folder_in_article"));
+      return;
+    }
     if (op === "combine") folders.toggle(targetId, true);
     void actions.move(sourceId, placement.parentId, placement.position);
   };
@@ -264,7 +281,7 @@ export function KbSidebarMenu({ baseId, onNavigate }: { baseId: string; onNaviga
         onDropNode={onDropNode}
         onNavigate={onNavigate}
       >
-        {node.kind === "folder" && folders.open.has(node.id) && renderLevel(node.id, depth + 1)}
+        {folders.open.has(node.id) && renderLevel(node.id, depth + 1)}
       </TreeRow>
     ));
 
@@ -464,11 +481,14 @@ function TreeRow({
   children?: React.ReactNode;
 }) {
   const isFolder = node.kind === "folder";
+  // Раскрывается папка и статья с вложенными статьями.
+  const expandable = isFolder || childrenOf(index, node.id).length > 0;
   const drag = useDragRow<HTMLDivElement>({
     id: node.id,
     type: `kb-node:${baseId}`,
     disabled: !canEdit,
-    canCombine: isFolder,
+    // Внутрь папки — что угодно, внутрь статьи — только статью.
+    canCombine: true,
     canDrop: (sourceId) => !isWithin(index, node.id, sourceId),
     onDrop: (sourceId, op) => onDropNode(sourceId, node.id, op),
   });
@@ -481,7 +501,7 @@ function TreeRow({
     node.status === "archived" ? "В архиве" : node.status === "draft" ? "Черновик" : undefined;
 
   return (
-    <li role="treeitem" aria-expanded={isFolder ? open : undefined} aria-selected={active}>
+    <li role="treeitem" aria-expanded={expandable ? open : undefined} aria-selected={active}>
       {/*
         По образцу справочных центров (решение владельца 2026-10-25): разделы
         базы — папки верхнего уровня — с иконкой и полужирные, всё внутри них
@@ -507,7 +527,7 @@ function TreeRow({
           title={statusHint ? `${node.title} — ${statusHint.toLowerCase()}` : node.title}
           // Стрелки, как в дереве: → раскрыть папку, ← свернуть.
           onKeyDown={(e) => {
-            if (!isFolder) return;
+            if (!expandable) return;
             if ((e.key === "ArrowRight" && !open) || (e.key === "ArrowLeft" && open)) {
               e.preventDefault();
               onToggle();
@@ -536,9 +556,9 @@ function TreeRow({
           >
             {node.title || "Без названия"}
           </span>
-          {isFolder && (
-            // Шеврон сворачивает и раскрывает, не открывая папку; с клавиатуры
-            // — стрелками на строке.
+          {expandable && (
+            // Шеврон сворачивает и раскрывает, не открывая папку (статью); с
+            // клавиатуры — стрелками на строке.
             <span
               aria-hidden
               onClick={(e) => {

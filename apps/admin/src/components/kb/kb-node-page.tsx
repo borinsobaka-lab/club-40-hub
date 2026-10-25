@@ -567,6 +567,7 @@ function NodeMenu({
   baseId,
   node,
   hasChildren,
+  onAddChild,
   hasDraft,
   onRename,
   onMove,
@@ -579,6 +580,8 @@ function NodeMenu({
   baseId: string;
   node: KbTreeNode;
   hasChildren?: boolean;
+  /** Статья: «Вложенная статья». */
+  onAddChild?: () => void;
   hasDraft?: boolean;
   onRename: () => void;
   onMove: () => void;
@@ -618,7 +621,9 @@ function NodeMenu({
       description:
         isFolder && hasChildren
           ? "Папка уйдёт в корзину вместе со всем, что в ней. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда."
-          : "Статья уйдёт в корзину. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда.",
+          : hasChildren
+            ? "Статья уйдёт в корзину вместе с вложенными статьями. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда."
+            : "Статья уйдёт в корзину. 30 дней её можно вернуть — с версиями и отметками о прочтении, потом она удалится навсегда.",
       confirmLabel: "В корзину",
     });
     if (ok && (await actions.remove(node))) {
@@ -648,6 +653,7 @@ function NodeMenu({
             Pencil,
             onRename,
           )}
+          {onAddChild && item("Вложенная статья", FilePlus, onAddChild)}
           {item("Переместить…", FolderInput, onMove)}
           {!isFolder && item("Сделать копию", Copy, () => actions.copy(node.id))}
           {onVersions && item("Версии…", History, onVersions)}
@@ -672,6 +678,63 @@ function NodeMenu({
       </Popover>
       {confirmDialog}
     </>
+  );
+}
+
+/**
+ * Вложенные статьи — под текстом статьи (решение владельца 2026-10-25:
+ * вложенность статей многоуровневая). Читателю — только опубликованное
+ * (дерево уже отфильтровано), редактору — всё, черновики с пометкой.
+ */
+function NestedArticles({
+  baseId,
+  index,
+  nodeId,
+  canEdit,
+}: {
+  baseId: string;
+  index: KbTreeIndex;
+  nodeId: string;
+  canEdit: boolean;
+}) {
+  const items = childrenOf(index, nodeId);
+  if (items.length === 0) return null;
+  return (
+    <section className="mt-8">
+      <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Вложенные статьи</h2>
+      <ul className="divide-y rounded-lg border bg-background">
+        {items.map((n) => {
+          const nested = articleCount(index, n.id, !canEdit);
+          return (
+            <li key={n.id}>
+              <Link
+                to="/kb/$baseId/$nodeId"
+                params={{ baseId, nodeId: n.id }}
+                className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              >
+                <DocumentText className="size-5 shrink-0 text-muted-foreground" />
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate font-medium",
+                    n.status !== "published" && "text-muted-foreground",
+                  )}
+                >
+                  {n.title || "Без названия"}
+                </span>
+                {canEdit && n.status !== "published" && (
+                  <KbStatusBadge status={n.status} size="sm" />
+                )}
+                {nested > 0 && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    вложенных: {nested}
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -728,6 +791,7 @@ function ArticleView({
     | "protect"
     | "settings"
     | "readers"
+    | "child"
     | null
   >(null);
   const [pickHeadings, setPickHeadings] = useState<KbHeading[]>([]);
@@ -972,6 +1036,8 @@ function ArticleView({
                   <NodeMenu
                     baseId={baseId}
                     node={node}
+                    hasChildren={childrenOf(index, node.id).length > 0}
+                    onAddChild={() => setDialog("child")}
                     hasDraft={hasDraft}
                     onRename={() => setDialog("rename")}
                     onMove={() => setDialog("move")}
@@ -1075,6 +1141,9 @@ function ArticleView({
                   </Suspense>
                 )}
               </div>
+              {!editing && (
+                <NestedArticles baseId={baseId} index={index} nodeId={node.id} canEdit={canEdit} />
+              )}
               {!editing && !loading && node.status === "published" && node.feedback_enabled && (
                 <KbArticleRating node={node} />
               )}
@@ -1113,6 +1182,15 @@ function ArticleView({
               nodes={nodes}
               baseTitle={baseTitle}
               onMove={(p, pos) => actions.move(node.id, p, pos)}
+              onDone={() => setDialog(null)}
+            />
+          )}
+          {dialog === "child" && (
+            <KbNodeTitleForm
+              kind="article"
+              node={null}
+              place={{ nodes, baseTitle, parentId: node.id, baseId }}
+              onSave={(t, d, p, i, tpl) => actions.create("article", p, t, d, i, tpl)}
               onDone={() => setDialog(null)}
             />
           )}

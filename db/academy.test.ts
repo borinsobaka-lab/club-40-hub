@@ -429,10 +429,11 @@ describe.skipIf(!url)("академия (база)", () => {
       await obj(lessonFile, t.creator);
       await obj(`academy/answers/${t.learner}/a.pdf`, t.learner);
       const sees = async (uid: string) =>
-        (await rpc(tx, uid, () => tx`select name from storage.objects where bucket_id = 'kb-media' order by name`)).map(
-          (r) => r.name,
-        );
-      expect(await sees(t.learner)).toEqual([lessonFile, `academy/answers/${t.learner}/a.pdf`]);
+        (await rpc(tx, uid, () => tx`select name from storage.objects where bucket_id = 'kb-media'`))
+          .map((r) => r.name as string)
+          .sort();
+      // Папка курса — случайный uuid: порядок сравниваем отсортированным.
+      expect(await sees(t.learner)).toEqual([lessonFile, `academy/answers/${t.learner}/a.pdf`].sort());
       expect(await sees(t.other)).toEqual([]);
       expect((await sees(t.reviewer)).length).toBe(2);
 
