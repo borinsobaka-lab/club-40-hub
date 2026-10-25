@@ -61,7 +61,7 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       // relative z-10 — текст поверх плашки; фона у триггера нет, его рисует TabsList.
-      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1 text-sm font-medium ring-offset-background cursor-pointer transition-colors duration-200 data-[state=inactive]:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed data-[state=active]:text-primary-foreground",
+      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1 text-sm font-medium ring-offset-background cursor-pointer transition-colors duration-200 data-[state=inactive]:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed data-[state=active]:text-selected-foreground",
       className,
     )}
     {...props}

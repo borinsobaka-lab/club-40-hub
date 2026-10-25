@@ -76,9 +76,8 @@ export function AdminShell({
   // выбора клуба.
   const network = railSectionKey(pathname) === "academy";
   const kbBaseId = kb ? kbBaseIdOf(pathname) : null;
-  // Тёмная тема базы знаний — шапка и страница (меню слева и так тёмное).
+  // Тёмная тема базы знаний: класс на <html> вешает StudioBranding.
   const [kbDarkTheme, toggleKbTheme] = useKbDarkTheme();
-  const kbDark = kb && kbDarkTheme;
 
   // «Обновить»: иконка крутится, пока перезагружаются лоадеры роута и
   // активные запросы, но не короче MIN_SPIN_MS — иначе быстрый ответ мигал бы
@@ -122,7 +121,6 @@ export function AdminShell({
         <header
           className={cn(
             "flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 text-foreground lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0",
-            kbDark && "dark kb-dark",
           )}
         >
           <SidebarTrigger className="-ml-1 size-10 md:hidden" />
@@ -236,7 +234,6 @@ export function AdminShell({
         className={cn(
           "admin-main flex-1 overflow-auto p-3 sm:p-4 lg:p-6",
           kb && "bg-background text-foreground",
-          kbDark && "dark kb-dark",
         )}
       >
         {children}
