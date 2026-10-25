@@ -338,6 +338,7 @@ describe.skipIf(!url)("база знаний (база)", () => {
       await tx`insert into kb_nodes (base_id, kind, title) values (${t.b}, 'article', 'Своя')`;
       const authors = (await tx`select * from kb_authors(${t.b})`) as Row[];
       expect(authors.map((r) => r.user_id)).toContain(t.editor);
+      expect(Object.keys(authors[0])).toEqual(["user_id", "full_name", "avatar_url"]);
       await as(tx, t.stranger);
       expect(await failure(tx, () => tx`select * from kb_authors(${t.b})`)).toContain("kb_forbidden");
       await as(tx, t.editor);
