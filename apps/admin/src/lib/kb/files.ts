@@ -10,6 +10,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/integrations/supabase/env";
 import { documentFilePaths, replaceDocumentFiles } from "@/lib/kb/document";
+import { fitImage } from "@/lib/storage";
 
 export const KB_BUCKET = "kb-media";
 export const KB_FILE_PREFIX = "kbfile:";
@@ -47,6 +48,31 @@ function storageName(file: File): string {
 
 export class KbFileTooLarge extends Error {}
 
+/** Картинки, которые уменьшаем перед загрузкой (GIF — нет: анимация пропала бы). */
+const SHRINK_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/bmp"]);
+/** Меньше этого не трогаем: схема или скриншот уже лёгкие. */
+const SHRINK_FROM_BYTES = 300 * 1024;
+/** Длинная сторона картинки в статье — с запасом на широкий экран. */
+const SHRINK_MAX_SIDE = 2000;
+
+/**
+ * Фото с телефона весит 3–5 МБ, а статье хватает 2000 px в WebP (~200–400
+ * КБ): место на сервере и загрузка у читателей — в разы меньше. Не вышло
+ * (формат браузеру незнаком) или копия не легче — уходит оригинал.
+ */
+export async function shrinkKbImage(file: File): Promise<File> {
+  if (!SHRINK_TYPES.has(file.type) || file.size < SHRINK_FROM_BYTES) return file;
+  try {
+    const small = await fitImage(file, SHRINK_MAX_SIDE);
+    if (small.size >= file.size) return file;
+    const ext = small.type === "image/webp" ? "webp" : "png";
+    const base = file.name.replace(/\.[^.]+$/, "") || "image";
+    return new File([small], `${base}.${ext}`, { type: small.type });
+  } catch {
+    return file;
+  }
+}
+
 /**
  * Загрузить файл статьи; вернуть ссылку для документа (`kbfile:…`).
  * `onProgress` — доля отправленного (0…1): видео до 50 МБ грузится заметно
@@ -56,9 +82,10 @@ export class KbFileTooLarge extends Error {}
 export async function uploadKbFile(
   /** Папка в бакете — kbArticleFolder / kbTemplateFolder. */
   folder: string,
-  file: File,
+  original: File,
   onProgress?: (share: number) => void,
 ): Promise<string> {
+  const file = await shrinkKbImage(original);
   if (file.size > KB_MAX_FILE_BYTES) {
     throw new KbFileTooLarge(
       `Файл «${file.name}» — ${formatFileSize(file.size)}, а можно до ${formatFileSize(KB_MAX_FILE_BYTES)}. Сожмите его или разделите.`,

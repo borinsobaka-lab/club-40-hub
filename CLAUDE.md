@@ -795,7 +795,17 @@ AUTH_SETUP.md.
   `kb_report` и `kb_article_readers` (пересозданы с новыми колонками —
   актуальные определения здесь). Считаются сотрудники с доступом к базе
   без владельцев (`kb_base_people`), у статьи — и без её авторов.
-  Тесты — `db/knowledge-base.test.ts`.
+  Скорость, чистка и место (2026-10-25, нагрузка 500 сотрудников × 300
+  статей за год — KNOWLEDGE_BASE.md): `db/migrations/2026-10-25_zzzzz_kb_storage_perf.sql`
+  — аудитория одним запросом `kb_audience_pairs` (сотрудник × статья без
+  авторов, наружу не выдана); актуальные определения `kb_base_pairs`,
+  `kb_analytics_people`, `kb_analytics_overview`, `kb_analytics_person`,
+  `kb_report` — здесь. `kb_file_gc_candidates` (файлы `kb-media` старше
+  7 дней, на которые не ссылаются ни статья, ни черновик, ни версия, ни
+  шаблон, ни корзина) и `kb_housekeeping` (журнал поиска — год,
+  `kb_read_days` — 400 дней) — только service_role, раз в сутки зовёт сервер
+  админки; `kb_storage_usage` — место по базам (файлы, таблицы `kb_*`),
+  только владельцу. Тесты — `db/knowledge-base.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

@@ -450,6 +450,54 @@ describe.skipIf(!url)("база знаний (база)", () => {
       await asServer(tx);
     }));
 
+  test("чистка: файлы без ссылок, сроки журналов, занятое место", () =>
+    scenario(async (tx) => {
+      const t = await setup(tx);
+      const used = `${t.b}/${t.pub}/used.png`;
+      const inRevision = `${t.b}/${t.pub}/old.png`;
+      const orphan = `${t.b}/${t.pub}/orphan.png`;
+      const fresh = `${t.b}/${t.pub}/fresh.png`;
+      const gallery = `${t.b}/${t.pub}/gallery.png`;
+      const img = (path: string) => ({ type: "image", props: { url: `kbfile:${path}` }, children: [] });
+      await tx`update kb_nodes set content = ${JSON.stringify([
+        img(used),
+        // У галереи картинки — строкой JSON внутри поля.
+        { type: "gallery", props: { images: JSON.stringify([{ url: `kbfile:${gallery}` }]) }, children: [] },
+      ])}::text::jsonb where id = ${t.pub}`;
+      await tx`insert into kb_revisions (node_id, base_id, title, content)
+               values (${t.pub}, ${t.b}, 'v1', ${JSON.stringify([img(inRevision)])}::text::jsonb)`;
+      const old = "now() - interval '10 days'";
+      for (const [name, size] of [[used, 100], [inRevision, 200], [orphan, 300], [gallery, 50]] as const)
+        await tx.unsafe(
+          `insert into storage.objects (bucket_id, name, created_at, metadata)
+           values ('kb-media', '${name}', ${old}, '{"size": ${size}}')`,
+        );
+      await tx`insert into storage.objects (bucket_id, name, metadata) values ('kb-media', ${fresh}, '{"size": 1}')`;
+      const gc = ((await tx`select name from kb_file_gc_candidates(7, 100)`) as Row[]).map((r) => r.name);
+      expect(gc).toEqual([orphan]);
+
+      await tx`insert into kb_search_log (base_id, query, results, created_at) values
+               (${t.b}, 'старый', 1, now() - interval '400 days'), (${t.b}, 'новый', 1, now())`;
+      await tx`insert into kb_read_days (node_id, user_id, base_id, day, views) values
+               (${t.pub}, ${t.reader}, ${t.b}, current_date - 500, 1), (${t.pub}, ${t.reader}, ${t.b}, current_date, 1)`;
+      const [{ h }] = (await tx`select kb_housekeeping() as h`) as Row[];
+      expect(h).toEqual({ search_log: 1, read_days: 1 });
+      expect(((await tx`select query from kb_search_log`) as Row[]).map((r) => r.query)).toEqual(["новый"]);
+
+      // Чистка — только сервер; место — только владелец.
+      await as(tx, t.editor);
+      expect(await failure(tx, () => tx`select * from kb_file_gc_candidates(7, 100)`)).toContain("permission denied");
+      expect(await failure(tx, () => tx`select kb_housekeeping()`)).toContain("permission denied");
+      expect(await failure(tx, () => tx`select kb_storage_usage()`)).toContain("kb_forbidden");
+      await as(tx, t.owner);
+      const [{ u }] = (await tx`select kb_storage_usage() as u`) as Row[];
+      const mine = u.bases.find((b: Row) => b.id === t.b);
+      expect(mine.files).toBe(5);
+      expect(Number(mine.bytes)).toBe(651);
+      expect(Number(u.db_bytes)).toBeGreaterThan(0);
+      await asServer(tx);
+    }));
+
   test("иконка раздела: пишет редактор, только у папки и ключом из набора", () =>
     scenario(async (tx) => {
       const t = await setup(tx);

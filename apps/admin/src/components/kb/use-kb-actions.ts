@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { KB_NODES_KEY, invalidateKb, kbErrorText, loadKbTemplateContent } from "@/lib/kb/data";
+import { documentFilePaths } from "@/lib/kb/document";
 import { copyKbFiles, kbArticleFolder } from "@/lib/kb/files";
 import { applyMove } from "@/lib/kb/tree";
 import type { KbKind, KbStatus, KbTreeNode } from "@/lib/kb/types";
@@ -141,11 +142,35 @@ export function useKbActions(baseId: string) {
         fail(error.message);
         return;
       }
+      const copyId = data as string;
+      // Файлы — копиями в папку копии: иначе копия ссылалась бы на папку
+      // оригинала и теряла картинки, когда оригинал удалят навсегда.
+      try {
+        const { data: draft } = await supabase
+          .from("kb_drafts")
+          .select("content, updated_at")
+          .eq("node_id", copyId)
+          .maybeSingle();
+        const row = draft as { content: unknown[]; updated_at: string } | null;
+        if (row && documentFilePaths(row.content).length) {
+          const copied = await copyKbFiles(row.content, kbArticleFolder(baseId, copyId));
+          const { error: saveError } = await supabase.rpc("kb_save_draft", {
+            p_node: copyId,
+            p_content: copied.content,
+            p_expected: row.updated_at,
+          });
+          if (saveError) throw new Error(saveError.message);
+          if (copied.failed > 0)
+            toast.warning(`Не удалось скопировать файлов: ${copied.failed} — проверьте копию.`);
+        }
+      } catch (e) {
+        toast.warning(`Копия создана, но файлы не скопировались: ${kbErrorText(e)}`);
+      }
       await invalidateKb(qc, baseId);
       toast.success("Копия создана — черновиком под оригиналом");
       await navigate({
         to: "/kb/$baseId/$nodeId",
-        params: { baseId, nodeId: data as string },
+        params: { baseId, nodeId: copyId },
         search: { edit: true },
       });
     },
