@@ -43,6 +43,8 @@ import {
 import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
 import { useContentTranslations } from "@/hooks/use-content-translations";
 import { useStudios, type Studio } from "@/hooks/use-studios";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { hasRight } from "@/lib/admin-access";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrapPage } from "@/lib/query";
 import { squareImage, useStorageUrl } from "@/lib/storage";
@@ -88,6 +90,7 @@ function StudiosPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Studio | null>(null);
   const [deleting, setDeleting] = useState<Studio | null>(null);
+  const access = useAdminAccess();
   const sort = useTableSort<Studio>({
     name: (s) => s.name,
     format: (s) => STUDIO_FORMAT_LABEL[s.format],
@@ -95,7 +98,8 @@ function StudiosPage() {
     app: (s) => STUDIO_FORMAT_APP_URL[s.format],
   });
 
-  const isOwnerAnywhere = studios.some((s) => s.roles.includes("owner"));
+  // Создать клуб — право «Создаёт клубы» (раньше — любой владелец клуба).
+  const canCreate = hasRight(access, "studios.create");
   const reload = () => queryClient.invalidateQueries({ queryKey: ["studios"] });
 
   const openCreate = () => {
@@ -107,7 +111,7 @@ function StudiosPage() {
     <AdminShell
       title="Клубы"
       actions={
-        isOwnerAnywhere ? (
+        canCreate ? (
           <Button onClick={openCreate}>
             <Plus />
             Добавить клуб

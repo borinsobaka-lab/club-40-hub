@@ -70,7 +70,7 @@ export function StepEditor({
   isNew?: boolean;
 }) {
   const access = useAdminAccess();
-  const canEdit = !!access?.isOwner || !!access?.academy?.can_create;
+  const canEdit = !!access?.academy?.is_admin || !!access?.academy?.can_create;
   const { data: course } = useQuery(acadCourseQuery(courseId));
   const { data: steps, isLoading } = useQuery(acadStepsQuery(courseId));
   const step = steps?.find((s) => s.id === stepId);

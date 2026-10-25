@@ -66,7 +66,7 @@ export const Route = createFileRoute("/_authenticated/kb/$baseId/templates")({
 function KbTemplatesPage() {
   const { baseId } = Route.useParams();
   const access = useAdminAccess();
-  const canEdit = canEditKb(access?.isOwner ? "manage" : access?.kb?.[baseId]);
+  const canEdit = canEditKb(access?.kbAdmin ? "manage" : access?.kb?.[baseId]);
   const qc = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
   const { data: bases } = useQuery(kbBasesQuery);

@@ -49,6 +49,7 @@ import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
 import { Route as AuthenticatedKbIndexRouteImport } from './routes/_authenticated/kb/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedAccessIndexRouteImport } from './routes/_authenticated/access/index'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy/index'
 import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
 import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
@@ -56,15 +57,20 @@ import { Route as AuthenticatedDashboardSalesRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_authenticated/dashboard/marketing'
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
+import { Route as AuthenticatedAccessStructureRouteImport } from './routes/_authenticated/access/structure'
+import { Route as AuthenticatedAccessLogRouteImport } from './routes/_authenticated/access/log'
 import { Route as AuthenticatedAcademySettingsRouteImport } from './routes/_authenticated/academy/settings'
 import { Route as AuthenticatedAcademyReportRouteImport } from './routes/_authenticated/academy/report'
 import { Route as AuthenticatedKbBaseIdIndexRouteImport } from './routes/_authenticated/kb/$baseId/index'
+import { Route as AuthenticatedAccessRolesIndexRouteImport } from './routes/_authenticated/access/roles/index'
 import { Route as AuthenticatedAcademyReviewIndexRouteImport } from './routes/_authenticated/academy/review/index'
 import { Route as AuthenticatedAcademyCoursesIndexRouteImport } from './routes/_authenticated/academy/courses/index'
 import { Route as AuthenticatedKbBaseIdTrashRouteImport } from './routes/_authenticated/kb/$baseId/trash'
 import { Route as AuthenticatedKbBaseIdTemplatesRouteImport } from './routes/_authenticated/kb/$baseId/templates'
 import { Route as AuthenticatedKbBaseIdAnalyticsRouteImport } from './routes/_authenticated/kb/$baseId/analytics'
 import { Route as AuthenticatedKbBaseIdNodeIdRouteImport } from './routes/_authenticated/kb/$baseId/$nodeId'
+import { Route as AuthenticatedAccessUsersUserIdRouteImport } from './routes/_authenticated/access/users/$userId'
+import { Route as AuthenticatedAccessRolesRoleIdRouteImport } from './routes/_authenticated/access/roles/$roleId'
 import { Route as AuthenticatedAcademyReviewAttemptIdRouteImport } from './routes/_authenticated/academy/review/$attemptId'
 import { Route as AuthenticatedAcademyMyCourseIdRouteImport } from './routes/_authenticated/academy/my/$courseId'
 import { Route as AuthenticatedAcademyAttemptsAttemptIdRouteImport } from './routes/_authenticated/academy/attempts/$attemptId'
@@ -281,6 +287,12 @@ const AuthenticatedDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAccessIndexRoute =
+  AuthenticatedAccessIndexRouteImport.update({
+    id: '/access/',
+    path: '/access/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAcademyIndexRoute =
   AuthenticatedAcademyIndexRouteImport.update({
     id: '/academy/',
@@ -323,6 +335,17 @@ const AuthenticatedDashboardClassesRoute =
     path: '/dashboard/classes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAccessStructureRoute =
+  AuthenticatedAccessStructureRouteImport.update({
+    id: '/access/structure',
+    path: '/access/structure',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAccessLogRoute = AuthenticatedAccessLogRouteImport.update({
+  id: '/access/log',
+  path: '/access/log',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAcademySettingsRoute =
   AuthenticatedAcademySettingsRouteImport.update({
     id: '/academy/settings',
@@ -339,6 +362,12 @@ const AuthenticatedKbBaseIdIndexRoute =
   AuthenticatedKbBaseIdIndexRouteImport.update({
     id: '/kb/$baseId/',
     path: '/kb/$baseId/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAccessRolesIndexRoute =
+  AuthenticatedAccessRolesIndexRouteImport.update({
+    id: '/access/roles/',
+    path: '/access/roles/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAcademyReviewIndexRoute =
@@ -375,6 +404,18 @@ const AuthenticatedKbBaseIdNodeIdRoute =
   AuthenticatedKbBaseIdNodeIdRouteImport.update({
     id: '/kb/$baseId/$nodeId',
     path: '/kb/$baseId/$nodeId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAccessUsersUserIdRoute =
+  AuthenticatedAccessUsersUserIdRouteImport.update({
+    id: '/access/users/$userId',
+    path: '/access/users/$userId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAccessRolesRoleIdRoute =
+  AuthenticatedAccessRolesRoleIdRouteImport.update({
+    id: '/access/roles/$roleId',
+    path: '/access/roles/$roleId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAcademyReviewAttemptIdRoute =
@@ -453,6 +494,8 @@ export interface FileRoutesByFullPath {
   '/api/transcribe': typeof ApiTranscribeRoute
   '/academy/report': typeof AuthenticatedAcademyReportRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
+  '/access/log': typeof AuthenticatedAccessLogRoute
+  '/access/structure': typeof AuthenticatedAccessStructureRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -460,18 +503,22 @@ export interface FileRoutesByFullPath {
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/academy/': typeof AuthenticatedAcademyIndexRoute
+  '/access/': typeof AuthenticatedAccessIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/kb/': typeof AuthenticatedKbIndexRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
   '/academy/attempts/$attemptId': typeof AuthenticatedAcademyAttemptsAttemptIdRoute
   '/academy/my/$courseId': typeof AuthenticatedAcademyMyCourseIdRoute
   '/academy/review/$attemptId': typeof AuthenticatedAcademyReviewAttemptIdRoute
+  '/access/roles/$roleId': typeof AuthenticatedAccessRolesRoleIdRoute
+  '/access/users/$userId': typeof AuthenticatedAccessUsersUserIdRoute
   '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
   '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/academy/courses/': typeof AuthenticatedAcademyCoursesIndexRoute
   '/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
+  '/access/roles/': typeof AuthenticatedAccessRolesIndexRoute
   '/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
   '/academy/courses/$courseId/$stepId': typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
   '/academy/courses/$courseId/preview': typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
@@ -516,6 +563,8 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/academy/report': typeof AuthenticatedAcademyReportRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
+  '/access/log': typeof AuthenticatedAccessLogRoute
+  '/access/structure': typeof AuthenticatedAccessStructureRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -523,18 +572,22 @@ export interface FileRoutesByTo {
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/academy': typeof AuthenticatedAcademyIndexRoute
+  '/access': typeof AuthenticatedAccessIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/kb': typeof AuthenticatedKbIndexRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
   '/academy/attempts/$attemptId': typeof AuthenticatedAcademyAttemptsAttemptIdRoute
   '/academy/my/$courseId': typeof AuthenticatedAcademyMyCourseIdRoute
   '/academy/review/$attemptId': typeof AuthenticatedAcademyReviewAttemptIdRoute
+  '/access/roles/$roleId': typeof AuthenticatedAccessRolesRoleIdRoute
+  '/access/users/$userId': typeof AuthenticatedAccessUsersUserIdRoute
   '/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
   '/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/academy/courses': typeof AuthenticatedAcademyCoursesIndexRoute
   '/academy/review': typeof AuthenticatedAcademyReviewIndexRoute
+  '/access/roles': typeof AuthenticatedAccessRolesIndexRoute
   '/kb/$baseId': typeof AuthenticatedKbBaseIdIndexRoute
   '/academy/courses/$courseId/$stepId': typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
   '/academy/courses/$courseId/preview': typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
@@ -581,6 +634,8 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/academy/report': typeof AuthenticatedAcademyReportRoute
   '/_authenticated/academy/settings': typeof AuthenticatedAcademySettingsRoute
+  '/_authenticated/access/log': typeof AuthenticatedAccessLogRoute
+  '/_authenticated/access/structure': typeof AuthenticatedAccessStructureRoute
   '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/_authenticated/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/_authenticated/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -588,18 +643,22 @@ export interface FileRoutesById {
   '/_authenticated/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
   '/_authenticated/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
+  '/_authenticated/access/': typeof AuthenticatedAccessIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/kb/': typeof AuthenticatedKbIndexRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
   '/_authenticated/academy/attempts/$attemptId': typeof AuthenticatedAcademyAttemptsAttemptIdRoute
   '/_authenticated/academy/my/$courseId': typeof AuthenticatedAcademyMyCourseIdRoute
   '/_authenticated/academy/review/$attemptId': typeof AuthenticatedAcademyReviewAttemptIdRoute
+  '/_authenticated/access/roles/$roleId': typeof AuthenticatedAccessRolesRoleIdRoute
+  '/_authenticated/access/users/$userId': typeof AuthenticatedAccessUsersUserIdRoute
   '/_authenticated/kb/$baseId/$nodeId': typeof AuthenticatedKbBaseIdNodeIdRoute
   '/_authenticated/kb/$baseId/analytics': typeof AuthenticatedKbBaseIdAnalyticsRoute
   '/_authenticated/kb/$baseId/templates': typeof AuthenticatedKbBaseIdTemplatesRoute
   '/_authenticated/kb/$baseId/trash': typeof AuthenticatedKbBaseIdTrashRoute
   '/_authenticated/academy/courses/': typeof AuthenticatedAcademyCoursesIndexRoute
   '/_authenticated/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
+  '/_authenticated/access/roles/': typeof AuthenticatedAccessRolesIndexRoute
   '/_authenticated/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
   '/_authenticated/academy/courses/$courseId/$stepId': typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
   '/_authenticated/academy/courses/$courseId/preview': typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
@@ -646,6 +705,8 @@ export interface FileRouteTypes {
     | '/api/transcribe'
     | '/academy/report'
     | '/academy/settings'
+    | '/access/log'
+    | '/access/structure'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/marketing'
@@ -653,18 +714,22 @@ export interface FileRouteTypes {
     | '/scripts/$sectionId'
     | '/scripts/settings'
     | '/academy/'
+    | '/access/'
     | '/dashboard/'
     | '/kb/'
     | '/scripts/'
     | '/academy/attempts/$attemptId'
     | '/academy/my/$courseId'
     | '/academy/review/$attemptId'
+    | '/access/roles/$roleId'
+    | '/access/users/$userId'
     | '/kb/$baseId/$nodeId'
     | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
     | '/academy/courses/'
     | '/academy/review/'
+    | '/access/roles/'
     | '/kb/$baseId/'
     | '/academy/courses/$courseId/$stepId'
     | '/academy/courses/$courseId/preview'
@@ -709,6 +774,8 @@ export interface FileRouteTypes {
     | '/'
     | '/academy/report'
     | '/academy/settings'
+    | '/access/log'
+    | '/access/structure'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/marketing'
@@ -716,18 +783,22 @@ export interface FileRouteTypes {
     | '/scripts/$sectionId'
     | '/scripts/settings'
     | '/academy'
+    | '/access'
     | '/dashboard'
     | '/kb'
     | '/scripts'
     | '/academy/attempts/$attemptId'
     | '/academy/my/$courseId'
     | '/academy/review/$attemptId'
+    | '/access/roles/$roleId'
+    | '/access/users/$userId'
     | '/kb/$baseId/$nodeId'
     | '/kb/$baseId/analytics'
     | '/kb/$baseId/templates'
     | '/kb/$baseId/trash'
     | '/academy/courses'
     | '/academy/review'
+    | '/access/roles'
     | '/kb/$baseId'
     | '/academy/courses/$courseId/$stepId'
     | '/academy/courses/$courseId/preview'
@@ -773,6 +844,8 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/academy/report'
     | '/_authenticated/academy/settings'
+    | '/_authenticated/access/log'
+    | '/_authenticated/access/structure'
     | '/_authenticated/dashboard/classes'
     | '/_authenticated/dashboard/clients'
     | '/_authenticated/dashboard/marketing'
@@ -780,18 +853,22 @@ export interface FileRouteTypes {
     | '/_authenticated/scripts/$sectionId'
     | '/_authenticated/scripts/settings'
     | '/_authenticated/academy/'
+    | '/_authenticated/access/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/kb/'
     | '/_authenticated/scripts/'
     | '/_authenticated/academy/attempts/$attemptId'
     | '/_authenticated/academy/my/$courseId'
     | '/_authenticated/academy/review/$attemptId'
+    | '/_authenticated/access/roles/$roleId'
+    | '/_authenticated/access/users/$userId'
     | '/_authenticated/kb/$baseId/$nodeId'
     | '/_authenticated/kb/$baseId/analytics'
     | '/_authenticated/kb/$baseId/templates'
     | '/_authenticated/kb/$baseId/trash'
     | '/_authenticated/academy/courses/'
     | '/_authenticated/academy/review/'
+    | '/_authenticated/access/roles/'
     | '/_authenticated/kb/$baseId/'
     | '/_authenticated/academy/courses/$courseId/$stepId'
     | '/_authenticated/academy/courses/$courseId/preview'
@@ -1088,6 +1165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/access/': {
+      id: '/_authenticated/access/'
+      path: '/access'
+      fullPath: '/access/'
+      preLoaderRoute: typeof AuthenticatedAccessIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/academy/': {
       id: '/_authenticated/academy/'
       path: '/academy'
@@ -1137,6 +1221,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardClassesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/access/structure': {
+      id: '/_authenticated/access/structure'
+      path: '/access/structure'
+      fullPath: '/access/structure'
+      preLoaderRoute: typeof AuthenticatedAccessStructureRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/access/log': {
+      id: '/_authenticated/access/log'
+      path: '/access/log'
+      fullPath: '/access/log'
+      preLoaderRoute: typeof AuthenticatedAccessLogRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/academy/settings': {
       id: '/_authenticated/academy/settings'
       path: '/academy/settings'
@@ -1156,6 +1254,13 @@ declare module '@tanstack/react-router' {
       path: '/kb/$baseId'
       fullPath: '/kb/$baseId/'
       preLoaderRoute: typeof AuthenticatedKbBaseIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/access/roles/': {
+      id: '/_authenticated/access/roles/'
+      path: '/access/roles'
+      fullPath: '/access/roles/'
+      preLoaderRoute: typeof AuthenticatedAccessRolesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/academy/review/': {
@@ -1198,6 +1303,20 @@ declare module '@tanstack/react-router' {
       path: '/kb/$baseId/$nodeId'
       fullPath: '/kb/$baseId/$nodeId'
       preLoaderRoute: typeof AuthenticatedKbBaseIdNodeIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/access/users/$userId': {
+      id: '/_authenticated/access/users/$userId'
+      path: '/access/users/$userId'
+      fullPath: '/access/users/$userId'
+      preLoaderRoute: typeof AuthenticatedAccessUsersUserIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/access/roles/$roleId': {
+      id: '/_authenticated/access/roles/$roleId'
+      path: '/access/roles/$roleId'
+      fullPath: '/access/roles/$roleId'
+      preLoaderRoute: typeof AuthenticatedAccessRolesRoleIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/academy/review/$attemptId': {
@@ -1280,6 +1399,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAcademyReportRoute: typeof AuthenticatedAcademyReportRoute
   AuthenticatedAcademySettingsRoute: typeof AuthenticatedAcademySettingsRoute
+  AuthenticatedAccessLogRoute: typeof AuthenticatedAccessLogRoute
+  AuthenticatedAccessStructureRoute: typeof AuthenticatedAccessStructureRoute
   AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
   AuthenticatedDashboardClientsRoute: typeof AuthenticatedDashboardClientsRoute
   AuthenticatedDashboardMarketingRoute: typeof AuthenticatedDashboardMarketingRoute
@@ -1287,18 +1408,22 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScriptsSectionIdRoute: typeof AuthenticatedScriptsSectionIdRoute
   AuthenticatedScriptsSettingsRoute: typeof AuthenticatedScriptsSettingsRoute
   AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
+  AuthenticatedAccessIndexRoute: typeof AuthenticatedAccessIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKbIndexRoute: typeof AuthenticatedKbIndexRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
   AuthenticatedAcademyAttemptsAttemptIdRoute: typeof AuthenticatedAcademyAttemptsAttemptIdRoute
   AuthenticatedAcademyMyCourseIdRoute: typeof AuthenticatedAcademyMyCourseIdRoute
   AuthenticatedAcademyReviewAttemptIdRoute: typeof AuthenticatedAcademyReviewAttemptIdRoute
+  AuthenticatedAccessRolesRoleIdRoute: typeof AuthenticatedAccessRolesRoleIdRoute
+  AuthenticatedAccessUsersUserIdRoute: typeof AuthenticatedAccessUsersUserIdRoute
   AuthenticatedKbBaseIdNodeIdRoute: typeof AuthenticatedKbBaseIdNodeIdRoute
   AuthenticatedKbBaseIdAnalyticsRoute: typeof AuthenticatedKbBaseIdAnalyticsRoute
   AuthenticatedKbBaseIdTemplatesRoute: typeof AuthenticatedKbBaseIdTemplatesRoute
   AuthenticatedKbBaseIdTrashRoute: typeof AuthenticatedKbBaseIdTrashRoute
   AuthenticatedAcademyCoursesIndexRoute: typeof AuthenticatedAcademyCoursesIndexRoute
   AuthenticatedAcademyReviewIndexRoute: typeof AuthenticatedAcademyReviewIndexRoute
+  AuthenticatedAccessRolesIndexRoute: typeof AuthenticatedAccessRolesIndexRoute
   AuthenticatedKbBaseIdIndexRoute: typeof AuthenticatedKbBaseIdIndexRoute
   AuthenticatedAcademyCoursesCourseIdStepIdRoute: typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
   AuthenticatedAcademyCoursesCourseIdPreviewRoute: typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
@@ -1341,6 +1466,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAcademyReportRoute: AuthenticatedAcademyReportRoute,
   AuthenticatedAcademySettingsRoute: AuthenticatedAcademySettingsRoute,
+  AuthenticatedAccessLogRoute: AuthenticatedAccessLogRoute,
+  AuthenticatedAccessStructureRoute: AuthenticatedAccessStructureRoute,
   AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
   AuthenticatedDashboardClientsRoute: AuthenticatedDashboardClientsRoute,
   AuthenticatedDashboardMarketingRoute: AuthenticatedDashboardMarketingRoute,
@@ -1348,6 +1475,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScriptsSectionIdRoute: AuthenticatedScriptsSectionIdRoute,
   AuthenticatedScriptsSettingsRoute: AuthenticatedScriptsSettingsRoute,
   AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
+  AuthenticatedAccessIndexRoute: AuthenticatedAccessIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKbIndexRoute: AuthenticatedKbIndexRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,
@@ -1356,12 +1484,15 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademyMyCourseIdRoute: AuthenticatedAcademyMyCourseIdRoute,
   AuthenticatedAcademyReviewAttemptIdRoute:
     AuthenticatedAcademyReviewAttemptIdRoute,
+  AuthenticatedAccessRolesRoleIdRoute: AuthenticatedAccessRolesRoleIdRoute,
+  AuthenticatedAccessUsersUserIdRoute: AuthenticatedAccessUsersUserIdRoute,
   AuthenticatedKbBaseIdNodeIdRoute: AuthenticatedKbBaseIdNodeIdRoute,
   AuthenticatedKbBaseIdAnalyticsRoute: AuthenticatedKbBaseIdAnalyticsRoute,
   AuthenticatedKbBaseIdTemplatesRoute: AuthenticatedKbBaseIdTemplatesRoute,
   AuthenticatedKbBaseIdTrashRoute: AuthenticatedKbBaseIdTrashRoute,
   AuthenticatedAcademyCoursesIndexRoute: AuthenticatedAcademyCoursesIndexRoute,
   AuthenticatedAcademyReviewIndexRoute: AuthenticatedAcademyReviewIndexRoute,
+  AuthenticatedAccessRolesIndexRoute: AuthenticatedAccessRolesIndexRoute,
   AuthenticatedKbBaseIdIndexRoute: AuthenticatedKbBaseIdIndexRoute,
   AuthenticatedAcademyCoursesCourseIdStepIdRoute:
     AuthenticatedAcademyCoursesCourseIdStepIdRoute,

@@ -88,6 +88,7 @@ import { formatDate, formatDateTime, todayISO } from "@/lib/format";
 import type { KbTreeNode } from "@/lib/kb/types";
 import type { SortGetters } from "@/lib/table-sort";
 import { cn } from "@/lib/utils";
+import { useAccessNames } from "@/hooks/use-access-names";
 
 export type BuilderTab = "content" | "learners" | "errors";
 
@@ -100,7 +101,7 @@ export type BuilderTab = "content" | "learners" | "errors";
 export function CourseBuilder({ courseId, tab }: { courseId: string; tab: BuilderTab }) {
   const navigate = useNavigate();
   const access = useAdminAccess();
-  const canEdit = !!access?.isOwner || !!access?.academy?.can_create;
+  const canEdit = !!access?.academy?.is_admin || !!access?.academy?.can_create;
   const { data: course, isLoading, error } = useQuery(acadCourseQuery(courseId));
   const setTab = (t: string) =>
     void navigate({
@@ -633,6 +634,7 @@ function LearnersTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean
   const nameOf = new Map(
     (staff ?? []).map((p) => [p.user_id, p.full_name || p.email || "Сотрудник"]),
   );
+  const accessNames = useAccessNames(false);
   const studioName = new Map((studios ?? []).map((s) => [s.id, s.name]));
   const list = assignments ?? [];
   const today = todayISO();
@@ -640,11 +642,17 @@ function LearnersTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean
   const describe = (a: AcadAssignment) =>
     a.subject_type === "user"
       ? (nameOf.get(a.user_id ?? "") ?? "Сотрудник")
-      : `${ROLE_LABEL[a.role ?? "admin"]} ${
-          a.studio_ids.length
-            ? `клубов ${a.studio_ids.map((id) => `«${studioName.get(id) ?? "клуб"}»`).join(", ")}`
-            : "всех клубов"
-        }`;
+      : a.subject_type === "unit"
+        ? `Подразделение «${accessNames.unit.get(a.unit_id ?? "") ?? "—"}»${a.with_subunits ? " и ниже" : ""}`
+        : a.subject_type === "position"
+          ? `Должность «${accessNames.position.get(a.position_id ?? "") ?? "—"}»`
+          : a.subject_type === "access_role"
+            ? `Роль «${accessNames.role.get(a.access_role_id ?? "")?.name ?? "—"}»`
+            : `${ROLE_LABEL[a.role ?? "admin"]} ${
+                a.studio_ids.length
+                  ? `клубов ${a.studio_ids.map((id) => `«${studioName.get(id) ?? "клуб"}»`).join(", ")}`
+                  : "всех клубов"
+              }`;
 
   const remove = async (a: AcadAssignment) => {
     const ok = await confirm({
@@ -685,7 +693,7 @@ function LearnersTab({ course, canEdit }: { course: AcadCourse; canEdit: boolean
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{describe(a)}</span>
                   <span className="text-xs text-muted-foreground">
-                    {a.subject_type === "role" ? "Правило по роли · " : ""}
+                    {a.subject_type !== "user" ? "Правило · " : ""}
                     {assignmentDueText(a)}
                   </span>
                 </span>

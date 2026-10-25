@@ -1610,17 +1610,115 @@ export function PayrollPageSkeleton() {
 // ---------------------------------------------------------------------------
 // Доступы, клубы, Kate
 
-export function EmployeesPageSkeleton() {
-  // Кнопка «Добавить сотрудника» и подвал появляются у страницы только с
-  // данными — скелетон их не рисует, иначе они мигнут и пропадут.
+export function AccessUsersPageSkeleton() {
   return (
     <TablePage
-      title="Доступы"
+      title="Пользователи"
+      toolbar={{ search: true, controls: ["w-44", "w-44", "w-44"] }}
+      pagination={false}
+      rows={8}
+      headers={["Пользователь", "Должность", "Роли", "Клубы", "Статус", "Последний вход"]}
+    />
+  );
+}
+
+export function AccessRolesPageSkeleton() {
+  return (
+    <TablePage
+      title="Роли"
       toolbar={null}
       pagination={false}
-      rows={5}
-      headers={["Имя", "Email", "Роль", "Клубы", "Разделы"]}
+      rows={8}
+      headers={["Роль", "Права", "Люди"]}
     />
+  );
+}
+
+export function AccessLogPageSkeleton() {
+  return (
+    <TablePage
+      title="Журнал доступа"
+      toolbar={{ search: true }}
+      pagination={false}
+      rows={10}
+      headers={["Когда", "Кто", "Что"]}
+    />
+  );
+}
+
+/** Карточка пользователя: шапка с аватаркой, роли, подразделения, личные права. */
+export function AccessUserPageSkeleton() {
+  return (
+    <ShellSkeleton title="Пользователь">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <Skeleton className="h-4 w-32" />
+        <section className="flex items-start gap-4 rounded-lg border bg-background p-4">
+          <Skeleton className="size-16 shrink-0 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-6 w-56" />
+            <Skeleton className="h-4 w-72" />
+            <Skeleton className="h-4 w-96 max-w-full" />
+          </div>
+        </section>
+        {["Роли", "Подразделения", "Итоговые права"].map((title) => (
+          <section key={title} className="space-y-3 rounded-lg border bg-background p-4">
+            <h2 className="font-semibold">{title}</h2>
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </section>
+        ))}
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+/** Роль: название и матрица прав по блокам. */
+export function AccessRolePageSkeleton() {
+  return (
+    <ShellSkeleton title="Роль">
+      <div className="mx-auto max-w-4xl space-y-4">
+        <Skeleton className="h-4 w-24" />
+        <section className="space-y-3 rounded-lg border bg-background p-4">
+          <FieldSkeleton />
+          <FieldSkeleton control="h-16" />
+        </section>
+        {Array.from({ length: 3 }, (_, i) => (
+          <section key={i} className="space-y-3 rounded-lg border p-4">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-9 w-full" />
+            <div className="grid grid-cols-2 gap-2">
+              {Array.from({ length: 6 }, (_, j) => (
+                <Skeleton key={j} className="h-4 w-32" />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+/** Оргструктура: вкладки, дерево подразделений слева, подразделение справа. */
+export function AccessStructurePageSkeleton() {
+  return (
+    <ShellSkeleton title="Оргструктура">
+      <div className="space-y-4">
+        <Skeleton className="h-9 w-80 max-w-full" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,22rem)_1fr]">
+          <section className="space-y-2 rounded-lg border bg-background p-3">
+            {Array.from({ length: 7 }, (_, i) => (
+              <Skeleton key={i} className="h-7 w-full" />
+            ))}
+          </section>
+          <section className="space-y-3 rounded-lg border bg-background p-4">
+            <Skeleton className="h-5 w-48" />
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </section>
+        </div>
+      </div>
+    </ShellSkeleton>
   );
 }
 

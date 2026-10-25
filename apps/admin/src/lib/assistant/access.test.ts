@@ -9,10 +9,15 @@ import { createAssistantTools } from "./tools.server";
 const access = (
   over: Partial<AdminAccess> & { sections?: AdminAccess["studios"][string]["sections"] },
 ) => ({
-  isOwner: over.isOwner ?? false,
+  rights: [],
+  kbAdmin: false,
+  manageAll: false,
+  manageStudioIds: [],
   rail: over.rail ?? null,
   studios: { s1: { owner: false, sections: over.sections ?? null } },
 });
+
+const NETWORK = { rights: [], kbAdmin: false, manageAll: false, manageStudioIds: [] };
 
 describe("права Kate по разделам «Доступов»", () => {
   test("у каждого инструмента названы разделы", () => {
@@ -47,7 +52,7 @@ describe("права Kate по разделам «Доступов»", () => {
 
   test("владелец клуба видит всё в своём клубе", () => {
     const a: AdminAccess = {
-      isOwner: true,
+      ...NETWORK,
       rail: ["club"],
       studios: { s1: { owner: true, sections: ["clients"] } },
     };

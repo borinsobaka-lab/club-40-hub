@@ -126,7 +126,7 @@ export function KbNodePage({
   tagId?: string;
 }) {
   const access = useAdminAccess();
-  const level = access?.isOwner ? "manage" : access?.kb?.[baseId];
+  const level = access?.kbAdmin ? "manage" : access?.kb?.[baseId];
   const canEdit = canEditKb(level);
   const { data: bases } = useQuery(kbBasesQuery);
   const base = bases?.find((b) => b.id === baseId);
@@ -190,7 +190,7 @@ export function KbNodePage({
       baseTitle={title}
       baseDescription={base?.description ?? ""}
       baseIcon={base?.icon ?? null}
-      base={access?.isOwner ? base : undefined}
+      base={access?.kbAdmin ? base : undefined}
       folder={node ?? null}
       nodes={nodes}
       index={index}

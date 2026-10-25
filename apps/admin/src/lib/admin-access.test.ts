@@ -12,15 +12,18 @@ import { canOpenPath, firstAllowedUrl, railSectionKey } from "./nav-sections";
 const A = "studio-a";
 const B = "studio-b";
 
+/** Без сетевых прав (новая модель: разделы рейки и клуба — из ролей). */
+const NETWORK = { rights: [], kbAdmin: false, manageAll: false, manageStudioIds: [] };
+
 /** Сотрудник, заведённый до настройки разделов: строк прав нет. */
 const legacy: AdminAccess = {
-  isOwner: false,
+  ...NETWORK,
   rail: null,
   studios: { [A]: { owner: false, sections: null } },
 };
 
 const limited: AdminAccess = {
-  isOwner: false,
+  ...NETWORK,
   rail: ["club", "app"],
   studios: {
     [A]: { owner: false, sections: ["schedule", "clients"] },
@@ -28,18 +31,41 @@ const limited: AdminAccess = {
   },
 };
 
+/** Суперадминистратор: все сетевые права, рейка — вся (строки нет). */
 const owner: AdminAccess = {
-  isOwner: true,
-  rail: ["club"],
+  rights: [
+    "portal.admin",
+    "users.manage",
+    "roles.manage",
+    "structure.manage",
+    "studios.create",
+    "audit.view",
+    "kb.admin",
+    "academy.admin",
+  ],
+  kbAdmin: true,
+  manageAll: true,
+  manageStudioIds: [A],
+  rail: null,
   studios: { [A]: { owner: true, sections: ["cash"] } },
 };
 
+/** Партнёр — владелец клуба: всё в своём клубе, но не администратор сети. */
+const partner: AdminAccess = {
+  ...NETWORK,
+  rights: ["users.manage"],
+  manageStudioIds: [A],
+  rail: ["club", "app"],
+  studios: { [A]: { owner: true, sections: null } },
+};
+
 describe("права в админке", () => {
-  test("без строк прав открыто всё, кроме «Доступов»", () => {
+  test("без строк прав открыто всё, кроме «Пользователей и ролей»", () => {
     expect(canOpenRail(legacy, "staff")).toBe(true);
     expect(canOpenPath(legacy, A, "/dashboard")).toBe(true);
     expect(canOpenPath(legacy, A, "/trainers")).toBe(true);
-    expect(canOpenPath(legacy, A, "/employees")).toBe(false);
+    expect(canOpenPath(legacy, A, "/access")).toBe(false);
+    expect(canOpenPath(legacy, A, "/kb-bases")).toBe(false);
   });
 
   test("разделы рейки и клуба — по отметкам, по каждой студии", () => {
@@ -92,12 +118,28 @@ describe("права в админке", () => {
     expect(firstAllowedUrl(scripts, A)).toBe("/scripts");
   });
 
-  test("владельцу открыто всё в своей студии и «Доступы»", () => {
+  test("суперадминистратору открыто всё, включая «Пользователей и роли»", () => {
     expect(canOpenPath(owner, A, "/dashboard")).toBe(true);
     expect(canOpenPath(owner, A, "/trainers")).toBe(true);
     expect(canOpenPath(owner, A, "/pay-rates")).toBe(true);
-    expect(canOpenPath(owner, A, "/employees")).toBe(true);
+    expect(canOpenPath(owner, A, "/access")).toBe(true);
+    expect(canOpenPath(owner, A, "/access/users/x")).toBe(true);
+    expect(canOpenPath(owner, A, "/access/roles")).toBe(true);
+    expect(canOpenPath(owner, A, "/access/structure")).toBe(true);
+    expect(canOpenPath(owner, A, "/access/log")).toBe(true);
+    expect(canOpenPath(owner, A, "/kb-bases")).toBe(true);
     expect(canOpenPath(owner, A, "/scripts")).toBe(true);
+  });
+
+  test("партнёр — владелец клуба: свой клуб и его люди, но не сеть", () => {
+    expect(canOpenPath(partner, A, "/cash")).toBe(true);
+    expect(canOpenPath(partner, A, "/access")).toBe(true);
+    expect(canOpenPath(partner, A, "/access/roles")).toBe(true);
+    expect(canOpenPath(partner, A, "/access/log")).toBe(false);
+    expect(canOpenPath(partner, A, "/kb-bases")).toBe(false);
+    expect(canOpenPath(partner, A, "/import-1c")).toBe(true);
+    expect(canOpenPath(partner, A, "/trainers")).toBe(false);
+    expect(canOpenPath(partner, A, "/scripts")).toBe(false);
   });
 
   test("дашборд над студиями — только студии, где он открыт", () => {
@@ -105,7 +147,7 @@ describe("права в админке", () => {
     expect(dashboardStudioIds(limited)).toEqual([]);
     expect(dashboardStudioIds(owner)).toEqual([A]);
     const mixed: AdminAccess = {
-      isOwner: false,
+      ...NETWORK,
       rail: ["club"],
       studios: {
         [A]: { owner: false, sections: ["dashboard"] },

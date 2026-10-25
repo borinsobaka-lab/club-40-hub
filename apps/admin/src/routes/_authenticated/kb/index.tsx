@@ -26,7 +26,7 @@ function KbEntry() {
   return (
     <AdminShell title="База знаний">
       <div className="mx-auto max-w-3xl py-8 text-center text-sm text-muted-foreground">
-        {access?.isOwner ? (
+        {access?.kbAdmin ? (
           <>
             Баз знаний пока нет. Заведите первую в{" "}
             <Link to="/kb-bases" className="font-medium text-foreground underline">

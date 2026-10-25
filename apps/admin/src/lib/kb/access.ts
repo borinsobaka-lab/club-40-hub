@@ -20,8 +20,8 @@ export const KB_LEVEL_LABEL: Record<KbGrantLevel, string> = {
 };
 
 /** Уровень в базе: владельцу — manage, иначе из выданного; null — закрыта. */
-export function kbLevelOf(isOwner: boolean, grants: KbGrant[], baseId: string): KbLevel | null {
-  if (isOwner) return "manage";
+export function kbLevelOf(kbAdmin: boolean, grants: KbGrant[], baseId: string): KbLevel | null {
+  if (kbAdmin) return "manage";
   return grants.find((g) => g.base_id === baseId)?.level ?? null;
 }
 

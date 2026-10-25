@@ -40,7 +40,7 @@ type StepCounts = { lessons: number; quizzes: number; emptyQuizzes: number };
 function CoursesPage() {
   const navigate = useNavigate();
   const access = useAdminAccess();
-  const canCreate = !!access?.isOwner || !!access?.academy?.can_create;
+  const canCreate = !!access?.academy?.is_admin || !!access?.academy?.can_create;
   const { data: courses, isLoading, error } = useQuery(acadCoursesQuery);
   const { data: folders } = useQuery(acadFoldersQuery);
   const { data: overview } = useQuery(acadOverviewQuery);

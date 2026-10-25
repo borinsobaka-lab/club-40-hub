@@ -9,12 +9,16 @@
  *   (CLUB_SECTION_KEYS — пункты меню клуба, см. CLUB_GROUPS в nav-sections.ts,
  *   и дашборд: он в рейке над студиями, но открывается по каждой студии).
  *
- * null — строки нет, доступно всё (сотрудники, заведённые до настройки
- * разделов). Владелец видит все разделы рейки, а в своей студии — все разделы
- * клуба. Модуль без React и иконок: его читает и сервер.
+ * null — строки нет, доступно всё. С 2026-10-25 эти таблицы пишет пересчёт
+ * прав из ролей («Пользователи и роли», lib/access/, ACCESS.md), а сетевые
+ * права (суперадминистратор, администратор баз знаний, управление людьми и
+ * ролями…) — rights из access_me. Владелец клуба видит в своём клубе все его
+ * разделы, но администратором сети больше не является. Модуль без React и
+ * иконок: его читает и сервер.
  */
 import type { AcadAccessInfo } from "@/lib/academy/types";
 import type { KbLevel } from "@/lib/kb/access";
+import type { AccessRight } from "@/lib/access/logic";
 
 export const RAIL_ACCESS_KEYS = ["club", "staff", "app", "scripts"] as const;
 export type RailAccessKey = (typeof RAIL_ACCESS_KEYS)[number];
@@ -65,8 +69,17 @@ export type AdminAccess = {
    * курсы, ответы на проверку) — RPC acad_access. Нет поля — раздела нет.
    */
   academy?: AcadAccessInfo;
-  /** Владелец хоть одной студии: все разделы рейки, «Доступы». */
-  isOwner: boolean;
+  /**
+   * Сетевые права (lib/access/logic.ts, ACCESS_RIGHTS): portal.admin,
+   * users.manage, roles.manage, kb.admin… У человека вне новой модели
+   * (прежние правила) владельцу клуба — все.
+   */
+  rights: AccessRight[];
+  /** Администратор баз знаний: все базы, их создание и настройки. */
+  kbAdmin: boolean;
+  /** users.manage: во всех клубах (все пользователи портала) или в этих. */
+  manageAll: boolean;
+  manageStudioIds: string[];
   /** Разделы рейки (и 'scripts-edit'); null — все. */
   rail: AdminSectionKey[] | null;
   /** По студиям, где есть роль сотрудника. */
@@ -74,7 +87,12 @@ export type AdminAccess = {
 };
 
 export function canOpenRail(access: AdminAccess, key: RailAccessKey): boolean {
-  return access.isOwner || access.rail === null || access.rail.includes(key);
+  return access.rail === null || access.rail.includes(key);
+}
+
+/** Сетевое право сотрудника. */
+export function hasRight(access: AdminAccess | null | undefined, right: AccessRight): boolean {
+  return !!access?.rights.includes(right);
 }
 
 /**

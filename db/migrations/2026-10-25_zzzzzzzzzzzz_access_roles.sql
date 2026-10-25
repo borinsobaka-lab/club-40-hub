@@ -1386,6 +1386,50 @@ as $$
   )
 $$;
 
+-- Люди для назначений Академии: и сотрудники УК без клуба; подразделения
+-- (с путём — для «и ниже»), должность и роли портала — счётчик учеников в
+-- конструкторе курса считает их у себя.
+drop function if exists public.acad_staff_directory();
+create function public.acad_staff_directory()
+returns table (
+  user_id uuid, full_name text, avatar_url text, email text, roles jsonb,
+  position_id uuid, units jsonb, access_role_ids jsonb
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.acad_is_team(auth.uid()) then
+    raise exception 'acad_forbidden';
+  end if;
+  return query
+  with people as (
+    select ur.user_id from public.user_roles ur where ur.role::text in ('owner', 'admin', 'trainer')
+    union
+    select r.user_id from public.access_user_rights r where r.portal
+  )
+  select x.user_id, p.full_name, p.avatar_url, p.email,
+         coalesce((select jsonb_agg(distinct jsonb_build_object('role', r.role::text, 'studio_id', r.studio_id))
+                     from public.user_roles r
+                    where r.user_id = x.user_id and r.role::text in ('owner', 'admin', 'trainer')), '[]'::jsonb),
+         pu.position_id,
+         coalesce((select jsonb_agg(jsonb_build_object('unit_id', m.unit_id, 'path', to_jsonb(u.path),
+                                                       'member_role', m.member_role))
+                     from public.org_unit_members m join public.org_units u on u.id = m.unit_id
+                    where m.user_id = x.user_id), '[]'::jsonb),
+         coalesce((select jsonb_agg(distinct a.role_id) from public.access_applicable(x.user_id) a), '[]'::jsonb)
+    from people x
+    left join public.profiles p on p.id = x.user_id
+    left join public.portal_users pu on pu.user_id = x.user_id
+   where public.is_portal_user(x.user_id)
+   order by p.full_name;
+end;
+$$;
+revoke all on function public.acad_staff_directory() from public, anon;
+grant execute on function public.acad_staff_directory() to authenticated, service_role;
+
 -- Создать клуб: право studios.create (вне модели — как раньше, владелец).
 -- Создатель, которого новый клуб не покрывает, получает «Владельца клуба» в нём.
 create or replace function public.create_studio(
@@ -1480,17 +1524,17 @@ drop policy if exists "portal_users read" on public.portal_users;
 create policy "portal_users read" on public.portal_users
   for select to authenticated
   using (user_id = (select auth.uid())
-         or (select public.auth_access_rights()) && array['users.manage', 'roles.manage', 'audit.view']);
+         or (select public.auth_access_rights()) && array['users.manage', 'roles.manage', 'audit.view', 'structure.manage']);
 drop policy if exists "access_assignments read" on public.access_assignments;
 create policy "access_assignments read" on public.access_assignments
   for select to authenticated
   using (user_id = (select auth.uid())
-         or (select public.auth_access_rights()) && array['users.manage', 'roles.manage', 'audit.view']);
+         or (select public.auth_access_rights()) && array['users.manage', 'roles.manage', 'audit.view', 'structure.manage']);
 drop policy if exists "access_user_rights read" on public.access_user_rights;
 create policy "access_user_rights read" on public.access_user_rights
   for select to authenticated
   using (user_id = (select auth.uid())
-         or (select public.auth_access_rights()) && array['users.manage', 'roles.manage', 'audit.view']);
+         or (select public.auth_access_rights()) && array['users.manage', 'roles.manage', 'audit.view', 'structure.manage']);
 -- access_dirty и access_log — только через RPC.
 
 -- 13) Проверки прав для RPC -------------------------------------------------
@@ -1595,7 +1639,11 @@ begin
   if _subject_type <> 'user' and not _actor.manage_all then
     return 'Подразделению и должности роль выдаёт администратор всех пользователей';
   end if;
-  if not _actor.manage_all then
+  -- Клубы важны, только если у роли есть права «в клубе».
+  if not _actor.manage_all and exists (
+       select 1 from public.access_role_permissions rp
+         join public.access_permissions c on c.key = rp.perm_key
+        where rp.role_id = _role_id and c.scope = 'studio') then
     if _scope_type <> 'studios' then
       return 'Выберите клубы: вам доступны только свои';
     end if;
@@ -1790,7 +1838,7 @@ declare
   me public.access_user_rights;
 begin
   me := public.access_actor();
-  if not (me.rights && array['users.manage', 'roles.manage', 'audit.view']) then
+  if not (me.rights && array['users.manage', 'roles.manage', 'audit.view', 'structure.manage']) then
     raise exception 'access_forbidden' using errcode = '42501';
   end if;
   return query
@@ -1814,7 +1862,7 @@ begin
     left join public.profiles p on p.id = pu.user_id
     left join public.access_user_rights r on r.user_id = pu.user_id
    where 'portal.admin' = any (me.rights) or me.manage_all
-      or 'audit.view' = any (me.rights) or 'roles.manage' = any (me.rights)
+      or me.rights && array['audit.view', 'roles.manage', 'structure.manage']
       or pu.created_by = me.user_id
       or exists (select 1 from public.access_assignments x
                   where x.subject_type = 'user' and x.user_id = pu.user_id
@@ -1852,7 +1900,7 @@ declare
 begin
   if p_user is distinct from auth.uid() then
     me := public.access_actor();
-    if not (me.rights && array['users.manage', 'roles.manage', 'audit.view']) then
+    if not (me.rights && array['users.manage', 'roles.manage', 'audit.view', 'structure.manage']) then
       raise exception 'access_forbidden' using errcode = '42501';
     end if;
   end if;
@@ -1889,7 +1937,7 @@ declare
   v jsonb;
 begin
   me := public.access_actor();
-  if p_user <> me.user_id and not (me.rights && array['users.manage', 'roles.manage', 'audit.view']) then
+  if p_user <> me.user_id and not (me.rights && array['users.manage', 'roles.manage', 'audit.view', 'structure.manage']) then
     raise exception 'access_forbidden' using errcode = '42501';
   end if;
   select jsonb_build_object(
@@ -1964,7 +2012,7 @@ declare
   me public.access_user_rights;
 begin
   me := public.access_actor();
-  if not (me.rights && array['users.manage', 'roles.manage', 'audit.view']) then
+  if not (me.rights && array['users.manage', 'roles.manage', 'audit.view', 'structure.manage']) then
     raise exception 'access_forbidden' using errcode = '42501';
   end if;
   return query
@@ -1974,12 +2022,10 @@ begin
                      from public.access_role_permissions rp where rp.role_id = ro.id), '[]'::jsonb),
          (select count(*)::int from public.access_assignments x where x.role_id = ro.id),
          cardinality(public.access_role_user_ids(ro.id)),
-         -- Для окна «Назначить»: можно ли вообще выдать роль (без области).
-         case when 'portal.admin' = any (me.rights) then null
-              when ro.locked or exists (select 1 from public.access_role_permissions rp
-                                        where rp.role_id = ro.id and rp.perm_key = 'portal.admin')
-                then 'Эту роль выдаёт только суперадминистратор'
-              else null end
+         -- Для окна «Назначить»: можно ли вызывающему выдать роль в своих
+         -- клубах (не больше своих прав); null — можно.
+         public.access_grant_problem(me, ro.id, 'user',
+           case when me.manage_all then 'all' else 'studios' end, me.manage_studio_ids)
     from public.access_roles ro
    where ro.personal_user_id is null
    order by ro.sort_order, ro.name;

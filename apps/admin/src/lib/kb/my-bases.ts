@@ -20,7 +20,7 @@ export function useMyKbBases() {
   const access = useAdminAccess();
   const query = useQuery(kbBasesQuery);
   const bases = useMemo(
-    () => (query.data ?? []).filter((b) => access?.isOwner || !!access?.kb?.[b.id]),
+    () => (query.data ?? []).filter((b) => access?.kbAdmin || !!access?.kb?.[b.id]),
     [query.data, access],
   );
   return { bases, loading: !access || query.isLoading };

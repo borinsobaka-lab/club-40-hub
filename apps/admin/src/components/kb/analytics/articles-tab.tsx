@@ -66,7 +66,7 @@ type Show = "all" | "unfinished";
  * только прежнюю версию), дочитали, среднее время, открытия за 30 дней. По
  * строке — кто прочитал (KbReadersDialogBody).
  */
-export function KbArticlesTab({ baseId, isOwner }: { baseId: string; isOwner: boolean }) {
+export function KbArticlesTab({ baseId, canGrant }: { baseId: string; canGrant: boolean }) {
   const { data, isLoading, error } = useKbReport(baseId, true);
   const { data: nodes } = useKbTree(baseId);
   const index = useMemo(() => indexTree(nodes ?? []), [nodes]);
@@ -126,14 +126,14 @@ export function KbArticlesTab({ baseId, isOwner }: { baseId: string; isOwner: bo
       </TableToolbar>
       {!!data?.length && data.every((r) => r.access_count === 0) && (
         <InfoNote>
-          Читателей пока нет: базу никому не выдали в «Доступах», а владельцы и авторы статьи не
-          считаются. Выдайте сотрудникам «Просмотр» —{" "}
-          {isOwner ? (
-            <Link to="/employees" className="font-medium underline">
-              открыть «Доступы»
+          Читателей пока нет: базу никому не выдали, а администраторы баз и авторы статьи не
+          считаются. Выдайте сотрудникам роль с «Просмотром» этой базы —{" "}
+          {canGrant ? (
+            <Link to="/access" className="font-medium underline">
+              открыть «Пользователей»
             </Link>
           ) : (
-            "это делает владелец"
+            "это делает администратор пользователей"
           )}
           , и здесь появится, кто прочитал.
         </InfoNote>

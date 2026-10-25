@@ -43,7 +43,7 @@ function KbBasesPage() {
   const { data: allBases, isLoading, error } = useQuery(kbBasesQuery);
   const [editing, setEditing] = useState<KbBase | "new" | null>(null);
 
-  const isOwner = !!access?.isOwner;
+  const isOwner = !!access?.kbAdmin;
   const bases = allBases ?? [];
 
   const reorder = async (sourceId: string, targetId: string, op: RowDropOperation) => {
@@ -116,7 +116,7 @@ function KbBasesPage() {
         {isOwner && bases.length > 0 && (
           <p className="px-1 text-xs text-muted-foreground">
             Порядок — как у вкладок в шапке базы знаний: перетащите базу за ручку слева. Доступ
-            сотрудникам — в «Доступах», у каждого сотрудника: «Просмотр» или «Правка».
+            сотрудникам — ролями в «Пользователях и ролях»: «Просмотр» или «Правка» базы.
           </p>
         )}
         {isOwner && <KbStorageCard />}
