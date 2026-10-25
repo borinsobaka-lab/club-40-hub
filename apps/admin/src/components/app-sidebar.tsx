@@ -277,7 +277,9 @@ export function AppSidebar() {
   const kbBaseId = railKey === "kb" ? kbBaseIdOf(currentPath) : null;
   const kbMenu = useKbMenu(railKey === "kb" && !kbBaseId, access);
   const { data: kbBases } = useQuery({ ...kbBasesQuery, enabled: !!kbBaseId });
-  const kbBaseTitle = kbBases?.find((b) => b.id === kbBaseId)?.title ?? "База знаний";
+  const kbBase = kbBases?.find((b) => b.id === kbBaseId);
+  const kbBaseTitle = kbBase?.title ?? "База знаний";
+  const KbBaseIcon = kbIcon(kbBase?.icon ?? null);
   const kbWidth = useKbSidebarWidth();
   const sectionMenu =
     railKey === "scripts"
@@ -374,19 +376,33 @@ export function AppSidebar() {
         <div className="relative flex min-w-0 flex-1 flex-col">
           {kbBaseId && !isMobile && <KbSidebarResize {...kbWidth} />}
           <SidebarHeader className="px-3 py-4">
-            <Link
-              to="/"
-              aria-label="На главную"
-              className="flex items-center text-white"
-              onClick={closeMobile}
-            >
-              {/* Раздел общий для студий — логотип студии там не к месту. */}
-              {sectionMenu ? (
-                <span className="text-lg leading-tight font-semibold">{sectionMenu.title}</span>
-              ) : (
-                <StudioLogo />
-              )}
-            </Link>
+            {kbBaseId ? (
+              // В базе знаний шапка — корень дерева: иконка базы и название
+              // (полужирное; пункты дерева ниже — обычные и без иконок).
+              <Link
+                to="/kb/$baseId"
+                params={{ baseId: kbBaseId }}
+                className="flex min-w-0 items-center gap-2.5 px-2 text-white"
+                onClick={closeMobile}
+              >
+                <KbBaseIcon className="size-5 shrink-0" />
+                <span className="min-w-0 text-lg leading-tight font-semibold">{kbBaseTitle}</span>
+              </Link>
+            ) : (
+              <Link
+                to="/"
+                aria-label="На главную"
+                className="flex items-center text-white"
+                onClick={closeMobile}
+              >
+                {/* Раздел общий для студий — логотип студии там не к месту. */}
+                {sectionMenu ? (
+                  <span className="text-lg leading-tight font-semibold">{sectionMenu.title}</span>
+                ) : (
+                  <StudioLogo />
+                )}
+              </Link>
+            )}
           </SidebarHeader>
 
           {/*

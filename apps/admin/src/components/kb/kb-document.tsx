@@ -20,11 +20,13 @@ import {
   filterSuggestionItems,
   type PartialBlock,
 } from "@blocknote/core";
+import { FilePanelExtension } from "@blocknote/core/extensions";
 import { ru } from "@blocknote/core/locales";
 import {
   createReactBlockSpec,
   FileBlockWrapper,
   FilePanelController,
+  FormattingToolbarController,
   getDefaultReactSlashMenuItems,
   SuggestionMenuController,
   useBlockNoteEditor,
@@ -34,6 +36,7 @@ import {
   type FilePanelProps,
 } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
+import { flip, offset, shift } from "@floating-ui/react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Download,
@@ -73,6 +76,11 @@ const dictionary = {
     ...ru.placeholders,
     default: "Начните писать или нажмите «/»",
     toggleListItem: "Сворачиваемый пункт",
+  },
+  file_blocks: {
+    ...ru.file_blocks,
+    // У своего блока PDF — своя подпись (иначе «Добавить файл», как у файла).
+    add_button_text: { ...ru.file_blocks.add_button_text, pdf: "Добавить PDF" },
   },
   toggle_blocks: {
     ...ru.toggle_blocks,
@@ -543,9 +551,11 @@ function slashItems(
   const insertBlock = (block: PartialBlock<typeof kbSchema.blockSchema>) => {
     const cur = editor.getTextCursorPosition().block;
     const empty = Array.isArray(cur.content) && cur.content.length === 0;
-    if (empty) editor.replaceBlocks([cur], [block]);
-    else editor.insertBlocks([block], cur, "after");
+    const inserted = empty
+      ? editor.replaceBlocks([cur], [block]).insertedBlocks
+      : editor.insertBlocks([block], cur, "after");
     ensureTrailingParagraph(editor);
+    return inserted[0]?.id;
   };
   const items = getDefaultReactSlashMenuItems(editor).filter(
     (i) => !("key" in i) || !HIDDEN_SLASH_ITEMS.has(String(i.key)),
@@ -566,7 +576,11 @@ function slashItems(
       aliases: ["pdf", "пдф", "документ"],
       group: media,
       icon: <FileText className="size-[18px]" />,
-      onItemClick: () => insertBlock({ type: "pdf" }),
+      onItemClick: () => {
+        // Сразу окно выбора файла — как у картинки, видео и аудио.
+        const id = insertBlock({ type: "pdf" });
+        if (id) editor.getExtension(FilePanelExtension)?.showMenu(id);
+      },
     },
     {
       title: "Картинки в ряд",
@@ -752,12 +766,12 @@ function addTableRowAtEnd(editor: KbEditor): boolean {
     content: { ...content, rows: [...content.rows, { cells: empty }] },
   } as never);
   // Курсор — в первую ячейку новой строки: тот же Tab из предпоследней
-  // ячейки таблица уже умеет.
-  requestAnimationFrame(() => {
-    editor.prosemirrorView.dom.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }),
-    );
-  });
+  // ячейки таблица уже умеет. Сразу, в этом же обработчике: отложенный
+  // переход (через кадр) опаздывал, если печатать сразу после Tab, — текст
+  // уходил в прежнюю ячейку (замечание тестирования 2026-10-25).
+  const view = editor.prosemirrorView;
+  const tab = new KeyboardEvent("keydown", { key: "Tab", cancelable: true });
+  view.someProp("handleKeyDown", (handle) => handle(view, tab));
   return true;
 }
 
@@ -820,6 +834,23 @@ export function KbDocument({
     [nodeId],
   );
 
+  // Панель форматирования не выходит за края текста статьи: по умолчанию
+  // её держит только край рабочей области, и справа она наезжала на
+  // оглавление (замечание тестирования 2026-10-25).
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
+  const toolbarFloating = useMemo(
+    () => ({
+      useFloatingOptions: {
+        middleware: [
+          offset(10),
+          shift({ boundary: box ?? "clippingAncestors", padding: 16 }),
+          flip(),
+        ],
+      },
+    }),
+    [box],
+  );
+
   // Оглавление и точка отсчёта — при открытии документа; дальше — onChange.
   const mountRef = useRef({ onHeadings, onReady });
   mountRef.current = { onHeadings, onReady };
@@ -831,6 +862,7 @@ export function KbDocument({
 
   return (
     <div
+      ref={setBox}
       className={cn("kb-document", !editable && "kb-document-read")}
       onKeyDownCapture={(e) => {
         if (editable && e.key === "Tab" && !e.shiftKey && addTableRowAtEnd(editor)) {
@@ -854,6 +886,7 @@ export function KbDocument({
         theme="light"
         filePanel={false}
         slashMenu={false}
+        formattingToolbar={false}
         onChange={() => {
           const doc = editor.document as unknown[];
           onChange?.(doc);
@@ -871,6 +904,7 @@ export function KbDocument({
           }
         />
         <FilePanelController filePanel={UploadOnlyFilePanel} />
+        <FormattingToolbarController floatingUIOptions={toolbarFloating} />
       </BlockNoteView>
     </div>
   );
