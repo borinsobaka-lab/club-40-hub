@@ -5,6 +5,7 @@ import { Eye, FilePlus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { KbPageHeading } from "@/components/kb/kb-header";
 import { useConfirm } from "@/components/confirm-dialog";
 import { KbNodeTitleForm } from "@/components/kb/node-dialogs";
 import { useKbActions } from "@/components/kb/use-kb-actions";
@@ -99,6 +100,7 @@ function KbTemplatesPage() {
   return (
     <AdminShell title={`Шаблоны${base ? ` · ${base.title}` : ""}`}>
       <div className="mx-auto max-w-4xl space-y-3">
+        <KbPageHeading baseId={baseId} title="Шаблоны" />
         {!canEdit && access ? (
           <InfoNote variant="warning">Шаблоны видят редакторы базы и владельцы.</InfoNote>
         ) : (

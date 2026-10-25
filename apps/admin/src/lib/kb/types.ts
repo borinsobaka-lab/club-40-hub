@@ -8,7 +8,6 @@ export type KbBase = {
   icon: string;
   description: string;
   sort_order: number;
-  show_in_rail: boolean;
   /** Защита содержимого статей базы по умолчанию (запрет копирования, водяной знак). */
   protect_content: boolean;
 };

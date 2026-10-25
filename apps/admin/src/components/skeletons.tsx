@@ -111,39 +111,64 @@ export function ControlSkeletonView({ control }: { control: ControlSkeleton }) {
 export function ShellSkeleton({
   title,
   actions = [],
+  kb = false,
   children,
 }: {
   title: string;
   /** Кнопки действий страницы — как в настоящих actions AdminShell. */
   actions?: ControlSkeleton[];
+  /** Шапка базы знаний: вкладки баз и поиск по базе, рабочая область белая. */
+  kb?: boolean;
   children: ReactNode;
 }) {
   return (
     <>
-      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
-        <div className="flex min-w-0 flex-1 items-center gap-2 lg:shrink-[0.1] lg:basis-auto">
-          {/* Кнопка меню на узком экране — как SidebarTrigger. */}
+      {kb ? (
+        <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
           <span className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center md:hidden">
             <PanelLeft className="size-4" />
           </span>
-          <h1 className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl">
-            {title}
-          </h1>
+          <h1 className="sr-only">{title}</h1>
+          {/* Вкладки баз — как KbBaseTabs. */}
+          <div className="flex min-w-0 flex-1 gap-1">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-10 w-32 rounded-full" />
+            ))}
+          </div>
+          <Skeleton className="order-last h-10 w-full lg:order-none lg:w-80 lg:shrink-0" />
           <span className="inline-flex size-10 shrink-0 items-center justify-center">
             <RefreshCw className="h-5 w-5" />
           </span>
-        </div>
-        {/* Поиск клиента — как HeaderClientSearch. */}
-        <Skeleton className="order-last h-10 w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
-        <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
-          <Skeleton className="h-10 w-10 shrink-0 rounded-full sm:w-20" />
-          {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
-          <div className="hidden items-center gap-2 lg:flex">
-            <Skeleton className="h-10 w-60" />
+        </header>
+      ) : (
+        <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2 lg:shrink-[0.1] lg:basis-auto">
+            {/* Кнопка меню на узком экране — как SidebarTrigger. */}
+            <span className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center md:hidden">
+              <PanelLeft className="size-4" />
+            </span>
+            <h1 className="min-w-0 truncate text-xl font-semibold leading-tight lg:text-2xl">
+              {title}
+            </h1>
+            <span className="inline-flex size-10 shrink-0 items-center justify-center">
+              <RefreshCw className="h-5 w-5" />
+            </span>
           </div>
-        </div>
-      </header>
-      <main className="admin-main flex-1 overflow-auto p-3 sm:p-4 lg:p-6" aria-busy="true">
+          {/* Поиск клиента — как HeaderClientSearch. */}
+          <Skeleton className="order-last h-10 w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+          <div className="flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-full sm:w-20" />
+            {/* Выбор клуба; «Выход» — в рейке (RailAccount), не в шапке. */}
+            <div className="hidden items-center gap-2 lg:flex">
+              <Skeleton className="h-10 w-60" />
+            </div>
+          </div>
+        </header>
+      )}
+      <main
+        className={cn("admin-main flex-1 overflow-auto p-3 sm:p-4 lg:p-6", kb && "bg-background")}
+        aria-busy="true"
+      >
         {children}
         {/* Плавающие действия — как FloatingActions: тот же контейнер,
             «пилюли» размера .fab-actions button. */}

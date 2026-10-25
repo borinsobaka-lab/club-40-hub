@@ -5,6 +5,7 @@ import { Loader2, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { KbPageHeading } from "@/components/kb/kb-header";
 import { useConfirm } from "@/components/confirm-dialog";
 import { DocumentText, Folder } from "@/components/nav-icons";
 import { KbTrashPageSkeleton } from "@/components/page-skeletons";
@@ -123,6 +124,7 @@ function KbTrashPage() {
   return (
     <AdminShell title={`Корзина${base ? ` · ${base.title}` : ""}`}>
       <div className="mx-auto max-w-4xl space-y-3">
+        <KbPageHeading baseId={baseId} title="Корзина" />
         {!canEdit && access ? (
           <InfoNote variant="warning">Корзину видят редакторы базы и владельцы.</InfoNote>
         ) : (

@@ -235,7 +235,7 @@ function BaseHomeLists({ baseId, index }: { baseId: string; index: KbTreeIndex }
   ].filter((b) => b.nodes.length > 0 || b.empty);
   if (blocks.every((b) => b.nodes.length === 0) && !updated.length) return null;
   return (
-    <div className="mt-3 grid gap-3 md:grid-cols-3">
+    <div className="grid gap-3 md:grid-cols-3">
       {blocks.map((b) => (
         <section key={b.title} className="min-w-0 rounded-lg border bg-background p-3">
           <h3 className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold">
@@ -308,6 +308,11 @@ function FavoriteButton({ baseId, nodeId }: { baseId: string; nodeId: string }) 
   );
 }
 
+/**
+ * Где статья или папка — надзаголовок над названием (решение владельца
+ * 2026-10-25): полужирный, цветом брендинга клуба (--brand-on-light —
+ * читаемый на белом оттенок).
+ */
 function Crumbs({
   baseId,
   baseTitle,
@@ -323,18 +328,18 @@ function Crumbs({
   return (
     <nav
       aria-label="Где статья"
-      className="mb-3 flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground"
+      className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1 text-sm font-semibold text-brand-on-light"
     >
-      <Link to="/kb/$baseId" params={{ baseId }} className="hover:text-foreground">
+      <Link to="/kb/$baseId" params={{ baseId }} className="hover:underline">
         {baseTitle}
       </Link>
       {path.map((p) => (
         <span key={p.id} className="flex min-w-0 items-center gap-1">
-          <ChevronRight className="size-3.5 shrink-0" />
+          <ChevronRight className="size-3.5 shrink-0 opacity-60" />
           <Link
             to="/kb/$baseId/$nodeId"
             params={{ baseId, nodeId: p.id }}
-            className="truncate hover:text-foreground"
+            className="truncate hover:underline"
           >
             {p.title || "Без названия"}
           </Link>
@@ -361,7 +366,7 @@ function FolderView({
   baseTitle: string;
   baseDescription: string;
   baseIcon: string | null;
-  /** Есть — владельцу на главной базы «Настройки базы» (название, иконка, рейка). */
+  /** Есть — владельцу на главной базы «Настройки базы» (название, иконка, подпись вкладки). */
   base?: KbBase;
   folder: KbTreeNode | null;
   nodes: KbTreeNode[];
@@ -401,11 +406,9 @@ function FolderView({
         ) : null
       }
     >
+      {/* Раздел на белом (решение владельца 2026-10-25): шапка без карточки — вровень со списком. */}
       <div className="mx-auto max-w-3xl">
-        {folder && (
-          <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={folder.id} />
-        )}
-        <header className="flex items-start gap-4 rounded-lg border bg-background px-5 py-5 sm:px-8 sm:py-6">
+        <header className="flex items-start gap-4 pt-2 pb-5 sm:pb-6">
           <span
             className={cn(
               "flex size-11 shrink-0 items-center justify-center rounded-lg",
@@ -415,6 +418,9 @@ function FolderView({
             <Icon className="size-6" />
           </span>
           <div className="min-w-0 flex-1">
+            {folder && (
+              <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={folder.id} />
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-2xl leading-tight font-semibold">
                 {folder ? folder.title || "Без названия" : baseTitle}
@@ -449,7 +455,7 @@ function FolderView({
               size="icon"
               className="shrink-0"
               aria-label="Настройки базы"
-              title="Настройки базы: название, описание, иконка, рейка"
+              title="Настройки базы: название, описание, иконка, подпись вкладки"
               onClick={() => setDialog("base")}
             >
               <Pencil />
@@ -887,14 +893,16 @@ function ArticleView({
                 onPublish={() => void publish(autosave.flush)}
               />
             )}
-            <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={node.id} />
+            {/* Текст — прямо на белом, без карточки; отступы прежние: слева от
+                текста — место под ручку блока редактора (-mx-[54px] ниже). */}
             <KbProtectedArea
               enabled={protectOn && !editing}
               canCopy={canEdit}
-              className="rounded-lg border bg-background px-5 py-5 sm:px-10 sm:py-8"
+              className="px-5 py-5 sm:px-10 sm:py-8"
             >
               <header className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
+                  <Crumbs baseId={baseId} baseTitle={baseTitle} index={index} nodeId={node.id} />
                   {editing ? (
                     <TitleInput
                       value={node.title}
@@ -1190,9 +1198,9 @@ function EditBar({
   onPublish: () => void;
 }) {
   return (
-    // Подложка цвета канвы закрывает отступ рабочей области над прилипшей
-    // плашкой — иначе в этой полосе был виден прокручиваемый текст.
-    <div className="sticky -top-3 z-30 -mt-3 bg-canvas pt-3 pb-3 sm:-top-4 sm:-mt-4 sm:pt-4 lg:-top-6 lg:-mt-6 lg:pt-6">
+    // Белая подложка (раздел на белом) закрывает отступ рабочей области над
+    // прилипшей плашкой — иначе в этой полосе был виден прокручиваемый текст.
+    <div className="sticky -top-3 z-30 -mt-3 bg-background pt-3 pb-3 sm:-top-4 sm:-mt-4 sm:pt-4 lg:-top-6 lg:-mt-6 lg:pt-6">
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2 shadow-sm sm:px-3">
         <div className="min-w-0 basis-full text-sm sm:basis-0 sm:flex-1">
           <span className="font-medium">Редактирование</span>

@@ -23,16 +23,14 @@ export const KB_DRAFTS_KEY = "kb_drafts";
 const TREE_COLUMNS =
   "id, base_id, parent_id, kind, title, description, icon, protect, sort_order, status, reader_visible, created_at, updated_at, published_at, published_by";
 
-/** Доступные базы — для рейки и прав; заранее грузит проверка входа. */
+/** Доступные базы — для вкладок в шапке и прав; заранее грузит проверка входа. */
 export const kbBasesQuery = queryOptions({
   queryKey: [KB_BASES_KEY],
   queryFn: () =>
     unwrap<KbBase[]>(
       supabase
         .from("kb_bases")
-        .select(
-          "id, title, rail_title, icon, description, sort_order, show_in_rail, protect_content",
-        )
+        .select("id, title, rail_title, icon, description, sort_order, protect_content")
         .order("sort_order")
         .order("created_at"),
     ),
