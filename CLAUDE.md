@@ -855,7 +855,13 @@ AUTH_SETUP.md.
   `academy/<курс>/` и `academy/answers/<сотрудник>/` (политики «academy …»);
   удалённый курс — папка в `kb_file_purge`. Актуальные определения
   `kb_file_gc_candidates` (ссылки и в Академии) и `kb_storage_usage`
-  (строка `academy`) — здесь. Тесты — `db/academy.test.ts`.
+  (строка `academy`) — здесь. Правки после тестирования:
+  `db/migrations/2026-10-25_zzzzzzzzz_academy_review_fixes.sql` —
+  `acad_courses.default_due_days` (срок по умолчанию для окна назначения) и
+  `acad_questions.review_notes` (эталон и критерии свободного ответа —
+  только команде; в `acad_quiz_start` и снимок ответа не входят — поля там
+  поимённо, новое поле вопроса ученику туда не добавлять). Тесты —
+  `db/academy.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   Circle,
   ClipboardList,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { StaffAvatar } from "@/components/employee-photo";
+import { InfoNote } from "@/components/ui/form-field";
 import { StatusChip } from "@/components/ui/status-chip";
 import { resolveKbFileUrl } from "@/lib/kb/files";
 import {
@@ -156,5 +158,22 @@ export function AcadEmpty({
       )}
       {action && <div className="mt-4">{action}</div>}
     </div>
+  );
+}
+
+/**
+ * У курса нет черновика правок (в отличие от базы знаний): правка
+ * опубликованного урока или вопроса сразу у учеников — предупреждаем явно.
+ */
+export function PublishedNote() {
+  return (
+    <InfoNote variant="warning" className="flex items-start gap-2">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+      <span>
+        Курс опубликован, а черновика правок у курса нет (не как в базе знаний): каждая правка
+        сохраняется сама и сразу видна ученикам. Большую переделку лучше делать, сняв курс с
+        публикации (меню «⋯» курса) — на это время ученики его не увидят.
+      </span>
+    </InfoNote>
   );
 }

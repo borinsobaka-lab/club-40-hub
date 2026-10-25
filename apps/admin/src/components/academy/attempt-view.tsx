@@ -12,7 +12,7 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { supabase } from "@/integrations/supabase/client";
-import { acadAttemptQuery, invalidateAcademy } from "@/lib/academy/data";
+import { acadAttemptQuery, acadReviewNotesQuery, invalidateAcademy } from "@/lib/academy/data";
 import { acadError, QUESTION_KIND_LABEL } from "@/lib/academy/logic";
 import type { AcadAttempt, AcadAttemptAnswer } from "@/lib/academy/types";
 import { formatDateTime } from "@/lib/format";
@@ -46,14 +46,43 @@ export function AttemptView({
       <AttemptHeader attempt={attempt} fromReview={fromReview} />
       {canReview ? (
         <ReviewForm attempt={attempt} />
+      ) : attempt.full ? (
+        <TeamAnswers attempt={attempt} />
       ) : (
         <ol className="space-y-3">
           {attempt.answers.map((a, i) => (
-            <AnswerCard key={a.id} index={i} answer={a} full={attempt.full} />
+            <AnswerCard key={a.id} index={i} answer={a} full={false} />
           ))}
         </ol>
       )}
     </div>
+  );
+}
+
+/** Эталон и критерии свободных ответов попытки — только команде (`full`). */
+function useReviewNotes(attempt: AcadAttempt) {
+  const ids = attempt.full
+    ? attempt.answers.flatMap((a) =>
+        a.question.kind === "open" && a.question_id ? [a.question_id] : [],
+      )
+    : [];
+  return useQuery(acadReviewNotesQuery(ids)).data;
+}
+
+function TeamAnswers({ attempt }: { attempt: AcadAttempt }) {
+  const notes = useReviewNotes(attempt);
+  return (
+    <ol className="space-y-3">
+      {attempt.answers.map((a, i) => (
+        <AnswerCard
+          key={a.id}
+          index={i}
+          answer={a}
+          full
+          notes={a.question_id ? notes?.get(a.question_id) : undefined}
+        />
+      ))}
+    </ol>
   );
 }
 
@@ -135,11 +164,14 @@ function AnswerCard({
   index,
   answer: a,
   full,
+  notes,
   children,
 }: {
   index: number;
   answer: AcadAttemptAnswer;
   full: boolean;
+  /** Эталон и критерии для проверяющего (свободный ответ). */
+  notes?: string;
   children?: ReactNode;
 }) {
   const q = a.question;
@@ -153,6 +185,14 @@ function AnswerCard({
         <Verdict answer={a} />
       </div>
       <p className="mt-1 font-medium whitespace-pre-line">{q.text}</p>
+      {notes && (
+        <p className="mt-2 rounded-md border-l-2 border-sky-400 bg-sky-50 px-3 py-2 text-sm whitespace-pre-line text-sky-950">
+          <span className="block text-xs text-sky-800">
+            Эталон и критерии (видит только проверяющий)
+          </span>
+          {notes}
+        </p>
+      )}
       {q.kind === "open" ? (
         <div className="mt-3 space-y-2">
           {a.answer.text ? (
@@ -249,6 +289,7 @@ function ReviewForm({ attempt }: { attempt: AcadAttempt }) {
   );
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const notes = useReviewNotes(attempt);
   const pending = attempt.answers.filter((a) => a.correct === null);
   const left = pending.filter((a) => grades[a.id]?.correct == null).length;
 
@@ -293,7 +334,13 @@ function ReviewForm({ attempt }: { attempt: AcadAttempt }) {
       </InfoNote>
       <ol className="space-y-3">
         {attempt.answers.map((a, i) => (
-          <AnswerCard key={a.id} index={i} answer={a} full>
+          <AnswerCard
+            key={a.id}
+            index={i}
+            answer={a}
+            full
+            notes={a.question_id ? notes?.get(a.question_id) : undefined}
+          >
             {!a.carried && (
               <div className="mt-3 space-y-2 border-t pt-3">
                 {a.correct === null && (

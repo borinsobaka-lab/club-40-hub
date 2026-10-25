@@ -2143,7 +2143,7 @@ export function AcademyMyPageSkeleton() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }, (_, i) => (
             <div key={i} className="overflow-hidden rounded-lg border bg-background">
-              <Skeleton className="aspect-[16/7] w-full rounded-none" />
+              <Skeleton className="aspect-[16/9] w-full rounded-none" />
               <div className="space-y-2 p-4">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-3.5 w-full" />
@@ -2235,7 +2235,7 @@ export function AcademyCoursesPageSkeleton() {
         <ul className="divide-y rounded-lg border bg-background">
           {Array.from({ length: 4 }, (_, i) => (
             <li key={i} className="flex items-center gap-3 p-3">
-              <Skeleton className="aspect-[16/10] w-24 rounded-md" />
+              <Skeleton className="aspect-[16/9] w-28 rounded-md" />
               <div className="flex-1 space-y-1.5">
                 <Skeleton className="h-4 w-60 max-w-[70%]" />
                 <Skeleton className="h-3 w-32" />

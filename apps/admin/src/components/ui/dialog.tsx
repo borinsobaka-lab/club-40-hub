@@ -31,8 +31,15 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /**
+     * «top» — с sm окно прибито к верху и растёт вниз, а не от центра: для
+     * форм, которые меняют высоту на ходу (добавить вариант, сменить вид),
+     * — поля под курсором не прыгают.
+     */
+    anchor?: "center" | "top";
+  }
+>(({ className, children, anchor = "center", ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -46,6 +53,7 @@ const DialogContent = React.forwardRef<
         "fixed z-50 flex flex-col overflow-hidden border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "inset-x-0 bottom-0 max-h-[92dvh] w-full max-w-lg rounded-t-xl max-sm:max-w-none data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[85vh] sm:w-[calc(100%-2rem)] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
+        anchor === "top" && "sm:top-[7vh] sm:translate-y-0",
         className,
       )}
       {...props}

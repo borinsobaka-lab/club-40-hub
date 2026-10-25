@@ -69,6 +69,7 @@ import { Route as AuthenticatedAcademyReviewAttemptIdRouteImport } from './route
 import { Route as AuthenticatedAcademyMyCourseIdRouteImport } from './routes/_authenticated/academy/my/$courseId'
 import { Route as AuthenticatedAcademyAttemptsAttemptIdRouteImport } from './routes/_authenticated/academy/attempts/$attemptId'
 import { Route as AuthenticatedAcademyCoursesCourseIdIndexRouteImport } from './routes/_authenticated/academy/courses/$courseId/index'
+import { Route as AuthenticatedAcademyCoursesCourseIdPreviewRouteImport } from './routes/_authenticated/academy/courses/$courseId/preview'
 import { Route as AuthenticatedAcademyCoursesCourseIdStepIdRouteImport } from './routes/_authenticated/academy/courses/$courseId/$stepId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -400,6 +401,12 @@ const AuthenticatedAcademyCoursesCourseIdIndexRoute =
     path: '/academy/courses/$courseId/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAcademyCoursesCourseIdPreviewRoute =
+  AuthenticatedAcademyCoursesCourseIdPreviewRouteImport.update({
+    id: '/academy/courses/$courseId/preview',
+    path: '/academy/courses/$courseId/preview',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAcademyCoursesCourseIdStepIdRoute =
   AuthenticatedAcademyCoursesCourseIdStepIdRouteImport.update({
     id: '/academy/courses/$courseId/$stepId',
@@ -467,6 +474,7 @@ export interface FileRoutesByFullPath {
   '/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
   '/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
   '/academy/courses/$courseId/$stepId': typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
+  '/academy/courses/$courseId/preview': typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
   '/academy/courses/$courseId/': typeof AuthenticatedAcademyCoursesCourseIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -529,6 +537,7 @@ export interface FileRoutesByTo {
   '/academy/review': typeof AuthenticatedAcademyReviewIndexRoute
   '/kb/$baseId': typeof AuthenticatedKbBaseIdIndexRoute
   '/academy/courses/$courseId/$stepId': typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
+  '/academy/courses/$courseId/preview': typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
   '/academy/courses/$courseId': typeof AuthenticatedAcademyCoursesCourseIdIndexRoute
 }
 export interface FileRoutesById {
@@ -593,6 +602,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/review/': typeof AuthenticatedAcademyReviewIndexRoute
   '/_authenticated/kb/$baseId/': typeof AuthenticatedKbBaseIdIndexRoute
   '/_authenticated/academy/courses/$courseId/$stepId': typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
+  '/_authenticated/academy/courses/$courseId/preview': typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
   '/_authenticated/academy/courses/$courseId/': typeof AuthenticatedAcademyCoursesCourseIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/academy/review/'
     | '/kb/$baseId/'
     | '/academy/courses/$courseId/$stepId'
+    | '/academy/courses/$courseId/preview'
     | '/academy/courses/$courseId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -719,6 +730,7 @@ export interface FileRouteTypes {
     | '/academy/review'
     | '/kb/$baseId'
     | '/academy/courses/$courseId/$stepId'
+    | '/academy/courses/$courseId/preview'
     | '/academy/courses/$courseId'
   id:
     | '__root__'
@@ -782,6 +794,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/review/'
     | '/_authenticated/kb/$baseId/'
     | '/_authenticated/academy/courses/$courseId/$stepId'
+    | '/_authenticated/academy/courses/$courseId/preview'
     | '/_authenticated/academy/courses/$courseId/'
   fileRoutesById: FileRoutesById
 }
@@ -1215,6 +1228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademyCoursesCourseIdIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/academy/courses/$courseId/preview': {
+      id: '/_authenticated/academy/courses/$courseId/preview'
+      path: '/academy/courses/$courseId/preview'
+      fullPath: '/academy/courses/$courseId/preview'
+      preLoaderRoute: typeof AuthenticatedAcademyCoursesCourseIdPreviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/academy/courses/$courseId/$stepId': {
       id: '/_authenticated/academy/courses/$courseId/$stepId'
       path: '/academy/courses/$courseId/$stepId'
@@ -1281,6 +1301,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademyReviewIndexRoute: typeof AuthenticatedAcademyReviewIndexRoute
   AuthenticatedKbBaseIdIndexRoute: typeof AuthenticatedKbBaseIdIndexRoute
   AuthenticatedAcademyCoursesCourseIdStepIdRoute: typeof AuthenticatedAcademyCoursesCourseIdStepIdRoute
+  AuthenticatedAcademyCoursesCourseIdPreviewRoute: typeof AuthenticatedAcademyCoursesCourseIdPreviewRoute
   AuthenticatedAcademyCoursesCourseIdIndexRoute: typeof AuthenticatedAcademyCoursesCourseIdIndexRoute
 }
 
@@ -1344,6 +1365,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKbBaseIdIndexRoute: AuthenticatedKbBaseIdIndexRoute,
   AuthenticatedAcademyCoursesCourseIdStepIdRoute:
     AuthenticatedAcademyCoursesCourseIdStepIdRoute,
+  AuthenticatedAcademyCoursesCourseIdPreviewRoute:
+    AuthenticatedAcademyCoursesCourseIdPreviewRoute,
   AuthenticatedAcademyCoursesCourseIdIndexRoute:
     AuthenticatedAcademyCoursesCourseIdIndexRoute,
 }
