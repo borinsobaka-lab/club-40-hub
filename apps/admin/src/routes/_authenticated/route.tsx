@@ -33,12 +33,13 @@ let verifiedUserId: string | null = null;
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async ({ context: { queryClient } }) => {
+  beforeLoad: async ({ context: { queryClient }, location }) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const sessionUser = sessionData.session?.user;
     if (!sessionUser) {
       verifiedUserId = null;
-      throw redirect({ to: "/auth" });
+      // После входа — обратно сюда: ссылку на статью прислали тому, кто не вошёл.
+      throw redirect({ to: "/auth", search: { redirect: location.href } });
     }
 
     // Меню, права и профиль нужны любой странице — грузим их сразу и
@@ -63,7 +64,7 @@ export const Route = createFileRoute("/_authenticated")({
     staffCheck.catch(() => {});
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user || data.user.id !== sessionUser.id) {
-      throw redirect({ to: "/auth" });
+      throw redirect({ to: "/auth", search: { redirect: location.href } });
     }
     // scope local — не трогаем сессии на других устройствах.
     if (!(await staffCheck)) {
