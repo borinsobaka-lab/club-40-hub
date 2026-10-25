@@ -451,14 +451,31 @@ describe.skipIf(!url)("база знаний (база)", () => {
       expect(await tx`select 1 from kb_favorites`).toHaveLength(0);
       expect(await tx`select 1 from kb_checks`).toHaveLength(0);
 
-      await tx`insert into kb_templates (base_id, title, content) values (${t.b}, 'Регламент', ${JSON.stringify(doc("Шаг 1"))}::text::jsonb)`;
-      const [tpl] = (await tx`select created_by from kb_templates`) as Row[];
+      // Шаблоны общие для всех баз: редактор одной базы видит и правит
+      // шаблон редактора другой; читателю их не видно.
+      await tx`insert into kb_templates (title, content) values ('Регламент', ${JSON.stringify(doc("Шаг 1"))}::text::jsonb)`;
+      const [tpl] = (await tx`select id, created_by from kb_templates`) as Row[];
       expect(tpl.created_by).toBe(t.editor);
+      await asServer(tx);
+      const other = await base(tx, "Обучение");
+      const otherEditor = await staff(tx, t.s, "trainer");
+      await grant(tx, other, otherEditor, "edit");
+      await as(tx, otherEditor);
+      expect(await tx`select 1 from kb_templates`).toHaveLength(1);
+      await tx`update kb_templates set title = 'Регламент смены' where id = ${tpl.id}`;
+      const names = ((await tx`select user_id from kb_authors(${other})`) as Row[]).map((r) => r.user_id);
+      expect(names).toContain(otherEditor);
       await as(tx, t.reader);
       expect(await tx`select 1 from kb_templates`).toHaveLength(0);
       expect(
-        await failure(tx, () => tx`insert into kb_templates (base_id, title, content) values (${t.b}, 'x', '[]')`),
+        await failure(tx, () => tx`insert into kb_templates (title, content) values ('x', '[]')`),
       ).toContain("row-level security");
+      // Удалённый шаблон — его папка файлов в очередь стирания.
+      await as(tx, otherEditor);
+      await tx`delete from kb_templates where id = ${tpl.id}`;
+      await asServer(tx);
+      expect(await tx`select 1 from kb_file_purge where folder = ${`templates/${tpl.id}`}`).toHaveLength(1);
+      await as(tx, t.reader);
 
       // Упомянуть можно владельцев и тех, кому выдана база.
       expect(await failure(tx, () => tx`select * from kb_mention_candidates(${t.b})`)).toContain("kb_forbidden");
@@ -490,6 +507,13 @@ describe.skipIf(!url)("база знаний (база)", () => {
       await tx`insert into storage.objects (bucket_id, name) values ('kb-media', ${`${t.b}/${t.pub}/c.png`})`;
       expect(
         await failure(tx, () => tx`insert into storage.objects (bucket_id, name) values ('kb-media', ${`${other}/x/c.png`})`),
+      ).toContain("row-level security");
+      // Папка шаблонов — редакторам любой базы, читателю закрыта.
+      await tx`insert into storage.objects (bucket_id, name) values ('kb-media', 'templates/t1/d.png')`;
+      await as(tx, t.reader);
+      expect(await tx`select 1 from storage.objects where name like 'templates/%'`).toHaveLength(0);
+      expect(
+        await failure(tx, () => tx`insert into storage.objects (bucket_id, name) values ('kb-media', 'templates/t1/e.png')`),
       ).toContain("row-level security");
       await asServer(tx);
     }));

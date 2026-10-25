@@ -9,6 +9,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/integrations/supabase/env";
+import { documentFilePaths, replaceDocumentFiles } from "@/lib/kb/document";
 
 export const KB_BUCKET = "kb-media";
 export const KB_FILE_PREFIX = "kbfile:";
@@ -21,6 +22,11 @@ const cache = new Map<string, { url: string; expires: number }>();
 export function isKbFile(url: string | null | undefined): boolean {
   return !!url && url.startsWith(KB_FILE_PREFIX);
 }
+
+/** Папка файлов статьи в бакете. */
+export const kbArticleFolder = (baseId: string, nodeId: string) => `${baseId}/${nodeId}`;
+/** Папка файлов шаблона: шаблоны общие для всех баз. */
+export const kbTemplateFolder = (templateId: string) => `templates/${templateId}`;
 
 export function kbFilePath(url: string): string {
   return url.slice(KB_FILE_PREFIX.length);
@@ -48,8 +54,8 @@ export class KbFileTooLarge extends Error {}
  * отдаёт (fetch), поэтому тот же запрос к Storage — через XMLHttpRequest.
  */
 export async function uploadKbFile(
-  baseId: string,
-  nodeId: string,
+  /** Папка в бакете — kbArticleFolder / kbTemplateFolder. */
+  folder: string,
   file: File,
   onProgress?: (share: number) => void,
 ): Promise<string> {
@@ -58,7 +64,7 @@ export async function uploadKbFile(
       `Файл «${file.name}» — ${formatFileSize(file.size)}, а можно до ${formatFileSize(KB_MAX_FILE_BYTES)}. Сожмите его или разделите.`,
     );
   }
-  const path = `${baseId}/${nodeId}/${storageName(file)}`;
+  const path = `${folder}/${storageName(file)}`;
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token ?? SUPABASE_ANON_KEY;
   await new Promise<void>((resolve, reject) => {
@@ -115,4 +121,38 @@ export async function resolveKbDownloadUrl(url: string, name: string): Promise<s
     .createSignedUrl(kbFilePath(url), SIGNED_TTL_S, { download: name });
   if (error || !data) throw new Error(error?.message ?? "Файл недоступен");
   return data.signedUrl;
+}
+
+/**
+ * Копии файлов документа — в папку `folder` (статья → шаблон, шаблон →
+ * статья другой базы): документ не зависит от того, откуда его взяли, и
+ * читателям не нужен доступ к чужой папке. Файл, который скопировать не
+ * вышло (нет доступа к исходной базе), остаётся прежней ссылкой — их число
+ * в `failed`.
+ */
+export async function copyKbFiles<T>(
+  doc: T,
+  folder: string,
+): Promise<{ content: T; failed: number }> {
+  const storage = supabase.storage.from(KB_BUCKET);
+  const moved = new Map<string, string>();
+  let failed = 0;
+  for (const path of documentFilePaths(doc)) {
+    if (path.startsWith(`${folder}/`)) continue;
+    const to = `${folder}/${path.split("/").pop()}`;
+    const { error } = await storage.copy(path, to);
+    // Уже скопирован (повторное сохранение) — тоже годится.
+    if (!error || /exists|duplicate/i.test(error.message)) moved.set(path, to);
+    else failed += 1;
+  }
+  return { content: replaceDocumentFiles(doc, moved), failed };
+}
+
+/** Убрать из папки файлы, на которые документ больше не ссылается (шаблон после правки). */
+export async function pruneKbFolder(folder: string, doc: unknown): Promise<void> {
+  const storage = supabase.storage.from(KB_BUCKET);
+  const used = new Set(documentFilePaths(doc));
+  const { data } = await storage.list(folder, { limit: 1000 });
+  const stale = (data ?? []).map((f) => `${folder}/${f.name}`).filter((path) => !used.has(path));
+  if (stale.length) await storage.remove(stale);
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { KB_NODES_KEY, invalidateKb, kbErrorText, loadKbTemplateContent } from "@/lib/kb/data";
+import { copyKbFiles, kbArticleFolder } from "@/lib/kb/files";
 import { applyMove } from "@/lib/kb/tree";
 import type { KbKind, KbStatus, KbTreeNode } from "@/lib/kb/types";
 
@@ -50,13 +51,22 @@ export function useKbActions(baseId: string) {
       const id = (data as { id: string }).id;
       if (kind === "article" && templateId) {
         try {
-          const content = await loadKbTemplateContent(templateId);
+          // Файлы шаблона — копиями в папку статьи: шаблон общий для всех
+          // баз, его папку читатели статьи не видят.
+          const copied = await copyKbFiles(
+            await loadKbTemplateContent(templateId),
+            kbArticleFolder(baseId, id),
+          );
           const { error: draftError } = await supabase.rpc("kb_save_draft", {
             p_node: id,
-            p_content: content,
+            p_content: copied.content,
             p_expected: null,
           });
           if (draftError) throw new Error(draftError.message);
+          if (copied.failed > 0)
+            toast.warning(
+              `Не удалось скопировать файлов шаблона: ${copied.failed}. Загрузите их в статью заново.`,
+            );
         } catch (e) {
           toast.error(`Статья создана, но текст шаблона не подставился: ${kbErrorText(e)}`);
         }
