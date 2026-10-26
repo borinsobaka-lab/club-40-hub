@@ -10,6 +10,7 @@ import { HeaderClientSearch } from "@/components/header-client-search";
 import { KbBaseTabs, KbHeaderSearch } from "@/components/kb/kb-header";
 import { WorkdayButton } from "@/components/workday/workday-button";
 import { KB_ACTIONS_SLOT, KB_HEADER_GRID, KB_SEARCH_SLOT } from "@/lib/kb/header-layout";
+import { MAIN_HEADER_GRID, MAIN_HEADER_STUDIO } from "@/lib/header-layout";
 import { useKbDarkTheme } from "@/lib/kb/theme";
 import { kbBaseIdOf, railSectionKey } from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
@@ -117,7 +118,7 @@ export function AdminShell({
     <>
       {kb ? (
         // Раскладка — lib/kb/header-layout.ts: с lg три колонки, поиск ровно
-        // по центру, справа от него «Рабочий день» и тема, у края — «Обновить».
+        // по центру, справа от него тема, у края — «Обновить».
         // Узкий экран: первая строка — меню, вкладки, кнопки; поиск — второй
         // строкой на всю ширину. Заголовок страницы — для скринридера:
         // название статьи и так крупно над текстом.
@@ -139,20 +140,17 @@ export function AdminShell({
               KB_ACTIONS_SLOT,
             )}
           >
-            <div className="flex items-center gap-2">
-              <WorkdayButton />
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                aria-pressed={kbDarkTheme}
-                aria-label={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
-                title={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
-                onClick={toggleKbTheme}
-              >
-                {kbDarkTheme ? <Sun /> : <Moon />}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              aria-pressed={kbDarkTheme}
+              aria-label={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
+              title={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
+              onClick={toggleKbTheme}
+            >
+              {kbDarkTheme ? <Sun /> : <Moon />}
+            </Button>
             {refreshButton}
           </div>
         </header>
@@ -164,19 +162,29 @@ export function AdminShell({
         размывала границу между шапкой и рабочей областью.
 
         С lg — три части: слева заголовок и «Обновить», по центру поиск
-        клиента, справа Kate и выбор клуба. Левая и правая части одинаково
-        тянутся (flex-1 basis-0), поэтому поиск стоит ровно посередине, пока
-        им хватает места. Узкий экран (до lg): первая строка — меню,
-        заголовок, «Обновить», Kate; поиск — второй строкой на всю ширину, а
-        выбор клуба — в низ бокового меню (AppSidebar).
+        клиента и «Рабочий день», справа Kate и выбор клуба. С xl — сетка
+        (MAIN_HEADER_GRID): крайние колонки равны и не меньше правой части,
+        заголовок обрезается, поэтому поиск стоит на одном месте на всех
+        страницах, какой бы длины ни был заголовок (решение владельца
+        2026-10-26: поиск «скакал» при переходе между разделами). С lg до xl
+        места на равные колонки нет — заголовок берёт ширину по тексту.
+        Узкий экран (до lg): первая строка — меню, заголовок, «Обновить»,
+        «Рабочий день», Kate; поиск — второй строкой на всю ширину, а выбор
+        клуба — в низ бокового меню (AppSidebar).
         Действия страницы в шапку больше не ставим — они плавают в правом
         нижнем углу (FloatingActions).
       */}
-          <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
-            {/* Заголовок берёт ширину по тексту, сжимается поиск (до min-w-56):
-            при равных колонках по краям «График администраторов» и
-            «Контакты и правила» обрезались на 1440px. */}
-            <div className="flex min-w-0 flex-1 items-center gap-2 lg:shrink-[0.1] lg:basis-auto">
+          <header
+            className={cn(
+              "flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0",
+              !network && MAIN_HEADER_GRID,
+            )}
+          >
+            {/* До xl заголовок берёт ширину по тексту и сжимается вместе с
+            поиском (поиск — до min-w-56); с xl — левая колонка сетки, длинный
+            обрезается. Не shrink-[0.1]: когда поиск упирается в минимум, браузер
+            отдаёт заголовку лишь 0,1 нехватки — шапка вылезала за край. */}
+            <div className="flex min-w-0 flex-1 items-center gap-2 lg:basis-auto xl:col-start-1">
               {/*
             На узком экране боковое меню уходит в шторку и кнопка сворачивания
             внутри него недоступна — открыть меню больше нечем.
@@ -202,12 +210,17 @@ export function AdminShell({
             </div>
 
             {!network && (
-              <HeaderClientSearch className="order-last w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem]" />
+              // Поиск и «Рабочий день» — средняя колонка с xl; до xl обёртка
+              // не мешает (contents): поиск — своей строкой или по центру.
+              <div className="contents xl:col-start-2 xl:flex xl:items-center xl:gap-2">
+                <HeaderClientSearch className="order-last w-full lg:order-none lg:w-auto lg:min-w-56 lg:flex-[0_1_30rem] xl:min-w-0 xl:flex-1" />
+                <WorkdayButton />
+              </div>
             )}
 
             <div
               className={cn(
-                "flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0",
+                "flex shrink-0 items-center justify-end gap-2 lg:flex-1 lg:basis-0 xl:col-start-3",
                 network && "hidden",
               )}
             >
@@ -224,7 +237,7 @@ export function AdminShell({
               </button>
               {/* «Выход» — в рейке слева, под аватаркой сотрудника (RailAccount). */}
               <div className="hidden items-center gap-2 lg:flex">
-                <StudioSwitcher />
+                <StudioSwitcher triggerClassName={MAIN_HEADER_STUDIO} />
               </div>
             </div>
           </header>

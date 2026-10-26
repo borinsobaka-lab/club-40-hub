@@ -13,8 +13,9 @@ const loadPanel = () => import("@/components/workday/workday-panel");
 const WorkdayPanel = lazy(() => loadPanel().then((m) => ({ default: m.WorkdayPanel })));
 
 /**
- * «Рабочий день» — справа от поиска в шапке базы знаний (решение владельца
- * 2026-10-25): порядок дня администратора клуба с отметками. Есть пункт,
+ * «Рабочий день» — справа от поиска клиента в шапке разделов клуба: Дашборд,
+ * Клуб, Приложение, Скрипты, Управление; в базе знаний и «Академии» её нет
+ * (решения владельца 2026-10-25, 2026-10-26): порядок дня администратора клуба с отметками. Есть пункт,
  * время которого прошло, а отметки нет, — на кнопке красный «!». Видна
  * сотрудникам клубов (owner/admin/trainer).
  */
@@ -30,7 +31,10 @@ export function WorkdayButton({ className }: { className?: string }) {
     <>
       <Button
         variant="outline"
-        className={cn("relative shrink-0 max-sm:w-10 max-sm:px-0", className)}
+        className={cn(
+          "relative shrink-0 max-sm:w-10 max-sm:px-0 lg:max-xl:w-10 lg:max-xl:px-0",
+          className,
+        )}
         aria-label={label}
         title={label}
         onClick={() => setOpen(true)}
@@ -38,7 +42,8 @@ export function WorkdayButton({ className }: { className?: string }) {
         onFocus={() => void loadPanel()}
       >
         <ClipboardList />
-        <span className="max-sm:hidden">Рабочий день</span>
+        {/* С lg до xl в шапке тесно — только иконка (подпись — в title). */}
+        <span className="max-sm:hidden lg:max-xl:hidden">Рабочий день</span>
         {summary.overdue > 0 && (
           <span
             aria-hidden

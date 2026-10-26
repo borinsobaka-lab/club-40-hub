@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useActiveStudioId } from "@/hooks/use-active-studio";
+import { setActiveStudioId, useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStudios, type Studio } from "@/hooks/use-studios";
 import { unwrap } from "@/lib/query";
 import {
@@ -17,8 +17,6 @@ import {
 
 /** Ключ кэша: ["workday", studioId, day]. После правки — invalidate ["workday"]. */
 export const WORKDAY_KEY = "workday";
-
-const STUDIO_KEY = "workday_studio";
 
 /**
  * Пункты клуба и отметки за сегодня. Отмечают несколько человек сразу —
@@ -70,9 +68,9 @@ export function useTbilisiClock() {
 }
 
 /**
- * Клуб «Рабочего дня»: выбранный в панели (localStorage), иначе клуб из
- * шапки, иначе первый из клубов сотрудника. В базе знаний выбора клуба в
- * шапке нет, поэтому клуб выбирается в самой панели.
+ * Клуб «Рабочего дня» — клуб из шапки (выбор клуба справа): пункты у каждого
+ * клуба свои и меняются вместе с ним (решение владельца 2026-10-26). Выбор
+ * клуба в шторке переключает тот же клуб шапки.
  */
 export function useWorkdayStudio(): {
   studios: Studio[];
@@ -81,30 +79,8 @@ export function useWorkdayStudio(): {
 } {
   const { data: studios = [] } = useStudios();
   const activeId = useActiveStudioId();
-  // Сохранённый выбор читаем после монтирования: на сервере его нет, иначе
-  // разметка разошлась бы при гидратации.
-  const [picked, setPicked] = useState<string | null>(null);
-  useEffect(() => {
-    try {
-      setPicked(window.localStorage.getItem(STUDIO_KEY));
-    } catch {
-      // приватный режим — клуб из шапки
-    }
-  }, []);
-  const studio =
-    studios.find((s) => s.id === picked) ??
-    studios.find((s) => s.id === activeId) ??
-    studios[0] ??
-    null;
-  const setStudioId = (id: string) => {
-    setPicked(id);
-    try {
-      window.localStorage.setItem(STUDIO_KEY, id);
-    } catch {
-      // приватный режим — выбор живёт до перезагрузки
-    }
-  };
-  return { studios, studio, setStudioId };
+  const studio = studios.find((s) => s.id === activeId) ?? studios[0] ?? null;
+  return { studios, studio, setStudioId: setActiveStudioId };
 }
 
 /** Блоки, пункты и итог дня выбранного клуба — общий расчёт кнопки и панели. */
