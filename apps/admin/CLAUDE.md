@@ -29,7 +29,9 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
   база знаний — дерево `lib/kb/tree.test.ts`, документ и размер файла
   `lib/kb/document.test.ts`, сравнение версий `lib/kb/diff.test.ts`,
   аналитика чтения `lib/kb/analytics.test.ts`, теги `lib/kb/tags.test.ts`;
-  «Рабочий день» — время по Тбилиси, просрочка, порядок `lib/workday/logic.test.ts`; «Академия» — подписи,
+  «Рабочий день» — время по Тбилиси, просрочка, порядок `lib/workday/logic.test.ts`;
+  «Аналитика» — города, недели, прогноз, точка 0, продажи, пробные, рейтинг
+  `lib/analytics/logic.test.ts`; «Академия» — подписи,
   проверка вопроса, сроки и напоминания `lib/academy/logic.test.ts`;
   Kate — инструменты,
   права, история и промпт `lib/assistant/*.test.ts`).
@@ -601,6 +603,23 @@ kb`. Доступ — ролями «Пользователей и ролей» 
   «Настроить»: блоки и пункты (окна, «Выше / Ниже» — RPC `workday_reorder`),
   «Скопировать из клуба» (`workday_copy`). Логика — `lib/workday/logic.ts`
   (+ тест), запросы — `lib/workday/data.ts` (ключ `["workday", клуб, день]`).
+- **«Аналитика»** (2026-10-26; что было у Lady Stretch, правила и что
+  дальше — ANALYTICS.md, схема — корневой CLAUDE.md) — раздел рейки над
+  клубами со своим меню (`ANALYTICS_ITEMS` в `lib/nav-sections.ts`): «Мой
+  город» (`/analytics`), «Выручка», «Продажи абонементов», «Занятия»,
+  «Воронка пробных», «Нулевая номенклатура», «Рейтинг клубов»,
+  «Настройки» (точка 0 и закрытие клуба — по праву `analytics.manage`).
+  Виден, если хоть в одном клубе открыт раздел клуба `analytics`
+  (`analyticsStudioIds` в `lib/admin-access.ts`; ту же границу держит база).
+  Шапка — только заголовок (как «Академия»). Каркас и плашка фильтров с
+  подписями (период или месяц, бренд, город, клуб, статус — общие для
+  отчётов, `hooks/use-analytics-filters.ts`) —
+  `components/analytics/analytics-shell.tsx`; плитки со сравнением к
+  прошлому месяцу и году — `components/analytics/parts.tsx` (`KpiTile`);
+  запросы — `lib/analytics/data.ts` (ключи `["analytics", …]`), расчёты —
+  `lib/analytics/logic.ts` (+ тест), подписи плиток и колонок —
+  `lib/analytics/labels.ts` (их берут и скелетоны `Analytics*PageSkeleton`).
+  Графики и «Топ 10» — компоненты дашборда (`chart-panel.tsx`).
 - **«Академия»** (2026-10-25; план и решения — ACADEMY.md, схема —
   корневой CLAUDE.md) — раздел рейки со своим меню (`ACADEMY_ITEMS` в
   `lib/nav-sections.ts`; пункт открыт по праву `need`: any / team / create /

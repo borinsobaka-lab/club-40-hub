@@ -49,6 +49,7 @@ import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
 import { Route as AuthenticatedKbIndexRouteImport } from './routes/_authenticated/kb/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedAnalyticsIndexRouteImport } from './routes/_authenticated/analytics/index'
 import { Route as AuthenticatedAccessIndexRouteImport } from './routes/_authenticated/access/index'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy/index'
 import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_authenticated/scripts/settings'
@@ -57,6 +58,13 @@ import { Route as AuthenticatedDashboardSalesRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_authenticated/dashboard/marketing'
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
+import { Route as AuthenticatedAnalyticsZeroRouteImport } from './routes/_authenticated/analytics/zero'
+import { Route as AuthenticatedAnalyticsTrialsRouteImport } from './routes/_authenticated/analytics/trials'
+import { Route as AuthenticatedAnalyticsSettingsRouteImport } from './routes/_authenticated/analytics/settings'
+import { Route as AuthenticatedAnalyticsSalesRouteImport } from './routes/_authenticated/analytics/sales'
+import { Route as AuthenticatedAnalyticsRevenueRouteImport } from './routes/_authenticated/analytics/revenue'
+import { Route as AuthenticatedAnalyticsRatingRouteImport } from './routes/_authenticated/analytics/rating'
+import { Route as AuthenticatedAnalyticsClassesRouteImport } from './routes/_authenticated/analytics/classes'
 import { Route as AuthenticatedAccessStructureRouteImport } from './routes/_authenticated/access/structure'
 import { Route as AuthenticatedAccessLogRouteImport } from './routes/_authenticated/access/log'
 import { Route as AuthenticatedAcademySettingsRouteImport } from './routes/_authenticated/academy/settings'
@@ -287,6 +295,12 @@ const AuthenticatedDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAnalyticsIndexRoute =
+  AuthenticatedAnalyticsIndexRouteImport.update({
+    id: '/analytics/',
+    path: '/analytics/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAccessIndexRoute =
   AuthenticatedAccessIndexRouteImport.update({
     id: '/access/',
@@ -333,6 +347,48 @@ const AuthenticatedDashboardClassesRoute =
   AuthenticatedDashboardClassesRouteImport.update({
     id: '/dashboard/classes',
     path: '/dashboard/classes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsZeroRoute =
+  AuthenticatedAnalyticsZeroRouteImport.update({
+    id: '/analytics/zero',
+    path: '/analytics/zero',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsTrialsRoute =
+  AuthenticatedAnalyticsTrialsRouteImport.update({
+    id: '/analytics/trials',
+    path: '/analytics/trials',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsSettingsRoute =
+  AuthenticatedAnalyticsSettingsRouteImport.update({
+    id: '/analytics/settings',
+    path: '/analytics/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsSalesRoute =
+  AuthenticatedAnalyticsSalesRouteImport.update({
+    id: '/analytics/sales',
+    path: '/analytics/sales',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsRevenueRoute =
+  AuthenticatedAnalyticsRevenueRouteImport.update({
+    id: '/analytics/revenue',
+    path: '/analytics/revenue',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsRatingRoute =
+  AuthenticatedAnalyticsRatingRouteImport.update({
+    id: '/analytics/rating',
+    path: '/analytics/rating',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsClassesRoute =
+  AuthenticatedAnalyticsClassesRouteImport.update({
+    id: '/analytics/classes',
+    path: '/analytics/classes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAccessStructureRoute =
@@ -496,6 +552,13 @@ export interface FileRoutesByFullPath {
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/access/log': typeof AuthenticatedAccessLogRoute
   '/access/structure': typeof AuthenticatedAccessStructureRoute
+  '/analytics/classes': typeof AuthenticatedAnalyticsClassesRoute
+  '/analytics/rating': typeof AuthenticatedAnalyticsRatingRoute
+  '/analytics/revenue': typeof AuthenticatedAnalyticsRevenueRoute
+  '/analytics/sales': typeof AuthenticatedAnalyticsSalesRoute
+  '/analytics/settings': typeof AuthenticatedAnalyticsSettingsRoute
+  '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
+  '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -504,6 +567,7 @@ export interface FileRoutesByFullPath {
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/access/': typeof AuthenticatedAccessIndexRoute
+  '/analytics/': typeof AuthenticatedAnalyticsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/kb/': typeof AuthenticatedKbIndexRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
@@ -565,6 +629,13 @@ export interface FileRoutesByTo {
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/access/log': typeof AuthenticatedAccessLogRoute
   '/access/structure': typeof AuthenticatedAccessStructureRoute
+  '/analytics/classes': typeof AuthenticatedAnalyticsClassesRoute
+  '/analytics/rating': typeof AuthenticatedAnalyticsRatingRoute
+  '/analytics/revenue': typeof AuthenticatedAnalyticsRevenueRoute
+  '/analytics/sales': typeof AuthenticatedAnalyticsSalesRoute
+  '/analytics/settings': typeof AuthenticatedAnalyticsSettingsRoute
+  '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
+  '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -573,6 +644,7 @@ export interface FileRoutesByTo {
   '/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/access': typeof AuthenticatedAccessIndexRoute
+  '/analytics': typeof AuthenticatedAnalyticsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/kb': typeof AuthenticatedKbIndexRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
@@ -636,6 +708,13 @@ export interface FileRoutesById {
   '/_authenticated/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/_authenticated/access/log': typeof AuthenticatedAccessLogRoute
   '/_authenticated/access/structure': typeof AuthenticatedAccessStructureRoute
+  '/_authenticated/analytics/classes': typeof AuthenticatedAnalyticsClassesRoute
+  '/_authenticated/analytics/rating': typeof AuthenticatedAnalyticsRatingRoute
+  '/_authenticated/analytics/revenue': typeof AuthenticatedAnalyticsRevenueRoute
+  '/_authenticated/analytics/sales': typeof AuthenticatedAnalyticsSalesRoute
+  '/_authenticated/analytics/settings': typeof AuthenticatedAnalyticsSettingsRoute
+  '/_authenticated/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
+  '/_authenticated/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/_authenticated/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/_authenticated/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -644,6 +723,7 @@ export interface FileRoutesById {
   '/_authenticated/scripts/settings': typeof AuthenticatedScriptsSettingsRoute
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/access/': typeof AuthenticatedAccessIndexRoute
+  '/_authenticated/analytics/': typeof AuthenticatedAnalyticsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/kb/': typeof AuthenticatedKbIndexRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
@@ -707,6 +787,13 @@ export interface FileRouteTypes {
     | '/academy/settings'
     | '/access/log'
     | '/access/structure'
+    | '/analytics/classes'
+    | '/analytics/rating'
+    | '/analytics/revenue'
+    | '/analytics/sales'
+    | '/analytics/settings'
+    | '/analytics/trials'
+    | '/analytics/zero'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/marketing'
@@ -715,6 +802,7 @@ export interface FileRouteTypes {
     | '/scripts/settings'
     | '/academy/'
     | '/access/'
+    | '/analytics/'
     | '/dashboard/'
     | '/kb/'
     | '/scripts/'
@@ -776,6 +864,13 @@ export interface FileRouteTypes {
     | '/academy/settings'
     | '/access/log'
     | '/access/structure'
+    | '/analytics/classes'
+    | '/analytics/rating'
+    | '/analytics/revenue'
+    | '/analytics/sales'
+    | '/analytics/settings'
+    | '/analytics/trials'
+    | '/analytics/zero'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/marketing'
@@ -784,6 +879,7 @@ export interface FileRouteTypes {
     | '/scripts/settings'
     | '/academy'
     | '/access'
+    | '/analytics'
     | '/dashboard'
     | '/kb'
     | '/scripts'
@@ -846,6 +942,13 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/settings'
     | '/_authenticated/access/log'
     | '/_authenticated/access/structure'
+    | '/_authenticated/analytics/classes'
+    | '/_authenticated/analytics/rating'
+    | '/_authenticated/analytics/revenue'
+    | '/_authenticated/analytics/sales'
+    | '/_authenticated/analytics/settings'
+    | '/_authenticated/analytics/trials'
+    | '/_authenticated/analytics/zero'
     | '/_authenticated/dashboard/classes'
     | '/_authenticated/dashboard/clients'
     | '/_authenticated/dashboard/marketing'
@@ -854,6 +957,7 @@ export interface FileRouteTypes {
     | '/_authenticated/scripts/settings'
     | '/_authenticated/academy/'
     | '/_authenticated/access/'
+    | '/_authenticated/analytics/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/kb/'
     | '/_authenticated/scripts/'
@@ -1165,6 +1269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/analytics/': {
+      id: '/_authenticated/analytics/'
+      path: '/analytics'
+      fullPath: '/analytics/'
+      preLoaderRoute: typeof AuthenticatedAnalyticsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/access/': {
       id: '/_authenticated/access/'
       path: '/access'
@@ -1219,6 +1330,55 @@ declare module '@tanstack/react-router' {
       path: '/dashboard/classes'
       fullPath: '/dashboard/classes'
       preLoaderRoute: typeof AuthenticatedDashboardClassesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/zero': {
+      id: '/_authenticated/analytics/zero'
+      path: '/analytics/zero'
+      fullPath: '/analytics/zero'
+      preLoaderRoute: typeof AuthenticatedAnalyticsZeroRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/trials': {
+      id: '/_authenticated/analytics/trials'
+      path: '/analytics/trials'
+      fullPath: '/analytics/trials'
+      preLoaderRoute: typeof AuthenticatedAnalyticsTrialsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/settings': {
+      id: '/_authenticated/analytics/settings'
+      path: '/analytics/settings'
+      fullPath: '/analytics/settings'
+      preLoaderRoute: typeof AuthenticatedAnalyticsSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/sales': {
+      id: '/_authenticated/analytics/sales'
+      path: '/analytics/sales'
+      fullPath: '/analytics/sales'
+      preLoaderRoute: typeof AuthenticatedAnalyticsSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/revenue': {
+      id: '/_authenticated/analytics/revenue'
+      path: '/analytics/revenue'
+      fullPath: '/analytics/revenue'
+      preLoaderRoute: typeof AuthenticatedAnalyticsRevenueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/rating': {
+      id: '/_authenticated/analytics/rating'
+      path: '/analytics/rating'
+      fullPath: '/analytics/rating'
+      preLoaderRoute: typeof AuthenticatedAnalyticsRatingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/classes': {
+      id: '/_authenticated/analytics/classes'
+      path: '/analytics/classes'
+      fullPath: '/analytics/classes'
+      preLoaderRoute: typeof AuthenticatedAnalyticsClassesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/access/structure': {
@@ -1401,6 +1561,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademySettingsRoute: typeof AuthenticatedAcademySettingsRoute
   AuthenticatedAccessLogRoute: typeof AuthenticatedAccessLogRoute
   AuthenticatedAccessStructureRoute: typeof AuthenticatedAccessStructureRoute
+  AuthenticatedAnalyticsClassesRoute: typeof AuthenticatedAnalyticsClassesRoute
+  AuthenticatedAnalyticsRatingRoute: typeof AuthenticatedAnalyticsRatingRoute
+  AuthenticatedAnalyticsRevenueRoute: typeof AuthenticatedAnalyticsRevenueRoute
+  AuthenticatedAnalyticsSalesRoute: typeof AuthenticatedAnalyticsSalesRoute
+  AuthenticatedAnalyticsSettingsRoute: typeof AuthenticatedAnalyticsSettingsRoute
+  AuthenticatedAnalyticsTrialsRoute: typeof AuthenticatedAnalyticsTrialsRoute
+  AuthenticatedAnalyticsZeroRoute: typeof AuthenticatedAnalyticsZeroRoute
   AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
   AuthenticatedDashboardClientsRoute: typeof AuthenticatedDashboardClientsRoute
   AuthenticatedDashboardMarketingRoute: typeof AuthenticatedDashboardMarketingRoute
@@ -1409,6 +1576,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScriptsSettingsRoute: typeof AuthenticatedScriptsSettingsRoute
   AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
   AuthenticatedAccessIndexRoute: typeof AuthenticatedAccessIndexRoute
+  AuthenticatedAnalyticsIndexRoute: typeof AuthenticatedAnalyticsIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKbIndexRoute: typeof AuthenticatedKbIndexRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
@@ -1468,6 +1636,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademySettingsRoute: AuthenticatedAcademySettingsRoute,
   AuthenticatedAccessLogRoute: AuthenticatedAccessLogRoute,
   AuthenticatedAccessStructureRoute: AuthenticatedAccessStructureRoute,
+  AuthenticatedAnalyticsClassesRoute: AuthenticatedAnalyticsClassesRoute,
+  AuthenticatedAnalyticsRatingRoute: AuthenticatedAnalyticsRatingRoute,
+  AuthenticatedAnalyticsRevenueRoute: AuthenticatedAnalyticsRevenueRoute,
+  AuthenticatedAnalyticsSalesRoute: AuthenticatedAnalyticsSalesRoute,
+  AuthenticatedAnalyticsSettingsRoute: AuthenticatedAnalyticsSettingsRoute,
+  AuthenticatedAnalyticsTrialsRoute: AuthenticatedAnalyticsTrialsRoute,
+  AuthenticatedAnalyticsZeroRoute: AuthenticatedAnalyticsZeroRoute,
   AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
   AuthenticatedDashboardClientsRoute: AuthenticatedDashboardClientsRoute,
   AuthenticatedDashboardMarketingRoute: AuthenticatedDashboardMarketingRoute,
@@ -1476,6 +1651,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScriptsSettingsRoute: AuthenticatedScriptsSettingsRoute,
   AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
   AuthenticatedAccessIndexRoute: AuthenticatedAccessIndexRoute,
+  AuthenticatedAnalyticsIndexRoute: AuthenticatedAnalyticsIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKbIndexRoute: AuthenticatedKbIndexRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,

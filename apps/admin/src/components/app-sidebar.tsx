@@ -6,6 +6,7 @@ import { Notebook, Settings } from "@/components/nav-icons";
 import { AppRail } from "@/components/app-rail";
 import {
   ACADEMY_ITEMS,
+  ANALYTICS_ITEMS,
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
   MANAGE_GROUPS,
@@ -275,18 +276,32 @@ export function AppSidebar() {
                   ]
                 : [],
             }
-          : railKey === "manage"
+          : railKey === "analytics"
             ? {
-                // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
-                title: "Управление",
+                // «Настройки» (точка 0, закрытие клуба) — по праву analytics.manage.
+                title: "Аналитика",
                 groups: access
-                  ? MANAGE_GROUPS.map((g) => ({
-                      ...g,
-                      items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
-                    })).filter((g) => g.items.length > 0)
+                  ? [
+                      {
+                        key: "analytics",
+                        label: "Отчёты",
+                        items: ANALYTICS_ITEMS.filter((i) => canOpenPath(access, studioId, i.url)),
+                      },
+                    ]
                   : [],
               }
-            : SECTION_MENUS[railKey];
+            : railKey === "manage"
+              ? {
+                  // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
+                  title: "Управление",
+                  groups: access
+                    ? MANAGE_GROUPS.map((g) => ({
+                        ...g,
+                        items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
+                      })).filter((g) => g.items.length > 0)
+                    : [],
+                }
+              : SECTION_MENUS[railKey];
   const feedbackStudios = useSectionStudios("feedback");
   const npsStudios = useSectionStudios("nps");
   const pendingFeedback = usePendingFeedback(
@@ -320,7 +335,7 @@ export function AppSidebar() {
   const menuLoading =
     railKey === "scripts"
       ? scriptsMenu.loading
-      : railKey === "manage" || railKey === "academy"
+      : railKey === "manage" || railKey === "academy" || railKey === "analytics"
         ? !access
         : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
@@ -495,7 +510,7 @@ export function AppSidebar() {
           <SidebarFooter
             className={cn(
               "gap-2 border-t border-white/10 p-3 lg:hidden",
-              (railKey === "kb" || railKey === "academy") && "hidden",
+              (railKey === "kb" || railKey === "academy" || railKey === "analytics") && "hidden",
             )}
           >
             <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white focus-visible:bg-white/10 [&>svg]:text-white" />
