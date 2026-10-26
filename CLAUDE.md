@@ -974,6 +974,16 @@ AUTH_SETUP.md.
   / `an_import_finish` / `an_import_delete`, справочники `an_studios_list`,
   `an_studio_save`, `an_nomenclature_set`, `an_city_target_save`,
   `an_partners_list`, `an_partner_cities_save`. Тесты — `db/analytics.test.ts`.
+  Люди портала — упоминания и карточка сотрудника (решение владельца
+  2026-10-27): `db/migrations/2026-10-27_zzzz_people_cards.sql` —
+  `kb_mention_candidates` (актуальное определение — здесь) отдаёт всех
+  действующих людей портала (`portal_people_ids`, внутренняя) с должностью
+  и `has_access` (видит ли базу); `people_cards(ids)` — имя, аватарка,
+  должность (до 200 за вызов) и `person_card(user)` — карточка: должность,
+  тип, подразделения с ролью, клубы с ролью, почта и телефон профиля
+  (собственники клубов — если есть `studio_owners`); обе — любому человеку
+  портала (`is_portal_user`), справочник компании. Тесты —
+  `db/knowledge-base.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
