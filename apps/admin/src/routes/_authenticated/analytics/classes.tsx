@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { AnalyticsShell, type AnalyticsView } from "@/components/analytics/analytics-shell";
+import { CityTreeTable } from "@/components/analytics/city-tree";
 import { EmptyBlock, KpiGrid, KpiTile, TableCard } from "@/components/analytics/parts";
 import {
   AnalyticsClassesBodySkeleton,
@@ -23,17 +24,17 @@ import { ANALYTICS_TITLES, CLASSES_TILES } from "@/lib/analytics/labels";
 import {
   change,
   classesSummary,
+  directionLines,
   formatAvg,
   formatRate,
   shiftPeriod,
-  workoutLines,
   type ClassesSummary,
 } from "@/lib/analytics/logic";
 import { formatNumber } from "@/lib/format";
 import { sortRows } from "@/lib/table-sort";
 
 export const Route = createFileRoute("/_authenticated/analytics/classes")({
-  head: () => ({ meta: [{ title: "Занятия — Аналитика — Base40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Занятия — Аналитика сети — Base40 Admin" }] }),
   pendingComponent: AnalyticsClassesPageSkeleton,
   component: ClassesPage,
 });
@@ -42,28 +43,34 @@ const num = "text-right [&>span]:justify-end";
 
 function ClassesPage() {
   return (
-    <AnalyticsShell title={ANALYTICS_TITLES.classes} skeleton={<AnalyticsClassesBodySkeleton />}>
+    <AnalyticsShell
+      title={ANALYTICS_TITLES.classes}
+      kinds={["classes"]}
+      skeleton={<AnalyticsClassesBodySkeleton />}
+    >
       {(view) => <ClassesBody {...view} />}
     </AnalyticsShell>
   );
 }
 
-function ClassesBody({ studios, ids, idSet, period }: AnalyticsView) {
+function ClassesBody({ studios, ids, idSet, period, today, update }: AnalyticsView) {
   const cur = useQuery(classesQuery(ids, period, "month"));
   const pm = useQuery(classesQuery(ids, shiftPeriod(period, -1), "month"));
   const py = useQuery(classesQuery(ids, shiftPeriod(period, -12), "month"));
-  const clubSort = useTableSort();
-  const workoutSort = useTableSort();
+  const dirSort = useTableSort();
 
   if (cur.isError)
     return <InfoNote variant="warning">Не удалось загрузить занятия. Обновите страницу.</InfoNote>;
 
   const loading = cur.isLoading;
-  const s = cur.data && classesSummary(cur.data.rows, idSet);
-  const sm = pm.data && classesSummary(pm.data.rows, idSet);
-  const sy = py.data && classesSummary(py.data.rows, idSet);
-  // Доли и средние — относительное изменение, как у Lady Stretch (не п. п.).
-  const tile = (k: keyof typeof CLASSES_TILES, show: (x: ClassesSummary) => string) => (
+  const s = cur.data && classesSummary(cur.data, idSet);
+  const sm = pm.data && classesSummary(pm.data, idSet);
+  const sy = py.data && classesSummary(py.data, idSet);
+  // Как у Lady Stretch: изменение средних и доходимости — относительное, %.
+  const tile = (
+    k: keyof ClassesSummary & keyof typeof CLASSES_TILES,
+    show: (x: ClassesSummary) => string,
+  ) => (
     <KpiTile
       key={k}
       {...CLASSES_TILES[k]}
@@ -75,34 +82,15 @@ function ClassesBody({ studios, ids, idSet, period }: AnalyticsView) {
       ]}
     />
   );
-
-  const clubs = studios.map((st) => ({
-    studio: st,
-    x: cur.data ? classesSummary(cur.data.rows, new Set([st.id])) : null,
-  }));
-  const sortedClubs = clubSort.sort
-    ? sortRows(clubs, clubSort.sort, {
-        name: (r) => r.studio.name,
-        classes: (r) => r.x?.classes,
-        booked: (r) => r.x?.booked,
-        attended: (r) => r.x?.attended,
-        avg: (r) => r.x?.avgAttended,
-        attendance: (r) => r.x?.attendance,
-        fill: (r) => r.x?.fill,
-        personal: (r) => r.x?.personal,
-      })
-    : clubs;
-  const workouts = cur.data ? workoutLines(cur.data.rows, cur.data.names, idSet) : [];
-  const sortedWorkouts = workoutSort.sort
-    ? sortRows(workouts, workoutSort.sort, {
-        name: (w) => w.name,
-        classes: (w) => w.classes,
-        booked: (w) => w.booked,
-        attended: (w) => w.attended,
-        avg: (w) => w.avgAttended,
-        attendance: (w) => w.attendance,
-      })
-    : workouts;
+  const directions = cur.data ? directionLines(cur.data, idSet) : [];
+  const sorted = sortRows(directions, dirSort.sort, {
+    name: (d) => d.name,
+    classes: (d) => d.classes,
+    booked: (d) => d.booked,
+    attended: (d) => d.attended,
+    avg: (d) => d.avgAttended,
+    attendance: (d) => d.attendance,
+  });
 
   return (
     <div className="space-y-3">
@@ -114,108 +102,73 @@ function ClassesBody({ studios, ids, idSet, period }: AnalyticsView) {
         {tile("avgAttended", (x) => formatAvg(x.avgAttended))}
         {tile("attendance", (x) => formatRate(x.attendance, 1))}
       </KpiGrid>
-      <TableCard title="По клубам">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead {...clubSort.head("name")}>Клуб</TableHead>
-              <TableHead
-                className={num}
-                tip={CLASSES_TILES.classes.tip}
-                {...clubSort.head("classes")}
-              >
-                Занятий
-              </TableHead>
-              <TableHead
-                className={num}
-                tip={CLASSES_TILES.booked.tip}
-                {...clubSort.head("booked")}
-              >
-                Записей
-              </TableHead>
-              <TableHead
-                className={num}
-                tip={CLASSES_TILES.attended.tip}
-                {...clubSort.head("attended")}
-              >
-                Посещений
-              </TableHead>
-              <TableHead
-                className={num}
-                tip={CLASSES_TILES.avgAttended.tip}
-                {...clubSort.head("avg")}
-              >
-                На занятии
-              </TableHead>
-              <TableHead
-                className={num}
-                tip={CLASSES_TILES.attendance.tip}
-                {...clubSort.head("attendance")}
-              >
-                Доходимость
-              </TableHead>
-              <TableHead
-                className={num}
-                tip="Пришли / мест на занятиях с лимитом мест."
-                {...clubSort.head("fill")}
-              >
-                Заполняемость
-              </TableHead>
-              <TableHead
-                className={num}
-                tip="Прошедшие персональные занятия."
-                {...clubSort.head("personal")}
-              >
-                Персональные
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableSkeletonRows columns={8} rows={Math.min(studios.length, 6)} />
-            ) : (
-              sortedClubs.map(({ studio, x }) => (
-                <TableRow key={studio.id}>
-                  <TableCell className="font-medium">{studio.name}</TableCell>
-                  <TableCell className="text-right">{formatNumber(x?.classes ?? 0)}</TableCell>
-                  <TableCell className="text-right">{formatNumber(x?.booked ?? 0)}</TableCell>
-                  <TableCell className="text-right">{formatNumber(x?.attended ?? 0)}</TableCell>
-                  <TableCell className="text-right">{formatAvg(x?.avgAttended ?? null)}</TableCell>
-                  <TableCell className="text-right">
-                    {formatRate(x?.attendance ?? null, 1)}
-                  </TableCell>
-                  <TableCell className="text-right">{formatRate(x?.fill ?? null, 1)}</TableCell>
-                  <TableCell className="text-right">{formatNumber(x?.personal ?? 0)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <TableCard title="Города и студии">
+        <CityTreeTable
+          studios={studios}
+          today={today}
+          loading={loading || !cur.data}
+          compute={(set) => classesSummary(cur.data ?? [], set)}
+          onPick={(st) => update({ clubId: st.id })}
+          columns={[
+            {
+              key: "classes",
+              label: "Занятий",
+              tip: CLASSES_TILES.classes.tip,
+              render: (v) => formatNumber(v.classes),
+              sort: (v) => v.classes,
+            },
+            {
+              key: "booked",
+              label: "Записано",
+              tip: CLASSES_TILES.booked.tip,
+              render: (v) => formatNumber(v.booked),
+              sort: (v) => v.booked,
+            },
+            {
+              key: "attended",
+              label: "Посетило",
+              tip: CLASSES_TILES.attended.tip,
+              render: (v) => formatNumber(v.attended),
+              sort: (v) => v.attended,
+            },
+            {
+              key: "avg",
+              label: "На занятии",
+              tip: CLASSES_TILES.avgAttended.tip,
+              render: (v) => formatAvg(v.avgAttended),
+              sort: (v) => v.avgAttended,
+            },
+            {
+              key: "attendance",
+              label: "Доходимость",
+              tip: CLASSES_TILES.attendance.tip,
+              render: (v) => formatRate(v.attendance, 1),
+              sort: (v) => v.attendance,
+            },
+          ]}
+        />
       </TableCard>
-      <TableCard
-        title="Направления"
-        tip="Групповые занятия по тренировкам — сколько провели, записались и пришли."
-      >
-        {!loading && workouts.length === 0 ? (
+      <TableCard title="Направления" tip="Проведённые занятия по направлениям.">
+        {!loading && directions.length === 0 ? (
           <EmptyBlock />
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead {...workoutSort.head("name")}>Тренировка</TableHead>
-                <TableHead className={num} {...workoutSort.head("classes")}>
+                <TableHead {...dirSort.head("name")}>Направление</TableHead>
+                <TableHead className={num} {...dirSort.head("classes")}>
                   Занятий
                 </TableHead>
-                <TableHead className={num} {...workoutSort.head("booked")}>
-                  Записей
+                <TableHead className={num} {...dirSort.head("booked")}>
+                  Записано
                 </TableHead>
-                <TableHead className={num} {...workoutSort.head("attended")}>
-                  Посещений
+                <TableHead className={num} {...dirSort.head("attended")}>
+                  Посетило
                 </TableHead>
-                <TableHead className={num} {...workoutSort.head("avg")}>
+                <TableHead className={num} {...dirSort.head("avg")}>
                   На занятии
                 </TableHead>
-                <TableHead className={num} {...workoutSort.head("attendance")}>
+                <TableHead className={num} {...dirSort.head("attendance")}>
                   Доходимость
                 </TableHead>
               </TableRow>
@@ -224,14 +177,14 @@ function ClassesBody({ studios, ids, idSet, period }: AnalyticsView) {
               {loading ? (
                 <TableSkeletonRows columns={6} rows={5} />
               ) : (
-                sortedWorkouts.map((w) => (
-                  <TableRow key={w.key}>
-                    <TableCell className="font-medium">{w.name}</TableCell>
-                    <TableCell className="text-right">{formatNumber(w.classes)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(w.booked)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(w.attended)}</TableCell>
-                    <TableCell className="text-right">{formatAvg(w.avgAttended)}</TableCell>
-                    <TableCell className="text-right">{formatRate(w.attendance, 1)}</TableCell>
+                sorted.map((d) => (
+                  <TableRow key={d.key}>
+                    <TableCell className="font-medium">{d.name}</TableCell>
+                    <TableCell className="text-right">{formatNumber(d.classes)}</TableCell>
+                    <TableCell className="text-right">{formatNumber(d.booked)}</TableCell>
+                    <TableCell className="text-right">{formatNumber(d.attended)}</TableCell>
+                    <TableCell className="text-right">{formatAvg(d.avgAttended)}</TableCell>
+                    <TableCell className="text-right">{formatRate(d.attendance, 1)}</TableCell>
                   </TableRow>
                 ))
               )}

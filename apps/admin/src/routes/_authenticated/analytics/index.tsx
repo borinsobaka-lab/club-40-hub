@@ -1,25 +1,15 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { addDays, format, parseISO } from "date-fns";
 
 import { AnalyticsShell, type AnalyticsView } from "@/components/analytics/analytics-shell";
+import { CityTreeTable } from "@/components/analytics/city-tree";
 import { NomenclatureTable } from "@/components/analytics/nomenclature";
 import { KpiGrid, KpiTile, TableCard } from "@/components/analytics/parts";
 import { ChartArea, ChartPanel, DailyPlot } from "@/components/dashboard/chart-panel";
 import { AnalyticsCityBodySkeleton, AnalyticsCityPageSkeleton } from "@/components/page-skeletons";
-import { TableSkeletonRows } from "@/components/skeletons";
 import { InfoNote } from "@/components/ui/form-field";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useTableSort, type TableSortState } from "@/hooks/use-table-sort";
 import { classesQuery, revenueQuery, salesQuery, trialsQuery } from "@/lib/analytics/data";
 import { ANALYTICS_TITLES, CITY_TILES, NOMENCLATURE_OPTIONS } from "@/lib/analytics/labels";
 import {
@@ -27,74 +17,91 @@ import {
   cityOf,
   forecast,
   formatRate,
-  isClosed,
+  formatRub,
+  lastFullDay,
   monthLabel,
   monthPeriod,
   monthStarts,
-  rate,
+  pointZeroOf,
   salesSummary,
   sumRevenue,
   trialsSummary,
   type NomenclatureFilter,
 } from "@/lib/analytics/logic";
-import type {
-  AnStudio,
-  ClassesData,
-  RevenueRow,
-  SalesData,
-  TrialsData,
-} from "@/lib/analytics/types";
-import { formatMoney, formatNumber } from "@/lib/format";
-import { sortRows } from "@/lib/table-sort";
+import type { AnStudio, ClassRow, RevenueRow, SalesData, TrialRow } from "@/lib/analytics/types";
+import { formatNumber } from "@/lib/format";
 
 /**
- * «Мой город» — как у Lady Stretch: одна сводка по городу (или клубу) за
- * период — выручка с прогнозом и точкой 0, продажи, что покупают, посещения,
- * пробные и таблица клубов (нажатие — отчёт по клубу). Партнёр видит только
- * свои клубы: база отдаёт клубы, где ему открыт раздел «Аналитика».
+ * «Мой город» — как у Lady Stretch: одна сводка по городу (или студии) за
+ * период — выручка с прогнозом и точкой 0, продажи, что покупают,
+ * посещения, пробные и таблица студий (нажатие — отчёт по студии). Партнёр
+ * видит только свои города: их отдаёт база.
  */
 export const Route = createFileRoute("/_authenticated/analytics/")({
-  head: () => ({ meta: [{ title: "Мой город — Аналитика — Base40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Мой город — Аналитика сети — Base40 Admin" }] }),
   pendingComponent: AnalyticsCityPageSkeleton,
   component: CityPage,
 });
 
 const CHART_MONTHS = 6;
-const num = "text-right [&>span]:justify-end";
 
 function CityPage() {
   return (
-    <AnalyticsShell title={ANALYTICS_TITLES.city} skeleton={<AnalyticsCityBodySkeleton />}>
+    <AnalyticsShell
+      title={ANALYTICS_TITLES.city}
+      kinds={["revenue", "sales", "classes", "visits"]}
+      skeleton={<AnalyticsCityBodySkeleton />}
+    >
       {(view) => <CityBody {...view} />}
     </AnalyticsShell>
   );
 }
 
-/** Выручка, прогноз и точка 0 набора клубов. */
+/** Выручка за период (без сегодняшнего дня) и прогноз — если период и есть текущий месяц. */
 function revenueOf(
   rows: RevenueRow[],
-  list: AnStudio[],
+  ids: Set<string>,
   period: AnalyticsView["period"],
   today: string,
 ) {
-  const ids = new Set(list.map((s) => s.id));
-  const fact = sumRevenue(rows, ids, period.from, period.to);
   const month = monthPeriod(period.from);
-  // Прогноз — только когда период и есть текущий месяц.
+  const end = lastFullDay(today) < period.to ? lastFullDay(today) : period.to;
+  const fact = sumRevenue(rows, ids, period.from, end);
   const whole = period.from === month.from && period.to === month.to;
-  const yesterday = format(addDays(parseISO(today), -1), "yyyy-MM-dd");
-  const fc = whole
-    ? forecast(sumRevenue(rows, ids, month.from, yesterday), month.from, today)
-    : null;
-  const open = list.filter((s) => !isClosed(s, today));
-  const pointZero =
-    open.length > 0 && open.every((s) => s.pointZero !== null)
-      ? open.reduce((sum, s) => sum + (s.pointZero ?? 0), 0)
-      : null;
-  return { fact, forecast: fc, pointZero, reach: pointZero ? rate(fc ?? fact, pointZero) : null };
+  return { fact, forecast: whole ? forecast(fact, month.from, today) : null };
 }
 
-function CityBody({ studios, ids, idSet, period, today, filters, update }: AnalyticsView) {
+type ClubLine = {
+  revenue: number;
+  forecast: number | null;
+  sold: number;
+  newSold: number;
+  visits: number;
+  attendance: number | null;
+  trials: number | null;
+};
+
+function lineOf(
+  ids: Set<string>,
+  data: { revenue: RevenueRow[]; sales: SalesData; classes: ClassRow[]; trials: TrialRow[] },
+  period: AnalyticsView["period"],
+  today: string,
+): ClubLine {
+  const rev = revenueOf(data.revenue, ids, period, today);
+  const s = salesSummary(data.sales, ids);
+  const c = classesSummary(data.classes, ids);
+  return {
+    revenue: rev.fact,
+    forecast: rev.forecast,
+    sold: s.sold,
+    newSold: s.newSold,
+    visits: c.attended,
+    attendance: c.attendance,
+    trials: trialsSummary(data.trials, ids).d14Rate,
+  };
+}
+
+function CityBody({ scope, studios, ids, idSet, period, today, filters, update }: AnalyticsView) {
   const revenue = useQuery(revenueQuery(ids, period));
   const months = monthStarts(period.to, CHART_MONTHS);
   const history = useQuery(revenueQuery(ids, { from: months[0], to: period.to }, "month"));
@@ -102,20 +109,27 @@ function CityBody({ studios, ids, idSet, period, today, filters, update }: Analy
   const classes = useQuery(classesQuery(ids, period, "month"));
   const trials = useQuery(trialsQuery(ids, period, "month"));
   const [nomFilter, setNomFilter] = useState<NomenclatureFilter>("all");
-  const sort = useTableSort();
 
   if (revenue.isError || sales.isError || classes.isError || trials.isError)
     return <InfoNote variant="warning">Не удалось загрузить отчёт. Обновите страницу.</InfoNote>;
 
-  const rev = revenue.data && revenueOf(revenue.data, studios, period, today);
+  const rev = revenue.data && revenueOf(revenue.data, idSet, period, today);
+  const pointZero = pointZeroOf(studios, scope.studios, scope.targets);
+  const reach = rev ? (rev.forecast ?? rev.fact) : null;
   const s = sales.data && salesSummary(sales.data, idSet);
-  const c = classes.data && classesSummary(classes.data.rows, idSet);
-  const t = trials.data && trialsSummary(trials.data.rows, idSet);
+  const c = classes.data && classesSummary(classes.data, idSet);
+  const t = trials.data && trialsSummary(trials.data, idSet);
+  const cities = new Set(studios.map(cityOf));
   const title =
     filters.clubId && studios.length === 1
-      ? studios[0].name
-      : (filters.city ??
-        (new Set(studios.map(cityOf)).size === 1 ? cityOf(studios[0]) : "Все города"));
+      ? `${cityOf(studios[0])} · ${studios[0].name}`
+      : cities.size === 1
+        ? [...cities][0]
+        : `Городов: ${cities.size}`;
+  const all =
+    revenue.data && sales.data && classes.data && trials.data
+      ? { revenue: revenue.data, sales: sales.data, classes: classes.data, trials: trials.data }
+      : null;
 
   return (
     <div className="space-y-3">
@@ -124,24 +138,24 @@ function CityBody({ studios, ids, idSet, period, today, filters, update }: Analy
         <KpiTile
           {...CITY_TILES.revenue}
           loading={revenue.isLoading}
-          value={rev && formatMoney(rev.fact)}
+          value={rev && formatRub(rev.fact)}
         />
         <KpiTile
           {...CITY_TILES.forecast}
           loading={revenue.isLoading}
-          value={rev ? (rev.forecast === null ? "—" : formatMoney(rev.forecast)) : undefined}
+          value={rev && formatRub(rev.forecast)}
           note={rev && rev.forecast === null ? "для периода «текущий месяц»" : undefined}
         />
         <KpiTile
           {...CITY_TILES.pointZero}
           loading={revenue.isLoading}
-          value={rev ? (rev.pointZero === null ? "—" : formatMoney(rev.pointZero)) : undefined}
+          value={formatRub(pointZero)}
           note={
-            rev
-              ? rev.pointZero === null
-                ? "не задана у всех открытых клубов"
-                : `${formatRate(rev.reach)} ${rev.forecast !== null ? "по прогнозу" : "по факту"}`
-              : undefined
+            pointZero !== null && reach !== null
+              ? `${reach - pointZero >= 0 ? "выше" : "ниже"} на ${formatRub(Math.abs(reach - pointZero))} ${rev?.forecast !== null ? "по прогнозу" : "по факту"}`
+              : pointZero === null
+                ? "задаётся на город в «Точке 0»"
+                : undefined
           }
         />
         <KpiTile
@@ -153,8 +167,8 @@ function CityBody({ studios, ids, idSet, period, today, filters, update }: Analy
         <KpiTile
           {...CITY_TILES.avgCheck}
           loading={sales.isLoading}
-          value={s && (s.avgCheck === null ? "—" : formatMoney(s.avgCheck))}
-          note={s && `поступило ${formatMoney(s.paid)}`}
+          value={s && formatRub(s.avgCheck)}
+          note={s && `оплаты ${formatRub(s.paid)}`}
         />
         <KpiTile
           {...CITY_TILES.visits}
@@ -166,7 +180,7 @@ function CityBody({ studios, ids, idSet, period, today, filters, update }: Analy
           {...CITY_TILES.attendance}
           loading={classes.isLoading}
           value={c && formatRate(c.attendance, 1)}
-          note={c && `записей ${formatNumber(c.booked)}`}
+          note={c && `записано ${formatNumber(c.booked)}`}
         />
         <KpiTile
           {...CITY_TILES.trials}
@@ -188,7 +202,7 @@ function CityBody({ studios, ids, idSet, period, today, filters, update }: Analy
                 value: history.data ? sumRevenue(history.data, idSet, m, monthPeriod(m).to) : 0,
               }))}
               color="var(--brand)"
-              format={formatMoney}
+              format={(v) => formatRub(v)}
             />
           </ChartArea>
         </ChartPanel>
@@ -208,133 +222,72 @@ function CityBody({ studios, ids, idSet, period, today, filters, update }: Analy
         </TableCard>
       </div>
 
-      <ClubsTable
-        studios={studios}
-        today={today}
-        period={period}
-        revenue={revenue.data}
-        sales={sales.data}
-        classes={classes.data}
-        trials={trials.data}
-        sort={sort}
-        onPick={(id) => update({ clubId: id })}
-        picked={filters.clubId}
-      />
+      <TableCard title="Студии" tip="Нажмите на студию — отчёт покажет только её.">
+        <CityTreeTable<ClubLine>
+          studios={studios}
+          today={today}
+          loading={!all}
+          compute={(set) =>
+            all
+              ? lineOf(set, all, period, today)
+              : {
+                  revenue: 0,
+                  forecast: null,
+                  sold: 0,
+                  newSold: 0,
+                  visits: 0,
+                  attendance: null,
+                  trials: null,
+                }
+          }
+          onPick={(st: AnStudio) => update({ clubId: st.id })}
+          columns={[
+            {
+              key: "revenue",
+              label: "Выручка",
+              render: (v) => formatRub(v.revenue),
+              sort: (v) => v.revenue,
+            },
+            {
+              key: "forecast",
+              label: "Прогноз",
+              render: (v) => formatRub(v.forecast),
+              sort: (v) => v.forecast,
+            },
+            {
+              key: "sold",
+              label: "Продано",
+              render: (v) => formatNumber(v.sold),
+              sort: (v) => v.sold,
+            },
+            {
+              key: "new",
+              label: "Новые",
+              render: (v) => formatNumber(v.newSold),
+              sort: (v) => v.newSold,
+            },
+            {
+              key: "visits",
+              label: "Посещения",
+              render: (v) => formatNumber(v.visits),
+              sort: (v) => v.visits,
+            },
+            {
+              key: "attendance",
+              label: "Доходимость",
+              render: (v) => formatRate(v.attendance, 1),
+              sort: (v) => v.attendance,
+            },
+            {
+              key: "trials",
+              label: "Пробные → 14 дн.",
+              tip: CITY_TILES.trials.tip,
+              render: (v) => formatRate(v.trials, 1),
+              sort: (v) => v.trials,
+            },
+          ]}
+        />
+      </TableCard>
     </div>
-  );
-}
-
-function ClubsTable({
-  studios,
-  today,
-  period,
-  revenue,
-  sales,
-  classes,
-  trials,
-  sort,
-  onPick,
-  picked,
-}: {
-  studios: AnStudio[];
-  today: string;
-  period: AnalyticsView["period"];
-  revenue: RevenueRow[] | undefined;
-  sales: SalesData | undefined;
-  classes: ClassesData | undefined;
-  trials: TrialsData | undefined;
-  sort: Pick<TableSortState, "sort" | "head">;
-  onPick: (id: string) => void;
-  picked: string | null;
-}) {
-  const loading = !revenue || !sales || !classes || !trials;
-  const rows = loading
-    ? []
-    : studios.map((st) => {
-        const ids = new Set([st.id]);
-        return {
-          studio: st,
-          rev: revenueOf(revenue, [st], period, today),
-          s: salesSummary(sales, ids),
-          c: classesSummary(classes.rows, ids),
-          t: trialsSummary(trials.rows, ids),
-        };
-      });
-  const sorted = sortRows(rows, sort.sort, {
-    name: (r) => r.studio.name,
-    revenue: (r) => r.rev.fact,
-    forecast: (r) => r.rev.forecast,
-    reach: (r) => r.rev.reach,
-    sold: (r) => r.s.sold,
-    newSold: (r) => r.s.newSold,
-    visits: (r) => r.c.attended,
-    attendance: (r) => r.c.attendance,
-    trials: (r) => r.t.d14Rate,
-  });
-  return (
-    <TableCard title="Клубы" tip="Нажмите на клуб — отчёт покажет только его.">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead {...sort.head("name")}>Клуб</TableHead>
-            <TableHead className={num} {...sort.head("revenue")}>
-              Выручка
-            </TableHead>
-            <TableHead className={num} {...sort.head("forecast")}>
-              Прогноз
-            </TableHead>
-            <TableHead className={num} tip={CITY_TILES.pointZero.tip} {...sort.head("reach")}>
-              % точки 0
-            </TableHead>
-            <TableHead className={num} {...sort.head("sold")}>
-              Продано
-            </TableHead>
-            <TableHead className={num} {...sort.head("newSold")}>
-              Новые
-            </TableHead>
-            <TableHead className={num} {...sort.head("visits")}>
-              Посещения
-            </TableHead>
-            <TableHead className={num} {...sort.head("attendance")}>
-              Доходимость
-            </TableHead>
-            <TableHead className={num} tip={CITY_TILES.trials.tip} {...sort.head("trials")}>
-              Пробные → 14 дн.
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {loading ? (
-            <TableSkeletonRows columns={9} rows={Math.min(studios.length, 6)} />
-          ) : (
-            sorted.map(({ studio, rev, s, c, t }) => (
-              <TableRow
-                key={studio.id}
-                className={picked === studio.id ? "bg-muted/50" : "cursor-pointer"}
-                onClick={() => onPick(studio.id)}
-              >
-                <TableCell className="font-medium">
-                  {studio.name}
-                  <span className="block text-xs font-normal text-muted-foreground">
-                    {cityOf(studio)}
-                    {isClosed(studio, today) ? " · закрыт" : ""}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">{formatMoney(rev.fact)}</TableCell>
-                <TableCell className="text-right">
-                  {rev.forecast === null ? "—" : formatMoney(rev.forecast)}
-                </TableCell>
-                <TableCell className="text-right">{formatRate(rev.reach)}</TableCell>
-                <TableCell className="text-right">{formatNumber(s.sold)}</TableCell>
-                <TableCell className="text-right">{formatNumber(s.newSold)}</TableCell>
-                <TableCell className="text-right">{formatNumber(c.attended)}</TableCell>
-                <TableCell className="text-right">{formatRate(c.attendance, 1)}</TableCell>
-                <TableCell className="text-right">{formatRate(t.d14Rate, 1)}</TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </TableCard>
   );
 }

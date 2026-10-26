@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Info, Wallet } from "lucide-react";
 
 import {
   ShellSkeleton,
+  ControlSkeletonView,
   TableCardSkeleton,
   TableSkeletonRows,
   ToolbarSkeleton,
@@ -63,7 +64,9 @@ import {
   REVENUE_TILES,
   SALES_CLUB_COLUMNS,
   SALES_TILES,
-  SETTINGS_COLUMNS,
+  STUDIOS_COLUMNS,
+  IMPORTS_COLUMNS,
+  NOMENCLATURE_COLUMNS,
   TRIALS_CLUB_COLUMNS,
   TRIALS_TILES,
   ZERO_COLUMNS,
@@ -192,8 +195,11 @@ function TablePage({
   wrap = true,
   tabs,
   kb,
+  network,
 }: {
   title: string;
+  /** Раздел, общий для сети (ShellSkeleton network). */
+  network?: boolean;
   /** Страница базы знаний — её шапка (ShellSkeleton kb). */
   kb?: boolean;
   actions?: ControlSkeleton[];
@@ -209,7 +215,7 @@ function TablePage({
 }) {
   const table = <TableCardSkeleton headers={headers} rows={rows} pagination={pagination} />;
   return (
-    <ShellSkeleton title={title} actions={actions} kb={kb}>
+    <ShellSkeleton title={title} actions={actions} kb={kb} network={network}>
       {wrap ? (
         <div className="space-y-3">
           {tabs}
@@ -2551,7 +2557,7 @@ export function AnalyticsCityBodySkeleton() {
           rows={5}
         />
       </div>
-      <AnalyticsTableSkeleton title="Клубы" headers={CITY_CLUB_COLUMNS} rows={4} />
+      <AnalyticsTableSkeleton title="Студии" headers={CITY_CLUB_COLUMNS} rows={4} />
     </div>
   );
 }
@@ -2571,7 +2577,7 @@ export function AnalyticsRevenueBodySkeleton() {
     <div className="space-y-3">
       <AnalyticsTilesSkeleton labels={labelsOf(REVENUE_TILES)} deltas={false} />
       <AnalyticsTableSkeleton
-        title="Города и клубы"
+        title="Города и студии"
         headers={["Город / клуб", "1–7", "8–14", "15–21", "22–28", ...REVENUE_COLUMNS_TAIL]}
         rows={8}
       />
@@ -2597,9 +2603,9 @@ export function AnalyticsSalesBodySkeleton() {
       <AnalyticsTilesSkeleton labels={tiles.slice(6)} cols={3} />
       <div className="grid gap-3 xl:grid-cols-2">
         <DashboardChartSkeleton title="Продано по месяцам" height={240} />
-        <DashboardChartSkeleton title="Поступило по месяцам" height={240} />
+        <DashboardChartSkeleton title="Оплаты по месяцам" height={240} />
       </div>
-      <AnalyticsTableSkeleton title="По клубам" headers={SALES_CLUB_COLUMNS} rows={4} />
+      <AnalyticsTableSkeleton title="Города и студии" headers={SALES_CLUB_COLUMNS} rows={4} />
     </div>
   );
 }
@@ -2618,7 +2624,7 @@ export function AnalyticsClassesBodySkeleton() {
   return (
     <div className="space-y-3">
       <AnalyticsTilesSkeleton labels={labelsOf(CLASSES_TILES)} cols={6} />
-      <AnalyticsTableSkeleton title="По клубам" headers={CLASSES_CLUB_COLUMNS} rows={4} />
+      <AnalyticsTableSkeleton title="Города и студии" headers={CLASSES_CLUB_COLUMNS} rows={4} />
     </div>
   );
 }
@@ -2637,7 +2643,7 @@ export function AnalyticsTrialsBodySkeleton() {
   return (
     <div className="space-y-3">
       <AnalyticsTilesSkeleton labels={labelsOf(TRIALS_TILES)} />
-      <AnalyticsTableSkeleton title="По клубам" headers={TRIALS_CLUB_COLUMNS} rows={4} />
+      <AnalyticsTableSkeleton title="Города и студии" headers={TRIALS_CLUB_COLUMNS} rows={4} />
     </div>
   );
 }
@@ -2693,10 +2699,70 @@ export function AnalyticsRatingPageSkeleton() {
   );
 }
 
-export function AnalyticsSettingsPageSkeleton() {
+export function AnalyticsUploadPageSkeleton() {
   return (
-    <ShellSkeleton title={ANALYTICS_TITLES.settings} network>
-      <TableCardSkeleton headers={SETTINGS_COLUMNS} rows={6} />
+    <ShellSkeleton title={ANALYTICS_TITLES.upload} network>
+      <div className="space-y-6">
+        <section className="max-w-3xl space-y-4 rounded-lg border bg-background p-6">
+          <h2 className="text-lg font-semibold">Новая загрузка</h2>
+          <Skeleton className="h-10 w-full" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldSkeleton />
+            <FieldSkeleton />
+          </div>
+          <Skeleton className="h-12 w-full" />
+          <ControlSkeletonView control={{ label: "Выбрать файл", icon: true }} />
+        </section>
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Журнал загрузок</h2>
+          <TableCardSkeleton headers={IMPORTS_COLUMNS} rows={4} />
+        </section>
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AnalyticsStudiosPageSkeleton() {
+  return (
+    <TablePage
+      title={ANALYTICS_TITLES.studios}
+      toolbar={{ search: true, controls: ["w-48"] }}
+      headers={STUDIOS_COLUMNS}
+      pagination={false}
+      network
+    />
+  );
+}
+
+export function AnalyticsNomenclaturePageSkeleton() {
+  return (
+    <TablePage
+      title={ANALYTICS_TITLES.nomenclature}
+      toolbar={{ search: true, controls: ["w-48"] }}
+      headers={[{ label: "", className: "w-10" }, ...NOMENCLATURE_COLUMNS]}
+      network
+    />
+  );
+}
+
+export function AnalyticsTargetsPageSkeleton() {
+  return (
+    <ShellSkeleton title={ANALYTICS_TITLES.targets} network>
+      <div className="max-w-3xl space-y-3">
+        <Skeleton className="h-12 w-full" />
+        <TableCardSkeleton headers={["Город", "Студий", "Точка 0, ₽ в месяц"]} rows={5} />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AnalyticsPartnersPageSkeleton() {
+  return (
+    <ShellSkeleton title={ANALYTICS_TITLES.partners} network>
+      <div className="space-y-3">
+        <Skeleton className="h-12 w-full" />
+        <TableCardSkeleton headers={["Партнёр", "Почта", "Города"]} rows={4} />
+      </div>
     </ShellSkeleton>
   );
 }

@@ -17,6 +17,7 @@
  * иконок: его читает и сервер.
  */
 import type { AcadAccessInfo } from "@/lib/academy/types";
+import type { AnAccess } from "@/lib/analytics/types";
 import type { KbLevel } from "@/lib/kb/access";
 import type { AccessRight } from "@/lib/access/logic";
 
@@ -40,7 +41,6 @@ export const RAIL_ACCESS_LABEL: Record<AdminSectionKey, string> = {
 
 export const CLUB_SECTION_KEYS = [
   "dashboard",
-  "analytics",
   "schedule",
   "clients",
   "client-memberships",
@@ -70,6 +70,11 @@ export type AdminAccess = {
    * курсы, ответы на проверку) — RPC acad_access. Нет поля — раздела нет.
    */
   academy?: AcadAccessInfo;
+  /**
+   * «Аналитика сети» (клубы на 1С, FitBase и других системах): все клубы,
+   * загрузка и справочники, свои города (RPC an_access). Нет поля — раздела нет.
+   */
+  analytics?: AnAccess;
   /**
    * Сетевые права (lib/access/logic.ts, ACCESS_RIGHTS): portal.admin,
    * users.manage, roles.manage, kb.admin… У человека вне новой модели
@@ -127,13 +132,4 @@ export function sectionStudioIds(access: AdminAccess, key: ClubSectionKey): stri
  */
 export function dashboardStudioIds(access: AdminAccess): string[] {
   return sectionStudioIds(access, "dashboard");
-}
-
-/**
- * Клубы раздела рейки «Аналитика» (отчёты сети, ANALYTICS.md): роль в клубе
- * и открытый в нём раздел analytics. Те же клубы отдаёт база
- * (auth_analytics_studio_ids) — граница там, здесь только меню.
- */
-export function analyticsStudioIds(access: AdminAccess): string[] {
-  return sectionStudioIds(access, "analytics");
 }

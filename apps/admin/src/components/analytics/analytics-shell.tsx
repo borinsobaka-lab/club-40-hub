@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useIsFetching, useQuery } from "@tanstack/react-query";
 import { endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { Loader2 } from "lucide-react";
@@ -18,7 +19,7 @@ import {
 import { isCurrentMonth } from "@/hooks/use-dashboard-filters";
 import { useAnalyticsFilters, type AnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { ANALYTICS_KEY, analyticsScopeQuery } from "@/lib/analytics/data";
-import { ANALYTICS_FILTERS } from "@/lib/analytics/labels";
+import { ANALYTICS_FILTERS, KIND_TITLE } from "@/lib/analytics/labels";
 import {
   cityNames,
   cityOf,
@@ -27,14 +28,15 @@ import {
   monthStarts,
   type StatusFilter,
 } from "@/lib/analytics/logic";
-import type { AnScope, AnStudio, Period } from "@/lib/analytics/types";
+import type { AnKind, AnScope, AnStudio, Period } from "@/lib/analytics/types";
+import { formatDate } from "@/lib/format";
 
-/** Что получает отчёт: клубы под фильтрами, период, сегодня по Тбилиси. */
+/** Что получает отчёт: студии под фильтрами, период, сегодня. */
 export type AnalyticsView = {
   scope: AnScope;
-  /** Клубы под фильтрами (бренд, город, клуб, статус). */
+  /** Студии под фильтрами (бренд, город, студия, статус). */
   studios: AnStudio[];
-  /** Для запросов: id клубов; null — все доступные (короткий queryKey). */
+  /** Для запросов: id студий; null — все доступные (короткий queryKey). */
   ids: string[] | null;
   idSet: Set<string>;
   period: Period;
@@ -44,7 +46,7 @@ export type AnalyticsView = {
 };
 
 const STATUS_LABEL: Record<StatusFilter, string> = {
-  all: "Все клубы",
+  all: "Все студии",
   open: "Открытые",
   closed: "Закрытые",
 };
@@ -52,21 +54,25 @@ const STATUS_LABEL: Record<StatusFilter, string> = {
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
 /**
- * Каркас отчёта «Аналитики»: шапка, плашка фильтров с подписями (как у
- * дашборда) и тело. Клубы — те, где у сотрудника открыт раздел клуба
- * «Аналитика»; их отдаёт база (analytics_scope), она же ограничивает данные.
- * `mode="month"` — вместо периода выбор месяца («Выручка», «Рейтинг»).
+ * Каркас отчёта «Аналитики сети»: шапка, плашка фильтров с подписями (как у
+ * дашборда), свежесть данных и тело. Студии — клубы сети на своих учётных
+ * системах, которые видит сотрудник (все или свои города); их отдаёт база
+ * (an_scope), она же ограничивает данные. `mode="month"` — вместо периода
+ * выбор месяца («Выручка», «Рейтинг»). `kinds` — какие загрузки нужны отчёту
+ * (под фильтрами — «данные по …»).
  */
 export function AnalyticsShell({
   title,
   skeleton,
   mode = "range",
+  kinds = [],
   children,
 }: {
   title: string;
   /** Тело отчёта, пока нет клубов (то же, что в скелетоне страницы). */
   skeleton: ReactNode;
   mode?: "range" | "month";
+  kinds?: AnKind[];
   children: (view: AnalyticsView) => ReactNode;
 }) {
   const { data: scope, isLoading, isError } = useQuery(analyticsScopeQuery);
@@ -77,7 +83,7 @@ export function AnalyticsShell({
     return (
       <AdminShell title={title}>
         <InfoNote variant="warning">
-          Не удалось загрузить клубы аналитики. Обновите страницу.
+          Не удалось загрузить студии аналитики. Обновите страницу.
         </InfoNote>
       </AdminShell>
     );
@@ -91,7 +97,17 @@ export function AnalyticsShell({
     return (
       <AdminShell title={title}>
         <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-          Нет клубов, где вам открыта аналитика.
+          {scope.canManage ? (
+            <>
+              Данных ещё нет. Загрузите первую выгрузку учётной системы в{" "}
+              <Link to="/analytics/upload" className="font-medium text-foreground underline">
+                «Загрузке данных»
+              </Link>
+              .
+            </>
+          ) : (
+            "Студий для вас пока нет: попросите назначить вам города или открыть аналитику сети."
+          )}
         </div>
       </AdminShell>
     );
@@ -217,12 +233,12 @@ export function AnalyticsShell({
                 value={filters.clubId ?? "all"}
                 onValueChange={(v) => update({ clubId: v === "all" ? null : v })}
               >
-                <SelectTrigger aria-label="Клуб" className="w-full">
+                <SelectTrigger aria-label="Студия" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">
-                    {filters.city ? "Все клубы города" : "Все клубы"}
+                    {filters.city ? "Все студии города" : "Все студии"}
                   </SelectItem>
                   {inCity.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
@@ -239,7 +255,7 @@ export function AnalyticsShell({
                 value={filters.status}
                 onValueChange={(v) => update({ status: v as StatusFilter })}
               >
-                <SelectTrigger aria-label="Статус клубов" className="w-full">
+                <SelectTrigger aria-label="Статус студий" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -260,9 +276,19 @@ export function AnalyticsShell({
             </div>
           )}
         </div>
+        {kinds.length > 0 && (
+          <p className="px-1 text-xs text-muted-foreground">
+            {kinds
+              .map((k) => {
+                const to = scope.loaded[k]?.to;
+                return `${KIND_TITLE[k]}: ${to ? `данные по ${formatDate(to)}` : "не загружены"}`;
+              })
+              .join(" · ")}
+          </p>
+        )}
         {studios.length === 0 ? (
           <div className="rounded-lg border bg-background p-8 text-center text-sm text-muted-foreground">
-            Под фильтры не попал ни один клуб.
+            Под фильтры не попала ни одна студия.
           </div>
         ) : (
           children(view)

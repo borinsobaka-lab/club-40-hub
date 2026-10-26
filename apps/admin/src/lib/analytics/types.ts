@@ -1,107 +1,81 @@
 /**
- * «Аналитика» — типы ответов базы (RPC analytics_*,
- * db/migrations/2026-10-26_zz_analytics.sql) после разбора. База отдаёт
- * строки массивами (так короче на сети), lib/analytics/data.ts раскладывает их
- * в эти объекты. Даты — yyyy-MM-dd по Тбилиси.
+ * «Аналитика сети» — типы ответов базы (RPC an_*,
+ * db/migrations/2026-10-26_zzz_analytics_network.sql) после разбора. Это
+ * клубы сети на своих учётных системах (1С, FitBase, АДИС, Мобифитнес…), не
+ * наши клубы: их данные приходят загрузкой выгрузок. База отдаёт строки
+ * массивами, lib/analytics/data.ts раскладывает их в эти объекты. Даты —
+ * yyyy-MM-dd.
  */
-import type { StudioFormat } from "@/lib/studio-formats";
 
-/** Клуб отчётов: город, бренд, формат и настройки аналитики. */
+/** Учётная система, из которой пришла выгрузка. */
+export type AnSource = "1c" | "fitbase" | "adis" | "mobifitness" | "other";
+
+/** Студия сети — как она названа в учётной системе. */
 export type AnStudio = {
   id: string;
   name: string;
   city: string | null;
-  format: StudioFormat;
-  ownership: "own" | "franchise";
+  partner: string | null;
+  source: AnSource;
   brandId: string | null;
   brandName: string | null;
-  brandColor: string | null;
-  /** Точка 0 — месячная выручка «в ноль»; null — не задана. */
-  pointZero: number | null;
-  /** Закрыт с этого дня (включительно); null — открыт. */
+  /** Закрыта с этого дня (включительно); null — открыта. */
   closedOn: string | null;
-  /** Может ли вызывающий менять точку 0 и статус этого клуба. */
-  canManage: boolean;
+  /** Пришла из загрузки, город и статус ещё не проверены. */
+  needsReview: boolean;
 };
+
+export type AnKind = "revenue" | "sales" | "classes" | "visits";
 
 export type AnScope = {
-  /** Сегодня по Тбилиси — по часам базы, не браузера. */
+  /** Сегодня по Тбилиси — по часам базы. */
   today: string;
-  /** Может ли менять настройки хоть одного клуба (страница «Настройки»). */
   canManage: boolean;
   studios: AnStudio[];
+  /** Точка 0 городов: месячная выручка «в ноль». */
+  targets: Record<string, number>;
+  /** Последняя дата загруженных данных по видам и когда загружено. */
+  loaded: Partial<Record<AnKind, { to: string; at: string }>>;
 };
 
-/** Поступившие деньги клуба за день (или месяц): абонементы, прочие, возвраты. */
-export type RevenueRow = {
-  studioId: string;
-  date: string;
-  membership: number;
-  other: number;
-  refunds: number;
-};
+/** Движение денег студии за день (или месяц): приход и расход. */
+export type RevenueRow = { studioId: string; date: string; income: number; expense: number };
 
 /**
- * Вид продажи по истории клиента — как classifySales дашборда: новый,
- * продление, возврат (перерыв дольше 14 дней), разовое посещение, пробное.
+ * Вид оплаченной продажи абонемента: new — первая покупка клиента во всей
+ * истории, renewal — повторная, return — повторная после долгого перерыва,
+ * unknown — в выгрузке нет кода клиента.
  */
-export type SaleOrigin = "new" | "renewal" | "return" | "single" | "trial";
+export type SaleOrigin = "new" | "renewal" | "return" | "unknown";
 
 export type SoldRow = {
   studioId: string;
   date: string;
-  membershipId: string | null;
+  nomenclatureId: string;
   origin: SaleOrigin;
   count: number;
-  /** Сумма продаж (номинал: total_amount), не поступившие деньги. */
-  amount: number;
+  /** Оплачено по продажам. */
+  paid: number;
+  /** Стоимость (номинал) продаж. */
+  cost: number;
 };
 
-export type PaidRow = {
-  studioId: string;
-  date: string;
-  origin: SaleOrigin;
-  income: number;
-  refunds: number;
-};
-
-/** Деньги вида продаж за весь период и сколько продаж оплачивалось в нём. */
-export type PaidTotalRow = {
-  studioId: string;
-  origin: SaleOrigin;
-  income: number;
-  refunds: number;
-  paidSales: number;
-};
-
-export type SalesData = {
-  sold: SoldRow[];
-  paid: PaidRow[];
-  paidTotal: PaidTotalRow[];
-  names: Record<string, { name: string; kind: string }>;
-};
+export type SalesData = { sold: SoldRow[]; names: Record<string, string> };
 
 export type ClassRow = {
   studioId: string;
   date: string;
-  /** Тренировка группового занятия; у персональных — null. */
-  workoutId: string | null;
-  kind: "group" | "personal";
+  direction: string;
   classes: number;
   booked: number;
   attended: number;
-  noShow: number;
-  /** Мест на занятиях с лимитом и сколько на них пришло. */
-  capacity: number;
-  capAttended: number;
 };
-
-export type ClassesData = { rows: ClassRow[]; names: Record<string, string> };
 
 export type TrialRow = {
   studioId: string;
   date: string;
-  membershipId: string;
+  /** Членство / пакет услуг пробного. */
+  membership: string;
   trials: number;
   attended: number;
   day0: number;
@@ -110,14 +84,19 @@ export type TrialRow = {
   open: number;
 };
 
-export type TrialsData = { rows: TrialRow[]; names: Record<string, string> };
-
 export type ZeroRow = {
   studioId: string;
-  kind: "membership" | "other";
   name: string;
+  category: string;
   count: number;
   lastOn: string;
 };
 
 export type Period = { from: string; to: string };
+
+/** Права в разделе (RPC an_access): все клубы, загрузка и справочники, свои города. */
+export type AnAccess = { view: boolean; manage: boolean; cities: string[] };
+
+/** Видит ли сотрудник раздел (рейка, меню). */
+export const anVisible = (a: AnAccess | undefined) =>
+  !!a && (a.view || a.manage || a.cities.length > 0);

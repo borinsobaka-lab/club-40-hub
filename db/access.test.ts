@@ -208,17 +208,7 @@ describe.skipIf(!url)("доступы и роли (база)", () => {
       const [{ s }] = await tx`select sections s from admin_studio_permissions
                                 where user_id = ${sonya} and studio_id = ${s1}`;
       expect((s as string[]).sort()).toEqual(
-        [
-          "analytics",
-          "client-memberships",
-          "clients",
-          "dashboard",
-          "feedback",
-          "nps",
-          "requests",
-          "sales",
-          "schedule",
-        ],
+        ["client-memberships", "clients", "dashboard", "feedback", "nps", "requests", "sales", "schedule"],
       );
 
       // Цикл в дереве не даёт база.

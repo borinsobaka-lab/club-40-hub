@@ -947,24 +947,33 @@ AUTH_SETUP.md.
   «Рабочий день»: клубам с «Сабуртало» / «Ваке» в названии, если у клуба
   ещё нет блоков (время не проставлено; имена клиентов из примера отчёта
   не перенесены). «Просрочено» считает браузер. Тесты — `db/workday.test.ts`.
-  **«Аналитика» — отчёты сети** (решение владельца 2026-10-26: вместо
-  портала аналитики Lady Stretch; что было у них, правила расчёта и что
-  дальше — ANALYTICS.md): `db/migrations/2026-10-26_zz_analytics.sql` —
-  раздел клуба `club.analytics` в каталоге прав (у «Куратора клубов» —
-  включён) и сетевое право `analytics.manage` («точка 0 и статус клубов»);
-  клубы отчётов — `auth_analytics_studio_ids()` (роль в клубе и открытый
-  раздел analytics; владельцу — всегда); `analytics_studio_settings`
-  (точка 0 — месячная выручка «в ноль», `closed_on` — закрыт с; пишет только
-  RPC `analytics_settings_save`). Отчёты — RPC (security definer, только
-  агрегаты, строки массивами в jsonb, корзина день / месяц):
-  `analytics_scope`, `analytics_revenue` (поступившие деньги, как
-  «Фактическая выручка» дашборда), `analytics_sales` (вид продажи
-  new / renewal / return / single / trial — внутренняя
-  `analytics_sale_origins`, как `classifySales` дашборда; деньги по дате
-  поступления и число оплаченных продаж для среднего чека),
-  `analytics_classes`, `analytics_trials` (дата пробного — первое посещение
-  по нему, покупка за 14 дней), `analytics_zero`. Источник — только наша
-  база (клубы на 1С и FitBase — следующий этап). Тесты — `db/analytics.test.ts`.
+  **«Аналитика сети» — студии на своих учётных системах** (решение
+  владельца 2026-10-26: вместо портала аналитики Lady Stretch; с нашими
+  клубами, продажами и расписанием НЕ связана — у них дашборд; что было у
+  Lady Stretch, правила расчёта, загрузка и что дальше — ANALYTICS.md):
+  `db/migrations/2026-10-26_zzz_analytics_network.sql` (первая версия
+  `2026-10-26_zz_analytics.sql` — отчёты по нашим продажам, раздел клуба
+  `club.analytics`, `analytics_*` — удалена этим файлом). Студии сети —
+  `an_studios` (название в учётной системе × `source` 1c / fitbase / adis /
+  mobifitness / other: город, партнёр, бренд, `closed_on`, `needs_review`),
+  точка 0 — `an_city_targets` (на город), номенклатура — `an_nomenclature`
+  (код → категория: только `subscription` идёт в продажи, только `trial` —
+  в воронку), загрузки — `an_imports` (status loading / done; отчёты видят
+  только done; новая загрузка заменяет данные того же вида у своих студий за
+  свой период), факты — `an_revenue`, `an_sales` (клиент — только хэш
+  SHA-256 из браузера), `an_classes`, `an_visits` (удаление загрузки —
+  каскадом), города партнёров — `an_user_cities`. Права — сетевые
+  `analytics.view` (все студии), `analytics.cities` (свои города),
+  `analytics.manage` (загрузка и справочники); стартовые роли «Аналитика
+  сети» и «Партнёр — аналитика»; вне модели прав — владелец клуба
+  (`an_has`). Напрямую читаются только `an_nomenclature` и `an_imports`
+  (manage), остальное — RPC: `an_access`, `an_scope`, отчёты
+  `an_revenue_report` / `an_sales_report` / `an_classes_report` /
+  `an_trials_report` / `an_zero_report` (студии — `auth_an_studio_ids()`,
+  агрегаты массивами в jsonb), загрузка `an_import_start` / `an_import_rows`
+  / `an_import_finish` / `an_import_delete`, справочники `an_studios_list`,
+  `an_studio_save`, `an_nomenclature_set`, `an_city_target_save`,
+  `an_partners_list`, `an_partner_cities_save`. Тесты — `db/analytics.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

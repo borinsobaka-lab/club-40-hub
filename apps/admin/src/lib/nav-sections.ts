@@ -11,10 +11,12 @@ import {
   BellBing,
   BillList,
   Bolt,
+  Buildings2,
   CalendarMinimalistic,
   Card,
   Chart2,
   ChartSquare,
+  City,
   ChatRoundDots,
   ClipboardCheck,
   ClipboardList,
@@ -22,12 +24,13 @@ import {
   CupStar,
   DocumentText,
   Dumbbell,
+  Flag,
   GraphNewUp,
   GraphUp,
   HandHeart,
+  HandShake,
   History,
   HomeSmile,
-  MapPoint,
   MoneyBag,
   Notebook,
   PieChart2,
@@ -40,6 +43,7 @@ import {
   TagPrice,
   Target,
   TicketSale,
+  UploadMinimalistic,
   UserId,
   UsersGroupRounded,
   WalletMoney,
@@ -48,15 +52,14 @@ import {
   type NavIcon,
 } from "@/components/nav-icons";
 import {
-  analyticsStudioIds,
   canOpenClubSection,
   canOpenRail,
   dashboardStudioIds,
-  hasRight,
   type AdminAccess,
   type ClubSectionKey,
 } from "@/lib/admin-access";
 import type { AccessRight } from "@/lib/access/logic";
+import { anVisible } from "@/lib/analytics/types";
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
@@ -233,24 +236,32 @@ export const DASHBOARD_ITEMS: NavItem[] = [
 ];
 
 /**
- * «Аналитика» (2026-10-26, ANALYTICS.md) — отчёты сети вместо портала
- * аналитики Lady Stretch: раздел рейки над клубами со своим меню. В отчётах
- * — клубы, где у сотрудника открыт раздел клуба analytics (партнёру — свои,
- * куратору — закреплённые, УК — все); «Настройки» (точка 0 и закрытие
- * клуба) — по праву analytics.manage, проверяет страница и база.
+ * «Аналитика сети» (2026-10-26, ANALYTICS.md) — отчёты для клубов сети,
+ * которые ведут учёт в своих системах (1С, FitBase, АДИС, Мобифитнес…), а не
+ * в нашей CRM: то, что Lady Stretch показывала партнёрам в своём портале
+ * аналитики. С нашими клубами не связана — у них «Дашборд». Отчёты видят
+ * права «Аналитика сети: все клубы» и «свои города» (партнёр), блок «Данные»
+ * (загрузка выгрузок и справочники) — «загрузка и справочники».
  */
 export const ANALYTICS_URL = "/analytics";
 export const ANALYTICS_ITEMS: NavItem[] = [
-  { title: "Мой город", url: ANALYTICS_URL, icon: MapPoint, exact: true },
+  { title: "Мой город", url: ANALYTICS_URL, icon: City, exact: true },
   { title: "Выручка", url: "/analytics/revenue", icon: GraphNewUp },
   { title: "Продажи абонементов", url: "/analytics/sales", icon: Card },
   { title: "Занятия", url: "/analytics/classes", icon: Dumbbell },
   { title: "Воронка пробных", url: "/analytics/trials", icon: Target },
   { title: "Нулевая номенклатура", url: "/analytics/zero", icon: TagPrice },
-  { title: "Рейтинг клубов", url: "/analytics/rating", icon: CupStar },
-  { title: "Настройки", url: "/analytics/settings", icon: Settings },
+  { title: "Рейтинг", url: "/analytics/rating", icon: CupStar },
 ];
-export const ANALYTICS_SETTINGS_URL = "/analytics/settings";
+/** Блок «Данные»: загрузка выгрузок и справочники (право analytics.manage). */
+export const ANALYTICS_DATA_ITEMS: NavItem[] = [
+  { title: "Загрузка данных", url: "/analytics/upload", icon: UploadMinimalistic },
+  { title: "Студии", url: "/analytics/studios", icon: Buildings2 },
+  { title: "Номенклатура", url: "/analytics/nomenclature", icon: TagPrice },
+  { title: "Точка 0", url: "/analytics/targets", icon: Flag },
+  { title: "Доступ партнёров", url: "/analytics/partners", icon: HandShake },
+];
+const ANALYTICS_PATHS = [...ANALYTICS_ITEMS, ...ANALYTICS_DATA_ITEMS].map((i) => i.url);
 
 /** Разделы студии в форме «Доступов»: дашборд и меню клуба. */
 export const STUDIO_SECTION_GROUPS: NavGroup<ClubNavItem>[] = [
@@ -381,15 +392,6 @@ export const SECTIONS: RailSection[] = [
     icon: Widget5,
     paths: DASHBOARD_ITEMS.map((i) => i.url),
   },
-  // Отчёты сети по клубам (бывший портал аналитики Lady Stretch).
-  {
-    key: "analytics",
-    title: "Анали\u00ADтика",
-    fullTitle: "Аналитика — отчёты сети",
-    url: ANALYTICS_URL,
-    icon: Chart2,
-    paths: ANALYTICS_ITEMS.slice(1).map((i) => i.url),
-  },
   // Вход в клуб — первая страница его меню; закрытую в активной студии
   // AccessGate сменит на первую доступную. «Сотрудники» — тоже в меню клуба.
   { key: "club", title: "Клуб", url: CLUB_GROUPS[0].items[0].url, icon: HomeSmile },
@@ -419,6 +421,16 @@ export const SECTIONS: RailSection[] = [
     url: ACADEMY_URL,
     icon: SquareAcademicCap,
     paths: ACADEMY_ITEMS.slice(1).map((i) => i.url),
+  },
+  // Аналитика клубов сети на своих учётных системах (бывший портал
+  // аналитики Lady Stretch) — в конце рейки (решение владельца 2026-10-26).
+  {
+    key: "analytics",
+    title: "Анали\u00ADтика",
+    fullTitle: "Аналитика сети — клубы на 1С, FitBase и других системах",
+    url: ANALYTICS_URL,
+    icon: Chart2,
+    paths: ANALYTICS_PATHS.slice(1),
   },
 ];
 
@@ -516,10 +528,9 @@ export function canOpenPath(
   // Дашборд над студиями: открыт, если открыт хоть в одной студии.
   if (section === "dashboard") return dashboardStudioIds(access).length > 0;
   if (section === "analytics")
-    return (
-      analyticsStudioIds(access).length > 0 &&
-      (!matches(pathname, ANALYTICS_SETTINGS_URL) || hasRight(access, "analytics.manage"))
-    );
+    return ANALYTICS_DATA_ITEMS.some((i) => matches(pathname, i.url))
+      ? !!access.analytics?.manage
+      : anVisible(access.analytics);
   if (section === "app" || section === "scripts") return canOpenRail(access, section);
   if (section === "club") {
     // «Сотрудники» общие для клубов: право — раздел рейки, не раздел клуба.

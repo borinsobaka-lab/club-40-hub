@@ -7,6 +7,7 @@ import type { AdminAccess, AdminSectionKey, ClubSectionKey } from "@/lib/admin-a
 import { kbLevelOf, type KbLevel } from "@/lib/kb/access";
 import { kbBasesQuery, kbOwnGrantsQuery } from "@/lib/kb/data";
 import { acadAccessQuery } from "@/lib/academy/data";
+import { analyticsAccessQuery } from "@/lib/analytics/data";
 import { accessMeQuery } from "@/lib/access/data";
 import { ACCESS_RIGHTS, type AccessRight } from "@/lib/access/logic";
 
@@ -58,8 +59,17 @@ export function useAdminAccess(): AdminAccess | null {
   const { data: kbGrants, isLoading: kbGrantsLoading } = useQuery(kbOwnGrantsQuery);
   const { data: academy, isLoading: academyLoading } = useQuery(acadAccessQuery);
   const { data: me, isLoading: meLoading } = useQuery(accessMeQuery);
+  const { data: analytics, isLoading: analyticsLoading } = useQuery(analyticsAccessQuery);
 
-  if (studiosLoading || isLoading || kbLoading || kbGrantsLoading || academyLoading || meLoading)
+  if (
+    studiosLoading ||
+    isLoading ||
+    kbLoading ||
+    kbGrantsLoading ||
+    academyLoading ||
+    meLoading ||
+    analyticsLoading
+  )
     return null;
   const list = studios ?? [];
   // Вне новой модели (прежние правила): владелец клуба — администратор сети.
@@ -82,6 +92,7 @@ export function useAdminAccess(): AdminAccess | null {
     manageStudioIds: me?.manage_studio_ids ?? [],
     kb,
     academy,
+    analytics,
     rail: legacyOwner ? null : (own?.rail ?? null),
     studios: Object.fromEntries(
       list.map((s) => [
