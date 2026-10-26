@@ -14,20 +14,12 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { canEditKb } from "@/lib/kb/access";
 import { kbBasesQuery, snippetParts, useKbNodeTags, useKbSearch, useKbTree } from "@/lib/kb/data";
 import { kbTagColor, matchTags, tagArticleCounts } from "@/lib/kb/tags";
+import { KB_TABS_SLOT } from "@/lib/kb/header-layout";
 import { kbIcon } from "@/lib/kb/icons";
 import { ancestorsOf, indexTree, readerNodes, type KbTreeIndex } from "@/lib/kb/tree";
 import { KB_LAST_BASE_KEY, useMyKbBases } from "@/lib/kb/my-bases";
 import { kbBaseIdOf } from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
-
-/**
- * Место вкладок в шапке. С lg поиск — по центру шапки (решение владельца
- * 2026-10-25): вкладки и правая часть (AdminShell) тянутся поровну
- * (flex-1 basis-0); вкладкам шире своей половины min-width auto не даёт
- * сжаться — поиск сдвигается вправо, а предел max-w оставляет место
- * поиску, теме и «Обновить», дальше вкладки прокручиваются.
- */
-const KB_TABS_SLOT = "min-w-0 flex-1 lg:min-w-auto lg:basis-0 lg:max-w-[calc(100%-26.5rem)]";
 
 /**
  * Вкладки баз знаний в шапке (решение владельца 2026-10-25): раздел рейки
@@ -109,9 +101,10 @@ export function KbBaseTabs() {
 }
 
 /**
- * Поиск по открытой базе — в шапке справа от вкладок (вместо поиска
- * клиента, решение владельца 2026-10-25). Результаты — списком под полем;
- * «Только в …» сужает поиск до папки, где стоим. Стрелка вниз из поля —
+ * Поиск по открытой базе — по центру шапки (вместо поиска клиента,
+ * решение владельца 2026-10-25; раскладка — lib/kb/header-layout.ts).
+ * Результаты — списком под полем; «Только в …» сужает поиск до папки, где
+ * стоим. Стрелка вниз из поля —
  * к результатам, Esc — стереть.
  */
 export function KbHeaderSearch({ baseId, className }: { baseId: string; className?: string }) {
