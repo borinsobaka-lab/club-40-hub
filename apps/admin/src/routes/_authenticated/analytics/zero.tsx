@@ -16,22 +16,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { zeroQuery } from "@/lib/analytics/data";
-import { ANALYTICS_TITLES, ZERO_TILES } from "@/lib/analytics/labels";
+import { ANALYTICS_TITLES, CATEGORY_LABEL, ZERO_TILES } from "@/lib/analytics/labels";
 import { zeroTree } from "@/lib/analytics/logic";
 import { formatDate, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/analytics/zero")({
-  head: () => ({ meta: [{ title: "Нулевая номенклатура — Аналитика — Base40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Нулевая номенклатура — Аналитика сети — Base40 Admin" }] }),
   pendingComponent: AnalyticsZeroPageSkeleton,
   component: ZeroPage,
 });
 
-const KIND = { membership: "Абонемент", other: "Прочая продажа" } as const;
 const num = "text-right [&>span]:justify-end";
 
 function ZeroPage() {
   return (
-    <AnalyticsShell title={ANALYTICS_TITLES.zero} skeleton={<AnalyticsZeroBodySkeleton />}>
+    <AnalyticsShell
+      title={ANALYTICS_TITLES.zero}
+      kinds={["sales"]}
+      skeleton={<AnalyticsZeroBodySkeleton />}
+    >
       {(view) => <ZeroBody {...view} />}
     </AnalyticsShell>
   );
@@ -57,17 +60,17 @@ function ZeroBody({ studios, ids, period, today }: AnalyticsView) {
       </KpiGrid>
       <TableCard
         title="Продажи с нулём"
-        tip="Город → клуб → номенклатура. Пробные исключены: у них ноль бывает штатно."
+        tip="Город → студия → номенклатура. «Пробное занятие» исключено: у него ноль бывает штатно."
       >
         {!q.isLoading && tree.length === 0 ? (
-          <EmptyBlock>Продаж с нулевой суммой за период нет</EmptyBlock>
+          <EmptyBlock>Строк продаж с нулевой стоимостью за период нет</EmptyBlock>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Город / клуб / номенклатура</TableHead>
-                <TableHead>Вид</TableHead>
-                <TableHead className={num}>Продаж</TableHead>
+                <TableHead>Категория</TableHead>
+                <TableHead className={num}>Строк</TableHead>
                 <TableHead className={num}>Последняя</TableHead>
               </TableRow>
             </TableHeader>
@@ -92,9 +95,11 @@ function ZeroBody({ studios, ids, period, today }: AnalyticsView) {
                           <TableCell />
                         </TableRow>
                         {items.map((i) => (
-                          <TableRow key={`${studio.id}:${i.kind}:${i.name}`}>
+                          <TableRow key={`${studio.id}:${i.category}:${i.name}`}>
                             <TableCell className="pl-10">{i.name}</TableCell>
-                            <TableCell className="text-muted-foreground">{KIND[i.kind]}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {CATEGORY_LABEL[i.category] ?? i.category}
+                            </TableCell>
                             <TableCell className="text-right">{formatNumber(i.count)}</TableCell>
                             <TableCell className="text-right">{formatDate(i.lastOn)}</TableCell>
                           </TableRow>

@@ -16,7 +16,7 @@ import { formatRate, monthLabel, rating, type RankBy } from "@/lib/analytics/log
 import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/analytics/rating")({
-  head: () => ({ meta: [{ title: "Рейтинг клубов — Аналитика — Base40 Admin" }] }),
+  head: () => ({ meta: [{ title: "Рейтинг — Аналитика сети — Base40 Admin" }] }),
   pendingComponent: AnalyticsRatingPageSkeleton,
   component: RatingPage,
 });
@@ -26,6 +26,7 @@ function RatingPage() {
     <AnalyticsShell
       title={ANALYTICS_TITLES.rating}
       mode="month"
+      kinds={["visits", "sales"]}
       skeleton={<AnalyticsRatingBodySkeleton />}
     >
       {(view) => <RatingBody {...view} />}
@@ -34,7 +35,7 @@ function RatingPage() {
 }
 
 function RatingBody({ studios, ids, period }: AnalyticsView) {
-  const [by, setBy] = useState<RankBy>("club");
+  const [by, setBy] = useState<RankBy>("city");
   const trials = useQuery(trialsQuery(ids, period, "month"));
   const sales = useQuery(salesQuery(ids, period, "month"));
   const loading = trials.isLoading || sales.isLoading;
@@ -43,10 +44,10 @@ function RatingBody({ studios, ids, period }: AnalyticsView) {
     return <InfoNote variant="warning">Не удалось загрузить рейтинг. Обновите страницу.</InfoNote>;
   const r =
     trials.data && sales.data
-      ? rating({ studios, trials: trials.data.rows, sales: sales.data, by })
+      ? rating({ studios, trials: trials.data, sales: sales.data, by })
       : null;
-  const cities = new Set(studios.map((s) => s.city ?? "")).size;
-  const empty = by === "club" ? "Нет клубов с данными за месяц" : "Нет городов с данными за месяц";
+
+  const empty = by === "club" ? "Нет студий с данными за месяц" : "Нет городов с данными за месяц";
 
   return (
     <div className="space-y-3">
@@ -54,17 +55,15 @@ function RatingBody({ studios, ids, period }: AnalyticsView) {
         <p className="text-sm text-muted-foreground first-letter:uppercase">
           Топ-10 за {monthLabel(period.from, true)}
         </p>
-        {cities > 1 && (
-          <SegmentedControl
-            aria-label="Рейтинг"
-            value={by}
-            onChange={setBy}
-            options={[
-              { value: "club", label: "Клубы" },
-              { value: "city", label: "Города" },
-            ]}
-          />
-        )}
+        <SegmentedControl
+          aria-label="Рейтинг"
+          value={by}
+          onChange={setBy}
+          options={[
+            { value: "city", label: "Города" },
+            { value: "club", label: "Студии" },
+          ]}
+        />
       </div>
       <div className="grid gap-3 xl:grid-cols-2">
         {(["day0", "d14"] as const).map((k) => (

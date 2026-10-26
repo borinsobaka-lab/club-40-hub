@@ -1,10 +1,10 @@
 /**
- * «Аналитика» — расчёты без React и Supabase (тест — logic.test.ts): клубы
- * по городам, недели месяца, прогноз, точка 0, сравнения периодов, сводки
- * продаж, занятий и пробных, рейтинг клубов. Правила — как у прежнего
- * портала Lady Stretch (ANALYTICS.md): итоговые доли считаются из итоговых
- * числителя и знаменателя, а не средним по строкам; нет знаменателя — null
- * («—»), а не ноль.
+ * «Аналитика сети» — расчёты без React и Supabase (тест — logic.test.ts):
+ * студии по городам, недели месяца, прогноз, точка 0 города, сравнения
+ * периодов, сводки продаж, занятий и пробных, рейтинг. Правила — как в
+ * портале аналитики Lady Stretch (ANALYTICS.md): итоговые доли и средние —
+ * из итоговых числителя и знаменателя, нет знаменателя — null («—»);
+ * сегодняшний день в факт и прогноз выручки не попадает.
  */
 import {
   addDays,
@@ -33,11 +33,12 @@ import type {
 export const NO_CITY = "Без города";
 
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
+const byName = (a: string, b: string) => a.localeCompare(b, "ru");
 
 // ---------------------------------------------------------------------------
-// Клубы и города
+// Студии и города
 
-/** Клуб закрыт к этому дню (closed_on — первый день закрытия). */
+/** Студия закрыта к этому дню (closed_on — первый день закрытия). */
 export function isClosed(studio: Pick<AnStudio, "closedOn">, today: string): boolean {
   return !!studio.closedOn && studio.closedOn <= today;
 }
@@ -53,7 +54,7 @@ export type StudioFilter = {
 
 export const cityOf = (s: Pick<AnStudio, "city">) => s.city?.trim() || NO_CITY;
 
-/** Клубы под фильтрами страницы. */
+/** Студии под фильтрами страницы. */
 export function filterStudios(studios: AnStudio[], f: StudioFilter, today: string): AnStudio[] {
   return studios.filter(
     (s) =>
@@ -66,13 +67,11 @@ export function filterStudios(studios: AnStudio[], f: StudioFilter, today: strin
 
 export type CityGroup = { city: string; open: boolean; studios: AnStudio[] };
 
-const byName = (a: string, b: string) => a.localeCompare(b, "ru");
-
 /**
- * Клубы по городам. Порядок — как в отчётах Lady Stretch: сначала города,
- * где есть открытые клубы, по алфавиту, затем города только с закрытыми;
- * внутри — открытые клубы по алфавиту, затем закрытые. «Без города» — в
- * конце своей части.
+ * Студии по городам. Порядок — как в отчётах Lady Stretch: сначала города,
+ * где есть открытые студии, по алфавиту, затем города только с закрытыми;
+ * внутри — открытые по алфавиту, затем закрытые. «Без города» — в конце
+ * своей части.
  */
 export function groupByCity(studios: AnStudio[], today: string): CityGroup[] {
   const map = new Map<string, AnStudio[]>();
@@ -96,9 +95,30 @@ export function groupByCity(studios: AnStudio[], today: string): CityGroup[] {
   );
 }
 
-/** Города клубов (для фильтра) — в том же порядке, что в отчётах. */
+/** Города студий (для фильтра) — в том же порядке, что в отчётах. */
 export function cityNames(studios: AnStudio[], today: string): string[] {
   return groupByCity(studios, today).map((g) => g.city);
+}
+
+/**
+ * Точка 0 набора студий: сумма точек 0 их городов (у города она одна на все
+ * его студии, как в справочнике Lady Stretch). Только если набор — целые
+ * города: для отдельной студии города точку 0 не показываем.
+ */
+export function pointZeroOf(
+  list: AnStudio[],
+  all: AnStudio[],
+  targets: Record<string, number>,
+): number | null {
+  const cities = [...new Set(list.map(cityOf))];
+  if (cities.length === 0) return null;
+  const whole = cities.every((c) =>
+    all.filter((s) => cityOf(s) === c).every((s) => list.some((x) => x.id === s.id)),
+  );
+  if (!whole) return null;
+  const known = cities.filter((c) => targets[c] !== undefined);
+  if (known.length === 0) return null;
+  return known.reduce((sum, c) => sum + targets[c], 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +165,7 @@ export type Week = { from: string; to: string; label: string };
 
 /**
  * Календарные недели месяца — понедельник–воскресенье, обрезанные границами
- * месяца (как в «Выручке» Lady Stretch: 1–4, 5–11, …, 26–31).
+ * месяца (как в «Выручке» Lady Stretch: август 2026 — 1–2, 3–9, …, 31–31).
  */
 export function monthWeeks(monthStart: string): Week[] {
   const start = parseISO(monthStart);
@@ -153,7 +173,6 @@ export function monthWeeks(monthStart: string): Week[] {
   const weeks: Week[] = [];
   let from = start;
   while (from <= end) {
-    // getDay: 0 — воскресенье.
     const toSunday = (7 - from.getDay()) % 7;
     const to = addDays(from, toSunday) > end ? end : addDays(from, toSunday);
     weeks.push({ from: iso(from), to: iso(to), label: `${from.getDate()}–${to.getDate()}` });
@@ -162,16 +181,21 @@ export function monthWeeks(monthStart: string): Week[] {
   return weeks;
 }
 
+/** Последний учитываемый день: сегодняшний в факт и прогноз не попадает. */
+export function lastFullDay(today: string): string {
+  return iso(addDays(parseISO(today), -1));
+}
+
 /**
  * Прогноз месяца по среднему дневному темпу: выручка за прошедшие полные
- * дни (до вчера) / их число × дней в месяце. Только для текущего месяца; 1-го
- * числа прошедших дней нет — null.
+ * дни / их число × дней в месяце. Только для текущего месяца; 1-го числа —
+ * null.
  */
-export function forecast(netBeforeToday: number, monthStart: string, today: string): number | null {
+export function forecast(netToYesterday: number, monthStart: string, today: string): number | null {
   if (monthPeriod(today).from !== monthStart) return null;
   const elapsed = parseISO(today).getDate() - 1;
   if (elapsed <= 0) return null;
-  return (netBeforeToday / elapsed) * getDaysInMonth(parseISO(monthStart));
+  return (netToYesterday / elapsed) * getDaysInMonth(parseISO(monthStart));
 }
 
 // ---------------------------------------------------------------------------
@@ -196,9 +220,10 @@ export function change(current: number | null, previous: number | null): number 
 // ---------------------------------------------------------------------------
 // Выручка
 
-export const net = (r: RevenueRow) => r.membership + r.other - r.refunds;
+/** «Приход минус расход». */
+export const net = (r: RevenueRow) => r.income - r.expense;
 
-/** Выручка клубов за даты [from, to] (строки — по дням или по месяцам). */
+/** Выручка студий за даты [from, to] (строки — по дням или по месяцам). */
 export function sumRevenue(rows: RevenueRow[], ids: Set<string>, from: string, to: string): number {
   let sum = 0;
   for (const r of rows) if (ids.has(r.studioId) && r.date >= from && r.date <= to) sum += net(r);
@@ -210,12 +235,12 @@ export type RevenueLine = {
   label: string;
   closed: boolean;
   weeks: number[];
-  /** Выручка месяца (с сегодняшним днём). */
+  /** Выручка месяца (у текущего — по вчера). */
   fact: number;
   forecast: number | null;
   pointZero: number | null;
-  /** Прогноз (у прошедшего месяца — факт) к точке 0, %. */
-  pointZeroRate: number | null;
+  /** Прогноз (у прошедшего месяца — факт) минус точка 0. */
+  pointZeroDiff: number | null;
   /** Прошлые месяцы — от ближнего к дальнему. */
   history: number[];
   studios: number;
@@ -230,61 +255,64 @@ export type RevenueTable = {
 };
 
 /**
- * Таблица «Выручка»: город → клубы, недели выбранного месяца, факт, прогноз,
- * точка 0 и прошлые месяцы. `days` — выручка по дням выбранного месяца,
+ * Таблица «Выручка»: город → студии, недели выбранного месяца, факт,
+ * прогноз, точка 0 и прошлые месяцы. `days` — выручка по дням месяца,
  * `months` — по месяцам истории (корзина month). Прогноз города и сети — от
- * их суммарной выручки, а не сумма округлённых прогнозов клубов.
+ * их суммарной выручки. Точка 0 — у города и сети; у студии — нет.
  */
 export function revenueTable(input: {
   studios: AnStudio[];
+  all: AnStudio[];
+  targets: Record<string, number>;
   days: RevenueRow[];
   months: RevenueRow[];
   month: string;
   today: string;
   history: number;
 }): RevenueTable {
-  const { studios, days, months, month, today, history } = input;
+  const { studios, all, targets, days, months, month, today, history } = input;
   const weeks = monthWeeks(month);
   const historyMonths = monthStarts(iso(addMonths(parseISO(month), -1)), history).reverse();
-  const end = monthPeriod(month).to;
   const current = monthPeriod(today).from === month;
-  const yesterday = iso(addDays(parseISO(today), -1));
+  const end = current ? lastFullDay(today) : monthPeriod(month).to;
 
-  const line = (key: string, label: string, list: AnStudio[], closed: boolean): RevenueLine => {
+  const line = (
+    key: string,
+    label: string,
+    list: AnStudio[],
+    closed: boolean,
+    withTarget: boolean,
+  ): RevenueLine => {
     const ids = new Set(list.map((s) => s.id));
     const fact = sumRevenue(days, ids, month, end);
-    const fc = forecast(sumRevenue(days, ids, month, yesterday), month, today);
-    const zeros = list.map((s) => s.pointZero).filter((v): v is number => v !== null);
-    // Точка 0 города — только если задана у всех его открытых клубов.
-    const open = list.filter((s) => !isClosed(s, today));
-    const pointZero =
-      zeros.length > 0 && open.every((s) => s.pointZero !== null)
-        ? open.reduce((sum, s) => sum + (s.pointZero ?? 0), 0) || null
-        : null;
+    const fc = forecast(fact, month, today);
+    const pointZero = withTarget ? pointZeroOf(list, all, targets) : null;
     const reach = current ? fc : fact;
     return {
       key,
       label,
       closed,
-      weeks: weeks.map((w) => sumRevenue(days, ids, w.from, w.to)),
+      weeks: weeks.map((w) =>
+        w.from > end ? 0 : sumRevenue(days, ids, w.from, w.to < end ? w.to : end),
+      ),
       fact,
       forecast: fc,
       pointZero,
-      pointZeroRate: pointZero && reach !== null ? rate(reach, pointZero) : null,
+      pointZeroDiff: pointZero !== null && reach !== null ? reach - pointZero : null,
       history: historyMonths.map((m) => sumRevenue(months, ids, m, monthPeriod(m).to)),
       studios: list.length,
     };
   };
 
   const cities = groupByCity(studios, today).map((g) => ({
-    line: line(`city:${g.city}`, g.city, g.studios, !g.open),
-    studios: g.studios.map((s) => line(s.id, s.name, [s], isClosed(s, today))),
+    line: line(`city:${g.city}`, g.city, g.studios, !g.open, true),
+    studios: g.studios.map((s) => line(s.id, s.name, [s], isClosed(s, today), false)),
   }));
   return {
     month,
     weeks,
     historyMonths,
-    total: line("total", "Итого по сети", studios, false),
+    total: line("total", "Итого по сети", studios, false, true),
     cities,
   };
 }
@@ -292,64 +320,57 @@ export function revenueTable(input: {
 // ---------------------------------------------------------------------------
 // Продажи абонементов
 
-/** Абонементы (то, что Lady Stretch называет «продажи абонементов»). */
-export const MEMBERSHIP_ORIGINS: SaleOrigin[] = ["new", "renewal", "return"];
-/** Повторные — продления и возвраты. */
+/** Повторные — продления и возвращённые. */
 export const REPEAT_ORIGINS: SaleOrigin[] = ["renewal", "return"];
 
 export type SalesSummary = {
-  /** Продано абонементов (новые + продления + возвраты), без пробных и разовых. */
+  /** Оплаченных продаж абонементов. */
   sold: number;
   newSold: number;
   repeatSold: number;
   renewals: number;
   returns: number;
-  singles: number;
-  trials: number;
-  /** Сумма продаж (номинал) абонементов. */
-  soldAmount: number;
-  /** Поступило минус возвраты — все виды продаж абонементов, кроме пробных. */
+  /** Без кода клиента — новый или повторный не определить. */
+  unknown: number;
+  /** Оплаты по продажам абонементов. */
   paid: number;
   newPaid: number;
   repeatPaid: number;
-  /** Средний чек: поступившее / продаж с поступлением в периоде. */
+  /** Сумма продаж (стоимость) абонементов. */
+  cost: number;
+  /** Средний чек — оплаты / продажи (у Lady Stretch — по сумме оплат). */
   avgCheck: number | null;
   avgNew: number | null;
   avgRepeat: number | null;
 };
 
 export function salesSummary(data: SalesData, ids: Set<string>): SalesSummary {
-  const count = (origins: SaleOrigin[]) =>
-    data.sold
-      .filter((r) => ids.has(r.studioId) && origins.includes(r.origin))
-      .reduce((s, r) => s + r.count, 0);
-  const money = (origins: SaleOrigin[]) => {
-    let paid = 0;
+  const pick = (origins: SaleOrigin[] | null) => {
     let n = 0;
-    for (const r of data.paidTotal) {
-      if (!ids.has(r.studioId) || !origins.includes(r.origin)) continue;
-      paid += r.income - r.refunds;
-      n += r.paidSales;
+    let paid = 0;
+    let cost = 0;
+    for (const r of data.sold) {
+      if (!ids.has(r.studioId) || (origins && !origins.includes(r.origin))) continue;
+      n += r.count;
+      paid += r.paid;
+      cost += r.cost;
     }
-    return { paid, n };
+    return { n, paid, cost };
   };
-  const all = money([...MEMBERSHIP_ORIGINS, "single"]);
-  const fresh = money(["new"]);
-  const repeat = money(REPEAT_ORIGINS);
+  const all = pick(null);
+  const fresh = pick(["new"]);
+  const repeat = pick(REPEAT_ORIGINS);
   return {
-    sold: count(MEMBERSHIP_ORIGINS),
-    newSold: count(["new"]),
-    repeatSold: count(REPEAT_ORIGINS),
-    renewals: count(["renewal"]),
-    returns: count(["return"]),
-    singles: count(["single"]),
-    trials: count(["trial"]),
-    soldAmount: data.sold
-      .filter((r) => ids.has(r.studioId) && MEMBERSHIP_ORIGINS.includes(r.origin))
-      .reduce((s, r) => s + r.amount, 0),
+    sold: all.n,
+    newSold: fresh.n,
+    repeatSold: repeat.n,
+    renewals: pick(["renewal"]).n,
+    returns: pick(["return"]).n,
+    unknown: pick(["unknown"]).n,
     paid: all.paid,
     newPaid: fresh.paid,
     repeatPaid: repeat.paid,
+    cost: all.cost,
     avgCheck: ratio(all.paid, all.n),
     avgNew: ratio(fresh.paid, fresh.n),
     avgRepeat: ratio(repeat.paid, repeat.n),
@@ -361,24 +382,23 @@ export type MonthPoint = {
   label: string;
   newSold: number;
   repeatSold: number;
+  sold: number;
   paid: number;
 };
 
-/** Продажи по месяцам (данные с корзиной month): новые, повторные, деньги. */
+/** Продажи по месяцам (данные с корзиной month). */
 export function salesByMonth(data: SalesData, ids: Set<string>, months: string[]): MonthPoint[] {
   return months.map((m) => {
-    const sold = data.sold.filter((r) => ids.has(r.studioId) && r.date === m);
-    const paid = data.paid.filter(
-      (r) => ids.has(r.studioId) && r.date === m && r.origin !== "trial",
-    );
+    const rows = data.sold.filter((r) => ids.has(r.studioId) && r.date === m);
+    const count = (o: SaleOrigin[]) =>
+      rows.filter((r) => o.includes(r.origin)).reduce((s, r) => s + r.count, 0);
     return {
       month: m,
       label: monthLabel(m),
-      newSold: sold.filter((r) => r.origin === "new").reduce((s, r) => s + r.count, 0),
-      repeatSold: sold
-        .filter((r) => REPEAT_ORIGINS.includes(r.origin))
-        .reduce((s, r) => s + r.count, 0),
-      paid: paid.reduce((s, r) => s + r.income - r.refunds, 0),
+      newSold: count(["new"]),
+      repeatSold: count(REPEAT_ORIGINS),
+      sold: rows.reduce((s, r) => s + r.count, 0),
+      paid: rows.reduce((s, r) => s + r.paid, 0),
     };
   });
 }
@@ -387,27 +407,26 @@ export type NomenclatureFilter = "all" | "new" | "repeat";
 
 export type NomenclatureLine = { key: string; name: string; count: number; amount: number };
 
-/** «Что покупают»: номенклатуры абонементов по числу продаж. */
+/** «Что покупают»: номенклатуры абонементов по числу продаж (сумма — оплаты). */
 export function nomenclature(
   data: SalesData,
   ids: Set<string>,
   filter: NomenclatureFilter,
-  origins: SaleOrigin[] = MEMBERSHIP_ORIGINS,
 ): NomenclatureLine[] {
-  const allowed = filter === "new" ? ["new"] : filter === "repeat" ? REPEAT_ORIGINS : origins;
   const map = new Map<string, NomenclatureLine>();
   for (const r of data.sold) {
-    if (!ids.has(r.studioId) || !allowed.includes(r.origin)) continue;
-    const key = r.membershipId ?? "none";
-    const line = map.get(key) ?? {
-      key,
-      name: (r.membershipId && data.names[r.membershipId]?.name) || "Без названия",
+    if (!ids.has(r.studioId)) continue;
+    if (filter === "new" && r.origin !== "new") continue;
+    if (filter === "repeat" && !REPEAT_ORIGINS.includes(r.origin)) continue;
+    const line = map.get(r.nomenclatureId) ?? {
+      key: r.nomenclatureId,
+      name: data.names[r.nomenclatureId] ?? "Без названия",
       count: 0,
       amount: 0,
     };
     line.count += r.count;
-    line.amount += r.amount;
-    map.set(key, line);
+    line.amount += r.paid;
+    map.set(r.nomenclatureId, line);
   }
   return [...map.values()].sort((a, b) => b.count - a.count || byName(a.name, b.name));
 }
@@ -417,78 +436,48 @@ export function nomenclature(
 
 export type ClassesSummary = {
   classes: number;
-  personal: number;
   booked: number;
   attended: number;
-  noShow: number;
-  /** Средние на групповом занятии. */
+  /** Средние на занятии: записано / занятий, посетило / занятий. */
   avgBooked: number | null;
   avgAttended: number | null;
-  /** Доходимость: пришли / записались, %. */
+  /** Доходимость: посетило / записано, %. */
   attendance: number | null;
-  /** Заполняемость: пришли / мест на занятиях с лимитом, %. */
-  fill: number | null;
 };
 
 export function classesSummary(rows: ClassRow[], ids: Set<string>): ClassesSummary {
-  const group = rows.filter((r) => ids.has(r.studioId) && r.kind === "group");
-  const sum = (k: keyof ClassRow) => group.reduce((s, r) => s + Number(r[k]), 0);
-  const classes = sum("classes");
-  const booked = sum("booked");
-  const attended = sum("attended");
+  let classes = 0;
+  let booked = 0;
+  let attended = 0;
+  for (const r of rows) {
+    if (!ids.has(r.studioId)) continue;
+    classes += r.classes;
+    booked += r.booked;
+    attended += r.attended;
+  }
   return {
     classes,
-    personal: rows
-      .filter((r) => ids.has(r.studioId) && r.kind === "personal")
-      .reduce((s, r) => s + r.classes, 0),
     booked,
     attended,
-    noShow: sum("noShow"),
     avgBooked: ratio(booked, classes),
     avgAttended: ratio(attended, classes),
     attendance: rate(attended, booked),
-    fill: rate(sum("capAttended"), sum("capacity")),
   };
 }
 
-export type WorkoutLine = {
-  key: string;
-  name: string;
-  classes: number;
-  booked: number;
-  attended: number;
-  attendance: number | null;
-  avgAttended: number | null;
-};
+export type DirectionLine = { key: string; name: string } & ClassesSummary;
 
-/** Направления (тренировки) групповых занятий. */
-export function workoutLines(
-  rows: ClassRow[],
-  names: Record<string, string>,
-  ids: Set<string>,
-): WorkoutLine[] {
-  const map = new Map<string, WorkoutLine>();
-  for (const r of rows) {
-    if (!ids.has(r.studioId) || r.kind !== "group" || !r.workoutId) continue;
-    const line = map.get(r.workoutId) ?? {
-      key: r.workoutId,
-      name: names[r.workoutId] ?? "Без названия",
-      classes: 0,
-      booked: 0,
-      attended: 0,
-      attendance: null,
-      avgAttended: null,
-    };
-    line.classes += r.classes;
-    line.booked += r.booked;
-    line.attended += r.attended;
-    map.set(r.workoutId, line);
-  }
-  return [...map.values()]
-    .map((l) => ({
-      ...l,
-      attendance: rate(l.attended, l.booked),
-      avgAttended: ratio(l.attended, l.classes),
+/** Направления занятий. */
+export function directionLines(rows: ClassRow[], ids: Set<string>): DirectionLine[] {
+  const names = [...new Set(rows.filter((r) => ids.has(r.studioId)).map((r) => r.direction))];
+  return names
+    .map((name) => ({
+      key: name,
+      name: name || "Без направления",
+      ...classesSummary(
+        rows.filter((r) => r.direction === name),
+        ids,
+      ),
     }))
     .sort((a, b) => b.attended - a.attended || byName(a.name, b.name));
 }
@@ -497,12 +486,13 @@ export function workoutLines(
 // Пробные
 
 export type TrialsSummary = {
+  /** Записей на пробное. */
   trials: number;
   attended: number;
   day0: number;
   d14: number;
   open: number;
-  /** Пришли / пробных, %. */
+  /** Доходимость: пришли / записались, %. */
   attendance: number | null;
   /** Купили в день пробного / пришли, %. */
   day0Rate: number | null;
@@ -527,19 +517,18 @@ export function trialsSummary(rows: TrialRow[], ids: Set<string>): TrialsSummary
   };
 }
 
-/** Пробные по номенклатуре пробного занятия. */
+/** Пробные по виду (членству) пробного. */
 export function trialLines(
   rows: TrialRow[],
-  names: Record<string, string>,
   ids: Set<string>,
 ): ({ key: string; name: string } & TrialsSummary)[] {
-  const keys = [...new Set(rows.filter((r) => ids.has(r.studioId)).map((r) => r.membershipId))];
+  const keys = [...new Set(rows.filter((r) => ids.has(r.studioId)).map((r) => r.membership))];
   return keys
     .map((key) => ({
       key,
-      name: names[key] ?? "Пробное",
+      name: key || "Пробное",
       ...trialsSummary(
-        rows.filter((r) => r.membershipId === key),
+        rows.filter((r) => r.membership === key),
         ids,
       ),
     }))
@@ -567,8 +556,8 @@ export type Rating = {
 };
 
 /**
- * Рейтинг клубов (или городов) за месяц — как «Топ-10» Lady Stretch:
- * покупка в день пробного и за 14 дней (доля от пришедших), продления без
+ * Рейтинг городов (или студий) за месяц — «Топ-10» Lady Stretch: покупка в
+ * день пробного и за 14 дней (доля от пришедших), продления без
  * возвращённых и возвращённые (штук). Без пришедших на пробное в долях не
  * участвует.
  */
@@ -583,10 +572,10 @@ export function rating(input: {
   const groups =
     by === "club"
       ? studios.map((s) => ({ key: s.id, label: s.name, ids: new Set([s.id]) }))
-      : [...new Set(studios.map(cityOf))].map((city) => ({
-          key: city,
-          label: city,
-          ids: new Set(studios.filter((s) => cityOf(s) === city).map((s) => s.id)),
+      : [...new Set(studios.map(cityOf))].map((c) => ({
+          key: c,
+          label: c,
+          ids: new Set(studios.filter((s) => cityOf(s) === c).map((s) => s.id)),
         }));
   const top = (list: RatingEntry[]) =>
     list
@@ -639,7 +628,7 @@ export type ZeroCity = {
   studios: { studio: AnStudio; count: number; items: ZeroRow[] }[];
 };
 
-/** Нулевые продажи: город → клуб → номенклатура (по числу продаж). */
+/** Продажи с нулём: город → студия → номенклатура (по числу строк). */
 export function zeroTree(rows: ZeroRow[], studios: AnStudio[], today: string): ZeroCity[] {
   return groupByCity(studios, today)
     .map((g) => {
@@ -659,13 +648,18 @@ export function zeroTree(rows: ZeroRow[], studios: AnStudio[], today: string): Z
 // ---------------------------------------------------------------------------
 // Вывод
 
-const pctFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
 const decFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+const rubFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
+
+/** Деньги сети — рубли без копеек (клубы сети в России). */
+export function formatRub(v: number | null): string {
+  return v === null || !Number.isFinite(v) ? "—" : `${rubFormat.format(Math.round(v))} ₽`;
+}
 
 /** «48,5%»; null — «—». */
 export function formatRate(v: number | null, digits = 0): string {
   if (v === null || !Number.isFinite(v)) return "—";
-  return `${digits === 0 ? Math.round(v) : pctFormat.format(v)}%`;
+  return `${digits === 0 ? Math.round(v) : decFormat.format(v)}%`;
 }
 
 /** Среднее с одним знаком; null — «—». */

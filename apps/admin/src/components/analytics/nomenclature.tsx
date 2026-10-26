@@ -8,13 +8,13 @@ import {
 } from "@/components/ui/table";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { EmptyBlock } from "@/components/analytics/parts";
-import { nomenclature, type NomenclatureFilter } from "@/lib/analytics/logic";
+import { formatRub, nomenclature, type NomenclatureFilter } from "@/lib/analytics/logic";
 import type { SalesData } from "@/lib/analytics/types";
-import { formatMoney, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 
 /**
  * «Что покупают»: номенклатуры абонементов за период — все, только новые
- * или продления (с возвращёнными), как в «Моём городе» Lady Stretch.
+ * или повторные (продления и возвращённые), как в «Моём городе» Lady Stretch.
  */
 export function NomenclatureTable({
   data,
@@ -38,7 +38,7 @@ export function NomenclatureTable({
           <TableHead>Номенклатура</TableHead>
           <TableHead className="text-right [&>span]:justify-end">Продано</TableHead>
           <TableHead className="text-right [&>span]:justify-end">Доля</TableHead>
-          <TableHead className="text-right [&>span]:justify-end">Сумма</TableHead>
+          <TableHead className="text-right [&>span]:justify-end">Оплаты</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -48,7 +48,7 @@ export function NomenclatureTable({
             <TableCell className="font-medium">{l.name}</TableCell>
             <TableCell className="text-right">{formatNumber(l.count)}</TableCell>
             <TableCell className="text-right">{Math.round((l.count / total) * 100)}%</TableCell>
-            <TableCell className="text-right">{formatMoney(l.amount)}</TableCell>
+            <TableCell className="text-right">{formatRub(l.amount)}</TableCell>
           </TableRow>
         ))}
       </TableBody>

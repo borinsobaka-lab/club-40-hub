@@ -92,6 +92,7 @@ import {
   LoaderCircle as Loader2Art,
   Lock as LockArt,
   LogIn as LogInArt,
+  MapPin as MapPinArt,
   ArrowExpandIcon as MaximizeArt,
   Meh as MehArt,
   MessageCircle as MessageCircleArt,
@@ -232,6 +233,7 @@ export const ListOrdered = icon(ListOrderedArt, "ListOrdered");
 export const Loader2 = icon(Loader2Art, "Loader2");
 export const Lock = icon(LockArt, "Lock");
 export const LogIn = icon(LogInArt, "LogIn");
+export const MapPin = icon(MapPinArt, "MapPin");
 export const Maximize = icon(MaximizeArt, "Maximize");
 export const Meh = icon(MehArt, "Meh");
 export const MessageCircle = icon(MessageCircleArt, "MessageCircle");

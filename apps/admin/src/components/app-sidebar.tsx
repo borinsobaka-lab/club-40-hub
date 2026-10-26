@@ -6,6 +6,7 @@ import { Notebook, Settings } from "@/components/nav-icons";
 import { AppRail } from "@/components/app-rail";
 import {
   ACADEMY_ITEMS,
+  ANALYTICS_DATA_ITEMS,
   ANALYTICS_ITEMS,
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
@@ -278,16 +279,19 @@ export function AppSidebar() {
             }
           : railKey === "analytics"
             ? {
-                // «Настройки» (точка 0, закрытие клуба) — по праву analytics.manage.
-                title: "Аналитика",
+                // «Данные» (загрузка и справочники) — по праву analytics.manage.
+                title: "Аналитика сети",
                 groups: access
                   ? [
+                      { key: "analytics", label: "Отчёты", items: ANALYTICS_ITEMS },
                       {
-                        key: "analytics",
-                        label: "Отчёты",
-                        items: ANALYTICS_ITEMS.filter((i) => canOpenPath(access, studioId, i.url)),
+                        key: "analytics-data",
+                        label: "Данные",
+                        items: ANALYTICS_DATA_ITEMS.filter((i) =>
+                          canOpenPath(access, studioId, i.url),
+                        ),
                       },
-                    ]
+                    ].filter((g) => g.items.length > 0)
                   : [],
               }
             : railKey === "manage"

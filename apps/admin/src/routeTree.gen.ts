@@ -59,11 +59,15 @@ import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_a
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
 import { Route as AuthenticatedAnalyticsZeroRouteImport } from './routes/_authenticated/analytics/zero'
+import { Route as AuthenticatedAnalyticsUploadRouteImport } from './routes/_authenticated/analytics/upload'
 import { Route as AuthenticatedAnalyticsTrialsRouteImport } from './routes/_authenticated/analytics/trials'
-import { Route as AuthenticatedAnalyticsSettingsRouteImport } from './routes/_authenticated/analytics/settings'
+import { Route as AuthenticatedAnalyticsTargetsRouteImport } from './routes/_authenticated/analytics/targets'
+import { Route as AuthenticatedAnalyticsStudiosRouteImport } from './routes/_authenticated/analytics/studios'
 import { Route as AuthenticatedAnalyticsSalesRouteImport } from './routes/_authenticated/analytics/sales'
 import { Route as AuthenticatedAnalyticsRevenueRouteImport } from './routes/_authenticated/analytics/revenue'
 import { Route as AuthenticatedAnalyticsRatingRouteImport } from './routes/_authenticated/analytics/rating'
+import { Route as AuthenticatedAnalyticsPartnersRouteImport } from './routes/_authenticated/analytics/partners'
+import { Route as AuthenticatedAnalyticsNomenclatureRouteImport } from './routes/_authenticated/analytics/nomenclature'
 import { Route as AuthenticatedAnalyticsClassesRouteImport } from './routes/_authenticated/analytics/classes'
 import { Route as AuthenticatedAccessStructureRouteImport } from './routes/_authenticated/access/structure'
 import { Route as AuthenticatedAccessLogRouteImport } from './routes/_authenticated/access/log'
@@ -355,16 +359,28 @@ const AuthenticatedAnalyticsZeroRoute =
     path: '/analytics/zero',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAnalyticsUploadRoute =
+  AuthenticatedAnalyticsUploadRouteImport.update({
+    id: '/analytics/upload',
+    path: '/analytics/upload',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAnalyticsTrialsRoute =
   AuthenticatedAnalyticsTrialsRouteImport.update({
     id: '/analytics/trials',
     path: '/analytics/trials',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAnalyticsSettingsRoute =
-  AuthenticatedAnalyticsSettingsRouteImport.update({
-    id: '/analytics/settings',
-    path: '/analytics/settings',
+const AuthenticatedAnalyticsTargetsRoute =
+  AuthenticatedAnalyticsTargetsRouteImport.update({
+    id: '/analytics/targets',
+    path: '/analytics/targets',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsStudiosRoute =
+  AuthenticatedAnalyticsStudiosRouteImport.update({
+    id: '/analytics/studios',
+    path: '/analytics/studios',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAnalyticsSalesRoute =
@@ -383,6 +399,18 @@ const AuthenticatedAnalyticsRatingRoute =
   AuthenticatedAnalyticsRatingRouteImport.update({
     id: '/analytics/rating',
     path: '/analytics/rating',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsPartnersRoute =
+  AuthenticatedAnalyticsPartnersRouteImport.update({
+    id: '/analytics/partners',
+    path: '/analytics/partners',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnalyticsNomenclatureRoute =
+  AuthenticatedAnalyticsNomenclatureRouteImport.update({
+    id: '/analytics/nomenclature',
+    path: '/analytics/nomenclature',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAnalyticsClassesRoute =
@@ -553,11 +581,15 @@ export interface FileRoutesByFullPath {
   '/access/log': typeof AuthenticatedAccessLogRoute
   '/access/structure': typeof AuthenticatedAccessStructureRoute
   '/analytics/classes': typeof AuthenticatedAnalyticsClassesRoute
+  '/analytics/nomenclature': typeof AuthenticatedAnalyticsNomenclatureRoute
+  '/analytics/partners': typeof AuthenticatedAnalyticsPartnersRoute
   '/analytics/rating': typeof AuthenticatedAnalyticsRatingRoute
   '/analytics/revenue': typeof AuthenticatedAnalyticsRevenueRoute
   '/analytics/sales': typeof AuthenticatedAnalyticsSalesRoute
-  '/analytics/settings': typeof AuthenticatedAnalyticsSettingsRoute
+  '/analytics/studios': typeof AuthenticatedAnalyticsStudiosRoute
+  '/analytics/targets': typeof AuthenticatedAnalyticsTargetsRoute
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
+  '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
@@ -630,11 +662,15 @@ export interface FileRoutesByTo {
   '/access/log': typeof AuthenticatedAccessLogRoute
   '/access/structure': typeof AuthenticatedAccessStructureRoute
   '/analytics/classes': typeof AuthenticatedAnalyticsClassesRoute
+  '/analytics/nomenclature': typeof AuthenticatedAnalyticsNomenclatureRoute
+  '/analytics/partners': typeof AuthenticatedAnalyticsPartnersRoute
   '/analytics/rating': typeof AuthenticatedAnalyticsRatingRoute
   '/analytics/revenue': typeof AuthenticatedAnalyticsRevenueRoute
   '/analytics/sales': typeof AuthenticatedAnalyticsSalesRoute
-  '/analytics/settings': typeof AuthenticatedAnalyticsSettingsRoute
+  '/analytics/studios': typeof AuthenticatedAnalyticsStudiosRoute
+  '/analytics/targets': typeof AuthenticatedAnalyticsTargetsRoute
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
+  '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
@@ -709,11 +745,15 @@ export interface FileRoutesById {
   '/_authenticated/access/log': typeof AuthenticatedAccessLogRoute
   '/_authenticated/access/structure': typeof AuthenticatedAccessStructureRoute
   '/_authenticated/analytics/classes': typeof AuthenticatedAnalyticsClassesRoute
+  '/_authenticated/analytics/nomenclature': typeof AuthenticatedAnalyticsNomenclatureRoute
+  '/_authenticated/analytics/partners': typeof AuthenticatedAnalyticsPartnersRoute
   '/_authenticated/analytics/rating': typeof AuthenticatedAnalyticsRatingRoute
   '/_authenticated/analytics/revenue': typeof AuthenticatedAnalyticsRevenueRoute
   '/_authenticated/analytics/sales': typeof AuthenticatedAnalyticsSalesRoute
-  '/_authenticated/analytics/settings': typeof AuthenticatedAnalyticsSettingsRoute
+  '/_authenticated/analytics/studios': typeof AuthenticatedAnalyticsStudiosRoute
+  '/_authenticated/analytics/targets': typeof AuthenticatedAnalyticsTargetsRoute
   '/_authenticated/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
+  '/_authenticated/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/_authenticated/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/_authenticated/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
@@ -788,11 +828,15 @@ export interface FileRouteTypes {
     | '/access/log'
     | '/access/structure'
     | '/analytics/classes'
+    | '/analytics/nomenclature'
+    | '/analytics/partners'
     | '/analytics/rating'
     | '/analytics/revenue'
     | '/analytics/sales'
-    | '/analytics/settings'
+    | '/analytics/studios'
+    | '/analytics/targets'
     | '/analytics/trials'
+    | '/analytics/upload'
     | '/analytics/zero'
     | '/dashboard/classes'
     | '/dashboard/clients'
@@ -865,11 +909,15 @@ export interface FileRouteTypes {
     | '/access/log'
     | '/access/structure'
     | '/analytics/classes'
+    | '/analytics/nomenclature'
+    | '/analytics/partners'
     | '/analytics/rating'
     | '/analytics/revenue'
     | '/analytics/sales'
-    | '/analytics/settings'
+    | '/analytics/studios'
+    | '/analytics/targets'
     | '/analytics/trials'
+    | '/analytics/upload'
     | '/analytics/zero'
     | '/dashboard/classes'
     | '/dashboard/clients'
@@ -943,11 +991,15 @@ export interface FileRouteTypes {
     | '/_authenticated/access/log'
     | '/_authenticated/access/structure'
     | '/_authenticated/analytics/classes'
+    | '/_authenticated/analytics/nomenclature'
+    | '/_authenticated/analytics/partners'
     | '/_authenticated/analytics/rating'
     | '/_authenticated/analytics/revenue'
     | '/_authenticated/analytics/sales'
-    | '/_authenticated/analytics/settings'
+    | '/_authenticated/analytics/studios'
+    | '/_authenticated/analytics/targets'
     | '/_authenticated/analytics/trials'
+    | '/_authenticated/analytics/upload'
     | '/_authenticated/analytics/zero'
     | '/_authenticated/dashboard/classes'
     | '/_authenticated/dashboard/clients'
@@ -1339,6 +1391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAnalyticsZeroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/analytics/upload': {
+      id: '/_authenticated/analytics/upload'
+      path: '/analytics/upload'
+      fullPath: '/analytics/upload'
+      preLoaderRoute: typeof AuthenticatedAnalyticsUploadRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/analytics/trials': {
       id: '/_authenticated/analytics/trials'
       path: '/analytics/trials'
@@ -1346,11 +1405,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAnalyticsTrialsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/analytics/settings': {
-      id: '/_authenticated/analytics/settings'
-      path: '/analytics/settings'
-      fullPath: '/analytics/settings'
-      preLoaderRoute: typeof AuthenticatedAnalyticsSettingsRouteImport
+    '/_authenticated/analytics/targets': {
+      id: '/_authenticated/analytics/targets'
+      path: '/analytics/targets'
+      fullPath: '/analytics/targets'
+      preLoaderRoute: typeof AuthenticatedAnalyticsTargetsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/studios': {
+      id: '/_authenticated/analytics/studios'
+      path: '/analytics/studios'
+      fullPath: '/analytics/studios'
+      preLoaderRoute: typeof AuthenticatedAnalyticsStudiosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/analytics/sales': {
@@ -1372,6 +1438,20 @@ declare module '@tanstack/react-router' {
       path: '/analytics/rating'
       fullPath: '/analytics/rating'
       preLoaderRoute: typeof AuthenticatedAnalyticsRatingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/partners': {
+      id: '/_authenticated/analytics/partners'
+      path: '/analytics/partners'
+      fullPath: '/analytics/partners'
+      preLoaderRoute: typeof AuthenticatedAnalyticsPartnersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/analytics/nomenclature': {
+      id: '/_authenticated/analytics/nomenclature'
+      path: '/analytics/nomenclature'
+      fullPath: '/analytics/nomenclature'
+      preLoaderRoute: typeof AuthenticatedAnalyticsNomenclatureRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/analytics/classes': {
@@ -1562,11 +1642,15 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccessLogRoute: typeof AuthenticatedAccessLogRoute
   AuthenticatedAccessStructureRoute: typeof AuthenticatedAccessStructureRoute
   AuthenticatedAnalyticsClassesRoute: typeof AuthenticatedAnalyticsClassesRoute
+  AuthenticatedAnalyticsNomenclatureRoute: typeof AuthenticatedAnalyticsNomenclatureRoute
+  AuthenticatedAnalyticsPartnersRoute: typeof AuthenticatedAnalyticsPartnersRoute
   AuthenticatedAnalyticsRatingRoute: typeof AuthenticatedAnalyticsRatingRoute
   AuthenticatedAnalyticsRevenueRoute: typeof AuthenticatedAnalyticsRevenueRoute
   AuthenticatedAnalyticsSalesRoute: typeof AuthenticatedAnalyticsSalesRoute
-  AuthenticatedAnalyticsSettingsRoute: typeof AuthenticatedAnalyticsSettingsRoute
+  AuthenticatedAnalyticsStudiosRoute: typeof AuthenticatedAnalyticsStudiosRoute
+  AuthenticatedAnalyticsTargetsRoute: typeof AuthenticatedAnalyticsTargetsRoute
   AuthenticatedAnalyticsTrialsRoute: typeof AuthenticatedAnalyticsTrialsRoute
+  AuthenticatedAnalyticsUploadRoute: typeof AuthenticatedAnalyticsUploadRoute
   AuthenticatedAnalyticsZeroRoute: typeof AuthenticatedAnalyticsZeroRoute
   AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
   AuthenticatedDashboardClientsRoute: typeof AuthenticatedDashboardClientsRoute
@@ -1637,11 +1721,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccessLogRoute: AuthenticatedAccessLogRoute,
   AuthenticatedAccessStructureRoute: AuthenticatedAccessStructureRoute,
   AuthenticatedAnalyticsClassesRoute: AuthenticatedAnalyticsClassesRoute,
+  AuthenticatedAnalyticsNomenclatureRoute:
+    AuthenticatedAnalyticsNomenclatureRoute,
+  AuthenticatedAnalyticsPartnersRoute: AuthenticatedAnalyticsPartnersRoute,
   AuthenticatedAnalyticsRatingRoute: AuthenticatedAnalyticsRatingRoute,
   AuthenticatedAnalyticsRevenueRoute: AuthenticatedAnalyticsRevenueRoute,
   AuthenticatedAnalyticsSalesRoute: AuthenticatedAnalyticsSalesRoute,
-  AuthenticatedAnalyticsSettingsRoute: AuthenticatedAnalyticsSettingsRoute,
+  AuthenticatedAnalyticsStudiosRoute: AuthenticatedAnalyticsStudiosRoute,
+  AuthenticatedAnalyticsTargetsRoute: AuthenticatedAnalyticsTargetsRoute,
   AuthenticatedAnalyticsTrialsRoute: AuthenticatedAnalyticsTrialsRoute,
+  AuthenticatedAnalyticsUploadRoute: AuthenticatedAnalyticsUploadRoute,
   AuthenticatedAnalyticsZeroRoute: AuthenticatedAnalyticsZeroRoute,
   AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
   AuthenticatedDashboardClientsRoute: AuthenticatedDashboardClientsRoute,
