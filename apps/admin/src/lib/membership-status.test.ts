@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { effectiveStatus, endsSoon, fewVisitsLeft, isLiveStatus } from "./membership-status";
+import {
+  effectiveStatus,
+  endsSoon,
+  fewVisitsLeft,
+  isLiveStatus,
+  paymentInfo,
+} from "./membership-status";
 import { TRAINER_ROLES, hasRating, isAdminRole, roleGroup } from "./staff-roles";
 
 describe("статус абонемента клиента", () => {
@@ -64,5 +70,47 @@ describe("подсказка о продлении в окне занятия", 
     expect(endsSoon("2026-10-10", today)).toBe(true);
     expect(endsSoon("2026-10-26T00:00:00+00:00", today)).toBe(true);
     expect(endsSoon(null, today)).toBe(false);
+  });
+});
+
+describe("оплата абонемента в окне занятия", () => {
+  const today = "2026-10-26";
+  const i = (due_date: string, paid = false, paid_at: string | null = null, refunded = false) => ({
+    due_date,
+    paid,
+    paid_at,
+    refunded,
+  });
+
+  test("без графика — оплачен днём продажи", () => {
+    expect(paymentInfo([], "2026-10-01T10:00:00Z", today)).toEqual({
+      state: "paid",
+      date: "2026-10-01",
+    });
+  });
+
+  test("всё внесено — дата последнего платежа", () => {
+    const list = [i("2026-09-01", true, "2026-09-02"), i("2026-10-01", true, "2026-10-03")];
+    expect(paymentInfo(list, null, today)).toEqual({ state: "paid", date: "2026-10-03" });
+  });
+
+  test("следующий платёж: не скоро, в ближайшие 5 дней, просрочен", () => {
+    const paid = i("2026-09-01", true, "2026-09-01");
+    expect(paymentInfo([paid, i("2026-11-20")], null, today).state).toBe("due");
+    expect(paymentInfo([paid, i("2026-10-31")], null, today)).toEqual({
+      state: "soon",
+      date: "2026-10-31",
+    });
+    expect(paymentInfo([paid, i("2026-10-26")], null, today).state).toBe("soon");
+    expect(paymentInfo([paid, i("2026-11-01")], null, today).state).toBe("due");
+    expect(paymentInfo([paid, i("2026-10-25"), i("2026-11-25")], null, today)).toEqual({
+      state: "overdue",
+      date: "2026-10-25",
+    });
+  });
+
+  test("снятые возвратом платежи не в счёт", () => {
+    const list = [i("2026-09-01", true, "2026-09-01"), i("2026-10-01", false, null, true)];
+    expect(paymentInfo(list, null, today)).toEqual({ state: "paid", date: "2026-09-01" });
   });
 });

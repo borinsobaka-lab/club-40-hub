@@ -55,7 +55,14 @@ import {
 import { roleGroup } from "@/lib/staff-roles";
 import { clientName, formatDate, toDateTimeLocalValue } from "@/lib/format";
 import { ClubStatusBadge } from "@/components/club-status-badge";
-import { endsSoon, fewVisitsLeft } from "@/lib/membership-status";
+import {
+  endsSoon,
+  fewVisitsLeft,
+  PAYMENT_SOON_DAYS,
+  paymentInfo,
+  type InstallmentLite,
+  type PaymentInfo,
+} from "@/lib/membership-status";
 import type { ClubStatus } from "@/lib/client-status";
 import { parseTranslations, translationText } from "@/lib/content-i18n";
 import { DAY_TYPES, dayTypeColor } from "@/lib/workout-types";
@@ -2865,6 +2872,9 @@ type ActiveMembershipRow = {
   diagnostics_left?: number | null;
   balance_kind: "group" | "personal";
   membership: { name: string | null } | null;
+  sale_id: string | null;
+  /** «Оплата» в строке клиента — из платежей продажи (paymentInfo). */
+  payment?: PaymentInfo;
 };
 
 type BookingsData = {
@@ -2955,7 +2965,7 @@ async function fetchBookings(
     supabase
       .from("client_memberships")
       .select(
-        "client_id, status, started_at, ends_at, visits_left, personal_left, diagnostics_left, balance_kind, membership:memberships(name)",
+        "client_id, status, started_at, ends_at, visits_left, personal_left, diagnostics_left, balance_kind, sale_id, membership:memberships(name), sale:sales(sold_at)",
       )
       // Ждущее продление — только в остаток: с него спишется, когда кончится
       // текущий. Замороженный — чтобы знать, что текущий есть (balanceFor).
@@ -2970,7 +2980,27 @@ async function fetchBookings(
   ]);
   // membership — связь «многие к одному», но разбор select без схемы базы
   // считает любую связь массивом.
-  const all = (mData ?? []) as unknown as ActiveMembershipRow[];
+  const all = (mData ?? []) as unknown as (ActiveMembershipRow & {
+    sale: { sold_at: string | null } | null;
+  })[];
+  // Платежи продаж действующих абонементов — для «Оплаты» в строке клиента.
+  // Дополнение, как и абонементы: не загрузились — строка без «Оплаты».
+  const saleIds = Array.from(
+    new Set(all.filter((m) => m.status === "active" && m.sale_id).map((m) => m.sale_id!)),
+  );
+  if (saleIds.length) {
+    const { data: iData } = await supabase
+      .from("sale_installments")
+      .select("sale_id, due_date, paid, paid_at, refunded")
+      .in("sale_id", saleIds);
+    const bySale = new Map<string, InstallmentLite[]>();
+    for (const r of (iData ?? []) as (InstallmentLite & { sale_id: string })[])
+      bySale.set(r.sale_id, [...(bySale.get(r.sale_id) ?? []), r]);
+    if (iData)
+      for (const m of all)
+        if (m.status === "active" && m.sale_id)
+          m.payment = paymentInfo(bySale.get(m.sale_id) ?? [], m.sale?.sold_at ?? null);
+  }
   const allByClient = new Map<string, ActiveMembershipRow[]>();
   for (const m of all) {
     allByClient.set(m.client_id, [...(allByClient.get(m.client_id) ?? []), m]);
@@ -3252,6 +3282,13 @@ function balanceLeftLabel(m: ActiveMembershipRow, balance: BalanceKind) {
  * администратору продать продление (решение владельца 2026-10-13). renewed —
  * продление уже куплено и ждёт, подсказывать нечего.
  */
+const PAYMENT_TITLE: Record<PaymentInfo["state"], string> = {
+  paid: "Оплачен полностью — дата последнего платежа",
+  due: "Следующий платёж по рассрочке",
+  soon: `Следующий платёж — в ближайшие ${PAYMENT_SOON_DAYS} дней`,
+  overdue: "Платёж просрочен",
+};
+
 function MembershipSummary({
   m,
   balance,
@@ -3272,6 +3309,7 @@ function MembershipSummary({
       ? "срок — с 1-го посещения"
       : null;
   const hint = "font-medium text-rose-600";
+  const pay = m.payment;
   return (
     <>
       {m.membership?.name ?? "Абонемент"} ·{" "}
@@ -3280,6 +3318,20 @@ function MembershipSummary({
         <>
           {" · "}
           <span className={cn(!renewed && endsSoon(m.ends_at) && hint)}>{term}</span>
+        </>
+      )}
+      {pay?.date && (
+        <>
+          {" · "}
+          <span
+            title={PAYMENT_TITLE[pay.state]}
+            className={cn(
+              pay.state === "soon" && "font-medium text-blue-600",
+              pay.state === "overdue" && hint,
+            )}
+          >
+            {pay.state === "paid" ? "оплачен" : "оплата"} {formatDate(pay.date)}
+          </span>
         </>
       )}
     </>
@@ -3447,7 +3499,8 @@ function BookingsPanel({
         ) : (
           // Строка клиента — компактно (решение владельца 2026-10-11: в окне
           // занятия приходилось долго листать): имя и отметка, ниже одной
-          // строкой телефон и абонемент; кнопки справа.
+          // строкой абонемент (остаток, срок, оплата; телефона нет — решение
+          // владельца 2026-10-26); кнопки справа.
           <ul className="divide-y rounded-md border">
             {booked.map((b) => {
               const c = bookingClient(data, b);
@@ -3479,7 +3532,6 @@ function BookingsPanel({
                       {b.status === "no_show" && <NoShowBadge booking={b} />}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {c?.phone && <>{c.phone} · </>}
                       {m ? (
                         <MembershipSummary
                           m={m}
