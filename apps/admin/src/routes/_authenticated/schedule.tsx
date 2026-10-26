@@ -3310,29 +3310,30 @@ function MembershipSummary({
       : null;
   const hint = "font-medium text-rose-600";
   const pay = m.payment;
+  // Две строки (решение владельца 2026-10-26: в одну не помещалось):
+  // абонемент и остаток, ниже — срок и оплата.
   return (
     <>
-      {m.membership?.name ?? "Абонемент"} ·{" "}
-      <span className={cn(!renewed && fewVisitsLeft(count) && hint)}>{left}</span>
-      {term && (
-        <>
-          {" · "}
-          <span className={cn(!renewed && endsSoon(m.ends_at) && hint)}>{term}</span>
-        </>
-      )}
-      {pay?.date && (
-        <>
-          {" · "}
-          <span
-            title={PAYMENT_TITLE[pay.state]}
-            className={cn(
-              pay.state === "soon" && "font-medium text-blue-600",
-              pay.state === "overdue" && hint,
-            )}
-          >
-            {pay.state === "paid" ? "оплачен" : "оплата"} {formatDate(pay.date)}
-          </span>
-        </>
+      <div className="truncate">
+        {m.membership?.name ?? "Абонемент"} ·{" "}
+        <span className={cn(!renewed && fewVisitsLeft(count) && hint)}>{left}</span>
+      </div>
+      {(term || pay?.date) && (
+        <div className="truncate">
+          {term && <span className={cn(!renewed && endsSoon(m.ends_at) && hint)}>{term}</span>}
+          {term && pay?.date && " · "}
+          {pay?.date && (
+            <span
+              title={PAYMENT_TITLE[pay.state]}
+              className={cn(
+                pay.state === "soon" && "font-medium text-blue-600",
+                pay.state === "overdue" && hint,
+              )}
+            >
+              {pay.state === "paid" ? "оплачен" : "оплата"} {formatDate(pay.date)}
+            </span>
+          )}
+        </div>
       )}
     </>
   );
@@ -3498,9 +3499,9 @@ function BookingsPanel({
           </InfoNote>
         ) : (
           // Строка клиента — компактно (решение владельца 2026-10-11: в окне
-          // занятия приходилось долго листать): имя и отметка, ниже одной
-          // строкой абонемент (остаток, срок, оплата; телефона нет — решение
-          // владельца 2026-10-26); кнопки справа.
+          // занятия приходилось долго листать): имя и отметка, ниже двумя
+          // строками абонемент — название и остаток, срок и оплата (телефона
+          // нет — решение владельца 2026-10-26); кнопки справа.
           <ul className="divide-y rounded-md border">
             {booked.map((b) => {
               const c = bookingClient(data, b);
@@ -3531,7 +3532,7 @@ function BookingsPanel({
                           видно по кнопкам справа (решение владельца 2026-10-13). */}
                       {b.status === "no_show" && <NoShowBadge booking={b} />}
                     </div>
-                    <div className="truncate text-xs text-muted-foreground">
+                    <div className="min-w-0 text-xs text-muted-foreground">
                       {m ? (
                         <MembershipSummary
                           m={m}
