@@ -8,6 +8,8 @@ import { StudioSwitcher } from "@/components/studio-switcher";
 import { Button } from "@/components/ui/button";
 import { HeaderClientSearch } from "@/components/header-client-search";
 import { KbBaseTabs, KbHeaderSearch } from "@/components/kb/kb-header";
+import { WorkdayButton } from "@/components/workday/workday-button";
+import { KB_ACTIONS_SLOT, KB_HEADER_GRID, KB_SEARCH_SLOT } from "@/lib/kb/header-layout";
 import { useKbDarkTheme } from "@/lib/kb/theme";
 import { kbBaseIdOf, railSectionKey } from "@/lib/nav-sections";
 import { cn } from "@/lib/utils";
@@ -114,39 +116,43 @@ export function AdminShell({
   return (
     <>
       {kb ? (
-        // Узкий экран: первая строка — меню, вкладки, «Обновить»; поиск —
-        // второй строкой на всю ширину; с lg поиск — по центру шапки, много
-        // вкладок сдвигают его вправо (KB_TABS_SLOT). Заголовок страницы — для скринридера:
+        // Раскладка — lib/kb/header-layout.ts: с lg три колонки, поиск ровно
+        // по центру, справа от него «Рабочий день» и тема, у края — «Обновить».
+        // Узкий экран: первая строка — меню, вкладки, кнопки; поиск — второй
+        // строкой на всю ширину. Заголовок страницы — для скринридера:
         // название статьи и так крупно над текстом.
         <header
           className={cn(
-            "flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 text-foreground lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0",
+            "flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 text-foreground lg:h-16 lg:gap-3 lg:px-4 lg:py-0",
+            KB_HEADER_GRID,
           )}
         >
           <SidebarTrigger className="-ml-1 size-10 md:hidden" />
           <h1 className="sr-only">{title}</h1>
           <KbBaseTabs />
           {kbBaseId && (
-            <KbHeaderSearch
-              key={kbBaseId}
-              baseId={kbBaseId}
-              className="order-last w-full lg:order-none lg:w-80 lg:shrink-0"
-            />
+            <KbHeaderSearch key={kbBaseId} baseId={kbBaseId} className={KB_SEARCH_SLOT} />
           )}
-          {/* С lg — правая половина, равная вкладкам: поиск стоит по центру,
-              сразу справа от него — тема, у края — «Обновить». */}
-          <div className="flex items-center justify-end gap-2 lg:flex-1 lg:basis-0 lg:justify-between">
-            <Button
-              variant="outline"
-              size="icon"
-              className="shrink-0"
-              aria-pressed={kbDarkTheme}
-              aria-label={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
-              title={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
-              onClick={toggleKbTheme}
-            >
-              {kbDarkTheme ? <Sun /> : <Moon />}
-            </Button>
+          <div
+            className={cn(
+              "flex items-center justify-end gap-2 lg:justify-between",
+              KB_ACTIONS_SLOT,
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <WorkdayButton />
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                aria-pressed={kbDarkTheme}
+                aria-label={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
+                title={kbDarkTheme ? "Светлая тема" : "Тёмная тема"}
+                onClick={toggleKbTheme}
+              >
+                {kbDarkTheme ? <Sun /> : <Moon />}
+              </Button>
+            </div>
             {refreshButton}
           </div>
         </header>

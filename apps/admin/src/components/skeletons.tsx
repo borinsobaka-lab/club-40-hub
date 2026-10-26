@@ -12,6 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  KB_ACTIONS_SLOT,
+  KB_HEADER_GRID,
+  KB_SEARCH_SLOT,
+  KB_TABS_SLOT,
+} from "@/lib/kb/header-layout";
 import { cn } from "@/lib/utils";
 
 /*
@@ -127,21 +133,37 @@ export function ShellSkeleton({
   return (
     <>
       {kb ? (
-        <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">
+        <header
+          className={cn(
+            "flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:gap-3 lg:px-4 lg:py-0",
+            KB_HEADER_GRID,
+          )}
+        >
           <span className="-ml-1 inline-flex size-10 shrink-0 items-center justify-center md:hidden">
             <PanelLeft className="size-4" />
           </span>
           <h1 className="sr-only">{title}</h1>
-          {/* Вкладки баз — как KbBaseTabs. */}
-          <div className="flex min-w-0 flex-1 gap-1">
+          {/* Вкладки баз, поиск и кнопки — те же колонки, что у AdminShell. */}
+          <div className={cn("flex gap-1", KB_TABS_SLOT)}>
             {Array.from({ length: 3 }, (_, i) => (
               <Skeleton key={i} className="h-10 w-32 rounded-full" />
             ))}
           </div>
-          <Skeleton className="order-last h-10 w-full lg:order-none lg:w-80 lg:shrink-0" />
-          <span className="inline-flex size-10 shrink-0 items-center justify-center">
-            <RefreshCw className="h-5 w-5" />
-          </span>
+          <Skeleton className={cn("h-10", KB_SEARCH_SLOT)} />
+          <div
+            className={cn(
+              "flex items-center justify-end gap-2 lg:justify-between",
+              KB_ACTIONS_SLOT,
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-full sm:w-36" />
+              <Skeleton className="size-10 shrink-0 rounded-full" />
+            </div>
+            <span className="inline-flex size-10 shrink-0 items-center justify-center">
+              <RefreshCw className="h-5 w-5" />
+            </span>
+          </div>
         </header>
       ) : (
         <header className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 lg:h-16 lg:flex-nowrap lg:gap-3 lg:px-4 lg:py-0">

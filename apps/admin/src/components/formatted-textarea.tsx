@@ -17,12 +17,15 @@ export function FormattedTextarea({
   placeholder,
   rows = 6,
   id,
+  previewLabel = "Как увидит клиент",
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   rows?: number;
   id?: string;
+  /** Подпись кнопки предпросмотра: текст не для клиента — «Как увидят сотрудники». */
+  previewLabel?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [preview, setPreview] = useState(false);
@@ -115,7 +118,7 @@ export function FormattedTextarea({
           className={cn("ml-auto", preview && "underline")}
           onClick={() => setPreview((v) => !v)}
         >
-          {preview ? "Скрыть предпросмотр" : "Как увидит клиент"}
+          {preview ? "Скрыть предпросмотр" : previewLabel}
         </Button>
       </div>
       <Textarea
