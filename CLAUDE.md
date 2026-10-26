@@ -47,8 +47,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   клиентов пакетных клубов `db/shared-clients.test.ts`, переноса из 1С
   `db/import-1c.test.ts`, AI-ассистента Kate `db/assistant.test.ts`,
   переоформления абонемента `db/membership-transfer.test.ts`, базы знаний
-  `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts` и
-  пользователей, ролей и доступов `db/access.test.ts`
+  `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts`,
+  пользователей, ролей и доступов `db/access.test.ts` и «Рабочего дня»
+  `db/workday.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -930,6 +931,21 @@ AUTH_SETUP.md.
   клубов), `kb_base_level`, `auth_kb_view_base_ids` / `auth_kb_edit_base_ids`,
   `acad_can_create` / `acad_can_review` / `acad_access` — здесь. Тесты —
   `db/access.test.ts`.
+  **«Рабочий день»** (решение владельца 2026-10-25):
+  `db/migrations/2026-10-26_workday_checklist.sql` — порядок рабочего дня
+  администратора клуба (кнопка в шапке базы знаний): блоки
+  `workday_sections` и пункты `workday_items` (текст, `due_time` — «к
+  HH:MM», null — без времени; `details` — инструкция с разметкой) — у
+  каждого клуба свои (клуб пункта — клуб блока, ставит триггер); отметки
+  `workday_checks` (пункт × день по Тбилиси, кто и когда — ставит триггер;
+  `workday_today()`). Читают и отмечают — сотрудники клуба, отметить и
+  снять — только за сегодня (история остаётся); блоки и пункты правит
+  владелец клуба (`auth_owner_studio_ids()` в политиках). RPC
+  `workday_reorder` (порядок одним запросом) и `workday_copy` (заменить
+  набор клуба копией другого). Стартовый набор — таблица Lady Stretch
+  «Рабочий день»: клубам с «Сабуртало» / «Ваке» в названии, если у клуба
+  ещё нет блоков (время не проставлено; имена клиентов из примера отчёта
+  не перенесены). «Просрочено» считает браузер. Тесты — `db/workday.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
