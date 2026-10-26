@@ -40,6 +40,7 @@ export const RAIL_ACCESS_LABEL: Record<AdminSectionKey, string> = {
 
 export const CLUB_SECTION_KEYS = [
   "dashboard",
+  "analytics",
   "schedule",
   "clients",
   "client-memberships",
@@ -126,4 +127,13 @@ export function sectionStudioIds(access: AdminAccess, key: ClubSectionKey): stri
  */
 export function dashboardStudioIds(access: AdminAccess): string[] {
   return sectionStudioIds(access, "dashboard");
+}
+
+/**
+ * Клубы раздела рейки «Аналитика» (отчёты сети, ANALYTICS.md): роль в клубе
+ * и открытый в нём раздел analytics. Те же клубы отдаёт база
+ * (auth_analytics_studio_ids) — граница там, здесь только меню.
+ */
+export function analyticsStudioIds(access: AdminAccess): string[] {
+  return sectionStudioIds(access, "analytics");
 }

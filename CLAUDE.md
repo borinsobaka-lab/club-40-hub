@@ -48,8 +48,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   `db/import-1c.test.ts`, AI-ассистента Kate `db/assistant.test.ts`,
   переоформления абонемента `db/membership-transfer.test.ts`, базы знаний
   `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts`,
-  пользователей, ролей и доступов `db/access.test.ts` и «Рабочего дня»
-  `db/workday.test.ts`
+  пользователей, ролей и доступов `db/access.test.ts`, «Рабочего дня»
+  `db/workday.test.ts` и «Аналитики» `db/analytics.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -947,6 +947,24 @@ AUTH_SETUP.md.
   «Рабочий день»: клубам с «Сабуртало» / «Ваке» в названии, если у клуба
   ещё нет блоков (время не проставлено; имена клиентов из примера отчёта
   не перенесены). «Просрочено» считает браузер. Тесты — `db/workday.test.ts`.
+  **«Аналитика» — отчёты сети** (решение владельца 2026-10-26: вместо
+  портала аналитики Lady Stretch; что было у них, правила расчёта и что
+  дальше — ANALYTICS.md): `db/migrations/2026-10-26_zz_analytics.sql` —
+  раздел клуба `club.analytics` в каталоге прав (у «Куратора клубов» —
+  включён) и сетевое право `analytics.manage` («точка 0 и статус клубов»);
+  клубы отчётов — `auth_analytics_studio_ids()` (роль в клубе и открытый
+  раздел analytics; владельцу — всегда); `analytics_studio_settings`
+  (точка 0 — месячная выручка «в ноль», `closed_on` — закрыт с; пишет только
+  RPC `analytics_settings_save`). Отчёты — RPC (security definer, только
+  агрегаты, строки массивами в jsonb, корзина день / месяц):
+  `analytics_scope`, `analytics_revenue` (поступившие деньги, как
+  «Фактическая выручка» дашборда), `analytics_sales` (вид продажи
+  new / renewal / return / single / trial — внутренняя
+  `analytics_sale_origins`, как `classifySales` дашборда; деньги по дате
+  поступления и число оплаченных продаж для среднего чека),
+  `analytics_classes`, `analytics_trials` (дата пробного — первое посещение
+  по нему, покупка за 14 дней), `analytics_zero`. Источник — только наша
+  база (клубы на 1С и FitBase — следующий этап). Тесты — `db/analytics.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
@@ -1090,6 +1108,9 @@ own"` оставить). Альтернатива — выдача абонем�
 
 ## Документы
 
+- `ANALYTICS.md` — «Аналитика» (2026-10-26): что было в портале аналитики
+  Lady Stretch (1С, FitBase, маркетинг), что перенесено, правила расчёта,
+  доступ, что дальше.
 - `ACCESS.md` — пользователи портала, роли и доступы (2026-10-25): источники
   (Битрикс24 Lady Stretch, ТЗ XFIT, рынок), модель, надёжность, интерфейс,
   что дальше.
