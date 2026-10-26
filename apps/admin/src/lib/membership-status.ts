@@ -90,3 +90,51 @@ export function endsSoon(endsAt: string | null | undefined, today = todayISO()) 
   const days = (Date.parse(endsAt.slice(0, 10)) - Date.parse(today)) / 86_400_000;
   return days < RENEWAL_HINT_DAYS;
 }
+
+/**
+ * «Оплата» абонемента в окне занятия (решение владельца 2026-10-26): дата
+ * следующего платежа рассрочки, а если всё внесено — дата последнего.
+ * Платёж в ближайшие PAYMENT_SOON_DAYS дней — синим, просроченный — красным.
+ * Платежи, снятые возвратом, не в счёт; продажа без графика — оплачена днём
+ * продажи.
+ */
+export const PAYMENT_SOON_DAYS = 5;
+
+export type InstallmentLite = {
+  due_date: string;
+  paid: boolean;
+  paid_at: string | null;
+  refunded?: boolean | null;
+};
+
+export type PaymentInfo = {
+  state: "paid" | "due" | "soon" | "overdue";
+  /** Следующий платёж или, у оплаченного, последний внесённый. */
+  date: string | null;
+};
+
+export function paymentInfo(
+  installments: InstallmentLite[],
+  soldAt: string | null,
+  today = todayISO(),
+): PaymentInfo {
+  const live = installments.filter((i) => !i.refunded);
+  if (live.length === 0) return { state: "paid", date: soldAt?.slice(0, 10) ?? null };
+  const unpaid = live
+    .filter((i) => !i.paid)
+    .map((i) => i.due_date.slice(0, 10))
+    .sort();
+  if (unpaid.length === 0) {
+    const last = live
+      .map((i) => (i.paid_at ?? i.due_date).slice(0, 10))
+      .sort()
+      .at(-1);
+    return { state: "paid", date: last ?? null };
+  }
+  const next = unpaid[0];
+  const days = (Date.parse(next) - Date.parse(today)) / 86_400_000;
+  return {
+    state: days < 0 ? "overdue" : days <= PAYMENT_SOON_DAYS ? "soon" : "due",
+    date: next,
+  };
+}
