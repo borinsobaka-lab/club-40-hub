@@ -91,29 +91,9 @@ export const createPortalUser = createServerFn({ method: "POST" })
     const admin = getSupabaseAdmin();
     const fullName = `${data.last_name} ${data.first_name}`;
 
-    const pattern = data.email.replace(/[\\%_]/g, "\\$&");
-    const { data: found, error: findErr } = await admin
-      .from("profiles")
-      .select("id")
-      .ilike("email", pattern)
-      .limit(1);
-    if (findErr) throw new Error(findErr.message);
-    let userId = (found?.[0]?.id as string | undefined) ?? null;
-    let created = false;
-
-    if (userId) {
-      const { data: portal, error: portalErr } = await admin
-        .from("portal_users")
-        .select("user_id")
-        .eq("user_id", userId)
-        .limit(1);
-      if (portalErr) throw new Error(portalErr.message);
-      if (portal?.length) {
-        throw new Error(`already_in_portal:${userId}`);
-      }
-    } else {
-      // Клуб профиля (profiles.studio_id обязателен): первый клуб первой
-      // роли, иначе клуб того, кто добавляет. Права это не даёт — их дают роли.
+    // Клуб профиля (profiles.studio_id обязателен): первый клуб первой
+    // роли, иначе клуб того, кто добавляет. Права это не даёт — их дают роли.
+    const homeStudio = async () => {
       const first = data.assignments.find((a) => a.scope_type === "studios" && a.scope_ids.length);
       let homeStudioId = first?.scope_ids[0] ?? null;
       if (!homeStudioId) {
@@ -134,7 +114,55 @@ export const createPortalUser = createServerFn({ method: "POST" })
         homeStudioId = (oldest?.id as string | undefined) ?? null;
       }
       if (!homeStudioId) throw new Error("Сначала заведите хотя бы один клуб");
+      return homeStudioId;
+    };
 
+    const pattern = data.email.replace(/[\\%_]/g, "\\$&");
+    const { data: found, error: findErr } = await admin
+      .from("profiles")
+      .select("id")
+      .ilike("email", pattern)
+      .limit(1);
+    if (findErr) throw new Error(findErr.message);
+    let userId = (found?.[0]?.id as string | undefined) ?? null;
+    let created = false;
+
+    if (!userId) {
+      // Учётная запись есть, а в профиле почта пустая или старая (или профиля
+      // нет): иначе GoTrue ответил бы «уже зарегистрирован».
+      const { data: authId, error: authFindErr } = await admin.rpc("auth_user_id_by_email", {
+        p_email: data.email,
+      });
+      if (authFindErr) throw new Error(authFindErr.message);
+      userId = (authId as string | null) ?? null;
+      if (userId) {
+        const { data: prof, error: profFindErr } = await admin
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle();
+        if (profFindErr) throw new Error(profFindErr.message);
+        const { error: profErr } = prof
+          ? await admin.from("profiles").update({ email: data.email }).eq("id", userId)
+          : await admin
+              .from("profiles")
+              .insert({ id: userId, studio_id: await homeStudio(), email: data.email });
+        if (profErr) throw new Error(profErr.message);
+      }
+    }
+
+    if (userId) {
+      const { data: portal, error: portalErr } = await admin
+        .from("portal_users")
+        .select("user_id")
+        .eq("user_id", userId)
+        .limit(1);
+      if (portalErr) throw new Error(portalErr.message);
+      if (portal?.length) {
+        throw new Error(`already_in_portal:${userId}`);
+      }
+    } else {
+      const homeStudioId = await homeStudio();
       const { data: res, error } = await admin.auth.admin.createUser({
         email: data.email,
         email_confirm: true,
