@@ -24,6 +24,8 @@ export type ClassBooking = {
   /** Карточка и учётная запись по отдельности — для подробного отчёта (не light-загрузка). */
   clientId?: string | null;
   userId?: string | null;
+  /** Посещение списано с пробного абонемента (пакетные клубы; не light-загрузка). */
+  trial?: boolean;
 };
 
 export type ClassEntry = {
@@ -47,7 +49,14 @@ export type ClassEntry = {
    * Кто вёл: тренеры занятия (заменяющий — вместо заменённого) и их оценка
    * в приложении за всё время (null — оценок нет).
    */
-  trainers: { id: string; name: string; rating?: number | null; ratingCount?: number }[];
+  trainers: {
+    id: string;
+    name: string;
+    /** Фото из справочника «Сотрудники» (trainers.photo_url). */
+    photo?: string | null;
+    rating?: number | null;
+    ratingCount?: number;
+  }[];
   bookings: ClassBooking[];
 };
 
@@ -145,6 +154,49 @@ export function tallyBy(
     }
   }
   return map;
+}
+
+/**
+ * Пробные по группам (тренер): карточка клиента → дата его первого
+ * посещения по пробному абонементу на проведённых занятиях группы.
+ */
+export function trialVisitsBy(
+  entries: ClassEntry[],
+  now: number,
+  keys: (e: ClassEntry) => string[],
+): Map<string, Map<string, string>> {
+  const map = new Map<string, Map<string, string>>();
+  for (const e of entries) {
+    if (!isHeld(e, now)) continue;
+    for (const b of e.bookings) {
+      if (b.status !== "attended" || !b.trial || !b.clientId) continue;
+      for (const key of keys(e)) {
+        const visits = map.get(key) ?? new Map<string, string>();
+        const seen = visits.get(b.clientId);
+        if (!seen || e.date < seen) visits.set(b.clientId, e.date);
+        map.set(key, visits);
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Пришли на пробное и купили после: покупка (не пробное и не разовое) в
+ * день пробного посещения или позже — на сегодня. Конверсия, %: купили /
+ * пришли; никто не приходил — null.
+ */
+export function trialConversion(
+  visits: Map<string, string> | undefined,
+  purchases: Map<string, string[]>,
+) {
+  let came = 0;
+  let bought = 0;
+  for (const [client, date] of visits ?? []) {
+    came++;
+    if (purchases.get(client)?.some((d) => d >= date)) bought++;
+  }
+  return { came, bought, rate: share(bought, came) };
 }
 
 export function tallyAll(entries: ClassEntry[], now: number) {

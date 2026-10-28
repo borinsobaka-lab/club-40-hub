@@ -1081,13 +1081,21 @@ type EntryRow = {
         trainer: {
           id: string;
           full_name: string | null;
+          photo_url: string | null;
           rating_avg: number | null;
           rating_count: number | null;
         } | null;
       }[]
     | null;
-  bookings: { status: string; client_id?: string | null; user_id?: string | null }[];
+  bookings: {
+    status: string;
+    client_id?: string | null;
+    user_id?: string | null;
+    charged?: OneOrMany<{ membership: OneOrMany<{ kind: string | null }> }>;
+  }[];
 };
+
+type OneOrMany<T> = T | T[] | null;
 
 /**
  * Групповые и персональные занятия клубов, начавшиеся в from–to, с тренерами
@@ -1101,14 +1109,18 @@ export async function loadClassEntries(
   to: string,
   light = false,
 ): Promise<ClassEntry[]> {
-  const bookings = light ? "status" : "status, client_id, user_id";
+  // Не light — и вид списанного абонемента: посещение по пробному (таблица «Тренеры»).
+  const bookings = light
+    ? "status"
+    : "status, client_id, user_id, " +
+      "charged:client_memberships!charged_membership_id(membership:memberships(kind))";
   const rows = (await loadAllRows({
     page: (lo, hi) =>
       select(
         "schedule_entries",
         "studio_id, kind, starts_at, capacity, cancelled_at, workout_id, " +
           "workout:workouts(name, color, capacity), " +
-          "schedule_entry_trainers(trainer:trainers(id, full_name, rating_avg, rating_count)), " +
+          "schedule_entry_trainers(trainer:trainers(id, full_name, photo_url, rating_avg, rating_count)), " +
           `bookings:schedule_bookings(${bookings})`,
         lo,
       )
@@ -1145,6 +1157,7 @@ export async function loadClassEntries(
           {
             id: t.id,
             name: t.full_name || "Без имени",
+            photo: t.photo_url,
             rating: rated ? Number(t.rating_avg) : null,
             ratingCount: t.rating_count ?? 0,
           },
@@ -1155,9 +1168,41 @@ export async function loadClassEntries(
         client: b.client_id ?? b.user_id ?? null,
         clientId: b.client_id ?? null,
         userId: b.user_id ?? null,
+        trial: one(one(b.charged)?.membership)?.kind === "trial",
       })),
     };
   });
+}
+
+/**
+ * Покупки абонементов клиентов (пробное и разовое — не покупки, возвращённые
+ * и удалённые — тоже, как в «Маркетинге»): даты по клиенту по возрастанию.
+ * По карточкам, а не по клубам: в общей базе пакетных клубов купить после
+ * пробного могли в другом клубе сети.
+ */
+export async function loadPurchaseDates(clientIds: string[]) {
+  const pages = await Promise.all(
+    chunks(clientIds).map((ids) =>
+      loadAllRows({
+        page: (lo, hi) =>
+          select("sales", "client_id, sold_at, memberships(kind), client_memberships(status)", lo)
+            .in("client_id", ids)
+            .order("sold_at")
+            .order("id")
+            .range(lo, hi),
+      }),
+    ),
+  );
+  const dates = new Map<string, string[]>();
+  for (const r of pages.flat()) {
+    const kind = one(r.memberships as OneOrMany<{ kind: string | null }>)?.kind;
+    const term = one(r.client_memberships as OneOrMany<{ status: string }>);
+    if (kind === "trial" || kind === "single" || !term) continue;
+    if (term.status === "cancelled" || term.status === "refunded") continue;
+    const id = String(r.client_id);
+    dates.set(id, [...(dates.get(id) ?? []), String(r.sold_at)]);
+  }
+  return dates;
 }
 
 // ---------------------------------------------------------------------------

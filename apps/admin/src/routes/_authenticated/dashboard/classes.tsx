@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChartArea, ChartPanel, RankList, type RankItem } from "@/components/dashboard/chart-panel";
 import { OTHER_COLOR } from "@/components/dashboard/colors";
 import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
+import { EmployeePhoto } from "@/components/employee-photo";
 import { ScheduleHeatmap } from "@/components/dashboard/heatmap";
 import { MetricTable, ShareCell, type MetricRow } from "@/components/dashboard/metric-table";
 import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
@@ -31,11 +32,13 @@ import {
   repeatRate,
   showRate,
   tallyBy,
+  trialConversion,
+  trialVisitsBy,
   type ClassEntry,
   type ClassTally,
   type ClassesKey,
 } from "@/lib/dashboard-classes";
-import { loadClassEntries, type SeriesDef } from "@/lib/dashboard-data";
+import { loadClassEntries, loadPurchaseDates, type SeriesDef } from "@/lib/dashboard-data";
 import type { DetailsSpec } from "@/lib/dashboard-details";
 import {
   CLASSES_CHARTS,
@@ -182,6 +185,8 @@ const SORTS = {
 } as const;
 type SortKey = keyof typeof SORTS;
 
+const TRIAL_COLUMNS = new Set<string>(["trials", "trialBought", "trialConversion"]);
+
 const percent = (n: number) => formatStat("percent", n);
 const decimal = (n: number) => formatStat("decimal", n);
 const ratingFormat = new Intl.NumberFormat("ru-RU", {
@@ -202,7 +207,16 @@ function ClassesBody(view: DashboardView) {
         loadClassEntries(view.clubIds, period!.from, period!.to),
         loadClassEntries(view.clubIds, prev!.from, prev!.to),
       ]);
-      return { current, previous };
+      // Покупки только тех, кто приходил на пробное за период, — для «Тренеров».
+      const trialClients = new Set(
+        current.flatMap((e) =>
+          e.bookings.flatMap((b) => (b.trial && b.clientId ? [b.clientId] : [])),
+        ),
+      );
+      const purchases = trialClients.size
+        ? await loadPurchaseDates([...trialClients])
+        : new Map<string, string[]>();
+      return { current, previous, purchases };
     },
     enabled: !!period,
     meta: { errorMessage: `${view.name}: не удалось загрузить занятия` },
@@ -226,9 +240,10 @@ function ClassesBody(view: DashboardView) {
     // Тренеры: id → имя и оценка (из любого занятия, где он вёл).
     const trainerInfo = new Map<string, ClassEntry["trainers"][number]>();
     for (const e of entries) for (const t of e.trainers) trainerInfo.set(t.id, t);
-    const byTrainer = tallyBy(entries, now, (e) =>
-      e.trainers.length ? e.trainers.map((t) => t.id) : ["__none"],
-    );
+    const trainerKeys = (e: ClassEntry) =>
+      e.trainers.length ? e.trainers.map((t) => t.id) : ["__none"];
+    const byTrainer = tallyBy(entries, now, trainerKeys);
+    const trialsByTrainer = trialVisitsBy(entries, now, trainerKeys);
 
     const workoutInfo = new Map<string, { name: string; color: string | null }>();
     for (const e of entries)
@@ -260,8 +275,9 @@ function ClassesBody(view: DashboardView) {
       .sort((a, b) => a.value - b.value || b.classes - a.classes)
       .slice(0, 10);
 
-    return { heat, trainerInfo, byTrainer, workoutInfo, byWorkout, top, weak };
+    return { heat, trainerInfo, byTrainer, trialsByTrainer, workoutInfo, byWorkout, top, weak };
   }, [entries, now]);
+  const purchases = query.data?.purchases;
 
   // Выбрано несколько клубов — у занятия расписания подпись клуба.
   const clubName = new Map(view.clubs.map((c) => [c.id, c.name]));
@@ -274,13 +290,38 @@ function ClassesBody(view: DashboardView) {
     if (!data) return [];
     return sortRows([...data.byTrainer.entries()], trainerSort).map(([id, t]) => {
       const info = data.trainerInfo.get(id);
+      const trials = trialConversion(data.trialsByTrainer.get(id), purchases ?? new Map());
       return {
         key: id,
-        name: info?.name ?? "Без тренера",
+        name: info ? (
+          <span className="inline-flex items-center gap-2">
+            <EmployeePhoto
+              value={info.photo ?? null}
+              name={info.name}
+              className="size-7 shrink-0 text-xs"
+            />
+            {info.name}
+          </span>
+        ) : (
+          "Без тренера"
+        ),
         muted: !info,
-        values: { name: info?.name, ...tallyValues(t), rating: info?.rating ?? null },
+        values: {
+          name: info?.name,
+          ...tallyValues(t),
+          trials: trials.came,
+          trialBought: trials.bought,
+          trialConversion: trials.rate,
+          rating: info?.rating ?? null,
+        },
         cells: {
           ...tallyCells(t, color),
+          trials: formatNumber(trials.came),
+          trialBought: formatNumber(trials.bought),
+          trialConversion:
+            trials.rate === null ? undefined : (
+              <ShareCell value={trials.rate} text={percent(trials.rate)} color={color} />
+            ),
           rating:
             info?.rating != null ? (
               <span>
@@ -294,7 +335,11 @@ function ClassesBody(view: DashboardView) {
         },
       };
     });
-  }, [data, trainerSort, color]);
+  }, [data, purchases, trainerSort, color]);
+  // Пробных абонементов у подписочных клубов нет — колонки пробных только у пакетных.
+  const trainerColumns = TRAINER_COLUMNS.filter(
+    (k) => !TRIAL_COLUMNS.has(k) || view.clubs.some((c) => c.format === "packages"),
+  );
 
   const workoutRows = useMemo<MetricRow[]>(() => {
     if (!data) return [];
@@ -366,7 +411,7 @@ function ClassesBody(view: DashboardView) {
       >
         <MetricTable
           nameLabel="Тренер"
-          columns={TRAINER_COLUMNS.map((k) => ({ key: k, ...CLASSES_COLUMNS[k] }))}
+          columns={trainerColumns.map((k) => ({ key: k, ...CLASSES_COLUMNS[k] }))}
           rows={trainerRows}
           loading={loading}
           error={error}

@@ -6,6 +6,8 @@ import {
   heatmap,
   repeatRate,
   tallyBy,
+  trialConversion,
+  trialVisitsBy,
   type ClassBooking,
   type ClassEntry,
 } from "./dashboard-classes";
@@ -136,5 +138,54 @@ describe("classesSeries", () => {
     expect(classesSeries(entries, NOW, "visits")).toEqual([
       { date: "2026-10-10", amount: 0, n: 1 },
     ]);
+  });
+});
+
+describe("пробные у тренера", () => {
+  const trial = (clientId: string, status = "attended"): ClassBooking => ({
+    status,
+    client: clientId,
+    clientId,
+    trial: true,
+  });
+  const byTrainer = (e: ClassEntry) => e.trainers.map((t) => t.id);
+  const t1 = [{ id: "t1", name: "Анна" }];
+
+  test("клиент — один раз, с датой первого пробного посещения; не пробные и неотмеченные не в счёт", () => {
+    const visits = trialVisitsBy(
+      [
+        entry({
+          trainers: t1,
+          date: "2026-10-10",
+          bookings: [trial("c1"), trial("c2", "no_show")],
+        }),
+        entry({ trainers: t1, date: "2026-10-08", bookings: [trial("c1")] }),
+        entry({
+          trainers: t1,
+          bookings: [{ status: "attended", client: "c3", clientId: "c3", trial: false }],
+        }),
+        entry({ trainers: t1, startsAt: FUTURE, bookings: [trial("c4")] }),
+      ],
+      NOW,
+      byTrainer,
+    );
+    expect([...(visits.get("t1") ?? [])]).toEqual([["c1", "2026-10-08"]]);
+  });
+
+  test("купили после пробного — покупка в день посещения или позже", () => {
+    const visits = new Map([
+      ["c1", "2026-10-10"],
+      ["c2", "2026-10-10"],
+      ["c3", "2026-10-10"],
+    ]);
+    const purchases = new Map([
+      ["c1", ["2026-10-10"]],
+      ["c2", ["2026-09-01"]],
+    ]);
+    const r = trialConversion(visits, purchases);
+    expect(r.came).toBe(3);
+    expect(r.bought).toBe(1);
+    expect(r.rate).toBeCloseTo(100 / 3);
+    expect(trialConversion(undefined, purchases)).toEqual({ came: 0, bought: 0, rate: null });
   });
 });
