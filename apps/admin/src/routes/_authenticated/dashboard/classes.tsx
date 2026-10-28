@@ -30,7 +30,6 @@ import {
   fillRate,
   heatmap,
   repeatRate,
-  showRate,
   tallyBy,
   trialConversion,
   trialVisitsBy,
@@ -180,7 +179,6 @@ const SORTS = {
   visits: { label: "По посещениям", value: (t: ClassTally) => t.visits },
   avg: { label: "По среднему на занятии", value: avgPerClass },
   fill: { label: "По заполняемости", value: fillRate },
-  show: { label: "По доходимости", value: showRate },
   repeat: { label: "По повторным визитам", value: repeatRate },
 } as const;
 type SortKey = keyof typeof SORTS;
@@ -411,6 +409,7 @@ function ClassesBody(view: DashboardView) {
       >
         <MetricTable
           nameLabel="Тренер"
+          stickyName
           columns={trainerColumns.map((k) => ({ key: k, ...CLASSES_COLUMNS[k] }))}
           rows={trainerRows}
           loading={loading}
@@ -473,7 +472,6 @@ function tallyValues(t: ClassTally): NonNullable<MetricRow["values"]> {
     visits: t.visits,
     avg: avgPerClass(t),
     fill: fillRate(t),
-    show: showRate(t),
     clients: t.clients.size,
     repeat: repeatRate(t),
   };
@@ -481,7 +479,6 @@ function tallyValues(t: ClassTally): NonNullable<MetricRow["values"]> {
 
 function tallyCells(t: ClassTally, color: string): MetricRow["cells"] {
   const fill = fillRate(t);
-  const show = showRate(t);
   const repeat = repeatRate(t);
   const avg = avgPerClass(t);
   return {
@@ -489,7 +486,6 @@ function tallyCells(t: ClassTally, color: string): MetricRow["cells"] {
     visits: formatNumber(t.visits),
     avg: avg === null ? undefined : decimal(avg),
     fill: fill === null ? undefined : <ShareCell value={fill} text={percent(fill)} color={color} />,
-    show: show === null ? undefined : <ShareCell value={show} text={percent(show)} color={color} />,
     clients: formatNumber(t.clients.size),
     repeat: repeat === null ? undefined : percent(repeat),
   };

@@ -518,10 +518,6 @@ export const CLASSES_COLUMNS = {
     label: "Заполняемость",
     tip: "Посещения / вместимость занятий; занятия без лимита мест не считаются.",
   },
-  show: {
-    label: "Доходимость",
-    tip: "«Посетил» / («Посетил» + «Не пришёл»); записи без отметки не считаются.",
-  },
   clients: { label: "Клиентов", tip: "Разные клиенты, посетившие эти занятия." },
   repeat: {
     label: "Повторно",
@@ -551,7 +547,6 @@ export const TRAINER_COLUMNS = [
   "visits",
   "avg",
   "fill",
-  "show",
   "clients",
   "repeat",
   "trials",
@@ -564,7 +559,6 @@ export const WORKOUT_COLUMNS = [
   "visits",
   "avg",
   "fill",
-  "show",
   "clients",
   "repeat",
 ] as const satisfies (keyof typeof CLASSES_COLUMNS)[];

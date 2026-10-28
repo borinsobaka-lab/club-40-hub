@@ -23,6 +23,9 @@ import { cn } from "@/lib/utils";
  * колонка сортируется, если у строк есть значение с её ключом, название —
  * по ключу `name`. Выключена — порядок, в котором строки пришли.
  * Приглушённые строки («Без тренера», «Нет ответа») — всегда внизу.
+ *
+ * `stickyName` — колонка названия закреплена при прокрутке вбок (с md; на
+ * телефоне строки — карточки): у «Тренеров» колонок больше, чем влезает.
  */
 
 export type MetricColumn = { key: string; label: string; tip?: string };
@@ -45,6 +48,7 @@ export function MetricTable({
   loading,
   error,
   emptyText = "Нет данных за период",
+  stickyName = false,
 }: {
   nameLabel: string;
   columns: MetricColumn[];
@@ -52,6 +56,7 @@ export function MetricTable({
   loading: boolean;
   error?: boolean;
   emptyText?: string;
+  stickyName?: boolean;
 }) {
   const sort = useTableSort();
   const sortable = (key: string) => rows.some((r) => r.values && key in r.values);
@@ -79,7 +84,9 @@ export function MetricTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead {...head("name")}>{nameLabel}</TableHead>
+          <TableHead {...head("name")} className={cn(stickyName && STICKY_CELL)}>
+            {nameLabel}
+          </TableHead>
           {columns.map((c) => (
             <TableHead
               key={c.key}
@@ -94,8 +101,10 @@ export function MetricTable({
       </TableHeader>
       <TableBody>
         {sorted.map((row) => (
-          <TableRow key={row.key} className={cn(row.muted && "text-muted-foreground")}>
-            <TableCell className="min-w-40 font-medium">{row.name}</TableCell>
+          <TableRow key={row.key} className={cn("group", row.muted && "text-muted-foreground")}>
+            <TableCell className={cn("min-w-40 font-medium", stickyName && STICKY_CELL)}>
+              {row.name}
+            </TableCell>
             {columns.map((c) => (
               <TableCell key={c.key} className="text-right tabular-nums">
                 {row.cells[c.key] ?? "—"}
@@ -107,6 +116,15 @@ export function MetricTable({
     </Table>
   );
 }
+
+/**
+ * Закреплённая ячейка: непрозрачный фон панели и линия справа; подсветка
+ * строки при наведении (полупрозрачная у TableRow) — тенью внутрь, иначе
+ * под ячейкой просвечивали бы уехавшие колонки.
+ */
+const STICKY_CELL =
+  "md:sticky md:left-0 md:z-10 md:border-r md:bg-background " +
+  "md:group-hover:shadow-[inset_0_0_0_100vmax_color-mix(in_oklab,var(--muted)_50%,transparent)]";
 
 /**
  * Доля со шкалой под числом: заполняемость, доходимость, конверсия. В
