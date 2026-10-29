@@ -827,7 +827,8 @@ kb`. Доступ — ролями «Пользователей и ролей» 
   сохранении карточки. Email — без пробелов, в нижнем регистре, проверка
   формата и подсказка по опечаткам доменов (gmial.com → gmail.com). Поиск
   по телефону — `phoneSearchTerm` (`lib/format.ts`): «555 12» ищется как «55512».
-- `src/lib/payments.ts`, `src/lib/bookings.ts` (+ `BookingStatusBadge`),
+- `src/lib/payments.ts`, `src/lib/bookings.ts` (+ `BookingStatusBadge`; у
+  отменённой — `cancelledBy`: «Отменено клиентом / администратором»),
   `src/lib/client-status.ts`, `src/lib/workout-types.ts`,
   `src/lib/schedule-activities.ts` (типы занятий в расписании: групповое,
   персональное, прочая активность — подписи, иконки, цвета) — справочники.

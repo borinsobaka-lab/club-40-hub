@@ -276,6 +276,16 @@ AUTH_SETUP.md.
   (`schedule_bookings_charge_balance` и `packages_restart_term` переопределены
   здесь), пропуск без причины — нет; `clients.phone2` (вью
   `clients_with_status` пересоздана здесь).
+  Кем отменена запись (решение владельца 2026-10-29):
+  `db/migrations/2026-10-29_booking_cancelled_by.sql` —
+  `schedule_bookings` / `bookings_log`.`cancelled_by` и `cancelled_by_kind`
+  (`client` — отменил сам клиент, `admin` — сотрудник, отмена или удаление
+  занятия клубом, сервер; null — отменено раньше, кем — неизвестно). Ставят
+  триггеры `…_cancelled_by_biu` при переходе в «Отменено» (любой функцией),
+  из браузера не подделать; вью `bookings_log_full` пересоздана здесь
+  (актуальное определение). В админке — «Отменено клиентом» / «Отменено
+  администратором» в «Истории записей» (и фильтр) и в «Посещениях» карточки
+  клиента.
   Исправления по код-ревью: `db/migrations/2026-10-11_zzzzzzzz_review_fixes.sql`
   — итоговые политики реквизитов/ставок (`can_manage_employee`), сотрудников,
   новостей/услуг/пушей и `schedule_bookings_group_only` (на чистой базе

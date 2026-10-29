@@ -829,13 +829,13 @@ export function BookingsLogPageSkeleton() {
     <TablePage
       title="История записей"
       actions={packages ? [] : [{ label: "Отметить пропущенные", icon: false }]}
-      toolbar={{ controls: ["w-48"] }}
+      toolbar={{ controls: ["w-56"] }}
       headers={[
         { label: "Клиент", className: "min-w-[220px]" },
         "Контакты",
         "Тренировка",
         { label: "Дата и время", className: "w-[160px]" },
-        { label: "Статус", className: "w-[140px]" },
+        { label: "Статус", className: "w-[200px]" },
         { label: "MET", className: "w-[70px] text-right" },
         { label: "Вес, кг", className: "w-[80px] text-right" },
         { label: "Длит., мин", className: "w-[80px] text-right" },

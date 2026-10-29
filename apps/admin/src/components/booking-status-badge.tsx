@@ -1,5 +1,5 @@
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
-import { BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
+import { bookingStatusLabel, type BookingStatus, type CancelledByKind } from "@/lib/bookings";
 
 function toneOf(status: BookingStatus): StatusTone {
   switch (status) {
@@ -18,6 +18,13 @@ function toneOf(status: BookingStatus): StatusTone {
   }
 }
 
-export function BookingStatusBadge({ status }: { status: BookingStatus }) {
-  return <StatusChip tone={toneOf(status)}>{BOOKING_STATUS_LABEL[status] ?? status}</StatusChip>;
+/** cancelledBy — у отменённой: «Отменено клиентом» / «Отменено администратором». */
+export function BookingStatusBadge({
+  status,
+  cancelledBy,
+}: {
+  status: BookingStatus;
+  cancelledBy?: CancelledByKind | null;
+}) {
+  return <StatusChip tone={toneOf(status)}>{bookingStatusLabel(status, cancelledBy)}</StatusChip>;
 }

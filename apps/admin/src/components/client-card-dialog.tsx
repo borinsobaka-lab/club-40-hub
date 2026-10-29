@@ -45,7 +45,7 @@ import { MembershipStatusBadge, AutoRenewBadge } from "@/components/membership-s
 import { effectiveStatus, isLiveStatus } from "@/lib/membership-status";
 import { computeClubStatus } from "@/lib/client-status";
 import { GOAL_LABELS, REFERRAL_LABELS } from "@/lib/client-profile";
-import { BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
+import { bookingStatusLabel, type BookingStatus, type CancelledByKind } from "@/lib/bookings";
 import {
   clientName,
   formatDate,
@@ -878,6 +878,7 @@ type VisitRow = {
   starts_at: string;
   status: BookingStatus;
   cancelled_at: string | null;
+  cancelled_by_kind: CancelledByKind | null;
 };
 
 /**
@@ -902,7 +903,7 @@ function VisitsTab({
         supabase
           .from("bookings_log")
           .select(
-            "id, studio_id, studio:studios(name), workout_name, starts_at, status, cancelled_at",
+            "id, studio_id, studio:studios(name), workout_name, starts_at, status, cancelled_at, cancelled_by_kind",
           )
           .or(userId ? `client_id.eq.${clientId},user_id.eq.${userId}` : `client_id.eq.${clientId}`)
           .order("starts_at", { ascending: false })
@@ -915,7 +916,7 @@ function VisitsTab({
     workout: (r) => r.workout_name ?? "Персональное занятие",
     studio: (r) => r.studio?.name,
     startsAt: (r) => r.starts_at,
-    status: (r) => BOOKING_STATUS_LABEL[r.status] ?? r.status,
+    status: (r) => bookingStatusLabel(r.status, r.cancelled_by_kind),
     cancelledAt: (r) => r.cancelled_at,
   });
 
@@ -949,7 +950,7 @@ function VisitsTab({
                   {formatDateTime(r.starts_at)}
                 </TableCell>
                 <TableCell>
-                  <BookingStatusBadge status={r.status} />
+                  <BookingStatusBadge status={r.status} cancelledBy={r.cancelled_by_kind} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                   {formatDateTime(r.cancelled_at)}

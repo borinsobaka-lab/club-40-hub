@@ -1301,4 +1301,54 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect((await row(pack)).membership_state).toBe("frozen");
     });
   });
+
+  // ---- 2026-10-29: кем отменена запись — клиентом или администратором ----
+
+  test("отмена записи: клиентом / администратором / клубом, повторная запись стирает отметку", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await sell(tx, s);
+      const e1 = await entry(tx, s, 1);
+      const e2 = await entry(tx, s, 2);
+      const e3 = await entry(tx, s, 3);
+
+      const kind = async (entryId: string) => {
+        const [b] = await tx`
+          select sb.cancelled_by_kind as booking, bl.cancelled_by_kind as log, f.cancelled_by_kind as view
+            from schedule_bookings sb
+            left join bookings_log bl on bl.booking_id = sb.id
+            left join bookings_log_full f on f.booking_id = sb.id
+           where sb.entry_id = ${entryId}`;
+        return b as { booking: string | null; log: string | null; view: string | null };
+      };
+
+      // Клиент отменил сам — «клиентом», и в журнале, и во вью.
+      const client = await asClient(tx, s);
+      for (const e of [e1, e2, e3]) {
+        const [{ r }] = await tx`select book_schedule_entry(${e}) as r`;
+        expect(r).toMatchObject({ ok: true });
+      }
+      await tx`select cancel_schedule_booking(${e1})`;
+      expect(await kind(e1)).toEqual({ booking: "client", log: "client", view: "client" });
+      const [{ by }] = await tx`select cancelled_by as by from schedule_bookings where entry_id = ${e1}`;
+      expect(by).toBe(client);
+
+      // Администратор отписал — «администратором»; дальнейшая правка отменённой
+      // записи отметку не меняет.
+      await asStaff(tx, s);
+      const [{ id: b2 }] = await tx`select id from schedule_bookings where entry_id = ${e2}`;
+      await tx`select cancel_schedule_booking_admin(${b2})`;
+      expect(await kind(e2)).toEqual({ booking: "admin", log: "admin", view: "admin" });
+      await tx`update schedule_bookings set cancelled_by_kind = 'client' where id = ${b2}`;
+      expect((await kind(e2)).booking).toBe("admin");
+
+      // Клуб отменил занятие — «администратором».
+      await tx`select cancel_schedule_entry(${e3}, 'Тренер заболел')`;
+      expect((await kind(e3)).log).toBe("admin");
+
+      // Снова «Забронировано» — отметки нет.
+      await tx`update schedule_bookings set status = 'booked' where id = ${b2}`;
+      expect(await kind(e2)).toEqual({ booking: null, log: null, view: null });
+    });
+  });
 });

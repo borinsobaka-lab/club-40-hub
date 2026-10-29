@@ -37,7 +37,13 @@ import { ClientNameLink } from "@/components/client-name-link";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
-import { BOOKING_STATUS_FILTER, BOOKING_STATUS_LABEL, type BookingStatus } from "@/lib/bookings";
+import {
+  BOOKING_STATUS_FILTER,
+  BOOKING_STATUS_LABEL,
+  CANCELLED_BY_LABEL,
+  type BookingStatus,
+  type CancelledByKind,
+} from "@/lib/bookings";
 import { formatDateTime, formatPhone } from "@/lib/format";
 import { BookingsLogPageSkeleton } from "@/components/page-skeletons";
 
@@ -64,6 +70,7 @@ type LogRow = {
   status: BookingStatus;
   booked_at: string;
   cancelled_at: string | null;
+  cancelled_by_kind: CancelledByKind | null;
   completed_at: string | null;
   cancelled_lead_minutes: number | null;
   met_value: number | null;
@@ -73,6 +80,8 @@ type LogRow = {
 };
 
 const STATUS_ALL = "__all__";
+/** Фильтр «Отменено клиентом / администратором»: `cancelled:<кем>`. */
+const CANCELLED_BY_FILTER: CancelledByKind[] = ["client", "admin"];
 
 /** Колонки сортировки (lib/table-sort.ts): ключ заголовка → колонки вью. */
 const SORT_COLUMNS = {
@@ -120,7 +129,9 @@ function BookingsLogPage() {
         .from("bookings_log_full")
         .select("*", { count: "exact" })
         .eq("studio_id", studioId!);
-      if (status !== STATUS_ALL) query = query.eq("status", status);
+      const [statusValue, cancelledBy] = status.split(":");
+      if (status !== STATUS_ALL) query = query.eq("status", statusValue);
+      if (cancelledBy) query = query.eq("cancelled_by_kind", cancelledBy);
       if (term) query = query.ilike("search_text", `%${term}%`);
       return orderBy(query, sort.sort, SORT_COLUMNS, (q) =>
         q.order("starts_at", { ascending: false }),
@@ -188,7 +199,7 @@ function BookingsLogPage() {
               placeholder="Поиск: имя, телефон, почта, тренировка"
             />
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger aria-label="Статус записи" className="w-48">
+              <SelectTrigger aria-label="Статус записи" className="w-56">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -196,6 +207,11 @@ function BookingsLogPage() {
                 {BOOKING_STATUS_FILTER.map((s) => (
                   <SelectItem key={s} value={s}>
                     {BOOKING_STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+                {CANCELLED_BY_FILTER.map((k) => (
+                  <SelectItem key={k} value={`cancelled:${k}`}>
+                    {CANCELLED_BY_LABEL[k]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -221,7 +237,7 @@ function BookingsLogPage() {
                   <TableHead className="w-[160px]" {...sort.head("startsAt")}>
                     Дата и время
                   </TableHead>
-                  <TableHead className="w-[140px]" {...sort.head("status")}>
+                  <TableHead className="w-[200px]" {...sort.head("status")}>
                     Статус
                   </TableHead>
                   <TableHead className="w-[70px] text-right" {...sort.head("met")}>
@@ -291,7 +307,7 @@ function BookingsLogPage() {
                           {formatDateTime(r.starts_at)}
                         </TableCell>
                         <TableCell>
-                          <BookingStatusBadge status={r.status} />
+                          <BookingStatusBadge status={r.status} cancelledBy={r.cancelled_by_kind} />
                         </TableCell>
                         <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
                           {r.met_value != null ? Number(r.met_value).toFixed(1) : "—"}
