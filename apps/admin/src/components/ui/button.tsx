@@ -28,6 +28,9 @@ const buttonVariants = cva(
         // светло-красная заливка, красные текст и крестик (решение владельца
         // 2026-10-15; было оранжевой).
         attention: "bg-destructive/10 text-destructive hover:bg-destructive/15",
+        // Тёмная заливка вне цвета клуба: «Развернуть» в расписании
+        // (решение владельца 2026-10-29).
+        dark: "bg-foreground text-background hover:bg-foreground/85",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

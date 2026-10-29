@@ -878,13 +878,12 @@ function SchedulePage() {
 
             <div className="toolbar-full flex flex-wrap items-center gap-2 sm:ml-auto">
               <Button
-                variant="outline"
-                size="icon"
-                aria-label="Во весь экран"
+                variant="dark"
                 title="Во весь экран — для скриншота клиенту"
                 onClick={openFullscreen}
               >
                 <Maximize />
+                Развернуть
               </Button>
               {!packages && (
                 <Select value={filterType} onValueChange={setFilterType}>
