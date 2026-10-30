@@ -314,8 +314,15 @@ class WorkerLock:
             return False
 
     def release(self) -> None:
+        """Отпустить замок. Соединение не возвращается в пул, а закрывается:
+        замок живёт на физическом соединении, и в пуле он остался бы висеть."""
         if self.conn is not None:
             try:
+                self.conn.execute(text("select pg_advisory_unlock_all()"))
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                self.conn.invalidate()
                 self.conn.close()
             except Exception:  # noqa: BLE001
                 pass

@@ -9,6 +9,7 @@
 
 | Задача                                                                   | Статус                                                                                                        |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 17. 🟠 «Аудиоаналитика»: сервис audio.base40.fit в Coolify              | ⏳ см. Задачу 17 — после выкатки админки с миграцией `2026-10-30_audio_analytics.sql`                        |
 | 16. 🔴 Копия портала для Lady Stretch на Selectel (Россия)               | ⏳ Часть A (цены Selectel, почта и DNS reg.ru, без покупок) — сейчас; Часть B — только по команде владельца |
 | 15. 🟠 amoCRM: очередь ответственных (сервер rr.base40.fit + интеграция) | ⏳ см. Задачу 15 — список сотрудников и порядок даёт владелец                                                 |
 | 14. 🔴 Перед запуском: мощности, лимиты писем, бэкапы                    | ⏳ см. Задачу 14 — **до утра запуска**: тариф Resend, лимит писем GoTrue, сервер, бэкапы, отчёт по шаблону    |
@@ -38,6 +39,96 @@ Supabase — self-hosted в Coolify (Studio в ресурсе Supabase, API
 переменных `GOTRUE_*` сервиса auth), Coolify
 (https://coolify.base40.fit), Resend, GitHub (`borinsobaka-lab`),
 Hetzner Cloud. **Ничего не удаляй**, ключи и пароли никуда не пересылай.
+
+---
+
+# Задача 17. 🟠 «Аудиоаналитика»: сервис в Coolify (2026-10-30)
+
+Речевая аналитика (запись дня на ресепшене и разбор разговоров) переехала
+из проекта `audio-analitics` на портал: раздел «Аудиоаналитика» в админке,
+сервис `services/audio-analytics` (устройство — AUDIO_ANALYTICS.md, всё о
+сервисе — `services/audio-analytics/README.md`). Нужно поднять сервис в
+Coolify рядом с админкой.
+
+**Правила:** прежний проект (его ресурсы в Coolify, база, бакет R2) **не
+останавливай и не удаляй** — студии пока пишут туда; его выключит владелец
+после переезда. Секреты — только в поля Coolify и менеджер паролей
+владельца, в отчёт — только имена переменных. Непонятно — остановись и
+напиши владельцу.
+
+**Проверка «сделано ли уже»:** `https://audio.base40.fit/health` отвечает
+`{"status":"ok"}` и в админке «Аудиоаналитика» → «Приложение» карточка
+сервиса показывает «Воркер работает» — тогда переходи к Части 4.
+
+## Часть 1. DNS и ресурс
+
+1. DNS `base40.fit`: запись `audio` → тот же IP сервера Hetzner, что у
+   `admin` (как у `rr.base40.fit`).
+2. Coolify → проект Base40 → **New Resource** → этот репозиторий, ветка
+   `main`, Build Pack **Dockerfile**: Base Directory `/`, Dockerfile Location
+   `/services/audio-analytics/Dockerfile`, Watch Paths
+   `services/audio-analytics/**`, порт `8000`, домен
+   `https://audio.base40.fit`. Имя ресурса — `club40-audio`.
+3. **Persistent Storage** → том, путь в контейнере `/data` (без него каждый
+   передеплой стирает все записи).
+
+## Часть 2. Переменные (Environment Variables ресурса `club40-audio`)
+
+Полный список с пояснениями — `services/audio-analytics/.env.example`.
+Обязательные:
+
+- `DATABASE_URL` — **то же значение**, что у `club40-admin` (прямое
+  подключение к Postgres; не transaction-pooler).
+- `PUBLIC_URL=https://audio.base40.fit`, `CORS_ORIGINS=https://admin.base40.fit`.
+- `STORAGE_BACKEND=local`, `STORAGE_DIR=/data`, `FILES_URL_SECRET` — новая
+  случайная строка: `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`.
+- `SUPABASE_URL=https://api.base40.fit`, `SUPABASE_ANON_KEY` — то же
+  значение, что `VITE_SUPABASE_PUBLISHABLE_KEY` у `club40-admin`.
+- `APP_KEY` — **то же значение, что `APP_KEY` у прежнего сервера
+  аудиоаналитики** (Coolify, ресурс прежнего проекта, только скопировать).
+- `ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY` — те же, что у прежнего сервера
+  (только скопировать).
+- `PRICE_ASR_PER_HOUR_USD` — то же, что у прежнего сервера, если задано.
+
+Для переноса данных (Часть 4) — `OLD_S3_ENDPOINT_URL`, `OLD_S3_ACCESS_KEY_ID`,
+`OLD_S3_SECRET_ACCESS_KEY`, `OLD_S3_BUCKET` = значения `S3_*` прежнего
+сервера.
+
+Deploy. Дождись «healthy».
+
+## Часть 3. Админка
+
+У `club40-admin` → Environment Variables → добавить
+`AUDIO_API_URL=https://audio.base40.fit` → Redeploy.
+
+## Часть 4. Перенос данных прежнего проекта
+
+Терминал контейнера `club40-audio` (Coolify → ресурс → Terminal):
+
+```
+python -m cli.import_legacy --old-database-url "<DATABASE_URL прежнего сервера>" --dry-run
+python -m cli.import_legacy --old-database-url "<DATABASE_URL прежнего сервера>" --copy-audio
+```
+
+Первая команда только считает — пришли её сводку владельцу. Вторая
+переносит (можно повторять: уже перенесённое пропускается). Если адрес
+прежней базы начинается с `postgresql+asyncpg://` — так и вставляй, сервис
+поймёт.
+
+## Часть 5. Проверка
+
+1. `https://audio.base40.fit/health` → `{"status":"ok"}`.
+2. Админка → «Аудиоаналитика» → «Приложение»: сервис отвечает, воркер
+   работает, ключи распознавания и модели заданы, хранилище `local`.
+3. «Смены» — видны перенесённые смены; открой любую разобранную — ▶
+   проигрывает запись (в Chrome).
+4. Приложение в студиях пока не трогай: сборку с новым адресом делает
+   владелец на своём маке (`apps/recorder/README.md`).
+
+## Отчёт владельцу
+
+Что сделано по частям, сводка `--dry-run` и переноса, скриншот карточки
+сервиса в «Приложении», что не получилось.
 
 ---
 
