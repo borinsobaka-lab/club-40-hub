@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.env
+# Локальное хранилище при запуске без Docker (STORAGE_DIR=./data)
+data/

@@ -1,0 +1,19 @@
+# Сервис «Аудиоаналитики»: API приёма записи + воркер разбора в одном образе.
+# Без Redis и Celery: очередь разборов — сама таблица aa_recordings в Postgres.
+fastapi>=0.115
+# Starlette с поддержкой Range в FileResponse (перемотка 12-часовой записи в
+# плеере админки) — 0.39+; тест test_files.py это проверяет.
+starlette>=0.40
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
+pydantic>=2.7
+pydantic-settings>=2.3
+boto3>=1.34
+httpx>=0.27
+anthropic>=0.40
+python-multipart>=0.0.9
+# Аудио-пайплайн
+onnxruntime>=1.18
+numpy>=1.26
+soundfile>=0.12

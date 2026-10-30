@@ -1,0 +1,378 @@
+"""Unit tests for pure pipeline logic (no network, no DB).
+
+Перенесены из audio-analitics/backend/tests без разбора по скрипту продаж и
+сводной статистики прежней админки (их в сервисе нет)."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import pytest
+
+from app.pipeline.audio_prep import map_to_original_ts
+from app.pipeline.asr import Word
+from app.pipeline.llm import (
+    LlmClient,
+    LlmUsage,
+    extract_json,
+    normalize_dialogs,
+    normalize_metric_eval,
+    parse_timestamp,
+    render_prompt,
+)
+from app.pipeline.segmentation import (
+    format_ts,
+    group_conversations,
+    render_transcript,
+    words_to_turns,
+)
+
+
+# --- timeline mapping ---
+
+def make_timeline():
+    # Two speech regions: 10–20s and 100–130s of the original recording.
+    return [
+        {"concat_start": 0.0, "orig_start": 10.0, "duration": 10.0},
+        {"concat_start": 10.0, "orig_start": 100.0, "duration": 30.0},
+    ]
+
+
+def test_map_inside_first_region():
+    assert map_to_original_ts(5.0, make_timeline()) == pytest.approx(15.0)
+
+
+def test_map_inside_second_region():
+    assert map_to_original_ts(25.0, make_timeline()) == pytest.approx(115.0)
+
+
+def test_map_at_boundary():
+    assert map_to_original_ts(10.0, make_timeline()) == pytest.approx(100.0, abs=0.01)
+
+
+def test_map_past_end_clamps():
+    assert map_to_original_ts(999.0, make_timeline()) == pytest.approx(130.0)
+
+
+# --- turns & conversations ---
+
+def make_words():
+    return [
+        Word("Здравствуйте", 0.0, 0.5, "speaker_0"),
+        Word("хочу", 0.7, 0.9, "speaker_0"),
+        Word("записаться", 1.0, 1.6, "speaker_0"),
+        Word("Конечно", 2.0, 2.4, "speaker_1"),
+        # long gap → new conversation
+        Word("Добрый", 120.0, 120.4, "speaker_0"),
+        Word("день", 120.5, 120.8, "speaker_0"),
+    ]
+
+
+def test_words_to_turns_groups_same_speaker():
+    turns = words_to_turns(make_words())
+    assert len(turns) == 3
+    assert turns[0].text == "Здравствуйте хочу записаться"
+    assert turns[1].speaker == "speaker_1"
+
+
+def test_group_conversations_splits_on_gap():
+    turns = words_to_turns(make_words())
+    convs = group_conversations(turns, gap_s=30.0)
+    assert len(convs) == 2
+    assert len(convs[0].turns) == 2
+    assert convs[1].start == pytest.approx(120.0)
+
+
+def test_render_transcript_format():
+    turns = words_to_turns(make_words())
+    text = render_transcript(turns)
+    assert "[00:00:00] speaker_0: Здравствуйте хочу записаться" in text
+    assert "[00:02:00] speaker_0: Добрый день" in text
+
+
+def test_format_ts():
+    assert format_ts(3661.5) == "01:01:01"
+
+
+# --- LLM helpers ---
+
+def test_render_prompt_replaces_placeholders():
+    result = render_prompt("A {{x}} B {{y}}", x="1", y="2")
+    assert result == "A 1 B 2"
+
+
+def test_extract_json_plain():
+    assert extract_json('{"a": 1}') == {"a": 1}
+
+
+def test_extract_json_fenced():
+    assert extract_json('Вот ответ:\n```json\n[{"a": 1}]\n```') == [{"a": 1}]
+
+
+def test_extract_json_with_prose():
+    assert extract_json('Результат: {"a": [1, 2]} — готово') == {"a": [1, 2]}
+
+
+def test_extract_json_invalid_raises():
+    with pytest.raises(ValueError):
+        extract_json("не json вообще")
+
+
+# --- timestamp coercion (LLM output is not trustworthy) ---
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (123, 123.0),
+        (12.5, 12.5),
+        ("125", 125.0),
+        ("125.5", 125.5),
+        ("125,5", 125.5),
+        ("125s", 125.0),
+        ("02:05", 125.0),
+        ("00:12:34", 754.0),
+        ("1:00:00", 3600.0),
+    ],
+)
+def test_parse_timestamp_accepts_common_formats(value, expected):
+    assert parse_timestamp(value) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("value", [None, "", "скоро", "1:2:3:4", {}])
+def test_parse_timestamp_returns_default_on_garbage(value):
+    assert parse_timestamp(value) is None
+    assert parse_timestamp(value, default=0.0) == 0.0
+
+
+# --- stage-1 normalization ---
+
+def test_normalize_dialogs_coerces_and_sorts():
+    raw = [
+        {"start_s": "00:02:00", "end_s": "00:03:00", "type": "SALE", "brief": "b"},
+        {"start_s": 10, "end_s": 20, "type": "consultation"},
+    ]
+    result = normalize_dialogs(raw)
+    assert [d["start_s"] for d in result] == [10.0, 120.0]
+    assert result[1]["type"] == "sale"
+    assert result[1]["end_s"] == 180.0
+
+
+def test_normalize_dialogs_skips_unusable_entries():
+    raw = [{"end_s": 20, "type": "sale"}, "не объект", {"start_s": 5, "type": "sale"}]
+    result = normalize_dialogs(raw)
+    assert len(result) == 1
+    assert result[0]["start_s"] == 5.0
+    assert result[0]["end_s"] == 65.0  # missing end gets a 60s window
+
+
+def test_normalize_dialogs_clamps_to_recording_length():
+    result = normalize_dialogs([{"start_s": 50, "end_s": 9999, "type": "sale"}], 100.0)
+    assert result[0]["end_s"] == 100.0
+
+
+def test_normalize_dialogs_unknown_type_becomes_irrelevant():
+    result = normalize_dialogs([{"start_s": 1, "end_s": 2, "type": "продажа"}])
+    assert result[0]["type"] == "irrelevant"
+
+
+# --- metric evaluation normalization ---
+
+def test_metric_eval_applicable_with_score():
+    result = normalize_metric_eval(
+        {"applicable": True, "score": "7", "good": ["a"], "bad": ["b"], "comment": "ok"},
+        10,
+    )
+    assert result == {
+        "applicable": True, "score": 7, "good": ["a"], "bad": ["b"], "comment": "ok"
+    }
+
+
+def test_metric_eval_score_clamped_to_scale():
+    assert normalize_metric_eval({"applicable": True, "score": 12}, 10)["score"] == 10
+    assert normalize_metric_eval({"applicable": True, "score": 0}, 5)["score"] == 1
+
+
+def test_metric_eval_not_applicable_clears_everything():
+    result = normalize_metric_eval(
+        {"applicable": False, "score": 5, "good": ["x"], "bad": ["y"]}, 10
+    )
+    assert result["applicable"] is False
+    assert result["score"] is None
+    assert result["good"] == [] and result["bad"] == []
+
+
+def test_metric_eval_applicable_without_score_becomes_not_triggered():
+    result = normalize_metric_eval({"applicable": True, "score": "не знаю"}, 10)
+    assert result["applicable"] is False
+    assert result["score"] is None
+
+
+# --- LLM request shape ---
+
+class _FakeBlock:
+    def __init__(self, text):
+        self.type = "text"
+        self.text = text
+
+
+class _FakeUsage:
+    def __init__(self, inp, out):
+        self.input_tokens = inp
+        self.output_tokens = out
+
+
+class _FakeMessage:
+    def __init__(self, text, stop_reason="end_turn", usage=(100, 20)):
+        self.content = [_FakeBlock(text)] if text else []
+        self.stop_reason = stop_reason
+        self.usage = _FakeUsage(*usage)
+
+
+class _FakeStream:
+    def __init__(self, message):
+        self._message = message
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def get_final_message(self):
+        return self._message
+
+
+class _FakeMessages:
+    def __init__(self, message):
+        self._message = message
+        self.calls = []
+
+    def stream(self, **kwargs):
+        self.calls.append(kwargs)
+        return _FakeStream(self._message)
+
+
+def make_llm(text, stop_reason="end_turn"):
+    """An LlmClient whose Anthropic client is replaced by a recording fake."""
+    client = LlmClient.__new__(LlmClient)
+    client.settings = type("S", (), {"llm_max_tokens": 16000})()
+    client.usage = LlmUsage()
+    client.client = type("C", (), {})()
+    client.client.messages = _FakeMessages(_FakeMessage(text, stop_reason))
+    return client
+
+
+def test_complete_json_sends_no_sampling_params():
+    # Current Claude models reject temperature/top_p/top_k with a 400 — this
+    # test is the guard against reintroducing them.
+    llm = make_llm('{"ok": true}')
+    assert llm.complete_json("prompt", "claude-sonnet-5") == {"ok": True}
+    call = llm.client.messages.calls[0]
+    assert "temperature" not in call
+    assert "top_p" not in call and "top_k" not in call
+    assert call["model"] == "claude-sonnet-5"
+    assert call["max_tokens"] == 16000
+
+
+def test_complete_json_reports_empty_answer_clearly():
+    # Thinking and the answer share max_tokens: an exhausted budget yields no
+    # text, which must not surface as an opaque JSON parse error.
+    llm = make_llm("", stop_reason="max_tokens")
+    with pytest.raises(ValueError, match="LLM_MAX_TOKENS"):
+        llm.complete_json("prompt", "claude-sonnet-5")
+
+
+# --- стоимость обработки ---
+
+from app.pipeline.cost import (  # noqa: E402
+    ModelPrice,
+    compute_cost,
+    price_for,
+    request_cost,
+)
+
+
+def test_cost_splits_asr_and_llm():
+    # час распознавания по $0.40 + запросы к модели на $10.50
+    cost = compute_cost(3600, 10.50, 0.40)
+    assert cost.asr_usd == pytest.approx(0.40)
+    assert cost.llm_usd == pytest.approx(10.50)
+    assert cost.total_usd == pytest.approx(10.90)
+
+
+def test_cost_handles_missing_usage():
+    # смена без речи: ASR не вызывался, модель не вызывалась
+    cost = compute_cost(None, 0.0, 0.40)
+    assert cost.total_usd == 0.0
+
+
+def test_cost_keeps_sub_cent_precision():
+    # разбор одной смены на Haiku дешевле цента — округление до копеек обнулило бы всё
+    llm = request_cost(price_for("claude-haiku-5-5"), input_tokens=1000, output_tokens=500)
+    cost = compute_cost(60, llm, 0.40)
+    assert cost.llm_usd > 0 and cost.total_usd > cost.asr_usd
+
+
+def test_price_for_matches_longest_model_name():
+    # claude-sonnet-5-5 не должен уйти в тариф claude-sonnet-5, дата в конце не мешает
+    assert price_for("claude-haiku-5-5").input == pytest.approx(0.10)
+    assert price_for("claude-sonnet-5").output == pytest.approx(10.00)
+    assert price_for("claude-opus-5-5").input == pytest.approx(4.00)
+    assert price_for("claude-haiku-4-5-20251001").input == pytest.approx(1.00)
+    assert price_for("anthropic.claude-haiku-5-5").output == pytest.approx(0.50)
+    assert price_for("gpt-6-luna") is None
+
+
+def test_request_cost_prices_cache_separately():
+    # Haiku 5.5: 1M нового входа $0.10, запись в кэш ×1.25, чтение ×0.1, выход $0.50
+    price = price_for("claude-haiku-5-5")
+    assert request_cost(price, input_tokens=50_000) == pytest.approx(0.005)
+    assert request_cost(price, cache_write_5m_tokens=50_000) == pytest.approx(0.00625)
+    assert request_cost(price, cache_write_1h_tokens=50_000) == pytest.approx(0.01)
+    assert request_cost(price, cache_read_tokens=50_000) == pytest.approx(0.0005)
+    assert request_cost(price, output_tokens=10_000) == pytest.approx(0.005)
+
+
+def test_request_cost_switches_to_long_prompt_rate():
+    # у Haiku 5.5 запрос длиннее 100 тыс. токенов идёт по $0.50 / $2.50, кэш тоже считается
+    price = price_for("claude-haiku-5-5")
+    short = request_cost(price, input_tokens=100_000, output_tokens=1_000)
+    long = request_cost(price, input_tokens=60_000, cache_read_tokens=60_000, output_tokens=1_000)
+    assert short == pytest.approx(0.010 + 0.0005)
+    assert long == pytest.approx(0.030 + 0.003 + 0.0025)
+
+
+def test_usage_counts_cost_by_model_and_falls_back_for_unknown():
+    usage_obj = type(
+        "U", (), {"input_tokens": 50_000, "output_tokens": 100_000,
+                  "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0},
+    )()
+    message = type("M", (), {"usage": usage_obj})()
+    usage = LlmUsage(fallback=ModelPrice(2.0, 10.0))
+    usage.add(message, "claude-haiku-5-5")
+    assert usage.cost_usd == pytest.approx(0.005 + 0.05)
+    usage.add(message, "unknown-model")
+    assert usage.cost_usd == pytest.approx(0.055 + 0.10 + 1.0)
+    assert usage.calls == 2 and usage.input_tokens == 100_000
+
+
+def test_usage_bills_hour_cache_writes_at_double_rate():
+    cc = type("CC", (), {"ephemeral_1h_input_tokens": 40_000})()
+    usage_obj = type(
+        "U", (), {"input_tokens": 0, "output_tokens": 0, "cache_creation_input_tokens": 50_000,
+                  "cache_read_input_tokens": 0, "cache_creation": cc},
+    )()
+    usage = LlmUsage()
+    usage.add(type("M", (), {"usage": usage_obj})(), "claude-haiku-5-5")
+    # 10 тыс. по ×1.25 и 40 тыс. по ×2 от $0.10
+    assert usage.cost_usd == pytest.approx((10_000 * 1.25 + 40_000 * 2) * 0.10 / 1_000_000)
+
+
+def test_complete_json_accumulates_usage_across_calls():
+    # стоимость смены складывается из всех вызовов, а не только последнего
+    llm = make_llm('{"ok": true}')
+    llm.complete_json("prompt", "claude-sonnet-5")
+    llm.complete_json("prompt", "claude-sonnet-5")
+    assert llm.usage.calls == 2
+    assert llm.usage.input_tokens == 200
+    assert llm.usage.output_tokens == 40
