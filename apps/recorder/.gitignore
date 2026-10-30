@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vite/
+src-tauri/target/
+src-tauri/gen/
+# Адрес сервера и ключ приложения для сборки — в репозиторий не кладём
+src-tauri/build.env
+# Приватный ключ подписи обновлений живёт только на маке владельца
+src-tauri/updater.key

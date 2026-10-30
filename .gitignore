@@ -8,3 +8,11 @@ node_modules
 
 # Рабочие копии агентов Claude Code
 .claude/worktrees/
+
+# Python (services/audio-analytics)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/

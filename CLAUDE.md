@@ -10,6 +10,14 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
 - `apps/client/` — клиентское приложение: https://app.base40.fit
   (подписочный формат) и app.lady-stretch.one (пакетный, `VITE_APP_FORMAT=packages`)
   — одна кодовая база, две сборки. Свой **CLAUDE.md**.
+- `apps/recorder/` — приложение записи «Аудиоаналитики» (Tauri v2, macOS и
+  Windows): весь день пишет микрофон ресепшена и отправляет в сервис ниже;
+  собирается на маке владельца, в Coolify не деплоится. Свой **README.md**.
+- `services/audio-analytics/` — сервис «Аудиоаналитики» (Python 3.12,
+  FastAPI): приём записи из приложения, очередь и разбор смен (VAD,
+  ElevenLabs, Claude), аудио, обновления приложения;
+  https://audio.base40.fit. Свой **README.md**; устройство и решения —
+  AUDIO_ANALYTICS.md. Тесты — `cd services/audio-analytics && pytest`.
 - `db/` — схема БД, общая для обоих приложений: `db/migrations/` + мигратор
   `db/migrate.ts` (выполняется при старте контейнера админки).
 - `integrations/amocrm-round-robin/` — расширение amoCRM «Очередь
@@ -49,7 +57,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   переоформления абонемента `db/membership-transfer.test.ts`, базы знаний
   `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts`,
   пользователей, ролей и доступов `db/access.test.ts`, «Рабочего дня»
-  `db/workday.test.ts` и «Аналитики» `db/analytics.test.ts`
+  `db/workday.test.ts`, «Аналитики» `db/analytics.test.ts` и
+  «Аудиоаналитики» `db/audio.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -125,11 +134,18 @@ Coolify на Hetzner, все приложения — из этого репоз
 | `club40-admin`           | https://admin.base40.fit     | `/apps/admin/Dockerfile`  | `apps/admin/**`, `db/**` |
 | `club40-client`          | https://app.base40.fit       | `/apps/client/Dockerfile` | `apps/client/**`         |
 | `club40-client-packages` | https://app.lady-stretch.one | `/apps/client/Dockerfile` | `apps/client/**`         |
+| `club40-audio`           | https://audio.base40.fit     | `/services/audio-analytics/Dockerfile` | `services/audio-analytics/**` |
 
 Сервер очереди ответственных amoCRM (`integrations/amocrm-round-robin/server/Dockerfile`,
 Watch Paths `integrations/amocrm-round-robin/server/**` и `…/widget/**`, том
 `/data`) — https://rr.base40.fit, шаги установки — его README и
 AGENT_TASKS.md, Задача 15.
+
+Сервис «Аудиоаналитики» (`club40-audio`): порт 8000, постоянный том
+`/data` (аудио при `STORAGE_BACKEND=local`), переменные — его README и
+AGENT_TASKS.md, Задача 17. Схему он не меняет — его таблицы `aa_*` создаёт
+миграция админки; новые колонки, которые читает сервис, — тем же порядком
+«сначала миграция, потом код», что и у клиента. Версий у сервиса нет.
 
 Watch Paths — чтобы правка одного приложения не пересобирала другие.
 Переменные окружения каждого приложения — в его CLAUDE.md; переключение
@@ -994,6 +1010,26 @@ AUTH_SETUP.md.
   (собственники клубов — если есть `studio_owners`); обе — любому человеку
   портала (`is_portal_user`), справочник компании. Тесты —
   `db/knowledge-base.test.ts`.
+  **«Аудиоаналитика»** (решение владельца 2026-10-30; устройство, права,
+  перенос — AUDIO_ANALYTICS.md): `db/migrations/2026-10-30_audio_analytics.sql`
+  — таблицы `aa_*` без `studio_id` (раздел сети, как «Аналитика»): точки
+  продажи `aa_locations` (необязательный `studio_id` — подпись), менеджеры
+  `aa_managers` (`user_id` — учётная запись портала для права «свои
+  смены»), смены `aa_recordings` (статусы recording → uploaded → queued →
+  processing → done | error, `process_full`, стоимость и токены,
+  `audio_purged_at`), сегменты, расшифровки, разговоры и реплики, метрики
+  `aa_metrics` и оценки, итоги смены `aa_day_summaries`, служебные промпты
+  `aa_prompts` (версии), «согласен / не согласен» `aa_feedback`,
+  договорённости `aa_agreements`, сборки приложения `aa_app_releases`,
+  очередь стирания файлов `aa_storage_purge`, состояние сервиса
+  `aa_service_state`. Пишет сервис `services/audio-analytics` напрямую
+  (`DATABASE_URL`); админка — справочники по RLS, остальное — RPC
+  (`aa_recording_process` / `_force_finish` / `_delete`, `aa_prompt_save`,
+  `aa_feedback_set`, `aa_agreement_create` / `_update` / `_delete`), чтение
+  — `aa_access`, `aa_days`, `aa_summary`. Права — сетевые `audio.own` /
+  `audio.view` / `audio.manage` (`aa_has`; вне модели прав — владелец
+  клуба), политики — массивами (`auth_aa_manager_ids`,
+  `auth_aa_own_recording_ids`). Тесты — `db/audio.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,
@@ -1142,6 +1178,10 @@ own"` оставить). Альтернатива — выдача абонем�
   репозиторий без истории, домен и почта на reg.ru, контент с нуля), кто что
   делает, расчёт мощности на 500 одновременно, правки копии, второй этап; агенту — AGENT_TASKS.md, Задача 16.
   Текущий продукт на Hetzner при этом не меняется.
+- `AUDIO_ANALYTICS.md` — «Аудиоаналитика» (2026-10-30): запись рабочего
+  дня на ресепшене и разбор разговоров — что перенесено из проекта
+  audio-analitics и что нет, устройство (сервис, очередь в базе,
+  хранилище), права, перенос данных и переезд студий.
 - `ANALYTICS.md` — «Аналитика» (2026-10-26): что было в портале аналитики
   Lady Stretch (1С, FitBase, маркетинг), что перенесено, правила расчёта,
   доступ, что дальше.

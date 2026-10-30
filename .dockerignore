@@ -16,3 +16,7 @@
 **/.idea
 **/.DS_Store
 .claude
+**/__pycache__
+**/.venv
+**/.pytest_cache
+apps/recorder
