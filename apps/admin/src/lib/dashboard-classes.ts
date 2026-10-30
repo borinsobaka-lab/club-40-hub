@@ -1,4 +1,4 @@
-import type { DetailRow } from "@/lib/dashboard-details";
+import { conversionBadge, type DetailRow } from "@/lib/dashboard-details";
 import type { SeriesPoint } from "@/lib/dashboard-series";
 import { formatNumber } from "@/lib/format";
 
@@ -156,24 +156,28 @@ export function tallyBy(
   return map;
 }
 
+/** Первое посещение клиента по пробному абонементу у группы (тренера): занятие и когда. */
+export type TrialVisit = { date: string; entry: ClassEntry };
+
 /**
- * Пробные по группам (тренер): карточка клиента → дата его первого
- * посещения по пробному абонементу на проведённых занятиях группы.
+ * Пробные по группам (тренер): карточка клиента → его первое посещение по
+ * пробному абонементу на проведённых занятиях группы.
  */
 export function trialVisitsBy(
   entries: ClassEntry[],
   now: number,
   keys: (e: ClassEntry) => string[],
-): Map<string, Map<string, string>> {
-  const map = new Map<string, Map<string, string>>();
+): Map<string, Map<string, TrialVisit>> {
+  const map = new Map<string, Map<string, TrialVisit>>();
   for (const e of entries) {
     if (!isHeld(e, now)) continue;
     for (const b of e.bookings) {
       if (b.status !== "attended" || !b.trial || !b.clientId) continue;
       for (const key of keys(e)) {
-        const visits = map.get(key) ?? new Map<string, string>();
+        const visits = map.get(key) ?? new Map<string, TrialVisit>();
         const seen = visits.get(b.clientId);
-        if (!seen || e.date < seen) visits.set(b.clientId, e.date);
+        if (!seen || `${e.date} ${e.time}` < `${seen.date} ${seen.entry.time}`)
+          visits.set(b.clientId, { date: e.date, entry: e });
         map.set(key, visits);
       }
     }
@@ -181,22 +185,49 @@ export function trialVisitsBy(
   return map;
 }
 
+/** Купил ли клиент (не пробное и не разовое) в день пробного посещения или позже. */
+const boughtAfter = (purchases: Map<string, string[]>, client: string, date: string) =>
+  !!purchases.get(client)?.some((d) => d >= date);
+
 /**
  * Пришли на пробное и купили после: покупка (не пробное и не разовое) в
  * день пробного посещения или позже — на сегодня. Конверсия, %: купили /
  * пришли; никто не приходил — null.
  */
 export function trialConversion(
-  visits: Map<string, string> | undefined,
+  visits: Map<string, TrialVisit> | undefined,
   purchases: Map<string, string[]>,
 ) {
   let came = 0;
   let bought = 0;
-  for (const [client, date] of visits ?? []) {
+  for (const [client, v] of visits ?? []) {
     came++;
-    if (purchases.get(client)?.some((d) => d >= date)) bought++;
+    if (boughtAfter(purchases, client, v.date)) bought++;
   }
   return { came, bought, rate: share(bought, came) };
+}
+
+/**
+ * Кто стоит за «Пришли на пробное»: клиент, занятие его пробного посещения
+ * и купил ли после — те же клиенты, что в числе (trialConversion); не
+ * купившие — первыми (повод позвонить).
+ */
+export function trialVisitRows(
+  visits: Map<string, TrialVisit> | undefined,
+  purchases: Map<string, string[]>,
+): DetailRow[] {
+  return [...(visits ?? [])].map(([client, v]): DetailRow => {
+    const bought = boughtAfter(purchases, client, v.date);
+    return {
+      key: `trial:${client}`,
+      date: v.date,
+      clientId: client,
+      title: v.entry.workoutName,
+      note: entryWhen(v.entry),
+      badge: conversionBadge(bought),
+      attention: !bought,
+    };
+  });
 }
 
 export function tallyAll(entries: ClassEntry[], now: number) {

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { ChartArea, ChartPanel, RankList, type RankItem } from "@/components/dashboard/chart-panel";
@@ -13,7 +13,17 @@ import {
   DashboardClassesPageSkeleton,
   DashboardClassesSkeleton,
 } from "@/components/page-skeletons";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { InfoNote } from "@/components/ui/form-field";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -32,13 +42,14 @@ import {
   repeatRate,
   tallyBy,
   trialConversion,
+  trialVisitRows,
   trialVisitsBy,
   type ClassEntry,
   type ClassTally,
   type ClassesKey,
 } from "@/lib/dashboard-classes";
 import { loadClassEntries, loadPurchaseDates, type SeriesDef } from "@/lib/dashboard-data";
-import type { DetailsSpec } from "@/lib/dashboard-details";
+import { detailRows, type DetailsSpec } from "@/lib/dashboard-details";
 import {
   CLASSES_CHARTS,
   CLASSES_COLUMNS,
@@ -169,6 +180,18 @@ const CLASSES_SERIES: Partial<Record<ClassesKey, SeriesDef>> = {
   }),
 };
 
+/** Список клиентов под «Пришли на пробное» у тренера. */
+const TRIALS_DETAILS: DetailsSpec = {
+  title: "Кто пришёл на пробное",
+  unit: ["клиент", "клиента", "клиентов"],
+  dateLabel: "Пробное",
+  sort: "dateDesc",
+  empty: "Пробных посещений нет",
+};
+
+/** Список — отдельным чанком, как в окнах плиток (карточка клиента тянет формы). */
+const DetailsPanel = lazy(() => import("@/components/dashboard/details-panel"));
+
 const STATS: StatDef<ClassesKey>[] = CLASSES_STATS.map((s) => ({
   ...s,
   series: CLASSES_SERIES[s.key],
@@ -197,6 +220,8 @@ function ClassesBody(view: DashboardView) {
   const color = view.color;
   const [trainerSort, setTrainerSort] = useState<SortKey>("visits");
   const [workoutSort, setWorkoutSort] = useState<SortKey>("visits");
+  /** Тренер, чьих пришедших на пробное показываем списком. */
+  const [trialsOf, setTrialsOf] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: ["dashboard", view.scope, "classes", period?.from, period?.to],
@@ -314,7 +339,20 @@ function ClassesBody(view: DashboardView) {
         },
         cells: {
           ...tallyCells(t, color),
-          trials: formatNumber(trials.came),
+          trials:
+            trials.came > 0 ? (
+              <Button
+                variant="link"
+                size="inline"
+                className="tabular-nums underline decoration-dotted"
+                aria-label={`Кто пришёл на пробное к тренеру ${info?.name ?? "без тренера"}`}
+                onClick={() => setTrialsOf(id)}
+              >
+                {formatNumber(trials.came)}
+              </Button>
+            ) : (
+              formatNumber(0)
+            ),
           trialBought: formatNumber(trials.bought),
           trialConversion:
             trials.rate === null ? undefined : (
@@ -361,6 +399,18 @@ function ClassesBody(view: DashboardView) {
   }, [data, workoutSort, color]);
 
   const unmarked = current?.unmarked ?? 0;
+
+  const trialRows = useMemo(
+    () =>
+      data && trialsOf
+        ? detailRows(
+            trialVisitRows(data.trialsByTrainer.get(trialsOf), purchases ?? new Map()),
+            TRIALS_DETAILS,
+          )
+        : undefined,
+    [data, trialsOf, purchases],
+  );
+  const trialsTrainer = trialsOf ? data?.trainerInfo.get(trialsOf) : undefined;
 
   return (
     <>
@@ -417,6 +467,30 @@ function ClassesBody(view: DashboardView) {
           emptyText="Нет проведённых занятий за период"
         />
       </ChartPanel>
+
+      <Dialog open={!!trialsOf} onOpenChange={(open) => !open && setTrialsOf(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Пришли на пробное{trialsOf ? ` — ${trialsTrainer?.name ?? "без тренера"}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              {view.name} · клиенты, посетившие занятие тренера по пробному абонементу за период;
+              дата и занятие — первого пробного посещения, «Купил» — абонемент в тот день или позже
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+              <DetailsPanel
+                spec={TRIALS_DETAILS}
+                rows={trialRows}
+                loading={!trialRows && !error}
+                error={error}
+              />
+            </Suspense>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
 
       <ChartPanel
         title={CLASSES_CHARTS.workouts.title}

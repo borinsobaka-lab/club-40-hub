@@ -7,6 +7,7 @@ import {
   repeatRate,
   tallyBy,
   trialConversion,
+  trialVisitRows,
   trialVisitsBy,
   type ClassBooking,
   type ClassEntry,
@@ -169,14 +170,17 @@ describe("пробные у тренера", () => {
       NOW,
       byTrainer,
     );
-    expect([...(visits.get("t1") ?? [])]).toEqual([["c1", "2026-10-08"]]);
+    expect([...(visits.get("t1") ?? [])].map(([c, v]) => [c, v.date])).toEqual([
+      ["c1", "2026-10-08"],
+    ]);
   });
 
   test("купили после пробного — покупка в день посещения или позже", () => {
+    const visit = { date: "2026-10-10", entry: entry({ date: "2026-10-10" }) };
     const visits = new Map([
-      ["c1", "2026-10-10"],
-      ["c2", "2026-10-10"],
-      ["c3", "2026-10-10"],
+      ["c1", visit],
+      ["c2", visit],
+      ["c3", visit],
     ]);
     const purchases = new Map([
       ["c1", ["2026-10-10"]],
@@ -187,5 +191,15 @@ describe("пробные у тренера", () => {
     expect(r.bought).toBe(1);
     expect(r.rate).toBeCloseTo(100 / 3);
     expect(trialConversion(undefined, purchases)).toEqual({ came: 0, bought: 0, rate: null });
+
+    // Список под числом — те же клиенты, не купившие отмечены.
+    const rows = trialVisitRows(visits, purchases);
+    expect(rows.map((r) => [r.clientId, r.date, r.attention])).toEqual([
+      ["c1", "2026-10-10", false],
+      ["c2", "2026-10-10", true],
+      ["c3", "2026-10-10", true],
+    ]);
+    expect(rows[0].badge?.text).toBe("Купил абонемент");
+    expect(rows[1].badge?.text).toBe("Не купил");
   });
 });
