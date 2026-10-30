@@ -18,6 +18,7 @@
  */
 import type { AcadAccessInfo } from "@/lib/academy/types";
 import type { AnAccess } from "@/lib/analytics/types";
+import type { AaAccess } from "@/lib/audio/types";
 import type { KbLevel } from "@/lib/kb/access";
 import type { AccessRight } from "@/lib/access/logic";
 
@@ -75,6 +76,11 @@ export type AdminAccess = {
    * загрузка и справочники, свои города (RPC an_access). Нет поля — раздела нет.
    */
   analytics?: AnAccess;
+  /**
+   * «Аудиоаналитика»: свои смены, все смены, настройки, связанные менеджеры и
+   * открытые договорённости (RPC aa_access). Нет поля — раздела нет.
+   */
+  audio?: AaAccess;
   /**
    * Сетевые права (lib/access/logic.ts, ACCESS_RIGHTS): portal.admin,
    * users.manage, roles.manage, kb.admin… У человека вне новой модели

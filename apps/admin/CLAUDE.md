@@ -31,7 +31,10 @@ Tailwind 4 + shadcn/radix. Пакетный менеджер — bun.
   аналитика чтения `lib/kb/analytics.test.ts`, теги `lib/kb/tags.test.ts`;
   «Рабочий день» — время по Тбилиси, просрочка, порядок `lib/workday/logic.test.ts`;
   «Аналитика» — города, недели, прогноз, точка 0, продажи, пробные, рейтинг
-  `lib/analytics/logic.test.ts`, разбор выгрузок `lib/analytics/import.test.ts`; «Академия» — подписи,
+  `lib/analytics/logic.test.ts`, разбор выгрузок `lib/analytics/import.test.ts`;
+  «Аудиоаналитика» — время на часах студии, длительности и стоимость, статусы
+  и действия смены, периоды и сравнение, метрики, версии, ошибки базы
+  `lib/audio/logic.test.ts`; «Академия» — подписи,
   проверка вопроса, сроки и напоминания `lib/academy/logic.test.ts`;
   Kate — инструменты,
   права, история и промпт `lib/assistant/*.test.ts`).
@@ -59,7 +62,11 @@ Env-переменные: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
 `VAPID_SUBJECT` — контакт отправителя для служб доставки (по умолчанию
 `mailto:noreply@base40.fit`), `PUSH_WORKER=off` — не рассылать с этого
 сервера (и «Отправить сейчас» здесь очередь не толкает — заберёт сервер, где
-рассылка включена).
+рассылка включена). «Аудиоаналитика» (необязательно): `AUDIO_API_URL` — адрес сервиса
+services/audio-analytics (например, `https://audio.base40.fit`; runtime, отдаёт
+браузеру `getAudioServiceConfig` в `lib/audio.functions.ts`); не задан —
+разделы работают по базе, плеер, загрузка сборок и состояние сервиса пишут
+«Сервис аудиоаналитики не подключён».
 
 ## Auth-письма
 
@@ -654,6 +661,44 @@ kb`. Доступ — ролями «Пользователей и ролей» 
   `Analytics*PageSkeleton`). Excel читает `read-excel-file` (MIT, грузится
   только со страницей загрузки). Графики — компоненты дашборда
   (`chart-panel.tsx`).
+- **«Аудиоаналитика»** (2026-10-30; схема и права —
+  `db/migrations/2026-10-30_audio_analytics.sql`, сервис записи и разбора —
+  services/audio-analytics) — перенос проекта audio-analitics: запись рабочего
+  дня на ресепшене (приложение `apps/recorder`) и разбор разговоров моделью.
+  Раздел рейки последним (после «Аналитики»), общий для сети: шапка — только
+  заголовок (`AdminShell`, `ShellSkeleton network`). Меню (`AUDIO_ITEMS` /
+  `AUDIO_SETTINGS_ITEMS` в `lib/nav-sections.ts`): «Разборы» — «Смены»
+  `/audio` (отчёт смены `/audio/<смена>`, `?dialog=` — прокрутить к разговору
+  и подсветить), «Дашборд» `/audio/dashboard`, «Договорённости»
+  `/audio/agreements` (серый счётчик открытых); «Настройки» (право
+  «настройки») — «Метрики и промпты» `/audio/metrics` (`?tab=prompts`),
+  «Точки продажи» `/audio/locations`, «Менеджеры» `/audio/managers`,
+  «Приложение» `/audio/app`. Права — сетевые `audio.own` (свои смены: менеджер
+  связан с учётной записью в «Менеджерах», остальное режет RLS), `audio.view`
+  (все смены, итог договорённости), `audio.manage` (настройки, запуск разбора,
+  удаление смен); в интерфейсе — `useAdminAccess().audio` (RPC `aa_access`,
+  заранее грузит guard; `aaVisible` / `aaViewAll` в `lib/audio/types.ts`).
+  Разбор запускается вручную: «Обработать» / «Пересчитать» (расшифровка с
+  прошлого раза, модель — заново) / «Распознать заново» / «Завершить
+  принудительно» / «Удалить» — с подтверждениями, `hooks/use-audio-day-actions.ts`
+  (RPC `aa_recording_*`); список смен обновляется сам, пока что-то в очереди.
+  Фильтр точек (`hooks/use-audio-locations.ts`, localStorage
+  `audio_locations`) общий у «Смен» и «Дашборда». Аудио, сборки и состояние —
+  сервис, браузер ходит в него сам с токеном Supabase (`AUDIO_API_URL`, см.
+  «Деплой»): плеер — `components/audio/player.tsx` (временная ссылка,
+  обновляется при ошибке; 410 — «аудио удалено по сроку хранения»; Safari Ogg
+  Opus не играет — предупреждение), загрузка сборки с прогрессом —
+  `uploadRelease` (XMLHttpRequest). Код: запросы и сервис — `lib/audio/data.ts`
+  (ключи `["audio", …]`, после записи — `invalidateAudio`; ошибки базы — русский
+  `hint`, иначе `aaErrorText`), логика — `lib/audio/logic.ts` (+ тест), подписи
+  (их берут и скелетоны `Audio*PageSkeleton`) — `labels.ts`, типы — `types.ts`;
+  компоненты — `components/audio/` (разговор с оценками, «Согласен / не
+  согласен» и расшифровкой — `dialog-card.tsx`, `feedback.tsx`; договорённости
+  «Сделали?» — `agreements.tsx`; выбор человека — `person-picker.tsx` +
+  `hooks/use-audio-people.ts`: люди портала — RPC `aa_people`, только
+  «настройкам»). Графики
+  дашборда — малые кратные, по графику на метрику со своей шкалой
+  (`TrendPlot` в `components/dashboard/plots.tsx`).
 - **«Академия»** (2026-10-25; план и решения — ACADEMY.md, схема —
   корневой CLAUDE.md) — раздел рейки со своим меню (`ACADEMY_ITEMS` в
   `lib/nav-sections.ts`; пункт открыт по праву `need`: any / team / create /

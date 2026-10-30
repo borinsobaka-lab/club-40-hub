@@ -72,6 +72,16 @@ import {
   ZERO_COLUMNS,
   ZERO_TILES,
 } from "@/lib/analytics/labels";
+import {
+  AGREEMENTS_COLUMNS,
+  AUDIO_FILTERS,
+  AUDIO_KPI,
+  AUDIO_TITLES,
+  DASHBOARD_MANAGER_COLUMNS,
+  LOCATIONS_COLUMNS,
+  MANAGERS_COLUMNS,
+  RELEASES_COLUMNS,
+} from "@/lib/audio/labels";
 
 /*
  * Скелетоны страниц админки — по одному на раздел, каждый повторяет
@@ -2762,6 +2772,197 @@ export function AnalyticsPartnersPageSkeleton() {
       <div className="space-y-3">
         <Skeleton className="h-12 w-full" />
         <TableCardSkeleton headers={["Партнёр", "Почта", "Города"]} rows={4} />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// «Аудиоаналитика» (components/audio/, routes/_authenticated/audio/)
+
+/** Список смен: карточки — дата, менеджер и точка, статус, метрики. */
+export function AudioDaysListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: rows }, (_, i) => (
+        <div
+          key={i}
+          className="grid gap-3 rounded-lg border bg-background p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:p-4"
+        >
+          <div className="space-y-1.5">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-56" />
+            <Skeleton className="h-3 w-72 max-w-full" />
+            <div className="flex gap-1.5">
+              <Skeleton className="h-5 w-40 rounded-full" />
+              <Skeleton className="h-5 w-40 rounded-full" />
+            </div>
+          </div>
+          <Skeleton className="h-9 w-28 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AudioDaysPageSkeleton() {
+  return (
+    <ShellSkeleton title={AUDIO_TITLES.days} network>
+      <div className="space-y-3">
+        <ToolbarSkeleton search={false} controls={["w-48"]} />
+        <AudioDaysListSkeleton />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+/** Отчёт смены: шапка, плеер, плитки, итоги, разговоры. */
+export function AudioReportBodySkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2 rounded-lg border bg-background p-4">
+        <Skeleton className="h-6 w-64" />
+        <Skeleton className="h-4 w-80 max-w-full" />
+      </div>
+      <Skeleton className="h-20 w-full rounded-lg" />
+      <AnalyticsTilesSkeleton
+        labels={["Конверсия", "Продажи", "Разговоры с клиентами", "Чистой речи"]}
+        deltas={false}
+      />
+      <DashboardChartSkeleton title="Итоги смены" height={160} />
+      <DashboardChartSkeleton title="Договорённости" height={72} />
+      <DashboardChartSkeleton title="Разговоры" height={240} />
+    </div>
+  );
+}
+
+export function AudioReportPageSkeleton() {
+  return (
+    <ShellSkeleton title={AUDIO_TITLES.report} network>
+      <AudioReportBodySkeleton />
+    </ShellSkeleton>
+  );
+}
+
+/** Дашборд: плитки итогов, метрик, графики, менеджеры. */
+export function AudioDashboardBodySkeleton() {
+  return (
+    <div className="space-y-3">
+      <AnalyticsTilesSkeleton labels={labelsOf(AUDIO_KPI)} cols={6} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <DashboardChartSkeleton title="Разговоры и продажи" height={180} />
+        <DashboardChartSkeleton title="Метрика" height={180} />
+        <DashboardChartSkeleton title="Метрика" height={180} />
+      </div>
+      <TableCardSkeleton title="Менеджеры" headers={DASHBOARD_MANAGER_COLUMNS} rows={4} />
+    </div>
+  );
+}
+
+export function AudioDashboardPageSkeleton() {
+  return (
+    <ShellSkeleton title={AUDIO_TITLES.dashboard} network>
+      <div className="space-y-3">
+        <div className="table-toolbar flex flex-wrap items-end gap-2 rounded-lg border bg-background p-2 sm:px-3">
+          <Skeleton className="h-10 w-80 max-w-full rounded-full" />
+          {[AUDIO_FILTERS.period, AUDIO_FILTERS.manager, AUDIO_FILTERS.locations].map((f) => (
+            <DashboardFilterField key={f.label} {...f}>
+              <Skeleton className="h-10 w-full" />
+            </DashboardFilterField>
+          ))}
+        </div>
+        <AudioDashboardBodySkeleton />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AudioAgreementsPageSkeleton() {
+  return (
+    <TablePage
+      title={AUDIO_TITLES.agreements}
+      toolbar={{ search: false, controls: ["w-48", "w-48"] }}
+      headers={AGREEMENTS_COLUMNS}
+      pagination={false}
+      network
+    />
+  );
+}
+
+/** Карточки метрик (и промптов): заголовок, строка свойств, текст. */
+export function AudioMetricCardsSkeleton({ rows = 2 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="space-y-2 rounded-lg border bg-background p-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-56" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <Skeleton className="h-3 w-40" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AudioMetricsPageSkeleton() {
+  return (
+    <ShellSkeleton title={AUDIO_TITLES.metrics} network actions={[{ label: "Добавить метрику" }]}>
+      <div className="space-y-3">
+        <ToolbarSkeleton search={false}>
+          <TabsSkeleton labels={["Метрики", "Промпты"]} className="toolbar-full" />
+        </ToolbarSkeleton>
+        <AudioMetricCardsSkeleton />
+      </div>
+    </ShellSkeleton>
+  );
+}
+
+export function AudioLocationsPageSkeleton() {
+  return (
+    <TablePage
+      title={AUDIO_TITLES.locations}
+      actions={[{ label: "Добавить точку" }]}
+      toolbar={null}
+      headers={LOCATIONS_COLUMNS}
+      pagination={false}
+      network
+    />
+  );
+}
+
+export function AudioManagersPageSkeleton() {
+  return (
+    <TablePage
+      title={AUDIO_TITLES.managers}
+      actions={[{ label: "Добавить менеджера" }]}
+      toolbar={null}
+      headers={MANAGERS_COLUMNS}
+      pagination={false}
+      network
+    />
+  );
+}
+
+export function AudioAppPageSkeleton() {
+  return (
+    <ShellSkeleton title={AUDIO_TITLES.app} network>
+      <div className="space-y-3">
+        <DashboardChartSkeleton title="Сервис разбора" height={72} />
+        <section className="space-y-4 rounded-lg border bg-background p-4">
+          <h2 className="text-lg font-semibold">Выложить новую версию</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldSkeleton />
+            <FieldSkeleton />
+          </div>
+          <FieldSkeleton />
+        </section>
+        <TableCardSkeleton title="Сборки" headers={RELEASES_COLUMNS} rows={3} />
       </div>
     </ShellSkeleton>
   );

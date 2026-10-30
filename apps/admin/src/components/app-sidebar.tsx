@@ -8,6 +8,9 @@ import {
   ACADEMY_ITEMS,
   ANALYTICS_DATA_ITEMS,
   ANALYTICS_ITEMS,
+  AUDIO_ITEMS,
+  AUDIO_SETTINGS_ITEMS,
+  AUDIO_URL,
   CLUB_GROUPS,
   DASHBOARD_ITEMS,
   MANAGE_GROUPS,
@@ -60,7 +63,10 @@ import {
 } from "@/components/ui/sidebar";
 
 /** Пункты меню, чей счётчик — «новое», а не «ждёт действия»: серый CountBadge. */
-const QUIET_BADGES = new Set(["/nps"]);
+const QUIET_BADGES = new Set(["/nps", "/audio/agreements"]);
+
+/** Отчёт смены «Аудиоаналитики» — /audio/<uuid>. */
+const AUDIO_REPORT_PATH = /^\/audio\/[0-9a-f-]{36}$/;
 
 /**
  * Разделы рейки со своим меню вместо меню клуба: оно общее для всех студий,
@@ -294,18 +300,47 @@ export function AppSidebar() {
                     ].filter((g) => g.items.length > 0)
                   : [],
               }
-            : railKey === "manage"
+            : railKey === "audio"
               ? {
-                  // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
-                  title: "Управление",
+                  // «Настройки» — по праву audio.manage. «Смены» подсвечены и
+                  // в отчёте смены (/audio/<смена>); у «Договорённостей» —
+                  // открытые договорённости (серый счётчик: ждут следующей смены).
+                  title: "Аудиоаналитика",
                   groups: access
-                    ? MANAGE_GROUPS.map((g) => ({
-                        ...g,
-                        items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
-                      })).filter((g) => g.items.length > 0)
+                    ? [
+                        {
+                          key: "audio",
+                          label: "Разборы",
+                          items: AUDIO_ITEMS.map((i) =>
+                            i.url === AUDIO_URL && AUDIO_REPORT_PATH.test(currentPath)
+                              ? { ...i, paths: [currentPath] }
+                              : i.url === "/audio/agreements"
+                                ? { ...i, badge: access.audio?.open_agreements }
+                                : i,
+                          ),
+                        },
+                        {
+                          key: "audio-settings",
+                          label: "Настройки",
+                          items: AUDIO_SETTINGS_ITEMS.filter((i) =>
+                            canOpenPath(access, studioId, i.url),
+                          ),
+                        },
+                      ].filter((g) => g.items.length > 0)
                     : [],
                 }
-              : SECTION_MENUS[railKey];
+              : railKey === "manage"
+                ? {
+                    // Блоки «Знания», «Доступы», «Клубы»; закрытые сотруднику пункты не показываем.
+                    title: "Управление",
+                    groups: access
+                      ? MANAGE_GROUPS.map((g) => ({
+                          ...g,
+                          items: g.items.filter((i) => canOpenPath(access, studioId, i.url)),
+                        })).filter((g) => g.items.length > 0)
+                      : [],
+                  }
+                : SECTION_MENUS[railKey];
   const feedbackStudios = useSectionStudios("feedback");
   const npsStudios = useSectionStudios("nps");
   const pendingFeedback = usePendingFeedback(
@@ -339,7 +374,10 @@ export function AppSidebar() {
   const menuLoading =
     railKey === "scripts"
       ? scriptsMenu.loading
-      : railKey === "manage" || railKey === "academy" || railKey === "analytics"
+      : railKey === "manage" ||
+          railKey === "academy" ||
+          railKey === "analytics" ||
+          railKey === "audio"
         ? !access
         : !sectionMenu && !access;
   const [closedGroups, setClosedGroups] = useState(readCollapsedGroups);
@@ -514,7 +552,11 @@ export function AppSidebar() {
           <SidebarFooter
             className={cn(
               "gap-2 border-t border-white/10 p-3 lg:hidden",
-              (railKey === "kb" || railKey === "academy" || railKey === "analytics") && "hidden",
+              (railKey === "kb" ||
+                railKey === "academy" ||
+                railKey === "analytics" ||
+                railKey === "audio") &&
+                "hidden",
             )}
           >
             <StudioSwitcher triggerClassName="w-full border-white/15 bg-white/5 text-white focus-visible:bg-white/10 [&>svg]:text-white" />

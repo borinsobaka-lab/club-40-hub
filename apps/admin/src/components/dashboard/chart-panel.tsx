@@ -19,6 +19,7 @@ export const PiePlot = lazy(() => import("./plots").then((m) => ({ default: m.Pi
 export const CategoryPlot = lazy(() =>
   import("./plots").then((m) => ({ default: m.CategoryPlot })),
 );
+export const TrendPlot = lazy(() => import("./plots").then((m) => ({ default: m.TrendPlot })));
 
 export function ChartPanel({
   title,

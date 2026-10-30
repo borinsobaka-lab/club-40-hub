@@ -75,10 +75,10 @@ export function AdminShell({
   // поиск по базе вместо заголовка и поиска клиента, без Kate и выбора
   // клуба (базы общие для сети); весь раздел — на белом.
   const kb = railSectionKey(pathname) === "kb";
-  // «Академия» общая для сети, «Аналитика» — над клубами (клубы выбираются
-  // фильтрами отчёта): только заголовок, без поиска клиента, Kate и выбора
+  // «Академия» и «Аудиоаналитика» общие для сети, «Аналитика» — над клубами
+  // (клубы выбираются фильтрами отчёта): только заголовок, без поиска клиента, Kate и выбора
   // клуба.
-  const network = ["academy", "analytics"].includes(railSectionKey(pathname));
+  const network = ["academy", "analytics", "audio"].includes(railSectionKey(pathname));
   const kbBaseId = kb ? kbBaseIdOf(pathname) : null;
   // Тёмная тема базы знаний: класс на <html> вешает StudioBranding.
   const [kbDarkTheme, toggleKbTheme] = useKbDarkTheme();

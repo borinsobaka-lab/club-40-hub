@@ -589,6 +589,37 @@ $$;
 revoke all on function public.aa_access() from public, anon;
 grant execute on function public.aa_access() to authenticated;
 
+-- Люди портала для связи менеджера с учётной записью («Менеджеры»): кто
+-- получит право «свои смены». Только «настройкам»; справочник компании —
+-- как people_cards (имя, почта, аватарка, должность).
+create or replace function public.aa_people()
+returns table (user_id uuid, full_name text, email text, avatar_url text, position_name text)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not public.auth_aa_manage() then
+    raise exception 'aa_forbidden' using errcode = '42501';
+  end if;
+  return query
+  select u.id,
+         coalesce(nullif(btrim(p.full_name), ''), u.email::text),
+         u.email::text,
+         p.avatar_url,
+         pos.name
+    from auth.users u
+    join (select public.portal_people_ids() as id) pp on pp.id = u.id
+    left join public.profiles p on p.id = u.id
+    left join public.portal_users pu on pu.user_id = u.id
+    left join public.org_positions pos on pos.id = pu.position_id
+   order by 2;
+end;
+$$;
+revoke all on function public.aa_people() from public, anon;
+grant execute on function public.aa_people() to authenticated;
+
 -- Разбор завис: в очереди или в работе, а статус не двигался 3 часа.
 create or replace function public.aa_is_stale(p_status text, p_changed timestamptz)
 returns boolean

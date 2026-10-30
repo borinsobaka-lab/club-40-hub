@@ -263,3 +263,84 @@ export function CategoryPlot({
     </ResponsiveContainer>
   );
 }
+
+export type TrendSeries = { key: string; label: string; color: string };
+export type TrendRow = { tick: string; label: string } & Record<string, number | string | null>;
+
+/**
+ * Линии по дням на одной шкале (динамика оценки метрики, разговоры и
+ * продажи «Аудиоаналитики»). Шкала — от нуля (`max` — верх шкалы оценки):
+ * обрезанная ось раздувала бы мелкие колебания. Дни без значения — разрыв.
+ */
+export function TrendPlot({
+  data,
+  series,
+  max,
+  format,
+}: {
+  data: TrendRow[];
+  series: TrendSeries[];
+  max?: number;
+  format: (n: number) => string;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+        {grid}
+        <XAxis
+          dataKey="tick"
+          {...axis}
+          interval="preserveStartEnd"
+          minTickGap={12}
+          tickMargin={8}
+        />
+        <YAxis
+          {...axis}
+          width={36}
+          domain={[0, max ?? "auto"]}
+          allowDecimals={max !== undefined}
+          tickFormatter={compactNumber.format}
+        />
+        <Tooltip
+          cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+          content={({ active, payload }) => {
+            const row = active ? (payload?.[0]?.payload as TrendRow | undefined) : null;
+            if (!row) return null;
+            return (
+              <TooltipBox title={row.label}>
+                {series.map((s) => {
+                  const v = row[s.key];
+                  return (
+                    <div key={s.key} className="mt-1 flex items-center gap-1.5">
+                      {series.length > 1 && (
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: s.color }}
+                        />
+                      )}
+                      {series.length > 1 && `${s.label}: `}
+                      <b className="tabular-nums">{typeof v === "number" ? format(v) : "—"}</b>
+                    </div>
+                  );
+                })}
+              </TooltipBox>
+            );
+          }}
+        />
+        {series.map((s) => (
+          <Line
+            key={s.key}
+            type="monotone"
+            dataKey={s.key}
+            stroke={s.color}
+            strokeWidth={2}
+            dot={{ r: 4, fill: s.color, stroke: "var(--background)", strokeWidth: 2 }}
+            activeDot={{ r: 5 }}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}

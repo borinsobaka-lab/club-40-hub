@@ -170,6 +170,10 @@ describe.skipIf(!url)("аудиоаналитика (база)", () => {
       const access = await from(tx, annaUser, (t) => t`select aa_access() as r`);
       expect(access[0].r).toMatchObject({ own: true, view: false, manage: false, manager_ids: [w.anna] });
 
+      // Люди портала для связи менеджера — только «настройкам».
+      expect(await errorAs(tx, viewer, (t) => t`select * from aa_people()`)).toContain("aa_forbidden");
+      expect(await errorAs(tx, admin, (t) => t`select * from aa_people()`)).toBeNull();
+
       // Аудиофайлы и очередь стирания — только сервису.
       expect(await errorAs(tx, admin, (t) => t`select * from aa_storage_purge`)).not.toBeNull();
     }));

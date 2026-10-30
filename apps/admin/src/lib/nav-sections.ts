@@ -31,18 +31,23 @@ import {
   HandShake,
   History,
   HomeSmile,
+  Laptop2,
+  MapPoint,
+  Microphone2,
   MoneyBag,
   Notebook,
   PieChart2,
   Settings,
   ShieldUser,
   Smartphone,
+  Soundwave,
   SquareAcademicCap,
   StarsMinimalistic,
   Structure,
   TagPrice,
   Target,
   TicketSale,
+  Tuning2,
   UploadMinimalistic,
   UserId,
   UsersGroupRounded,
@@ -60,6 +65,7 @@ import {
 } from "@/lib/admin-access";
 import type { AccessRight } from "@/lib/access/logic";
 import { anVisible } from "@/lib/analytics/types";
+import { aaVisible } from "@/lib/audio/types";
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import type { StudioFormat } from "@/lib/studio-formats";
 
@@ -71,6 +77,7 @@ export type RailSectionKey =
   | "scripts"
   | "kb"
   | "academy"
+  | "audio"
   | "manage";
 
 export type RailSection = {
@@ -263,6 +270,28 @@ export const ANALYTICS_DATA_ITEMS: NavItem[] = [
 ];
 const ANALYTICS_PATHS = [...ANALYTICS_ITEMS, ...ANALYTICS_DATA_ITEMS].map((i) => i.url);
 
+/**
+ * «Аудиоаналитика» (2026-10-30, db/migrations/2026-10-30_audio_analytics.sql) —
+ * запись рабочего дня на ресепшене и разбор разговоров (перенос проекта
+ * audio-analitics). Раздел общий для сети. «Разборы» видят права «свои
+ * смены» и «все смены» (свои — только смены своих менеджеров, это решает
+ * RLS), «Настройки» — право «настройки» (audio.manage). Отчёт смены —
+ * /audio/<смена>.
+ */
+export const AUDIO_URL = "/audio";
+export const AUDIO_ITEMS: NavItem[] = [
+  { title: "Смены", url: AUDIO_URL, icon: Soundwave, exact: true },
+  { title: "Дашборд", url: "/audio/dashboard", icon: ChartSquare },
+  { title: "Договорённости", url: "/audio/agreements", icon: HandShake },
+];
+/** Блок «Настройки» (право audio.manage). */
+export const AUDIO_SETTINGS_ITEMS: NavItem[] = [
+  { title: "Метрики и промпты", url: "/audio/metrics", icon: Tuning2 },
+  { title: "Точки продажи", url: "/audio/locations", icon: MapPoint },
+  { title: "Менеджеры", url: "/audio/managers", icon: UsersGroupRounded },
+  { title: "Приложение", url: "/audio/app", icon: Laptop2 },
+];
+
 /** Разделы студии в форме «Доступов»: дашборд и меню клуба. */
 export const STUDIO_SECTION_GROUPS: NavGroup<ClubNavItem>[] = [
   { key: "dashboard", label: "Дашборд", items: [DASHBOARD_ITEM] },
@@ -432,6 +461,14 @@ export const SECTIONS: RailSection[] = [
     icon: Chart2,
     paths: ANALYTICS_PATHS.slice(1),
   },
+  // Разбор разговоров на ресепшене (перенос «Аудиоаналитики»).
+  {
+    key: "audio",
+    title: "Аудио\u00ADаналитика",
+    fullTitle: "Аудиоаналитика — разбор разговоров на ресепшене",
+    url: AUDIO_URL,
+    icon: Microphone2,
+  },
 ];
 
 /**
@@ -531,6 +568,10 @@ export function canOpenPath(
     return ANALYTICS_DATA_ITEMS.some((i) => matches(pathname, i.url))
       ? !!access.analytics?.manage
       : anVisible(access.analytics);
+  if (section === "audio")
+    return AUDIO_SETTINGS_ITEMS.some((i) => matches(pathname, i.url))
+      ? !!access.audio?.manage
+      : aaVisible(access.audio);
   if (section === "app" || section === "scripts") return canOpenRail(access, section);
   if (section === "club") {
     // «Сотрудники» общие для клубов: право — раздел рейки, не раздел клуба.

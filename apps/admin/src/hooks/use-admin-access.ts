@@ -8,6 +8,7 @@ import { kbLevelOf, type KbLevel } from "@/lib/kb/access";
 import { kbBasesQuery, kbOwnGrantsQuery } from "@/lib/kb/data";
 import { acadAccessQuery } from "@/lib/academy/data";
 import { analyticsAccessQuery } from "@/lib/analytics/data";
+import { audioAccessQuery } from "@/lib/audio/data";
 import { accessMeQuery } from "@/lib/access/data";
 import { ACCESS_RIGHTS, type AccessRight } from "@/lib/access/logic";
 
@@ -60,6 +61,7 @@ export function useAdminAccess(): AdminAccess | null {
   const { data: academy, isLoading: academyLoading } = useQuery(acadAccessQuery);
   const { data: me, isLoading: meLoading } = useQuery(accessMeQuery);
   const { data: analytics, isLoading: analyticsLoading } = useQuery(analyticsAccessQuery);
+  const { data: audio, isLoading: audioLoading } = useQuery(audioAccessQuery);
 
   if (
     studiosLoading ||
@@ -68,7 +70,8 @@ export function useAdminAccess(): AdminAccess | null {
     kbGrantsLoading ||
     academyLoading ||
     meLoading ||
-    analyticsLoading
+    analyticsLoading ||
+    audioLoading
   )
     return null;
   const list = studios ?? [];
@@ -93,6 +96,7 @@ export function useAdminAccess(): AdminAccess | null {
     kb,
     academy,
     analytics,
+    audio,
     rail: legacyOwner ? null : (own?.rail ?? null),
     studios: Object.fromEntries(
       list.map((s) => [

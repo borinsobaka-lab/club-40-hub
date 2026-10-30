@@ -49,6 +49,7 @@ import { Route as AuthenticatedAdminShiftsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedScriptsIndexRouteImport } from './routes/_authenticated/scripts/index'
 import { Route as AuthenticatedKbIndexRouteImport } from './routes/_authenticated/kb/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedAudioIndexRouteImport } from './routes/_authenticated/audio/index'
 import { Route as AuthenticatedAnalyticsIndexRouteImport } from './routes/_authenticated/analytics/index'
 import { Route as AuthenticatedAccessIndexRouteImport } from './routes/_authenticated/access/index'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy/index'
@@ -58,6 +59,13 @@ import { Route as AuthenticatedDashboardSalesRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_authenticated/dashboard/marketing'
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
+import { Route as AuthenticatedAudioMetricsRouteImport } from './routes/_authenticated/audio/metrics'
+import { Route as AuthenticatedAudioManagersRouteImport } from './routes/_authenticated/audio/managers'
+import { Route as AuthenticatedAudioLocationsRouteImport } from './routes/_authenticated/audio/locations'
+import { Route as AuthenticatedAudioDashboardRouteImport } from './routes/_authenticated/audio/dashboard'
+import { Route as AuthenticatedAudioAppRouteImport } from './routes/_authenticated/audio/app'
+import { Route as AuthenticatedAudioAgreementsRouteImport } from './routes/_authenticated/audio/agreements'
+import { Route as AuthenticatedAudioRecordingIdRouteImport } from './routes/_authenticated/audio/$recordingId'
 import { Route as AuthenticatedAnalyticsZeroRouteImport } from './routes/_authenticated/analytics/zero'
 import { Route as AuthenticatedAnalyticsUploadRouteImport } from './routes/_authenticated/analytics/upload'
 import { Route as AuthenticatedAnalyticsTrialsRouteImport } from './routes/_authenticated/analytics/trials'
@@ -299,6 +307,11 @@ const AuthenticatedDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAudioIndexRoute = AuthenticatedAudioIndexRouteImport.update({
+  id: '/audio/',
+  path: '/audio/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnalyticsIndexRoute =
   AuthenticatedAnalyticsIndexRouteImport.update({
     id: '/analytics/',
@@ -351,6 +364,47 @@ const AuthenticatedDashboardClassesRoute =
   AuthenticatedDashboardClassesRouteImport.update({
     id: '/dashboard/classes',
     path: '/dashboard/classes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAudioMetricsRoute =
+  AuthenticatedAudioMetricsRouteImport.update({
+    id: '/audio/metrics',
+    path: '/audio/metrics',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAudioManagersRoute =
+  AuthenticatedAudioManagersRouteImport.update({
+    id: '/audio/managers',
+    path: '/audio/managers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAudioLocationsRoute =
+  AuthenticatedAudioLocationsRouteImport.update({
+    id: '/audio/locations',
+    path: '/audio/locations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAudioDashboardRoute =
+  AuthenticatedAudioDashboardRouteImport.update({
+    id: '/audio/dashboard',
+    path: '/audio/dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAudioAppRoute = AuthenticatedAudioAppRouteImport.update({
+  id: '/audio/app',
+  path: '/audio/app',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAudioAgreementsRoute =
+  AuthenticatedAudioAgreementsRouteImport.update({
+    id: '/audio/agreements',
+    path: '/audio/agreements',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAudioRecordingIdRoute =
+  AuthenticatedAudioRecordingIdRouteImport.update({
+    id: '/audio/$recordingId',
+    path: '/audio/$recordingId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAnalyticsZeroRoute =
@@ -591,6 +645,13 @@ export interface FileRoutesByFullPath {
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/audio/$recordingId': typeof AuthenticatedAudioRecordingIdRoute
+  '/audio/agreements': typeof AuthenticatedAudioAgreementsRoute
+  '/audio/app': typeof AuthenticatedAudioAppRoute
+  '/audio/dashboard': typeof AuthenticatedAudioDashboardRoute
+  '/audio/locations': typeof AuthenticatedAudioLocationsRoute
+  '/audio/managers': typeof AuthenticatedAudioManagersRoute
+  '/audio/metrics': typeof AuthenticatedAudioMetricsRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -600,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/access/': typeof AuthenticatedAccessIndexRoute
   '/analytics/': typeof AuthenticatedAnalyticsIndexRoute
+  '/audio/': typeof AuthenticatedAudioIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/kb/': typeof AuthenticatedKbIndexRoute
   '/scripts/': typeof AuthenticatedScriptsIndexRoute
@@ -672,6 +734,13 @@ export interface FileRoutesByTo {
   '/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/audio/$recordingId': typeof AuthenticatedAudioRecordingIdRoute
+  '/audio/agreements': typeof AuthenticatedAudioAgreementsRoute
+  '/audio/app': typeof AuthenticatedAudioAppRoute
+  '/audio/dashboard': typeof AuthenticatedAudioDashboardRoute
+  '/audio/locations': typeof AuthenticatedAudioLocationsRoute
+  '/audio/managers': typeof AuthenticatedAudioManagersRoute
+  '/audio/metrics': typeof AuthenticatedAudioMetricsRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -681,6 +750,7 @@ export interface FileRoutesByTo {
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/access': typeof AuthenticatedAccessIndexRoute
   '/analytics': typeof AuthenticatedAnalyticsIndexRoute
+  '/audio': typeof AuthenticatedAudioIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/kb': typeof AuthenticatedKbIndexRoute
   '/scripts': typeof AuthenticatedScriptsIndexRoute
@@ -755,6 +825,13 @@ export interface FileRoutesById {
   '/_authenticated/analytics/trials': typeof AuthenticatedAnalyticsTrialsRoute
   '/_authenticated/analytics/upload': typeof AuthenticatedAnalyticsUploadRoute
   '/_authenticated/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
+  '/_authenticated/audio/$recordingId': typeof AuthenticatedAudioRecordingIdRoute
+  '/_authenticated/audio/agreements': typeof AuthenticatedAudioAgreementsRoute
+  '/_authenticated/audio/app': typeof AuthenticatedAudioAppRoute
+  '/_authenticated/audio/dashboard': typeof AuthenticatedAudioDashboardRoute
+  '/_authenticated/audio/locations': typeof AuthenticatedAudioLocationsRoute
+  '/_authenticated/audio/managers': typeof AuthenticatedAudioManagersRoute
+  '/_authenticated/audio/metrics': typeof AuthenticatedAudioMetricsRoute
   '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/_authenticated/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
   '/_authenticated/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
@@ -764,6 +841,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/access/': typeof AuthenticatedAccessIndexRoute
   '/_authenticated/analytics/': typeof AuthenticatedAnalyticsIndexRoute
+  '/_authenticated/audio/': typeof AuthenticatedAudioIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/kb/': typeof AuthenticatedKbIndexRoute
   '/_authenticated/scripts/': typeof AuthenticatedScriptsIndexRoute
@@ -838,6 +916,13 @@ export interface FileRouteTypes {
     | '/analytics/trials'
     | '/analytics/upload'
     | '/analytics/zero'
+    | '/audio/$recordingId'
+    | '/audio/agreements'
+    | '/audio/app'
+    | '/audio/dashboard'
+    | '/audio/locations'
+    | '/audio/managers'
+    | '/audio/metrics'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/marketing'
@@ -847,6 +932,7 @@ export interface FileRouteTypes {
     | '/academy/'
     | '/access/'
     | '/analytics/'
+    | '/audio/'
     | '/dashboard/'
     | '/kb/'
     | '/scripts/'
@@ -919,6 +1005,13 @@ export interface FileRouteTypes {
     | '/analytics/trials'
     | '/analytics/upload'
     | '/analytics/zero'
+    | '/audio/$recordingId'
+    | '/audio/agreements'
+    | '/audio/app'
+    | '/audio/dashboard'
+    | '/audio/locations'
+    | '/audio/managers'
+    | '/audio/metrics'
     | '/dashboard/classes'
     | '/dashboard/clients'
     | '/dashboard/marketing'
@@ -928,6 +1021,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/access'
     | '/analytics'
+    | '/audio'
     | '/dashboard'
     | '/kb'
     | '/scripts'
@@ -1001,6 +1095,13 @@ export interface FileRouteTypes {
     | '/_authenticated/analytics/trials'
     | '/_authenticated/analytics/upload'
     | '/_authenticated/analytics/zero'
+    | '/_authenticated/audio/$recordingId'
+    | '/_authenticated/audio/agreements'
+    | '/_authenticated/audio/app'
+    | '/_authenticated/audio/dashboard'
+    | '/_authenticated/audio/locations'
+    | '/_authenticated/audio/managers'
+    | '/_authenticated/audio/metrics'
     | '/_authenticated/dashboard/classes'
     | '/_authenticated/dashboard/clients'
     | '/_authenticated/dashboard/marketing'
@@ -1010,6 +1111,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/'
     | '/_authenticated/access/'
     | '/_authenticated/analytics/'
+    | '/_authenticated/audio/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/kb/'
     | '/_authenticated/scripts/'
@@ -1321,6 +1423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/audio/': {
+      id: '/_authenticated/audio/'
+      path: '/audio'
+      fullPath: '/audio/'
+      preLoaderRoute: typeof AuthenticatedAudioIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/analytics/': {
       id: '/_authenticated/analytics/'
       path: '/analytics'
@@ -1382,6 +1491,55 @@ declare module '@tanstack/react-router' {
       path: '/dashboard/classes'
       fullPath: '/dashboard/classes'
       preLoaderRoute: typeof AuthenticatedDashboardClassesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audio/metrics': {
+      id: '/_authenticated/audio/metrics'
+      path: '/audio/metrics'
+      fullPath: '/audio/metrics'
+      preLoaderRoute: typeof AuthenticatedAudioMetricsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audio/managers': {
+      id: '/_authenticated/audio/managers'
+      path: '/audio/managers'
+      fullPath: '/audio/managers'
+      preLoaderRoute: typeof AuthenticatedAudioManagersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audio/locations': {
+      id: '/_authenticated/audio/locations'
+      path: '/audio/locations'
+      fullPath: '/audio/locations'
+      preLoaderRoute: typeof AuthenticatedAudioLocationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audio/dashboard': {
+      id: '/_authenticated/audio/dashboard'
+      path: '/audio/dashboard'
+      fullPath: '/audio/dashboard'
+      preLoaderRoute: typeof AuthenticatedAudioDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audio/app': {
+      id: '/_authenticated/audio/app'
+      path: '/audio/app'
+      fullPath: '/audio/app'
+      preLoaderRoute: typeof AuthenticatedAudioAppRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audio/agreements': {
+      id: '/_authenticated/audio/agreements'
+      path: '/audio/agreements'
+      fullPath: '/audio/agreements'
+      preLoaderRoute: typeof AuthenticatedAudioAgreementsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audio/$recordingId': {
+      id: '/_authenticated/audio/$recordingId'
+      path: '/audio/$recordingId'
+      fullPath: '/audio/$recordingId'
+      preLoaderRoute: typeof AuthenticatedAudioRecordingIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/analytics/zero': {
@@ -1652,6 +1810,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyticsTrialsRoute: typeof AuthenticatedAnalyticsTrialsRoute
   AuthenticatedAnalyticsUploadRoute: typeof AuthenticatedAnalyticsUploadRoute
   AuthenticatedAnalyticsZeroRoute: typeof AuthenticatedAnalyticsZeroRoute
+  AuthenticatedAudioRecordingIdRoute: typeof AuthenticatedAudioRecordingIdRoute
+  AuthenticatedAudioAgreementsRoute: typeof AuthenticatedAudioAgreementsRoute
+  AuthenticatedAudioAppRoute: typeof AuthenticatedAudioAppRoute
+  AuthenticatedAudioDashboardRoute: typeof AuthenticatedAudioDashboardRoute
+  AuthenticatedAudioLocationsRoute: typeof AuthenticatedAudioLocationsRoute
+  AuthenticatedAudioManagersRoute: typeof AuthenticatedAudioManagersRoute
+  AuthenticatedAudioMetricsRoute: typeof AuthenticatedAudioMetricsRoute
   AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
   AuthenticatedDashboardClientsRoute: typeof AuthenticatedDashboardClientsRoute
   AuthenticatedDashboardMarketingRoute: typeof AuthenticatedDashboardMarketingRoute
@@ -1661,6 +1826,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
   AuthenticatedAccessIndexRoute: typeof AuthenticatedAccessIndexRoute
   AuthenticatedAnalyticsIndexRoute: typeof AuthenticatedAnalyticsIndexRoute
+  AuthenticatedAudioIndexRoute: typeof AuthenticatedAudioIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKbIndexRoute: typeof AuthenticatedKbIndexRoute
   AuthenticatedScriptsIndexRoute: typeof AuthenticatedScriptsIndexRoute
@@ -1732,6 +1898,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyticsTrialsRoute: AuthenticatedAnalyticsTrialsRoute,
   AuthenticatedAnalyticsUploadRoute: AuthenticatedAnalyticsUploadRoute,
   AuthenticatedAnalyticsZeroRoute: AuthenticatedAnalyticsZeroRoute,
+  AuthenticatedAudioRecordingIdRoute: AuthenticatedAudioRecordingIdRoute,
+  AuthenticatedAudioAgreementsRoute: AuthenticatedAudioAgreementsRoute,
+  AuthenticatedAudioAppRoute: AuthenticatedAudioAppRoute,
+  AuthenticatedAudioDashboardRoute: AuthenticatedAudioDashboardRoute,
+  AuthenticatedAudioLocationsRoute: AuthenticatedAudioLocationsRoute,
+  AuthenticatedAudioManagersRoute: AuthenticatedAudioManagersRoute,
+  AuthenticatedAudioMetricsRoute: AuthenticatedAudioMetricsRoute,
   AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
   AuthenticatedDashboardClientsRoute: AuthenticatedDashboardClientsRoute,
   AuthenticatedDashboardMarketingRoute: AuthenticatedDashboardMarketingRoute,
@@ -1741,6 +1914,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
   AuthenticatedAccessIndexRoute: AuthenticatedAccessIndexRoute,
   AuthenticatedAnalyticsIndexRoute: AuthenticatedAnalyticsIndexRoute,
+  AuthenticatedAudioIndexRoute: AuthenticatedAudioIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKbIndexRoute: AuthenticatedKbIndexRoute,
   AuthenticatedScriptsIndexRoute: AuthenticatedScriptsIndexRoute,

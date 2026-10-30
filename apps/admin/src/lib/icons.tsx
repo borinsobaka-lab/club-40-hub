@@ -63,6 +63,8 @@ import {
   Copy as CopyArt,
   CreditCard as CreditCardArt,
   Database as DatabaseArt,
+  DoorClosed as DoorClosedArt,
+  DoorOpen as DoorOpenArt,
   Download as DownloadArt,
   Ellipsis as EllipsisArt,
   Eraser as EraserArt,
@@ -110,10 +112,12 @@ import {
   Music as MusicArt,
   PanelLeft as PanelLeftArt,
   Paperclip as PaperclipArt,
+  Pause as PauseArt,
   Pencil as PencilArt,
   Phone as PhoneArt,
   Play as PlayArt,
   Plus as PlusArt,
+  Power as PowerArt,
   QrCode as QrCodeArt,
   Receipt as ReceiptArt,
   RefreshCw as RefreshCwArt,
@@ -133,6 +137,8 @@ import {
   Square as SquareArt,
   Star as StarArt,
   Sun as SunArt,
+  ThumbsDown as ThumbsDownArt,
+  ThumbsUp as ThumbsUpArt,
   Ticket as TicketArt,
   Trash2 as Trash2Art,
   TrendingDown as TrendingDownArt,
@@ -211,6 +217,8 @@ export const Columns3 = icon(Columns3Art, "Columns3");
 export const Copy = icon(CopyArt, "Copy");
 export const CreditCard = icon(CreditCardArt, "CreditCard");
 export const Database = icon(DatabaseArt, "Database");
+export const DoorClosed = icon(DoorClosedArt, "DoorClosed");
+export const DoorOpen = icon(DoorOpenArt, "DoorOpen");
 export const Download = icon(DownloadArt, "Download");
 export const Ellipsis = icon(EllipsisArt, "Ellipsis");
 export const Eraser = icon(EraserArt, "Eraser");
@@ -258,10 +266,12 @@ export const Moon = icon(MoonArt, "Moon");
 export const Music = icon(MusicArt, "Music");
 export const PanelLeft = icon(PanelLeftArt, "PanelLeft");
 export const Paperclip = icon(PaperclipArt, "Paperclip");
+export const Pause = icon(PauseArt, "Pause");
 export const Pencil = icon(PencilArt, "Pencil");
 export const Phone = icon(PhoneArt, "Phone");
 export const Play = icon(PlayArt, "Play");
 export const Plus = icon(PlusArt, "Plus");
+export const Power = icon(PowerArt, "Power");
 export const QrCode = icon(QrCodeArt, "QrCode");
 export const Receipt = icon(ReceiptArt, "Receipt");
 export const RefreshCw = icon(RefreshCwArt, "RefreshCw");
@@ -281,6 +291,8 @@ export const Smile = icon(SmileArt, "Smile");
 export const Square = icon(SquareArt, "Square");
 export const Star = icon(StarArt, "Star");
 export const Sun = icon(SunArt, "Sun");
+export const ThumbsDown = icon(ThumbsDownArt, "ThumbsDown");
+export const ThumbsUp = icon(ThumbsUpArt, "ThumbsUp");
 export const Ticket = icon(TicketArt, "Ticket");
 export const Trash2 = icon(Trash2Art, "Trash2");
 export const TrendingDown = icon(TrendingDownArt, "TrendingDown");
