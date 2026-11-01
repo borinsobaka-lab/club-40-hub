@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Info, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Copy, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-shell";
+import { ClientNameLink } from "@/components/client-name-link";
 import { StaffTabs } from "@/components/staff-tabs";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EmployeePhoto, TrainerRoleBadge } from "@/components/employee-photo";
@@ -107,7 +108,7 @@ export const Route = createFileRoute("/_authenticated/payroll")({
 const TIPS = {
   base: "Смены администратора и проведённые занятия по «Зарплатным ставкам»: групповые, персональные, прочие активности (по ставке занятия). Будущие смены и занятия не считаются.",
   sales:
-    "Деньги по абонементам, поступившие за период: первые платежи и доплаты по рассрочкам, в том числе по абонементам, проданным раньше. Администратору — по продажам, где он выбран администратором, тренеру — где он тренер при продаже. Пакеты персональных тренировок не считаются.",
+    "Деньги по абонементам, поступившие за период: первые платежи и доплаты по рассрочкам, в том числе по абонементам, проданным раньше. Администратору — по продажам, где он выбран администратором, тренеру — где он тренер при продаже. Пробные не считаются; пакет персональных — только тренеру и только первая покупка клиентом. Список платежей — в карточке сотрудника.",
   bonus: "5 % от поступивших платежей.",
   adjustments: "Вычеты и надбавки из «Графика администраторов» с датой в этом периоде.",
   total: "Оклад + бонус 5 % + корректировки.",
@@ -820,18 +821,11 @@ function EmployeePayroll({
         )}
 
         <section className="space-y-3 rounded-lg border p-4">
-          <div>
-            <div className="text-sm text-muted-foreground">Поступило по абонементам</div>
-            <div className="mt-1 flex items-baseline justify-between rounded-md border px-3 py-2">
-              <span className="font-semibold tabular-nums">{formatPay(summary.sales)}</span>
-              <span className="text-xs text-muted-foreground">
-                {summary.salesCount} {plural(summary.salesCount, ["платёж", "платежа", "платежей"])}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Первые платежи и доплаты по рассрочкам за период.
-            </p>
-          </div>
+          <SalePayments
+            employeeId={employee.id}
+            range={periodRange(month, period)}
+            summary={summary}
+          />
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Бонус {BONUS_RATE * 100}%</span>
             <span className="tabular-nums">{formatPay(summary.bonus)}</span>
@@ -945,4 +939,147 @@ function lessonChip(l: PayrollLine, abbr: string) {
   if (l.kind === "group") return `${abbr}:${l.units}`;
   if (l.kind === "personal") return `${abbr} перс.:${l.units}`;
   return `${l.title ?? "Прочее"}${l.units > 1 ? ` ×${l.units}` : ""}`;
+}
+
+// --- Платежи бонуса ---------------------------------------------------------------
+
+/** Строка RPC payroll_sale_payments — платёж, из которого считается бонус. */
+type SalePayment = {
+  paid_on: string;
+  sale_id: string;
+  installment_id: string | null;
+  sold_at: string;
+  studio_id: string;
+  studio_name: string;
+  client_id: string | null;
+  client_name: string;
+  membership_name: string;
+  sale_kind: string | null;
+  amount: number;
+  as_seller: boolean;
+  as_trainer: boolean;
+  installment_no: number | null;
+  installments_total: number | null;
+  refunded: boolean;
+};
+
+/** Как поступил платёж: «Оплата сразу», «Платёж 2 из 3». */
+function paymentLabel(p: SalePayment) {
+  if (!p.installment_id || !p.installments_total || p.installments_total <= 1)
+    return "Оплата сразу";
+  return `Платёж ${p.installment_no} из ${p.installments_total}`;
+}
+
+/**
+ * «Поступило по абонементам» в карточке сотрудника: сумма и число платежей,
+ * по нажатию — список платежей, из которых считается бонус (RPC
+ * payroll_sale_payments, те же правила, что у payroll_lines).
+ */
+function SalePayments({
+  employeeId,
+  range,
+  summary,
+}: {
+  employeeId: string;
+  range: { from: string; to: string };
+  summary: PayrollSummary;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasPayments = summary.salesCount > 0;
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["payroll_sale_payments", employeeId, range.from, range.to],
+    queryFn: async () =>
+      (
+        await unwrap<SalePayment[]>(
+          supabase.rpc("payroll_sale_payments", {
+            _trainer_id: employeeId,
+            _from: range.from,
+            _to: range.to,
+          }),
+        )
+      ).map((p) => ({ ...p, amount: Number(p.amount) || 0 })),
+    enabled: open && hasPayments,
+    meta: { errorMessage: "Не удалось загрузить платежи" },
+  });
+
+  return (
+    <div>
+      <div className="text-sm text-muted-foreground">Поступило по абонементам</div>
+      <button
+        type="button"
+        disabled={!hasPayments}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "mt-1 flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left",
+          hasPayments &&
+            "cursor-pointer hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        )}
+      >
+        <span className="font-semibold tabular-nums">{formatPay(summary.sales)}</span>
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          {summary.salesCount} {plural(summary.salesCount, ["платёж", "платежа", "платежей"])}
+          {hasPayments && (
+            <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+          )}
+        </span>
+      </button>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Первые платежи и доплаты по рассрочкам за период.
+        {hasPayments && !open && " Нажмите, чтобы посмотреть платежи."}
+      </p>
+
+      {open && hasPayments && (
+        <div className="mt-2">
+          {isLoading ? (
+            <div className="space-y-2 rounded-md border p-3">
+              {Array.from({ length: Math.min(summary.salesCount, 4) }, (_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
+            </div>
+          ) : (
+            <ul className="divide-y rounded-md border">
+              {data.map((p) => (
+                <li
+                  key={`${p.sale_id}|${p.installment_id ?? "sale"}`}
+                  className="grid grid-cols-[56px_1fr_auto] gap-2 px-3 py-2 text-sm"
+                >
+                  <span className="text-muted-foreground">{dayLabel(p.paid_on)}</span>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">
+                      {p.client_id ? (
+                        <ClientNameLink clientId={p.client_id} crmLink={null}>
+                          {p.client_name}
+                        </ClientNameLink>
+                      ) : (
+                        p.client_name
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {p.membership_name} · {paymentLabel(p)}
+                      {p.sold_at !== p.paid_on && ` · продан ${formatDate(p.sold_at)}`}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                      <span className="truncate">{p.studio_name}</span>
+                      {p.as_trainer && !p.as_seller && (
+                        <StatusChip tone="neutral" size="sm">
+                          Тренер при продаже
+                        </StatusChip>
+                      )}
+                      {p.refunded && (
+                        <StatusChip tone="warning" size="sm">
+                          Был возврат
+                        </StatusChip>
+                      )}
+                    </div>
+                  </div>
+                  <span className="tabular-nums">{formatPay(p.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1414,4 +1414,39 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(rows.length).toBe(0);
     });
   });
+
+  // ---- Пробные без бонуса, список платежей бонуса (2026-11-01) ----
+
+  test("пробное бонуса не даёт; payroll_sale_payments — те же платежи, что в payroll_lines", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await asStaff(tx, s);
+      await tx`update user_roles set role = 'owner' where studio_id = ${s.studio}`;
+      const [{ id: admin }] = await tx`
+        insert into trainers (full_name, role) values ('Админ', 'admin') returning id`;
+      await tx`insert into trainer_studios (trainer_id, studio_id) values (${admin}, ${s.studio})`;
+      const [{ id: trial }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+        values (${s.studio}, 'Пробное', 'trial', 1, 7, 20) returning id`;
+
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, seller_id)
+        values (${s.studio}, ${s.client}, ${trial}, 20, current_date, 'trial', ${admin}),
+               (${s.studio}, ${s.client}, ${s.pack}, 100, current_date, 'new', ${admin})`;
+
+      const lines = await tx`
+        select coalesce(sum(units), 0)::int n, coalesce(sum(amount), 0)::numeric total
+          from payroll_lines(current_date - 1, current_date)
+         where trainer_id = ${admin} and kind = 'sale'`;
+      expect(lines[0].n).toBe(1);
+      expect(Number(lines[0].total)).toBe(100);
+
+      const list = await tx`
+        select * from payroll_sale_payments(${admin}, current_date - 1, current_date)`;
+      expect(list.length).toBe(1);
+      expect(Number(list[0].amount)).toBe(100);
+      expect(list[0].as_seller).toBe(true);
+      expect(list[0].refunded).toBe(false);
+    });
+  });
 });
