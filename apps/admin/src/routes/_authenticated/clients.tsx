@@ -6,8 +6,8 @@ import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { AmoCrmLinkIcon } from "@/components/amocrm-icon";
 import { clientNameClass } from "@/components/client-name-link";
 
-import { CommentCell } from "@/components/comment-cell";
-import { commentSaver } from "@/lib/comment-saver";
+import { CommentsButton } from "@/components/client-comments";
+import { useCommentStats } from "@/lib/client-comments";
 import { AdminShell } from "@/components/admin-shell";
 import { RequireStudio } from "@/components/require-studio";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
@@ -120,7 +120,6 @@ const SORT_COLUMNS = {
   registration: "registration_date",
   source: "source",
   lastVisit: "last_visit_date",
-  notes: "notes",
 };
 
 const CLUB_STATUSES = Object.keys(CLUB_STATUS_FULL) as ClubStatus[];
@@ -224,6 +223,8 @@ function ClientsPage() {
     errorMessage: "Не удалось загрузить клиентов",
   });
   const reload = () => queryClient.invalidateQueries({ queryKey: ["clients_with_status"] });
+  // Комментарии строк страницы — одним запросом (сводка: сколько, когда, кто).
+  const comments = useCommentStats(table.rows.map((c) => c.id));
 
   const handleDelete = async (c: Client) => {
     if (
@@ -346,9 +347,7 @@ function ClientsPage() {
                   <TableHead tip={TIPS.email} {...sort.head("email")}>
                     Email
                   </TableHead>
-                  <TableHead tip={TIPS.notes} {...sort.head("notes")}>
-                    Заметки
-                  </TableHead>
+                  <TableHead tip={TIPS.comments}>Комментарии</TableHead>
                   <TableHead tip={TIPS.lastVisit} {...sort.head("lastVisit")}>
                     Последний визит
                   </TableHead>
@@ -417,10 +416,11 @@ function ClientsPage() {
                         </TableCell>
                         <TableCell>{c.email ?? "—"}</TableCell>
                         <TableCell>
-                          <CommentCell
-                            text={c.notes}
-                            onSave={commentSaver("clients", c.id, "notes")}
-                            onSaved={reload}
+                          <CommentsButton
+                            clientId={c.id}
+                            clientName={clientName(c)}
+                            stats={comments.byClient.get(c.id)}
+                            loading={comments.isLoading}
                           />
                         </TableCell>
                         <TableCell className="tabular-nums">

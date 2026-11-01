@@ -221,6 +221,7 @@ export function createAssistantTools(
     get_client_details: tool({
       description:
         "Всё о клиенте одним вызовом — для вопросов «что предложить клиенту», «почему не ходит»: карточка и статус, " +
+        "комментарии сотрудников (о клиенте и его абонементах, sale_id — продажа; kind imported — без даты), " +
         "абонементы (остаток, срок, статус), продажи и неоплаченные платежи, последние посещения, анкета приложения " +
         "(цели, опыт, удобное время, откуда узнал), заявки, последние ответы NPS, приложение (последний вход, " +
         "уведомления, какие разделы смотрел за 30 дней). Части, закрытые сотруднику, не приходят.",
@@ -250,6 +251,16 @@ export function createAssistantTools(
               .select(
                 "id, studio_id, status, balance_kind, started_at, ends_at, visits_left, personal_left, diagnostics_left, starts_on_first_visit, frozen_until, auto_renew, created_at, memberships(name, kind, visits_count, personal_count, duration_days, price)",
               )
+              .eq("client_id", client_id)
+              .order("created_at", { ascending: false })
+              .limit(20),
+          ),
+          // Лента комментариев сотрудников о клиенте и его абонементах
+          // (client_comments, 2026-11-01) — вместо прежнего поля notes.
+          comments: part(
+            supabase
+              .from("client_comments")
+              .select("sale_id, kind, body, author_name, created_at")
               .eq("client_id", client_id)
               .order("created_at", { ascending: false })
               .limit(20),

@@ -49,7 +49,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   переоформления абонемента `db/membership-transfer.test.ts`, базы знаний
   `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts`,
   пользователей, ролей и доступов `db/access.test.ts`, «Рабочего дня»
-  `db/workday.test.ts` и «Аналитики» `db/analytics.test.ts`
+  `db/workday.test.ts`, «Аналитики» `db/analytics.test.ts` и ленты
+  комментариев клиента `db/client-comments.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -1008,6 +1009,23 @@ AUTH_SETUP.md.
   (собственники клубов — если есть `studio_owners`); обе — любому человеку
   портала (`is_portal_user`), справочник компании. Тесты —
   `db/knowledge-base.test.ts`.
+  **Комментарии по клиенту и его абонементам — одной лентой** (решение
+  владельца 2026-11-01): `db/migrations/2026-11-01_zzzzz_client_comments.sql`
+  — `client_comments` (клиент, `sale_id` — абонемент, если комментарий о нём;
+  `kind` `note` / `sale` — при продаже / `imported` — перенесено из прежних
+  полей, без даты; автор, имя автора и время ставит триггер
+  `client_comments_biu`, правка — только текста, `edited_at`). Видят и пишут
+  сотрудники клубов, которым видна карточка (`auth_network_studio_ids()`,
+  `studio_id` — клуб карточки, следует за `clients.studio_id`); правят и
+  удаляют — свой, без автора — любой из них; клиент ленту не видит. Сводка
+  для таблиц — RPC `client_comment_stats(ids)` (сколько у клиента вместе с
+  абонементами, когда последний, кто, текст; security invoker).
+  Прежние `clients.notes`, `sales.comment`, `sales.membership_note` остались
+  (их пишут форма нового клиента и форма продажи): новый непустой текст
+  триггеры дописывают в ленту, разово перенесено всё, что было. Абонемент
+  переоформили — его комментарии уходят с ним; продажу удалили — остаются у
+  клиента. Админка прежние поля больше не показывает. Тесты —
+  `db/client-comments.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

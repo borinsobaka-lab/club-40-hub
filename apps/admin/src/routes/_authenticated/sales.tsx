@@ -36,8 +36,8 @@ import { ClientNameLink } from "@/components/client-name-link";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { SaleDialog } from "@/components/sale-dialog";
 import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
-import { CommentCell } from "@/components/comment-cell";
-import { commentSaver } from "@/lib/comment-saver";
+import { CommentsButton } from "@/components/client-comments";
+import { useCommentStats } from "@/lib/client-comments";
 import { TableSkeletonRows } from "@/components/skeletons";
 import { clientName, formatMoney, formatDate, formatPhone } from "@/lib/format";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -95,7 +95,6 @@ const SORT_COLUMNS = {
   downPayment: "down_payment_amount",
   installments: "remaining_installments",
   admin: "admin_name",
-  comment: "comment",
 };
 
 type Sale = {
@@ -180,6 +179,7 @@ function SalesPage() {
     "id",
     table.rows.map((s) => s.client_id),
   );
+  const comments = useCommentStats(table.rows.map((s) => s.client_id));
 
   const handleDelete = async (s: Sale) => {
     if (
@@ -276,7 +276,9 @@ function SalesPage() {
                   <TableHead tip={TIPS.admin} {...sort.head("admin")}>
                     Администратор
                   </TableHead>
-                  <TableHead {...sort.head("comment")}>Комментарий</TableHead>
+                  <TableHead tip="Все комментарии клиента — о нём и о его абонементах: сколько, когда последний и кто оставил. Нажмите — лента и новый комментарий.">
+                    Комментарии
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -366,10 +368,12 @@ function SalesPage() {
                             {s.admin_name ?? "—"}
                           </TableCell>
                           <TableCell>
-                            <CommentCell
-                              text={s.comment}
-                              onSave={commentSaver("sales", s.id)}
-                              onSaved={reload}
+                            <CommentsButton
+                              clientId={s.client_id}
+                              clientName={s.clients ? clientName(s.clients) : undefined}
+                              saleId={s.id}
+                              stats={comments.byClient.get(s.client_id)}
+                              loading={comments.isLoading}
                             />
                           </TableCell>
                         </TableRow>

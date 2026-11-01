@@ -168,7 +168,10 @@ function ClientForm({
         email: email || null,
         birthday: birthday || null,
         gender: gender || null,
-        notes: notes.trim() || null,
+        // Комментарии — лентой (client_comments, 2026-11-01): поле есть только у
+        // нового клиента, его текст база кладёт первым комментарием. Правка
+        // прежнее поле не трогает.
+        ...(client ? {} : { notes: notes.trim() || null }),
         registration_date: registrationDate || null,
         last_visit_date: lastVisitDate || null,
         crm_link: crmLink.trim() || null,
@@ -328,9 +331,11 @@ function ClientForm({
                 />
               </FormField>
             </div>
-            <FormField label="Заметки" tip={CLIENT_TIPS.notes} optional>
-              <Textarea note rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </FormField>
+            {!client && (
+              <FormField label="Комментарий" tip={CLIENT_TIPS.notes} optional>
+                <Textarea note rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </FormField>
+            )}
           </div>
         </DialogBody>
         <DialogFooter>

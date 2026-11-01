@@ -93,6 +93,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { noteChipClass } from "@/components/comment-cell";
+import { CommentsLine } from "@/components/client-comments";
+import { useCommentStats } from "@/lib/client-comments";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -3371,6 +3373,8 @@ function BookingsPanel({
     meta: { errorMessage: "Ошибка загрузки записей" },
   });
   const bookings = data?.bookings ?? [];
+  // Комментарии клиентов занятия — одним запросом.
+  const comments = useCommentStats(bookings.map((b) => bookingClient(data, b)?.id));
   const reload = () => {
     queryClient.invalidateQueries({ queryKey });
     // Посещение списало тренировку — баланс в «Абонементах» изменился.
@@ -3542,15 +3546,14 @@ function BookingsPanel({
                         "Нет активного абонемента"
                       )}
                     </div>
-                    {/* Комментарий о клиенте — одной строкой; весь и правка —
-                        в карточке по нажатию на имя. */}
-                    {c?.notes?.trim() && (
-                      <div
-                        title={c.notes}
-                        className={cn(noteChipClass, "mt-1 truncate px-1.5 py-0.5 text-xs")}
-                      >
-                        {c.notes}
-                      </div>
+                    {/* Последний комментарий о клиенте и его абонементах —
+                        одной строкой; вся лента — по нажатию. */}
+                    {c && (
+                      <CommentsLine
+                        clientId={c.id}
+                        clientName={clientName(c)}
+                        stats={comments.byClient.get(c.id)}
+                      />
                     )}
                     {uncovered && (
                       <div className="text-xs text-rose-700">

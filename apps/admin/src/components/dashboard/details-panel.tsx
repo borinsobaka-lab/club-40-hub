@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Phone, X } from "lucide-react";
 
 import { ClientNameLink } from "@/components/client-name-link";
+import { CommentsButton } from "@/components/client-comments";
 import { Button } from "@/components/ui/button";
 import { StatusChip, type StatusTone } from "@/components/ui/status-chip";
 import { SearchInput } from "@/components/ui/search-input";
@@ -16,6 +17,7 @@ import {
   type DetailsSpec,
 } from "@/lib/dashboard-details";
 import { formatStat } from "@/lib/dashboard-stats";
+import { useCommentStats } from "@/lib/client-comments";
 import { formatDate, formatNumber, sanitizeSearch } from "@/lib/format";
 import { plural } from "@/lib/payroll";
 import { cn } from "@/lib/utils";
@@ -142,6 +144,10 @@ export default function DetailsPanel({
     });
   }, [rows, people.data]);
 
+  // Комментарии клиентов списка — сразу видно, кому писали и когда (решение
+  // владельца 2026-11-01); по нажатию — лента о клиенте и его абонементах.
+  const comments = useCommentStats(resolved.map((x) => x.person?.id));
+
   const term = sanitizeSearch(search).toLowerCase();
   const digits = term.replace(/\D/g, "");
   const shown = term
@@ -228,6 +234,17 @@ export default function DetailsPanel({
                   {(row.title || row.note) && (
                     <div className="mt-0.5 truncate text-xs text-muted-foreground">
                       {[row.title, row.note].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                  {person && (
+                    <div className="mt-1 flex min-w-0">
+                      <CommentsButton
+                        compact
+                        clientId={person.id}
+                        clientName={name ?? undefined}
+                        stats={comments.byClient.get(person.id)}
+                        loading={comments.isLoading}
+                      />
                     </div>
                   )}
                 </div>

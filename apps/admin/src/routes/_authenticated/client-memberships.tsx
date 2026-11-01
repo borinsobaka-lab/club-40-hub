@@ -107,8 +107,8 @@ import { TableToolbar, ToolbarReset, ToolbarSearch } from "@/components/table-to
 import { TableSkeletonRows } from "@/components/skeletons";
 import { ClientNameLink } from "@/components/client-name-link";
 import { ClientCombobox, type ClientOption } from "@/components/client-combobox";
-import { CommentCell } from "@/components/comment-cell";
-import { commentSaver } from "@/lib/comment-saver";
+import { CommentsButton } from "@/components/client-comments";
+import { useCommentStats } from "@/lib/client-comments";
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
@@ -148,7 +148,7 @@ const TIPS = {
   addedVia:
     "Как абонемент попал в базу: внесён в админке, перенесён из 1С или куплен клиентом в приложении. Ставит база.",
   comments:
-    "«При продаже» — комментарий из формы продажи, здесь его не меняют. Ниже — ваш комментарий к абонементу: договорённости с клиентом об оплате, напоминания. Нажмите, чтобы изменить.",
+    "Все комментарии клиента — о нём и о его абонементах, текущих и прошлых: сколько, когда последний и кто оставил. Нажмите — лента и новый комментарий (по умолчанию — к этому абонементу).",
   note: "Договорённости с клиентом об оплате, напоминания — видно всем администраторам клуба.",
   payment:
     "Платежи по порядку: сумма и дата. Зелёный — внесён (дата, когда заплатили, справа — иконка способа оплаты), серый — сколько и до какого числа клиент должен внести, синий — внести сегодня или в ближайшие 2 дня, красный — просрочен. Нажмите на платёж, чтобы отметить оплату (когда и как внесён). «Редактировать платежи» — разбить невнесённый остаток на другие платежи и даты или исправить сумму внесённого.",
@@ -336,7 +336,6 @@ const SORT_COLUMNS = {
   soldBy: ["admin_name", "trainer_name"],
   studio: "studio_name",
   addedVia: "added_via",
-  comments: ["comment", "membership_note"],
   payment: "next_due_date",
 };
 
@@ -633,6 +632,8 @@ function ClientMembershipsPage() {
     "id",
     table.rows.map((r) => r.client_id),
   );
+  // Комментарии клиентов страницы — о клиенте и всех его абонементах сразу.
+  const comments = useCommentStats(table.rows.map((r) => r.client_id));
 
   const columns = COLUMN_COUNT;
   const filtered =
@@ -809,9 +810,7 @@ function ClientMembershipsPage() {
                   <TableHead tip={TIPS.payment} {...sort.head("payment")}>
                     Платежи
                   </TableHead>
-                  <TableHead tip={TIPS.comments} {...sort.head("comments")}>
-                    Комментарии
-                  </TableHead>
+                  <TableHead tip={TIPS.comments}>Комментарии</TableHead>
                   <TableHead tip={TIPS.balance} {...sort.head("balance")}>
                     Баланс
                   </TableHead>
@@ -967,25 +966,13 @@ function ClientMembershipsPage() {
                           <PaymentsCell row={r} onSaved={reload} />
                         </TableCell>
                         <TableCell>
-                          <div className="max-w-[200px] space-y-1">
-                            {r.comment?.trim() && (
-                              <div className="text-xs">
-                                <div className="text-muted-foreground">При продаже</div>
-                                <CommentCell
-                                  text={r.comment}
-                                  onSave={commentSaver("sales", r.id)}
-                                  onSaved={reload}
-                                />
-                              </div>
-                            )}
-                            {/* Комментарий раздела (sales.membership_note): договорённости
-                                об оплате, напоминания — правится прямо в строке. */}
-                            <CommentCell
-                              text={r.membership_note}
-                              onSave={commentSaver("sales", r.id, "membership_note")}
-                              onSaved={reload}
-                            />
-                          </div>
+                          <CommentsButton
+                            clientId={r.client_id}
+                            clientName={r.clients ? clientName(r.clients) : undefined}
+                            saleId={r.id}
+                            stats={comments.byClient.get(r.client_id)}
+                            loading={comments.isLoading}
+                          />
                         </TableCell>
                         <TableCell className="whitespace-nowrap tabular-nums">
                           <Balance row={r} />
