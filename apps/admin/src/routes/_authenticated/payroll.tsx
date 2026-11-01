@@ -704,8 +704,6 @@ function EmployeePayroll({
   const lessonDays = [...new Set(lessons.map((l) => l.work_date))].sort();
   const lessonStudios = [...new Set(lessons.map((l) => l.studio_name))];
   const abbrs = studioAbbrs(lessonStudios);
-  const payOn = payDate(month, period);
-
   const run = async (key: string, action: () => Promise<void>) => {
     setPending(key);
     try {
@@ -717,32 +715,24 @@ function EmployeePayroll({
 
   return (
     <>
-      <SheetHeader className="shrink-0 border-b px-6 py-4 pr-12">
-        <div className="flex items-center gap-3">
-          <EmployeePhoto value={employee.photo_url} name={employee.full_name} className="size-12" />
-          <div className="min-w-0 space-y-1">
-            <SheetTitle className="truncate">{employee.full_name}</SheetTitle>
-            <SheetDescription className="sr-only">
-              Зарплата за {periodTitle(month, period)}
-            </SheetDescription>
-            <TrainerRoleBadge role={employee.role} />
+      {/* Шапка — имя и период выплаты; роль, дата выплаты и реквизиты — в таблице
+          (решение владельца 2026-11-01: карточка не влезала по высоте). */}
+      <SheetHeader className="shrink-0 border-b px-5 py-3 pr-12">
+        <div className="flex items-center gap-2.5">
+          <EmployeePhoto value={employee.photo_url} name={employee.full_name} className="size-8" />
+          <div className="min-w-0">
+            <SheetTitle className="truncate text-base leading-tight">
+              {employee.full_name}
+            </SheetTitle>
+            <SheetDescription className="text-xs">{periodTitle(month, period)}</SheetDescription>
           </div>
         </div>
       </SheetHeader>
 
-      <div className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
-        <div className="rounded-md border px-3 py-2 text-sm">
-          <div>Период: {periodTitle(month, period)}</div>
-          {payOn && (
-            <div className="text-xs text-muted-foreground">Выплата {formatDate(payOn)}</div>
-          )}
-        </div>
-
-        <BankLine employee={employee} wrap />
-
+      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-3">
         {shifts.length > 0 && (
           <section>
-            <h3 className="mb-2 text-sm font-semibold">Выходы администратора</h3>
+            <h3 className="mb-1.5 text-sm font-semibold">Выходы администратора</h3>
             <ul className="divide-y rounded-md border">
               {shifts.map((l) => (
                 <li
@@ -755,7 +745,7 @@ function EmployeePayroll({
                 </li>
               ))}
             </ul>
-            <div className="mt-2 flex justify-between px-3 text-sm font-semibold">
+            <div className="mt-1.5 flex justify-between px-3 text-sm font-semibold">
               <span>
                 {shifts.length} {plural(shifts.length, ["смена", "смены", "смен"])}
               </span>
@@ -766,7 +756,7 @@ function EmployeePayroll({
 
         {lessons.length > 0 && (
           <section>
-            <h3 className="mb-2 text-sm font-semibold">Тренировки</h3>
+            <h3 className="mb-1.5 text-sm font-semibold">Тренировки</h3>
             <ul className="divide-y rounded-md border">
               {lessonDays.map((day) => {
                 const items = lessons.filter((l) => l.work_date === day);
@@ -793,26 +783,23 @@ function EmployeePayroll({
                 );
               })}
             </ul>
-            <div className="mt-2 flex justify-between px-3 text-sm font-semibold">
-              <span>
+            <div className="mt-1.5 flex items-baseline justify-between gap-3 px-3 text-sm">
+              <span className="font-semibold">
                 {lessonDays.length} {plural(lessonDays.length, ["день", "дня", "дней"])}
               </span>
-              <span className="tabular-nums">{formatPay(lessonsTotal)}</span>
+              <span className="flex items-baseline gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {[
+                    summary.groups && `групп. ${summary.groups}`,
+                    summary.personals && `перс. ${summary.personals}`,
+                    summary.others && `проч. ${summary.others}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+                <span className="font-semibold tabular-nums">{formatPay(lessonsTotal)}</span>
+              </span>
             </div>
-            <p className="mt-1 px-3 text-xs text-muted-foreground">
-              {[
-                summary.groups && `групповых ${summary.groups}`,
-                summary.personals && `персональных ${summary.personals}`,
-                summary.others && `прочих ${summary.others}`,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            {lessonStudios.length > 1 && (
-              <p className="px-3 text-xs text-muted-foreground">
-                {lessonStudios.map((n) => `${abbrs.get(n)} — ${n}`).join(", ")}
-              </p>
-            )}
           </section>
         )}
 
@@ -820,7 +807,7 @@ function EmployeePayroll({
           <InfoNote variant="empty">За период нет смен и проведённых занятий.</InfoNote>
         )}
 
-        <section className="space-y-3 rounded-lg border p-4">
+        <section className="space-y-2 rounded-lg border px-3 py-2.5">
           <SalePayments
             employeeId={employee.id}
             range={periodRange(month, period)}
@@ -830,44 +817,54 @@ function EmployeePayroll({
             <span className="text-muted-foreground">Бонус {BONUS_RATE * 100}%</span>
             <span className="tabular-nums">{formatPay(summary.bonus)}</span>
           </div>
-          <div className="border-t pt-3">
-            <div className="text-sm text-muted-foreground">Корректировки</div>
+          <div className="border-t pt-2">
             {adjustments.length === 0 ? (
-              <div className="mt-1 text-sm text-muted-foreground">—</div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Корректировки</span>
+                <span>—</span>
+              </div>
             ) : (
-              <ul className="mt-1 space-y-1">
-                {adjustments.map((a) => {
-                  const sign = ADJUSTMENT_KINDS[a.kind].sign;
-                  return (
-                    <li key={a.id} className="flex items-start justify-between gap-3 text-sm">
-                      <span className="min-w-0">
-                        {a.reason}{" "}
-                        <span className="text-xs text-muted-foreground">
-                          {dayLabel(a.adjusted_on)}
+              <>
+                <div className="text-sm text-muted-foreground">Корректировки</div>
+                <ul className="mt-1 space-y-1">
+                  {adjustments.map((a) => {
+                    const sign = ADJUSTMENT_KINDS[a.kind].sign;
+                    return (
+                      <li key={a.id} className="flex items-start justify-between gap-3 text-sm">
+                        <span className="min-w-0">
+                          {a.reason}{" "}
+                          <span className="text-xs text-muted-foreground">
+                            {dayLabel(a.adjusted_on)}
+                          </span>
                         </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "shrink-0 tabular-nums",
-                          sign < 0 ? "text-rose-600" : "text-emerald-700",
-                        )}
-                      >
-                        {signedMoney(sign * Number(a.amount))}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+                        <span
+                          className={cn(
+                            "shrink-0 tabular-nums",
+                            sign < 0 ? "text-rose-600" : "text-emerald-700",
+                          )}
+                        >
+                          {signedMoney(sign * Number(a.amount))}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
           </div>
-          <div className="flex items-baseline justify-between border-t pt-3">
+          <div className="flex items-baseline justify-between border-t pt-2">
             <span className="font-semibold">Итого к выплате</span>
             <span className="text-lg font-semibold tabular-nums">{formatPay(summary.total)}</span>
           </div>
         </section>
       </div>
 
-      <div className="shrink-0 space-y-3 border-t px-6 py-4">
+      <div
+        className={cn(
+          "shrink-0 gap-3 border-t px-5 py-3",
+          halves.length > 1 ? "grid grid-cols-2" : "flex flex-col",
+        )}
+      >
         {halves.map((h) => {
           const key = `${h.from}|${h.to}`;
           const label =
@@ -884,14 +881,25 @@ function EmployeePayroll({
               )}
               {h.payout ? (
                 <>
-                  <div
-                    className={cn(
-                      "flex h-12 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold [&_svg]:size-4",
-                      STATUS_TONE_CLASS.positive,
-                    )}
-                  >
-                    <Check />
-                    Выплачено
+                  {/* «Выплачено» и «Отменить отметку» — рядом, в одну строку. */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold [&_svg]:size-4",
+                        STATUS_TONE_CLASS.positive,
+                      )}
+                    >
+                      <Check />
+                      Выплачено
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      disabled={pending === key}
+                      onClick={() => run(key, () => onUnmark(h))}
+                    >
+                      {halves.length > 1 ? "Отменить" : "Отменить отметку"}
+                    </Button>
                   </div>
                   <div className="text-center text-xs text-muted-foreground">
                     {formatDate(h.payout.paid_at)}
@@ -904,20 +912,10 @@ function EmployeePayroll({
                       или отмените отметку и отметьте заново.
                     </InfoNote>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full"
-                    disabled={pending === key}
-                    onClick={() => run(key, () => onUnmark(h))}
-                  >
-                    Отменить отметку
-                  </Button>
                 </>
               ) : (
                 <Button
                   variant="success"
-                  size="lg"
                   className="w-full"
                   disabled={pending === key || h.total <= 0}
                   onClick={() => run(key, () => onMarkPaid(h, h.total))}
@@ -1004,33 +1002,41 @@ function SalePayments({
 
   return (
     <div>
-      <div className="text-sm text-muted-foreground">Поступило по абонементам</div>
+      {/* Одна строка: подпись и число платежей слева, сумма справа; по нажатию — список. */}
       <button
         type="button"
         disabled={!hasPayments}
         aria-expanded={open}
+        title={TIPS.sales}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "mt-1 flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left",
+          "-mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-md px-1 py-1 text-left text-sm",
           hasPayments &&
             "cursor-pointer hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         )}
       >
-        <span className="font-semibold tabular-nums">{formatPay(summary.sales)}</span>
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          {summary.salesCount} {plural(summary.salesCount, ["платёж", "платежа", "платежей"])}
+        <span className="min-w-0 text-muted-foreground">
+          Поступило по абонементам
+          <span className="text-xs">
+            {" "}
+            · {summary.salesCount} {plural(summary.salesCount, ["платёж", "платежа", "платежей"])}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1">
+          <span className="font-semibold tabular-nums">{formatPay(summary.sales)}</span>
           {hasPayments && (
-            <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+            <ChevronDown
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+            />
           )}
         </span>
       </button>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Первые платежи и доплаты по рассрочкам за период.
-        {hasPayments && !open && " Нажмите, чтобы посмотреть платежи."}
-      </p>
 
       {open && hasPayments && (
-        <div className="mt-2">
+        <div className="mt-1.5">
           {isLoading ? (
             <div className="space-y-2 rounded-md border p-3">
               {Array.from({ length: Math.min(summary.salesCount, 4) }, (_, i) => (
