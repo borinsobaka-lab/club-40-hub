@@ -1351,4 +1351,67 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(await kind(e2)).toEqual({ booking: null, log: null, view: null });
     });
   });
+  // ---- Бонус тренеру с пакета персональных (2026-11-01) ----
+
+  test("пакет персональных: бонус тренеру только за первую покупку, продление и администратору — нет", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await asStaff(tx, s);
+      // Владелец клуба: раздел «Сотрудники» открыт.
+      await tx`update user_roles set role = 'owner' where studio_id = ${s.studio}`;
+      const [{ id: coach }] = await tx`
+        insert into trainers (full_name, role) values ('Тренер', 'trainer') returning id`;
+      const [{ id: admin }] = await tx`
+        insert into trainers (full_name, role) values ('Админ', 'admin') returning id`;
+      await tx`insert into trainer_studios (trainer_id, studio_id)
+                values (${coach}, ${s.studio}), (${admin}, ${s.studio})`;
+
+      const sale = async (membership: string, kind: string, daysAgo: number) => {
+        const [{ id }] = await tx`
+          insert into sales (studio_id, client_id, membership_id, total_amount, sold_at,
+                             sale_kind, trainer_id, seller_id)
+          values (${s.studio}, ${s.client}, ${membership}, 100, current_date - ${daysAgo}::int,
+                  ${kind}, ${coach}, ${admin})
+          returning id`;
+        return id as string;
+      };
+      const salesOf = async (who: string) => {
+        const [{ n }] = await tx`
+          select coalesce(sum(units), 0)::int n
+            from payroll_lines(current_date - 20, current_date)
+           where trainer_id = ${who} and kind = 'sale'`;
+        return n as number;
+      };
+
+      // Первая покупка персональных (как допродажа к групповому пакету) —
+      // тренеру бонус, администратору — нет.
+      await sale(s.pack, "new", 10);
+      await sale(s.personalPack, "upsell", 5);
+      expect(await salesOf(coach)).toBe(2);
+      expect(await salesOf(admin)).toBe(1);
+
+      // Вторая покупка персональных — продление, даже без типа «Продление».
+      await sale(s.personalPack, "new", 1);
+      expect(await salesOf(coach)).toBe(2);
+      expect(await salesOf(admin)).toBe(1);
+    });
+  });
+
+  test("пакет персональных с типом «Продление» бонуса тренеру не даёт и как первый", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await asStaff(tx, s);
+      await tx`update user_roles set role = 'owner' where studio_id = ${s.studio}`;
+      const [{ id: coach }] = await tx`
+        insert into trainers (full_name, role) values ('Тренер', 'trainer') returning id`;
+      await tx`insert into trainer_studios (trainer_id, studio_id) values (${coach}, ${s.studio})`;
+      await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, trainer_id)
+        values (${s.studio}, ${s.client}, ${s.personalPack}, 100, current_date, 'renewal', ${coach})`;
+      const rows = await tx`
+        select 1 from payroll_lines(current_date - 1, current_date)
+         where trainer_id = ${coach} and kind = 'sale'`;
+      expect(rows.length).toBe(0);
+    });
+  });
 });

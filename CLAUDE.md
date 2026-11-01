@@ -259,7 +259,10 @@ AUTH_SETUP.md.
   — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
   триггер списания), `payroll_lines` — пакет персональных не идёт в продажи
   администратора. `db/migrations/2026-10-11_zzzzzz_personal_no_trainer_bonus.sql`
-  — и тренера при продаже (актуальное определение `payroll_lines` — здесь).
+  — и тренера при продаже; с 2026-11-01 тренеру при продаже — бонус за
+  первую покупку персональных клиентом, за продление — нет
+  (`db/migrations/2026-11-01_personal_first_sale_trainer_bonus.sql`,
+  актуальное определение `payroll_lines` — здесь).
   Удаление продажи абонемента (оба формата):
   `db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql` — продажа и
   выданный по ней `client_memberships` удаляются вместе (в обе стороны,
@@ -647,8 +650,9 @@ AUTH_SETUP.md.
   неотработанная заявка вида на клиента), «Отработано» — `processed_at`,
   кто и когда ставит триггер `client_requests_guard`; раздел клуба
   `requests` в админке. Диагностика в зарплату не идёт (решение владельца
-  2026-10-15): `db/migrations/2026-10-15_zzz_diagnostics_no_payroll.sql` —
-  актуальное определение `payroll_lines`. Тесты — `db/packages.test.ts`.
+  2026-10-15): `db/migrations/2026-10-15_zzz_diagnostics_no_payroll.sql`
+  (актуальное определение `payroll_lines` —
+  `2026-11-01_personal_first_sale_trainer_bonus.sql`). Тесты — `db/packages.test.ts`.
   **Триггерные уведомления** (раздел «Триггеры», 2026-10-15):
   `db/migrations/2026-10-15_push_triggers.sql` — `push_triggers` (строка на
   формат = приложение и триггер: `enabled`, тексты `title`/`message` +
