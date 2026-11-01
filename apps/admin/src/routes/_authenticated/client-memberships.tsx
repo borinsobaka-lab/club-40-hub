@@ -13,6 +13,7 @@ import {
   Smartphone,
   Trash2,
   UserArrowLeftRight,
+  UserPen,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,7 +30,13 @@ import { orderBy } from "@/lib/table-sort";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { isAdminRole } from "@/lib/staff-directory";
-import { STUDIO_STAFF_COLS, type StudioStaffRow } from "@/lib/studio-staff";
+import {
+  SELLER_TIP,
+  STUDIO_STAFF_COLS,
+  useStudioStaff,
+  type StudioStaffRow,
+} from "@/lib/studio-staff";
+import { SellerSelect } from "@/components/seller-select";
 import { MEMBERSHIP_STATUS_DOT, MEMBERSHIP_STATUS_LABEL } from "@/lib/membership-status";
 import { supabase } from "@/integrations/supabase/client";
 import { unwrap } from "@/lib/query";
@@ -164,6 +171,7 @@ const TIPS = {
     "Остаток баланса от и до (включительно): групповых тренировок, у пакета персональных — персональных. Одну границу можно оставить пустой.",
   transferClient:
     "Клиент, которому переходит абонемент. Если его ещё нет в базе — «Новый клиент» под полем.",
+  seller: SELLER_TIP,
 };
 
 /**
@@ -248,6 +256,8 @@ type Row = {
   id: string;
   client_id: string;
   admin_name: string | null;
+  /** Администратор, который продал (справочник «Сотрудники»): его зарплата. */
+  seller_id: string | null;
   trainer_name: string | null;
   studio_id: string;
   sold_at: string;
@@ -304,7 +314,7 @@ type Row = {
 };
 
 const COLUMNS =
-  "id, studio_id, client_id, admin_name, trainer_name, sold_at, total_amount, paid_amount, " +
+  "id, studio_id, client_id, admin_name, seller_id, trainer_name, sold_at, total_amount, paid_amount, " +
   "sale_kind, source, promo_code, comment, membership_note, clients, memberships, " +
   "membership_status, visits_left, personal_left, ends_at, payments, payment_state, " +
   "membership_started_at, starts_on_first_visit, diagnostics_left, added_via, " +
@@ -400,6 +410,7 @@ function ClientMembershipsPage() {
   const [status, setStatus] = useState<StatusFilter | typeof ALL>(ALL);
   const [club, setClub] = useState<string>(ALL);
   const [transferRow, setTransferRow] = useState<Row | null>(null);
+  const [sellerRow, setSellerRow] = useState<Row | null>(null);
 
   // Клубы раздела — вся сеть пакетных клубов (как база клиентов). Платежи и
   // комментарии правит любой клуб сети, меню строки (возврат, удаление,
@@ -593,6 +604,17 @@ function ClientMembershipsPage() {
       "sales_list",
       "client_memberships",
       "clients_with_status",
+    ])
+      queryClient.invalidateQueries({ queryKey: [key] });
+  };
+  // Продавец — в «Абонементах», фильтре «Кто продал» и зарплатах.
+  const onSellerChanged = () => {
+    setSellerRow(null);
+    for (const key of [
+      "client_packages_list",
+      "sales_list",
+      "payroll_lines",
+      "payroll_sale_payments",
     ])
       queryClient.invalidateQueries({ queryKey: [key] });
   };
@@ -834,6 +856,11 @@ function ClientMembershipsPage() {
                                 onSelect: () => openTransfer(r),
                               },
                               {
+                                label: "Поменять администратора",
+                                icon: UserPen,
+                                onSelect: () => setSellerRow(r),
+                              },
+                              {
                                 label: "Оформить возврат",
                                 icon: Receipt,
                                 onSelect: () => openRefund(r),
@@ -1009,6 +1036,17 @@ function ClientMembershipsPage() {
               row={transferRow}
               onClose={() => setTransferRow(null)}
               onSaved={onTransferred}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!sellerRow} onOpenChange={(o) => !o && setSellerRow(null)}>
+        <DialogContent className="max-w-lg">
+          {sellerRow && (
+            <SellerChangeForm
+              row={sellerRow}
+              onClose={() => setSellerRow(null)}
+              onSaved={onSellerChanged}
             />
           )}
         </DialogContent>
@@ -1265,6 +1303,109 @@ function TransferForm({
           <Button type="submit" disabled={saving || checking || blocked || sameClient}>
             {saving && <Loader2 className="animate-spin" />}
             Переоформить
+          </Button>
+        </DialogFooter>
+      </DialogForm>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Поменять администратора (sales.seller_id)
+// ---------------------------------------------------------------------------
+
+/**
+ * «Поменять администратора» (решение владельца 2026-11-01): кто продал
+ * абонемент — sales.seller_id и снимок имени admin_name. Нужно прежде всего
+ * для перенесённых из 1С (продавца у них нет): доплаты по ним идут в бонус
+ * выбранному администратору (payroll_sale_payment_rows). Меню строки — только
+ * клубу продажи; база это же проверяет (RLS «sales studio rw»,
+ * sales_network_update_guard). Список — администраторы клуба продажи, как в
+ * форме продажи.
+ */
+function SellerChangeForm({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: Row;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { data: staff = [], isLoading } = useStudioStaff(row.studio_id);
+  const admins = staff.filter((a) => isAdminRole(a.role));
+  const [sellerId, setSellerId] = useState(row.seller_id ?? "");
+  const [saving, setSaving] = useState(false);
+  const unchanged = !!row.seller_id && sellerId === row.seller_id;
+
+  const handleSave = async () => {
+    if (saving) return;
+    const admin = admins.find((a) => a.id === sellerId);
+    if (!admin) {
+      toast.error("Выберите администратора, который продал абонемент");
+      return;
+    }
+    if (unchanged) {
+      onClose();
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from("sales")
+        .update({ seller_id: admin.id, admin_name: admin.full_name })
+        .eq("id", row.id)
+        .select("id");
+      if (error) {
+        toast.error("Не удалось поменять администратора: " + error.message);
+        return;
+      }
+      if (!data?.length) {
+        toast.error("Поменять администратора может только сотрудник клуба продажи");
+        return;
+      }
+      toast.success(`Администратор абонемента — ${admin.full_name}`);
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Поменять администратора</DialogTitle>
+        <DialogDescription>
+          {row.memberships?.name ?? "Абонемент"} ·{" "}
+          {row.clients ? clientName(row.clients) : "клиент"} · клуб «{row.studio_name}» · сейчас:{" "}
+          {row.admin_name ?? "не указан"}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogForm onSubmit={handleSave}>
+        <DialogBody>
+          <div className="space-y-4">
+            <FormField label="Кто продал абонемент" tip={TIPS.seller} required>
+              <SellerSelect
+                admins={admins}
+                loading={isLoading}
+                value={sellerId}
+                onChange={setSellerId}
+              />
+            </FormField>
+            <InfoNote>
+              Бонус со всех платежей по этому абонементу будет считаться выбранному администратору —
+              и с будущих доплат, и с уже внесённых. Если зарплата за прошлый период уже выплачена,
+              сумма в «Зарплатах» за него тоже изменится.
+            </InfoNote>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Отмена
+          </Button>
+          <Button type="submit" disabled={saving || isLoading || !sellerId}>
+            {saving && <Loader2 className="animate-spin" />}
+            Сохранить
           </Button>
         </DialogFooter>
       </DialogForm>

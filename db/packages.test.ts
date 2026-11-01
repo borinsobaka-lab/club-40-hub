@@ -1383,17 +1383,25 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
         return n as number;
       };
 
+      const [{ id: personal5 }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, personal_count, duration_days, price)
+        values (${s.studio}, 'Персональные 5', 'personal', 0, 5, 30, 350) returning id`;
+
       // Первая покупка персональных (как допродажа к групповому пакету) —
       // бонус и тренеру, и администратору (с 2026-11-01).
       await sale(s.pack, "new", 10);
-      await sale(s.personalPack, "upsell", 5);
+      await sale(personal5, "upsell", 5);
       expect(await salesOf(coach)).toBe(2);
       expect(await salesOf(admin)).toBe(2);
 
       // Вторая покупка персональных — продление, даже без типа «Продление»:
       // тренеру нет, администратору — да.
-      await sale(s.personalPack, "new", 1);
+      await sale(personal5, "new", 2);
       expect(await salesOf(coach)).toBe(2);
+      expect(await salesOf(admin)).toBe(3);
+
+      // Пакет на 1 персональную администратору бонуса не даёт.
+      await sale(s.personalPack, "new", 1);
       expect(await salesOf(admin)).toBe(3);
     });
   });
@@ -1452,6 +1460,36 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       expect(Number(list[0].amount)).toBe(100);
       expect(list[0].as_seller).toBe(true);
       expect(list[0].refunded).toBe(false);
+    });
+  });
+
+  test("«Поменять администратора»: клуб продажи меняет seller_id, доплаты идут новому", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      await asStaff(tx, s);
+      await tx`update user_roles set role = 'owner' where studio_id = ${s.studio}`;
+      const [{ id: admin }] = await tx`
+        insert into trainers (full_name, role) values ('Новый админ', 'admin') returning id`;
+      await tx`insert into trainer_studios (trainer_id, studio_id) values (${admin}, ${s.studio})`;
+      // Продажа без продавца (как перенесённая из 1С) с доплатой сегодня.
+      const [{ id: sale }] = await tx`
+        insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind)
+        values (${s.studio}, ${s.client}, ${s.pack}, 100, current_date - 40, 'new') returning id`;
+      await tx`
+        insert into sale_installments (sale_id, amount, due_date, paid, paid_at)
+        values (${sale}, 60, current_date - 40, true, current_date - 40),
+               (${sale}, 40, current_date, true, current_date)`;
+
+      // Как из админки: от имени сотрудника, под RLS.
+      await tx`set local role authenticated`;
+      const updated = await tx`
+        update sales set seller_id = ${admin}, admin_name = 'Новый админ'
+         where id = ${sale} returning id`;
+      expect(updated.length).toBe(1);
+      const list = await tx`
+        select amount from payroll_sale_payments(${admin}, current_date - 1, current_date)`;
+      await tx`reset role`;
+      expect(list.map((r) => Number(r.amount))).toEqual([40]);
     });
   });
 });

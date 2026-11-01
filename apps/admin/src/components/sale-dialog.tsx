@@ -97,6 +97,8 @@ type MembershipRow = {
   max_payments: number;
   /** Пакетный формат: пакет тренировок, персональных, разовое или пробное посещение. */
   kind: MembershipKind;
+  /** Персональных в пакете: пакет на 1 персональную администратору бонуса не даёт. */
+  personal_count: number | null;
 };
 
 // Делим в тетри: доли — с округлением вниз, остаток — последнему платежу.
@@ -256,7 +258,7 @@ function SaleForm({
         supabase
           .from("memberships")
           .select(
-            "id, name, price, duration_days, visits_count, installment_enabled, max_payments, kind",
+            "id, name, price, duration_days, visits_count, installment_enabled, max_payments, kind, personal_count",
           )
           .in("studio_id", catalogIds!)
           .order("name"),
@@ -542,9 +544,15 @@ function SaleForm({
                     ? // Пакет персональных: администратору бонус всегда, тренеру —
                       // только первая покупка персональных клиентом
                       // (payroll_sale_payment_rows, 2026-11-01_zzz_payroll_personal_admin_single.sql).
-                      isRenewal
-                      ? "С продления пакета персональных бонус идёт администратору, тренеру — нет."
-                      : "С пакета персональных бонус администратору — всегда, тренеру — только за первую покупку персональных клиентом (за продление — нет)."
+                      // Пакет на 1 персональную администратору бонуса не даёт
+                      // (2026-11-01_zzzz_payroll_personal_one_session.sql).
+                      Number(membership.personal_count ?? 0) === 1
+                      ? isRenewal
+                        ? "С пакета на 1 персональную бонус администратору не идёт, с продления — и тренеру."
+                        : "С пакета на 1 персональную бонус администратору не идёт; тренеру — только за первую покупку персональных клиентом."
+                      : isRenewal
+                        ? "С продления пакета персональных бонус идёт администратору, тренеру — нет."
+                        : "С пакета персональных бонус администратору — всегда, тренеру — только за первую покупку персональных клиентом (за продление — нет)."
                     : isPackages && membership?.kind === "single"
                       ? "С разового посещения бонус к зарплате не идёт."
                       : undefined

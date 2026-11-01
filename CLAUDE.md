@@ -270,6 +270,8 @@ AUTH_SETUP.md.
   администратору с пакета персональных — бонус всегда (и первая покупка, и
   продление), разовые посещения бонуса не дают никому:
   `db/migrations/2026-11-01_zzz_payroll_personal_admin_single.sql`
+  Пакет на 1 персональную администратору бонуса не даёт:
+  `db/migrations/2026-11-01_zzzz_payroll_personal_one_session.sql`
   (актуальное определение `payroll_sale_payment_rows` — здесь).
   Удаление продажи абонемента (оба формата):
   `db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql` — продажа и
