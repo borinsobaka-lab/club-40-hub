@@ -266,7 +266,11 @@ AUTH_SETUP.md.
   бонуса сотрудника — RPC `payroll_sale_payments`:
   `db/migrations/2026-11-01_zz_payroll_sale_payments.sql` — правила
   платежей бонуса в одной внутренней `payroll_sale_payment_rows` (её читают
-  обе RPC; актуальное определение `payroll_lines` — здесь).
+  обе RPC; актуальное определение `payroll_lines` — здесь). С 2026-11-01
+  администратору с пакета персональных — бонус всегда (и первая покупка, и
+  продление), разовые посещения бонуса не дают никому:
+  `db/migrations/2026-11-01_zzz_payroll_personal_admin_single.sql`
+  (актуальное определение `payroll_sale_payment_rows` — здесь).
   Удаление продажи абонемента (оба формата):
   `db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql` — продажа и
   выданный по ней `client_memberships` удаляются вместе (в обе стороны,

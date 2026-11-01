@@ -1353,7 +1353,7 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
   });
   // ---- Бонус тренеру с пакета персональных (2026-11-01) ----
 
-  test("пакет персональных: бонус тренеру только за первую покупку, продление и администратору — нет", async () => {
+  test("пакет персональных: тренеру — только первая покупка, администратору — и первая, и продление", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);
       await asStaff(tx, s);
@@ -1384,16 +1384,17 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       };
 
       // Первая покупка персональных (как допродажа к групповому пакету) —
-      // тренеру бонус, администратору — нет.
+      // бонус и тренеру, и администратору (с 2026-11-01).
       await sale(s.pack, "new", 10);
       await sale(s.personalPack, "upsell", 5);
       expect(await salesOf(coach)).toBe(2);
-      expect(await salesOf(admin)).toBe(1);
+      expect(await salesOf(admin)).toBe(2);
 
-      // Вторая покупка персональных — продление, даже без типа «Продление».
+      // Вторая покупка персональных — продление, даже без типа «Продление»:
+      // тренеру нет, администратору — да.
       await sale(s.personalPack, "new", 1);
       expect(await salesOf(coach)).toBe(2);
-      expect(await salesOf(admin)).toBe(1);
+      expect(await salesOf(admin)).toBe(3);
     });
   });
 
@@ -1417,7 +1418,7 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
 
   // ---- Пробные без бонуса, список платежей бонуса (2026-11-01) ----
 
-  test("пробное бонуса не даёт; payroll_sale_payments — те же платежи, что в payroll_lines", async () => {
+  test("пробное и разовое бонуса не дают; payroll_sale_payments — те же платежи, что в payroll_lines", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);
       await asStaff(tx, s);
@@ -1428,10 +1429,14 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
       const [{ id: trial }] = await tx`
         insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
         values (${s.studio}, 'Пробное', 'trial', 1, 7, 20) returning id`;
+      const [{ id: single }] = await tx`
+        insert into memberships (studio_id, name, kind, visits_count, duration_days, price)
+        values (${s.studio}, 'Разовое посещение', 'single', 1, 30, 30) returning id`;
 
       await tx`
         insert into sales (studio_id, client_id, membership_id, total_amount, sold_at, sale_kind, seller_id)
         values (${s.studio}, ${s.client}, ${trial}, 20, current_date, 'trial', ${admin}),
+               (${s.studio}, ${s.client}, ${single}, 30, current_date, 'new', ${admin}),
                (${s.studio}, ${s.client}, ${s.pack}, 100, current_date, 'new', ${admin})`;
 
       const lines = await tx`
