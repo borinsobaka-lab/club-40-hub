@@ -58,6 +58,7 @@ import {
 } from "@/lib/format";
 import { saleSourceLabel, type SaleKind } from "@/lib/payments";
 import { unwrap } from "@/lib/query";
+import { membershipBalance } from "@/lib/membership-balance";
 import { cn } from "@/lib/utils";
 
 type MemberProfile = {
@@ -167,6 +168,9 @@ type SaleRow = {
         /** Пакетный клуб: без посещений — «Ожидает посещения», как в блоке абонемента. */
         started_at: string | null;
         starts_on_first_visit: boolean | null;
+        visits_left: number | null;
+        personal_left: number | null;
+        diagnostics_left: number | null;
       }[]
     | null;
 };
@@ -176,6 +180,10 @@ type MembershipRef = {
   freeze_days_allowed?: number | null;
   /** Пакетные клубы: trial — пробный (не делает клиента ЧК). */
   kind?: string | null;
+  /** Сколько входит в номенклатуру — «использовано N из M» в карточке. */
+  visits_count?: number | null;
+  personal_count?: number | null;
+  diagnostics_count?: number | null;
 };
 
 type MembershipRow = {
@@ -210,6 +218,51 @@ function membershipKind(m: MembershipRow["memberships"] | SaleRow["memberships"]
   return (Array.isArray(m) ? m[0] : m)?.kind ?? null;
 }
 
+function membershipRef(m: MembershipRow["memberships"] | SaleRow["memberships"]) {
+  return (Array.isArray(m) ? m[0] : m) ?? null;
+}
+
+/** Баланс «использовано N из M, осталось K» строками (активный и прошлые абонементы). */
+function BalanceLines({
+  m,
+  left,
+  isPackages,
+}: {
+  m: MembershipRow["memberships"] | SaleRow["memberships"];
+  left: {
+    visits_left: number | null;
+    personal_left?: number | null;
+    diagnostics_left?: number | null;
+  };
+  isPackages: boolean;
+}) {
+  const ref = membershipRef(m);
+  const lines = membershipBalance({ ...left, ...ref }, isPackages);
+  return (
+    <div className="mt-1 space-y-0.5 text-xs">
+      {lines.map((l) => (
+        <div key={l.label} className="tabular-nums">
+          <span className="text-muted-foreground">{l.label}: </span>
+          {l.left == null && l.total == null ? (
+            "безлимит"
+          ) : l.left == null ? (
+            <>{l.total} всего</>
+          ) : l.used == null ? (
+            <>осталось {l.left}</>
+          ) : (
+            <>
+              <span className="font-medium">
+                {l.used} из {l.total}
+              </span>
+              <span className="text-muted-foreground"> использовано · осталось {l.left}</span>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
   if (!m) return 0;
   const ref = Array.isArray(m) ? m[0] : m;
@@ -217,10 +270,10 @@ function membershipFreezeAllowed(m: MembershipRow["memberships"]): number {
 }
 
 const SALE_COLUMNS =
-  "id, studio_id, studio:studios(name), sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit)";
+  "id, studio_id, studio:studios(name), sold_at, total_amount, down_payment_amount, remaining_installments, source, admin_name, comment, memberships(name, kind, visits_count, personal_count, diagnostics_count), client_memberships(id, status, auto_renew, ends_at, cancelled_at, started_at, starts_on_first_visit, visits_left, personal_left, diagnostics_left)";
 
 const MEMBERSHIP_COLUMNS =
-  "id, status, source, started_at, ends_at, visits_left, personal_left, diagnostics_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind)";
+  "id, status, source, started_at, ends_at, visits_left, personal_left, diagnostics_left, auto_renew, cancelled_at, cancel_reason, freeze_days_used, frozen_until, starts_on_first_visit, memberships(name, freeze_days_allowed, kind, visits_count, personal_count, diagnostics_count)";
 
 /**
  * Карточка клиента — одна и та же, откуда бы её ни открыли (раздел
@@ -457,15 +510,8 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                     ) : (
                       "срок — с первого посещения"
                     )}
-                    {" · "}
-                    {isPackages
-                      ? // Два баланса пакетного клуба — групповые и персональные.
-                        `групповых: ${active.visits_left ?? "безлимит"} · персональных: ${active.personal_left ?? 0}` +
-                        (active.diagnostics_left ? ` · диагностик: ${active.diagnostics_left}` : "")
-                      : active.visits_left == null
-                        ? "посещения: безлимит"
-                        : `осталось посещений: ${active.visits_left}`}
                   </div>
+                  <BalanceLines m={active.memberships} left={active} isPackages={isPackages} />
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <MembershipStatusBadge m={active} />
                     <AutoRenewBadge on={active.auto_renew} />
@@ -534,6 +580,9 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                               ? ` · рассрочка 1 + ${s.remaining_installments}, первый взнос ${formatMoney(Number(s.down_payment_amount))}`
                               : ""}
                           </div>
+                          {cm && (
+                            <BalanceLines m={s.memberships} left={cm} isPackages={isPackages} />
+                          )}
                         </div>
                         <div className="shrink-0 font-medium tabular-nums">
                           {formatMoney(Number(s.total_amount))}
