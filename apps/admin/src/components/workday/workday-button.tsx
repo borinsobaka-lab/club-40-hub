@@ -20,7 +20,7 @@ const WorkdayPanel = lazy(() => loadPanel().then((m) => ({ default: m.WorkdayPan
  * сотрудникам клубов (owner/admin/trainer).
  */
 export function WorkdayButton({ className }: { className?: string }) {
-  const { studios, studio, setStudioId } = useWorkdayStudio();
+  const { studios, studio } = useWorkdayStudio();
   const { summary } = useWorkdayGroups(studio?.id ?? null);
   const [open, setOpen] = useState(false);
   if (!studio) return null;
@@ -33,6 +33,10 @@ export function WorkdayButton({ className }: { className?: string }) {
         variant="outline"
         className={cn(
           "relative shrink-0 max-sm:w-10 max-sm:px-0 lg:max-xl:w-10 lg:max-xl:px-0",
+          // Есть просроченный пункт — красная рамка, свечение и иконка
+          // (решение владельца 2026-11-03).
+          summary.overdue > 0 &&
+            "border-destructive text-destructive shadow-[0_0_12px_2px_color-mix(in_oklab,var(--destructive)_40%,transparent)] hover:bg-destructive/10 hover:text-destructive",
           className,
         )}
         aria-label={label}
@@ -67,7 +71,7 @@ export function WorkdayButton({ className }: { className?: string }) {
               </div>
             }
           >
-            {open && <WorkdayPanel studios={studios} studio={studio} onStudio={setStudioId} />}
+            {open && <WorkdayPanel studios={studios} studio={studio} />}
           </Suspense>
         </DialogContent>
       </Dialog>

@@ -259,4 +259,31 @@ describe.skipIf(!url)("рабочий день (база)", () => {
          where studio_id = ${vake} and title like 'Написать утренний отчет%'`;
       expect(report.details).toContain("Ваке 25.07");
     }));
+
+  test("кто сегодня на смене: только сегодня, только своему клубу", () =>
+    scenario(async (tx) => {
+      const s = await studio(tx);
+      const s2 = await studio(tx, "Другой");
+      const admin = await staff(tx, s, "admin");
+      const outsider = await staff(tx, s2, "admin");
+      const [{ id: anna }] = await tx`
+        insert into trainers (full_name, role, photo_url) values ('Анна', 'admin', 'a.jpg') returning id`;
+      const [{ id: olga }] = await tx`
+        insert into trainers (full_name, role) values ('Ольга', 'admin') returning id`;
+      await tx`insert into admin_shifts (studio_id, trainer_id, shift_date) values
+        (${s}, ${anna}, workday_today()),
+        (${s}, ${olga}, workday_today() + 1),
+        (${s2}, ${olga}, workday_today())`;
+
+      // Смены «Графика» администратор без раздела «Сотрудники» напрямую не
+      // читает — только имя и фото сегодняшней смены своего клуба.
+      await as(tx, admin);
+      const rows = await tx`select * from workday_admins_today(${s})`;
+      expect(rows.map((r) => [r.full_name, r.photo_url])).toEqual([["Анна", "a.jpg"]]);
+      await asServer(tx);
+
+      await as(tx, outsider);
+      expect(await failure(tx, () => tx`select * from workday_admins_today(${s})`)).toContain("workday_forbidden");
+      await asServer(tx);
+    }));
 });

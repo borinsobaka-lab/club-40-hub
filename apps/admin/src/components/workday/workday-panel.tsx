@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
+  Check,
   ChevronDown,
   Copy,
   Pencil,
@@ -14,7 +15,8 @@ import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
 import { FormattedTextarea } from "@/components/formatted-textarea";
-import { StudioLabel, StudioSelect } from "@/components/studio-label";
+import { EmployeePhoto } from "@/components/employee-photo";
+import { StudioSelect } from "@/components/studio-label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -44,7 +46,7 @@ import { useStaffProfile } from "@/hooks/use-staff-profile";
 import { supabase } from "@/integrations/supabase/client";
 import { FormattedText } from "@/lib/formatted-text";
 import { cn } from "@/lib/utils";
-import { WORKDAY_KEY, useWorkdayGroups } from "@/lib/workday/data";
+import { WORKDAY_KEY, useWorkdayAdmins, useWorkdayGroups } from "@/lib/workday/data";
 import {
   formatCheckedAt,
   formatDueTime,
@@ -80,18 +82,11 @@ type DialogState =
  * временем и отметками за сегодня. Отмечает любой сотрудник клуба, отметку
  * видят все; владелец клуба по «Настроить» правит блоки и пункты.
  */
-export function WorkdayPanel({
-  studios,
-  studio,
-  onStudio,
-}: {
-  studios: Studio[];
-  studio: Studio;
-  onStudio: (id: string) => void;
-}) {
+export function WorkdayPanel({ studios, studio }: { studios: Studio[]; studio: Studio }) {
   const queryClient = useQueryClient();
   const { data: me } = useStaffProfile();
   const { query, now, groups, summary } = useWorkdayGroups(studio.id);
+  const { data: admins = [] } = useWorkdayAdmins(studio.id, now.day);
   const canEdit = studio.roles.includes("owner");
   const [editing, setEditing] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -176,30 +171,45 @@ export function WorkdayPanel({
 
   return (
     <>
-      <DialogHeader className="space-y-3">
+      <DialogHeader className={cn("space-y-3", canEdit && "pr-24")}>
         <div className="space-y-1">
-          <DialogTitle>Рабочий день</DialogTitle>
-          <DialogDescription className="first-letter:uppercase">{today}</DialogDescription>
+          {/* После заголовка — кто сегодня на смене по «Графику» клуба. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <DialogTitle>Рабочий день</DialogTitle>
+            {admins.map((a) => (
+              <span
+                key={a.trainer_id}
+                className="flex min-w-0 items-center gap-1.5 text-sm font-medium"
+                title="Администратор на смене сегодня"
+              >
+                <EmployeePhoto
+                  value={a.photo_url}
+                  name={a.full_name}
+                  className="size-6 shrink-0 text-[0.625rem]"
+                />
+                <span className="truncate">{a.full_name}</span>
+              </span>
+            ))}
+          </div>
+          {/* Клуб — тот, что выбран в шапке админки; меняют его там. */}
+          <DialogDescription className="first-letter:uppercase">
+            {today}, {studio.name}
+          </DialogDescription>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {studios.length > 1 ? (
-            <div className="min-w-0 flex-1">
-              <StudioSelect studios={studios} value={studio.id} onChange={onStudio} />
-            </div>
-          ) : (
-            <StudioLabel studio={studio} className="flex-1 text-sm font-medium" />
-          )}
-          {canEdit && (
-            <Button
-              variant={editing ? "default" : "outline"}
-              aria-pressed={editing}
-              onClick={() => setEditing((v) => !v)}
-            >
-              <Settings2 />
-              {editing ? "Готово" : "Настроить"}
-            </Button>
-          )}
-        </div>
+        {canEdit && (
+          // Рядом с крестиком закрытия (он — right-3 top-3, size-8).
+          <Button
+            variant={editing ? "default" : "ghost"}
+            size="icon-sm"
+            className="absolute top-3 right-12"
+            aria-pressed={editing}
+            aria-label={editing ? "Готово" : "Настроить пункты"}
+            title={editing ? "Готово" : "Настроить пункты"}
+            onClick={() => setEditing((v) => !v)}
+          >
+            {editing ? <Check /> : <Settings2 />}
+          </Button>
+        )}
         {summary.total > 0 && !editing && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2 text-sm">

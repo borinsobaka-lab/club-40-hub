@@ -59,6 +59,23 @@ export function useWorkday(studioId: string | null, day: string) {
   });
 }
 
+export type WorkdayAdmin = { trainer_id: string; full_name: string; photo_url: string | null };
+
+/**
+ * Кто сегодня на смене в клубе — администраторы из «Графика» (admin_shifts)
+ * на день по Тбилиси; RPC — смены читают только с разделом «Сотрудники».
+ */
+export function useWorkdayAdmins(studioId: string | null, day: string) {
+  return useQuery({
+    queryKey: [WORKDAY_KEY, studioId, day, "admins"],
+    queryFn: () =>
+      unwrap<WorkdayAdmin[]>(supabase.rpc("workday_admins_today", { p_studio: studioId! })),
+    enabled: !!studioId,
+    staleTime: 5 * 60_000,
+    meta: { errorMessage: "Не удалось загрузить смену администратора" },
+  });
+}
+
 /** Сейчас по Тбилиси; обновляется раз в 30 секунд — «просрочено» загорается само. */
 export function useTbilisiClock() {
   const [now, setNow] = useState(() => tbilisiNow());
@@ -71,8 +88,8 @@ export function useTbilisiClock() {
 
 /**
  * Клуб «Рабочего дня» — клуб из шапки (выбор клуба справа): пункты у каждого
- * клуба свои и меняются вместе с ним (решение владельца 2026-10-26). Выбор
- * клуба в шторке переключает тот же клуб шапки.
+ * клуба свои и меняются вместе с ним (решение владельца 2026-10-26). В окне
+ * клуб только подписан после даты (2026-11-03), меняют его в шапке.
  */
 export function useWorkdayStudio(): {
   studios: Studio[];
