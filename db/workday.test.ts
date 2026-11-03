@@ -186,6 +186,15 @@ describe.skipIf(!url)("рабочий день (база)", () => {
       const [{ id: item2 }] = await tx`
         insert into workday_items (section_id, title, sort_order) values (${sec}, 'Включить музыку', 2) returning id`;
       await tx`select workday_reorder('item', ${[item2, item]}::uuid[])`;
+      // Промежуток «с — до» и показ описания сразу (2026-11-03).
+      await tx`update workday_items set start_time = '09:00', due_time = '10:00',
+                 details = 'См. **регламент**', details_expanded = true where id = ${item}`;
+      expect(
+        await failure(tx, () => tx`update workday_items set start_time = '11:00' where id = ${item}`),
+      ).toContain("workday_items_time_range_check");
+      expect(
+        await failure(tx, () => tx`update workday_items set start_time = '08:00' where id = ${item2}`),
+      ).toContain("workday_items_time_range_check");
       const order = await tx`select id from workday_items where section_id = ${sec} order by sort_order`;
       expect(order.map((r) => r.id)).toEqual([item2, item]);
       await tx`insert into workday_checks (item_id) values (${item})`;
@@ -203,6 +212,14 @@ describe.skipIf(!url)("рабочий день (база)", () => {
          where ws.studio_id = ${s2} order by i.sort_order`;
       expect(items.map((r) => r.title)).toEqual(["Включить музыку", "Включить свет"]);
       expect(items.every((r) => r.studio_id === s2)).toBe(true);
+      const [copiedItem] = await tx`
+        select start_time, due_time, details_expanded from workday_items
+         where studio_id = ${s2} and title = 'Включить свет'`;
+      expect([copiedItem.start_time, copiedItem.due_time, copiedItem.details_expanded]).toEqual([
+        "09:00:00",
+        "10:00:00",
+        true,
+      ]);
       await asServer(tx);
 
       // Администратор клуба копировать в свой клуб не может.

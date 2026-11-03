@@ -36,7 +36,9 @@ export function useWorkday(studioId: string | null, day: string) {
         unwrap<WorkdayItem[]>(
           supabase
             .from("workday_items")
-            .select("id, studio_id, section_id, title, details, due_time, sort_order")
+            .select(
+              "id, studio_id, section_id, title, details, details_expanded, start_time, due_time, sort_order",
+            )
             .eq("studio_id", studioId!),
         ),
         unwrap<WorkdayCheck[]>(

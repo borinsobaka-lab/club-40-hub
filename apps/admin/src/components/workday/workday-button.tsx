@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { ClipboardList } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkdayGroups, useWorkdayStudio } from "@/lib/workday/data";
 import { cn } from "@/lib/utils";
@@ -53,12 +53,14 @@ export function WorkdayButton({ className }: { className?: string }) {
           </span>
         )}
       </Button>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+      {/* Окно по центру (решение владельца 2026-11-03, было — шторка справа);
+          на телефоне, как все окна, — шторка снизу. */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:h-[85vh] sm:max-w-2xl">
           <Suspense
             fallback={
               <div className="space-y-3 p-6">
-                <SheetTitle>Рабочий день</SheetTitle>
+                <DialogTitle>Рабочий день</DialogTitle>
                 {Array.from({ length: 6 }, (_, i) => (
                   <Skeleton key={i} className="h-10" />
                 ))}
@@ -67,8 +69,8 @@ export function WorkdayButton({ className }: { className?: string }) {
           >
             {open && <WorkdayPanel studios={studios} studio={studio} onStudio={setStudioId} />}
           </Suspense>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

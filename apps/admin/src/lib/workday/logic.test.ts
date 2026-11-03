@@ -2,11 +2,13 @@ import { describe, expect, test } from "bun:test";
 
 import {
   formatDueTime,
+  formatTimeRange,
   groupWorkday,
   isOverdue,
   moveId,
   tbilisiNow,
   timeInputValue,
+  timeRangeProblem,
   timeToMinutes,
   workdayErrorText,
   workdaySummary,
@@ -24,6 +26,8 @@ const item = (
   section_id,
   title: id,
   details: null,
+  details_expanded: false,
+  start_time: null,
   due_time,
   sort_order,
 });
@@ -102,5 +106,17 @@ describe("рабочий день", () => {
     ).toContain("владелец клуба");
     expect(workdayErrorText("workday_not_today")).toContain("сегодняшний");
     expect(workdayErrorText("что-то ещё")).toBe("что-то ещё");
+  });
+
+  test("промежуток времени: подпись и проверка формы", () => {
+    expect(formatTimeRange({ start_time: "09:00:00", due_time: "10:30:00" })).toBe("9:00–10:30");
+    expect(formatTimeRange({ start_time: null, due_time: "10:00:00" })).toBe("до 10:00");
+    expect(formatTimeRange({ start_time: null, due_time: null })).toBe("");
+    expect(timeRangeProblem("", "")).toBeNull();
+    expect(timeRangeProblem("", "10:00")).toBeNull();
+    expect(timeRangeProblem("09:00", "10:00")).toBeNull();
+    expect(timeRangeProblem("10:00", "10:00")).toBeNull();
+    expect(timeRangeProblem("09:00", "")).toBe("Укажите, до скольки сделать");
+    expect(timeRangeProblem("11:00", "10:00")).toBe("Начало промежутка позже конца");
   });
 });

@@ -21,7 +21,11 @@ export type WorkdayItem = {
   title: string;
   /** Подробная инструкция — текст с разметкой (lib/formatted-text.tsx). */
   details: string | null;
-  /** Ориентировочное время «к HH:MM» («10:00:00» из базы), null — без времени. */
+  /** Описание показано у пункта сразу (true) или свёрнуто под стрелкой. */
+  details_expanded: boolean;
+  /** Начало промежутка «с HH:MM», null — только «до» (или без времени). */
+  start_time: string | null;
+  /** Конец промежутка «до HH:MM» («10:00:00» из базы), null — без времени. */
   due_time: string | null;
   sort_order: number;
 };
@@ -77,6 +81,29 @@ export function formatDueTime(time: string | null | undefined): string {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
+/**
+ * Подпись времени пункта: «9:00–10:00», только конец — «до 10:00», без
+ * времени — пусто.
+ */
+export function formatTimeRange(item: Pick<WorkdayItem, "start_time" | "due_time">): string {
+  const end = formatDueTime(item.due_time);
+  if (!end) return "";
+  const start = formatDueTime(item.start_time);
+  return start ? `${start}–${end}` : `до ${end}`;
+}
+
+/**
+ * Проверка промежутка в форме («HH:MM» полей type="time"): ошибка текстом
+ * или null. Начало без конца не бывает, начало не позже конца.
+ */
+export function timeRangeProblem(start: string, end: string): string | null {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  if (s != null && e == null) return "Укажите, до скольки сделать";
+  if (s != null && e != null && s > e) return "Начало промежутка позже конца";
+  return null;
+}
+
 /** «09:30:00» → «09:30» — значение поля type="time". */
 export function timeInputValue(time: string | null | undefined): string {
   const minutes = timeToMinutes(time);
@@ -94,8 +121,8 @@ export function formatCheckedAt(iso: string): string {
 }
 
 /**
- * Просрочен: у пункта есть время, оно прошло (строго позже — к 10:00 можно
- * успеть до 10:00 включительно), а отметки за сегодня нет.
+ * Просрочен: у пункта есть время «до», оно прошло (строго позже — к 10:00
+ * можно успеть до 10:00 включительно), а отметки за сегодня нет.
  */
 export function isOverdue(item: WorkdayItem, checked: boolean, nowMinutes: number): boolean {
   if (checked) return false;
@@ -168,5 +195,7 @@ export function workdayErrorText(message: string): string {
     return "Нет прав: пункты меняет владелец клуба";
   if (message.includes("workday_source_empty")) return "В выбранном клубе пунктов пока нет";
   if (message.includes("workday_other_studio")) return "Блок другого клуба выбрать нельзя";
+  if (message.includes("workday_items_time_range_check"))
+    return "Проверьте время: начало не позже конца, без конца начало не ставится";
   return message;
 }

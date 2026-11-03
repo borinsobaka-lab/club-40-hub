@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FormField, InfoNote } from "@/components/ui/form-field";
+import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,8 +48,10 @@ import { WORKDAY_KEY, useWorkdayGroups } from "@/lib/workday/data";
 import {
   formatCheckedAt,
   formatDueTime,
+  formatTimeRange,
   moveId,
   timeInputValue,
+  timeRangeProblem,
   workdayErrorText,
   type WorkdayData,
   type WorkdayGroup,
@@ -59,9 +60,13 @@ import {
 } from "@/lib/workday/logic";
 
 const TIPS = {
-  time: "К какому времени сделать — ориентировочно. Не отмечен к этому времени — у пункта и на кнопке «Рабочий день» загорается «!». Пусто — пункт без времени.",
+  start:
+    "С какого времени делать — ориентировочно. Пусто — только «до». Без «до» начало не ставится.",
+  time: "До какого времени сделать. Не отмечен к этому времени — пункт подсвечивается красным, на кнопке «Рабочий день» загорается «!». Пусто — пункт без времени.",
   details:
-    "Подробная инструкция: раскрывается у пункта по стрелке. Можно жирный текст, списки и ссылки на документы.",
+    "Подробная инструкция к пункту: жирный текст, курсив, заголовки, списки и ссылки на документы.",
+  expanded:
+    "Включено — описание видно у пункта сразу. Выключено — свёрнуто, сотрудник раскрывает его стрелкой.",
 };
 
 type DialogState =
@@ -71,7 +76,7 @@ type DialogState =
   | null;
 
 /**
- * Панель «Рабочий день» (шторка справа): блоки дня, пункты с ориентировочным
+ * Панель «Рабочий день» (окно по центру): блоки дня, пункты с ориентировочным
  * временем и отметками за сегодня. Отмечает любой сотрудник клуба, отметку
  * видят все; владелец клуба по «Настроить» правит блоки и пункты.
  */
@@ -90,7 +95,9 @@ export function WorkdayPanel({
   const canEdit = studio.roles.includes("owner");
   const [editing, setEditing] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Раскрыл / свернул сам сотрудник; без отметки — как задано у пункта
+  // («Показывать описание сразу»).
+  const [expanded, setExpanded] = useState<Map<string, boolean>>(new Map());
   const { confirm, confirmDialog } = useConfirm();
   const key = [WORKDAY_KEY, studio.id, now.day];
   const refresh = () => queryClient.invalidateQueries({ queryKey: [WORKDAY_KEY, studio.id] });
@@ -169,10 +176,10 @@ export function WorkdayPanel({
 
   return (
     <>
-      <SheetHeader className="shrink-0 space-y-3 border-b px-6 py-4 pr-12">
+      <DialogHeader className="space-y-3">
         <div className="space-y-1">
-          <SheetTitle>Рабочий день</SheetTitle>
-          <SheetDescription className="first-letter:uppercase">{today}</SheetDescription>
+          <DialogTitle>Рабочий день</DialogTitle>
+          <DialogDescription className="first-letter:uppercase">{today}</DialogDescription>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {studios.length > 1 ? (
@@ -221,9 +228,9 @@ export function WorkdayPanel({
             </div>
           </div>
         )}
-      </SheetHeader>
+      </DialogHeader>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-4">
+      <DialogBody className="space-y-6">
         {query.isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 8 }, (_, i) => (
@@ -283,10 +290,20 @@ export function WorkdayPanel({
               <ul className="divide-y">
                 {g.rows.map((row) => {
                   const ids = g.rows.map((r) => r.id);
-                  const open = expanded.has(row.id);
+                  const open = expanded.get(row.id) ?? row.details_expanded;
+                  const range = formatTimeRange(row);
                   const checkboxId = `workday-${row.id}`;
                   return (
-                    <li key={row.id} className="py-2">
+                    <li
+                      key={row.id}
+                      className={cn(
+                        "py-2",
+                        // Время вышло, а не отмечен — строка красная.
+                        row.overdue &&
+                          !editing &&
+                          "-mx-2 rounded-md border-transparent bg-destructive/10 px-2",
+                      )}
+                    >
                       <div className="flex items-start gap-3">
                         {!editing && (
                           <Checkbox
@@ -304,23 +321,26 @@ export function WorkdayPanel({
                                 "min-w-0 flex-1 text-sm leading-5",
                                 !editing && "cursor-pointer",
                                 row.check && "text-muted-foreground line-through",
+                                row.overdue && !editing && "font-medium text-destructive",
                               )}
                             >
                               {row.title}
                             </label>
-                            {row.due_time && (
+                            {range && (
                               <StatusChip
                                 tone={row.overdue ? "negative" : "neutral"}
                                 size="sm"
-                                className="mt-0.5 tabular-nums"
+                                className="mt-0.5 shrink-0 tabular-nums"
                                 title={
                                   row.overdue
-                                    ? `Просрочено: нужно было сделать к ${formatDueTime(row.due_time)}`
-                                    : `Сделать к ${formatDueTime(row.due_time)}`
+                                    ? `Просрочено: нужно было сделать до ${formatDueTime(row.due_time)}`
+                                    : row.start_time
+                                      ? `Сделать с ${formatDueTime(row.start_time)} до ${formatDueTime(row.due_time)}`
+                                      : `Сделать до ${formatDueTime(row.due_time)}`
                                 }
                               >
                                 {row.overdue && <span className="font-bold">!</span>}
-                                {formatDueTime(row.due_time)}
+                                {range}
                               </StatusChip>
                             )}
                             {row.details && !editing && (
@@ -331,14 +351,7 @@ export function WorkdayPanel({
                                 aria-expanded={open}
                                 aria-label={open ? "Скрыть инструкцию" : "Подробнее"}
                                 title={open ? "Скрыть инструкцию" : "Подробнее"}
-                                onClick={() =>
-                                  setExpanded((s) => {
-                                    const next = new Set(s);
-                                    if (next.has(row.id)) next.delete(row.id);
-                                    else next.add(row.id);
-                                    return next;
-                                  })
-                                }
+                                onClick={() => setExpanded((s) => new Map(s).set(row.id, !open))}
                               >
                                 <ChevronDown
                                   className={cn("transition-transform", open && "rotate-180")}
@@ -367,7 +380,9 @@ export function WorkdayPanel({
                           )}
                           {editing && row.details && (
                             <p className="line-clamp-1 text-xs text-muted-foreground">
-                              Есть инструкция
+                              {row.details_expanded
+                                ? "Есть описание · показано сразу"
+                                : "Есть описание · свёрнуто"}
                             </p>
                           )}
                           {open && row.details && !editing && (
@@ -411,10 +426,10 @@ export function WorkdayPanel({
             )}
           </div>
         )}
-      </div>
+      </DialogBody>
 
       <Dialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           {dialog?.kind === "item" && (
             <ItemForm
               key={dialog.item?.id ?? "new"}
@@ -524,8 +539,10 @@ function ItemForm({
 }) {
   const [title, setTitle] = useState(item?.title ?? "");
   const [section, setSection] = useState(item?.section_id ?? sectionId);
+  const [start, setStart] = useState(timeInputValue(item?.start_time));
   const [time, setTime] = useState(timeInputValue(item?.due_time));
   const [details, setDetails] = useState(item?.details ?? "");
+  const [detailsExpanded, setDetailsExpanded] = useState(item?.details_expanded ?? false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -533,13 +550,20 @@ function ItemForm({
       toast.error("Напишите, что сделать");
       return;
     }
+    const timeProblem = timeRangeProblem(start, time);
+    if (timeProblem) {
+      toast.error(timeProblem);
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         section_id: section,
         title: title.trim(),
+        start_time: start || null,
         due_time: time || null,
         details: details.trim() || null,
+        details_expanded: detailsExpanded,
       };
       // Перенос в другой блок — в его конец.
       const { error } = item
@@ -576,34 +600,50 @@ function ItemForm({
                 rows={2}
               />
             </FormField>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Блок" required>
-                <Select value={section} onValueChange={setSection}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sections.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <FormField label="Блок" required>
+              <Select value={section} onValueChange={setSection}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="С" tip={TIPS.start} optional>
+                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
               </FormField>
-              <FormField label="Сделать к" tip={TIPS.time} optional>
+              <FormField label="До" tip={TIPS.time} optional>
                 <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
               </FormField>
             </div>
-            <FormField label="Подробная инструкция" tip={TIPS.details} htmlFor={null} optional>
+            <FormField label="Описание" tip={TIPS.details} htmlFor={null} optional>
               <FormattedTextarea
                 value={details}
                 onChange={setDetails}
                 placeholder="Как сделать, примеры, ссылки на документы"
-                rows={5}
+                rows={6}
                 previewLabel="Как увидят сотрудники"
               />
             </FormField>
+            {details.trim() && (
+              <SwitchRow
+                title="Показывать описание сразу"
+                hint={
+                  detailsExpanded
+                    ? "Сотрудники видят описание у пункта"
+                    : "Описание свёрнуто, раскрывается стрелкой"
+                }
+                tip={TIPS.expanded}
+                checked={detailsExpanded}
+                onCheckedChange={setDetailsExpanded}
+              />
+            )}
           </div>
         </DialogBody>
         <DialogFooter>
