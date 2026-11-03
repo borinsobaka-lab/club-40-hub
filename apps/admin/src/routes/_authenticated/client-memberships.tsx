@@ -113,6 +113,8 @@ import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ClientMembershipsPageSkeleton } from "@/components/page-skeletons";
 import { MembershipStatusBadge } from "@/components/membership-status-badge";
+import { ClubStatusBadge } from "@/components/club-status-badge";
+import type { ClubStatus } from "@/lib/client-status";
 import { SaleDialog } from "@/components/sale-dialog";
 import { SaleKindDot, SaleKindPickerDialog } from "@/components/sale-kind-picker";
 import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
@@ -499,14 +501,18 @@ function ClientMembershipsPage() {
       if (seller === NO_SELLER) q = q.is("seller_id", null);
       else if (seller !== ALL) q = q.eq("seller_id", seller);
       if (status !== ALL) q = q.eq("membership_state", status);
+      // Истёкшие — без пробных: закончившееся пробное продлевать нечего
+      // (решение владельца 2026-11-03).
+      if (status === "expired") q = q.or("memberships->>kind.is.null,memberships->>kind.neq.trial");
       // Без сортировки по колонке: ждут платежа и просроченные — по
       // ближайшему платежу (сверху те, с кем разбираться первыми), по сроку
       // окончания — сначала те, у кого он кончается раньше, остальное — новые
-      // продажи сверху.
+      // продажи сверху. Истёкшие — сверху те, что истекли последними.
       const byDue = payFrom || state === "overdue" || state === "soon" || state === "pending";
       return orderBy(q, sort.sort, SORT_COLUMNS, (o) => {
         let d = byDue ? o.order("next_due_date", { ascending: true }) : o;
-        if (endsFrom) d = d.order("ends_at", { ascending: true });
+        if (status === "expired") d = d.order("ends_at", { ascending: false, nullsFirst: false });
+        else if (endsFrom) d = d.order("ends_at", { ascending: true });
         return d
           .order("sold_at", { ascending: false })
           .order("created_at", { ascending: false })
@@ -632,6 +638,20 @@ function ClientMembershipsPage() {
     "id",
     table.rows.map((r) => r.client_id),
   );
+  // Статус клуба (ЧК / БЧК / ПЧК) клиентов страницы — из clients_with_status,
+  // как в «Клиентах», одним запросом.
+  const pageClientIds = [...new Set(table.rows.map((r) => r.client_id))].sort();
+  const { data: clubStatusOf } = useQuery({
+    queryKey: ["clients_with_status", "club_status", pageClientIds.join(",")],
+    queryFn: async () => {
+      const rows = await unwrap<{ id: string; club_status: ClubStatus | null }[]>(
+        supabase.from("clients_with_status").select("id, club_status").in("id", pageClientIds),
+      );
+      return Object.fromEntries(rows.map((r) => [r.id, r.club_status]));
+    },
+    enabled: pageClientIds.length > 0,
+    meta: { errorMessage: "Не удалось загрузить статусы клиентов" },
+  });
   // Комментарии клиентов страницы — о клиенте и всех его абонементах сразу.
   const comments = useCommentStats(table.rows.map((r) => r.client_id));
 
@@ -887,9 +907,21 @@ function ClientMembershipsPage() {
                           )}
                           <span className="sr-only">{PAYMENT_STATES[r.payment_state].label}. </span>
                           {r.clients ? (
-                            <ClientNameLink clientId={r.client_id} crmLink={crmLinkOf(r.client_id)}>
-                              {clientName(r.clients)}
-                            </ClientNameLink>
+                            <span className="inline-flex flex-wrap items-center gap-1.5">
+                              <ClientNameLink
+                                clientId={r.client_id}
+                                crmLink={crmLinkOf(r.client_id)}
+                              >
+                                {clientName(r.clients)}
+                              </ClientNameLink>
+                              {clubStatusOf?.[r.client_id] && (
+                                <ClubStatusBadge
+                                  status={clubStatusOf[r.client_id]!}
+                                  size="sm"
+                                  className="shrink-0"
+                                />
+                              )}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
