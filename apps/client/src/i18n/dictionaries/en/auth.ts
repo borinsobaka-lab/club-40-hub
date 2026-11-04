@@ -23,6 +23,9 @@ const dict: Dictionary = {
   "Код из письма": "Code from the email",
   "Отправить код ещё раз можно через {time}": "Resend code in {time}",
   "Отправить код ещё раз": "Resend code",
+  "Вставить код из буфера": "Paste code",
+  "В буфере обмена нет кода. Скопируйте код из письма.":
+    "No code in the clipboard. Copy the code from the email.",
   "Изменить почту": "Change email",
   "Логотип студии": "Studio logo",
   "Добро пожаловать": "Welcome",

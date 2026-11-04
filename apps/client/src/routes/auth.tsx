@@ -244,6 +244,41 @@ function AuthPage() {
     otpRefs.current[last]?.focus();
   };
 
+  // Вставка кода целиком: в письме код бывает скопирован с пробелами или
+  // вместе с текстом («Ваш код: 123 456») — берём только цифры. maxLength у
+  // поля обрезал бы такую вставку до onChange, поэтому разбор — здесь.
+  const pasteOtp = (start: number, text: string) => {
+    const digits = text.replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (!digits) return false;
+    if (digits.length === OTP_LENGTH) {
+      setOtp(digits.split(""));
+      otpRefs.current[IS_PACKAGES ? 0 : OTP_LENGTH - 1]?.focus();
+    } else {
+      fillOtpFrom(IS_PACKAGES ? otp.join("").length : start, digits);
+    }
+    return true;
+  };
+
+  // Кнопка «Вставить код»: на iPhone долгое нажатие на ячейки кода не всегда
+  // открывает меню «Вставить», а кнопка читает буфер обмена сама (iOS
+  // показывает системное «Вставить» — одно нажатие).
+  const [canReadClipboard, setCanReadClipboard] = useState(false);
+  useEffect(() => {
+    setCanReadClipboard(typeof navigator !== "undefined" && !!navigator.clipboard?.readText);
+  }, []);
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!pasteOtp(0, text)) {
+        setError(t("В буфере обмена нет кода. Скопируйте код из письма."));
+      } else {
+        setError(null);
+      }
+    } catch {
+      // Отказ в доступе к буферу — молча: остаётся ввести код вручную.
+    }
+  };
+
   const subtitle = signInClosed
     ? null
     : step === "otp"
@@ -284,13 +319,21 @@ function AuthPage() {
           const digits = e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH);
           setOtp(Array.from({ length: OTP_LENGTH }, (_, i) => digits[i] ?? ""));
         }}
+        onPaste={(e) => {
+          if (pasteOtp(0, e.clipboardData.getData("text"))) e.preventDefault();
+        }}
         onFocus={() => setOtpFocused(true)}
         onBlur={() => setOtpFocused(false)}
+        name="one-time-code"
         inputMode="numeric"
         autoComplete="one-time-code"
-        maxLength={OTP_LENGTH}
         aria-label={t("Код из письма")}
-        className="absolute inset-0 z-10 h-full w-full cursor-text bg-transparent text-base text-transparent caret-transparent opacity-0 outline-none"
+        // Поле невидимо, но НЕ opacity-0: iOS Safari не показывает у
+        // полностью прозрачного поля ни меню «Вставить», ни подсказку кода
+        // над клавиатурой («Из Почты»). Прозрачны только текст, фон и курсор
+        // (так же делает библиотека input-otp).
+        style={{ WebkitTextFillColor: "transparent" }}
+        className="absolute inset-0 z-10 h-full w-full cursor-text bg-transparent text-base text-transparent caret-transparent outline-none selection:bg-transparent"
       />
       {otp.map((d, i) => {
         const current =
@@ -319,6 +362,7 @@ function AuthPage() {
           ref={(el) => {
             otpRefs.current[i] = el;
           }}
+          name={i === 0 ? "one-time-code" : undefined}
           inputMode="numeric"
           autoComplete={i === 0 ? "one-time-code" : "off"}
           // Первая ячейка принимает автоподстановку кода целиком
@@ -328,10 +372,7 @@ function AuthPage() {
           value={d}
           onChange={(e) => setOtpDigit(i, e.target.value)}
           onPaste={(e) => {
-            const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
-            if (!pasted) return;
-            e.preventDefault();
-            fillOtpFrom(i, pasted);
+            if (pasteOtp(i, e.clipboardData.getData("text"))) e.preventDefault();
           }}
           onKeyDown={(e) => {
             if (e.key === "Backspace" && !otp[i] && i > 0) {
@@ -346,6 +387,16 @@ function AuthPage() {
 
   const otpLinks = (
     <>
+      {canReadClipboard && (
+        <button
+          type="button"
+          onClick={pasteFromClipboard}
+          disabled={busy}
+          className="w-full text-center text-sm font-medium text-foreground disabled:opacity-50"
+        >
+          {t("Вставить код из буфера")}
+        </button>
+      )}
       <button
         type="button"
         onClick={resendCode}
