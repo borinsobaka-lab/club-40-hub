@@ -358,6 +358,8 @@ const SAMPLES: Record<ContentLang, Record<string, string>> = {
     days: "3",
     left: "2",
     amount: "150",
+    substitute: "Нино",
+    replaced: "Ольга",
   },
   en: {
     name: "Anna",
@@ -371,6 +373,8 @@ const SAMPLES: Record<ContentLang, Record<string, string>> = {
     days: "3",
     left: "2",
     amount: "150",
+    substitute: "Nino",
+    replaced: "Olga",
   },
   ka: {
     name: "ანა",
@@ -384,6 +388,8 @@ const SAMPLES: Record<ContentLang, Record<string, string>> = {
     days: "3",
     left: "2",
     amount: "150",
+    substitute: "ნინო",
+    replaced: "ოლგა",
   },
 };
 

@@ -35,6 +35,8 @@ import { SaleDialog } from "@/components/sale-dialog";
 import { SaleKindPickerDialog } from "@/components/sale-kind-picker";
 import { ClientDialog, type SavedClient } from "@/components/client-form-dialog";
 import { ClientAppTab } from "@/components/client-app-tab";
+import { ClientTrainerField } from "@/components/client-trainer-field";
+import { TrainerCommentsBlock } from "@/components/trainer-comments-block";
 import { ClientCommentsCard } from "@/components/client-comments";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useStudioFormat, useWorkStudioId } from "@/hooks/use-catalog-studios";
@@ -599,17 +601,21 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
             <VisitsTab clientId={client.id} userId={userId} studioId={studioId} />
           </TabsContent>
 
-          <TabsContent value="profile" className="mt-4">
+          <TabsContent value="profile" className="mt-4 space-y-4">
             <ProfileTab
               profile={profile}
               loading={loadingProfile}
               hasUser={!!userId}
               isPackages={isPackages}
             />
+            {/* Что написали тренеры в мобильном приложении (2026-11-05). */}
+            {isPackages && <TrainerCommentsBlock clientId={client.id} />}
           </TabsContent>
 
           {/* Устройства, уведомления и активность в мобильном приложении. */}
-          <TabsContent value="app" className="mt-4">
+          <TabsContent value="app" className="mt-4 space-y-4">
+            {/* Пользователь приложения — тренер (пакетные клубы, 2026-11-05). */}
+            {isPackages && <ClientTrainerField clientId={client.id} cardStudioId={cardStudioId} />}
             <ClientAppTab clientId={client.id} hasUser={!!userId} />
           </TabsContent>
         </Tabs>

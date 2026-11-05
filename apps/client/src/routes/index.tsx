@@ -34,6 +34,8 @@ import { APP_BRAND, IS_PACKAGES } from "@/lib/terms";
 import { isDiagnostic, packEntryToDrawerData, type PackEntry } from "@/formats/packages/entries";
 import { PackWorkoutCard } from "@/formats/packages/workout-card";
 import { StudioSwitcher } from "@/formats/packages/studio-switcher";
+import { TrainerMySchedule } from "@/formats/packages/trainer/my-schedule";
+import { trainerMeQuery } from "@/formats/packages/trainer/queries";
 
 import { ContentDrawer } from "@/components/content-drawer";
 import { StatsSection } from "@/components/stats-section";
@@ -146,6 +148,12 @@ function HomePage() {
       ? (loc(formatStudios.find((s) => s.id === id))?.name ?? null)
       : null;
   const userId = user?.id ?? null;
+  // Тренер (2026-11-05): над «Тренировками» — «Моё расписание».
+  const { data: trainerMe } = useQuery({
+    ...trainerMeQuery(userId),
+    enabled: IS_PACKAGES && !!userId,
+  });
+  const isTrainer = IS_PACKAGES && !!trainerMe;
 
   // Салют после входа по коду или после анкеты (флаг ставят они).
   useEffect(() => {
@@ -440,8 +448,12 @@ function HomePage() {
     >
       <div className="pt-6 pb-8">
         <div className="bg-muted">
+          {/* Моё расписание — только тренеру (2026-11-05). */}
+          {IS_PACKAGES && <TrainerMySchedule />}
           {/* Тренировки */}
-          <section className="bg-background rounded-b-[14px] pb-5">
+          <section
+            className={`bg-background rounded-b-[14px] pb-5 ${isTrainer ? "rounded-t-[14px] pt-5" : ""}`}
+          >
             {/* Пока клиент не ответил на запрос уведомлений — плашка «Включите
                 уведомления» (решение владельца 2026-10-15). */}
             <PushBanner className="px-4 mb-4" />

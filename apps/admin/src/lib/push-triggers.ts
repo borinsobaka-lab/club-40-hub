@@ -11,13 +11,14 @@
 import type { StudioFormat } from "@/lib/studio-formats";
 import { plural } from "@/lib/payroll";
 
-export type TriggerGroup = "classes" | "memberships" | "payments" | "engagement";
+export type TriggerGroup = "classes" | "memberships" | "payments" | "engagement" | "trainers";
 
 export const TRIGGER_GROUPS: { key: TriggerGroup; title: string }[] = [
   { key: "classes", title: "Занятия" },
   { key: "memberships", title: "Абонементы" },
   { key: "payments", title: "Оплата" },
   { key: "engagement", title: "Вовлечение" },
+  { key: "trainers", title: "Тренерам" },
 ];
 
 export type TriggerParamKey = "hours" | "days" | "left" | "send_hour";
@@ -75,6 +76,54 @@ export const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
 const hoursText = (n: number) => `${n} ${plural(n, ["час", "часа", "часов"])}`;
 const daysText = (n: number) => `${n} ${plural(n, ["день", "дня", "дней"])}`;
 const at = (p: TriggerParams, d: TriggerParams) => ` в ${hourLabel(p.send_hour ?? d.send_hour!)}`;
+
+// Тренерам (2026-11-05): пользователям приложения, которым в карточке клиента
+// указан тренер (db/migrations/2026-11-05_zz_trainer_app.sql). {name} — имя
+// тренера по его карточке клиента.
+const TRAINER_VARS: TriggerVars = {
+  name: "имя тренера",
+  class: "тренировка",
+  when: "когда: «сегодня в 18:00», «завтра в 09:30», «17.10 в 18:00»",
+  date: "дата занятия (ДД.ММ)",
+  time: "время начала",
+  ...CLUB,
+};
+
+const TRAINER_TRIGGERS: TriggerDef[] = [
+  {
+    key: "trainer_class_cancelled",
+    group: "trainers",
+    name: "Тренировка тренера отменена",
+    formats: PACKAGES,
+    defaults: {},
+    describe: () =>
+      "Сразу после отмены будущего занятия — его тренеру, если в карточке клиента ему указан тренер. Приходит в любое время суток.",
+    params: [],
+    vars: TRAINER_VARS,
+  },
+  {
+    key: "trainer_replaced",
+    group: "trainers",
+    name: "Тренера заменили",
+    formats: PACKAGES,
+    defaults: {},
+    describe: () =>
+      "Сразу, когда на будущем занятии поставили замену, — тренеру, которого заменили. {substitute} — кто заменит.",
+    params: [],
+    vars: { ...TRAINER_VARS, substitute: "кто заменит" },
+  },
+  {
+    key: "trainer_substitute",
+    group: "trainers",
+    name: "Тренер на замене",
+    formats: PACKAGES,
+    defaults: {},
+    describe: () =>
+      "Сразу, когда тренера поставили заменяющим на будущее занятие, — ему. {replaced} — кого заменяет.",
+    params: [],
+    vars: { ...TRAINER_VARS, replaced: "кого заменяет" },
+  },
+];
 
 export const PUSH_TRIGGERS: TriggerDef[] = [
   {
@@ -284,6 +333,7 @@ export const PUSH_TRIGGERS: TriggerDef[] = [
     params: [SEND_HOUR],
     vars: { ...NAME, ...CLUB },
   },
+  ...TRAINER_TRIGGERS,
 ];
 
 export const triggerDef = (key: string) => PUSH_TRIGGERS.find((t) => t.key === key);
