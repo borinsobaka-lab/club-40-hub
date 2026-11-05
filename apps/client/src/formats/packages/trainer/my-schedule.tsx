@@ -7,7 +7,7 @@ import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-draw
 import { useAuth } from "@/hooks/use-auth";
 import { useFormatStudios } from "@/hooks/use-viewed-studio";
 import { useLocalize, useT } from "@/i18n";
-import { packEntryToDrawerData, type PackEntry } from "../entries";
+import { bookedLabel, packEntryToDrawerData, type PackEntry } from "../entries";
 import { PackWorkoutCard } from "../workout-card";
 import { MY_SCHEDULE_STEP, trainerEntriesQuery, trainerMeQuery } from "./queries";
 
@@ -83,7 +83,16 @@ export function TrainerMySchedule() {
                     entry={e}
                     isBooked={false}
                     studioName={studioName(e.studio_id)}
-                    onOpen={() => setOpen(packEntryToDrawerData(e, t))}
+                    showBooked
+                    hideTrainerId={me.trainer_id}
+                    // В окне тоже «сколько записано», а не свободные места.
+                    onOpen={() =>
+                      setOpen({
+                        ...packEntryToDrawerData(e, t),
+                        spotsLabel: bookedLabel(e, t),
+                        spotsLeft: null,
+                      })
+                    }
                   />
                 ))}
               </div>

@@ -1,15 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AltArrowRight, ChatSquare, DangerTriangle } from "@solar-icons/react";
+import { AltArrowRight, ChatSquare, DangerTriangle, Target } from "@solar-icons/react";
 
-import {
-  SquircleAvatar,
-  SquircleAvatarFallback,
-  SquircleAvatarImage,
-} from "@/components/ui/squircle-avatar";
 import { useT } from "@/i18n";
-import { mediaUrl } from "@/lib/media";
-import { trainerInitials } from "../entries";
 import { TrainerClientDrawer } from "./client-drawer";
 import { clientDisplayName, commentWhen, goalText } from "./format";
 import { trainerEntryClientsQuery, type EntryClient } from "./queries";
@@ -71,7 +64,6 @@ export function TrainerEntryClients({ entryId }: { entryId: string }) {
 function ClientRow({ client: c, onOpen }: { client: EntryClient; onOpen: () => void }) {
   const t = useT();
   const name = clientDisplayName(c);
-  const photo = mediaUrl(c.photo_url, "avatars");
   const goal = goalText(c.primary_goal, c.goal_other, t);
   return (
     <button
@@ -79,12 +71,6 @@ function ClientRow({ client: c, onOpen }: { client: EntryClient; onOpen: () => v
       onClick={onOpen}
       className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition active:bg-muted"
     >
-      <SquircleAvatar size={44}>
-        {photo && <SquircleAvatarImage src={photo} alt={name} />}
-        <SquircleAvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
-          {trainerInitials(name)}
-        </SquircleAvatarFallback>
-      </SquircleAvatar>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="truncate font-semibold">{name}</span>
@@ -101,22 +87,22 @@ function ClientRow({ client: c, onOpen }: { client: EntryClient; onOpen: () => v
           )}
         </div>
         {goal && (
-          <div className="mt-0.5 truncate text-sm text-muted-foreground">
-            {t("Цель: {goal}", { goal })}
+          <div className="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+            <Target className="h-4 w-4 shrink-0 text-primary" weight="BoldDuotone" />
+            <span className="truncate">{goal}</span>
           </div>
         )}
-        <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-          <ChatSquare className="h-3.5 w-3.5 shrink-0" />
-          {c.comments_count > 0 && c.last_comment_at ? (
+        {/* Комментарии — только если они есть (решение владельца 2026-11-05). */}
+        {c.comments_count > 0 && c.last_comment_at && (
+          <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+            <ChatSquare className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
               {t.plural(c.comments_count, "{n} комментарий|{n} комментария|{n} комментариев")} ·{" "}
               {commentWhen(c.last_comment_at, t)}
               {c.last_comment_author ? ` · ${c.last_comment_author}` : ""}
             </span>
-          ) : (
-            <span>{t("+ Комментарий")}</span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
       <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
     </button>

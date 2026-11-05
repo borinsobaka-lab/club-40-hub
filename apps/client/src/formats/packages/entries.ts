@@ -141,6 +141,13 @@ export function spotsLeft(e: PackEntry): number | null {
   return Math.max(0, cap - e.booked_count);
 }
 
+/** «Записано 8 человек» / «Пока никто не записан» — для тренера. */
+export function bookedLabel(entry: PackEntry, t: Translator) {
+  return entry.booked_count > 0
+    ? t.plural(entry.booked_count, "Записан {n} человек|Записано {n} человека|Записано {n} человек")
+    : t("Пока никто не записан");
+}
+
 /** «Свободно 5 мест» / «Мест нет»; без ограничения — null. */
 export function spotsLabel(e: PackEntry, t: Translator = currentT()): string | null {
   const left = spotsLeft(e);

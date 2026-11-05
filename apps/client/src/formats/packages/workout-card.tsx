@@ -26,6 +26,7 @@ import {
   trainerInitials,
   trainerPhoto,
   type PackEntry,
+  bookedLabel,
 } from "./entries";
 import { startsIn, startsInParts } from "./starts-in";
 
@@ -81,6 +82,8 @@ export function PackWorkoutCard({
   isBooked,
   isWaitlisted = false,
   studioName = null,
+  showBooked = false,
+  hideTrainerId = null,
   onOpen,
 }: {
   entry: PackEntry;
@@ -88,12 +91,22 @@ export function PackWorkoutCard({
   isWaitlisted?: boolean;
   /** Студия занятия — у записи в другую студию сети (главная). */
   studioName?: string | null;
+  /** «Моё расписание» тренера (2026-11-05): сколько записано вместо свободных мест. */
+  showBooked?: boolean;
+  /**
+   * Не показывать этого тренера — «Моё расписание»: и так ясно, что тренировка
+   * его (решение владельца 2026-11-05). На замене остаётся пометка «Замена».
+   */
+  hideTrainerId?: string | null;
   onOpen: () => void;
 }) {
   const t = useT();
   const loc = useLocalize();
   const color = entryColor(entry);
-  const trainers = entryTrainers(entry).map(loc);
+  const trainers = entryTrainers(entry)
+    .filter((tr) => tr.id !== hideTrainerId)
+    .map(loc);
+  const meSubstitute = !!hideTrainerId && !!replacedTrainer(entry, hideTrainerId);
   const minutes = durationMinutes(entry);
   const left = spotsLeft(entry);
   const spots = spotsLabel(entry, t);
@@ -132,6 +145,11 @@ export function PackWorkoutCard({
               {studioName}
             </div>
           )}
+          {meSubstitute && (
+            <div className="mt-1.5">
+              <SubstitutionChip />
+            </div>
+          )}
           {isWaitlisted && (
             <div className="mt-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
               {t("В листе ожидания")}
@@ -162,6 +180,11 @@ export function PackWorkoutCard({
             <div className="mt-1.5 flex items-start gap-1 text-xs font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
               <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
               <BookedLabel startsAt={entry.starts_at} />
+            </div>
+          ) : showBooked ? (
+            <div className="mt-1.5 flex items-center gap-1 text-xs font-medium leading-none text-muted-foreground">
+              <UsersGroupRounded className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+              <span>{bookedLabel(entry, t)}</span>
             </div>
           ) : (
             spots && (

@@ -27,6 +27,7 @@ const dict: Dictionary = {
   "Комментариев пока нет.": "No comments yet.",
   "{n} раз в неделю|{n} раза в неделю|{n} раз в неделю": "{n} time a week|{n} times a week",
   "{n} комментарий|{n} комментария|{n} комментариев": "{n} comment|{n} comments",
+  "Пока никто не записан": "Nobody has booked yet",
   "Моё расписание": "My schedule",
   "Не удалось загрузить ваше расписание. Обновите страницу.":
     "Couldn't load your schedule. Refresh the page.",
@@ -36,8 +37,6 @@ const dict: Dictionary = {
   "На тренировку пока никто не записан.": "Nobody has booked this class yet.",
   Пробное: "Trial",
   Ограничения: "Restrictions",
-  "Цель: {goal}": "Goal: {goal}",
-  "+ Комментарий": "+ Comment",
   "Записан {n} человек|Записано {n} человека|Записано {n} человек":
     "{n} person booked|{n} people booked",
   "{n} на пробном|{n} на пробном|{n} на пробном": "{n} on a trial|{n} on a trial",
