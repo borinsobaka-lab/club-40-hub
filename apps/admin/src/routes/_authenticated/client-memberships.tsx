@@ -1070,10 +1070,11 @@ function ClientMembershipsPage() {
                           </TableCell>
                           {/* Только на телефоне: свернуть / развернуть карточку. */}
                           <TableCell className="md:hidden">
+                            {/* Кнопка в обводке на всю ширину — заметна и под палец. */}
                             <Button
-                              variant="link"
-                              size="inline"
-                              className="text-xs text-muted-foreground"
+                              variant="outline"
+                              size="xs"
+                              className="mt-1 w-full"
                               aria-expanded={open}
                               onClick={() => toggleExpanded(r.id)}
                             >
