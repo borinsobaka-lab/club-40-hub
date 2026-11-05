@@ -30,6 +30,8 @@ import { orderBy } from "@/lib/table-sort";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCrmLinks } from "@/hooks/use-crm-links";
 import { isAdminRole } from "@/lib/staff-directory";
+import { useAdminAccess } from "@/hooks/use-admin-access";
+import { hasRight } from "@/lib/admin-access";
 import {
   SELLER_TIP,
   STUDIO_STAFF_COLS,
@@ -412,6 +414,18 @@ function ClientMembershipsPage() {
   const [club, setClub] = useState<string>(ALL);
   const [transferRow, setTransferRow] = useState<Row | null>(null);
   const [sellerRow, setSellerRow] = useState<Row | null>(null);
+  // Удалить абонемент — только суперадминистратор (решение владельца
+  // 2026-11-05; в базе — db/migrations/2026-11-05_packages_sale_delete_superadmin.sql).
+  const canDelete = hasRight(useAdminAccess(), "portal.admin");
+  // Развёрнутые на телефоне карточки: свёрнутая показывает только главное.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   // Клубы раздела — вся сеть пакетных клубов (как база клиентов). Платежи и
   // комментарии правит любой клуб сети, меню строки (возврат, удаление,
@@ -863,168 +877,216 @@ function ClientMembershipsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  table.rows.map((r) => (
-                    <RowContextMenu
-                      key={r.id}
-                      actions={
-                        canEdit(r)
-                          ? [
-                              {
-                                label: "Переоформить",
-                                icon: UserArrowLeftRight,
-                                onSelect: () => openTransfer(r),
-                              },
-                              {
-                                label: "Поменять администратора",
-                                icon: UserPen,
-                                onSelect: () => setSellerRow(r),
-                              },
-                              {
-                                label: "Оформить возврат",
-                                icon: Receipt,
-                                onSelect: () => openRefund(r),
-                              },
-                              {
-                                label: "Удалить",
-                                icon: Trash2,
-                                destructive: true,
-                                onSelect: () => handleDelete(r),
-                              },
-                            ]
-                          : []
-                      }
-                    >
-                      <TableRow className={cn(PAYMENT_STATES[r.payment_state].mobile)}>
-                        <TableCell className="relative font-medium">
-                          {PAYMENT_STATES[r.payment_state].stripe && (
-                            <span
-                              aria-hidden
-                              className={cn(
-                                "absolute inset-y-0 left-0 w-1 max-md:hidden",
-                                PAYMENT_STATES[r.payment_state].stripe,
-                              )}
-                            />
-                          )}
-                          <span className="sr-only">{PAYMENT_STATES[r.payment_state].label}. </span>
-                          {r.clients ? (
-                            <span className="inline-flex flex-wrap items-center gap-1.5">
-                              <ClientNameLink
-                                clientId={r.client_id}
-                                crmLink={crmLinkOf(r.client_id)}
-                              >
-                                {clientName(r.clients)}
-                              </ClientNameLink>
-                              {clubStatusOf?.[r.client_id] && (
-                                <ClubStatusBadge
-                                  status={clubStatusOf[r.client_id]!}
-                                  size="sm"
-                                  className="shrink-0"
-                                />
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                          {r.clients?.phone && (
-                            <div className="text-xs font-normal text-muted-foreground">
-                              {formatPhone(r.clients.phone)}
-                            </div>
-                          )}
-                          {r.clients?.email && (
-                            <div className="text-xs font-normal text-muted-foreground">
-                              {r.clients.email}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="min-w-[130px]">
-                          <div>{r.memberships?.name ?? "—"}</div>
-                          {r.memberships?.kind !== "package" && r.memberships?.kind && (
-                            <div className="text-xs text-muted-foreground">
-                              {r.memberships.kind === "trial"
-                                ? "Пробное"
-                                : r.memberships.kind === "single"
-                                  ? "Разовое"
-                                  : "Персональные"}
-                            </div>
-                          )}
-                          {r.sale_kind && (
-                            <div className="flex items-center gap-1.5 whitespace-nowrap text-xs">
-                              <SaleKindDot kind={r.sale_kind} />
-                              {SALE_KIND_LABEL[r.sale_kind]}
-                            </div>
-                          )}
-                          <div className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-                            С {formatDate(r.sold_at)}
-                          </div>
-                          <div className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-                            До{" "}
-                            {r.ends_at
-                              ? formatDate(r.ends_at)
-                              : r.starts_on_first_visit
-                                ? "— с 1-го посещения"
-                                : "—"}
-                          </div>
-                          {r.transferred_at && (
-                            <div className="text-xs text-muted-foreground tabular-nums">
-                              Переоформлен {formatDate(r.transferred_at.slice(0, 10))}
-                              {r.transferred_from_name && ` с ${r.transferred_from_name}`}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <div className="flex flex-col items-start gap-1">
-                            {r.membership_status ? (
-                              <MembershipStatusBadge
-                                m={{
-                                  status: r.membership_status,
-                                  ends_at: r.ends_at,
-                                  starts_on_first_visit: r.starts_on_first_visit,
-                                  started_at: r.membership_started_at,
-                                }}
+                  table.rows.map((r) => {
+                    // На телефоне свёрнутая карточка — без второстепенного
+                    // (решение владельца 2026-11-05): «Подробнее» раскрывает.
+                    const open = expanded.has(r.id);
+                    const extra = open ? undefined : "max-md:hidden!";
+                    return (
+                      <RowContextMenu
+                        key={r.id}
+                        actions={
+                          canEdit(r)
+                            ? [
+                                {
+                                  label: "Переоформить",
+                                  icon: UserArrowLeftRight,
+                                  onSelect: () => openTransfer(r),
+                                },
+                                {
+                                  label: "Поменять администратора",
+                                  icon: UserPen,
+                                  onSelect: () => setSellerRow(r),
+                                },
+                                {
+                                  label: "Оформить возврат",
+                                  icon: Receipt,
+                                  onSelect: () => openRefund(r),
+                                },
+                                ...(canDelete
+                                  ? [
+                                      {
+                                        label: "Удалить",
+                                        icon: Trash2,
+                                        destructive: true,
+                                        onSelect: () => handleDelete(r),
+                                      },
+                                    ]
+                                  : []),
+                              ]
+                            : []
+                        }
+                      >
+                        <TableRow className={cn(PAYMENT_STATES[r.payment_state].mobile)}>
+                          <TableCell className="relative font-medium">
+                            {PAYMENT_STATES[r.payment_state].stripe && (
+                              <span
+                                aria-hidden
+                                className={cn(
+                                  "absolute inset-y-0 left-0 w-1 max-md:hidden",
+                                  PAYMENT_STATES[r.payment_state].stripe,
+                                )}
                               />
+                            )}
+                            <span className="sr-only">
+                              {PAYMENT_STATES[r.payment_state].label}.{" "}
+                            </span>
+                            {r.clients ? (
+                              <span className="inline-flex flex-wrap items-center gap-1.5">
+                                <ClientNameLink
+                                  clientId={r.client_id}
+                                  crmLink={crmLinkOf(r.client_id)}
+                                >
+                                  {clientName(r.clients)}
+                                </ClientNameLink>
+                                {clubStatusOf?.[r.client_id] && (
+                                  <ClubStatusBadge
+                                    status={clubStatusOf[r.client_id]!}
+                                    size="sm"
+                                    className="shrink-0"
+                                  />
+                                )}
+                              </span>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
-                            <div className="text-xs tabular-nums">
-                              <DaysLeft
-                                status={r.membership_status}
-                                endsAt={r.ends_at}
-                                notStarted={r.starts_on_first_visit && !r.membership_started_at}
-                              />
+                            {r.clients?.phone && (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {formatPhone(r.clients.phone)}
+                              </div>
+                            )}
+                            {r.clients?.email && (
+                              <div
+                                className={cn("text-xs font-normal text-muted-foreground", extra)}
+                              >
+                                {r.clients.email}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="min-w-[130px]">
+                            <div>{r.memberships?.name ?? "—"}</div>
+                            {r.memberships?.kind !== "package" && r.memberships?.kind && (
+                              <div className={cn("text-xs text-muted-foreground", extra)}>
+                                {r.memberships.kind === "trial"
+                                  ? "Пробное"
+                                  : r.memberships.kind === "single"
+                                    ? "Разовое"
+                                    : "Персональные"}
+                              </div>
+                            )}
+                            {/* На телефоне тип продажи и «До» — одной строкой. */}
+                            <div className="max-md:flex max-md:flex-wrap max-md:items-center max-md:gap-x-3">
+                              {r.sale_kind && (
+                                <div className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                                  <SaleKindDot kind={r.sale_kind} />
+                                  {SALE_KIND_LABEL[r.sale_kind]}
+                                </div>
+                              )}
+                              <div
+                                className={cn(
+                                  "whitespace-nowrap text-xs text-muted-foreground tabular-nums",
+                                  extra,
+                                )}
+                              >
+                                С {formatDate(r.sold_at)}
+                              </div>
+                              <div className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                                До{" "}
+                                {r.ends_at
+                                  ? formatDate(r.ends_at)
+                                  : r.starts_on_first_visit
+                                    ? "— с 1-го посещения"
+                                    : "—"}
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <PaymentsCell row={r} onSaved={reload} />
-                        </TableCell>
-                        <TableCell>
-                          <CommentsButton
-                            clientId={r.client_id}
-                            clientName={r.clients ? clientName(r.clients) : undefined}
-                            saleId={r.id}
-                            stats={comments.byClient.get(r.client_id)}
-                            loading={comments.isLoading}
-                          />
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap tabular-nums">
-                          <Balance row={r} />
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-right">
-                          <Amount row={r} refunded={refundedBySale?.[r.id] ?? 0} />
-                        </TableCell>
-                        <TableCell>
-                          <div>{r.admin_name ?? "—"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">{r.studio_name}</TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {SALE_ADDED_VIA_LABEL[r.added_via ?? "admin"]}
-                        </TableCell>
-                      </TableRow>
-                    </RowContextMenu>
-                  ))
+                            {r.transferred_at && (
+                              <div
+                                className={cn("text-xs text-muted-foreground tabular-nums", extra)}
+                              >
+                                Переоформлен {formatDate(r.transferred_at.slice(0, 10))}
+                                {r.transferred_from_name && ` с ${r.transferred_from_name}`}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {/* На телефоне статус и «осталось дней» — в строку. */}
+                            <div className="flex flex-col items-start gap-1 max-md:flex-row max-md:flex-wrap max-md:items-center max-md:gap-x-2">
+                              {r.membership_status ? (
+                                <MembershipStatusBadge
+                                  m={{
+                                    status: r.membership_status,
+                                    ends_at: r.ends_at,
+                                    starts_on_first_visit: r.starts_on_first_visit,
+                                    started_at: r.membership_started_at,
+                                  }}
+                                />
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                              <div className="text-xs tabular-nums">
+                                <DaysLeft
+                                  status={r.membership_status}
+                                  endsAt={r.ends_at}
+                                  notStarted={r.starts_on_first_visit && !r.membership_started_at}
+                                />
+                              </div>
+                              {/* Свёрнутая карточка на телефоне: баланс — здесь же. */}
+                              {!open && (
+                                <div className="text-xs tabular-nums md:hidden">
+                                  <BalanceInline row={r} />
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <PaymentsCell row={r} onSaved={reload} compact={!open} />
+                          </TableCell>
+                          <TableCell>
+                            <CommentsButton
+                              clientId={r.client_id}
+                              clientName={r.clients ? clientName(r.clients) : undefined}
+                              saleId={r.id}
+                              stats={comments.byClient.get(r.client_id)}
+                              loading={comments.isLoading}
+                            />
+                          </TableCell>
+                          <TableCell className={cn("whitespace-nowrap tabular-nums", extra)}>
+                            <Balance row={r} />
+                          </TableCell>
+                          <TableCell className={cn("whitespace-nowrap text-right", extra)}>
+                            <Amount row={r} refunded={refundedBySale?.[r.id] ?? 0} />
+                          </TableCell>
+                          <TableCell className={extra}>
+                            <div>{r.admin_name ?? "—"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {r.trainer_name ? `Тренер: ${r.trainer_name}` : "Без тренера"}
+                            </div>
+                          </TableCell>
+                          <TableCell className={cn("whitespace-nowrap", extra)}>
+                            {r.studio_name}
+                          </TableCell>
+                          <TableCell className={cn("whitespace-nowrap", extra)}>
+                            {SALE_ADDED_VIA_LABEL[r.added_via ?? "admin"]}
+                          </TableCell>
+                          {/* Только на телефоне: свернуть / развернуть карточку. */}
+                          <TableCell className="md:hidden">
+                            <Button
+                              variant="link"
+                              size="inline"
+                              className="text-xs text-muted-foreground"
+                              aria-expanded={open}
+                              onClick={() => toggleExpanded(r.id)}
+                            >
+                              {open ? "Свернуть" : "Подробнее"}
+                              <ChevronDown
+                                className={cn("transition-transform", open && "rotate-180")}
+                              />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      </RowContextMenu>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -1115,6 +1177,22 @@ function Balance({ row }: { row: Row }) {
       {diagnosticsTotal > 0 && line(row.diagnostics_left, diagnosticsTotal, "диагн.")}
     </>
   );
+}
+
+/** Баланс одной строкой — для свёрнутой карточки на телефоне: «5/8 трен. · 2/4 перс.». */
+function BalanceInline({ row }: { row: Row }) {
+  const m = row.memberships;
+  const isPersonal = m?.kind === "personal";
+  const personalTotal = m?.personal_count ?? 0;
+  const diagnosticsTotal = m?.diagnostics_count ?? 0;
+  const part = (left: number | null, total: number | null, unit: string) =>
+    `${left ?? "—"}${left != null && total ? `/${total}` : ""} ${unit}`;
+  const parts = [
+    !isPersonal && part(row.visits_left, m?.visits_count ?? null, "трен."),
+    (isPersonal || personalTotal > 0) && part(row.personal_left, personalTotal || null, "перс."),
+    diagnosticsTotal > 0 && part(row.diagnostics_left, diagnosticsTotal, "диагн."),
+  ].filter(Boolean);
+  return <span className="text-muted-foreground">{parts.join(" · ")}</span>;
 }
 
 /** Стоимость продажи, сколько внесено, промокод и возвраты. */
@@ -1451,7 +1529,16 @@ const PAYMENT_METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
  * Платежи продажи одной колонкой: плашки по два в ряд (внесённый — зелёная,
  * просроченный — красная), под ними — «Редактировать платежи».
  */
-function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
+/** compact — свёрнутая карточка на телефоне: без «Редактировать платежи». */
+function PaymentsCell({
+  row,
+  onSaved,
+  compact = false,
+}: {
+  row: Row;
+  onSaved: () => void;
+  compact?: boolean;
+}) {
   const [editOpen, setEditOpen] = useState(false);
   const [marked, setMarked] = useState(false);
   const payments = row.payments ?? [];
@@ -1485,7 +1572,10 @@ function PaymentsCell({ row, onSaved }: { row: Row; onSaved: () => void }) {
           variant="link"
           size="inline"
           // Серым, как «Комментарий» в соседней колонке, — не спорит с платежами.
-          className="text-xs text-muted-foreground underline hover:text-foreground"
+          className={cn(
+            "text-xs text-muted-foreground underline hover:text-foreground",
+            compact && "max-md:hidden",
+          )}
           onClick={() => setEditOpen(true)}
         >
           Редактировать платежи
