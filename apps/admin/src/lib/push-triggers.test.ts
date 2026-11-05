@@ -11,10 +11,10 @@ import {
   unknownVars,
 } from "./push-triggers";
 
-const MIGRATION = readFileSync(
-  new URL("../../../../db/migrations/2026-10-15_push_triggers.sql", import.meta.url),
-  "utf8",
-);
+// Стартовые тексты и проход — в исходной миграции, триггеры тренерам — в своей.
+const MIGRATION = ["2026-10-15_push_triggers.sql", "2026-11-05_zz_trainer_app.sql"]
+  .map((f) => readFileSync(new URL(`../../../../db/migrations/${f}`, import.meta.url), "utf8"))
+  .join("\n");
 
 describe("каталог триггеров", () => {
   test("ключи уникальны и все есть в миграции (стартовые тексты и проход)", () => {
@@ -22,7 +22,8 @@ describe("каталог триггеров", () => {
     expect(new Set(keys).size).toBe(keys.length);
     for (const k of keys) {
       expect(MIGRATION).toContain(`('${k}', `);
-      expect(MIGRATION).toMatch(new RegExp(`when [^\\n]*'${k}'`));
+      // Ветка прохода (when … 'k') или вызов отправки тренеру (trainer_push('k', …)).
+      expect(MIGRATION).toMatch(new RegExp(`(when [^\\n]*|trainer_push\\()'${k}'`));
     }
   });
 

@@ -49,8 +49,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   переоформления абонемента `db/membership-transfer.test.ts`, базы знаний
   `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts`,
   пользователей, ролей и доступов `db/access.test.ts`, «Рабочего дня»
-  `db/workday.test.ts`, «Аналитики» `db/analytics.test.ts` и ленты
-  комментариев клиента `db/client-comments.test.ts`
+  `db/workday.test.ts`, «Аналитики» `db/analytics.test.ts`, ленты
+  комментариев клиента `db/client-comments.test.ts` и тренера в приложении
+  `db/trainer-app.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -1041,6 +1042,25 @@ AUTH_SETUP.md.
   переоформили — его комментарии уходят с ним; продажу удалили — остаются у
   клиента. Админка прежние поля больше не показывает. Тесты —
   `db/client-comments.test.ts`.
+  **Тренер в мобильном приложении** (решение владельца 2026-11-05, пакетное
+  приложение): `db/migrations/2026-11-05_zz_trainer_app.sql` —
+  `app_trainer_links` (карточка клиента ↔ тренер справочника: «этот
+  пользователь приложения — тренер»; ставят сотрудники клубов карточки,
+  один тренер — одна карточка). Всё тренерское — только RPC, они сами
+  проверяют вызывающего (`app_trainer_of(auth.uid())`, без связи — пусто
+  или `trainer_only`): `trainer_app_me`, `trainer_my_entries` (свои
+  ближайшие групповые), `trainer_entry_clients` (записанные: пробные
+  первыми, главная цель, `has_restrictions` — здоровье в анкете, сводка
+  комментариев), `trainer_client_profile` (анкета — только клиента,
+  записанного на занятие этого тренера), `trainer_client_comments` /
+  `trainer_add_comment`. Комментарии тренеров — `trainer_comments` (пишет
+  только RPC, сотрудники клубов карточки читают; в `client_comments` и
+  таблицы админки не входят). Пуши тренерам — строки `push_triggers`
+  `trainer_class_cancelled` / `trainer_replaced` / `trainer_substitute`
+  (только packages), срабатывают сразу триггерами на
+  `schedule_entries.cancelled_at` и `schedule_entry_substitutions` (будущие
+  занятия; `trainer_push` → `push_trigger_send`). Удаление занятия пуша
+  тренеру не шлёт. Тесты — `db/trainer-app.test.ts`.
   Рейтинг тренеров и чаевые: `db/migrations/2026-10-11_zzzzzzzzzzzzz_trainer_ratings.sql`
   — `trainer_reviews` (оценка 1–5, одна от учётной записи на тренера; клиент
   читает и правит свою, ставит — тренеру, которого видит в приложении,

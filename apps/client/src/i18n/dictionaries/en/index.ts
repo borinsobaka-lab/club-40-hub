@@ -22,6 +22,7 @@ import notifications from "./notifications";
 import install from "./install";
 import feedback from "./feedback";
 import nps from "./nps";
+import trainer from "./trainer";
 
 const dict: Dictionary = {
   ...common,
@@ -41,6 +42,7 @@ const dict: Dictionary = {
   ...install,
   ...feedback,
   ...nps,
+  ...trainer,
 };
 
 export default dict;

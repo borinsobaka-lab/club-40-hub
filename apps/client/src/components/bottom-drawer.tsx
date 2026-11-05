@@ -20,6 +20,7 @@ export function BottomDrawer({
   description,
   className,
   footer,
+  nested = false,
   children,
 }: {
   open: boolean;
@@ -32,10 +33,17 @@ export function BottomDrawer({
   className?: string;
   /** Закреплён под прокруткой: не уезжает вместе с содержимым. */
   footer?: ReactNode;
+  /** Поверх другой шторки (клиент в окне тренировки тренера). */
+  nested?: boolean;
   children: ReactNode;
 }) {
+  const Root = nested ? DrawerPrimitive.NestedRoot : DrawerPrimitive.Root;
   return (
-    <DrawerPrimitive.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
+    <Root
+      open={open}
+      onOpenChange={onOpenChange}
+      {...(nested ? {} : { shouldScaleBackground: true })}
+    >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
         <DrawerPrimitive.Content
@@ -73,6 +81,6 @@ export function BottomDrawer({
           )}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
-    </DrawerPrimitive.Root>
+    </Root>
   );
 }

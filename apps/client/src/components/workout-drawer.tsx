@@ -40,6 +40,8 @@ import { SubstitutionChip } from "@/formats/packages/workout-card";
 import { FormattedText } from "@/lib/formatted-text";
 import { TrainerDrawer } from "@/formats/packages/trainer-drawer";
 import { formatRating } from "@/formats/packages/trainer-rating";
+import { TrainerEntryClients } from "@/formats/packages/trainer/entry-clients";
+import { UnderlineTabs } from "@/components/underline-tabs";
 import { useLocalize, useT, type Translator } from "@/i18n";
 
 export type WorkoutDrawerData = {
@@ -106,6 +108,7 @@ export function WorkoutDrawer({
   isPending,
   cancelMinutes,
   bookingNote,
+  trainerMode = false,
 }: {
   data: WorkoutDrawerData | null;
   open: boolean;
@@ -118,6 +121,12 @@ export function WorkoutDrawer({
   cancelMinutes?: number;
   /** Записаться нельзя (другая студия) — текст вместо кнопки «Записаться». */
   bookingNote?: string | null;
+  /**
+   * Окно тренировки тренера («Моё расписание», решение владельца 2026-11-05):
+   * под плашкой — вкладки «Информация для тренера» (кто записан) и «О
+   * тренировке» (тренеры, замена, описание); кнопок записи нет.
+   */
+  trainerMode?: boolean;
 }) {
   const t = useT();
   const loc = useLocalize();
@@ -132,11 +141,14 @@ export function WorkoutDrawer({
   const [cancelOpen, setCancelOpen] = useState(false);
   // Карточка тренера (пакетное) — вложенной шторкой поверх окна тренировки.
   const [trainerId, setTrainerId] = useState<string | null>(null);
+  const [trainerTab, setTrainerTab] = useState<"clients" | "about">("clients");
 
   useEffect(() => {
     setCancelOpen(false);
     setTrainerId(null);
+    setTrainerTab("clients");
   }, [data?.id, open]);
+  const showTrainerTabs = trainerMode && isPack;
 
   const cancelLocked =
     isBooked &&
@@ -204,7 +216,12 @@ export function WorkoutDrawer({
             {data && (
               <>
                 {isPack ? (
-                  <PackHeader data={data} studio={studio ?? null} onOpenTrainer={setTrainerId} />
+                  <PackHeader
+                    data={data}
+                    studio={studio ?? null}
+                    onOpenTrainer={setTrainerId}
+                    hideTrainers={showTrainerTabs}
+                  />
                 ) : (
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
@@ -251,7 +268,27 @@ export function WorkoutDrawer({
                   </div>
                 )}
 
-                {data.description?.trim() && (
+                {showTrainerTabs && (
+                  <UnderlineTabs
+                    className="mt-5"
+                    tabs={[
+                      { key: "clients", label: t("Информация для тренера") },
+                      { key: "about", label: t("О тренировке") },
+                    ]}
+                    value={trainerTab}
+                    onChange={setTrainerTab}
+                  />
+                )}
+                {showTrainerTabs && trainerTab === "clients" && (
+                  <div className="mt-4">
+                    <TrainerEntryClients entryId={data.id} />
+                  </div>
+                )}
+                {showTrainerTabs && trainerTab === "about" && (
+                  <PackTrainers trainers={data.trainers!} onOpenTrainer={setTrainerId} />
+                )}
+
+                {(!showTrainerTabs || trainerTab === "about") && data.description?.trim() && (
                   <FormattedText
                     text={data.description}
                     className="mt-4 text-[15px] leading-relaxed text-foreground/90"
@@ -264,7 +301,7 @@ export function WorkoutDrawer({
                     длинного описания); размер — общий у кнопок действий
                     (`buttonVariants`, 2026-10-13). «Отменить запись» —
                     через окно подтверждения (2026-10-21). */}
-                {isBooked ? null : isWaitlisted ? (
+                {isBooked || trainerMode ? null : isWaitlisted ? (
                   <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                     {t(
                       "Вы в листе ожидания. Если освободится место, с вами свяжется администратор.",
@@ -278,7 +315,7 @@ export function WorkoutDrawer({
               </>
             )}
           </div>
-          {data && (isBooked || isWaitlisted || !bookingNote) && (
+          {data && !trainerMode && (isBooked || isWaitlisted || !bookingNote) && (
             <div className="shrink-0 border-t border-border/60 bg-background px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
               {isBooked ? (
                 <div className="flex gap-2">
@@ -425,10 +462,13 @@ function PackHeader({
   data,
   studio,
   onOpenTrainer,
+  hideTrainers = false,
 }: {
   data: WorkoutDrawerData;
   studio: { name: string; address?: string | null } | null;
   onOpenTrainer: (id: string) => void;
+  /** Тренеры — во вкладке «О тренировке» (окно тренера). */
+  hideTrainers?: boolean;
 }) {
   const t = useT();
   const full = data.spotsLeft === 0;
@@ -501,9 +541,25 @@ function PackHeader({
         </div>
       )}
 
-      {data.trainers!.length > 0 && (
+      {!hideTrainers && <PackTrainers trainers={data.trainers!} onOpenTrainer={onOpenTrainer} />}
+    </>
+  );
+}
+
+/** Тренеры занятия: замена — прежний неактивным; по нажатию — карточка тренера. */
+function PackTrainers({
+  trainers,
+  onOpenTrainer,
+}: {
+  trainers: NonNullable<WorkoutDrawerData["trainers"]>;
+  onOpenTrainer: (id: string) => void;
+}) {
+  const t = useT();
+  return (
+    <>
+      {trainers.length > 0 && (
         <div className="mt-4 flex flex-col gap-2">
-          {data.trainers!.map((tr) => (
+          {trainers.map((tr) => (
             <div key={tr.id} className="flex flex-col gap-1">
               {/* Замена: прежний тренер — неактивным, под ним «Замена» и новый. */}
               {tr.replaced && (
