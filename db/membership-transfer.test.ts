@@ -361,4 +361,60 @@ describe.skipIf(!url)("переоформление абонемента (баз
       expect(Number(row.total_amount)).toBe(100);
     });
   });
+
+  // Удаление абонемента в «Абонементах» пакетного клуба — только
+  // суперадминистратору (db/migrations/2026-11-05_packages_sale_delete_superadmin.sql).
+  describe("удаление продажи пакетного клуба", () => {
+    /** Сколько строк продажи удалил сотрудник (RLS удаление без права молча пропускает). */
+    async function deleteAs(tx: Tx, userId: string, saleId: string): Promise<number> {
+      await as(tx, userId);
+      const rows = await tx`delete from sales where id = ${saleId} returning id`;
+      await asServer(tx);
+      return rows.length;
+    }
+
+    /** Строка прав модели «Пользователей и ролей» (в обход пересчёта). */
+    async function rights(tx: Tx, userId: string, list: string[]) {
+      await tx`insert into access_user_rights (user_id, portal, rights)
+               values (${userId}, true, ${list}::text[])
+               on conflict (user_id) do update set rights = excluded.rights, portal = true`;
+    }
+
+    test("сотрудник клуба — нельзя, суперадминистратор — можно", async () => {
+      await scenario(async (tx) => {
+        const s = await studio(tx);
+        const admin = await staff(tx, s);
+        const boss = await staff(tx, s);
+        await rights(tx, admin, ["kb.admin"]);
+        await rights(tx, boss, ["portal.admin"]);
+        const sale = await sell(tx, s, await client(tx, s), await pack(tx, s));
+
+        expect(await deleteAs(tx, admin, sale)).toBe(0);
+        expect(await deleteAs(tx, boss, sale)).toBe(1);
+        const left = await tx`select 1 from client_memberships where sale_id = ${sale}`;
+        expect(left.length).toBe(0);
+      });
+    });
+
+    test("свою только что внесённую продажу — можно (откат формы продажи)", async () => {
+      await scenario(async (tx) => {
+        const s = await studio(tx);
+        const admin = await staff(tx, s);
+        await rights(tx, admin, []);
+        const sale = await sell(tx, s, await client(tx, s), await pack(tx, s));
+        await tx`update sales set admin_id = ${admin} where id = ${sale}`;
+        expect(await deleteAs(tx, admin, sale)).toBe(1);
+      });
+    });
+
+    test("подписочный клуб — как раньше, сотрудник удаляет", async () => {
+      await scenario(async (tx) => {
+        const s = await studio(tx, "subscription");
+        const admin = await staff(tx, s);
+        await rights(tx, admin, []);
+        const sale = await sell(tx, s, await client(tx, s), await pack(tx, s));
+        expect(await deleteAs(tx, admin, sale)).toBe(1);
+      });
+    });
+  });
 });
