@@ -541,19 +541,69 @@ export const CLASSES_COLUMNS = {
   },
 } as const;
 
-/** Колонки таблицы «Тренеры» — порядок для страницы и скелетона. */
-export const TRAINER_COLUMNS = [
-  "classes",
-  "visits",
-  "avg",
-  "fill",
-  "clients",
-  "repeat",
-  "trials",
-  "trialBought",
-  "trialConversion",
-  "rating",
-] as const satisfies (keyof typeof CLASSES_COLUMNS)[];
+/**
+ * Таблица «Тренеры» — по блокам (её разбирают на созвонах с тренерами,
+ * порядок — по просьбе старшего тренера 2026-11-07): итог блока — доля, по
+ * нажатию на блок раскрываются числа, из которых она сложилась (столбцы
+ * `details` — слева от итога: «пришли + купили = конверсия»). Блок `trial`
+ * — только при пакетном клубе в выборе (пробных у подписочных нет).
+ */
+export type TrainerBlock = {
+  key: string;
+  label: string;
+  tip: string;
+  /** Итог блока — виден всегда. */
+  main: { key: string; label: string };
+  /** Из чего сложился итог — по раскрытию блока. */
+  details: { key: string; label: string; tip: string }[];
+  trial?: boolean;
+};
+
+export const TRAINER_BLOCKS: TrainerBlock[] = [
+  {
+    key: "conversion",
+    label: "Конверсия",
+    tip: "Какая доля пришедших на пробное к тренеру купила абонемент (пакетные клубы). Нажмите, чтобы увидеть, сколько пришли и сколько купили.",
+    main: { key: "trialConversion", label: "%" },
+    details: [
+      { key: "trials", label: "Пришли на пробное", tip: CLASSES_COLUMNS.trials.tip },
+      { key: "trialBought", label: "Купили", tip: CLASSES_COLUMNS.trialBought.tip },
+    ],
+    trial: true,
+  },
+  {
+    key: "fill",
+    label: "Заполняемость",
+    tip: `${CLASSES_COLUMNS.fill.tip} Нажмите, чтобы увидеть занятия, посещения и среднее на занятии.`,
+    main: { key: "fill", label: "%" },
+    details: [
+      { key: "classes", label: "Занятий", tip: CLASSES_COLUMNS.classes.tip },
+      { key: "visits", label: "Посещений", tip: CLASSES_COLUMNS.visits.tip },
+      { key: "avg", label: "Среднее", tip: CLASSES_COLUMNS.avg.tip },
+    ],
+  },
+  {
+    key: "repeat",
+    label: "Повторные клиенты",
+    tip: `${CLASSES_COLUMNS.repeat.tip} Нажмите, чтобы увидеть, сколько клиентов было и сколько пришли ещё раз.`,
+    main: { key: "repeat", label: "%" },
+    details: [
+      { key: "clients", label: "Клиентов", tip: CLASSES_COLUMNS.clients.tip },
+      {
+        key: "repeatClients",
+        label: "Пришли повторно",
+        tip: "Клиенты с двумя посещениями тренера и больше за период.",
+      },
+    ],
+  },
+  {
+    key: "rating",
+    label: "Рейтинг",
+    tip: CLASSES_COLUMNS.rating.tip,
+    main: { key: "rating", label: "Оценка" },
+    details: [],
+  },
+];
 export const WORKOUT_COLUMNS = [
   "classes",
   "visits",

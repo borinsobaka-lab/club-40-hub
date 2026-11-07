@@ -249,10 +249,15 @@ export const cancelRate = (t: ClassTally) => share(t.cancelled, t.cancelled + t.
 export const avgPerClass = (t: ClassTally) => (t.classes ? t.visits / t.classes : null);
 
 /** Повторные визиты, %: клиенты, пришедшие в группу два раза и больше. */
-export function repeatRate(t: ClassTally) {
+/** Клиентов с двумя посещениями и больше за период. */
+export function repeatClients(t: ClassTally) {
   let again = 0;
   for (const n of t.clients.values()) if (n >= 2) again++;
-  return share(again, t.clients.size);
+  return again;
+}
+
+export function repeatRate(t: ClassTally) {
+  return share(repeatClients(t), t.clients.size);
 }
 
 export type ClassesKey =
