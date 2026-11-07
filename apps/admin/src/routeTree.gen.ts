@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as ApiPhoneLoginRouteImport } from './routes/api/phone-login'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAuthEmailRouteImport } from './routes/api/auth-email'
 import { Route as AuthenticatedWorkoutsRouteImport } from './routes/_authenticated/workouts'
@@ -107,6 +108,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   id: '/api/transcribe',
   path: '/api/transcribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPhoneLoginRoute = ApiPhoneLoginRouteImport.update({
+  id: '/api/phone-login',
+  path: '/api/phone-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -575,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/phone-login': typeof ApiPhoneLoginRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/academy/report': typeof AuthenticatedAcademyReportRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
@@ -655,6 +662,7 @@ export interface FileRoutesByTo {
   '/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/phone-login': typeof ApiPhoneLoginRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/': typeof AuthenticatedIndexRoute
   '/academy/report': typeof AuthenticatedAcademyReportRoute
@@ -738,6 +746,7 @@ export interface FileRoutesById {
   '/_authenticated/workouts': typeof AuthenticatedWorkoutsRoute
   '/api/auth-email': typeof ApiAuthEmailRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/phone-login': typeof ApiPhoneLoginRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/academy/report': typeof AuthenticatedAcademyReportRoute
@@ -822,6 +831,7 @@ export interface FileRouteTypes {
     | '/workouts'
     | '/api/auth-email'
     | '/api/chat'
+    | '/api/phone-login'
     | '/api/transcribe'
     | '/academy/report'
     | '/academy/settings'
@@ -902,6 +912,7 @@ export interface FileRouteTypes {
     | '/workouts'
     | '/api/auth-email'
     | '/api/chat'
+    | '/api/phone-login'
     | '/api/transcribe'
     | '/'
     | '/academy/report'
@@ -984,6 +995,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workouts'
     | '/api/auth-email'
     | '/api/chat'
+    | '/api/phone-login'
     | '/api/transcribe'
     | '/_authenticated/'
     | '/_authenticated/academy/report'
@@ -1036,6 +1048,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiAuthEmailRoute: typeof ApiAuthEmailRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiPhoneLoginRoute: typeof ApiPhoneLoginRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
 }
 
@@ -1067,6 +1080,13 @@ declare module '@tanstack/react-router' {
       path: '/api/transcribe'
       fullPath: '/api/transcribe'
       preLoaderRoute: typeof ApiTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/phone-login': {
+      id: '/api/phone-login'
+      path: '/api/phone-login'
+      fullPath: '/api/phone-login'
+      preLoaderRoute: typeof ApiPhoneLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -1775,6 +1795,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiAuthEmailRoute: ApiAuthEmailRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiPhoneLoginRoute: ApiPhoneLoginRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
 }
 export const routeTree = rootRouteImport

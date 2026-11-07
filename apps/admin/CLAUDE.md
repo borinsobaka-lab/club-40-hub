@@ -138,6 +138,21 @@ GoTrue и видит только хук писем — в браузер он �
 клубе или человек портала с действующими ролями (сотрудник УК — и без клуба;
 `hasStaffRole` в `lib/roles.ts`).
 
+## Вход клиентов по телефону (2026-11-07)
+
+`/api/phone-login` (`src/routes/api/phone-login.ts`) — для клиентских
+приложений, не для админки: браузер приложения зовёт его напрямую (CORS —
+`DEFAULT_PHONE_LOGIN_ORIGINS` + `PHONE_LOGIN_ORIGINS`). `send` — номер в
+карточке клиента клуба формата приложения → SMS через Prelude Verify
+(`POST https://api.prelude.dev/v2/verification`, `code_size: 4`, сигналы:
+адрес, браузер, id устройства, версия); `verify` — `POST
+/v2/verification/check` → вход в учётную запись клиента. Логика без сети —
+`src/lib/phone-login.ts` (номер, кто за номером, ошибки Prelude, CORS; тест
+рядом), сеть — `src/lib/phone-login.server.ts` (тест — с подставными
+ответами базы, GoTrue и Prelude). Env: `PRELUDE_API_TOKEN` (runtime-секрет;
+без него роут отвечает `not_configured`). Схема и учётные записи — корневой
+CLAUDE.md, настройка — AGENT_TASKS.md, Задача 17.
+
 ## Код
 
 - Клиент Supabase в браузере НЕтипизированный (без `<Database>`); свежие типы
