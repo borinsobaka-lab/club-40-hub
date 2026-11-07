@@ -62,10 +62,8 @@ const dict: Dictionary = {
   "В буфере обмена нет кода. Скопируйте код из SMS.":
     "There's no code in the clipboard. Copy the code from the SMS.",
   "Введите код из SMS, отправленного на {phone}": "Enter the code we sent by SMS to {phone}",
-  "Войдите по номеру телефона, который вы указали в студии":
-    "Sign in with the phone number you gave the studio",
-  "Войдите по номеру телефона, который вы указали в клубе":
-    "Sign in with the phone number you gave the club",
+  "Войдите по номеру, который вы указали в студии": "Sign in with the number you gave the studio",
+  "Войдите по номеру, который вы указали в клубе": "Sign in with the number you gave the club",
   "Способ входа": "Sign-in method",
   "Код из SMS": "SMS code",
   "Изменить номер": "Change number",

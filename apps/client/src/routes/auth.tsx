@@ -368,24 +368,62 @@ function AuthPage() {
     }
   };
 
-  const subtitle = signInClosed
-    ? null
-    : step === "otp"
-      ? isPhone
-        ? t("Введите код из SMS, отправленного на {phone}", { phone })
-        : t("Введите код, отправленный на {email}", { email })
-      : isPhone
-        ? IS_PACKAGES
-          ? t("Войдите по номеру телефона, который вы указали в студии")
-          : t("Войдите по номеру телефона, который вы указали в клубе")
-        : IS_PACKAGES
-          ? t("Войдите по почте, которую вы указали в студии")
-          : t("Войдите по почте, которую вы указали в клубе");
+  // «Получить код» активна, когда введена почта (или полный номер) и, у
+  // Lady Stretch, отмечено согласие с политикой (решение владельца 2026-11-07).
+  const canRequestCode =
+    (isPhone ? isValidPhone(phone) : /^\S+@\S+\.\S+$/.test(email.trim())) &&
+    (!PRIVACY_POLICY_INFO || consent);
+
+  const subtitle = signInClosed ? null : step === "otp" ? (
+    isPhone ? (
+      t("Введите код из SMS, отправленного на {phone}", { phone })
+    ) : (
+      t("Введите код, отправленный на {email}", { email })
+    )
+  ) : (
+    // Обе подписи — в одной ячейке сетки: высота — по более длинной, и при
+    // переключении «Почта / Телефон» экран не скачет (решение владельца
+    // 2026-11-07); видимая проявляется, вторая гаснет.
+    <span className="grid">
+      {(["email", "phone"] as const).map((m) => (
+        <span
+          key={m}
+          aria-hidden={method !== m}
+          className={cn(
+            "col-start-1 row-start-1 transition-opacity duration-200 motion-reduce:transition-none",
+            method === m ? "opacity-100" : "opacity-0",
+          )}
+        >
+          {m === "phone"
+            ? IS_PACKAGES
+              ? t("Войдите по номеру, который вы указали в студии")
+              : t("Войдите по номеру, который вы указали в клубе")
+            : IS_PACKAGES
+              ? t("Войдите по почте, которую вы указали в студии")
+              : t("Войдите по почте, которую вы указали в клубе")}
+        </span>
+      ))}
+    </span>
+  );
 
   // Почта / Телефон — над полем (решение владельца 2026-11-07: по умолчанию
   // почта). Смена способа стирает ошибку; введённое в каждом поле остаётся.
+  // Белая плашка выбранного таба переезжает к нажатому (решение владельца
+  // 2026-11-07): она одна под обоими табами и сдвигается на свою ширину.
   const methodSwitch = (
-    <div role="tablist" aria-label={t("Способ входа")} className="flex rounded-full bg-field p-1">
+    <div
+      role="tablist"
+      aria-label={t("Способ входа")}
+      className="relative grid grid-cols-2 rounded-full bg-field p-1"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-background shadow-sm",
+          "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isPhone && "translate-x-full",
+        )}
+      />
       {(["email", "phone"] as const).map((m) => (
         <button
           key={m}
@@ -398,8 +436,8 @@ function AuthPage() {
             setNotMember(false);
           }}
           className={cn(
-            "h-10 flex-1 rounded-full text-sm font-medium transition-colors",
-            method === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+            "relative z-10 h-10 rounded-full text-sm font-medium transition-colors duration-300",
+            method === m ? "text-foreground" : "text-muted-foreground",
           )}
         >
           {m === "email" ? t("Почта") : t("Телефон")}
@@ -578,7 +616,12 @@ function AuthPage() {
         }
         footer={
           signInClosed ? null : step === "form" ? (
-            <Button type="submit" form="auth-email-form" disabled={busy} className="w-full">
+            <Button
+              type="submit"
+              form="auth-email-form"
+              disabled={busy || !canRequestCode}
+              className="w-full"
+            >
               {busy ? spinner : t("Получить код")}
             </Button>
           ) : (
@@ -683,7 +726,7 @@ function AuthPage() {
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-            <Button type="submit" disabled={busy} className="mt-2 w-full">
+            <Button type="submit" disabled={busy || !canRequestCode} className="mt-2 w-full">
               {busy ? (
                 <Refresh className="h-5 w-5 animate-spin" weight="BoldDuotone" />
               ) : (
