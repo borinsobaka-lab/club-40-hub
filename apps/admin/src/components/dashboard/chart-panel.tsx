@@ -129,7 +129,7 @@ export function RankList({
               {item.label}
               {item.note && <span className="text-muted-foreground"> · {item.note}</span>}
             </div>
-            <div className="mt-1 h-1.5 rounded-full bg-muted">
+            <div className="mt-1.5 h-2.5 rounded-full bg-muted">
               <div
                 className="h-full rounded-full"
                 style={{ width: `${(item.value / max) * 100}%`, backgroundColor: color }}
