@@ -688,7 +688,9 @@ AUTH_SETUP.md.
   `send_hour`. «Кто записал» — `schedule_bookings.booked_by`/`booked_at`
   (триггер `schedule_bookings_booked_by_biu`, `auth.uid()`), статистика —
   `push_trigger_stats` (security invoker). Актуальное определение
-  `push_triggers_run` — `db/migrations/2026-10-15_zzzz_push_review_fixes.sql`:
+  `push_triggers_run` — `db/migrations/2026-10-15_zzzz_push_review_fixes.sql`
+  («Скоро платёж по рассрочке» с 2026-11-07 — за 3 дня в 12:00, включён:
+  `2026-11-07_zz_installment_due_3_days.sql`):
   кандидаты — без уже отправленного (иначе пачку `limit 500` каждый проход
   забивали отправленные), «после пробной» и «оцените тренера» — окно 48 ч от
   момента отправки, «давно не был» — посещения и записи в клубах формата,
