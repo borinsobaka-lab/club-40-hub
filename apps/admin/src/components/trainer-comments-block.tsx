@@ -51,7 +51,7 @@ export function TrainerCommentsBlock({ clientId }: { clientId: string }) {
           клиентов, записанных на их тренировки.
         </InfoNote>
       ) : (
-        <ul className="divide-y rounded-md border">
+        <ul className="divide-y divide-note-border rounded-md border border-note-border bg-note text-note-foreground">
           {data.map((c) => (
             <li key={c.id} className="px-3 py-2">
               <p className="whitespace-pre-wrap break-words text-sm">{c.body}</p>

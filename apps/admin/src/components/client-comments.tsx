@@ -404,8 +404,8 @@ function CommentsThread({
           </p>
         ) : (
           // Прошлые комментарии — компактными строками одним списком (решение
-          // владельца 2026-11-07): «бумажкой» выделено только поле нового.
-          <ul className="divide-y rounded-md border">
+          // владельца 2026-11-07), но бежевым фоном заметки, как и поле нового.
+          <ul className="divide-y divide-note-border rounded-md border border-note-border bg-note text-note-foreground">
             {shown.map((c) => (
               <CommentItem
                 key={c.id}
