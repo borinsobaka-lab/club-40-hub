@@ -3,10 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { InfoNote } from "@/components/ui/form-field";
 import { CardSkeleton } from "@/components/skeletons";
-import { noteBoxClass } from "@/components/comment-cell";
 import { commentWhenFull, commentsCountText } from "@/lib/client-comments";
 import { unwrap } from "@/lib/query";
-import { cn } from "@/lib/utils";
 
 type TrainerComment = {
   id: string;
@@ -53,14 +51,14 @@ export function TrainerCommentsBlock({ clientId }: { clientId: string }) {
           клиентов, записанных на их тренировки.
         </InfoNote>
       ) : (
-        <ul className="space-y-2">
+        <ul className="divide-y rounded-md border">
           {data.map((c) => (
-            <li key={c.id} className={cn(noteBoxClass, "space-y-1")}>
-              <div className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{c.author_name ?? "Тренер"}</span> ·{" "}
+            <li key={c.id} className="px-3 py-2">
+              <p className="whitespace-pre-wrap break-words text-sm">{c.body}</p>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                <span className="font-medium">{c.author_name ?? "Тренер"}</span> ·{" "}
                 {commentWhenFull(c.created_at)}
               </div>
-              <div className="whitespace-pre-wrap text-sm">{c.body}</div>
             </li>
           ))}
         </ul>

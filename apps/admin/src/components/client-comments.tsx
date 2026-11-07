@@ -395,7 +395,7 @@ function CommentsThread({
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }, (_, i) => (
-              <Skeleton key={i} className="h-20 w-full" />
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         ) : shown.length === 0 ? (
@@ -403,7 +403,9 @@ function CommentsThread({
             {comments?.length ? "Здесь комментариев нет" : "Комментариев пока нет"}
           </p>
         ) : (
-          <ul className="space-y-2">
+          // Прошлые комментарии — компактными строками одним списком (решение
+          // владельца 2026-11-07): «бумажкой» выделено только поле нового.
+          <ul className="divide-y rounded-md border">
             {shown.map((c) => (
               <CommentItem
                 key={c.id}
@@ -423,13 +425,16 @@ function CommentsThread({
   );
 }
 
+/** О чём комментарий — коротко, в строке подписи: «Абонемент «…»» и его статус. */
 function TargetLabel({ sale, today }: { sale: CommentSale; today: string }) {
   const current = saleState(sale, today) === "current";
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      <span>Абонемент «{saleLabel(sale)}»</span>
-      <StatusChip tone={current ? "positive" : "neutral"}>{saleStatusText(sale, today)}</StatusChip>
-    </span>
+    <>
+      Абонемент «{saleLabel(sale)}»{" "}
+      <StatusChip size="sm" tone={current ? "positive" : "neutral"}>
+        {saleStatusText(sale, today)}
+      </StatusChip>
+    </>
   );
 }
 
@@ -522,6 +527,7 @@ function NewComment({
   );
 }
 
+/** Строка ленты: текст, под ним мелко — кто, когда, о чём; правка и удаление — справа. */
 function CommentItem({
   comment: c,
   sale,
@@ -539,41 +545,7 @@ function CommentItem({
 }) {
   const [editing, setEditing] = useState(false);
   return (
-    <li className={cn(noteBoxClass, "space-y-1.5")}>
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-        <div className="min-w-0 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{commentAuthor(c)}</span>
-          {" · "}
-          <span title={commentWhenFull(c.created_at, c.kind)}>
-            {commentWhen(c.created_at, c.kind)}
-          </span>
-          {c.edited_at && <span title={commentWhenFull(c.edited_at)}> · изменён</span>}
-        </div>
-        {editable && !editing && (
-          <div className="-my-1 flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Изменить комментарий"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Удалить комментарий"
-              onClick={onDelete}
-            >
-              <Trash2 />
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="text-xs text-muted-foreground">
-        {c.sale_id ? sale ? <TargetLabel sale={sale} today={today} /> : "Абонемент" : "О клиенте"}
-        {c.kind === "sale" && " · при продаже"}
-      </div>
+    <li className="px-3 py-2">
       {editing ? (
         <EditComment
           comment={c}
@@ -584,7 +556,50 @@ function CommentItem({
           onCancel={() => setEditing(false)}
         />
       ) : (
-        <p className="whitespace-pre-wrap break-words text-sm">{c.body}</p>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="whitespace-pre-wrap break-words text-sm">{c.body}</p>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              <span className="font-medium">{commentAuthor(c)}</span>
+              {" · "}
+              <span title={commentWhenFull(c.created_at, c.kind)}>
+                {commentWhen(c.created_at, c.kind)}
+              </span>
+              {c.edited_at && <span title={commentWhenFull(c.edited_at)}> · изменён</span>}
+              {" · "}
+              {c.sale_id ? (
+                sale ? (
+                  <TargetLabel sale={sale} today={today} />
+                ) : (
+                  "Абонемент"
+                )
+              ) : (
+                "О клиенте"
+              )}
+              {c.kind === "sale" && " · при продаже"}
+            </div>
+          </div>
+          {editable && (
+            <div className="-my-1 flex shrink-0 items-center">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Изменить комментарий"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Удалить комментарий"
+                onClick={onDelete}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+          )}
+        </div>
       )}
     </li>
   );
