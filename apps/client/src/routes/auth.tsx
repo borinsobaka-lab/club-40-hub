@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { FloatingLabelInput } from "@/components/ui/floating-input";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Refresh } from "@solar-icons/react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -16,6 +17,14 @@ import packagesLogo from "@/assets/packages-logo.svg";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PrivacyConsent } from "@/components/privacy-consent";
 import { recordPrivacyConsent } from "@/lib/privacy-consent";
+import { isValidPhone } from "@/lib/phone";
+import {
+  PHONE_CODE_LENGTH,
+  requestPhoneCode,
+  verifyPhoneCode,
+  type PhoneLoginError,
+} from "@/lib/phone-login";
+import { cn } from "@/lib/utils";
 import { fetchSignInClosed } from "@/lib/app-install";
 import { PRIVACY_POLICY_INFO } from "@/lib/legal";
 import { getTranslator, useT, type Translator } from "@/i18n";
@@ -32,6 +41,46 @@ function notAMember(t: Translator) {
   return IS_PACKAGES
     ? t("Эта почта не найдена среди клиентов студии. Обратитесь к администратору студии.")
     : t("Эта почта не найдена среди членов клуба. Обратитесь к администратору клуба.");
+}
+
+function phoneNotAMember(t: Translator) {
+  return IS_PACKAGES
+    ? t("Этот номер не найден среди клиентов студии. Обратитесь к администратору студии.")
+    : t("Этот номер не найден среди членов клуба. Обратитесь к администратору клуба.");
+}
+
+/** Ошибка входа по телефону (коды — сервер админки, /api/phone-login). */
+function phoneErrorText(error: PhoneLoginError, t: Translator): string {
+  switch (error) {
+    case "invalid_phone":
+      return t("Проверьте номер телефона.");
+    case "not_a_club_member":
+      return phoneNotAMember(t);
+    case "ambiguous_phone":
+      return IS_PACKAGES
+        ? t(
+            "Этот номер указан у нескольких клиентов. Войдите по почте или обратитесь к администратору студии.",
+          )
+        : t(
+            "Этот номер указан у нескольких клиентов. Войдите по почте или обратитесь к администратору клуба.",
+          );
+    case "staff_use_email":
+      return t("У сотрудников вход только по почте. Войдите по почте.");
+    case "sign_in_closed":
+      return t("Вход в приложение пока закрыт.");
+    case "too_many_requests":
+      return t("Слишком часто. Подождите минуту и попробуйте ещё раз.");
+    case "blocked":
+      return t("Не удалось отправить SMS на этот номер. Войдите по почте.");
+    case "invalid_code":
+      return t("Неверный код. Проверьте и попробуйте ещё раз.");
+    case "expired_code":
+      return t("Код устарел. Запросите новый.");
+    case "network":
+      return t("Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.");
+    default:
+      return t("Не удалось войти по номеру. Попробуйте позже или войдите по почте.");
+  }
 }
 
 /** Почта не найдена среди клиентов (учётную запись не создали / код не шлют). */
@@ -69,13 +118,17 @@ function humanizeAuthError(message: string, t: Translator): string {
 }
 
 // Длина кода из письма. Supabase не даёт настраивать Email OTP Length —
-// всегда 6 цифр, поэтому значение зашито здесь одной константой.
+// всегда 6 цифр, поэтому значение зашито здесь одной константой. Код из SMS
+// (вход по телефону) — PHONE_CODE_LENGTH, 4 цифры.
 const OTP_LENGTH = 6;
 // Пауза между отправками кода. Supabase со своей стороны тоже ограничивает
 // частоту, но без своей паузы пользователь жмёт кнопку и получает сухую
 // ошибку — здесь кнопка просто заблокирована с обратным отсчётом.
 const RESEND_COOLDOWN_SEC = 60;
-const emptyOtp = () => Array<string>(OTP_LENGTH).fill("");
+const emptyOtp = (n = OTP_LENGTH) => Array<string>(n).fill("");
+
+/** Способ входа (решение владельца 2026-11-07): по умолчанию почта, второй — телефон. */
+type SignInMethod = "email" | "phone";
 
 export const Route = createFileRoute("/auth")({
   head: ({ match }) => {
@@ -90,8 +143,15 @@ function AuthPage() {
   const { requestOtp, verifyOtp, session, loading } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"form" | "otp">("form");
+  const [method, setMethod] = useState<SignInMethod>("email");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState(emptyOtp);
+  const [phone, setPhone] = useState("");
+  const isPhone = method === "phone";
+  // Длина кода: письмо — 6 цифр, SMS — 4.
+  const codeLength = isPhone ? PHONE_CODE_LENGTH : OTP_LENGTH;
+  // Куда ушёл код: почта или номер (с пометкой способа — пауза у каждого своя).
+  const target = isPhone ? `phone:${phone.trim()}` : `email:${email.trim()}`;
+  const [otp, setOtp] = useState(() => emptyOtp());
   const [busy, setBusy] = useState(false);
   const [otpFocused, setOtpFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,8 +209,8 @@ function AuthPage() {
     e.preventDefault();
     setError(null);
     setNotMember(false);
-    if (!email.trim()) {
-      setError(t("Укажите email"));
+    if (isPhone ? !isValidPhone(phone) : !email.trim()) {
+      setError(isPhone ? t("Укажите номер телефона полностью") : t("Укажите email"));
       return;
     }
     if (PRIVACY_POLICY_INFO && !consent) {
@@ -158,7 +218,7 @@ function AuthPage() {
       setError(t("Чтобы продолжить, примите политику конфиденциальности"));
       return;
     }
-    if (cooldown > 0 && sentTo === email.trim()) {
+    if (cooldown > 0 && sentTo === target) {
       // Код на этот адрес уже отправлен и пауза не истекла — возвращаем к
       // вводу кода вместо повторной отправки.
       setStep("otp");
@@ -166,15 +226,25 @@ function AuthPage() {
       return;
     }
     setBusy(true);
-    const { error: sendError } = await requestOtp(email.trim());
-    setBusy(false);
-    if (sendError) {
-      setError(humanizeAuthError(sendError, t));
-      setNotMember(isNotAMemberError(sendError));
-      return;
+    if (isPhone) {
+      const { error: phoneError } = await requestPhoneCode(phone);
+      setBusy(false);
+      if (phoneError) {
+        setError(phoneErrorText(phoneError, t));
+        setNotMember(phoneError === "not_a_club_member" || phoneError === "ambiguous_phone");
+        return;
+      }
+    } else {
+      const { error: sendError } = await requestOtp(email.trim());
+      setBusy(false);
+      if (sendError) {
+        setError(humanizeAuthError(sendError, t));
+        setNotMember(isNotAMemberError(sendError));
+        return;
+      }
     }
-    setSentTo(email.trim());
-    setOtp(emptyOtp());
+    setSentTo(target);
+    setOtp(emptyOtp(codeLength));
     setStep("otp");
     setCooldown(RESEND_COOLDOWN_SEC);
     setTimeout(() => otpRefs.current[0]?.focus(), 50);
@@ -184,20 +254,29 @@ function AuthPage() {
     if (busy || cooldown > 0) return;
     setError(null);
     setBusy(true);
-    const { error: sendError } = await requestOtp(email.trim());
-    setBusy(false);
-    if (sendError) {
-      setError(humanizeAuthError(sendError, t));
-      return;
+    if (isPhone) {
+      const { error: phoneError } = await requestPhoneCode(phone);
+      setBusy(false);
+      if (phoneError) {
+        setError(phoneErrorText(phoneError, t));
+        return;
+      }
+    } else {
+      const { error: sendError } = await requestOtp(email.trim());
+      setBusy(false);
+      if (sendError) {
+        setError(humanizeAuthError(sendError, t));
+        return;
+      }
     }
-    setOtp(emptyOtp());
+    setOtp(emptyOtp(codeLength));
     setCooldown(RESEND_COOLDOWN_SEC);
     otpRefs.current[0]?.focus();
   };
 
   const submitOtp = async () => {
     if (otp.some((d) => d === "")) {
-      setError(t("Введите {n}-значный код", { n: OTP_LENGTH }));
+      setError(t("Введите {n}-значный код", { n: codeLength }));
       return;
     }
     setError(null);
@@ -205,10 +284,16 @@ function AuthPage() {
     // Успешная проверка создаёт сессию — редирект сработает через useEffect выше.
     // Салют на главной ставим заранее: сессия появляется ещё до ответа verifyOtp.
     queueHomeConfetti();
-    const { error: verifyError } = await verifyOtp(email.trim(), otp.join(""));
+    const verifyError = isPhone
+      ? await verifyPhoneCode(phone, otp.join("")).then((r) =>
+          r.error ? phoneErrorText(r.error, t) : null,
+        )
+      : await verifyOtp(email.trim(), otp.join("")).then((r) =>
+          r.error ? humanizeAuthError(r.error, t) : null,
+        );
     if (verifyError) {
       cancelHomeConfetti();
-      setError(humanizeAuthError(verifyError, t));
+      setError(verifyError);
     } else if (PRIVACY_POLICY_INFO && consent) {
       recordPrivacyConsent();
     }
@@ -229,18 +314,18 @@ function AuthPage() {
       next[i] = d;
       return next;
     });
-    if (d && i < OTP_LENGTH - 1) otpRefs.current[i + 1]?.focus();
+    if (d && i < codeLength - 1) otpRefs.current[i + 1]?.focus();
   };
 
   const fillOtpFrom = (start: number, digits: string) => {
     setOtp((prev) => {
       const next = [...prev];
-      for (let k = 0; k < digits.length && start + k < OTP_LENGTH; k++) {
+      for (let k = 0; k < digits.length && start + k < codeLength; k++) {
         next[start + k] = digits[k];
       }
       return next;
     });
-    const last = Math.min(start + digits.length, OTP_LENGTH) - 1;
+    const last = Math.min(start + digits.length, codeLength) - 1;
     otpRefs.current[last]?.focus();
   };
 
@@ -248,11 +333,11 @@ function AuthPage() {
   // вместе с текстом («Ваш код: 123 456») — берём только цифры. maxLength у
   // поля обрезал бы такую вставку до onChange, поэтому разбор — здесь.
   const pasteOtp = (start: number, text: string) => {
-    const digits = text.replace(/\D/g, "").slice(0, OTP_LENGTH);
+    const digits = text.replace(/\D/g, "").slice(0, codeLength);
     if (!digits) return false;
-    if (digits.length === OTP_LENGTH) {
+    if (digits.length === codeLength) {
       setOtp(digits.split(""));
-      otpRefs.current[IS_PACKAGES ? 0 : OTP_LENGTH - 1]?.focus();
+      otpRefs.current[IS_PACKAGES ? 0 : codeLength - 1]?.focus();
     } else {
       fillOtpFrom(IS_PACKAGES ? otp.join("").length : start, digits);
     }
@@ -270,7 +355,11 @@ function AuthPage() {
     try {
       const text = await navigator.clipboard.readText();
       if (!pasteOtp(0, text)) {
-        setError(t("В буфере обмена нет кода. Скопируйте код из письма."));
+        setError(
+          isPhone
+            ? t("В буфере обмена нет кода. Скопируйте код из SMS.")
+            : t("В буфере обмена нет кода. Скопируйте код из письма."),
+        );
       } else {
         setError(null);
       }
@@ -282,10 +371,46 @@ function AuthPage() {
   const subtitle = signInClosed
     ? null
     : step === "otp"
-      ? t("Введите код, отправленный на {email}", { email })
-      : IS_PACKAGES
-        ? t("Войдите по почте, которую вы указали в студии")
-        : t("Войдите по почте, которую вы указали в клубе");
+      ? isPhone
+        ? t("Введите код из SMS, отправленного на {phone}", { phone })
+        : t("Введите код, отправленный на {email}", { email })
+      : isPhone
+        ? IS_PACKAGES
+          ? t("Войдите по номеру телефона, который вы указали в студии")
+          : t("Войдите по номеру телефона, который вы указали в клубе")
+        : IS_PACKAGES
+          ? t("Войдите по почте, которую вы указали в студии")
+          : t("Войдите по почте, которую вы указали в клубе");
+
+  // Почта / Телефон — над полем (решение владельца 2026-11-07: по умолчанию
+  // почта). Смена способа стирает ошибку; введённое в каждом поле остаётся.
+  const methodSwitch = (
+    <div role="tablist" aria-label={t("Способ входа")} className="flex rounded-full bg-field p-1">
+      {(["email", "phone"] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          role="tab"
+          aria-selected={method === m}
+          onClick={() => {
+            setMethod(m);
+            setError(null);
+            setNotMember(false);
+          }}
+          className={cn(
+            "h-10 flex-1 rounded-full text-sm font-medium transition-colors",
+            method === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+        >
+          {m === "email" ? t("Почта") : t("Телефон")}
+        </button>
+      ))}
+    </div>
+  );
+
+  const phoneField = (
+    <PhoneInput value={phone} onChange={setPhone} id="phone" aria-label={t("Номер телефона")} />
+  );
 
   const emailInput = (
     <FloatingLabelInput
@@ -316,8 +441,8 @@ function AuthPage() {
         }}
         value={otpValue}
         onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH);
-          setOtp(Array.from({ length: OTP_LENGTH }, (_, i) => digits[i] ?? ""));
+          const digits = e.target.value.replace(/\D/g, "").slice(0, codeLength);
+          setOtp(Array.from({ length: codeLength }, (_, i) => digits[i] ?? ""));
         }}
         onPaste={(e) => {
           if (pasteOtp(0, e.clipboardData.getData("text"))) e.preventDefault();
@@ -327,7 +452,7 @@ function AuthPage() {
         name="one-time-code"
         inputMode="numeric"
         autoComplete="one-time-code"
-        aria-label={t("Код из письма")}
+        aria-label={isPhone ? t("Код из SMS") : t("Код из письма")}
         // Поле невидимо, но НЕ opacity-0: iOS Safari не показывает у
         // полностью прозрачного поля ни меню «Вставить», ни подсказку кода
         // над клавиатурой («Из Почты»). Прозрачны только текст, фон и курсор
@@ -338,7 +463,7 @@ function AuthPage() {
       {otp.map((d, i) => {
         const current =
           otpFocused &&
-          (i === otpValue.length || (otpValue.length === OTP_LENGTH && i === OTP_LENGTH - 1));
+          (i === otpValue.length || (otpValue.length === codeLength && i === codeLength - 1));
         return (
           <div
             key={i}
@@ -368,7 +493,7 @@ function AuthPage() {
           // Первая ячейка принимает автоподстановку кода целиком
           // (one-time-code): maxLength=1 обрезал бы её до одной цифры
           // ещё до onChange. Разбор по ячейкам делает setOtpDigit.
-          maxLength={i === 0 ? OTP_LENGTH : 1}
+          maxLength={i === 0 ? codeLength : 1}
           value={d}
           onChange={(e) => setOtpDigit(i, e.target.value)}
           onPaste={(e) => {
@@ -418,7 +543,7 @@ function AuthPage() {
         }}
         className="w-full text-center text-sm text-muted-foreground"
       >
-        {t("Изменить почту")}
+        {isPhone ? t("Изменить номер") : t("Изменить почту")}
       </button>
     </>
   );
@@ -472,22 +597,27 @@ function AuthPage() {
           <form id="auth-email-form" onSubmit={requestCode} className="space-y-3 px-4 pt-6 pb-2">
             {/* name/id и autocomplete=email — телефон предлагает свою почту;
                 без автозаглавной и автозамены — iOS иначе портит адрес. */}
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t("Введите ваш email")}
-              aria-label={t("Email")}
-              autoComplete="email"
-              inputMode="email"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="go"
-              required
-            />
+            {methodSwitch}
+            {isPhone ? (
+              phoneField
+            ) : (
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("Введите ваш email")}
+                aria-label={t("Email")}
+                autoComplete="email"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="go"
+                required
+              />
+            )}
             <PrivacyConsent
               checked={consent}
               onCheckedChange={(v) => {
@@ -500,7 +630,7 @@ function AuthPage() {
               invalid={consentMissing}
             />
             {errorText}
-            {/* Почта не найдена — сразу способы связаться со студией. */}
+            {/* Почта или номер не найдены — сразу способы связаться со студией. */}
             {error && notMember && <StudioContactButtons />}
           </form>
         ) : (
@@ -548,7 +678,8 @@ function AuthPage() {
           </p>
         ) : step === "form" ? (
           <form onSubmit={requestCode} className="space-y-3 max-w-sm w-full mx-auto">
-            {emailInput}
+            {methodSwitch}
+            {isPhone ? phoneField : emailInput}
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 

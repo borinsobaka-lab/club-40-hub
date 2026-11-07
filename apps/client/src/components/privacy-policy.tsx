@@ -148,8 +148,8 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
         <p>4.1. Identification and contact data:</p>
         <ul>
           <li>first and last name;</li>
-          <li>e-mail address (it is also your sign-in login);</li>
-          <li>phone number(s);</li>
+          <li>e-mail address (one of the ways to sign in);</li>
+          <li>phone number(s) (the other way to sign in — with a code sent by SMS);</li>
           <li>date of birth and gender;</li>
           <li>profile photo, if you upload one.</li>
         </ul>
@@ -345,6 +345,13 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
             receives only your e-mail address and the content of the e-mail;
           </li>
           <li>
+            Prelude (prelude.so) — sending and checking one-time sign-in codes by SMS, if you sign
+            in with your phone number; it receives your phone number and technical data of the
+            sign-in request (IP address, browser, App version and a random device identifier) to
+            deliver the code and protect against fraud, and passes the message to mobile operators
+            for delivery;
+          </li>
+          <li>
             Apple Inc. (USA) and Google LLC (USA) — delivery of push notifications to your device
             through their notification services, if you have turned notifications on; the content of
             a notification is encrypted for your device, and they receive only its technical
@@ -370,8 +377,10 @@ export function PrivacyPolicy({ info }: { info: PrivacyPolicyInfo }) {
         <p>
           8.1. The App’s servers are located in the European Union, which provides an adequate level
           of personal data protection. E-mail delivery involves a transfer of your e-mail address to
-          the United States (Resend, Inc.). If you turn on notifications, they are delivered through
-          the notification services of Apple Inc. or Google LLC (USA).
+          the United States (Resend, Inc.). If you sign in with your phone number, it is transferred
+          to Prelude and to the mobile operators delivering the SMS, who may be located outside
+          Georgia. If you turn on notifications, they are delivered through the notification
+          services of Apple Inc. or Google LLC (USA).
         </p>
         <p>
           8.2. We carry out cross-border transfers only on the grounds provided by the Law —
