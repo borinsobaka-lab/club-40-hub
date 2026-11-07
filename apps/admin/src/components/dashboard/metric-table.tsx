@@ -132,9 +132,9 @@ const STICKY_CELL =
  */
 export function ShareCell({ value, text, color }: { value: number; text: string; color: string }) {
   return (
-    <span className="inline-flex min-w-16 flex-col items-end gap-1 max-md:items-start">
+    <span className="inline-flex min-w-16 flex-col items-end gap-1.5 max-md:items-start">
       {text}
-      <span className="h-1 w-full rounded-full bg-muted">
+      <span className="h-2.5 w-full rounded-full bg-muted">
         <span
           className="block h-full rounded-full"
           style={{ width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: color }}

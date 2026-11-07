@@ -306,7 +306,7 @@ export function DashboardRankSkeleton({ rows = 10 }: { rows?: number }) {
           <Skeleton className="h-3 w-3" />
           <div>
             <Skeleton className="h-4 w-40 max-w-full" />
-            <Skeleton className="mt-1 h-1.5 w-full" />
+            <Skeleton className="mt-1.5 h-2.5 w-full" />
           </div>
           <Skeleton className="h-4 w-16" />
         </div>

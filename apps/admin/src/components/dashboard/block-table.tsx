@@ -243,9 +243,9 @@ export function ShareMarkCell({
 }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
   return (
-    <span className="inline-flex min-w-20 flex-col items-end gap-1 font-medium">
+    <span className="inline-flex min-w-20 flex-col items-end gap-1.5 font-medium">
       {text}
-      <span className="relative h-1.5 w-full rounded-full bg-muted">
+      <span className="relative h-2.5 w-full rounded-full bg-muted">
         <span
           className="block h-full rounded-full"
           style={{ width: `${clamp(value)}%`, backgroundColor: color }}
@@ -254,7 +254,7 @@ export function ShareMarkCell({
           <span
             aria-hidden
             title="Весь клуб"
-            className="absolute -top-0.5 h-2.5 w-0.5 -translate-x-1/2 rounded-full bg-foreground/60"
+            className="absolute -top-1 h-4.5 w-0.5 -translate-x-1/2 rounded-full bg-foreground/60"
             style={{ left: `${clamp(mark)}%` }}
           />
         )}
