@@ -645,6 +645,8 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                 freeze_days_used: active.freeze_days_used,
                 frozen_until: active.frozen_until,
                 freeze_days_allowed: membershipFreezeAllowed(active.memberships),
+                starts_on_first_visit: active.starts_on_first_visit,
+                started_at: active.started_at,
               }
             : null
         }

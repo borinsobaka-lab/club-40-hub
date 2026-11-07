@@ -202,6 +202,31 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
     });
   });
 
+  test("у абонемента, ждущего посещения, нет конца срока — «Посетил» не блокируется", async () => {
+    await scenario(async (tx) => {
+      const s = await seed(tx);
+      const sale = await sell(tx, s);
+      // Правка остатка в карточке с датой «сегодня» (iPhone заполнял пустое поле).
+      await tx`update client_memberships set visits_left = 1, ends_at = current_date - 1
+                 where sale_id = ${sale}`;
+      let m = await membershipOf(tx, sale);
+      expect(m.visits_left).toBe(1);
+      expect(m.ends_at).toBeNull();
+
+      const e = await entry(tx, s, 1);
+      const b = await book(tx, s, e);
+      await tx`update schedule_bookings set status = 'attended' where id = ${b}`;
+      m = await membershipOf(tx, sale);
+      expect(iso(m.started_at)).toBe(await tbilisiDate(tx, e));
+      expect(m.ends_at).not.toBeNull();
+      expect(m.visits_left).toBe(0);
+
+      // Начатому сроку конец по-прежнему правится.
+      await tx`update client_memberships set ends_at = '2030-01-01' where sale_id = ${sale}`;
+      expect(iso((await membershipOf(tx, sale)).ends_at)).toBe("2030-01-01");
+    });
+  });
+
   test("первое посещение начинает срок, снятая отметка возвращает «ожидает посещения»", async () => {
     await scenario(async (tx) => {
       const s = await seed(tx);

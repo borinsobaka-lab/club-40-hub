@@ -29,6 +29,12 @@ export type ActiveMembership = {
   freeze_days_used?: number | null;
   frozen_until?: string | null;
   freeze_days_allowed?: number;
+  /**
+   * Пакетный клуб: срок с первого посещения и его начало. Пока посещений не
+   * было (started_at null), конца срока нет — поле «Действует до» скрыто.
+   */
+  starts_on_first_visit?: boolean | null;
+  started_at?: string | null;
 };
 
 type FormProps = {
@@ -100,6 +106,9 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
   const used = membership.freeze_days_used ?? 0;
   const remaining = Math.max(0, allowed - used);
   const status = membership.status;
+  // Срок ещё не начат: конец посчитает первое посещение, база держит ends_at
+  // пустым (2026-11-07_packages_awaiting_no_end_date.sql).
+  const awaiting = !!membership.starts_on_first_visit && !membership.started_at;
 
   const done = (message: string) => {
     toast.success(message);
@@ -185,7 +194,11 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
       const { data, error } = await supabase
         .from("client_memberships")
         .update({
-          ends_at: endsAt || null,
+          // Дату — только если она изменилась: правка одного остатка не
+          // переписывает срок. У ждущего первого посещения поля нет вовсе.
+          ...(!awaiting && (endsAt || null) !== membership.ends_at
+            ? { ends_at: endsAt || null }
+            : {}),
           visits_left: visits,
           ...(personal !== undefined ? { personal_left: personal } : {}),
           ...(diagnostics !== undefined ? { diagnostics_left: diagnostics } : {}),
@@ -212,12 +225,18 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
     <DialogForm onSubmit={handleSave}>
       <DialogBody>
         <div className="space-y-4">
-          <FormField
-            label="Действует до"
-            tip="Последний день абонемента. На следующий день он станет истёкшим."
-          >
-            <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
-          </FormField>
+          {awaiting ? (
+            <FormField label="Действует до">
+              <p className="text-sm text-muted-foreground">Срок пойдёт с первого посещения.</p>
+            </FormField>
+          ) : (
+            <FormField
+              label="Действует до"
+              tip="Последний день абонемента. На следующий день он станет истёкшим."
+            >
+              <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            </FormField>
+          )}
           <FormField
             label={isPackages ? "Групповые тренировки" : "Осталось посещений"}
             required={!unlimitedVisits}
