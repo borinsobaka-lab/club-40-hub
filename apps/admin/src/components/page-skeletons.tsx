@@ -49,7 +49,7 @@ import {
   SALES_GRID,
   SALES_STATS,
   SOURCE_COLUMNS,
-  TRAINER_COLUMNS,
+  TRAINER_BLOCKS,
   WORKOUT_COLUMNS,
 } from "@/lib/dashboard-stats";
 import {
@@ -530,10 +530,7 @@ export function DashboardClassesSkeleton() {
         height={DASHBOARD_HEATMAP_HEIGHT}
       />
       <DashboardChartSkeleton title={CLASSES_CHARTS.trainers.title}>
-        <DashboardTableSkeleton
-          name="Тренер"
-          columns={TRAINER_COLUMNS.map((k) => CLASSES_COLUMNS[k].label)}
-        />
+        <DashboardTableSkeleton name="Тренер" columns={TRAINER_BLOCKS.map((b) => b.label)} />
       </DashboardChartSkeleton>
       <DashboardChartSkeleton title={CLASSES_CHARTS.workouts.title}>
         <DashboardTableSkeleton

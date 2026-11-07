@@ -7,6 +7,7 @@ import { OTHER_COLOR } from "@/components/dashboard/colors";
 import { DashboardShell, type DashboardView } from "@/components/dashboard/dashboard-shell";
 import { EmployeePhoto } from "@/components/employee-photo";
 import { ScheduleHeatmap } from "@/components/dashboard/heatmap";
+import { BlockTable, ShareMarkCell } from "@/components/dashboard/block-table";
 import { MetricTable, ShareCell, type MetricRow } from "@/components/dashboard/metric-table";
 import { StatGrid, type StatDef } from "@/components/dashboard/stat-cards";
 import {
@@ -39,6 +40,7 @@ import {
   classesSeries,
   fillRate,
   heatmap,
+  repeatClients,
   repeatRate,
   tallyBy,
   trialConversion,
@@ -57,7 +59,7 @@ import {
   CLASSES_STATS,
   DASHBOARD_HEATMAP_HEIGHT,
   DASHBOARD_TITLES,
-  TRAINER_COLUMNS,
+  TRAINER_BLOCKS,
   WORKOUT_COLUMNS,
   formatStat,
 } from "@/lib/dashboard-stats";
@@ -197,7 +199,7 @@ const STATS: StatDef<ClassesKey>[] = CLASSES_STATS.map((s) => ({
   series: CLASSES_SERIES[s.key],
 }));
 
-/** Сортировка таблиц «Тренеры» и «Тренировки». */
+/** Сортировка таблицы «Тренировки». */
 const SORTS = {
   visits: { label: "По посещениям", value: (t: ClassTally) => t.visits },
   avg: { label: "По среднему на занятии", value: avgPerClass },
@@ -206,7 +208,18 @@ const SORTS = {
 } as const;
 type SortKey = keyof typeof SORTS;
 
-const TRIAL_COLUMNS = new Set<string>(["trials", "trialBought", "trialConversion"]);
+/**
+ * Сортировка «Тренеров» — в порядке блоков таблицы; значение — ключ
+ * `values` строки. Конверсия — только при пакетном клубе в выборе.
+ */
+const TRAINER_SORTS = {
+  conversion: { label: "По конверсии", value: "trialConversion" },
+  fill: { label: "По заполняемости", value: "fill" },
+  visits: { label: "По посещениям", value: "visits" },
+  repeat: { label: "По повторным клиентам", value: "repeat" },
+  rating: { label: "По рейтингу", value: "rating" },
+} as const;
+type TrainerSortKey = keyof typeof TRAINER_SORTS;
 
 const percent = (n: number) => formatStat("percent", n);
 const decimal = (n: number) => formatStat("decimal", n);
@@ -218,7 +231,18 @@ const ratingFormat = new Intl.NumberFormat("ru-RU", {
 function ClassesBody(view: DashboardView) {
   const { period, prev, periodEnd } = view;
   const color = view.color;
-  const [trainerSort, setTrainerSort] = useState<SortKey>("visits");
+  const hasTrials = view.clubs.some((c) => c.format === "packages");
+  const [trainerSortPick, setTrainerSort] = useState<TrainerSortKey>("fill");
+  const trainerSort = !hasTrials && trainerSortPick === "conversion" ? "fill" : trainerSortPick;
+  /** Раскрытые блоки «Тренеров» — на созвоне раскрывают нужный. */
+  const [openBlocks, setOpenBlocks] = useState<ReadonlySet<string>>(new Set());
+  const toggleBlock = (key: string) =>
+    setOpenBlocks((cur) => {
+      const next = new Set(cur);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const [workoutSort, setWorkoutSort] = useState<SortKey>("visits");
   /** Тренер, чьих пришедших на пробное показываем списком. */
   const [trialsOf, setTrialsOf] = useState<string | null>(null);
@@ -267,6 +291,9 @@ function ClassesBody(view: DashboardView) {
       e.trainers.length ? e.trainers.map((t) => t.id) : ["__none"];
     const byTrainer = tallyBy(entries, now, trainerKeys);
     const trialsByTrainer = trialVisitsBy(entries, now, trainerKeys);
+    // «Весь клуб» — каждое занятие один раз (у двух тренеров оно в обеих строках).
+    const club = tallyBy(entries, now, () => ["all"]).get("all");
+    const clubTrials = trialVisitsBy(entries, now, () => ["all"]).get("all");
 
     const workoutInfo = new Map<string, { name: string; color: string | null }>();
     for (const e of entries)
@@ -298,7 +325,18 @@ function ClassesBody(view: DashboardView) {
       .sort((a, b) => a.value - b.value || b.classes - a.classes)
       .slice(0, 10);
 
-    return { heat, trainerInfo, byTrainer, trialsByTrainer, workoutInfo, byWorkout, top, weak };
+    return {
+      heat,
+      trainerInfo,
+      byTrainer,
+      trialsByTrainer,
+      club,
+      clubTrials,
+      workoutInfo,
+      byWorkout,
+      top,
+      weak,
+    };
   }, [entries, now]);
   const purchases = query.data?.purchases;
 
@@ -309,19 +347,28 @@ function ClassesBody(view: DashboardView) {
       ? items?.map((s) => ({ ...s, label: `${s.label} · ${clubName.get(s.studioId) ?? ""}` }))
       : items;
 
-  const trainerRows = useMemo<MetricRow[]>(() => {
-    if (!data) return [];
-    return sortRows([...data.byTrainer.entries()], trainerSort).map(([id, t]) => {
+  const trainerTable = useMemo(() => {
+    if (!data) return { rows: [] as MetricRow[], summary: undefined };
+    const bought = purchases ?? new Map<string, string[]>();
+    const clubTrials = trialConversion(data.clubTrials, bought);
+    const club = data.club;
+    const marks = {
+      fill: club ? fillRate(club) : null,
+      repeat: club ? repeatRate(club) : null,
+      trialConversion: clubTrials.rate,
+    };
+    const rows = [...data.byTrainer.entries()].map(([id, t]): MetricRow => {
       const info = data.trainerInfo.get(id);
-      const trials = trialConversion(data.trialsByTrainer.get(id), purchases ?? new Map());
+      const trials = trialConversion(data.trialsByTrainer.get(id), bought);
+      const cells = trainerCells(t, trials, color, marks);
       return {
         key: id,
         name: info ? (
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-2.5">
             <EmployeePhoto
               value={info.photo ?? null}
               name={info.name}
-              className="size-7 shrink-0 text-xs"
+              className="size-8 shrink-0 text-xs"
             />
             {info.name}
           </span>
@@ -332,13 +379,14 @@ function ClassesBody(view: DashboardView) {
         values: {
           name: info?.name,
           ...tallyValues(t),
+          repeatClients: repeatClients(t),
           trials: trials.came,
           trialBought: trials.bought,
           trialConversion: trials.rate,
           rating: info?.rating ?? null,
         },
         cells: {
-          ...tallyCells(t, color),
+          ...cells,
           trials:
             trials.came > 0 ? (
               <Button
@@ -353,16 +401,11 @@ function ClassesBody(view: DashboardView) {
             ) : (
               formatNumber(0)
             ),
-          trialBought: formatNumber(trials.bought),
-          trialConversion:
-            trials.rate === null ? undefined : (
-              <ShareCell value={trials.rate} text={percent(trials.rate)} color={color} />
-            ),
           rating:
             info?.rating != null ? (
-              <span>
-                {ratingFormat.format(info.rating)}
-                <span className="text-muted-foreground">
+              <span className="font-medium">
+                ★ {ratingFormat.format(info.rating)}
+                <span className="font-normal text-muted-foreground">
                   {" "}
                   · {formatNumber(info.ratingCount ?? 0)}
                 </span>
@@ -371,11 +414,36 @@ function ClassesBody(view: DashboardView) {
         },
       };
     });
+    const sortBy = TRAINER_SORTS[trainerSort].value;
+    const num = (r: MetricRow) => {
+      const v = r.values?.[sortBy];
+      return typeof v === "number" ? v : -1;
+    };
+    rows.sort(
+      (a, b) => num(b) - num(a) || Number(b.values?.visits ?? 0) - Number(a.values?.visits ?? 0),
+    );
+    const summary: MetricRow | undefined = club && {
+      key: "__club",
+      name: (
+        <span className="inline-flex flex-col">
+          Весь клуб
+          <span className="text-xs font-normal text-muted-foreground">
+            риска на шкалах — это значение
+          </span>
+        </span>
+      ),
+      cells: {
+        ...trainerCells(club, clubTrials, color, {}),
+        trials: formatNumber(clubTrials.came),
+      },
+    };
+    return { rows, summary };
   }, [data, purchases, trainerSort, color]);
-  // Пробных абонементов у подписочных клубов нет — колонки пробных только у пакетных.
-  const trainerColumns = TRAINER_COLUMNS.filter(
-    (k) => !TRIAL_COLUMNS.has(k) || view.clubs.some((c) => c.format === "packages"),
-  );
+  // Пробных абонементов у подписочных клубов нет — блок конверсии только у пакетных.
+  const trainerBlocks = TRAINER_BLOCKS.filter((b) => !b.trial || hasTrials);
+  const trainerSortOptions = (Object.keys(TRAINER_SORTS) as TrainerSortKey[])
+    .filter((k) => k !== "conversion" || hasTrials)
+    .map((k) => ({ key: k, label: TRAINER_SORTS[k].label }));
 
   const workoutRows = useMemo<MetricRow[]>(() => {
     if (!data) return [];
@@ -455,13 +523,37 @@ function ClassesBody(view: DashboardView) {
       <ChartPanel
         title={CLASSES_CHARTS.trainers.title}
         tip={CLASSES_CHARTS.trainers.tip}
-        summary={<SortSelect value={trainerSort} onChange={setTrainerSort} label="тренеров" />}
+        summary={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setOpenBlocks(
+                  openBlocks.size > 0
+                    ? new Set()
+                    : new Set(trainerBlocks.filter((b) => b.details.length).map((b) => b.key)),
+                )
+              }
+            >
+              {openBlocks.size > 0 ? "Свернуть всё" : "Раскрыть всё"}
+            </Button>
+            <SortSelect
+              value={trainerSort}
+              onChange={setTrainerSort}
+              options={trainerSortOptions}
+              label="тренеров"
+            />
+          </div>
+        }
       >
-        <MetricTable
+        <BlockTable
           nameLabel="Тренер"
-          stickyName
-          columns={trainerColumns.map((k) => ({ key: k, ...CLASSES_COLUMNS[k] }))}
-          rows={trainerRows}
+          blocks={trainerBlocks}
+          open={openBlocks}
+          onToggle={toggleBlock}
+          rows={trainerTable.rows}
+          summary={trainerTable.summary}
           loading={loading}
           error={error}
           emptyText="Нет проведённых занятий за период"
@@ -495,7 +587,17 @@ function ClassesBody(view: DashboardView) {
       <ChartPanel
         title={CLASSES_CHARTS.workouts.title}
         tip={CLASSES_CHARTS.workouts.tip}
-        summary={<SortSelect value={workoutSort} onChange={setWorkoutSort} label="тренировок" />}
+        summary={
+          <SortSelect
+            value={workoutSort}
+            onChange={setWorkoutSort}
+            options={(Object.keys(SORTS) as SortKey[]).map((k) => ({
+              key: k,
+              label: SORTS[k].label,
+            }))}
+            label="тренировок"
+          />
+        }
       >
         <MetricTable
           nameLabel="Тренировка"
@@ -565,6 +667,37 @@ function tallyCells(t: ClassTally, color: string): MetricRow["cells"] {
   };
 }
 
+/**
+ * Ячейки строки «Тренеров» (и «Весь клуб»): итоги блоков — доля со шкалой и
+ * риской клуба (`marks`), раскрываемые числа — как есть.
+ */
+function trainerCells(
+  t: ClassTally,
+  trials: { came: number; bought: number; rate: number | null },
+  color: string,
+  marks: { fill?: number | null; repeat?: number | null; trialConversion?: number | null },
+): MetricRow["cells"] {
+  const fill = fillRate(t);
+  const repeat = repeatRate(t);
+  const avg = avgPerClass(t);
+  const share = (v: number | null, mark: number | null | undefined) =>
+    v === null ? undefined : (
+      <ShareMarkCell value={v} text={percent(v)} color={color} mark={mark} />
+    );
+  return {
+    trials: formatNumber(trials.came),
+    trialBought: formatNumber(trials.bought),
+    trialConversion: share(trials.rate, marks.trialConversion),
+    classes: formatNumber(t.classes),
+    visits: formatNumber(t.visits),
+    avg: avg === null ? undefined : decimal(avg),
+    fill: share(fill, marks.fill),
+    clients: formatNumber(t.clients.size),
+    repeatClients: formatNumber(repeatClients(t)),
+    repeat: share(repeat, marks.repeat),
+  };
+}
+
 function slotNote(t: ClassTally) {
   const fill = fillRate(t);
   return fill === null ? classesText(t.classes) : `${classesText(t.classes)} · ${percent(fill)}`;
@@ -578,24 +711,26 @@ function recordsWord(n: number) {
   return "записей";
 }
 
-function SortSelect({
+function SortSelect<K extends string>({
   value,
   onChange,
+  options,
   label,
 }: {
-  value: SortKey;
-  onChange: (v: SortKey) => void;
+  value: K;
+  onChange: (v: K) => void;
+  options: { key: K; label: string }[];
   label: string;
 }) {
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as SortKey)}>
-      <SelectTrigger className="w-48 text-foreground" aria-label={`Сортировка ${label}`}>
+    <Select value={value} onValueChange={(v) => onChange(v as K)}>
+      <SelectTrigger className="w-52 text-foreground" aria-label={`Сортировка ${label}`}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {(Object.keys(SORTS) as SortKey[]).map((k) => (
-          <SelectItem key={k} value={k}>
-            {SORTS[k].label}
+        {options.map((o) => (
+          <SelectItem key={o.key} value={o.key}>
+            {o.label}
           </SelectItem>
         ))}
       </SelectContent>
