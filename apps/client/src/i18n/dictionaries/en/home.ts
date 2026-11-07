@@ -43,6 +43,10 @@ const dict: Dictionary = {
   "Не удалось загрузить историю посещений. Попробуйте ещё раз.":
     "Couldn't load your visit history. Please try again.",
   "Здесь появятся тренировки, на которых вы были": "Workouts you've attended will appear here",
+  "Платёж по абонементу просрочен": "Membership payment overdue",
+  "{amount} ₾ нужно было внести {date}.": "{amount} ₾ was due on {date}.",
+  "Не внесено платежей: {n}, всего {amount} ₾.": "Unpaid payments: {n}, {amount} ₾ in total.",
+  "Оплатить можно у администратора.": "You can pay at the front desk.",
 };
 
 export default dict;
