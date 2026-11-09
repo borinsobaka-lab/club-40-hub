@@ -86,6 +86,12 @@ export type RailSection = {
   icon: NavIcon;
   /** Страницы раздела, кроме самого url (у раздела со своим меню). */
   paths?: string[];
+  /**
+   * Скрыт из рейки (решение владельца 2026-11-09: «База знаний»,
+   * «Академия», «Аналитика»). Страницы раздела по прямой ссылке открываются
+   * по-прежнему, права не меняются.
+   */
+  hidden?: boolean;
 };
 
 export type NavItem = {
@@ -413,7 +419,7 @@ export const SECTIONS: RailSection[] = [
     icon: Notebook,
   },
   // Все базы знаний сотрудника — одним разделом; меню — дерево открытой базы.
-  { key: "kb", title: "База знаний", url: KB_URL, icon: Book },
+  { key: "kb", title: "База знаний", url: KB_URL, icon: Book, hidden: true },
   {
     key: "academy",
     title: "Акаде\u00ADмия",
@@ -421,6 +427,7 @@ export const SECTIONS: RailSection[] = [
     url: ACADEMY_URL,
     icon: SquareAcademicCap,
     paths: ACADEMY_ITEMS.slice(1).map((i) => i.url),
+    hidden: true,
   },
   // Аналитика клубов сети на своих учётных системах (бывший портал
   // аналитики Lady Stretch) — в конце рейки (решение владельца 2026-10-26).
@@ -431,6 +438,7 @@ export const SECTIONS: RailSection[] = [
     url: ANALYTICS_URL,
     icon: Chart2,
     paths: ANALYTICS_PATHS.slice(1),
+    hidden: true,
   },
 ];
 

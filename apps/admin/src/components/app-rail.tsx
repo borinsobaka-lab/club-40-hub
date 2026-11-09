@@ -115,11 +115,12 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   // в активной студии ему не открыт ни один пункт (студию можно сменить), —
   // или «Сотрудники»: они в меню клуба.
   const visible = (section: RailSection) =>
-    !section.url ||
-    (!!access &&
-      (section.key === "club"
-        ? canOpenPath(access, null, section.url) || canOpenRail(access, "staff")
-        : canOpenPath(access, studioId, section.url)));
+    !section.hidden &&
+    (!section.url ||
+      (!!access &&
+        (section.key === "club"
+          ? canOpenPath(access, null, section.url) || canOpenRail(access, "staff")
+          : canOpenPath(access, studioId, section.url))));
 
   // «Управление» ведёт на первую открытую страницу своего меню: не
   // владельцу «Знания» и «Доступы» закрыты, остаются «Клубы».
@@ -135,7 +136,7 @@ export function AppRail({ onNavigate }: { onNavigate?: () => void }) {
   // пустая, а потом разделы «выпрыгивают».
   const renderGroup = (sections: RailSection[]) =>
     !access ? (
-      <RailSkeleton items={sections.length} />
+      <RailSkeleton items={sections.filter((s) => !s.hidden).length} />
     ) : (
       sections
         .map(withUrl)
