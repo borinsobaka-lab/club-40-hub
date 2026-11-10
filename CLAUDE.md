@@ -51,7 +51,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   пользователей, ролей и доступов `db/access.test.ts`, «Рабочего дня»
   `db/workday.test.ts`, «Аналитики» `db/analytics.test.ts`, ленты
   комментариев клиента `db/client-comments.test.ts`, тренера в приложении
-  `db/trainer-app.test.ts` и абонемента переноса `db/carryover.test.ts`
+  `db/trainer-app.test.ts`, абонемента переноса `db/carryover.test.ts` и
+  оплаты групповых по числу людей `db/studio-pay.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -308,8 +309,23 @@ AUTH_SETUP.md.
   продление), разовые посещения бонуса не дают никому:
   `db/migrations/2026-11-01_zzz_payroll_personal_admin_single.sql`
   Пакет на 1 персональную администратору бонуса не даёт:
-  `db/migrations/2026-11-01_zzzz_payroll_personal_one_session.sql`
-  (актуальное определение `payroll_sale_payment_rows` — здесь).
+  `db/migrations/2026-11-01_zzzz_payroll_personal_one_session.sql`.
+  **Оплата групповых по числу людей и бонус тренеру пробного** (решение
+  владельца 2026-11-11, условия купленной студии; настройка по клубу —
+  «Сотрудники» → «Ставки»): `db/migrations/2026-11-11_studio_per_person_pay.sql`
+  — `studio_pay_settings` (строка на клуб: `per_person`, `trial_sale_bonus`
+  — ₾ тренеру первого пробного клиента за абонемент, купленный в день
+  пробного или позже, один раз; null — по-старому 5 %), схемы
+  `studio_pay_schemes` (до `min_up_to` человек — `min_amount`, больше —
+  `per_person` × люди, плюс `bonuses` [{from, amount}] — самый крупный
+  достигнутый порог; `is_default` — для тренировок без своей схемы) и
+  `studio_pay_scheme_workouts` (тренировка клуба → схема, у тренировки одна).
+  Люди — только «Посетил» из всех клубов сети; расчёт —
+  `pay_scheme_amount`. Доступ — сотрудник клуба с разделом «Сотрудники».
+  Актуальные определения `payroll_lines` (групповое клуба с `per_person` —
+  по схеме; строки `trial_bonus`) и `payroll_sale_payment_rows` (в клубе с
+  `trial_sale_bonus` тренеру при продаже 5 % не идёт) — здесь. Тесты —
+  `db/studio-pay.test.ts`.
   Удаление продажи абонемента (оба формата):
   `db/migrations/2026-10-11_zzzzzz_sale_membership_delete.sql` — продажа и
   выданный по ней `client_memberships` удаляются вместе (в обе стороны,

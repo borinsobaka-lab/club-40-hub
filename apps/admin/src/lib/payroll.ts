@@ -13,7 +13,11 @@
  * месяца — основная часть за 20–конец месяца.
  */
 
-export type PayrollLineKind = "shift" | "group" | "personal" | "other" | "sale";
+/**
+ * trial_bonus — тренеру пробного за абонемент, купленный после пробного
+ * (клуб с бонусом в «Ставках», 2026-11-11_studio_per_person_pay.sql).
+ */
+export type PayrollLineKind = "shift" | "group" | "personal" | "other" | "sale" | "trial_bonus";
 
 /** Строка RPC payroll_lines: сотрудник × день × студия × вид (× название). */
 export type PayrollLine = {
@@ -183,6 +187,10 @@ export type PayrollSummary = {
   others: number;
   sales: number;
   salesCount: number;
+  /** За абонементы после пробного (фикс за продажу). */
+  trialBonus: number;
+  trialSales: number;
+  /** Бонус: 5 % с продаж + за абонементы после пробного. */
   bonus: number;
   /** Корректировки со знаком. */
   adjustments: number;
@@ -197,6 +205,8 @@ export const EMPTY_SUMMARY: PayrollSummary = {
   others: 0,
   sales: 0,
   salesCount: 0,
+  trialBonus: 0,
+  trialSales: 0,
   bonus: 0,
   adjustments: 0,
   total: 0,
@@ -229,6 +239,10 @@ export function summarize(
         s.sales += amount;
         s.salesCount += l.units;
         continue;
+      case "trial_bonus":
+        s.trialBonus += amount;
+        s.trialSales += l.units;
+        continue;
       case "shift":
         s.shifts += l.units;
         break;
@@ -253,7 +267,8 @@ export function summarize(
   for (const s of out.values()) {
     s.base = round2(s.base);
     s.sales = round2(s.sales);
-    s.bonus = round2(s.sales * BONUS_RATE);
+    s.trialBonus = round2(s.trialBonus);
+    s.bonus = round2(s.sales * BONUS_RATE + s.trialBonus);
     s.adjustments = round2(s.adjustments);
     s.total = round2(s.base + s.bonus + s.adjustments);
   }

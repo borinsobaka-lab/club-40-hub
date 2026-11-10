@@ -99,6 +99,8 @@ describe("summarize", () => {
       others: 1,
       sales: 4718,
       salesCount: 2,
+      trialBonus: 0,
+      trialSales: 0,
       bonus: 235.9,
       adjustments: -110,
       total: 275.9,
@@ -109,6 +111,19 @@ describe("summarize", () => {
     const main = summarize(lines, adjustments, periodRange("2026-10", "main"));
     expect(main.get("t1")?.total).toBe(130);
     expect(main.has("t2")).toBe(false);
+  });
+
+  test("бонус за абонементы после пробного — в бонусе и итоге, не в окладе", () => {
+    const s = summarize(
+      [
+        line({ kind: "group", units: 1, amount: 33 }),
+        line({ kind: "trial_bonus", units: 2, amount: 20 }),
+        line({ kind: "sale", units: 1, amount: 100 }),
+      ],
+      [],
+      periodRange("2026-10", "advance"),
+    ).get("t1")!;
+    expect([s.base, s.trialBonus, s.trialSales, s.bonus, s.total]).toEqual([33, 20, 2, 25, 58]);
   });
 
   test("подпись оклада", () => {

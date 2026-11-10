@@ -1493,6 +1493,22 @@ export function PayRatesPageSkeleton() {
             "Персональная тренировка",
           ]}
         />
+        {/* «Групповые по числу людей» (components/studio-pay-schemes.tsx). */}
+        <div className="space-y-4 rounded-lg border bg-background p-4 sm:p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-56" />
+            <Skeleton className="h-4 w-full max-w-xl" />
+          </div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="space-y-2 rounded-lg border p-4">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </ShellSkeleton>
   );

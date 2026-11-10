@@ -29,6 +29,7 @@ import {
   type PayRates,
 } from "@/lib/staff-directory";
 import { PayRatesPageSkeleton } from "@/components/page-skeletons";
+import { StudioPaySchemes } from "@/components/studio-pay-schemes";
 
 export const Route = createFileRoute("/_authenticated/pay-rates")({
   head: () => ({ meta: [{ title: "Зарплатные ставки — Base40 Admin" }] }),
@@ -165,6 +166,7 @@ function PayRatesPage() {
           </Table>
           <DataPagination {...pg} loading={busy} />
         </div>
+        <StudioPaySchemes />
       </div>
     </AdminShell>
   );
