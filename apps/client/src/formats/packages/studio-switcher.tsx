@@ -16,9 +16,8 @@ import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/
  * абонементы (useViewedStudioId). В списке слева от названия — картинка
  * клуба из админки («Клубы», studios.photo_url; решение владельца 2026-10-14),
  * маленькая, чтобы строки не росли. Под студией (решение владельца
- * 2026-11-10) — «Выбрать» и под подписью «Показать на карте» кнопки «Google
- * Карты» / «Яндекс Карты» с их метками (одинаковый текст на двух кнопках в
- * ряд не влезал и путал) (studios.google_maps_url / yandex_maps_url из «Клубов»; нет ссылки —
+ * 2026-11-10) — «Выбрать» и под ней компактные кнопки «Google Карты» /
+ * «Яндекс Карты» с их метками (studios.google_maps_url / yandex_maps_url из «Клубов»; нет ссылки —
  * нет кнопки). Ссылка открывается в новой вкладке — на телефоне её
  * перехватывает приложение карт.
  */
@@ -146,29 +145,25 @@ export function StudioSwitcher() {
                           {active ? t("Выбрана") : t("Выбрать")}
                         </Button>
                         {maps.length > 0 && (
-                          <div>
-                            <div className="mb-1.5 text-xs text-muted-foreground">
-                              {t("Показать на карте")}
-                            </div>
-                            <div className={cn("grid gap-2", maps.length > 1 && "grid-cols-2")}>
-                              {maps.map(({ key, url, Icon, name, label }) => (
-                                <a
-                                  key={key}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  aria-label={label}
-                                  className={cn(
-                                    buttonVariants({ variant: "outline" }),
-                                    // Две кнопки в ряд — текст мельче, чтобы влез.
-                                    "w-full gap-1.5 px-3 text-sm [&_svg]:size-5",
-                                  )}
-                                >
-                                  <Icon />
-                                  {name}
-                                </a>
-                              ))}
-                            </div>
+                          // Компактные пилюли (решение владельца 2026-11-10: крупные
+                          // кнопки и подпись «Показать на карте» — лишнее).
+                          <div className="flex flex-wrap gap-2">
+                            {maps.map(({ key, url, Icon, name, label }) => (
+                              <a
+                                key={key}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={label}
+                                className={cn(
+                                  buttonVariants({ variant: "outline", size: "sm" }),
+                                  "h-9 gap-1.5 px-3 text-[13px] [&_svg]:size-4",
+                                )}
+                              >
+                                <Icon />
+                                {name}
+                              </a>
+                            ))}
                           </div>
                         )}
                       </div>

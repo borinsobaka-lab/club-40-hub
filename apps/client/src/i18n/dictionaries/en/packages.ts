@@ -47,7 +47,6 @@ const dict: Dictionary = {
   "Выберите студию": "Choose a studio",
   Выбрать: "Select",
   Выбрана: "Selected",
-  "Показать на карте": "Show on map",
   "Google Карты": "Google Maps",
   "Яндекс Карты": "Yandex Maps",
   "Показать в Google Картах": "Show in Google Maps",
