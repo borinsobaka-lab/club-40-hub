@@ -45,6 +45,13 @@ const dict: Dictionary = {
   "В ближайшие дни в расписании пусто.": "The schedule is empty for the coming days.",
   "Сменить студию": "Switch studio",
   "Выберите студию": "Choose a studio",
+  Выбрать: "Select",
+  Выбрана: "Selected",
+  "Показать на карте": "Show on map",
+  "Google Карты": "Google Maps",
+  "Яндекс Карты": "Yandex Maps",
+  "Показать в Google Картах": "Show in Google Maps",
+  "Показать в Яндекс Картах": "Show in Yandex Maps",
   "Новости, услуги, расписание и абонементы покажем для выбранной студии.":
     "News, services, the schedule and memberships will be shown for the selected studio.",
   "Ваша студия — здесь можно записываться": "Your studio — you can book here",

@@ -21,6 +21,13 @@ export type Studio = {
    * — только в useFormatStudios.
    */
   photo_url?: string | null;
+  /**
+   * Ссылки на студию в Google и Яндекс Картах — кнопки «Показать на карте»
+   * в выборе студии (db/migrations/2026-11-10_zzz_studio_map_links.sql) —
+   * только в useFormatStudios.
+   */
+  google_maps_url?: string | null;
+  yandex_maps_url?: string | null;
   /** Переводы названия и адреса (src/i18n/content.ts). */
   translations?: ContentTranslations | null;
 };

@@ -3,6 +3,9 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { AltArrowDown, CheckCircle } from "@solar-icons/react";
 
 import { useLocalize, useT } from "@/i18n";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { GoogleMapsIcon, YandexMapsIcon } from "@/components/map-icons";
+import { cn } from "@/lib/utils";
 import { mediaUrl } from "@/lib/media";
 import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 
@@ -12,7 +15,12 @@ import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/
  * формата; выбор меняет новости, услуги, контакты, расписание, тренеров и
  * абонементы (useViewedStudioId). В списке слева от названия — картинка
  * клуба из админки («Клубы», studios.photo_url; решение владельца 2026-10-14),
- * маленькая, чтобы строки не росли.
+ * маленькая, чтобы строки не росли. Под студией (решение владельца
+ * 2026-11-10) — «Выбрать» и под подписью «Показать на карте» кнопки «Google
+ * Карты» / «Яндекс Карты» с их метками (одинаковый текст на двух кнопках в
+ * ряд не влезал и путал) (studios.google_maps_url / yandex_maps_url из «Клубов»; нет ссылки —
+ * нет кнопки). Ссылка открывается в новой вкладке — на телефоне её
+ * перехватывает приложение карт.
  */
 export function StudioSwitcher() {
   const t = useT();
@@ -64,18 +72,44 @@ export function StudioSwitcher() {
                 {studios.map(loc).map((s) => {
                   const active = s.id === studioId;
                   const photo = mediaUrl(s.photo_url, "studio-logos");
+                  const pick = () => {
+                    // Своя студия — сбрасываем выбор: дальше по карточке клиента.
+                    setViewedStudioId(s.id === homeStudioId ? null : s.id);
+                    setOpen(false);
+                  };
+                  const maps = [
+                    s.google_maps_url && {
+                      key: "google",
+                      url: s.google_maps_url,
+                      Icon: GoogleMapsIcon,
+                      name: t("Google Карты"),
+                      label: t("Показать в Google Картах"),
+                    },
+                    s.yandex_maps_url && {
+                      key: "yandex",
+                      url: s.yandex_maps_url,
+                      Icon: YandexMapsIcon,
+                      name: t("Яндекс Карты"),
+                      label: t("Показать в Яндекс Картах"),
+                    },
+                  ].filter(Boolean) as {
+                    key: string;
+                    url: string;
+                    Icon: typeof GoogleMapsIcon;
+                    name: string;
+                    label: string;
+                  }[];
                   return (
-                    <li key={s.id}>
+                    <li
+                      key={s.id}
+                      className={`rounded-2xl border p-3 ${
+                        active ? "border-primary bg-primary/5" : "border-border bg-card"
+                      }`}
+                    >
                       <button
                         type="button"
-                        onClick={() => {
-                          // Своя студия — сбрасываем выбор: дальше по карточке клиента.
-                          setViewedStudioId(s.id === homeStudioId ? null : s.id);
-                          setOpen(false);
-                        }}
-                        className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99] ${
-                          active ? "border-primary bg-primary/5" : "border-border bg-card"
-                        }`}
+                        onClick={pick}
+                        className="flex w-full items-center gap-3 text-left transition active:scale-[0.99]"
                       >
                         {photo && (
                           <img
@@ -103,6 +137,41 @@ export function StudioSwitcher() {
                           <CheckCircle className="h-6 w-6 shrink-0 text-primary" weight="Bold" />
                         )}
                       </button>
+                      <div className="mt-3 space-y-2">
+                        <Button
+                          className="w-full"
+                          variant={active ? "outline" : "default"}
+                          onClick={pick}
+                        >
+                          {active ? t("Выбрана") : t("Выбрать")}
+                        </Button>
+                        {maps.length > 0 && (
+                          <div>
+                            <div className="mb-1.5 text-xs text-muted-foreground">
+                              {t("Показать на карте")}
+                            </div>
+                            <div className={cn("grid gap-2", maps.length > 1 && "grid-cols-2")}>
+                              {maps.map(({ key, url, Icon, name, label }) => (
+                                <a
+                                  key={key}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={label}
+                                  className={cn(
+                                    buttonVariants({ variant: "outline" }),
+                                    // Две кнопки в ряд — текст мельче, чтобы влез.
+                                    "w-full gap-1.5 px-3 text-sm [&_svg]:size-5",
+                                  )}
+                                >
+                                  <Icon />
+                                  {name}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </li>
                   );
                 })}
