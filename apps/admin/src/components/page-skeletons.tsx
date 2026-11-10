@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/format";
 import { defaultPeriod, periodLabel, type PeriodKey } from "@/lib/payroll";
 import { STAFF_ITEMS } from "@/lib/nav-sections";
+import { CONTROL_RULES, CONTROL_RULE_ORDER } from "@/lib/dashboard-control";
 import type { StudioFormat } from "@/lib/studio-formats";
 import {
   SCHEDULE_SKELETON_HOURS,
@@ -356,11 +357,21 @@ export function DashboardFilterField({
 }
 
 /** Плашка фильтров дашборда («Период», «Клубы») и тело подраздела. */
-export function DashboardBodySkeleton({ children }: { children: ReactNode }) {
+export function DashboardBodySkeleton({
+  withPeriod = true,
+  children,
+}: {
+  /** Без «Периода» — подраздел «на сейчас» («Руководителю»). */
+  withPeriod?: boolean;
+  children: ReactNode;
+}) {
+  const filters = withPeriod
+    ? [DASHBOARD_FILTERS.period, DASHBOARD_FILTERS.clubs]
+    : [DASHBOARD_FILTERS.clubs];
   return (
     <div className="space-y-3">
       <div className="table-toolbar flex flex-wrap items-end gap-2 rounded-lg border bg-background p-2 sm:px-3">
-        {[DASHBOARD_FILTERS.period, DASHBOARD_FILTERS.clubs].map((f) => (
+        {filters.map((f) => (
           <DashboardFilterField key={f.label} {...f}>
             <Skeleton className="h-10 w-full" />
           </DashboardFilterField>
@@ -2811,6 +2822,45 @@ export function AnalyticsPartnersPageSkeleton() {
         <Skeleton className="h-12 w-full" />
         <TableCardSkeleton headers={["Партнёр", "Почта", "Города"]} rows={4} />
       </div>
+    </ShellSkeleton>
+  );
+}
+
+/** «Руководителю»: три списка проверок (routes/_authenticated/dashboard/control.tsx). */
+export function DashboardControlSkeleton() {
+  return (
+    <div className="grid gap-3 xl:grid-cols-3">
+      {CONTROL_RULE_ORDER.map((key) => (
+        <DashboardChartSkeleton key={key} title={CONTROL_RULES[key].title}>
+          <DashboardControlRowsSkeleton />
+        </DashboardChartSkeleton>
+      ))}
+    </div>
+  );
+}
+
+/** Строки списка «Руководителю»: имя и телефон, абонемент, факт, комментарий. */
+export function DashboardControlRowsSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="divide-y">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="space-y-1.5 py-2.5">
+          <Skeleton className="h-4 w-48 max-w-full" />
+          <Skeleton className="h-3 w-40 max-w-full" />
+          <Skeleton className="h-3 w-56 max-w-full" />
+          <Skeleton className="h-5 w-32" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function DashboardControlPageSkeleton() {
+  return (
+    <ShellSkeleton title={DASHBOARD_TITLES.control}>
+      <DashboardBodySkeleton withPeriod={false}>
+        <DashboardControlSkeleton />
+      </DashboardBodySkeleton>
     </ShellSkeleton>
   );
 }

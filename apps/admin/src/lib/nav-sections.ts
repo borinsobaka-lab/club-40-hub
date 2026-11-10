@@ -21,6 +21,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   ClipboardRemove,
+  Crown,
   CupStar,
   DocumentText,
   Dumbbell,
@@ -239,6 +240,8 @@ export const DASHBOARD_ITEMS: NavItem[] = [
   { title: DASHBOARD_TITLES.clients, url: "/dashboard/clients", icon: UsersGroupRounded },
   { title: DASHBOARD_TITLES.classes, url: "/dashboard/classes", icon: Dumbbell },
   { title: DASHBOARD_TITLES.marketing, url: "/dashboard/marketing", icon: Target },
+  // Сводка проверок руководителя (2026-11-10, lib/dashboard-control.ts).
+  { title: DASHBOARD_TITLES.control, url: "/dashboard/control", icon: Crown },
 ];
 
 /**

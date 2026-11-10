@@ -58,6 +58,7 @@ import { Route as AuthenticatedScriptsSettingsRouteImport } from './routes/_auth
 import { Route as AuthenticatedScriptsSectionIdRouteImport } from './routes/_authenticated/scripts/$sectionId'
 import { Route as AuthenticatedDashboardSalesRouteImport } from './routes/_authenticated/dashboard/sales'
 import { Route as AuthenticatedDashboardMarketingRouteImport } from './routes/_authenticated/dashboard/marketing'
+import { Route as AuthenticatedDashboardControlRouteImport } from './routes/_authenticated/dashboard/control'
 import { Route as AuthenticatedDashboardClientsRouteImport } from './routes/_authenticated/dashboard/clients'
 import { Route as AuthenticatedDashboardClassesRouteImport } from './routes/_authenticated/dashboard/classes'
 import { Route as AuthenticatedAnalyticsZeroRouteImport } from './routes/_authenticated/analytics/zero'
@@ -354,6 +355,12 @@ const AuthenticatedDashboardMarketingRoute =
     path: '/dashboard/marketing',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDashboardControlRoute =
+  AuthenticatedDashboardControlRouteImport.update({
+    id: '/dashboard/control',
+    path: '/dashboard/control',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardClientsRoute =
   AuthenticatedDashboardClientsRouteImport.update({
     id: '/dashboard/clients',
@@ -608,6 +615,7 @@ export interface FileRoutesByFullPath {
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
+  '/dashboard/control': typeof AuthenticatedDashboardControlRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
   '/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
@@ -691,6 +699,7 @@ export interface FileRoutesByTo {
   '/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
+  '/dashboard/control': typeof AuthenticatedDashboardControlRoute
   '/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
   '/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
@@ -776,6 +785,7 @@ export interface FileRoutesById {
   '/_authenticated/analytics/zero': typeof AuthenticatedAnalyticsZeroRoute
   '/_authenticated/dashboard/classes': typeof AuthenticatedDashboardClassesRoute
   '/_authenticated/dashboard/clients': typeof AuthenticatedDashboardClientsRoute
+  '/_authenticated/dashboard/control': typeof AuthenticatedDashboardControlRoute
   '/_authenticated/dashboard/marketing': typeof AuthenticatedDashboardMarketingRoute
   '/_authenticated/dashboard/sales': typeof AuthenticatedDashboardSalesRoute
   '/_authenticated/scripts/$sectionId': typeof AuthenticatedScriptsSectionIdRoute
@@ -861,6 +871,7 @@ export interface FileRouteTypes {
     | '/analytics/zero'
     | '/dashboard/classes'
     | '/dashboard/clients'
+    | '/dashboard/control'
     | '/dashboard/marketing'
     | '/dashboard/sales'
     | '/scripts/$sectionId'
@@ -944,6 +955,7 @@ export interface FileRouteTypes {
     | '/analytics/zero'
     | '/dashboard/classes'
     | '/dashboard/clients'
+    | '/dashboard/control'
     | '/dashboard/marketing'
     | '/dashboard/sales'
     | '/scripts/$sectionId'
@@ -1028,6 +1040,7 @@ export interface FileRouteTypes {
     | '/_authenticated/analytics/zero'
     | '/_authenticated/dashboard/classes'
     | '/_authenticated/dashboard/clients'
+    | '/_authenticated/dashboard/control'
     | '/_authenticated/dashboard/marketing'
     | '/_authenticated/dashboard/sales'
     | '/_authenticated/scripts/$sectionId'
@@ -1410,6 +1423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardMarketingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard/control': {
+      id: '/_authenticated/dashboard/control'
+      path: '/dashboard/control'
+      fullPath: '/dashboard/control'
+      preLoaderRoute: typeof AuthenticatedDashboardControlRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard/clients': {
       id: '/_authenticated/dashboard/clients'
       path: '/dashboard/clients'
@@ -1695,6 +1715,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyticsZeroRoute: typeof AuthenticatedAnalyticsZeroRoute
   AuthenticatedDashboardClassesRoute: typeof AuthenticatedDashboardClassesRoute
   AuthenticatedDashboardClientsRoute: typeof AuthenticatedDashboardClientsRoute
+  AuthenticatedDashboardControlRoute: typeof AuthenticatedDashboardControlRoute
   AuthenticatedDashboardMarketingRoute: typeof AuthenticatedDashboardMarketingRoute
   AuthenticatedDashboardSalesRoute: typeof AuthenticatedDashboardSalesRoute
   AuthenticatedScriptsSectionIdRoute: typeof AuthenticatedScriptsSectionIdRoute
@@ -1776,6 +1797,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyticsZeroRoute: AuthenticatedAnalyticsZeroRoute,
   AuthenticatedDashboardClassesRoute: AuthenticatedDashboardClassesRoute,
   AuthenticatedDashboardClientsRoute: AuthenticatedDashboardClientsRoute,
+  AuthenticatedDashboardControlRoute: AuthenticatedDashboardControlRoute,
   AuthenticatedDashboardMarketingRoute: AuthenticatedDashboardMarketingRoute,
   AuthenticatedDashboardSalesRoute: AuthenticatedDashboardSalesRoute,
   AuthenticatedScriptsSectionIdRoute: AuthenticatedScriptsSectionIdRoute,

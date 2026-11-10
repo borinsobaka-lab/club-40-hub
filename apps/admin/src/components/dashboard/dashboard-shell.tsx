@@ -46,9 +46,15 @@ export type DashboardView = {
 export function DashboardShell({
   title,
   skeleton,
+  withPeriod = true,
   children,
 }: {
   title: string;
+  /**
+   * Фильтр «Период»: без него — подраздел «на сейчас» («Руководителю»),
+   * период ему не нужен и сбросом не считается.
+   */
+  withPeriod?: boolean;
   /** Тело подраздела, пока данных нет (то же, что в скелетоне страницы). */
   skeleton: ReactNode;
   children: (view: DashboardView) => ReactNode;
@@ -65,7 +71,7 @@ export function DashboardShell({
   if (isLoading || !access)
     return (
       <AdminShell title={title}>
-        <DashboardBodySkeleton>{skeleton}</DashboardBodySkeleton>
+        <DashboardBodySkeleton withPeriod={withPeriod}>{skeleton}</DashboardBodySkeleton>
       </AdminShell>
     );
   if (clubs.length === 0)
@@ -84,7 +90,7 @@ export function DashboardShell({
   const period = fromDate && toDate ? { from: toISO(fromDate), to: toISO(toDate) } : null;
   // Сбросить есть что, если период — не текущий месяц или клубы — не клуб из шапки.
   const changed =
-    !isCurrentMonth(filters.range) ||
+    (withPeriod && !isCurrentMonth(filters.range)) ||
     clubIds.length !== 1 ||
     clubIds[0] !== defaultClubId(clubs, activeId);
 
@@ -105,15 +111,17 @@ export function DashboardShell({
         {/* Подписи над полями — решение владельца 2026-10-11 (в остальных
             плашках фильтров подписей нет). */}
         <div className="table-toolbar flex flex-wrap items-end gap-2 rounded-lg border bg-background p-2 sm:px-3">
-          <DashboardFilterField {...DASHBOARD_FILTERS.period}>
-            <DateRangeFilter
-              placeholder="Выберите период"
-              showLabel={false}
-              value={filters.range}
-              onChange={setRange}
-              className="w-full"
-            />
-          </DashboardFilterField>
+          {withPeriod && (
+            <DashboardFilterField {...DASHBOARD_FILTERS.period}>
+              <DateRangeFilter
+                placeholder="Выберите период"
+                showLabel={false}
+                value={filters.range}
+                onChange={setRange}
+                className="w-full"
+              />
+            </DashboardFilterField>
+          )}
           <DashboardFilterField {...DASHBOARD_FILTERS.clubs}>
             <ClubsFilter
               clubs={clubs}

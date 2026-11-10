@@ -80,7 +80,7 @@ export function useCommentStats(clientIds: (string | null | undefined)[]) {
     for (const s of query.data ?? []) map.set(s.client_id, s);
     return map;
   }, [query.data]);
-  return { byClient, isLoading: query.isLoading && ids.length > 0 };
+  return { byClient, isLoading: query.isLoading && ids.length > 0, isError: query.isError };
 }
 
 /** Вся лента клиента: о нём и о всех его абонементах, свежие сверху. */

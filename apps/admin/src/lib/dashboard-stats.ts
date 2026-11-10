@@ -69,6 +69,7 @@ export const DASHBOARD_TITLES = {
   clients: "Клиенты",
   classes: "Занятия",
   marketing: "Маркетинг",
+  control: "Руководителю",
 } as const;
 
 /** Подписи и подсказки плашки фильтров дашборда. */
