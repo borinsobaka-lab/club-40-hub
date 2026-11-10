@@ -68,108 +68,112 @@ export function StudioSwitcher() {
                 {t("Новости, услуги, расписание и абонементы покажем для выбранной студии.")}
               </p>
               <ul className="mt-4 space-y-2">
-                {studios.map(loc).map((s) => {
-                  const active = s.id === studioId;
-                  const photo = mediaUrl(s.photo_url, "studio-logos");
-                  const pick = () => {
-                    // Своя студия — сбрасываем выбор: дальше по карточке клиента.
-                    setViewedStudioId(s.id === homeStudioId ? null : s.id);
-                    setOpen(false);
-                  };
-                  const maps = [
-                    s.google_maps_url && {
-                      key: "google",
-                      url: s.google_maps_url,
-                      Icon: GoogleMapsIcon,
-                      name: t("Google Карты"),
-                      label: t("Показать в Google Картах"),
-                    },
-                    s.yandex_maps_url && {
-                      key: "yandex",
-                      url: s.yandex_maps_url,
-                      Icon: YandexMapsIcon,
-                      name: t("Яндекс Карты"),
-                      label: t("Показать в Яндекс Картах"),
-                    },
-                  ].filter(Boolean) as {
-                    key: string;
-                    url: string;
-                    Icon: typeof GoogleMapsIcon;
-                    name: string;
-                    label: string;
-                  }[];
-                  return (
-                    <li
-                      key={s.id}
-                      className={`rounded-2xl border p-3 ${
-                        active ? "border-primary bg-primary/5" : "border-border bg-card"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={pick}
-                        className="flex w-full items-center gap-3 text-left transition active:scale-[0.99]"
+                {/* Выбранная — всегда первой (решение владельца 2026-11-10), остальные по имени. */}
+                {[...studios]
+                  .sort((a, b) => Number(b.id === studioId) - Number(a.id === studioId))
+                  .map(loc)
+                  .map((s) => {
+                    const active = s.id === studioId;
+                    const photo = mediaUrl(s.photo_url, "studio-logos");
+                    const pick = () => {
+                      // Своя студия — сбрасываем выбор: дальше по карточке клиента.
+                      setViewedStudioId(s.id === homeStudioId ? null : s.id);
+                      setOpen(false);
+                    };
+                    const maps = [
+                      s.google_maps_url && {
+                        key: "google",
+                        url: s.google_maps_url,
+                        Icon: GoogleMapsIcon,
+                        name: t("Google Карты"),
+                        label: t("Показать в Google Картах"),
+                      },
+                      s.yandex_maps_url && {
+                        key: "yandex",
+                        url: s.yandex_maps_url,
+                        Icon: YandexMapsIcon,
+                        name: t("Яндекс Карты"),
+                        label: t("Показать в Яндекс Картах"),
+                      },
+                    ].filter(Boolean) as {
+                      key: string;
+                      url: string;
+                      Icon: typeof GoogleMapsIcon;
+                      name: string;
+                      label: string;
+                    }[];
+                    return (
+                      <li
+                        key={s.id}
+                        className={`rounded-2xl border p-3 ${
+                          active ? "border-primary bg-primary/5" : "border-border bg-card"
+                        }`}
                       >
-                        {photo && (
-                          <img
-                            src={photo}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            className="h-11 w-11 shrink-0 rounded-xl bg-muted object-cover"
-                          />
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold">{s.name}</span>
-                          {s.address && (
-                            <span className="block truncate text-sm text-muted-foreground">
-                              {s.address}
-                            </span>
-                          )}
-                          {s.id === homeStudioId && (
-                            <span className="block text-xs text-muted-foreground">
-                              {t("Ваша студия — здесь можно записываться")}
-                            </span>
-                          )}
-                        </span>
-                        {active && (
-                          <CheckCircle className="h-6 w-6 shrink-0 text-primary" weight="Bold" />
-                        )}
-                      </button>
-                      <div className="mt-3 space-y-2">
-                        <Button
-                          className="w-full"
-                          variant={active ? "outline" : "default"}
+                        <button
+                          type="button"
                           onClick={pick}
+                          className="flex w-full items-center gap-3 text-left transition active:scale-[0.99]"
                         >
-                          {active ? t("Выбрана") : t("Выбрать")}
-                        </Button>
-                        {maps.length > 0 && (
-                          // Компактные пилюли (решение владельца 2026-11-10: крупные
-                          // кнопки и подпись «Показать на карте» — лишнее).
-                          <div className="flex flex-wrap gap-2">
-                            {maps.map(({ key, url, Icon, name, label }) => (
-                              <a
-                                key={key}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={label}
-                                className={cn(
-                                  buttonVariants({ variant: "outline", size: "sm" }),
-                                  "h-9 gap-1.5 px-3 text-[13px] [&_svg]:size-4",
-                                )}
-                              >
-                                <Icon />
-                                {name}
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
+                          {photo && (
+                            <img
+                              src={photo}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="h-11 w-11 shrink-0 rounded-xl bg-muted object-cover"
+                            />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-semibold">{s.name}</span>
+                            {s.address && (
+                              <span className="block truncate text-sm text-muted-foreground">
+                                {s.address}
+                              </span>
+                            )}
+                            {s.id === homeStudioId && (
+                              <span className="block text-xs text-muted-foreground">
+                                {t("Ваша студия — здесь можно записываться")}
+                              </span>
+                            )}
+                          </span>
+                          {active && (
+                            <CheckCircle className="h-6 w-6 shrink-0 text-primary" weight="Bold" />
+                          )}
+                        </button>
+                        <div className="mt-3 space-y-2">
+                          <Button
+                            className="w-full"
+                            variant={active ? "outline" : "default"}
+                            onClick={pick}
+                          >
+                            {active ? t("Выбрана") : t("Выбрать")}
+                          </Button>
+                          {maps.length > 0 && (
+                            // Компактные, на всю ширину, как «Выбрать» (решения владельца
+                            // 2026-11-10; подписи «Показать на карте» нет).
+                            <div className={cn("grid gap-2", maps.length > 1 && "grid-cols-2")}>
+                              {maps.map(({ key, url, Icon, name, label }) => (
+                                <a
+                                  key={key}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={label}
+                                  className={cn(
+                                    buttonVariants({ variant: "outline", size: "sm" }),
+                                    "h-9 w-full gap-1.5 px-3 text-[13px] [&_svg]:size-4",
+                                  )}
+                                >
+                                  <Icon />
+                                  {name}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
               </ul>
             </div>
           </DrawerPrimitive.Content>
