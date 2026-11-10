@@ -34,6 +34,7 @@ import { Route as AuthenticatedNpsRouteImport } from './routes/_authenticated/np
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMembershipsRouteImport } from './routes/_authenticated/memberships'
 import { Route as AuthenticatedKbBasesRouteImport } from './routes/_authenticated/kb-bases'
+import { Route as AuthenticatedImportCarryoverRouteImport } from './routes/_authenticated/import-carryover'
 import { Route as AuthenticatedImport1cRouteImport } from './routes/_authenticated/import-1c'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
@@ -217,6 +218,12 @@ const AuthenticatedKbBasesRoute = AuthenticatedKbBasesRouteImport.update({
   path: '/kb-bases',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImportCarryoverRoute =
+  AuthenticatedImportCarryoverRouteImport.update({
+    id: '/import-carryover',
+    path: '/import-carryover',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedImport1cRoute = AuthenticatedImport1cRouteImport.update({
   id: '/import-1c',
   path: '/import-1c',
@@ -561,6 +568,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/import-1c': typeof AuthenticatedImport1cRoute
+  '/import-carryover': typeof AuthenticatedImportCarryoverRoute
   '/kb-bases': typeof AuthenticatedKbBasesRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
@@ -642,6 +650,7 @@ export interface FileRoutesByTo {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/import-1c': typeof AuthenticatedImport1cRoute
+  '/import-carryover': typeof AuthenticatedImportCarryoverRoute
   '/kb-bases': typeof AuthenticatedKbBasesRoute
   '/memberships': typeof AuthenticatedMembershipsRoute
   '/news': typeof AuthenticatedNewsRoute
@@ -726,6 +735,7 @@ export interface FileRoutesById {
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/import-1c': typeof AuthenticatedImport1cRoute
+  '/_authenticated/import-carryover': typeof AuthenticatedImportCarryoverRoute
   '/_authenticated/kb-bases': typeof AuthenticatedKbBasesRoute
   '/_authenticated/memberships': typeof AuthenticatedMembershipsRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
@@ -811,6 +821,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/feedback'
     | '/import-1c'
+    | '/import-carryover'
     | '/kb-bases'
     | '/memberships'
     | '/news'
@@ -892,6 +903,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/feedback'
     | '/import-1c'
+    | '/import-carryover'
     | '/kb-bases'
     | '/memberships'
     | '/news'
@@ -975,6 +987,7 @@ export interface FileRouteTypes {
     | '/_authenticated/employees'
     | '/_authenticated/feedback'
     | '/_authenticated/import-1c'
+    | '/_authenticated/import-carryover'
     | '/_authenticated/kb-bases'
     | '/_authenticated/memberships'
     | '/_authenticated/news'
@@ -1227,6 +1240,13 @@ declare module '@tanstack/react-router' {
       path: '/kb-bases'
       fullPath: '/kb-bases'
       preLoaderRoute: typeof AuthenticatedKbBasesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import-carryover': {
+      id: '/_authenticated/import-carryover'
+      path: '/import-carryover'
+      fullPath: '/import-carryover'
+      preLoaderRoute: typeof AuthenticatedImportCarryoverRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/import-1c': {
@@ -1638,6 +1658,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedImport1cRoute: typeof AuthenticatedImport1cRoute
+  AuthenticatedImportCarryoverRoute: typeof AuthenticatedImportCarryoverRoute
   AuthenticatedKbBasesRoute: typeof AuthenticatedKbBasesRoute
   AuthenticatedMembershipsRoute: typeof AuthenticatedMembershipsRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
@@ -1717,6 +1738,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedImport1cRoute: AuthenticatedImport1cRoute,
+  AuthenticatedImportCarryoverRoute: AuthenticatedImportCarryoverRoute,
   AuthenticatedKbBasesRoute: AuthenticatedKbBasesRoute,
   AuthenticatedMembershipsRoute: AuthenticatedMembershipsRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,

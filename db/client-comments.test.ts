@@ -246,9 +246,13 @@ describe.skipIf(!url)("комментарии клиента (база)", () => 
       expect((await tx`select id from client_comments where client_id = ${c}`).length).toBe(1);
       expect((await tx`select id from client_comments where client_id = ${c2}`).length).toBe(2);
 
-      // Продажу удалили — комментарии остаются у клиента.
-      await tx`delete from client_memberships where sale_id = ${sale}`;
+      // Продажу удалили от имени сотрудника (auth.uid() задан — как «Удалить»
+      // в «Абонементах» и «Удалить перенесённое») — комментарии остаются у
+      // клиента. Раньше client_comments_biu возвращал sale_id и удаление
+      // падало (2026-11-10_zz_carryover_import.sql).
+      await tx`select set_config('request.jwt.claim.sub', ${anna}::text, true)`;
       await tx`delete from sales where id = ${sale}`;
+      await asServer(tx);
       const left = await tx`select sale_id from client_comments where client_id = ${c2}`;
       expect(left.length).toBe(2);
       expect(left.every((r: { sale_id: string | null }) => r.sale_id === null)).toBe(true);

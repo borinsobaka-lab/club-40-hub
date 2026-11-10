@@ -278,6 +278,20 @@ AUTH_SETUP.md.
   `nps_pending_survey` (перенесённый — не новичок) и `push_triggers_run`
   («Мало тренировок» без сравнения с номенклатурой у переноса) —
   актуальные определения здесь. Тесты — `db/carryover.test.ts`.
+  Импорт клиентов купленной студии с этим абонементом:
+  `db/migrations/2026-11-10_zz_carryover_import.sql` — `clients.carryover_ref`
+  / `sales.carryover_ref` (ключ «<клуб>:<номер абонемента в прежней
+  студии>»: повтор не задваивает, удаление находит только перенесённое;
+  из админки не подделать — `clients_source_guard` (актуальное — здесь),
+  `sales_carryover_ref_guard`), `clients.source = 'carryover'` («Перенос
+  студии»), RPC `carryover_import_chunk` (только владелец клуба: карточка по
+  телефону в базе пакетных клубов или новая, продажа «Перенос», долг —
+  платёж к `debt_due`, комментарий — что было в прежней студии) и
+  `carryover_import_rollback` (пока не входили в приложение, ничего не
+  списано и долг не вносили). Данных клиентов в репозитории нет. Там же
+  исправлен `client_comments_biu` (актуальное — здесь): удаление продажи с
+  комментарием от имени сотрудника падало — on delete set null у
+  `client_comments.sale_id` триггер возвращал обратно.
   Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
   — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
   триггер списания), `payroll_lines` — пакет персональных не идёт в продажи

@@ -463,6 +463,8 @@ export const ACCESS_ITEMS: NavItem[] = [
   { title: "Журнал", url: "/access/log", icon: History },
   // Перенос клиентов из 1С (2026-10-18) — владельцу клуба.
   { title: "Импорт из 1С", url: "/import-1c", icon: ClipboardList },
+  // Клиенты купленной студии с абонементом переноса (2026-11-10) — владельцу клуба.
+  { title: "Импорт переноса", url: "/import-carryover", icon: HandShake },
 ];
 export const STUDIOS_ITEMS: NavItem[] = [{ title: "Настройки", url: "/studios", icon: Widget3 }];
 export const MANAGE_GROUPS: NavGroup[] = [
@@ -551,7 +553,7 @@ export function canOpenPath(
 
 /**
  * Страница «Управления»: «Клубы» — всем (список и свои настройки), «Знания» —
- * администратору баз знаний, импорт из 1С — владельцу клуба, «Пользователи и
+ * администратору баз знаний, импорт из 1С и импорт переноса — владельцу клуба, «Пользователи и
  * роли» — по правам: люди — управляющим пользователями (и тем, кто ведёт роли
  * или журнал — для просмотра), роли и структура — им же, журнал — audit.view
  * или roles.manage.
@@ -560,7 +562,8 @@ export function canOpenManagePath(access: AdminAccess, pathname: string): boolea
   const any = (...rights: AccessRight[]) => rights.some((r) => access.rights.includes(r));
   if (STUDIOS_ITEMS.some((i) => matches(pathname, i.url))) return true;
   if (matches(pathname, KB_BASES_URL)) return access.kbAdmin;
-  if (matches(pathname, "/import-1c")) return Object.values(access.studios).some((s) => s.owner);
+  if (matches(pathname, "/import-1c") || matches(pathname, "/import-carryover"))
+    return Object.values(access.studios).some((s) => s.owner);
   if (matches(pathname, "/access/log")) return any("audit.view", "roles.manage");
   if (matches(pathname, "/access/structure"))
     return any("structure.manage", "users.manage", "roles.manage", "audit.view");

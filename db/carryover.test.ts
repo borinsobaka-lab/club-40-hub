@@ -383,4 +383,139 @@ describe.skipIf(!url)("абонемент переноса (база)", () => {
       expect(s?.survey_type).toBe("first_lessons");
     });
   });
+
+  // ---- Импорт купленной студии (2026-11-10_zz_carryover_import.sql) ----
+
+  async function owner(tx: Tx, studioId: string): Promise<string> {
+    const uid = await user(tx);
+    await tx`insert into user_roles (user_id, studio_id, role) values (${uid}, ${studioId}, 'owner')`;
+    return uid;
+  }
+
+  const row = (ref: string, phone: string | null, extra: Record<string, unknown> = {}) => ({
+    ref,
+    last_name: "Лория",
+    first_name: "Эфемия",
+    phone,
+    registered_on: "2026-11-02",
+    visits: 11,
+    starts_on: "2026-11-02",
+    ends_on: "2026-12-13",
+    debt: 0,
+    comment: "Абонемент в прежней студии: «12 занятий»",
+    ...extra,
+  });
+
+  async function importChunk(tx: Tx, chunk: unknown) {
+    const [{ r }] = await tx`select carryover_import_chunk(${chunk}::jsonb) as r`;
+    return r as Record<string, number>;
+  }
+
+  test("импорт: новая карточка, абонемент переноса, долг к дате; повтор не задваивает", async () => {
+    await scenario(async (tx) => {
+      const a = await studio(tx);
+      const m = await carryoverPack(tx, a);
+      const uid = await owner(tx, a);
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+      const chunk = {
+        studio_id: a,
+        membership_id: m,
+        debt_due: "2026-11-29",
+        rows: [
+          row("14115", "+995599560575"),
+          row("14093", null, { last_name: "Рыбакова", debt: 141 }),
+        ],
+      };
+      expect(await importChunk(tx, chunk)).toEqual({
+        clients_created: 2,
+        clients_reused: 0,
+        sales_created: 2,
+        sales_skipped: 0,
+      });
+      const [c] = await tx`
+        select id, source, registration_date::text as reg, first_name, last_name
+          from clients where phone = '+995599560575'`;
+      expect(c.source).toBe("carryover");
+      expect(c.reg).toBe("2026-11-02");
+      expect([c.last_name, c.first_name]).toEqual(["Лория", "Эфемия"]);
+      const [t] = await tx`
+        select cm.status, cm.visits_left, cm.ends_at::text as ends
+          from client_memberships cm where cm.client_id = ${c.id}`;
+      expect(t).toEqual({ status: "active", visits_left: 11, ends: "2026-12-13" });
+      const [debt] = await tx`
+        select i.amount, i.due_date::text as due, i.paid from sale_installments i
+          join sales s on s.id = i.sale_id where s.carryover_ref = ${`${a}:14093`}`;
+      expect([Number(debt.amount), debt.due, debt.paid]).toEqual([141, "2026-11-29", false]);
+      const [{ n: comments }] = await tx`
+        select count(*)::int as n from client_comments where client_id = ${c.id}`;
+      expect(comments).toBe(1);
+
+      expect(await importChunk(tx, chunk)).toEqual({
+        clients_created: 0,
+        clients_reused: 0,
+        sales_created: 0,
+        sales_skipped: 2,
+      });
+    });
+  });
+
+  test("импорт: клиент с тем же телефоном в сети — абонемент к его карточке", async () => {
+    await scenario(async (tx) => {
+      const a = await studio(tx);
+      const b = await studio(tx);
+      const m = await carryoverPack(tx, a);
+      const existing = await client(tx, a);
+      await tx`update clients set phone2 = '+79166093835' where id = ${existing}`;
+      const uid = await owner(tx, b);
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+      const r = await importChunk(tx, {
+        studio_id: b,
+        membership_id: m,
+        rows: [row("14111", "+79166093835")],
+      });
+      expect(r.clients_reused).toBe(1);
+      expect(r.clients_created).toBe(0);
+      const [{ n }] = await tx`
+        select count(*)::int as n from client_memberships where client_id = ${existing}`;
+      expect(n).toBe(1);
+    });
+  });
+
+  test("импорт и удаление — только владелец клуба; удаление — пока ничего не списано", async () => {
+    await scenario(async (tx) => {
+      const a = await studio(tx);
+      const m = await carryoverPack(tx, a);
+      const admin = await user(tx);
+      await tx`insert into user_roles (user_id, studio_id, role) values (${admin}, ${a}, 'admin')`;
+      await tx`select set_config('request.jwt.claim.sub', ${admin}::text, true)`;
+      const chunk = { studio_id: a, membership_id: m, rows: [row("1", "+995599000001")] };
+      expect(await failure(tx, () => importChunk(tx, chunk))).toContain("владелец клуба");
+
+      const uid = await owner(tx, a);
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+      await importChunk(tx, chunk);
+      const [{ id: cid }] = await tx`select id from clients where carryover_ref = ${`${a}:1`}`;
+      await bookAndAttend(tx, a, cid);
+      expect(
+        await failure(tx, () => tx`select carryover_import_rollback(${a}, 'УДАЛИТЬ')`),
+      ).toContain("списывали");
+      await tx`delete from schedule_bookings where client_id = ${cid}`;
+      const [{ r }] = await tx`select carryover_import_rollback(${a}, 'УДАЛИТЬ') as r`;
+      expect(r).toEqual({ sales: 1, clients: 1 });
+    });
+  });
+
+  test("из админки carryover_ref и источник «Перенос» не подделать", async () => {
+    await scenario(async (tx) => {
+      const a = await studio(tx);
+      const staffId = await owner(tx, a);
+      await tx`select set_config('request.jwt.claim.sub', ${staffId}::text, true)`;
+      await tx`set local role authenticated`;
+      const [c] = await tx`
+        insert into clients (studio_id, first_name, last_name, carryover_ref, source)
+        values (${a}, 'Анна', 'Тестова', 'x:1', 'carryover') returning carryover_ref, source`;
+      expect(c).toEqual({ carryover_ref: null, source: "admin" });
+      await tx`reset role`;
+    });
+  });
 });
