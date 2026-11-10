@@ -58,6 +58,7 @@ import {
   type StudioFormat,
 } from "@/lib/studio-formats";
 import { StudiosPageSkeleton } from "@/components/page-skeletons";
+import { normalizeMapUrl } from "@/lib/map-links";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -68,6 +69,7 @@ const TIPS = {
   address: "Клиенты видят его в приложении под названием клуба — на главной и в выборе клуба.",
   photo:
     "Маленькая картинка слева от названия клуба в приложении клиентов, когда они выбирают студию («Сменить студию» на главной).",
+  maps: "Ссылка из карт: откройте клуб в Google Картах или Яндекс Картах → «Поделиться» → «Скопировать ссылку». В приложении клиентов в выборе студии — кнопка «Показать на карте». Пусто — кнопки нет.",
 };
 
 export const Route = createFileRoute("/_authenticated/studios")({
@@ -433,6 +435,8 @@ function StudioForm({
   const [logo, setLogo] = useState<string | null>(item?.logo_url ?? null);
   const [address, setAddress] = useState(item?.address ?? "");
   const [photo, setPhoto] = useState<string | null>(item?.photo_url ?? null);
+  const [googleMaps, setGoogleMaps] = useState(item?.google_maps_url ?? "");
+  const [yandexMaps, setYandexMaps] = useState(item?.yandex_maps_url ?? "");
   const tr = useContentTranslations(item?.translations);
   const [saving, setSaving] = useState(false);
 
@@ -446,6 +450,17 @@ function StudioForm({
       toast.error("Цвет — в формате #RRGGBB, например #F763FC");
       return;
     }
+    const google = normalizeMapUrl(googleMaps);
+    const yandex = normalizeMapUrl(yandexMaps);
+    if ("error" in google) {
+      toast.error(`Google Карты: ${google.error}`);
+      return;
+    }
+    if ("error" in yandex) {
+      toast.error(`Яндекс Карты: ${yandex.error}`);
+      return;
+    }
+    const maps = { google_maps_url: google.url, yandex_maps_url: yandex.url };
     setSaving(true);
     try {
       const brandColor = color.toLowerCase();
@@ -463,6 +478,7 @@ function StudioForm({
             logo_url: logo,
             address: addressValue,
             photo_url: photo,
+            ...maps,
             translations,
           })
           .eq("id", item.id));
@@ -474,16 +490,20 @@ function StudioForm({
           _logo_url: logo,
         });
         error = created.error;
-        // create_studio адрес, картинку и переводы не принимает — дописываем:
-        // создатель уже владелец новой студии и может её править.
+        // create_studio адрес, картинку, карты и переводы не принимает —
+        // дописываем: создатель уже владелец новой студии и может её править.
         if (
           !error &&
-          (addressValue || photo || Object.keys(translations).length > 0) &&
+          (addressValue ||
+            photo ||
+            maps.google_maps_url ||
+            maps.yandex_maps_url ||
+            Object.keys(translations).length > 0) &&
           created.data
         ) {
           ({ error } = await supabase
             .from("studios")
-            .update({ address: addressValue, photo_url: photo, translations })
+            .update({ address: addressValue, photo_url: photo, ...maps, translations })
             .eq("id", created.data as string));
         }
       }
@@ -530,6 +550,27 @@ function StudioForm({
             >
               <Input {...tr.input("address", address, setAddress, "Тбилиси, ул. Палиашвили, 40")} />
             </FormField>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField label="Google Карты" optional tip={TIPS.maps}>
+                <Input
+                  type="url"
+                  inputMode="url"
+                  value={googleMaps}
+                  onChange={(e) => setGoogleMaps(e.target.value)}
+                  placeholder="https://maps.app.goo.gl/…"
+                />
+              </FormField>
+              <FormField label="Яндекс Карты" optional tip={TIPS.maps}>
+                <Input
+                  type="url"
+                  inputMode="url"
+                  value={yandexMaps}
+                  onChange={(e) => setYandexMaps(e.target.value)}
+                  placeholder="https://yandex.ru/maps/-/…"
+                />
+              </FormField>
+            </div>
 
             {item ? (
               <InfoNote>

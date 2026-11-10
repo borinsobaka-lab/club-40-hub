@@ -21,6 +21,9 @@ export type Studio = {
    * studio-logos или полный URL.
    */
   photo_url: string | null;
+  /** Ссылки на клуб в Google и Яндекс Картах (выбор студии в приложении). */
+  google_maps_url: string | null;
+  yandex_maps_url: string | null;
   /** Переводы для приложения: {en|ka: {name, address}} (lib/content-i18n.ts). */
   translations: ContentTranslations;
   created_at: string;
@@ -55,7 +58,7 @@ export const studiosQuery = queryOptions({
       supabase
         .from("studios")
         .select(
-          "id, name, format, brand_color, logo_url, address, photo_url, translations, created_at",
+          "id, name, format, brand_color, logo_url, address, photo_url, google_maps_url, yandex_maps_url, translations, created_at",
         )
         .in("id", ids)
         .order("created_at"),

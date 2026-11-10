@@ -632,6 +632,13 @@ AUTH_SETUP.md.
   `app_install_settings.sign_in_closed` (экран входа клиента без почты),
   `studios.photo_url` (публичная колонка; картинка в выборе студии
   приложения, бакет `studio-logos`, папка `{id}/photo`).
+  Ссылки клуба на карты (решение владельца 2026-11-10):
+  `db/migrations/2026-11-10_zzz_studio_map_links.sql` —
+  `studios.google_maps_url` / `yandex_maps_url` (публичные колонки, только
+  https — `studios_map_urls_check`; правятся в «Клубах»), в пакетном
+  приложении — кнопки «Google Карты» / «Яндекс Карты» под «Показать на
+  карте» в выборе студии. Прежние `studio_app_settings.*_maps_url` не
+  используются.
   Правка графика платежей: `db/migrations/2026-10-14_zzz_sale_installments_edit.sql`
   — RPC `replace_sale_installments` (security invoker: невнесённые платежи
   заменяются, внесённые не трогаются, сумма графика не меньше
