@@ -15,6 +15,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { UnderlineTabs } from "@/components/underline-tabs";
 import { Button } from "@/components/ui/button";
 import { DarkFrame } from "@/formats/packages/dark-frame";
+import { STUDIO_WHATSAPP_URL, WhatsAppIcon } from "@/formats/packages/studio-contacts";
 import { useInstallPrompt } from "@/hooks/use-pwa-install";
 import { msg, useI18n, useT } from "@/i18n";
 import { copyText } from "@/lib/clipboard";
@@ -132,6 +133,7 @@ export function InstallScreen() {
       >
         <InstallGuide />
         <div className="px-6 pb-2">{note}</div>
+        <InstallHelp />
       </DarkFrame>
     );
   }
@@ -310,6 +312,28 @@ function StepText({ text }: { text: string }) {
         ),
       )}
     </>
+  );
+}
+
+/**
+ * «Помощь» в конце инструкции (решение владельца 2026-11-10): чат WhatsApp
+ * студии — тот же, что у «Поддержки» в профиле. Только пакетное приложение:
+ * у подписочного своего номера пока нет.
+ */
+function InstallHelp() {
+  const t = useT();
+  return (
+    <div className="px-6 pt-4 pb-2">
+      <p className="text-center text-sm text-muted-foreground">
+        {t("Не получается установить? Напишите нам — поможем.")}
+      </p>
+      <Button asChild variant="outline" className="mt-3 w-full">
+        <a href={STUDIO_WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+          <WhatsAppIcon />
+          {t("Помощь")}
+        </a>
+      </Button>
+    </div>
   );
 }
 

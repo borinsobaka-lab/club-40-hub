@@ -40,6 +40,8 @@ const dict: Dictionary = {
   "Приложение будет установлено в течение 10 секунд": "The app will be installed within 10 seconds",
   "Не удалось открыть установку — установите приложение по шагам ниже":
     "Couldn't start the installation — install the app using the steps below",
+  "Не получается установить? Напишите нам — поможем.": "Can't install it? Message us — we'll help.",
+  Помощь: "Help",
 };
 
 export default dict;
