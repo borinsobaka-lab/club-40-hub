@@ -24,6 +24,7 @@ function sale(p: Partial<SaleRecord> & { clientId: string; soldAt: string }): Sa
     membershipName: "Безлимит",
     trial: false,
     single: false,
+    carryover: false,
     personal: false,
     method: "cash",
     source: "admin",
@@ -131,6 +132,37 @@ describe("classifySales", () => {
     const refunded = sale({ clientId: "a", soldAt: "2026-01-01", endsAt: null, cancelled: true });
     const next = sale({ clientId: "a", soldAt: "2026-05-01", endsAt: "2026-06-01" });
     expect(classifySales([refunded, next]).get(next.id)).toBe("return");
+  });
+});
+
+describe("абонемент переноса", () => {
+  test("не продажа, но в истории: следующая покупка — продление", () => {
+    const carry = sale({
+      clientId: "a",
+      soldAt: "2026-11-10",
+      totalAmount: 141,
+      carryover: true,
+      endsAt: "2026-12-10",
+    });
+    const next = sale({ clientId: "a", soldAt: "2026-12-05", totalAmount: 300 });
+    const origins = classifySales([carry, next]);
+    expect(origins.has(carry.id)).toBe(false);
+    expect(origins.get(next.id)).toBe("renewal");
+  });
+
+  test("в выручке проданного и среднем чеке не считается, доплата долга — поступившие деньги", () => {
+    const carry = sale({
+      clientId: "a",
+      soldAt: "2026-11-10",
+      totalAmount: 141,
+      carryover: true,
+      installments: [{ amount: 141, paid: true, date: "2026-11-20", method: "cash" }],
+    });
+    const pack = sale({ clientId: "b", soldAt: "2026-11-12", totalAmount: 300 });
+    const m = salesMetrics({ sales: [carry, pack], otherSales: [] }, "2026-11-01", "2026-11-30");
+    expect(m.membershipRevenue).toBe(300);
+    expect(m.avgMembershipCheck).toBe(300);
+    expect(m.membershipPayments).toBe(441);
   });
 });
 

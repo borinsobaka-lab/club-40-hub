@@ -60,7 +60,9 @@ import type { SortGetters } from "@/lib/table-sort";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
-  kind: "Пакет тренировок расходуется на групповых занятиях, пакет персональных — на персональных с тренером. Разовое посещение — одна групповая тренировка на месяц, продаёт администратор, в приложении его нет. Пробное посещение продаётся типом «Оплата пробного» в «Абонементах».",
+  kind: "Пакет тренировок расходуется на групповых занятиях, пакет персональных — на персональных с тренером. Разовое посещение — одна групповая тренировка на месяц, продаёт администратор, в приложении его нет. Пробное посещение продаётся типом «Оплата пробного» в «Абонементах». Абонемент переноса — для клиентов купленной студии: остаток и срок у каждого свои, выдаётся типом «Перенос» в «Абонементах».",
+  carryover:
+    "У абонемента переноса только название: остаток тренировок и срок у каждого клиента свои — их задают при выдаче (тип «Перенос» в «Абонементах»). В приложении не продаётся, клиент видит его название в «Моих абонементах».",
   single:
     "У разового посещения условия постоянные: 1 групповая тренировка, срок 1 месяц (30 дней), оплата одним платежом. Меняется только стоимость.",
   visits:
@@ -166,6 +168,7 @@ const COLUMNS =
 
 /** «Тренировок» в таблице: обычные и персональные по типу номенклатуры. */
 function trainingsLabel(p: Package) {
+  if (p.kind === "carryover") return "у каждого свой";
   const diagnostics = p.diagnostics_count > 0 ? ` + ${p.diagnostics_count} диагн.` : "";
   if (p.kind === "personal") return `${p.personal_count} перс.${diagnostics}`;
   const visits = p.visits_count ?? "—";
@@ -183,7 +186,7 @@ const SORT_GETTERS: SortGetters<Package> = {
   price: (p) => Number(p.price),
   payments: (p) => p.max_payments,
   description: (p) => (p.description ? stripFormatting(p.description) : null),
-  status: (p) => (p.kind === "single" ? null : p.is_active),
+  status: (p) => (p.kind === "single" || p.kind === "carryover" ? null : p.is_active),
 };
 
 function formatDuration(days: number | null) {
@@ -466,10 +469,12 @@ function PackagesPage() {
                           {trainingsLabel(p)}
                         </TableCell>
                         <TableCell className="tabular-nums">
-                          {formatDuration(p.duration_days)}
+                          {p.kind === "carryover"
+                            ? "у каждого свой"
+                            : formatDuration(p.duration_days)}
                         </TableCell>
                         <TableCell className="text-right font-medium tabular-nums">
-                          {formatMoney(Number(p.price))}
+                          {p.kind === "carryover" ? "—" : formatMoney(Number(p.price))}
                         </TableCell>
                         <TableCell className="tabular-nums">
                           {p.max_payments > 1 ? `до ${p.max_payments}` : "1"}
@@ -478,8 +483,8 @@ function PackagesPage() {
                           {p.description ? stripFormatting(p.description) : "—"}
                         </TableCell>
                         <TableCell>
-                          {p.kind === "single" ? (
-                            // Разовое в приложении не показывается — переключать нечего.
+                          {p.kind === "single" || p.kind === "carryover" ? (
+                            // Разовое и перенос в приложении не продаются — переключать нечего.
                             <Badge variant="outline">Не в приложении</Badge>
                           ) : (
                             <div className="flex items-center gap-2">
@@ -574,6 +579,12 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
   const [price, setPrice] = useState(init?.price != null ? String(init.price) : "");
   const [kind, setKind] = useState<MembershipKind>(init?.kind ?? "package");
   const isSingle = kind === "single";
+  // Абонемент переноса: только название — остаток и срок задают при выдаче.
+  const isCarryover = kind === "carryover";
+  // Тип проданной номенклатуры «перенос» ⇄ другой не меняется: у переноса
+  // остаток и срок — у продажи (база тоже не даст — memberships_carryover_kind_guard).
+  const kindLocked = (k: MembershipKind) =>
+    !!item && (item.kind === "carryover") !== (k === "carryover");
   const [maxPayments, setMaxPayments] = useState(String(init?.max_payments ?? 1));
   const [isActive, setIsActive] = useState(init?.is_active ?? true);
   const [tagText, setTagText] = useState(init?.tag_text ?? "");
@@ -594,6 +605,31 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
     if (!name.trim()) {
       tr.setLang("ru");
       toast.error("Укажите название");
+      return;
+    }
+    if (isCarryover) {
+      await save({
+        name: name.trim(),
+        description: null,
+        visits_count: null,
+        personal_count: 0,
+        diagnostics_count: 0,
+        duration_days: null,
+        price: 0,
+        max_payments: 1,
+        kind,
+        // В приложении не продаётся: витрина показывает только is_active.
+        is_active: false,
+        tag_text: null,
+        tag_style: null,
+        gift_text: null,
+        auto_renew: false,
+        installment_enabled: false,
+        for_couple: false,
+        freeze_days_allowed: 0,
+        benefits: [],
+        translations: tr.cleaned(),
+      });
       return;
     }
     const isPersonal = kind === "personal";
@@ -652,34 +688,38 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
       !!tagText.trim() ||
       TRANSLATED_LANGS.some((l) => translationText(translations, l, "tag_text"));
 
+    // Всё, чего у пакетов нет, — явно выключено: строка в общей таблице
+    // memberships не должна унаследовать подписочные условия (автопродление
+    // в пакетной студии выключает ещё и триггер в БД).
+    await save({
+      name: name.trim(),
+      description: description.trim() || null,
+      visits_count: visits,
+      personal_count: personal,
+      diagnostics_count: diagnostics,
+      duration_days: days,
+      price: priceNum,
+      max_payments: payments,
+      kind,
+      // Разовое в приложении не показывается (его отсекает тип), is_active
+      // ему не нужен — держим включённым.
+      is_active: isSingle ? true : isActive,
+      tag_text: tagText.trim() || null,
+      tag_style: hasTag ? tagStyle : null,
+      gift_text: giftText.trim() || null,
+      auto_renew: false,
+      installment_enabled: false,
+      for_couple: false,
+      freeze_days_allowed: 0,
+      benefits,
+      translations,
+    });
+  };
+
+  const save = async (payload: Record<string, unknown>) => {
+    if (!studioId) return;
     setSaving(true);
     try {
-      // Всё, чего у пакетов нет, — явно выключено: строка в общей таблице
-      // memberships не должна унаследовать подписочные условия (автопродление
-      // в пакетной студии выключает ещё и триггер в БД).
-      const payload = {
-        name: name.trim(),
-        description: description.trim() || null,
-        visits_count: visits,
-        personal_count: personal,
-        diagnostics_count: diagnostics,
-        duration_days: days,
-        price: priceNum,
-        max_payments: payments,
-        kind,
-        // Разовое в приложении не показывается (его отсекает тип), is_active
-        // ему не нужен — держим включённым.
-        is_active: isSingle ? true : isActive,
-        tag_text: tagText.trim() || null,
-        tag_style: hasTag ? tagStyle : null,
-        gift_text: giftText.trim() || null,
-        auto_renew: false,
-        installment_enabled: false,
-        for_couple: false,
-        freeze_days_allowed: 0,
-        benefits,
-        translations,
-      };
       const { error } = item
         ? await supabase.from("memberships").update(payload).eq("id", item.id)
         : // Новая — в активном клубе (видна во всех пакетных); правка клуб строки не меняет.
@@ -709,8 +749,9 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
           Пакет — несколько тренировок за фиксированную цену на ограниченный срок: групповых (пакет
           тренировок) или персональных с тренером (пакет персональных). Разовое посещение — одна
           групповая тренировка, продаёт администратор, в приложении его нет. Пробное посещение
-          продаётся типом «Оплата пробного» в «Абонементах». Номенклатура общая для всех клубов с
-          пакетами тренировок: изменения сразу видны во всех клубах.
+          продаётся типом «Оплата пробного» в «Абонементах». Абонемент переноса — для клиентов
+          купленной студии, выдаётся типом «Перенос». Номенклатура общая для всех клубов с пакетами
+          тренировок: изменения сразу видны во всех клубах.
         </DialogDescription>
         <ContentLangSwitch tr={tr} />
       </DialogHeader>
@@ -729,8 +770,11 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
                 className="flex flex-wrap gap-x-4 gap-y-2 rounded-md border p-3"
               >
                 {MEMBERSHIP_KINDS.map((k) => (
-                  <label key={k} className="flex cursor-pointer items-center gap-2 text-sm">
-                    <RadioGroupItem value={k} />
+                  <label
+                    key={k}
+                    className={`flex items-center gap-2 text-sm ${kindLocked(k) ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                  >
+                    <RadioGroupItem value={k} disabled={kindLocked(k)} />
                     <span>{MEMBERSHIP_KIND_LABEL[k]}</span>
                   </label>
                 ))}
@@ -750,57 +794,68 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
                     ? "Например: Пробное занятие"
                     : kind === "single"
                       ? SINGLE_VISIT.name
-                      : kind === "personal"
-                        ? "Например: 5 персональных"
-                        : "Например: 8 тренировок",
+                      : isCarryover
+                        ? "Например: Перенос — Палиашвили"
+                        : kind === "personal"
+                          ? "Например: 5 персональных"
+                          : "Например: 8 тренировок",
                 )}
               />
             </FormField>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {kind === "personal" ? (
-                <FormField label="Персональных" tip={TIPS.personal} required>
+            {isCarryover && (
+              <InfoNote>
+                {TIPS.carryover} Название можно перевести на английский и грузинский переключателем
+                языков вверху.
+              </InfoNote>
+            )}
+
+            {!isCarryover && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {kind === "personal" ? (
+                  <FormField label="Персональных" tip={TIPS.personal} required>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={personalCount}
+                      onChange={(e) => setPersonalCount(e.target.value)}
+                      placeholder="5"
+                    />
+                  </FormField>
+                ) : (
+                  <FormField label="Тренировок" tip={isSingle ? TIPS.single : TIPS.visits} required>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={isSingle ? String(SINGLE_VISIT.visits) : visitsCount}
+                      onChange={(e) => setVisitsCount(e.target.value)}
+                      placeholder="8"
+                      disabled={isSingle}
+                    />
+                  </FormField>
+                )}
+                <FormField label="Срок, дней" tip={isSingle ? TIPS.single : TIPS.duration} required>
                   <Input
                     type="number"
                     min={1}
-                    value={personalCount}
-                    onChange={(e) => setPersonalCount(e.target.value)}
-                    placeholder="5"
-                  />
-                </FormField>
-              ) : (
-                <FormField label="Тренировок" tip={isSingle ? TIPS.single : TIPS.visits} required>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={isSingle ? String(SINGLE_VISIT.visits) : visitsCount}
-                    onChange={(e) => setVisitsCount(e.target.value)}
-                    placeholder="8"
+                    value={isSingle ? String(SINGLE_VISIT.durationDays) : durationDays}
+                    onChange={(e) => setDurationDays(e.target.value)}
+                    placeholder="30"
                     disabled={isSingle}
                   />
                 </FormField>
-              )}
-              <FormField label="Срок, дней" tip={isSingle ? TIPS.single : TIPS.duration} required>
-                <Input
-                  type="number"
-                  min={1}
-                  value={isSingle ? String(SINGLE_VISIT.durationDays) : durationDays}
-                  onChange={(e) => setDurationDays(e.target.value)}
-                  placeholder="30"
-                  disabled={isSingle}
-                />
-              </FormField>
-              <FormField label="Стоимость, ₾" tip={TIPS.price} required>
-                <Input
-                  inputMode="decimal"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0"
-                />
-              </FormField>
-            </div>
+                <FormField label="Стоимость, ₾" tip={TIPS.price} required>
+                  <Input
+                    inputMode="decimal"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="0"
+                  />
+                </FormField>
+              </div>
+            )}
 
-            {kind !== "trial" && !isSingle && (
+            {kind !== "trial" && !isSingle && !isCarryover && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {kind === "package" && (
                   <FormField label="Персональных в подарок" tip={TIPS.giftPersonal} optional>
@@ -825,7 +880,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </div>
             )}
 
-            {kind !== "trial" && !isSingle && (
+            {kind !== "trial" && !isSingle && !isCarryover && (
               <FormField
                 label="Сколькими платежами можно оплатить"
                 tip={TIPS.payments}
@@ -843,7 +898,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </FormField>
             )}
 
-            {isSingle ? (
+            {isCarryover ? null : isSingle ? (
               <InfoNote>
                 Разовое посещение в мобильном приложении не показывается и не продаётся: его
                 оформляет администратор в «Абонементах» или в карточке клиента.
@@ -914,7 +969,7 @@ function PackageForm({ onOpenChange, studioId, item, draft, nextSortOrder, onSav
               </>
             )}
 
-            {item && (
+            {item && !isCarryover && (
               <InfoNote variant="warning">
                 Изменения цены и условий применятся ко всем будущим продажам этого пакета. Если у
                 вас уже есть купившие, лучше нажмите «Дублировать» в списке, измените копию, а

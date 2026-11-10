@@ -37,7 +37,36 @@ function line(label: string, left: number | null | undefined, total: number | nu
   return { label, left: l, total: t, used: l != null && t != null && l <= t ? t - l : null };
 }
 
+/**
+ * Вид баланса абонемента пакетного клуба: у пакета персональных —
+ * персональные; у абонемента переноса (остатки — свои у каждого, 2026-11-10)
+ * — по остаткам, как выдаёт база: только персональные — персональные; у
+ * остальных — групповые.
+ */
+export function balanceKindOf(
+  kind: string | null | undefined,
+  visitsLeft: number | null | undefined,
+  personalLeft: number | null | undefined,
+): "group" | "personal" {
+  if (kind === "personal") return "personal";
+  if (kind === "carryover" && (visitsLeft ?? 0) === 0 && (personalLeft ?? 0) > 0) return "personal";
+  return "group";
+}
+
 export function membershipBalance(src: BalanceSource, isPackages: boolean): BalanceLine[] {
+  // Абонемент переноса: в номенклатуре количества нет — только «осталось»;
+  // персональные и диагностики — если они есть.
+  if (isPackages && src.kind === "carryover") {
+    const personal = src.personal_left ?? 0;
+    const diagnostics = src.diagnostics_left ?? 0;
+    const lines: BalanceLine[] = [];
+    if (balanceKindOf(src.kind, src.visits_left, personal) === "group") {
+      lines.push(line("Групповые", src.visits_left, null));
+    }
+    if (personal > 0) lines.push(line("Персональные", personal, null));
+    if (diagnostics > 0) lines.push(line("Диагностики", diagnostics, null));
+    return lines;
+  }
   if (!isPackages) {
     if (src.visits_count == null && src.visits_left == null) {
       return [{ label: "Посещения", left: null, total: null, used: null }];

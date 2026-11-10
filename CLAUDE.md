@@ -50,8 +50,8 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   `db/knowledge-base.test.ts`, «Академии» `db/academy.test.ts`,
   пользователей, ролей и доступов `db/access.test.ts`, «Рабочего дня»
   `db/workday.test.ts`, «Аналитики» `db/analytics.test.ts`, ленты
-  комментариев клиента `db/client-comments.test.ts` и тренера в приложении
-  `db/trainer-app.test.ts`
+  комментариев клиента `db/client-comments.test.ts`, тренера в приложении
+  `db/trainer-app.test.ts` и абонемента переноса `db/carryover.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -259,6 +259,25 @@ AUTH_SETUP.md.
   `db/migrations/2026-10-15_zzzz_packages_review_fixes.sql` (актуальное
   определение `activate_membership_from_sale`; там же `my_studio_visit_stats`
   — без диагностик тела).
+  **Абонемент переноса** (решение владельца 2026-11-10, клиенты купленной
+  студии): `db/migrations/2026-11-10_packages_carryover_membership.sql` —
+  `memberships.kind = 'carryover'` (только название: цена 0, без количества
+  и срока, `is_active = false` — витрина приложения его не показывает;
+  `memberships_carryover_terms_check`, тип выданной не меняется —
+  `memberships_carryover_kind_guard`), продажа `sale_kind = 'carryover'`
+  («Перенос») несёт остаток и срок — `sales.carryover_visits` /
+  `carryover_personal` / `carryover_diagnostics` / `carryover_starts_on` /
+  `carryover_ends_on` (`sales_carryover_terms_check`, тип продажи ⇔ тип
+  номенклатуры, только пакетный клуб — `sales_carryover_guard`); сумма
+  продажи — долг клиента (невнесённый платёж). `activate_membership_from_sale`
+  (актуальное определение — здесь) выдаёт абонемент сразу действующим с
+  этими остатками и сроком, при живом того же вида — в очередь;
+  `client_memberships_packages_fill` (актуальное — здесь) остатки переноса
+  не трогает. Клиент читает номенклатуру своих абонементов и скрытую —
+  политика «memberships client held» (`auth_held_membership_ids`).
+  `nps_pending_survey` (перенесённый — не новичок) и `push_triggers_run`
+  («Мало тренировок» без сравнения с номенклатурой у переноса) —
+  актуальные определения здесь. Тесты — `db/carryover.test.ts`.
   Отмена посещения и бонус: `db/migrations/2026-10-11_zzzzz_attendance_undo_personal_bonus.sql`
   — RPC `unmark_booking_attended` (attended → booked, тренировку возвращает
   триггер списания), `payroll_lines` — пакет персональных не идёт в продажи

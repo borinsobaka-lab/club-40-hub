@@ -53,6 +53,7 @@ import {
 import { ClientCombobox, type ClientOption } from "@/components/client-combobox";
 import { SearchableCombobox } from "@/components/searchable-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
+import { CarryoverForm } from "@/components/carryover-form";
 
 // Диалог «Новая продажа» абонемента. Открывается из «Продаж» (подписочный
 // клуб), «Абонементов» (пакетный) и из карточки клиента («Добавить продажу» —
@@ -204,8 +205,9 @@ export function SaleDialog(props: SaleDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-w-lg">
-        {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
-        <SaleForm {...props} />
+        {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно.
+            «Перенос» (абонемент переноса) — своя форма: остаток и срок вместо цены. */}
+        {props.kind === "carryover" ? <CarryoverForm {...props} /> : <SaleForm {...props} />}
       </DialogContent>
     </Dialog>
   );
@@ -279,8 +281,9 @@ function SaleForm({
 
   // Пакетная студия: «Пробное» — только пробные посещения, остальное — пакеты
   // и разовое посещение (его продают только здесь, в приложении его нет).
+  // Абонемент переноса выдаётся своей формой («Перенос»), здесь его нет.
   const options = isPackages
-    ? memberships.filter((m) => (m.kind === "trial") === isTrial)
+    ? memberships.filter((m) => m.kind !== "carryover" && (m.kind === "trial") === isTrial)
     : memberships;
   const membership = options.find((m) => m.id === form.membershipId) ?? null;
   const t = saleTotals(form, membership, isPackages);

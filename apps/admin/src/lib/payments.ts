@@ -34,16 +34,28 @@ export const PAYMENT_TYPES: PaymentType[] = ["first", "recurring", "other"];
  * (visits_left), пакет персональных — на персональных (personal_left; туда
  * же — подарочные персональные пакета тренировок, memberships.personal_count).
  * Подписочный формат тип не использует.
+ *
+ * Абонемент переноса (carryover, 2026-11-10) — для клиентов купленной
+ * студии: у номенклатуры только название, остаток и срок у каждого свои —
+ * задаются при выдаче (продажа «Перенос», sales.carryover_*;
+ * db/migrations/2026-11-10_packages_carryover_membership.sql).
  */
-export type MembershipKind = "package" | "personal" | "single" | "trial";
+export type MembershipKind = "package" | "personal" | "single" | "trial" | "carryover";
 
 export const MEMBERSHIP_KIND_LABEL: Record<MembershipKind, string> = {
   package: "Пакет тренировок",
   personal: "Пакет персональных тренировок",
   single: "Разовое посещение",
   trial: "Пробное посещение",
+  carryover: "Абонемент переноса",
 };
-export const MEMBERSHIP_KINDS: MembershipKind[] = ["package", "personal", "single", "trial"];
+export const MEMBERSHIP_KINDS: MembershipKind[] = [
+  "package",
+  "personal",
+  "single",
+  "trial",
+  "carryover",
+];
 
 /**
  * Разовое посещение (memberships.kind = single, 2026-10-15): условия
@@ -62,16 +74,19 @@ export const SINGLE_VISIT = {
  * Тип продажи пакетной студии (sales.sale_kind) — для аналитики: сколько
  * продали сразу в студии, сколько допродали потом (например, в чате), сколько
  * продлили. null — продажа без типа (подписочный формат, приложение).
+ * «Перенос» — выдача абонемента переноса клиенту купленной студии: не
+ * продажа, в дашборде продажей не считается.
  */
-export type SaleKind = "new" | "trial" | "upsell" | "renewal";
+export type SaleKind = "new" | "trial" | "upsell" | "renewal" | "carryover";
 
 export const SALE_KIND_LABEL: Record<SaleKind, string> = {
   new: "Новая продажа",
   trial: "Оплата пробного",
   upsell: "Допродажа",
   renewal: "Продление",
+  carryover: "Перенос",
 };
-export const SALE_KINDS: SaleKind[] = ["new", "trial", "upsell", "renewal"];
+export const SALE_KINDS: SaleKind[] = ["new", "trial", "upsell", "renewal", "carryover"];
 
 /** Цвет типа продажи — кружок в колонке «Тип продажи» и плашка иконки в выборе типа. */
 export const SALE_KIND_DOT: Record<SaleKind, string> = {
@@ -79,6 +94,7 @@ export const SALE_KIND_DOT: Record<SaleKind, string> = {
   trial: "bg-emerald-500",
   upsell: "bg-blue-500",
   renewal: "bg-violet-500",
+  carryover: "bg-amber-500",
 };
 
 /** Короткое пояснение на плитке выбора типа продажи. */
@@ -87,6 +103,7 @@ export const SALE_KIND_DESCRIPTION: Record<SaleKind, string> = {
   trial: "Пробное посещение из «Номенклатур»",
   upsell: "Продали позже — например, в чате",
   renewal: "Новый пакет клиенту, у которого уже были абонементы",
+  carryover: "Клиент купленной студии: её остаток и срок",
 };
 
 /** Пояснение под заголовком диалога продажи — по типу. */
@@ -97,6 +114,8 @@ export const SALE_KIND_HINT: Record<SaleKind, string> = {
     "Продажа позже первого визита — например, в чате. Заполняется как обычная продажа, в отчётах учитывается отдельно.",
   renewal:
     "Новый пакет клиенту, у которого уже были абонементы. Заполняется как обычная продажа, в отчётах учитывается отдельно.",
+  carryover:
+    "Абонемент переноса для клиента купленной студии: остаток тренировок и срок — как были у неё. Это не продажа: в выручку идут только доплаты долга.",
 };
 
 /** Подсказки «?»: у полей формы продажи и у колонок таблицы «Продаж». */
@@ -144,7 +163,7 @@ export const SALE_TIPS = {
   trainer:
     "Тренер, который был с клиентом, когда тот купил абонемент (например, вёл пробное). За продажу ему начисляется бонус к зарплате. Не было — оставьте «Без тренера».",
   saleKind:
-    "Новая продажа — в клубе, пробное — пробное посещение, допродажа — продали позже (например, в чате), продление — клиенту, у которого уже были абонементы.",
+    "Новая продажа — в клубе, пробное — пробное посещение, допродажа — продали позже (например, в чате), продление — клиенту, у которого уже были абонементы, перенос — клиенту купленной студии.",
 };
 
 // Календарная арифметика по Y-M-D: без Date-парсинга (он читает дату как UTC)

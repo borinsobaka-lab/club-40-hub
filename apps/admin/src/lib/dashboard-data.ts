@@ -628,7 +628,7 @@ async function purchaseBadges(clientIds: string[]) {
     const id = String(r.client_id);
     if (kind === "trial") {
       if (!state.has(id)) state.set(id, "trial");
-    } else if (kind !== "single") state.set(id, "bought");
+    } else if (kind !== "single" && kind !== "carryover") state.set(id, "bought");
   }
   return state;
 }
@@ -915,6 +915,7 @@ export async function loadSalesHistory(studioIds: string[]): Promise<SalesHistor
         membershipName: membership?.name ?? "Без названия",
         trial: membership?.kind === "trial",
         single: membership?.kind === "single",
+        carryover: membership?.kind === "carryover",
         personal: membership?.kind === "personal",
         method: (r.payment_method as string | null) ?? null,
         source: String(r.source ?? "admin"),
@@ -1197,7 +1198,8 @@ export async function loadPurchaseDates(clientIds: string[]) {
   for (const r of pages.flat()) {
     const kind = one(r.memberships as OneOrMany<{ kind: string | null }>)?.kind;
     const term = one(r.client_memberships as OneOrMany<{ status: string }>);
-    if (kind === "trial" || kind === "single" || !term) continue;
+    // Перенос (клиент купленной студии) — не покупка.
+    if (kind === "trial" || kind === "single" || kind === "carryover" || !term) continue;
     if (term.status === "cancelled" || term.status === "refunded") continue;
     const id = String(r.client_id);
     dates.set(id, [...(dates.get(id) ?? []), String(r.sold_at)]);

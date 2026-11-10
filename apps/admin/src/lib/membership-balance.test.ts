@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { balanceLineText, membershipBalance } from "./membership-balance";
+import { balanceKindOf, balanceLineText, membershipBalance } from "./membership-balance";
 
 describe("membershipBalance", () => {
   test("пакет тренировок с подарочными персональными и диагностикой", () => {
@@ -43,5 +43,27 @@ describe("membershipBalance", () => {
     expect(balanceLineText(membershipBalance({ visits_count: 12, visits_left: 4 }, false)[0])).toBe(
       "Посещения: использовано 8 из 12, осталось 4",
     );
+  });
+
+  test("абонемент переноса: только остатки, персональные и диагностики — если есть", () => {
+    const text = (src: Parameters<typeof membershipBalance>[0]) =>
+      membershipBalance(src, true).map(balanceLineText);
+    expect(text({ kind: "carryover", visits_count: null, visits_left: 7 })).toEqual([
+      "Групповые: осталось 7",
+    ]);
+    expect(
+      text({ kind: "carryover", visits_left: 5, personal_left: 2, diagnostics_left: 1 }),
+    ).toEqual(["Групповые: осталось 5", "Персональные: осталось 2", "Диагностики: осталось 1"]);
+    expect(text({ kind: "carryover", visits_left: 0, personal_left: 3 })).toEqual([
+      "Персональные: осталось 3",
+    ]);
+  });
+
+  test("вид баланса: перенос — по остаткам, как в базе", () => {
+    expect(balanceKindOf("package", 0, 2)).toBe("group");
+    expect(balanceKindOf("personal", 0, 0)).toBe("personal");
+    expect(balanceKindOf("carryover", 5, 2)).toBe("group");
+    expect(balanceKindOf("carryover", 0, 2)).toBe("personal");
+    expect(balanceKindOf("carryover", 0, 0)).toBe("group");
   });
 });

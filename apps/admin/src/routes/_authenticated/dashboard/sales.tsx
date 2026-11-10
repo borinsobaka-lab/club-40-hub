@@ -81,12 +81,15 @@ const MONEY_ROWS = {
 function salesSeries(history: SalesHistory): Record<SalesKey, SeriesDef> {
   const origins = classifySales(history.sales);
   const salesById = new Map(history.sales.map((s) => [s.id, s]));
-  const sold: SeriesPoint[] = history.sales.map((s) => ({
-    date: s.soldAt,
-    amount: s.totalAmount,
-    n: 1,
-    row: saleDetail(s, { badge: ORIGIN_BADGE[origins.get(s.id) ?? "new"] }),
-  }));
+  // Перенос (клиент купленной студии) — не продажа.
+  const sold: SeriesPoint[] = history.sales
+    .filter((s) => !s.carryover)
+    .map((s) => ({
+      date: s.soldAt,
+      amount: s.totalAmount,
+      n: 1,
+      row: saleDetail(s, { badge: ORIGIN_BADGE[origins.get(s.id) ?? "new"] }),
+    }));
   const paid: SeriesPoint[] = membershipPayments(history.sales).map((p, i) => {
     const sale = salesById.get(p.saleId);
     const method = p.method && PAYMENT_METHOD_LABEL[p.method as PaymentMethod];
@@ -210,7 +213,7 @@ function SalesBody(view: DashboardView) {
 
     // Новые / продления / возвраты — по выручке проданных за период абонементов.
     const origins = classifySales(h.sales);
-    const sold = h.sales.filter((s) => inPeriod(s.soldAt, from, to));
+    const sold = h.sales.filter((s) => !s.carryover && inPeriod(s.soldAt, from, to));
     const originSlices: Slice[] = ORIGINS.map((origin) => ({
       key: origin,
       label: SALE_ORIGIN_LABEL[origin],

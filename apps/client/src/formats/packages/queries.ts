@@ -89,7 +89,12 @@ export function packMyBookingsQuery(userId: string | null, today: Date) {
 
 // ---- Абонементы ----
 
-export type MembershipKind = "package" | "trial" | "personal";
+/**
+ * Тип номенклатуры. carryover — абонемент переноса (клиент купленной студии,
+ * 2026-11-10): в витрине его нет (не is_active), в «Моих абонементах» —
+ * как пакет тренировок.
+ */
+export type MembershipKind = "package" | "trial" | "personal" | "single" | "carryover";
 
 export type Pack = {
   id: string;
@@ -212,10 +217,14 @@ export function packMyMembershipsQuery(userId: string | null) {
  * Клиент с действующим пакетом тренировок (решение владельца 2026-10-15):
  * ему в витрине пакетов — плашка «указана полная стоимость, продление
  * дешевле». Пробное и персональные не в счёт; kind null — давняя
- * номенклатура до типов, это пакет (как в витрине).
+ * номенклатура до типов, это пакет (как в витрине). Абонемент переноса
+ * (клиент купленной студии) — тоже действующий пакет.
  */
 export function hasActivePackage(rows: Pick<MyMembership, "memberships">[]) {
-  return rows.some((m) => m.memberships && (m.memberships.kind ?? "package") === "package");
+  return rows.some((m) => {
+    const kind = m.memberships ? (m.memberships.kind ?? "package") : null;
+    return kind === "package" || kind === "carryover";
+  });
 }
 
 /**

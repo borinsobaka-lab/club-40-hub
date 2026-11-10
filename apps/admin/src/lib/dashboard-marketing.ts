@@ -31,6 +31,8 @@ export type MarketingClient = {
 export type ProfileAnswers = { referralSource: string | null; goal: string | null };
 
 const isPurchase = (s: SaleRecord) => !s.trial && !s.single && !s.noMembership;
+/** Покупка, сделанная в периоде: перенос из купленной студии — не покупка. */
+const isSale = (s: SaleRecord) => isPurchase(s) && !s.carryover;
 
 function compareSales(a: SaleRecord, b: SaleRecord) {
   return a.soldAt === b.soldAt
@@ -38,12 +40,17 @@ function compareSales(a: SaleRecord, b: SaleRecord) {
     : a.soldAt.localeCompare(b.soldAt);
 }
 
-/** Первая покупка каждого клиента (абонемент, не пробное и не разовое). */
+/**
+ * Первая покупка каждого клиента (абонемент, не пробное и не разовое).
+ * Клиент, пришедший с абонементом переноса (купленная студия), — не новый
+ * покупатель: его в списке нет.
+ */
 export function firstPurchases(sales: SaleRecord[]): Map<string, SaleRecord> {
   const first = new Map<string, SaleRecord>();
   for (const s of [...sales].sort(compareSales)) {
     if (isPurchase(s) && !first.has(s.clientId)) first.set(s.clientId, s);
   }
+  for (const [id, s] of first) if (s.carryover) first.delete(id);
   return first;
 }
 
@@ -76,8 +83,7 @@ export function trialOutcomes(sales: SaleRecord[], from: string, to: string) {
   return [...trials.values()].map((trial) => ({
     trial,
     converted: sales.some(
-      (s) =>
-        s.clientId === trial.clientId && isPurchase(s) && !s.cancelled && s.soldAt >= trial.soldAt,
+      (s) => s.clientId === trial.clientId && isSale(s) && !s.cancelled && s.soldAt >= trial.soldAt,
     ),
   }));
 }
@@ -120,7 +126,7 @@ export function marketingMetrics(
   const first = firstPurchases(input.sales);
   const registration = new Map(input.clients.map((c) => [c.id, c.registrationDate]));
   const buyers = [...first.values()].filter((s) => inPeriod(s.soldAt, from, to));
-  const sold = input.sales.filter((s) => inPeriod(s.soldAt, from, to));
+  const sold = input.sales.filter((s) => !s.carryover && inPeriod(s.soldAt, from, to));
   const trials = trialOutcomes(input.sales, from, to);
   const members = input.clients.filter((c) => input.memberIds.has(c.id));
   return {
@@ -325,7 +331,7 @@ export function cohortByAnswer(
   const first = firstPurchases(sales);
   const revenue = new Map<string, number>();
   for (const s of sales) {
-    if (isPurchase(s)) revenue.set(s.clientId, (revenue.get(s.clientId) ?? 0) + s.totalAmount);
+    if (isSale(s)) revenue.set(s.clientId, (revenue.get(s.clientId) ?? 0) + s.totalAmount);
   }
   const groups = new Map<string, { clients: number; buyers: number; revenue: number }>();
   for (const c of cohort) {

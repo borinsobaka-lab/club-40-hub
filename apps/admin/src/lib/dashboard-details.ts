@@ -185,6 +185,7 @@ export function boughtSince(sales: SaleRecord[], clientId: string, since: string
       s.clientId === clientId &&
       !s.trial &&
       !s.single &&
+      !s.carryover &&
       !s.noMembership &&
       !s.cancelled &&
       s.soldAt >= since,

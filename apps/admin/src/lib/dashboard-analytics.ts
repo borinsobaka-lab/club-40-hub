@@ -39,6 +39,13 @@ export type SaleRecord = {
    */
   single: boolean;
   /**
+   * Абонемент переноса (memberships.kind = carryover, 2026-11-10): выдан
+   * клиенту купленной студии — не продажа (в продажах, выручке проданного и
+   * среднем чеке не считается), но в истории клиента это абонемент: следующая
+   * покупка — продление. Доплаты долга по нему — поступившие деньги.
+   */
+  carryover: boolean;
+  /**
    * Пакет персональных тренировок (memberships.kind = personal, пакетные
    * клубы) — свой вид баланса: продлевается и считается отдельно от
    * групповых абонементов, как в базе (client_memberships.balance_kind).
@@ -206,7 +213,9 @@ export function classifySales(all: SaleRecord[]): Map<string, SaleOrigin> {
   for (const list of byClient(all).values()) {
     const prior: SaleRecord[] = [];
     for (const s of list) {
-      if (s.single) {
+      if (s.carryover) {
+        // Не продажа — типа нет, но абонемент в истории есть (ниже).
+      } else if (s.single) {
         result.set(s.id, "single");
       } else if (prior.length === 0) {
         result.set(s.id, "new");
@@ -398,7 +407,7 @@ export function salesMetrics(
   from: string,
   to: string,
 ) {
-  const sold = history.sales.filter((s) => inPeriod(s.soldAt, from, to));
+  const sold = history.sales.filter((s) => !s.carryover && inPeriod(s.soldAt, from, to));
   const payments = membershipPayments(history.sales).filter((p) => inPeriod(p.date, from, to));
   const others = history.otherSales.filter((s) => inPeriod(s.soldAt, from, to));
   const membershipRevenue = sumBy(sold, (s) => s.totalAmount);

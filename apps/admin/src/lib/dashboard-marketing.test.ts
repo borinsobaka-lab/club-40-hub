@@ -25,6 +25,7 @@ function sale(p: Partial<SaleRecord> & { clientId: string; soldAt: string }): Sa
     membershipName: "Пакет 8",
     trial: false,
     single: false,
+    carryover: false,
     personal: false,
     method: "cash",
     source: "admin",
@@ -55,6 +56,17 @@ describe("firstPurchases", () => {
       sale({ clientId: "a", soldAt: "2026-10-10" }),
     ];
     expect(firstPurchases(sales).get("a")?.id).toBe("first");
+  });
+
+  test("пришедший с абонементом переноса — не новый покупатель", () => {
+    const sales = [
+      sale({ clientId: "a", soldAt: "2026-11-10", carryover: true }),
+      sale({ clientId: "a", soldAt: "2026-12-01" }),
+      sale({ clientId: "b", soldAt: "2026-12-01", id: "b1" }),
+    ];
+    const first = firstPurchases(sales);
+    expect(first.has("a")).toBe(false);
+    expect(first.get("b")?.id).toBe("b1");
   });
 });
 

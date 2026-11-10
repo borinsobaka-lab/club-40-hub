@@ -453,7 +453,7 @@ export function createAssistantTools(
     // ====== АБОНЕМЕНТЫ (шаблоны) ======
     list_memberships: tool({
       description:
-        "Номенклатура абонементов клуба: название, тип (package — пакет групповых, personal — пакет персональных, trial — пробное, single — разовое посещение), " +
+        "Номенклатура абонементов клуба: название, тип (package — пакет групповых, personal — пакет персональных, trial — пробное, single — разовое посещение, carryover — абонемент переноса: остаток и срок у каждого клиента свои), " +
         "описание, бонусы, число посещений, срок, цена, сколькими платежами можно оплатить, активность. Можно фильтровать по точным ID.",
       inputSchema: z.object({
         ids: z
@@ -915,7 +915,8 @@ export function createAssistantTools(
           for (const s of (later ?? []) as Row[]) {
             const kind = one(s.memberships as { kind: string } | null)?.kind;
             const term = one(s.client_memberships as { status: string } | null);
-            if (!kind || kind === "trial" || kind === "single") continue;
+            // Перенос из купленной студии — не покупка.
+            if (!kind || kind === "trial" || kind === "single" || kind === "carryover") continue;
             if (!term || term.status === "cancelled" || term.status === "refunded") continue;
             const list = bought.get(s.client_id as string) ?? [];
             list.push(String(s.sold_at));

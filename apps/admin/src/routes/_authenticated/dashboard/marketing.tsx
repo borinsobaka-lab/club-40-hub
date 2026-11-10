@@ -323,7 +323,7 @@ function MarketingBody(view: DashboardView) {
       SERIES_COLORS.length,
     ).map((s, i) => ({ ...s, color: s.key === "__other" ? OTHER_COLOR : SERIES_COLORS[i] }));
 
-    const sold = h.sales.filter((s) => inPeriod(s.soldAt, from, to));
+    const sold = h.sales.filter((s) => !s.carryover && inPeriod(s.soldAt, from, to));
     const channelSlices: Slice[] = CHANNELS.map((c) => ({
       ...c,
       value: sold.filter((s) => (s.source === "mobile" ? "mobile" : "admin") === c.key).length,

@@ -118,6 +118,7 @@ import { MembershipStatusBadge } from "@/components/membership-status-badge";
 import { ClubStatusBadge } from "@/components/club-status-badge";
 import type { ClubStatus } from "@/lib/client-status";
 import { SaleDialog } from "@/components/sale-dialog";
+import { balanceKindOf, membershipBalance } from "@/lib/membership-balance";
 import { SaleKindDot, SaleKindPickerDialog } from "@/components/sale-kind-picker";
 import { RefundDialog, type RefundSale } from "@/components/refund-dialog";
 
@@ -965,15 +966,18 @@ function ClientMembershipsPage() {
                           </TableCell>
                           <TableCell className="min-w-[130px]">
                             <div>{r.memberships?.name ?? "—"}</div>
-                            {r.memberships?.kind !== "package" && r.memberships?.kind && (
-                              <div className={cn("text-xs text-muted-foreground", extra)}>
-                                {r.memberships.kind === "trial"
-                                  ? "Пробное"
-                                  : r.memberships.kind === "single"
-                                    ? "Разовое"
-                                    : "Персональные"}
-                              </div>
-                            )}
+                            {/* У переноса тип номенклатуры и продажи один — «Перенос» ниже. */}
+                            {r.memberships?.kind !== "package" &&
+                              r.memberships?.kind !== "carryover" &&
+                              r.memberships?.kind && (
+                                <div className={cn("text-xs text-muted-foreground", extra)}>
+                                  {r.memberships.kind === "trial"
+                                    ? "Пробное"
+                                    : r.memberships.kind === "single"
+                                      ? "Разовое"
+                                      : "Персональные"}
+                                </div>
+                              )}
                             {/* На телефоне тип продажи и «До» — одной строкой. */}
                             <div className="max-md:flex max-md:flex-wrap max-md:items-center max-md:gap-x-3">
                               {r.sale_kind && (
@@ -1159,6 +1163,7 @@ function StripeLegend() {
  */
 function Balance({ row }: { row: Row }) {
   const m = row.memberships;
+  if (m?.kind === "carryover") return <CarryoverBalance row={row} />;
   const isPersonal = m?.kind === "personal";
   const personalTotal = m?.personal_count ?? 0;
   const diagnosticsTotal = m?.diagnostics_count ?? 0;
@@ -1180,9 +1185,37 @@ function Balance({ row }: { row: Row }) {
   );
 }
 
+/**
+ * Баланс абонемента переноса: в номенклатуре количества нет — только
+ * остатки (lib/membership-balance.ts).
+ */
+function carryoverParts(row: Row) {
+  const unit: Record<string, string> = {
+    Групповые: "трен.",
+    Персональные: "перс.",
+    Диагностики: "диагн.",
+  };
+  return membershipBalance({ ...row, kind: "carryover" }, true).map(
+    (l) => `${l.left ?? "—"} ${unit[l.label] ?? ""}`,
+  );
+}
+
+function CarryoverBalance({ row }: { row: Row }) {
+  return (
+    <>
+      {carryoverParts(row).map((p) => (
+        <div key={p}>{p}</div>
+      ))}
+    </>
+  );
+}
+
 /** Баланс одной строкой — для свёрнутой карточки на телефоне: «5/8 трен. · 2/4 перс.». */
 function BalanceInline({ row }: { row: Row }) {
   const m = row.memberships;
+  if (m?.kind === "carryover") {
+    return <span className="text-muted-foreground">{carryoverParts(row).join(" · ")}</span>;
+  }
   const isPersonal = m?.kind === "personal";
   const personalTotal = m?.personal_count ?? 0;
   const diagnosticsTotal = m?.diagnostics_count ?? 0;
@@ -1281,7 +1314,7 @@ function TransferForm({
   const sameClient = targetId === row.client_id;
   // Пакет персональных и пакет тренировок — разные балансы: живой абонемент
   // у клиента один на вид (client_memberships_one_live_per_balance).
-  const balanceKind = row.memberships?.kind === "personal" ? "personal" : "group";
+  const balanceKind = balanceKindOf(row.memberships?.kind, row.visits_left, row.personal_left);
   const isLive = row.membership_status === "active" || row.membership_status === "frozen";
 
   const { data: current, isFetching: checking } = useQuery({

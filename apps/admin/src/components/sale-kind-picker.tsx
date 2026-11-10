@@ -1,4 +1,4 @@
-import { MessageCirclePlus, Repeat, ShoppingBag, Ticket } from "lucide-react";
+import { ArrowLeftRight, MessageCirclePlus, Repeat, ShoppingBag, Ticket } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ChoiceCard } from "@/components/ui/choice-card";
@@ -34,13 +34,15 @@ const SALE_KIND_ICON: Record<SaleKind, typeof ShoppingBag> = {
   trial: Ticket,
   upsell: MessageCirclePlus,
   renewal: Repeat,
+  carryover: ArrowLeftRight,
 };
 
 /**
  * Выбор типа продажи (пакетный клуб, «Абонементы») — плитки с иконкой типа
  * на плашке цвета типа (как кружок в колонке «Тип продажи»: новая и пробное —
- * зелёный, допродажа — синий, продление — фиолетовый; решение владельца
- * 2026-10-14); дальше форма продажи. Одно и то же окно везде, где продают
+ * зелёный, допродажа — синий, продление — фиолетовый, перенос — янтарный;
+ * решение владельца 2026-10-14); дальше форма продажи (у переноса — своя,
+ * CarryoverForm в sale-dialog.tsx). Одно и то же окно везде, где продают
  * абонемент: «Абонементы» и карточка клиента (решение владельца 2026-10-19).
  */
 export function SaleKindPickerDialog({
