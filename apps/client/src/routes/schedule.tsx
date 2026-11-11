@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Refresh, Fire, CloseCircle } from "@solar-icons/react";
+import { Refresh, Fire, CloseCircle, LockKeyholeMinimalistic } from "@solar-icons/react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { RescheduleOfferDialog } from "@/components/reschedule-offer-dialog";
 import { entryToDrawerData, workoutTypeMeta, TYPE_ORDER } from "@/lib/workout-types";
 import { useClubSettings } from "@/hooks/use-club-settings";
 import { useClientStudioId } from "@/hooks/use-client-studio";
+import { useBookingClosed } from "@/hooks/use-booking-closed";
 import { useAuth } from "@/hooks/use-auth";
 import { ScheduleListSkeleton } from "@/components/content-skeletons";
 import { ScheduleDayList } from "@/components/schedule-day-list";
@@ -120,6 +121,8 @@ function SchedulePage() {
   const clubSettings = useClubSettings();
   const { user } = useAuth();
   const { studioId, studioReady } = useClientStudioId();
+  // «Закрытая запись» клуба (2026-11-11): расписание видно, записаться нельзя.
+  const bookingClosed = useBookingClosed(studioId);
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const gestureStartRef = useRef<{ x: number; y: number; idx: number } | null>(null);
@@ -285,6 +288,7 @@ function SchedulePage() {
       past: t("Эта тренировка уже прошла"),
       full: t("Свободных мест больше нет"),
       not_booked: t("Вы не были записаны на эту тренировку"),
+      booking_closed: t("Запись пока закрыта"),
     };
     const res = data as {
       ok: boolean;
@@ -570,6 +574,9 @@ function SchedulePage() {
                           const isWaitlisted = waitlistedIds.has(c.id);
                           const isActive = isBooked || isWaitlisted;
                           const isPending = pendingId === c.id;
+                          // «Закрытая запись»: не нажимается, без мест и «+».
+                          const closed = bookingClosed && !isActive;
+                          const Info = closed ? "div" : "button";
                           return (
                             <Card
                               className={`relative p-3 pl-4 flex items-center gap-3 w-full overflow-hidden rounded-lg transition-colors ${
@@ -583,10 +590,16 @@ function SchedulePage() {
                               <span
                                 className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.stripe}`}
                               />
-                              <button
-                                type="button"
-                                onClick={() => setOpenEntry(entryToDrawerData(c, t))}
-                                className="flex flex-1 min-w-0 items-center gap-3 text-left active:opacity-80 transition-opacity"
+                              <Info
+                                {...(closed
+                                  ? {}
+                                  : {
+                                      type: "button" as const,
+                                      onClick: () => setOpenEntry(entryToDrawerData(c, t)),
+                                    })}
+                                className={`flex flex-1 min-w-0 items-center gap-3 text-left ${
+                                  closed ? "" : "active:opacity-80 transition-opacity"
+                                }`}
                               >
                                 <div className="flex flex-col items-center justify-center w-12 shrink-0">
                                   <div className="text-base font-black tabular-nums leading-tight text-center">
@@ -616,6 +629,19 @@ function SchedulePage() {
                                     );
                                   })()}
                                   {(() => {
+                                    if (closed) {
+                                      return (
+                                        <div className="flex items-center gap-1 text-xs mt-0.5 text-muted-foreground leading-none">
+                                          <LockKeyholeMinimalistic
+                                            className="h-3.5 w-3.5 shrink-0"
+                                            weight="BoldDuotone"
+                                          />
+                                          <span className="leading-none mt-0.5">
+                                            {t("Запись пока закрыта")}
+                                          </span>
+                                        </div>
+                                      );
+                                    }
                                     const effectiveCapacity =
                                       c.capacity ?? c.workout?.capacity ?? null;
                                     const left = remainingSpots(effectiveCapacity, c.booked_count);
@@ -649,8 +675,8 @@ function SchedulePage() {
                                     );
                                   })()}
                                 </div>
-                              </button>
-                              {!isActive && (
+                              </Info>
+                              {!isActive && !closed && (
                                 <button
                                   type="button"
                                   disabled={isPending}
@@ -715,6 +741,7 @@ function SchedulePage() {
         })()}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
+        bookingNote={bookingClosed ? t("Запись пока закрыта") : null}
         onBook={() => {
           if (openEntry) toggleBooking(openEntry.id);
         }}

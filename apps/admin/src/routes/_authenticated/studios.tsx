@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ColorInput } from "@/components/ui/color-input";
-import { FormField, InfoNote } from "@/components/ui/form-field";
+import { FormField, InfoNote, SwitchRow } from "@/components/ui/form-field";
 import {
   Select,
   SelectContent,
@@ -69,6 +69,8 @@ const TIPS = {
   address: "Клиенты видят его в приложении под названием клуба — на главной и в выборе клуба.",
   photo:
     "Маленькая картинка слева от названия клуба в приложении клиентов, когда они выбирают студию («Сменить студию» на главной).",
+  bookingClosed:
+    "Расписание и тренировки клуба в приложении видны, но записаться нельзя: тренировки не нажимаются, свободные места не показываются, вместо них — «Запись пока закрыта». Администратор записывает клиентов из админки как обычно. Например, пока клуб готовится к открытию.",
   maps: "Ссылка из карт: откройте клуб в Google Картах или Яндекс Картах → «Поделиться» → «Скопировать ссылку». В приложении клиентов в выборе студии — кнопка «Показать на карте». Пусто — кнопки нет.",
 };
 
@@ -189,6 +191,11 @@ function StudiosPage() {
                         {s.id === activeId && (
                           <Badge variant="secondary" className="ml-2">
                             Открыт
+                          </Badge>
+                        )}
+                        {s.booking_closed && (
+                          <Badge variant="outline" className="ml-2">
+                            Запись закрыта
                           </Badge>
                         )}
                       </TableCell>
@@ -437,6 +444,7 @@ function StudioForm({
   const [photo, setPhoto] = useState<string | null>(item?.photo_url ?? null);
   const [googleMaps, setGoogleMaps] = useState(item?.google_maps_url ?? "");
   const [yandexMaps, setYandexMaps] = useState(item?.yandex_maps_url ?? "");
+  const [bookingClosed, setBookingClosed] = useState(item?.booking_closed ?? false);
   const tr = useContentTranslations(item?.translations);
   const [saving, setSaving] = useState(false);
 
@@ -479,6 +487,7 @@ function StudioForm({
             address: addressValue,
             photo_url: photo,
             ...maps,
+            booking_closed: bookingClosed,
             translations,
           })
           .eq("id", item.id));
@@ -490,20 +499,28 @@ function StudioForm({
           _logo_url: logo,
         });
         error = created.error;
-        // create_studio адрес, картинку, карты и переводы не принимает —
-        // дописываем: создатель уже владелец новой студии и может её править.
+        // create_studio адрес, картинку, карты, «Закрытую запись» и переводы
+        // не принимает — дописываем: создатель уже владелец новой студии и
+        // может её править.
         if (
           !error &&
           (addressValue ||
             photo ||
             maps.google_maps_url ||
             maps.yandex_maps_url ||
+            bookingClosed ||
             Object.keys(translations).length > 0) &&
           created.data
         ) {
           ({ error } = await supabase
             .from("studios")
-            .update({ address: addressValue, photo_url: photo, ...maps, translations })
+            .update({
+              address: addressValue,
+              photo_url: photo,
+              ...maps,
+              booking_closed: bookingClosed,
+              translations,
+            })
             .eq("id", created.data as string));
         }
       }
@@ -571,6 +588,14 @@ function StudioForm({
                 />
               </FormField>
             </div>
+
+            <SwitchRow
+              title="Закрытая запись"
+              hint="Расписание в приложении видно, записаться нельзя."
+              tip={TIPS.bookingClosed}
+              checked={bookingClosed}
+              onCheckedChange={setBookingClosed}
+            />
 
             {item ? (
               <InfoNote>

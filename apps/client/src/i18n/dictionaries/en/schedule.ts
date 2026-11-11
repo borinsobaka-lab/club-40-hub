@@ -18,6 +18,7 @@ const dict: Dictionary = {
   "Тренировка не найдена": "Workout not found",
   "Эта тренировка уже прошла": "This workout has already taken place",
   "Свободных мест больше нет": "No spots left",
+  "Запись пока закрыта": "Booking is not open yet",
   "Вы не были записаны на эту тренировку": "You weren't booked for this workout",
   "Вы вышли из листа ожидания": "You've left the waitlist",
   "Запись отменена": "Booking cancelled",

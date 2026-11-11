@@ -2,6 +2,7 @@ import {
   AltArrowRight,
   CheckCircle,
   CloseCircle,
+  LockKeyholeMinimalistic,
   TransferHorizontal,
   UsersGroupRounded,
 } from "@solar-icons/react";
@@ -75,7 +76,9 @@ function BookedLabel({ startsAt }: { startsAt: string }) {
  * запись — зелёная подпись «Вы записаны» с галочкой на месте строки
  * «Свободно N мест» (решение владельца 2026-10-13: места видны в окне
  * тренировки), а не розовая заливка; тренер на замене — жёлтая пометка
- * «Замена».
+ * «Замена». «Закрытая запись» студии (2026-11-11) — карточка не нажимается,
+ * стрелки и свободных мест нет, вместо них «Запись пока закрыта»; своя запись
+ * (сделанная до закрытия) открывается как обычно — чтобы её можно было отменить.
  */
 export function PackWorkoutCard({
   entry,
@@ -84,6 +87,7 @@ export function PackWorkoutCard({
   studioName = null,
   showBooked = false,
   hideTrainerId = null,
+  bookingClosed = false,
   onOpen,
 }: {
   entry: PackEntry;
@@ -98,6 +102,8 @@ export function PackWorkoutCard({
    * его (решение владельца 2026-11-05). На замене остаётся пометка «Замена».
    */
   hideTrainerId?: string | null;
+  /** «Закрытая запись» студии занятия — карточка не нажимается. */
+  bookingClosed?: boolean;
   onOpen: () => void;
 }) {
   const t = useT();
@@ -110,6 +116,8 @@ export function PackWorkoutCard({
   const minutes = durationMinutes(entry);
   const left = spotsLeft(entry);
   const spots = spotsLabel(entry, t);
+  const closed = bookingClosed && !isBooked && !isWaitlisted;
+  const Row = closed ? "div" : "button";
 
   return (
     <Card
@@ -121,10 +129,11 @@ export function PackWorkoutCard({
         className={`absolute bottom-0 left-0 top-0 w-1.5 ${color ? "" : "bg-muted-foreground/40"}`}
         style={color ? { backgroundColor: color } : undefined}
       />
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex w-full items-center gap-3 p-3 pl-4 text-left transition-opacity active:opacity-80"
+      <Row
+        {...(closed ? {} : { type: "button" as const, onClick: onOpen })}
+        className={`flex w-full items-center gap-3 p-3 pl-4 text-left ${
+          closed ? "" : "transition-opacity active:opacity-80"
+        }`}
       >
         <div className="flex w-12 shrink-0 flex-col items-center justify-center">
           <div className="text-center text-base font-black leading-tight tabular-nums">
@@ -181,6 +190,11 @@ export function PackWorkoutCard({
               <CheckCircle className="h-3.5 w-3.5 shrink-0" weight="Bold" />
               <BookedLabel startsAt={entry.starts_at} />
             </div>
+          ) : closed ? (
+            <div className="mt-1.5 flex items-center gap-1 text-xs font-medium leading-none text-muted-foreground">
+              <LockKeyholeMinimalistic className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
+              <span>{t("Запись пока закрыта")}</span>
+            </div>
           ) : showBooked ? (
             <div className="mt-1.5 flex items-center gap-1 text-xs font-medium leading-none text-muted-foreground">
               <UsersGroupRounded className="h-3.5 w-3.5 shrink-0" weight="BoldDuotone" />
@@ -203,8 +217,8 @@ export function PackWorkoutCard({
             )
           )}
         </div>
-        <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-      </button>
+        {!closed && <AltArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />}
+      </Row>
     </Card>
   );
 }

@@ -779,6 +779,38 @@ describe.skipIf(!url)("пакетные клубы (база)", () => {
     });
   });
 
+  // ---- 2026-11-11: «Закрытая запись» клуба ----
+
+  test("«Закрытая запись»: клиент не записывается, администратор записывает, отмена работает", async () => {
+    await scenario(async (tx) => {
+      const p = await seed(tx);
+      const e = await entry(tx, p, 1);
+      const e2 = await entry(tx, p, 2);
+      const uid = await asClient(tx, p);
+      // Запись, сделанная до закрытия, остаётся — клиент её отменяет.
+      const [{ r: before }] = await tx`select book_schedule_entry(${e2}) as r`;
+      expect(before).toMatchObject({ ok: true });
+
+      await tx`update studios set booking_closed = true where id = ${p.studio}`;
+      const [{ r }] = await tx`select book_schedule_entry(${e}) as r`;
+      expect(r).toMatchObject({ ok: false, reason: "booking_closed" });
+      const [{ n }] = await tx`select count(*)::int as n from schedule_bookings where entry_id = ${e}`;
+      expect(n).toBe(0);
+      const [{ r: cancel }] = await tx`select cancel_schedule_booking(${e2}) as r`;
+      expect(cancel).toMatchObject({ ok: true });
+
+      await asStaff(tx, p);
+      const [{ r: admin }] = await tx`select admin_book_client(${e}, ${p.client}) as r`;
+      expect(admin).toMatchObject({ ok: true });
+
+      // Запись снова открыта.
+      await tx`update studios set booking_closed = false where id = ${p.studio}`;
+      await tx`select set_config('request.jwt.claim.sub', ${uid}::text, true)`;
+      const [{ r: again }] = await tx`select book_schedule_entry(${e2}) as r`;
+      expect(again).toMatchObject({ ok: true });
+    });
+  });
+
   test("вместимость тренировки — своя в каждом клубе, занятие берёт её при создании", async () => {
     await scenario(async (tx) => {
       const a = await seed(tx);

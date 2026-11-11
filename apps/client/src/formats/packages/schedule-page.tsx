@@ -18,6 +18,7 @@ import { UnderlineTabs } from "@/components/underline-tabs";
 import { WorkoutDrawer, type WorkoutDrawerData } from "@/components/workout-drawer";
 import { RescheduleOfferDialog } from "@/components/reschedule-offer-dialog";
 import { useClubSettings } from "@/hooks/use-club-settings";
+import { useBookingClosed } from "@/hooks/use-booking-closed";
 import { useFormatStudios, useViewedStudioId } from "@/hooks/use-viewed-studio";
 import { msg, useLocalize, useT, type Translator } from "@/i18n";
 import { useAuth } from "@/hooks/use-auth";
@@ -54,6 +55,8 @@ import {
  * Вкладки «Персональные» и «Диагностика» — заявки администратору и свои
  * диагностики (schedule-requests.tsx). Фильтры — по тренировкам и по тренерам
  * (у пакетных тренировок нет типа, прежний фильтр по типу был пустым).
+ * «Закрытая запись» студии (2026-11-11, `useBookingClosed`) — расписание
+ * видно, карточки не нажимаются, подпись «Запись пока закрыта».
  */
 
 const TABS = [
@@ -96,6 +99,7 @@ export function PackagesSchedulePage() {
   const { studioId, studioReady, isHome } = useViewedStudioId();
   const { data: studios = [] } = useFormatStudios();
   const viewedStudioName = loc(studios.find((s) => s.id === studioId))?.name ?? null;
+  const bookingClosed = useBookingClosed(studioId);
   const tabs = useMemo(() => TABS.map((x) => ({ ...x, label: t(x.label) })), [t]);
   const daysContainerRef = useRef<HTMLDivElement>(null);
   const dayBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -215,6 +219,7 @@ export function PackagesSchedulePage() {
       past: t("Эта тренировка уже прошла"),
       full: t("Свободных мест больше нет"),
       not_booked: t("Вы не были записаны на эту тренировку"),
+      booking_closed: t("Запись пока закрыта"),
     };
     const res = data as {
       ok: boolean;
@@ -290,6 +295,9 @@ export function PackagesSchedulePage() {
       // заполненным, чтобы не нажимали «Записаться» снова.
       if (res.reason === "full")
         queryClient.invalidateQueries({ queryKey: scheduleQuery.queryKey });
+      // Студия закрыла запись, пока расписание было открыто.
+      if (res.reason === "booking_closed")
+        queryClient.invalidateQueries({ queryKey: ["studio-booking-closed"] });
       toast.error(
         reasonMessages[res.reason] ??
           t("Не удалось выполнить действие: {reason}", { reason: res.reason }),
@@ -347,6 +355,10 @@ export function PackagesSchedulePage() {
   const filtered = !!workoutFilter || !!trainerFilter;
 
   const openEntryRow = openEntry ? entries.find((x) => x.id === openEntry.id) : undefined;
+  // «Закрытая запись»: свободных мест не показываем и в окне тренировки (оно
+  // открывается только у своей записи, сделанной до закрытия).
+  const hideSpots = (d: WorkoutDrawerData | null) =>
+    bookingClosed && d ? { ...d, spotsLabel: null, spotsLeft: null } : d;
 
   return (
     <PageShell
@@ -505,6 +517,7 @@ export function PackagesSchedulePage() {
                             entry={c}
                             isBooked={bookedIds.has(c.id)}
                             isWaitlisted={waitlistedIds.has(c.id)}
+                            bookingClosed={bookingClosed}
                             onOpen={() => setOpenEntry(packEntryToDrawerData(c, t))}
                           />
                         )}
@@ -531,7 +544,7 @@ export function PackagesSchedulePage() {
       />
 
       <WorkoutDrawer
-        data={openEntryRow ? packEntryToDrawerData(openEntryRow, t) : openEntry}
+        data={hideSpots(openEntryRow ? packEntryToDrawerData(openEntryRow, t) : openEntry)}
         open={openEntry !== null}
         onOpenChange={(o) => {
           if (!o) setOpenEntry(null);
@@ -541,6 +554,7 @@ export function PackagesSchedulePage() {
         isFull={openEntryRow ? packEntryToDrawerData(openEntryRow, t).spotsLeft === 0 : false}
         isPending={openEntry ? pendingId === openEntry.id : false}
         cancelMinutes={clubSettings.cancel_booking_minutes}
+        bookingNote={bookingClosed ? t("Запись пока закрыта") : null}
         onBook={() => {
           if (openEntry) toggleBooking(openEntry.id);
         }}

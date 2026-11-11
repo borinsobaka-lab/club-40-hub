@@ -24,6 +24,11 @@ export type Studio = {
   /** Ссылки на клуб в Google и Яндекс Картах (выбор студии в приложении). */
   google_maps_url: string | null;
   yandex_maps_url: string | null;
+  /**
+   * «Закрытая запись»: расписание в приложении видно, записаться нельзя
+   * (db/migrations/2026-11-11_zz_studio_booking_closed.sql).
+   */
+  booking_closed: boolean;
   /** Переводы для приложения: {en|ka: {name, address}} (lib/content-i18n.ts). */
   translations: ContentTranslations;
   created_at: string;
@@ -58,7 +63,7 @@ export const studiosQuery = queryOptions({
       supabase
         .from("studios")
         .select(
-          "id, name, format, brand_color, logo_url, address, photo_url, google_maps_url, yandex_maps_url, translations, created_at",
+          "id, name, format, brand_color, logo_url, address, photo_url, google_maps_url, yandex_maps_url, booking_closed, translations, created_at",
         )
         .in("id", ids)
         .order("created_at"),

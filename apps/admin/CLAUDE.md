@@ -328,7 +328,8 @@ CLAUDE.md, настройка — AGENT_TASKS.md, Задача 17.
     (`/kb-bases` — базы знаний), «Пользователи и роли» (2026-10-25, ACCESS.md:
     `/access`, `/access/roles`, `/access/structure`, `/access/log`,
     `/import-1c`; `/employees` — редирект на `/access`) и «Клубы»
-    (`/studios`), `MANAGE_GROUPS` в `lib/nav-sections.ts`; пункты открыты по
+    (`/studios`; в форме клуба — «Закрытая запись», `studios.booking_closed`,
+    в таблице — пометка «Запись закрыта»), `MANAGE_GROUPS` в `lib/nav-sections.ts`; пункты открыты по
     сетевым правам (`canOpenManagePath`), раздел рейки ведёт на первую
     открытую страницу. В самом низу — аватарка вошедшего
     сотрудника с подписью «Выход» (`components/rail-account.tsx`: по нажатию —
