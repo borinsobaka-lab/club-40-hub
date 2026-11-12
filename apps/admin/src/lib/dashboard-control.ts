@@ -1,6 +1,7 @@
 import { addDays, differenceInCalendarDays, parseISO } from "date-fns";
 
 import { commentAgeDays, type CommentStats } from "@/lib/client-comments";
+import { formatPhoneDisplay } from "@/lib/contacts";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { plural } from "@/lib/payroll";
 
@@ -81,6 +82,7 @@ export type ControlSale = {
     first_name: string | null;
     last_name: string | null;
     phone: string | null;
+    email?: string | null;
   } | null;
   memberships: {
     name: string | null;
@@ -240,4 +242,26 @@ export function controlClientName(sale: ControlSale) {
   const c = sale.clients;
   if (!c) return "Клиент удалён";
   return [c.last_name, c.first_name].filter(Boolean).join(" ").trim() || c.full_name || "—";
+}
+
+/**
+ * Список для буфера обмена (кнопка «Скопировать» в конце блока): заголовок
+ * блока и клиенты без свежего комментария — «Имя Фамилия (телефон, почта)»,
+ * по строке на клиента (несколько абонементов одного клиента — одна строка).
+ * Отмеченные «Готово» не копируются: им уже написали.
+ */
+export function controlCopyText(title: string, items: ControlItem[]): string {
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  for (const { sale, done } of items) {
+    if (done || seen.has(sale.client_id)) continue;
+    seen.add(sale.client_id);
+    const c = sale.clients;
+    const name = c
+      ? [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || c.full_name || "—"
+      : "Клиент удалён";
+    const contacts = [formatPhoneDisplay(c?.phone), c?.email?.trim()].filter(Boolean);
+    lines.push(contacts.length ? `${name} (${contacts.join(", ")})` : name);
+  }
+  return [title, ...lines].join("\n");
 }

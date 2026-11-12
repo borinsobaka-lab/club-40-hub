@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Phone } from "lucide-react";
+import { Copy, Phone } from "lucide-react";
+import { toast } from "sonner";
 
 import { ClientNameLink } from "@/components/client-name-link";
 import { CommentsButton } from "@/components/client-comments";
@@ -24,6 +25,7 @@ import {
   CONTROL_RULE_ORDER,
   commentLag,
   controlClientName,
+  controlCopyText,
   controlFact,
   controlItems,
   endingWindow,
@@ -38,6 +40,7 @@ import {
 import { DASHBOARD_TITLES } from "@/lib/dashboard-stats";
 import { formatNumber, todayISO } from "@/lib/format";
 import { plural } from "@/lib/payroll";
+import { copyText } from "@/lib/scripts/logic";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard/control")({
@@ -296,8 +299,8 @@ function RulePanel({
               />
             ))}
           </ul>
-          {items.length > limit && (
-            <div className="-mx-3 -mb-3 border-t p-2 text-center sm:-mx-4 sm:-mb-4">
+          <div className="-mx-3 -mb-3 flex flex-wrap items-center justify-center gap-2 border-t p-2 sm:-mx-4 sm:-mb-4">
+            {items.length > limit && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -306,8 +309,22 @@ function RulePanel({
               >
                 Показать ещё {formatNumber(Math.min(PAGE, items.length - limit))}
               </Button>
-            </div>
-          )}
+            )}
+            {!!open && (
+              <Button
+                variant="outline"
+                size="sm"
+                title="Заголовок блока и клиенты без комментария: имя, фамилия, телефон и почта"
+                onClick={async () => {
+                  const ok = await copyText(controlCopyText(spec.title, items));
+                  if (ok) toast.success("Список скопирован");
+                  else toast.error("Не удалось скопировать");
+                }}
+              >
+                <Copy /> Скопировать список
+              </Button>
+            )}
+          </div>
         </>
       )}
     </ChartPanel>

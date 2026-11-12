@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { CommentStats } from "./client-comments";
 import {
   commentLag,
+  controlCopyText,
   controlFact,
   controlItems,
   endingWindow,
@@ -151,5 +152,55 @@ describe("«Руководителю» — подписи абонемента",
       },
     });
     expect(controlFact("balance", personal, today)).toBe("На балансе 2 из 5 персональных");
+  });
+});
+
+describe("«Руководителю» — копирование списка", () => {
+  test("заголовок и клиенты: имя фамилия (телефон, почта), без повторов и без «Готово»", () => {
+    const anna = sale({
+      id: "a",
+      clients: {
+        full_name: null,
+        first_name: "Анна",
+        last_name: "Иванова",
+        phone: "+995555123456",
+        email: "anna@example.com",
+      },
+    });
+    const items = [
+      { sale: anna, done: false },
+      { sale: { ...anna, id: "a2" }, done: false },
+      {
+        sale: sale({
+          id: "b",
+          client_id: "c2",
+          clients: { full_name: "Нино", first_name: null, last_name: null, phone: null },
+        }),
+        done: false,
+      },
+      {
+        sale: sale({
+          id: "c",
+          client_id: "c3",
+          clients: {
+            full_name: null,
+            first_name: "Мария",
+            last_name: null,
+            phone: null,
+            email: "m@example.com",
+          },
+        }),
+        done: false,
+      },
+      { sale: sale({ id: "d", client_id: "c4" }), done: true },
+    ];
+    expect(controlCopyText("Просроченные платежи", items)).toBe(
+      [
+        "Просроченные платежи",
+        "Анна Иванова (+995 555 12 34 56, anna@example.com)",
+        "Нино",
+        "Мария (m@example.com)",
+      ].join("\n"),
+    );
   });
 });
