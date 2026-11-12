@@ -52,8 +52,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   `db/workday.test.ts`, «Аналитики» `db/analytics.test.ts`, ленты
   комментариев клиента `db/client-comments.test.ts`, тренера в приложении
   `db/trainer-app.test.ts`, абонемента переноса `db/carryover.test.ts`,
-  оплаты групповых по числу людей `db/studio-pay.test.ts` и смены почты и
-  телефона клиента `db/client-contact-sync.test.ts`
+  оплаты групповых по числу людей `db/studio-pay.test.ts`, смены почты и
+  телефона клиента `db/client-contact-sync.test.ts` и запрета одинаковых
+  контактов `db/client-contacts-unique.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -1144,6 +1145,16 @@ AUTH_SETUP.md.
   определение — здесь). Разово выправлены уже разошедшиеся. Раньше по новой
   почте вход отказывал: «почта не найдена… обратитесь к администратору».
   Тесты — `db/client-contact-sync.test.ts`.
+  **Одинаковые почта и телефон у двух клиентов — нельзя** (решение
+  владельца 2026-11-12): `db/migrations/2026-11-12_zz_client_contacts_unique.sql`
+  — триггер `clients_contacts_unique_guard_biu` не сохраняет карточку, если
+  новая почта или номер (`phone`/`phone2`, сравнение — `client_phone_key`:
+  цифры, «5XX…» = «9955XX…») уже у другой карточки той же базы (пакетные —
+  вся сеть, подписочный — свой клуб; разные форматы — можно), ошибка 23505
+  `client_contact_taken` с именем и клубом. Только правки из админки (роль
+  authenticated, не сам клиент); импорты, сервер и прежние дубли — как были.
+  Подсказка в форме клиента до сохранения — RPC `client_contact_check`
+  (только сотрудник). Тесты — `db/client-contacts-unique.test.ts`.
   **Тренер в мобильном приложении** (решение владельца 2026-11-05, пакетное
   приложение): `db/migrations/2026-11-05_zz_trainer_app.sql` —
   `app_trainer_links` (карточка клиента ↔ тренер справочника: «этот

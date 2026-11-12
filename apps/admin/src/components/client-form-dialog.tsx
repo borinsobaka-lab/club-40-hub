@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStudio } from "@/hooks/use-studios";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { unwrap } from "@/lib/query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
@@ -80,6 +83,33 @@ export function ClientDialog(props: ClientDialogProps) {
   );
 }
 
+/**
+ * Почта или номер уже у другой карточки той же базы клиентов (пакетные клубы —
+ * вся сеть, подписочный — свой клуб): RPC client_contact_check, схема —
+ * db/migrations/2026-11-12_zz_client_contacts_unique.sql. Сохранить такую
+ * карточку не даёт и база (ошибка 23505) — здесь подсказка заранее.
+ */
+type ContactConflict = {
+  field: "email" | "phone";
+  /** Почта в нижнем регистре или номер цифрами (с 995 у грузинского мобильного). */
+  value: string;
+  client_id: string;
+  full_name: string | null;
+  studio_name: string | null;
+};
+
+/** Номер для сравнения — как client_phone_key в базе. */
+function phoneKey(raw: string | null): string | null {
+  const d = (raw ?? "").replace(/\D/g, "");
+  if (d.length < 6) return null;
+  return d.length === 9 && d.startsWith("5") ? `995${d}` : d;
+}
+
+function conflictText(c: ContactConflict) {
+  const name = c.full_name?.trim() || "без имени";
+  return `Уже указан у клиента «${name}»${c.studio_name ? ` (клуб «${c.studio_name}»)` : ""}. У двух клиентов не может быть одинаковых контактов.`;
+}
+
 // У старых записей имя и фамилия не разнесены — есть только full_name.
 function initialNames(client: EditableClient | null) {
   const first = client?.first_name ?? "";
@@ -127,6 +157,64 @@ function ClientForm({
   const photoUrl = client?.photo_url ?? "";
   const [saving, setSaving] = useState(false);
 
+  // Контакты для проверки на совпадения — только корректные и новые (как в
+  // базе: прежние совпадения не мешают править карточку).
+  const oldKeys = [phoneKey(client?.phone ?? null), phoneKey(client?.phone2 ?? null)];
+  const newPhone = (value: PhoneValue, shown = true) => {
+    if (!shown) return null;
+    const c = checkPhone(value.value, value.country);
+    if (c.status !== "valid" || oldKeys.includes(phoneKey(c.e164))) return null;
+    return c.e164;
+  };
+  const phoneE164 = newPhone(phone);
+  const phone2E164 = newPhone(phone2, showPhone2);
+  const emailNorm =
+    email.trim() &&
+    !emailError(email) &&
+    email.trim().toLowerCase() !== (client?.email ?? "").trim().toLowerCase()
+      ? email.trim().toLowerCase()
+      : null;
+  const contacts = useDebouncedValue(
+    { email: emailNorm, phone: phoneE164, phone2: phone2E164 },
+    400,
+  );
+  const conflictsQuery = useQuery({
+    queryKey: [
+      "client-contact-check",
+      studioId,
+      client?.id ?? null,
+      contacts.email,
+      contacts.phone,
+      contacts.phone2,
+    ],
+    queryFn: () =>
+      unwrap<ContactConflict[]>(
+        supabase.rpc("client_contact_check", {
+          p_studio: studioId!,
+          p_client: client?.id ?? null,
+          p_email: contacts.email,
+          p_phone: contacts.phone,
+          p_phone2: contacts.phone2,
+        }),
+      ),
+    enabled: !!studioId && !!(contacts.email || contacts.phone || contacts.phone2),
+    staleTime: 10_000,
+  });
+  // Совпадение показываем, только пока в поле то же значение, что проверяли.
+  const conflicts = conflictsQuery.data ?? [];
+  const emailConflict =
+    emailNorm && emailNorm === contacts.email
+      ? conflicts.find((c) => c.field === "email" && c.value === emailNorm)
+      : undefined;
+  const phoneConflictFor = (value: string | null, checked: string | null) => {
+    const key = phoneKey(value);
+    if (!key || value !== checked) return undefined;
+    return conflicts.find((c) => c.field === "phone" && c.value === key);
+  };
+  const phoneConflict = phoneConflictFor(phoneE164, contacts.phone);
+  const phone2Conflict = phoneConflictFor(phone2E164, contacts.phone2);
+  const hasConflict = !!(emailConflict || phoneConflict || phone2Conflict);
+
   const handleSave = async () => {
     if (!studioId) return;
     const fn = firstName.trim();
@@ -146,6 +234,10 @@ function ClientForm({
       : ({ status: "empty" } as const);
     if (phone2Check.status === "invalid") {
       toast.error(`Второй телефон: ${phone2Check.error}`);
+      return;
+    }
+    if (hasConflict) {
+      toast.error("Такие почта или телефон уже есть у другого клиента");
       return;
     }
     const mailError = emailError(email);
@@ -262,7 +354,11 @@ function ClientForm({
 
             {/* Телефон и почта — каждый на всю ширину: под полем подсказки и исправления. */}
             <div className="grid grid-cols-1 gap-3">
-              <FormField label="Телефон" tip={CLIENT_TIPS.phone}>
+              <FormField
+                label="Телефон"
+                tip={CLIENT_TIPS.phone}
+                error={phoneConflict && conflictText(phoneConflict)}
+              >
                 <PhoneInput value={phone} onChange={setPhone} showError={submitted} />
                 {!showPhone2 && (
                   <Button variant="link" size="inline" onClick={() => setShowPhone2(true)}>
@@ -272,7 +368,12 @@ function ClientForm({
                 )}
               </FormField>
               {showPhone2 && (
-                <FormField label="Второй телефон" tip={CLIENT_TIPS.phone2} optional>
+                <FormField
+                  label="Второй телефон"
+                  tip={CLIENT_TIPS.phone2}
+                  optional
+                  error={phone2Conflict && conflictText(phone2Conflict)}
+                >
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <PhoneInput value={phone2} onChange={setPhone2} showError={submitted} />
@@ -292,7 +393,11 @@ function ClientForm({
                   </div>
                 </FormField>
               )}
-              <FormField label="Email" tip={CLIENT_TIPS.email}>
+              <FormField
+                label="Email"
+                tip={CLIENT_TIPS.email}
+                error={emailConflict && conflictText(emailConflict)}
+              >
                 <EmailInput value={email} onChange={setEmail} showError={submitted} />
               </FormField>
             </div>
@@ -342,7 +447,7 @@ function ClientForm({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Отмена
           </Button>
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving || hasConflict}>
             {saving && <Loader2 className="animate-spin" />}
             Сохранить
           </Button>
