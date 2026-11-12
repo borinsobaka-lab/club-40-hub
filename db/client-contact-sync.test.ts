@@ -225,8 +225,7 @@ describe.skipIf(!url)("смена почты и телефона клиента 
       const s = await studio(tx);
       const linked = await account(tx, null, "995591099719");
       await client(tx, s, null, linked, "591099719");
-      const [{ id: found }] =
-        await tx`select phone_login_account(null, '+995591099719') as id`;
+      const [{ id: found }] = await tx`select phone_login_account(null, '+995591099719') as id`;
       expect(found).toBeNull();
 
       const orphan = await account(tx, null, "995555112233");
