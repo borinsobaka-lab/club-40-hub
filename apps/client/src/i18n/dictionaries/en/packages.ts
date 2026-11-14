@@ -181,6 +181,33 @@ const dict: Dictionary = {
     "The trainer prepares personal recommendations: what intensity to train at, what to pay attention to and how to recover.",
   "По результатам вы получаете свою персональную диагностическую карту — страничку с целями, замерами и планом тренировок.":
     "Afterwards you get your personal diagnostic card — a page with your goals, measurements and training plan.",
+  // Комментарии клиентов о тренере (formats/packages/trainer-comments.tsx).
+  "Отзывы клиентов": "Client reviews",
+  "Не удалось загрузить отзывы. Попробуйте ещё раз.": "Couldn't load reviews. Please try again.",
+  "Отзывов пока нет — ваш может быть первым.": "No reviews yet — yours could be the first.",
+  Анонимно: "Anonymously",
+  "Спасибо! Комментарий появится в карточке после проверки.":
+    "Thank you! Your comment will appear on the profile once it's been reviewed.",
+  "Предыдущий комментарий об этом тренере ещё на модерации.":
+    "Your previous comment about this trainer is still being reviewed.",
+  "Не удалось отправить комментарий. Попробуйте ещё раз.":
+    "Couldn't send your comment. Please try again.",
+  "Ваш комментарий на модерации": "Your comment is being reviewed",
+  "Он появится в карточке тренера, как только его проверят.":
+    "It will appear on the trainer's profile once it's been reviewed.",
+  "Оставить комментарий": "Leave a comment",
+  "Напишите комментарий": "Write a comment",
+  "Ваш комментарий": "Your comment",
+  "Что вам понравилось в тренировках, что хотелось бы изменить":
+    "What you liked about the classes, what you'd like to change",
+  Подпись: "Signature",
+  "От своего имени": "With my name",
+  "Комментарий опубликуется без имени: его не будет ни в карточке тренера, ни у студии.":
+    "Your comment will be published without your name: neither the trainer's profile nor the studio will show it.",
+  "Под комментарием будет ваше имя и первая буква фамилии.":
+    "Your first name and last-name initial will be shown under the comment.",
+  "Перед публикацией комментарий проверит студия.":
+    "The studio will review the comment before publishing it.",
 };
 
 export default dict;
