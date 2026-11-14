@@ -53,6 +53,10 @@ const dict: Dictionary = {
   "Показать в Яндекс Картах": "Show in Yandex Maps",
   "Новости, услуги, расписание и абонементы покажем для выбранной студии.":
     "News, services, the schedule and memberships will be shown for the selected studio.",
+  Ваша: "Yours",
+  "На карте": "Map",
+  "Покажем расписание и абонементы выбранной студии.":
+    "We'll show the schedule and memberships of the selected studio.",
   "Ваша студия — здесь можно записываться": "Your studio — you can book here",
   "Не удалось загрузить карточку тренера. Попробуйте ещё раз.":
     "Couldn't load the trainer's profile. Please try again.",
