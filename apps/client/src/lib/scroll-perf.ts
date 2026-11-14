@@ -7,16 +7,15 @@
  *   (.gradient-blobs) на это время замирают (styles.css). Их 8 больших
  *   полупрозрачных слоёв в бесконечной анимации — видеокарта телефона
  *   собирала бы их в каждом кадре вместе с прокруткой.
- * - `<html data-platform="android">` — на Android у нижнего меню нет
- *   размытия фона (backdrop-filter): Chrome на Android пересчитывает размытие
- *   под меню в каждом кадре прокрутки, на iPhone это дёшево. Вместо стекла —
- *   почти непрозрачная тёмная плашка того же цвета (styles.css, .glass-dark).
+ *
+ * Стекло нижнего меню (.glass-dark, backdrop-filter) оставлено везде: на
+ * Android его убирали (2026-11-14), но без размытия меню либо слишком тёмное,
+ * либо плохо читается — владелец вернул стекло.
  */
 const SCROLL_IDLE_MS = 180;
 
 export function installScrollPerf(): () => void {
   const root = document.documentElement;
-  if (/Android/i.test(navigator.userAgent)) root.dataset.platform = "android";
 
   let timer: number | undefined;
   const onScroll = () => {

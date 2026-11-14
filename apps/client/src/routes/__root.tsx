@@ -246,8 +246,8 @@ function RootComponent() {
     return () => window.removeEventListener("vite:preloadError", onPreloadError);
   }, []);
 
-  // Плавная прокрутка: огоньки шапки замирают на время прокрутки, у меню на
-  // Android — без размытия фона (src/lib/scroll-perf.ts).
+  // Плавная прокрутка: огоньки шапки замирают на время прокрутки
+  // (src/lib/scroll-perf.ts).
   useEffect(() => installScrollPerf(), []);
 
   // Service worker (public/sw.js): пуш-уведомления и файлы сборки из кэша
