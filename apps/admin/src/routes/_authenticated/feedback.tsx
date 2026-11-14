@@ -58,6 +58,9 @@ import { DateRangeFilter, type DateRange } from "@/components/date-range-filter"
 import { RowContextMenu } from "@/components/row-context-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { FeedbackPageSkeleton, FeedbackStatsSkeleton } from "@/components/page-skeletons";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrainerCommentsModeration } from "@/components/trainer-comments-moderation";
+import { useTrainerComments } from "@/hooks/use-trainer-comments";
 
 /** Подсказки «?»: один текст у поля формы и у колонки таблицы. */
 const TIPS = {
@@ -170,6 +173,12 @@ function FeedbackPage() {
   const [moodFilter, setMoodFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [linksOpen, setLinksOpen] = useState(false);
+  // Вкладки: обращения и комментарии клиентов о тренерах — на модерацию
+  // (2026-11-14, components/trainer-comments-moderation.tsx). Число на
+  // вкладке — сколько ждут решения.
+  const [tab, setTab] = useState<"requests" | "trainers">("requests");
+  const { data: trainerComments = [] } = useTrainerComments(studios);
+  const trainerPending = trainerComments.filter((c) => c.status === "pending").length;
 
   const queryKey = ["feedback", idsKey];
   const { data: items = [], isLoading: queryLoading } = useQuery({
@@ -251,203 +260,230 @@ function FeedbackPage() {
     <AdminShell
       title="Обратная связь"
       actions={
-        <>
-          <Button variant="outline" onClick={() => setLinksOpen(true)}>
-            <QrCode /> Ссылка и QR-код
-          </Button>
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus /> Добавить
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
-              <NewFeedbackForm
-                studioId={studioId}
-                studios={studios ?? []}
-                onClose={() => setAddOpen(false)}
-                onSaved={reload}
-              />
-            </DialogContent>
-          </Dialog>
-        </>
+        tab === "requests" && (
+          <>
+            <Button variant="outline" onClick={() => setLinksOpen(true)}>
+              <QrCode /> Ссылка и QR-код
+            </Button>
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus /> Добавить
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                {/* Форма монтируется заново при каждом открытии — сбрасывать её не нужно. */}
+                <NewFeedbackForm
+                  studioId={studioId}
+                  studios={studios ?? []}
+                  onClose={() => setAddOpen(false)}
+                  onSaved={reload}
+                />
+              </DialogContent>
+            </Dialog>
+          </>
+        )
       }
     >
-      <div className="space-y-3">
-        {/* Пока отзывы грузятся — болванки значений, а не нули. */}
-        {loading ? (
-          <FeedbackStatsSkeleton />
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatTile label="В этом месяце" value={thisMonth.length} />
-            <StatTile
-              label="Не отработано"
-              value={pendingCount}
-              tone={pendingCount > 0 ? "negative" : "default"}
-            />
-            <StatTile label="Отработано в этом месяце" value={resolvedThisMonth} />
-          </div>
-        )}
-
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as "requests" | "trainers")}
+        className="space-y-3"
+      >
+        {/* Табы — на белой плашке, как в «Прочих продажах». */}
         <TableToolbar>
-          {multi && studios && (
-            <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
-          )}
-          <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger aria-label="Тема" className="w-48">
-              <SelectValue placeholder="Все темы" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все темы</SelectItem>
-              {Object.entries(TOPICS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger aria-label="Статус" className="w-40">
-              <SelectValue placeholder="Все статусы" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="pending">Не отработано</SelectItem>
-              <SelectItem value="resolved">Отработано</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={moodFilter} onValueChange={setMoodFilter}>
-            <SelectTrigger aria-label="Настроение" className="w-40">
-              <SelectValue placeholder="Все оценки" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все оценки</SelectItem>
-              {moodSelectItems()}
-              <SelectItem value="none">Без оценки</SelectItem>
-            </SelectContent>
-          </Select>
-          <DateRangeFilter
-            placeholder="Дата"
-            title="Дата обращения"
-            value={dateRange}
-            onChange={setDateRange}
-            className="w-48"
-          />
-          <ToolbarReset
-            active={hasFilters}
-            onReset={() => {
-              setStudioFilter("all");
-              setTopicFilter("all");
-              setStatusFilter("all");
-              setMoodFilter("all");
-              setDateRange(undefined);
-            }}
-          />
+          <div className="toolbar-full">
+            <TabsList>
+              <TabsTrigger value="requests">Обращения</TabsTrigger>
+              <TabsTrigger value="trainers">
+                Комментарии о тренерах
+                {trainerPending > 0 && (
+                  <StatusChip tone="warning" className="ml-1.5 tabular-nums">
+                    {trainerPending}
+                  </StatusChip>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </TableToolbar>
+        <TabsContent value="trainers">
+          <TrainerCommentsModeration studios={studios} />
+        </TabsContent>
+        <TabsContent value="requests" className="space-y-3">
+          {/* Пока отзывы грузятся — болванки значений, а не нули. */}
+          {loading ? (
+            <FeedbackStatsSkeleton />
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <StatTile label="В этом месяце" value={thisMonth.length} />
+              <StatTile
+                label="Не отработано"
+                value={pendingCount}
+                tone={pendingCount > 0 ? "negative" : "default"}
+              />
+              <StatTile label="Отработано в этом месяце" value={resolvedThisMonth} />
+            </div>
+          )}
 
-        <div className="rounded-lg border bg-background">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead {...sort.head("createdAt")}>Дата</TableHead>
-                <TableHead {...sort.head("topic")}>Тема</TableHead>
-                <TableHead {...sort.head("message")}>Сообщение</TableHead>
-                <TableHead className="w-[80px] text-center" {...sort.head("mood")}>
-                  Оценка
-                </TableHead>
-                <TableHead {...sort.head("name")}>Имя</TableHead>
-                {multi && <TableHead {...sort.head("studio")}>Клуб</TableHead>}
-                <TableHead tip={TIPS.contact} {...sort.head("contact")}>
-                  Контакт
-                </TableHead>
-                <TableHead {...sort.head("status")}>Статус</TableHead>
-                <TableHead {...sort.head("resolvedBy")}>Отработал</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableSkeletonRows columns={columns} />
-              ) : filtered.length === 0 ? (
+          <TableToolbar>
+            {multi && studios && (
+              <StudioFilter studios={studios} value={studioFilter} onChange={setStudioFilter} />
+            )}
+            <Select value={topicFilter} onValueChange={setTopicFilter}>
+              <SelectTrigger aria-label="Тема" className="w-48">
+                <SelectValue placeholder="Все темы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все темы</SelectItem>
+                {Object.entries(TOPICS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Статус" className="w-40">
+                <SelectValue placeholder="Все статусы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="pending">Не отработано</SelectItem>
+                <SelectItem value="resolved">Отработано</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={moodFilter} onValueChange={setMoodFilter}>
+              <SelectTrigger aria-label="Настроение" className="w-40">
+                <SelectValue placeholder="Все оценки" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все оценки</SelectItem>
+                {moodSelectItems()}
+                <SelectItem value="none">Без оценки</SelectItem>
+              </SelectContent>
+            </Select>
+            <DateRangeFilter
+              placeholder="Дата"
+              title="Дата обращения"
+              value={dateRange}
+              onChange={setDateRange}
+              className="w-48"
+            />
+            <ToolbarReset
+              active={hasFilters}
+              onReset={() => {
+                setStudioFilter("all");
+                setTopicFilter("all");
+                setStatusFilter("all");
+                setMoodFilter("all");
+                setDateRange(undefined);
+              }}
+            />
+          </TableToolbar>
+
+          <div className="rounded-lg border bg-background">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={columns}
-                    className="py-8 text-center text-sm text-muted-foreground"
-                  >
-                    <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-                    Обращений нет.
-                  </TableCell>
+                  <TableHead {...sort.head("createdAt")}>Дата</TableHead>
+                  <TableHead {...sort.head("topic")}>Тема</TableHead>
+                  <TableHead {...sort.head("message")}>Сообщение</TableHead>
+                  <TableHead className="w-[80px] text-center" {...sort.head("mood")}>
+                    Оценка
+                  </TableHead>
+                  <TableHead {...sort.head("name")}>Имя</TableHead>
+                  {multi && <TableHead {...sort.head("studio")}>Клуб</TableHead>}
+                  <TableHead tip={TIPS.contact} {...sort.head("contact")}>
+                    Контакт
+                  </TableHead>
+                  <TableHead {...sort.head("status")}>Статус</TableHead>
+                  <TableHead {...sort.head("resolvedBy")}>Отработал</TableHead>
                 </TableRow>
-              ) : (
-                pg.paged.map((i) => (
-                  <RowContextMenu
-                    key={i.id}
-                    actions={[
-                      {
-                        label: "Открыть обращение",
-                        icon: MessageSquare,
-                        onSelect: () => setSelectedId(i.id),
-                      },
-                      {
-                        label: "Удалить",
-                        icon: Trash2,
-                        destructive: true,
-                        onSelect: () => handleDelete(i),
-                      },
-                    ]}
-                  >
-                    <TableRow onClick={() => setSelectedId(i.id)} className="cursor-pointer">
-                      <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
-                        {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {TOPICS[i.topic] || i.topic}
-                      </TableCell>
-                      <TableCell className="max-w-[280px] truncate">{i.message}</TableCell>
-                      <TableCell className="text-center text-lg">
-                        {i.mood ? <MoodMark mood={i.mood} /> : "—"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap font-medium">
-                        {i.client_name || "—"}
-                      </TableCell>
-                      {multi && (
-                        <TableCell>
-                          <StudioLabel studio={studioOf(i.studio_id)} />
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableSkeletonRows columns={columns} />
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                      Обращений нет.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pg.paged.map((i) => (
+                    <RowContextMenu
+                      key={i.id}
+                      actions={[
+                        {
+                          label: "Открыть обращение",
+                          icon: MessageSquare,
+                          onSelect: () => setSelectedId(i.id),
+                        },
+                        {
+                          label: "Удалить",
+                          icon: Trash2,
+                          destructive: true,
+                          onSelect: () => handleDelete(i),
+                        },
+                      ]}
+                    >
+                      <TableRow onClick={() => setSelectedId(i.id)} className="cursor-pointer">
+                        <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
+                          {format(new Date(i.created_at), "dd.MM.yy HH:mm", { locale: ru })}
                         </TableCell>
-                      )}
-                      <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">
-                        {i.client_contact || "—"}
-                      </TableCell>
-                      <TableCell>
-                        {i.status === "pending" ? (
-                          <StatusChip tone="warning">Не отработано</StatusChip>
-                        ) : (
-                          <StatusChip tone="positive">Отработано</StatusChip>
+                        <TableCell className="whitespace-nowrap">
+                          {TOPICS[i.topic] || i.topic}
+                        </TableCell>
+                        <TableCell className="max-w-[280px] truncate">{i.message}</TableCell>
+                        <TableCell className="text-center text-lg">
+                          {i.mood ? <MoodMark mood={i.mood} /> : "—"}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap font-medium">
+                          {i.client_name || "—"}
+                        </TableCell>
+                        {multi && (
+                          <TableCell>
+                            <StudioLabel studio={studioOf(i.studio_id)} />
+                          </TableCell>
                         )}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-                        {i.resolved_by_name ? (
-                          <>
-                            {i.resolved_by_name}
-                            {i.resolved_at && (
-                              <div>
-                                {format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </RowContextMenu>
-                ))
-              )}
-            </TableBody>
-          </Table>
-          <DataPagination {...pg} loading={loading} />
-        </div>
-      </div>
+                        <TableCell className="max-w-[140px] truncate whitespace-nowrap text-muted-foreground">
+                          {i.client_contact || "—"}
+                        </TableCell>
+                        <TableCell>
+                          {i.status === "pending" ? (
+                            <StatusChip tone="warning">Не отработано</StatusChip>
+                          ) : (
+                            <StatusChip tone="positive">Отработано</StatusChip>
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                          {i.resolved_by_name ? (
+                            <>
+                              {i.resolved_by_name}
+                              {i.resolved_at && (
+                                <div>
+                                  {format(new Date(i.resolved_at), "dd.MM.yy", { locale: ru })}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </RowContextMenu>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <DataPagination {...pg} loading={loading} />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Обращение — окно, как карточки во всей админке (решение владельца
           2026-10-15; раньше — боковая панель). */}

@@ -23,11 +23,14 @@ import {
   type StudioTrainer,
 } from "./queries";
 import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
+import { TrainerComments } from "./trainer-comments";
 
 /**
  * Карточка сотрудника пакетного приложения — шторка: фото, роль, имя,
  * рейтинг, «Поблагодарить …» (чаевые), под ними «Оцените …» (решение
- * владельца 2026-10-12: оценка выше биографии), биография. У администратора
+ * владельца 2026-10-12: оценка выше биографии), биография, под ней «Отзывы
+ * клиентов» — комментарии после модерации и «Оставить комментарий»
+ * (2026-11-14, trainer-comments.tsx; там же, где оценка). У администратора
  * (2026-10-12) — без рейтинга и оценки: только описание и чаевые; массажист
  * — как тренер, плюс закреплённая внизу «Записаться на массаж» (2026-10-15,
  * MASSAGE_BOOKING_URL). Открывается из вкладок «Студии» и из окна тренировки (там —
@@ -176,6 +179,7 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
       ) : (
         <p className="mt-5 text-sm text-muted-foreground">{t(text.noBio)}</p>
       )}
+      {text.rate && <TrainerComments key={trainer.id} trainerId={trainer.id} />}
     </>
   );
 }
