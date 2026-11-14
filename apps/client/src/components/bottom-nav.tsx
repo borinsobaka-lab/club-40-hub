@@ -52,7 +52,7 @@ function PackagesBottomNav() {
         {/* items-stretch: плитка «Профиль» той же высоты, что плашка разделов,
             и с тем же скруглением. */}
         <div className="relative flex items-stretch gap-2">
-          <div className="glass-dark relative flex-1 rounded-[26px] px-1.5 py-1.5">
+          <div className="glass-dark nav-squircle relative flex-1 rounded-[26px] px-1.5 py-1.5">
             <ul className="grid grid-cols-4">
               {packagesItems.map(({ to, label, Icon, exact }) => (
                 <li key={to}>
@@ -74,7 +74,7 @@ function PackagesBottomNav() {
             to="/profile"
             onPointerDown={resetPageScrollPosition}
             onClick={resetPageScrollPosition}
-            className="glass-dark flex w-[72px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[26px] active:bg-white/5"
+            className="glass-dark nav-squircle flex w-[72px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[26px] active:bg-white/5"
           >
             {({ isActive }) => <NavItemBody Icon={User} label={msg("Профиль")} active={isActive} />}
           </Link>
@@ -159,7 +159,7 @@ function SubscriptionBottomNav() {
       <div className="pointer-events-auto w-full max-w-md px-3 pb-3">
         <div className="relative flex items-end gap-2">
           {/* Main glass tile with 4 sections */}
-          <div className="glass-dark relative flex-1 rounded-3xl px-1.5 py-1.5">
+          <div className="glass-dark nav-squircle relative flex-1 rounded-3xl px-1.5 py-1.5">
             <ul className="grid grid-cols-4">
               {mainItems.map(({ to, label, Icon, exact }) => (
                 <li key={to}>
@@ -228,7 +228,7 @@ function SubscriptionBottomNav() {
             disabled
             aria-label={t("Ассистент (скоро)")}
             title={t("Скоро")}
-            className="assistant-glow glass-dark flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-3xl text-white/70 cursor-not-allowed"
+            className="assistant-glow glass-dark nav-squircle flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-3xl text-white/70 cursor-not-allowed"
           >
             <span className="glow-orb" />
             <span className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[15px] font-black leading-none">

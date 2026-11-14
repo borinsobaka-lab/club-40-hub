@@ -1112,7 +1112,16 @@ html body [data-sonner-toast][data-type="warning"] {
     --radius-k: 1.8;
   }
 
-  [class*="rounded"]:not([class*="rounded-full"]):not([class*="rounded-none"]) {
+  /* :where — нулевая специфичность, чтобы отдельные элементы могли задать
+     свою форму (ниже). */
+  :where([class*="rounded"]:not([class*="rounded-full"]):not([class*="rounded-none"])) {
     corner-shape: squircle;
+  }
+
+  /* Нижнее меню (высота 68px, радиус 34px — половина): squircle на полном
+     радиусе всё равно почти квадратный, здесь форма мягче. */
+  .nav-squircle {
+    border-radius: 34px;
+    corner-shape: superellipse(1.2);
   }
 }
