@@ -60,6 +60,13 @@ export function useStorageUrl(bucket: StorageBucket, value: string | null | unde
 /**
  * Загружает файл в бакет в папку `folder` под случайным именем и возвращает
  * путь — его и сохраняем в таблицу.
+ *
+ * Файл по этому пути больше не меняется (новая картинка — новое имя), поэтому
+ * браузер может хранить его год (`cacheControl`; по умолчанию у Supabase —
+ * час, и телефоны клиентов перепроверяли фото при каждом заходе). Service
+ * worker клиентского приложения на этом же и держит фото у себя
+ * (apps/client/public/sw.js). Перезаписывать файл по старому пути нельзя —
+ * клиенты так и будут видеть прежний.
  */
 export async function uploadToStorage(bucket: StorageBucket, folder: string, file: File) {
   const dot = file.name.lastIndexOf(".");
@@ -67,6 +74,7 @@ export async function uploadToStorage(bucket: StorageBucket, folder: string, fil
   const path = `${folder}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(STORAGE_BUCKETS[bucket].id).upload(path, file, {
     upsert: false,
+    cacheControl: "31536000",
     contentType: file.type || (ext === "svg" ? "image/svg+xml" : undefined),
   });
   if (error) throw new Error(error.message);
