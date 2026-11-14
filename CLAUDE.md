@@ -53,8 +53,9 @@ Start (SSR) + React 19 + Tailwind 4 + shadcn/radix, пакетный менед�
   комментариев клиента `db/client-comments.test.ts`, тренера в приложении
   `db/trainer-app.test.ts`, абонемента переноса `db/carryover.test.ts`,
   оплаты групповых по числу людей `db/studio-pay.test.ts`, смены почты и
-  телефона клиента `db/client-contact-sync.test.ts` и запрета одинаковых
-  контактов `db/client-contacts-unique.test.ts`
+  телефона клиента `db/client-contact-sync.test.ts`, запрета одинаковых
+  контактов `db/client-contacts-unique.test.ts` и комментариев клиентов о
+  тренерах `db/client-trainer-comments.test.ts`
   (`TEST_SCHEMA_DATABASE_URL` — база с полной схемой; собирает её
   `bash db/test/build-schema.sh <url>`: заглушки Supabase, старые db/\*.sql,
   все миграции). Без переменных пропускаются; сценарии откатываются.
@@ -1181,6 +1182,19 @@ AUTH_SETUP.md.
   (прежний сервис), итог `trainers.rating_avg/rating_count` — считает
   триггер `trainers_rating_calc` при любой записи строки (руками не пишется),
   `trainers.tip_url` (ссылка на чаевые).
+  Комментарии клиентов о тренерах (2026-11-14):
+  `db/migrations/2026-11-14_client_trainer_comments.sql` —
+  `client_trainer_comments` (не путать с `trainer_comments` — заметки
+  тренера о клиенте): текст, `is_anonymous`, `status` pending → approved /
+  rejected. Клиент пишет о тренере, которого видит
+  (`client_can_rate_trainer`), и читает свои; имя (`author_name` — полное,
+  для модератора; `author_public` — «Анна К.»), клуб и статус ставит триггер,
+  у анонимного имени нет; один на модерации на тренера
+  (`client_trainer_comment_pending`). Модерируют и удаляют сотрудники
+  (`is_staff`, как `feedback`), меняется только статус — кто и когда, пишет
+  триггер. Опубликованные — RPC `client_trainer_comments_published` (без
+  `user_id`). `wipe_client_app_account` стирает и их (актуальное
+  определение — в этой миграции).
   Адрес студии: `db/migrations/2026-10-11_zzzzzzzzzzzz_studio_address.sql` —
   `studios.address` (публичное чтение колонки, правит владелец; плашка
   студии в приложении пакетов).
