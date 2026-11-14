@@ -41,3 +41,31 @@ export function useTrainerComments(studios: Studio[] | null) {
     meta: { errorMessage: "Не удалось загрузить комментарии о тренерах" },
   });
 }
+
+/**
+ * Сколько комментариев о тренерах ждут модерации — входит в счётчик
+ * «Обратной связи» в меню (вместе с неотработанными обращениями): горит,
+ * пока комментарий не опубликован и не отклонён. Раз в минуту и при
+ * возвращении на вкладку; ключ начинается с "client-trainer-comments" —
+ * модерация на странице сбрасывает его вместе со списком.
+ */
+export function usePendingTrainerComments(studioIds: string, enabled: boolean): number {
+  const { data = 0 } = useQuery({
+    queryKey: ["client-trainer-comments", studioIds, "pending-count"],
+    queryFn: async () => {
+      let q = supabase
+        .from("client_trainer_comments")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      // Как на странице: клубы раздела и комментарии без клуба.
+      if (studioIds) q = q.or(`studio_id.in.(${studioIds}),studio_id.is.null`);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  return enabled ? data : 0;
+}

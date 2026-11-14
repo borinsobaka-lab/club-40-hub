@@ -33,6 +33,7 @@ import { sectionIcon } from "@/lib/scripts/icons";
 import { useAdminAccess } from "@/hooks/use-admin-access";
 import { useActiveStudioId } from "@/hooks/use-active-studio";
 import { useClubRequestsBadge } from "@/hooks/use-client-requests";
+import { usePendingTrainerComments } from "@/hooks/use-trainer-comments";
 import { studioIdsKey, useSectionStudios } from "@/hooks/use-section-studios";
 import { canOpenClubSection, canOpenRail, type AdminAccess } from "@/lib/admin-access";
 import { StudioSwitcher } from "@/components/studio-switcher";
@@ -308,20 +309,24 @@ export function AppSidebar() {
               : SECTION_MENUS[railKey];
   const feedbackStudios = useSectionStudios("feedback");
   const npsStudios = useSectionStudios("nps");
-  const pendingFeedback = usePendingFeedback(
-    studioIdsKey(feedbackStudios),
+  const feedbackEnabled =
     !sectionMenu &&
-      !!feedbackStudios &&
-      !!access &&
-      canOpenClubSection(access, studioId, "feedback"),
-  );
+    !!feedbackStudios &&
+    !!access &&
+    canOpenClubSection(access, studioId, "feedback");
+  // На «Обратной связи» — неотработанные обращения и комментарии о тренерах
+  // на модерации (вкладки раздела, 2026-11-14).
+  const pendingFeedback =
+    usePendingFeedback(studioIdsKey(feedbackStudios), feedbackEnabled) +
+    usePendingTrainerComments(studioIdsKey(feedbackStudios), feedbackEnabled);
   const openRequests = useClubRequestsBadge();
   const unreadNps = useUnreadNps(
     studioIdsKey(npsStudios),
     !sectionMenu && !!npsStudios && !!access && canOpenClubSection(access, studioId, "nps"),
   );
   // Счётчики меню клуба: неотработанные заявки клиентов — на «Заявках»,
-  // неотработанная обратная связь — на «Обратной связи», непрочитанные
+  // неотработанная обратная связь и комментарии о тренерах на модерации — на
+  // «Обратной связи», непрочитанные
   // ответы NPS — на «NPS-опросах».
   // Красные — то, что ждёт действия; NPS — просто непрочитанное (QUIET_BADGES).
   const badges: Record<string, number> = {
