@@ -10,15 +10,24 @@
  *   Если сети нет или она не ответила за NAV_TIMEOUT_MS — последняя
  *   сохранённая копия этой же страницы.
  * - Иконки, манифест и прочие файлы из public/ — из кэша с обновлением фоном.
+ * - Фото из хранилища Supabase (новости, услуги, «Студия», тренеры, студии —
+ *   /storage/v1/object/public/…) — из кэша телефона, без сети (2026-11-14:
+ *   «фото каждый раз загружаются заново»). Файл по одному адресу не
+ *   меняется: админка кладёт каждую картинку под новым случайным именем
+ *   (uploadToStorage, upsert: false), новое фото — новый адрес, его и
+ *   скачиваем. Держим последние MAX_MEDIA файлов.
  *
- * Запросы к Supabase (другой домен) и не-GET не трогаем.
+ * Остальные запросы к Supabase (данные, вход) и не-GET не трогаем.
  */
 const VERSION = "v1";
 const ASSETS_CACHE = `base40-assets-${VERSION}`;
 const PAGES_CACHE = `base40-pages-${VERSION}`;
 const STATIC_CACHE = `base40-static-${VERSION}`;
-const KEEP = [ASSETS_CACHE, PAGES_CACHE, STATIC_CACHE];
+const MEDIA_CACHE = `base40-media-${VERSION}`;
+const KEEP = [ASSETS_CACHE, PAGES_CACHE, STATIC_CACHE, MEDIA_CACHE];
 const MAX_ASSETS = 300;
+const MAX_MEDIA = 400;
+const MEDIA_PATH = "/storage/v1/object/public/";
 const NAV_TIMEOUT_MS = 3000;
 
 self.addEventListener("install", () => {
@@ -47,7 +56,12 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin) {
+    if (url.pathname.startsWith(MEDIA_PATH) && request.destination === "image") {
+      event.respondWith(cacheFirstMedia(request));
+    }
+    return;
+  }
   if (url.pathname === "/sw.js") return;
 
   if (request.mode === "navigate") {
@@ -75,10 +89,35 @@ async function cacheFirstAsset(request) {
   return response;
 }
 
-async function trimAssets(cache) {
+async function trimAssets(cache, max = MAX_ASSETS) {
   const keys = await cache.keys();
   // keys() — в порядке добавления: удаляем самые старые.
-  for (let i = 0; i < keys.length - MAX_ASSETS; i++) await cache.delete(keys[i]);
+  for (let i = 0; i < keys.length - max; i++) await cache.delete(keys[i]);
+}
+
+/**
+ * Картинка из хранилища: сохранённая копия или сеть. Скачиваем сами в режиме
+ * cors (хранилище отдаёт Access-Control-Allow-Origin: *): ответ <img> без
+ * crossorigin «непрозрачный», и Chrome засчитывал бы каждый такой файл в
+ * квоту телефона как ~7 МБ. Ошибка сети или хранилища — как без service
+ * worker, обычным запросом.
+ */
+async function cacheFirstMedia(request) {
+  try {
+    const cache = await caches.open(MEDIA_CACHE);
+    const hit = await cache.match(request.url);
+    if (hit) return hit;
+    const response = await fetch(request.url, { mode: "cors", credentials: "omit" });
+    if (response.ok) {
+      cache
+        .put(request.url, response.clone())
+        .then(() => trimAssets(cache, MAX_MEDIA))
+        .catch(() => {});
+    }
+    return response;
+  } catch {
+    return fetch(request);
+  }
 }
 
 function pageKey(request) {

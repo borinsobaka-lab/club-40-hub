@@ -180,7 +180,11 @@ export async function uploadAppIcon(file: File): Promise<string> {
     files.map(async (f, i) => {
       const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(`${folder}/${f.name}`, blobs[i], { upsert: false, contentType: "image/png" });
+        .upload(`${folder}/${f.name}`, blobs[i], {
+          upsert: false,
+          cacheControl: "31536000",
+          contentType: "image/png",
+        });
       if (error) throw new Error(error.message);
     }),
   );

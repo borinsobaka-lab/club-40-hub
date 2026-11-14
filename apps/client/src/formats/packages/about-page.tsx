@@ -442,7 +442,14 @@ function galleryPhotos(
   return own.length > 0 ? own : Array(3).fill(ABOUT_PLACEHOLDER_PHOTO);
 }
 
-/** Картинка, плавно проявляющаяся после загрузки; src null — серая плашка. */
+/**
+ * Фото, уже показанные за этот запуск: при повторном заходе в раздел (страница
+ * пересоздаётся) они появляются сразу, без повторного проявления — раньше
+ * казалось, что фото загружаются заново.
+ */
+const shownPhotos = new Set<string>();
+
+/** Картинка, плавно проявляющаяся после первой загрузки; src null — серая плашка. */
 function Photo({
   src,
   className = "",
@@ -452,20 +459,25 @@ function Photo({
   className?: string;
   eager?: boolean;
 }) {
-  const [loaded, setLoaded] = useState(false);
+  const [seen] = useState(() => !!src && shownPhotos.has(src));
+  const [loaded, setLoaded] = useState(seen);
   if (!src) return <Skeleton className={`rounded-none ${className}`} />;
+  const markLoaded = () => {
+    shownPhotos.add(src);
+    if (!loaded) setLoaded(true);
+  };
   return (
     <img
       src={src}
       alt=""
-      loading={eager ? "eager" : "lazy"}
+      loading={eager || seen ? "eager" : "lazy"}
       decoding="async"
-      onLoad={() => setLoaded(true)}
+      onLoad={markLoaded}
       // Картинка из кэша браузера бывает готова раньше onLoad.
       ref={(img) => {
-        if (img?.complete && img.naturalWidth > 0 && !loaded) setLoaded(true);
+        if (img?.complete && img.naturalWidth > 0) markLoaded();
       }}
-      className={`object-cover transition-opacity duration-500 ${
+      className={`object-cover ${seen ? "" : "transition-opacity duration-500"} ${
         loaded ? "opacity-100" : "opacity-0"
       } ${className}`}
     />

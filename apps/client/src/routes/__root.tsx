@@ -46,6 +46,7 @@ import { NpsSurveyHost } from "@/components/nps-survey";
 import { buttonVariants } from "@/components/ui/button";
 import { I18nProvider, getTranslator, loadDictionary, useLocalize, useT } from "@/i18n";
 import { getRequestLocale } from "@/i18n/request-locale";
+import { installScrollPerf } from "@/lib/scroll-perf";
 
 // Адрес API Supabase — для preconnect: соединение (DNS + TLS) с базой
 // открывается параллельно с загрузкой JS, а не после неё.
@@ -245,6 +246,10 @@ function RootComponent() {
     window.addEventListener("vite:preloadError", onPreloadError);
     return () => window.removeEventListener("vite:preloadError", onPreloadError);
   }, []);
+
+  // Плавная прокрутка: огоньки шапки замирают на время прокрутки, у меню на
+  // Android — без размытия фона (src/lib/scroll-perf.ts).
+  useEffect(() => installScrollPerf(), []);
 
   // Service worker (public/sw.js): пуш-уведомления и файлы сборки из кэша
   // телефона — повторный запуск не ждёт загрузки JS и CSS. У обоих приложений
