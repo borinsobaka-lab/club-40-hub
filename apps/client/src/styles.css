@@ -1103,14 +1103,6 @@ html body [data-sonner-toast][data-type="warning"] {
   background: linear-gradient(to bottom, transparent 80%, #2a2b2f);
 }
 
-/* Заглушка «Поверните телефон» (RotateOverlay): телефон в горизонтали —
-   сенсорный экран без наведения и высотой до 500px (у планшетов больше). */
-@media (orientation: landscape) and (max-height: 500px) and (hover: none) and (pointer: coarse) {
-  .rotate-overlay {
-    display: flex;
-  }
-}
-
 /* Суперэллипс (squircle) вместо скруглённого прямоугольника — у окон,
    всплывающих меню, плашек, полей ввода, кнопок: всего, где есть класс
    rounded-*. Круглое (rounded-full: аватарки, пилюли, переключатели) не

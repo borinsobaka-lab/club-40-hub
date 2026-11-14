@@ -152,8 +152,9 @@ export function buildManifest(app: AppInstall, t: Translator) {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    // Только вертикально (решение владельца 2026-10-13). Android соблюдает;
-    // iOS поле не читает — там заглушка RotateOverlay (__root.tsx).
+    // Только вертикально (решение владельца 2026-10-13). Android соблюдает,
+    // iOS поле не читает. Заглушки «Поверните телефон» нет (решение
+    // владельца 2026-11-14): приложение открывается в любом положении.
     orientation: "portrait",
     background_color: "#ffffff",
     theme_color: APP_THEME_COLOR,

@@ -37,7 +37,6 @@ import {
 } from "@/formats/packages/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
-import { RotateOverlay } from "@/components/rotate-overlay";
 import { InstallScreen } from "@/components/install-screen";
 import { useInstalledDisplay } from "@/hooks/use-pwa-install";
 import { usePushSync } from "@/hooks/use-push-sync";
@@ -270,7 +269,6 @@ function RootComponent() {
               <AppShell />
             </InstallGate>
             <Toaster />
-            <RotateOverlay />
           </SolarProvider>
         </AuthProvider>
       </QueryClientProvider>
