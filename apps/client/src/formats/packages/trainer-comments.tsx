@@ -17,8 +17,8 @@ import {
 } from "./trainer-comments-data";
 
 /**
- * Комментарии клиентов о тренере в его карточке (решение владельца
- * 2026-11-14): «Оставить комментарий» — от своего имени или анонимно;
+ * Комментарии клиентов о тренере — вкладка «Отзывы клиентов» его карточки
+ * (решение владельца 2026-11-14; вкладки — trainer-drawer.tsx): «Оставить комментарий» — от своего имени или анонимно;
  * комментарий уходит на модерацию в «Обратную связь» админки и появляется
  * здесь, когда его опубликуют. Ниже — опубликованные, новые сверху. Схема и
  * права — db/migrations/2026-11-14_client_trainer_comments.sql. Гостю не
@@ -35,14 +35,8 @@ export function TrainerComments({ trainerId }: { trainerId: string }) {
   const items = published.data ?? [];
 
   return (
-    <section className="mt-6" aria-labelledby={`trainer-comments-${trainerId}`}>
-      <h3 id={`trainer-comments-${trainerId}`} className="text-lg font-semibold">
-        {t("Отзывы клиентов")}
-      </h3>
-
-      <div className="mt-3">
-        <CommentComposer key={trainerId} trainerId={trainerId} />
-      </div>
+    <section aria-label={t("Отзывы клиентов")}>
+      <CommentComposer key={trainerId} trainerId={trainerId} />
 
       {published.isPending ? (
         <div className="mt-3 space-y-2">

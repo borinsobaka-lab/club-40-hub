@@ -41,24 +41,27 @@ export const MASSAGE_BOOKING_URL = "https://booking.neba.space/";
 /** Подписи карточки сотрудника по роли (переводятся при показе — t(…)). */
 export const STAFF_ROLE_TEXT: Record<
   StaffRole,
-  { label: string; tip: string; rate: string | null; noBio: string }
+  { label: string; tip: string; rate: string | null; noBio: string; about: string }
 > = {
   trainer: {
     label: msg("Тренер"),
     tip: msg("Поблагодарить тренера"),
     rate: msg("Оцените тренера"),
     noBio: msg("Рассказ о тренере скоро появится."),
+    about: msg("О тренере"),
   },
   admin: {
     label: msg("Администратор"),
     tip: msg("Поблагодарить администратора"),
     rate: null,
     noBio: msg("Рассказ об администраторе скоро появится."),
+    about: msg("Об администраторе"),
   },
   masseur: {
     label: msg("Массажист"),
     tip: msg("Поблагодарить массажиста"),
     rate: msg("Оцените массажиста"),
     noBio: msg("Рассказ о массажисте скоро появится."),
+    about: msg("О массажисте"),
   },
 };

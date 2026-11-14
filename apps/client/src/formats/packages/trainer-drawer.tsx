@@ -24,13 +24,17 @@ import {
 } from "./queries";
 import { RateTrainer, TipButton, TrainerRatingLine } from "./trainer-rating";
 import { TrainerComments } from "./trainer-comments";
+import { publishedTrainerCommentsQuery } from "./trainer-comments-data";
+import { UnderlineTabs } from "@/components/underline-tabs";
+import { useAuth } from "@/hooks/use-auth";
 
 /**
  * Карточка сотрудника пакетного приложения — шторка: фото, роль, имя,
  * рейтинг, «Поблагодарить …» (чаевые), под ними «Оцените …» (решение
- * владельца 2026-10-12: оценка выше биографии), биография, под ней «Отзывы
- * клиентов» — комментарии после модерации и «Оставить комментарий»
- * (2026-11-14, trainer-comments.tsx; там же, где оценка). У администратора
+ * владельца 2026-10-12: оценка выше биографии), под ней вкладки «О тренере»
+ * (биография) и «Отзывы клиентов (N)» — комментарии после модерации и
+ * «Оставить комментарий» (2026-11-14, trainer-comments.tsx; вкладки — там
+ * же, где оценка, и только вошедшему; иначе — просто биография). У администратора
  * (2026-10-12) — без рейтинга и оценки: только описание и чаевые; массажист
  * — как тренер, плюс закреплённая внизу «Записаться на массаж» (2026-10-15,
  * MASSAGE_BOOKING_URL). Открывается из вкладок «Студии» и из окна тренировки (там —
@@ -88,7 +92,7 @@ export function TrainerDrawer({
             }
           >
             {trainer ? (
-              <TrainerCard trainer={trainer} />
+              <TrainerCard key={trainer.id} trainer={trainer} />
             ) : query.isError ? (
               <>
                 <DrawerPrimitive.Title className="sr-only">{t("Тренер")}</DrawerPrimitive.Title>
@@ -135,6 +139,13 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
   const photo = mediaUrl(trainer.photo_url, "trainer-photos");
   const tipUrl = trainer.tip_url?.trim() ?? "";
   const hasTip = /^https?:\/\//i.test(tipUrl);
+  const { user } = useAuth();
+  // Вкладки «О тренере» / «Отзывы клиентов (N)» — там, где есть оценка, и
+  // только вошедшему (отзывы читает вошедший). Число — опубликованные; тот
+  // же запрос показывает их во вкладке.
+  const withReviews = !!text.rate && !!user;
+  const [tab, setTab] = useState<"about" | "reviews">("about");
+  const reviews = useQuery({ ...publishedTrainerCommentsQuery(row.id), enabled: withReviews });
   return (
     <>
       <div className="flex items-center gap-4">
@@ -170,16 +181,48 @@ function TrainerCard({ trainer: row }: { trainer: StudioTrainer }) {
           <RateTrainer key={trainer.id} trainerId={trainer.id} title={t(text.rate)} />
         </div>
       )}
-      {trainer.bio?.trim() ? (
+      {withReviews && (
+        <UnderlineTabs
+          className="mt-6"
+          tabs={[
+            { key: "about", label: t(text.about) },
+            {
+              key: "reviews",
+              label:
+                reviews.data === undefined
+                  ? t("Отзывы клиентов")
+                  : t("Отзывы клиентов ({n})", { n: reviews.data.length }),
+            },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+      )}
+      {withReviews && tab === "reviews" ? (
+        <div className="mt-4">
+          <TrainerComments trainerId={trainer.id} />
+        </div>
+      ) : trainer.bio?.trim() ? (
         <FormattedText
           text={trainer.bio}
-          className="mt-5 text-[15px] leading-relaxed text-foreground/90"
+          className={
+            withReviews
+              ? "mt-4 text-[15px] leading-relaxed text-foreground/90"
+              : "mt-5 text-[15px] leading-relaxed text-foreground/90"
+          }
           linkClass="font-medium text-foreground underline decoration-primary decoration-2 underline-offset-2"
         />
       ) : (
-        <p className="mt-5 text-sm text-muted-foreground">{t(text.noBio)}</p>
+        <p
+          className={
+            withReviews
+              ? "mt-4 text-sm text-muted-foreground"
+              : "mt-5 text-sm text-muted-foreground"
+          }
+        >
+          {t(text.noBio)}
+        </p>
       )}
-      {text.rate && <TrainerComments key={trainer.id} trainerId={trainer.id} />}
     </>
   );
 }

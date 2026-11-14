@@ -208,6 +208,10 @@ const dict: Dictionary = {
     "Your first name and last-name initial will be shown under the comment.",
   "Перед публикацией комментарий проверит студия.":
     "The studio will review the comment before publishing it.",
+  "Отзывы клиентов ({n})": "Client reviews ({n})",
+  "О тренере": "About the trainer",
+  "Об администраторе": "About the administrator",
+  "О массажисте": "About the massage therapist",
 };
 
 export default dict;
