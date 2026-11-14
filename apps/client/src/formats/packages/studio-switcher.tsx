@@ -20,8 +20,9 @@ import { setViewedStudioId, useFormatStudios, useViewedStudioId } from "@/hooks/
  * розовых «Выбрать» и шести кнопок карт): строка студии нажимается целиком,
  * кнопок выбора нет. Выбранная — розовая рамка, заливка, галочка и «Выбрана»;
  * остальные — карточка с тенью и пустым кружком. Фото клуба крупнее
- * (studios.photo_url), название без общего начала («Lady Stretch»), своя
- * студия — метка «Ваша». Карты — одна кнопка «На карте», раскрывает
+ * (studios.photo_url), название без общего начала («Lady Stretch»). Метки
+ * «Ваша студия» нет (решение владельца 2026-11-14: абонемент действует во
+ * всех студиях, важна только выбранная — от неё расписание и новости). Карты — одна кнопка «На карте», раскрывает
  * «Google Карты» / «Яндекс Карты» (studios.google_maps_url / yandex_maps_url;
  * нет ссылки — нет кнопки). Ссылка открывается в новой вкладке — на телефоне
  * её перехватывает приложение карт.
@@ -87,7 +88,6 @@ export function StudioSwitcher() {
                       studio={s}
                       title={shortNames.get(s.id) ?? s.name}
                       active={s.id === studioId}
-                      home={s.id === homeStudioId}
                       onPick={() => {
                         // Своя студия — сбрасываем выбор: дальше по карточке клиента.
                         setViewedStudioId(s.id === homeStudioId ? null : s.id);
@@ -129,13 +129,11 @@ function StudioRow({
   studio: s,
   title,
   active,
-  home,
   onPick,
 }: {
   studio: Studio;
   title: string;
   active: boolean;
-  home: boolean;
   onPick: () => void;
 }) {
   const t = useT();
@@ -200,16 +198,11 @@ function StudioRow({
           {s.address && (
             <div className="mt-0.5 truncate text-sm text-muted-foreground">{s.address}</div>
           )}
-          {(active || home || maps.length > 0) && (
+          {(active || maps.length > 0) && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {active && (
                 <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
                   {t("Выбрана")}
-                </span>
-              )}
-              {home && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground/80">
-                  {t("Ваша")}
                 </span>
               )}
               {maps.length > 0 && (
