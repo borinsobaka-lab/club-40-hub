@@ -66,13 +66,13 @@
   --text-4xl--line-height: 1.15;
   --text-4xl--letter-spacing: -0.025em;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-sm: calc((var(--radius) - 4px) * var(--radius-k, 1));
+  --radius-md: calc((var(--radius) - 2px) * var(--radius-k, 1));
+  --radius-lg: calc(var(--radius) * var(--radius-k, 1));
+  --radius-xl: calc((var(--radius) + 4px) * var(--radius-k, 1));
+  --radius-2xl: calc((var(--radius) + 8px) * var(--radius-k, 1));
+  --radius-3xl: calc((var(--radius) + 12px) * var(--radius-k, 1));
+  --radius-4xl: calc((var(--radius) + 16px) * var(--radius-k, 1));
   --animate-gradient-flow: gradient-flow 8s ease infinite;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -997,5 +997,23 @@ body[data-sidebar-resizing] {
     opacity: 1;
     pointer-events: none;
     z-index: -1;
+  }
+}
+
+/* Суперэллипс (squircle) вместо скруглённого прямоугольника — у окон,
+   всплывающих меню, плашек, полей ввода, кнопок: всего, где есть класс
+   rounded-*. Круглое (rounded-full: аватарки, пилюли, переключатели) не
+   трогаем. corner-shape пока есть только в Chrome/Edge 139+; Safari и
+   Firefox показывают обычное скругление — поэтому и радиус крупнее только
+   там, где форма поддерживается: суперэллипс при том же радиусе выглядит
+   заметно острее круга, ×1.8 — на глаз как прежнее скругление, но мягче,
+   как в iOS. Множитель — --radius-k в токенах --radius-* выше. */
+@supports (corner-shape: squircle) {
+  :root {
+    --radius-k: 1.8;
+  }
+
+  [class*="rounded"]:not([class*="rounded-full"]):not([class*="rounded-none"]) {
+    corner-shape: squircle;
   }
 }
