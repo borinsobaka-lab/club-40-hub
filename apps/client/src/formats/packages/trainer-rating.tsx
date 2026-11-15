@@ -31,9 +31,7 @@ function ratingsLabel(n: number, t: Translator) {
 }
 
 function clientReviewsLabel(n: number, t: Translator) {
-  return n === 0
-    ? t("Нет отзывов клиентов")
-    : t.plural(n, "{n} отзыв клиента|{n} отзыва клиентов|{n} отзывов клиентов");
+  return t.plural(n, "{n} отзыв клиента|{n} отзыва клиентов|{n} отзывов клиентов");
 }
 
 /** Золотые звёзды; дробная часть заполняет звезду частично (4,5 — половинка). */
@@ -71,8 +69,9 @@ export function RatingStars({
 
 /**
  * Строка «★★★★★ 4,99 (56 оценок)» — в списке тренеров и в карточке. С
- * `reviews` (список тренеров) — строкой ниже «N отзывов клиентов»; undefined —
- * не показывается (гость, ещё грузится, ошибка).
+ * `reviews` (список тренеров) — строкой ниже «N отзывов клиентов»; 0 и
+ * undefined (гость, ещё грузится, ошибка) — строки нет: «нет отзывов» о
+ * тренере не пишем (решение владельца 2026-11-15).
  */
 export function TrainerRatingLine({
   avg,
@@ -88,12 +87,11 @@ export function TrainerRatingLine({
   textClass?: string;
 }) {
   const t = useT();
-  const reviewsLine =
-    reviews === undefined ? null : (
-      <div className={`${textClass} mt-0.5 text-muted-foreground`}>
-        {clientReviewsLabel(reviews, t)}
-      </div>
-    );
+  const reviewsLine = !reviews ? null : (
+    <div className={`${textClass} mt-0.5 text-muted-foreground`}>
+      {clientReviewsLabel(reviews, t)}
+    </div>
+  );
   if (avg == null || count === 0) {
     return (
       <>

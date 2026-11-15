@@ -60,7 +60,6 @@ const dict: Dictionary = {
     "Couldn't load the trainer's profile. Please try again.",
   "Рассказ о тренере скоро появится.": "The trainer's bio is coming soon.",
   "Пока нет оценок": "No ratings yet",
-  "Нет отзывов клиентов": "No client reviews yet",
   "Рейтинг {value} из 5, {reviews}": "Rated {value} out of 5, {reviews}",
   "Поблагодарить тренера": "Thank your trainer",
   "Оставить чаевые": "Leave a tip",
