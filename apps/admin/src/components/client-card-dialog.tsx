@@ -310,6 +310,7 @@ export function ClientCardDialog({
 function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const [expiredEditOpen, setExpiredEditOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickedKind, setPickedKind] = useState<SaleKind>("new");
@@ -426,6 +427,16 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
     memberships.find(
       (r) => r.status === "frozen" || (r.status === "active" && (!r.ends_at || r.ends_at >= today)),
     ) ?? null;
+  // Нет действующего — правится последний истёкший (решение владельца
+  // 2026-11-15: перенесённым клиентам поставили неверный срок, абонемент
+  // истёк, нового нет). Возврат, отмена, замена и ждущие — не в счёт.
+  const lastExpired = active
+    ? null
+    : (memberships
+        .filter((r) => effectiveStatus(r, today) === "expired")
+        .sort((a, b) =>
+          (b.ends_at ?? b.started_at ?? "").localeCompare(a.ends_at ?? a.started_at ?? ""),
+        )[0] ?? null);
   const clubStatus = computeClubStatus(
     memberships.map((r) => ({
       client_id: client.id,
@@ -537,16 +548,29 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
             <div>
               <div className="mb-2 flex min-h-9 items-center justify-between">
                 <SectionLabel>История продаж</SectionLabel>
-                {/* Новая продажа сразу с этим клиентом — без перехода в «Продажи». */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={startSale}
-                  disabled={!studioId || loadingSales}
-                >
-                  <Plus />
-                  Добавить продажу
-                </Button>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {lastExpired && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setExpiredEditOpen(true)}
+                      disabled={loadingActive}
+                    >
+                      <Pencil />
+                      Редактировать
+                    </Button>
+                  )}
+                  {/* Новая продажа сразу с этим клиентом — без перехода в «Продажи». */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={startSale}
+                    disabled={!studioId || loadingSales}
+                  >
+                    <Plus />
+                    Добавить продажу
+                  </Button>
+                </div>
               </div>
               {loadingSales ? (
                 <CardSkeleton rows={2} />
@@ -647,6 +671,28 @@ function ClientCard({ client: initial, onClose }: { client: ClientLike; onClose:
                 freeze_days_allowed: membershipFreezeAllowed(active.memberships),
                 starts_on_first_visit: active.starts_on_first_visit,
                 started_at: active.started_at,
+              }
+            : null
+        }
+        isPackages={isPackages}
+        onSaved={reloadMemberships}
+      />
+      <EditActiveMembershipDialog
+        open={expiredEditOpen}
+        onOpenChange={setExpiredEditOpen}
+        expired
+        membership={
+          lastExpired
+            ? {
+                id: lastExpired.id,
+                name: membershipName(lastExpired.memberships),
+                ends_at: lastExpired.ends_at,
+                visits_left: lastExpired.visits_left,
+                personal_left: lastExpired.personal_left,
+                diagnostics_left: lastExpired.diagnostics_left,
+                status: lastExpired.status,
+                starts_on_first_visit: lastExpired.starts_on_first_visit,
+                started_at: lastExpired.started_at,
               }
             : null
         }

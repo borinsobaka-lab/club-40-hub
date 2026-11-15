@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/format";
+import { formatDate, todayISO } from "@/lib/format";
 
 export type ActiveMembership = {
   id: string;
@@ -35,6 +35,8 @@ export type ActiveMembership = {
    */
   starts_on_first_visit?: boolean | null;
   started_at?: string | null;
+  /** Название из номенклатуры — в шапке окна истёкшего абонемента. */
+  name?: string;
 };
 
 type FormProps = {
@@ -46,6 +48,13 @@ type FormProps = {
    * (personal_left), правятся отдельно (решение владельца 2026-10-14).
    */
   isPackages?: boolean;
+  /**
+   * Истёкший абонемент (решение владельца 2026-11-15: перенесённым клиентам
+   * срок поставили неверно, абонемент истёк, а нового нет). Правка открыта,
+   * только когда у клиента нет действующего абонемента; без заморозки. Срок
+   * в будущем и остаток — абонемент снова «Активен».
+   */
+  expired?: boolean;
 };
 
 export function EditActiveMembershipDialog({
@@ -54,6 +63,7 @@ export function EditActiveMembershipDialog({
   membership,
   onSaved,
   isPackages = false,
+  expired = false,
 }: Omit<FormProps, "membership"> & {
   open: boolean;
   membership: ActiveMembership | null;
@@ -62,11 +72,19 @@ export function EditActiveMembershipDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Редактировать активный абонемент</DialogTitle>
+          <DialogTitle>
+            {expired ? "Редактировать истёкший абонемент" : "Редактировать активный абонемент"}
+          </DialogTitle>
           <DialogDescription>
-            {isPackages
-              ? "Срок действия, остаток групповых и персональных тренировок, диагностик, заморозка."
-              : "Срок действия, остаток посещений и заморозка."}
+            {expired
+              ? `${membership?.name ? `«${membership.name}»${membership.ends_at ? ` · истёк ${formatDate(membership.ends_at)}` : ""}. ` : ""}${
+                  isPackages
+                    ? "Срок действия, остаток групповых и персональных тренировок, диагностик."
+                    : "Срок действия и остаток посещений."
+                }`
+              : isPackages
+                ? "Срок действия, остаток групповых и персональных тренировок, диагностик, заморозка."
+                : "Срок действия, остаток посещений и заморозка."}
           </DialogDescription>
         </DialogHeader>
         {/*
@@ -80,6 +98,7 @@ export function EditActiveMembershipDialog({
             onOpenChange={onOpenChange}
             onSaved={onSaved}
             isPackages={isPackages}
+            expired={expired}
           />
         )}
       </DialogContent>
@@ -87,7 +106,7 @@ export function EditActiveMembershipDialog({
   );
 }
 
-function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormProps) {
+function MembershipForm({ onOpenChange, membership, onSaved, isPackages, expired }: FormProps) {
   const [endsAt, setEndsAt] = useState(membership.ends_at ?? "");
   const [unlimitedVisits, setUnlimitedVisits] = useState(membership.visits_left == null);
   const [visitsLeft, setVisitsLeft] = useState(
@@ -189,6 +208,21 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
       }
       diagnostics = n;
     }
+    // Истёкший: срок обязателен; в будущем и с остатком — снова действует
+    // (статус «expired» ставят база и пересчёт очереди, сам он не вернётся).
+    let revive = false;
+    let live = false;
+    if (expired) {
+      if (!awaiting && !endsAt) {
+        toast.error("Укажите, до какого числа действует абонемент");
+        return;
+      }
+      const hasBalance =
+        visits === null || visits > 0 || (personal ?? 0) > 0 || (diagnostics ?? 0) > 0;
+      // Срок с первого посещения ещё не начат — даты нет, решает остаток.
+      live = (awaiting || endsAt >= todayISO()) && hasBalance;
+      revive = live && membership.status !== "active";
+    }
     setSaving(true);
     try {
       const { data, error } = await supabase
@@ -200,13 +234,18 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
             ? { ends_at: endsAt || null }
             : {}),
           visits_left: visits,
+          ...(revive ? { status: "active" } : {}),
           ...(personal !== undefined ? { personal_left: personal } : {}),
           ...(diagnostics !== undefined ? { diagnostics_left: diagnostics } : {}),
         })
         .eq("id", membership.id)
         .select("id");
       if (error) {
-        toast.error("Ошибка сохранения: " + error.message);
+        toast.error(
+          error.code === "23505"
+            ? "У клиента уже есть действующий абонемент этого вида — обновите карточку"
+            : "Ошибка сохранения: " + error.message,
+        );
         return;
       }
       // RLS не пустил (абонемент клуба другой базы клиентов) — ошибки нет,
@@ -215,7 +254,11 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
         toast.error("Абонемент не сохранён: нет прав в клубе, где его продали");
         return;
       }
-      done("Абонемент обновлён");
+      if (!expired) done("Абонемент обновлён");
+      else if (live) done("Абонемент снова действует");
+      else if (!awaiting && endsAt < todayISO())
+        done("Абонемент обновлён — срок уже прошёл, он остаётся истёкшим");
+      else done("Абонемент обновлён — остатка нет, он остаётся истёкшим");
     } finally {
       setSaving(false);
     }
@@ -232,7 +275,12 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
           ) : (
             <FormField
               label="Действует до"
-              tip="Последний день абонемента. На следующий день он станет истёкшим."
+              required={expired}
+              tip={
+                expired
+                  ? "Последний день абонемента. Дата сегодня или позже и есть остаток — абонемент снова станет активным."
+                  : "Последний день абонемента. На следующий день он станет истёкшим."
+              }
             >
               <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
             </FormField>
@@ -292,7 +340,7 @@ function MembershipForm({ onOpenChange, membership, onSaved, isPackages }: FormP
           {/* Блок показываем и при нулевой квоте, если абонемент уже заморожен:
             иначе после обнуления «дней заморозки» в тарифе разморозить его
             стало бы нечем. */}
-          {(allowed > 0 || status === "frozen") && (
+          {!expired && (allowed > 0 || status === "frozen") && (
             <div className="space-y-3 rounded-md border p-3">
               <div className="text-xs font-medium uppercase text-muted-foreground">Заморозка</div>
               {status === "frozen" ? (
